@@ -32,12 +32,13 @@ import org.openmetadata.schema.type.OntologyPackModule;
 
 class OntologyPackCatalogTest {
   private static final String PACKS = "json/data/ontology/packs/";
-  private static final Set<String> STARTER_PACKS = Set.of("isa-95", "hr-open", "epcis");
+  private static final Set<String> STARTER_PACKS = Set.of("isa-95", "hr-open");
   private static final Set<String> UPSTREAM_PACKS =
       Set.of(
           "brick",
           "dcat",
           "dpv",
+          "epcis",
           "fhir",
           "fibo",
           "foaf",
@@ -96,6 +97,19 @@ class OntologyPackCatalogTest {
         catalog.select(sensors, List.of("ssn")).stream().map(OntologyPackModule::getId).toList();
 
     assertEquals(List.of("sosa", "ssn"), selected);
+  }
+
+  @Test
+  void theEpcisPackPullsInTheCbvItsRangesPointAt() {
+    final OntologyPackManifest epcis = catalog.require("epcis");
+
+    final List<String> selected =
+        catalog.select(epcis, List.of("epcis")).stream().map(OntologyPackModule::getId).toList();
+
+    assertEquals(List.of("cbv", "epcis"), selected);
+    assertEquals("GS1", epcis.getPublisher());
+    assertEquals(
+        "No license statement published by GS1; included pending confirmation", epcis.getLicense());
   }
 
   @Test

@@ -82,7 +82,7 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
           Map.entry("brick", 11810),
           Map.entry("dcat", 48),
           Map.entry("dpv", 3688),
-          Map.entry("epcis", 18),
+          Map.entry("epcis", 199),
           Map.entry("fhir", 16404),
           Map.entry("fibo", 9901),
           Map.entry("foaf", 100),

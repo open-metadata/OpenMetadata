@@ -25,12 +25,12 @@ Authored packs are OpenMetadata-written outlines (Apache License 2.0) with OpenM
 | brick | 1.4.2 | BSD-3-Clause | `brick/brick.ttl` | https://brickschema.org/schema/1.4/Brick.ttl | `c4a9a35355da6be158123f5dced3a7ad0714d3a2cab51c6a80c4720c3c8d28f0` |
 | isa-95 | 2025Q1-om1 | Apache License 2.0 | `isa-95/manufacturing-operations.ttl` | OpenMetadata-authored | `authored` |
 | hr-open | 2025Q1-om1 | Apache License 2.0 | `hr-open/workforce.ttl` | OpenMetadata-authored | `authored` |
-| epcis | 2025Q1-om1 | Apache License 2.0 | `epcis/event-model.ttl` | OpenMetadata-authored | `authored` |
+| epcis | 2.0.1 | No license statement published by GS1; included pending confirmation | `epcis/cbv.ttl` | https://ref.gs1.org/standards/epcis/2.0.1/cbv-ontology.ttl | `9d41ff84c2b298ca0247ac72a26dc4ad92ca30efc5d34e3f67c65a13a72ca289` |
+| epcis | 2.0.1 | No license statement published by GS1; included pending confirmation | `epcis/epcis.ttl` | https://ref.gs1.org/standards/epcis/2.0.1/epcis-ontology.ttl | `64a6bdebfb6a52f01c0fef38f8d58185b5c93bf281b5af136e91947b6b3b10d5` |
 
 ## Not bundled
 
 - **schema.org**: CC BY-SA 3.0. Share-alike terms need legal review before the vocabulary can ship inside an Apache-2.0 distribution.
-- **GS1 EPCIS and CBV ontologies**: The files carry no license grant and GS1 IP policy terms for non-members are unconfirmed. The EPCIS starter is OpenMetadata-authored instead.
 - **DCMI Terms**: The file carries no license statement and the CC BY 4.0 claim on the DCMI site is unconfirmed.
 - **ETSI SAREF**: The ETSI Software License text could not be retrieved, so its terms are unconfirmed.
 - **QUDT**: Not evaluated. Its file header carries a UCUM license notice that would need its own review.
@@ -53,4 +53,4 @@ Authored packs are OpenMetadata-written outlines (Apache License 2.0) with OpenM
 - **Brick Schema**: Brick Schema 1.4.2. Copyright 2016-2026, Brick Consortium, Inc. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted under the BSD 3-Clause License. The name of the Brick Consortium may not be used to endorse products derived from this software without permission. Redistributed without changes.
 - **ISA-95 Starter (OpenMetadata-authored)**: Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to ANSI/ISA-95; ISA-95 is a standard of the International Society of Automation and is not licensed to this project.
 - **HR Open Starter (OpenMetadata-authored)**: Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to HR Open Standards, which are not licensed to this project.
-- **EPCIS Starter (OpenMetadata-authored)**: Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to GS1 EPCIS; GS1 and EPCIS are trademarks of GS1 AISBL.
+- **GS1 EPCIS 2.0 and CBV**: GS1 EPCIS 2.0.1 and CBV 2.0.1 ontologies. Copyright GS1 AISBL. GS1 and EPCIS are trademarks of GS1 AISBL. GS1 publishes these files openly at ref.gs1.org without a license statement, and no GS1 terms granting or refusing redistribution were found; they are included pending GS1 confirmation and removed in a release if GS1 asks. Redistributed without changes.

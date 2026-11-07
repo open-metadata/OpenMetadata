@@ -52,7 +52,7 @@ class BundledOntologyPackImportTest {
         Arguments.of("brick", 11825, 11259),
         Arguments.of("dcat", 62, 1325),
         Arguments.of("dpv", 3692, 8494),
-        Arguments.of("epcis", 18, 0),
+        Arguments.of("epcis", 231, 1003),
         Arguments.of("fhir", 16567, 19509),
         Arguments.of("fibo", 9940, 103304),
         Arguments.of("foaf", 105, 171),

@@ -1,7 +1,7 @@
 # Ontology library packs are verbatim pinned upstream releases
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial)
+- **Revisions:** v1 2026-11-06 (initial); v2 2026-11-07 (GS1 EPCIS and CBV included pending confirmation)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `python3 scripts/ontology-packs/generate.py --check` (`make ontology-packs-check`, also a `make harness-check` warning), OntologyPackCatalogTest, OntologyPackVerifierTest, BundledOntologyPackImportTest, NativeOntologyEveryPackInstallIT
 - **Related:** ADR:2026-10-19-native-ontology-imports-use-working-drafts
@@ -16,15 +16,17 @@ A bundled pack is an upstream release, byte for byte, at a pinned URL, with the 
 
 A pack ships only when its license permits redistribution inside an Apache-2.0 distribution with attribution. The generator rejects any license that is not in `allowedLicenses` of the source list: CC BY 4.0 and 1.0, CC0, MIT, BSD-3-Clause, Apache-2.0, the W3C Software and Document and Document licenses, and the Open Data Commons PDDL. A pack names its attribution in the manifest, the Library detail shows it, and `NOTICE` carries it.
 
-These are not bundled, and the source list records the reason for each: schema.org (CC BY-SA 3.0 share-alike needs counsel), the GS1 EPCIS and CBV ontologies (no license grant), DCMI Terms (license unconfirmed), SAREF (the ETSI license text could not be read), QUDT (not evaluated; its header carries a UCUM notice), ISA-95 (a paid standard) and HR Open (no RDF form). Reversing an exclusion needs a new record.
+These are not bundled, and the source list records the reason for each: schema.org (CC BY-SA 3.0 share-alike needs counsel), DCMI Terms (license unconfirmed), SAREF (the ETSI license text could not be read), QUDT (not evaluated; its header carries a UCUM notice), ISA-95 (a paid standard) and HR Open (no RDF form). Reversing an exclusion needs a new record.
 
-ISA-95, HR Open and EPCIS keep an OpenMetadata-authored starter, renamed `<Standard> Starter (OpenMetadata-authored)`, licensed Apache-2.0 as part of OpenMetadata, and described as aligned to the standard. A starter never claims to be a subset or a copy of it.
+ISA-95 and HR Open keep an OpenMetadata-authored starter, renamed `<Standard> Starter (OpenMetadata-authored)`, licensed Apache-2.0 as part of OpenMetadata, and described as aligned to the standard. A starter never claims to be a subset or a copy of it.
 
 A manifest counts a module's `conceptCount` as the distinct IRIs typed `owl:Class`, `rdfs:Class` or `skos:Concept` in its file, and `relationshipCount` as the distinct IRI-to-IRI `rdfs:subClassOf`, `rdfs:subPropertyOf` and `skos:broader`, `narrower` and `related` statements. They describe the file, so a module that re-declares terms of its dependency counts them again.
 
 Every pack installs through the library install job, whatever its size: there is no per-pack install mode. The preview, review and sample of a pack read its modules through the trusted parser, against their catalogue checksums, and are not held to the 1,000 changed definitions that one interactive native import accepts. The review lists at most 5,000 items. Every pack fits the 50,000-member ontology limit. `BundledOntologyPackImportTest` previews each pack, and `NativeOntologyEveryPackInstallIT` installs each one into a fresh ontology.
 
 The catalogue reads `json/data/ontology/packs/index.json`, which the generator writes, instead of a hard-coded list. A missing index, a missing or malformed manifest, or a manifest whose `id` differs from its file name stops the server at startup.
+
+**Amendment v2: GS1 EPCIS and CBV are included pending confirmation.** GS1 publishes the EPCIS 2.0.1 and CBV 2.0.1 ontology files openly at ref.gs1.org. The files carry no license statement, and we found no GS1 terms that grant or refuse redistribution. The product owner decided to include them. The `epcis` pack ("GS1 EPCIS 2.0 and CBV") holds both files verbatim as two modules, `cbv` and `epcis` (which depends on `cbv`), and replaces the OpenMetadata-authored EPCIS starter. Its license is recorded as "No license statement published by GS1; included pending confirmation", a value `allowedLicenses` lists by name so no other unlicensed pack can slip in. If GS1 tells us we cannot redistribute them, we remove the pack and ship that in a release: delete the `epcis` entry from `sources.json`, run `make ontology-packs` (it deletes the payloads, manifest and NOTICE entry), and release. An installation already made keeps its concepts, as with any pack the catalogue stops offering.
 
 ## Consequences
 

@@ -78,4 +78,9 @@ without changes in openmetadata-spec/src/main/resources/rdf/ontology-packs/.
   https://brickschema.org/
   License: BSD-3-Clause, https://opensource.org/licenses/BSD-3-Clause
 
+  GS1 EPCIS 2.0 and CBV 2.0.1
+  GS1 EPCIS 2.0.1 and CBV 2.0.1 ontologies. Copyright GS1 AISBL. GS1 and EPCIS are trademarks of GS1 AISBL. GS1 publishes these files openly at ref.gs1.org without a license statement, and no GS1 terms granting or refusing redistribution were found; they are included pending GS1 confirmation and removed in a release if GS1 asks. Redistributed without changes.
+  https://ref.gs1.org/standards/epcis/
+  License: No license statement published by GS1; included pending confirmation, https://www.gs1.org/standards/epcis
+
 # END ontology-packs

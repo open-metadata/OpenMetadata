@@ -10,7 +10,8 @@
     "Open Data Commons PDDL 1.0",
     "W3C Software and Document License",
     "W3C Software and Document License or OGC Software License",
-    "W3C Document License"
+    "W3C Document License",
+    "No license statement published by GS1; included pending confirmation"
   ],
   "packs": [
     {
@@ -149,7 +150,9 @@
           "url": "https://www.w3.org/ns/ssn/",
           "accept": "text/turtle",
           "format": "turtle",
-          "dependencies": ["sosa"],
+          "dependencies": [
+            "sosa"
+          ],
           "downloadSha256": "184d86189191146e314cc52b1bceb96fca11e70aacbc160d71588102a5153eb9"
         }
       ]
@@ -236,7 +239,9 @@
           "description": "The personal-data extension: categories of personal data such as identifiers, contact details and financial data.",
           "url": "https://w3c-cg.github.io/dpv/2.3/pd/pd-owl.ttl",
           "format": "turtle",
-          "dependencies": ["dpv"],
+          "dependencies": [
+            "dpv"
+          ],
           "downloadSha256": "99308e733f9f4825ddc3783a973e94c8e005faa12bf644f103d03443126aa12a"
         }
       ]
@@ -395,25 +400,38 @@
     },
     {
       "id": "epcis",
-      "name": "EPCIS Starter (OpenMetadata-authored)",
+      "name": "GS1 EPCIS 2.0 and CBV",
       "abbreviation": "EPCIS",
-      "standard": "GS1 EPCIS",
-      "publisher": "OpenMetadata",
-      "version": "2025Q1-om1",
+      "standard": "GS1 EPCIS 2.0 and Core Business Vocabulary (CBV) ontologies",
+      "publisher": "GS1",
+      "version": "2.0.1",
       "industry": "supply-chain",
       "layer": "L2",
-      "description": "An OpenMetadata-authored concept outline aligned to GS1 EPCIS supply-chain events. The GS1 EPCIS ontology carries no license grant we could confirm, so this is not a copy of it.",
-      "license": "Apache License 2.0",
-      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
-      "sourceUrl": "https://www.gs1.org/standards/epcis",
-      "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to GS1 EPCIS; GS1 and EPCIS are trademarks of GS1 AISBL.",
-      "origin": "authored",
+      "description": "The GS1 EPCIS 2.0 event ontology and the Core Business Vocabulary (CBV) of business steps, dispositions and identifiers, published verbatim.",
+      "license": "No license statement published by GS1; included pending confirmation",
+      "licenseUrl": "https://www.gs1.org/standards/epcis",
+      "sourceUrl": "https://ref.gs1.org/standards/epcis/",
+      "attribution": "GS1 EPCIS 2.0.1 and CBV 2.0.1 ontologies. Copyright GS1 AISBL. GS1 and EPCIS are trademarks of GS1 AISBL. GS1 publishes these files openly at ref.gs1.org without a license statement, and no GS1 terms granting or refusing redistribution were found; they are included pending GS1 confirmation and removed in a release if GS1 asks. Redistributed without changes.",
+      "origin": "upstream",
       "modules": [
         {
-          "id": "event-model",
-          "name": "Event model",
-          "description": "Event types and the what, when, where and why dimensions aligned to EPCIS.",
-          "format": "turtle"
+          "id": "cbv",
+          "name": "Core Business Vocabulary (CBV)",
+          "description": "Business steps, dispositions, business transaction types and other standard values used in EPCIS events.",
+          "url": "https://ref.gs1.org/standards/epcis/2.0.1/cbv-ontology.ttl",
+          "format": "turtle",
+          "downloadSha256": "9d41ff84c2b298ca0247ac72a26dc4ad92ca30efc5d34e3f67c65a13a72ca289"
+        },
+        {
+          "id": "epcis",
+          "name": "EPCIS 2.0 ontology",
+          "description": "Event types and the what, when, where and why properties of EPCIS 2.0, which draw their values from the CBV.",
+          "dependencies": [
+            "cbv"
+          ],
+          "url": "https://ref.gs1.org/standards/epcis/2.0.1/epcis-ontology.ttl",
+          "format": "turtle",
+          "downloadSha256": "64a6bdebfb6a52f01c0fef38f8d58185b5c93bf281b5af136e91947b6b3b10d5"
         }
       ]
     }
@@ -423,11 +441,6 @@
       "id": "schema-org",
       "name": "schema.org",
       "reason": "CC BY-SA 3.0. Share-alike terms need legal review before the vocabulary can ship inside an Apache-2.0 distribution."
-    },
-    {
-      "id": "epcis-cbv",
-      "name": "GS1 EPCIS and CBV ontologies",
-      "reason": "The files carry no license grant and GS1 IP policy terms for non-members are unconfirmed. The EPCIS starter is OpenMetadata-authored instead."
     },
     {
       "id": "dcterms",

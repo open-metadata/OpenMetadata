@@ -57,13 +57,13 @@ class OntologyPackInstallerTest {
     final OntologyPackInstaller installer = installer(new AtomicReference<>());
     final InstallOntologyPack request =
         new InstallOntologyPack()
-            .withModuleIds(Set.of("event-model"))
+            .withModuleIds(Set.of("epcis"))
             .withTargetGlossaryName("SupplyChain")
             .withDryRun(true);
 
     final OntologyPackInstallResult result = installer.install("epcis", request, context());
 
-    assertEquals(List.of("event-model"), result.getModuleIds());
+    assertEquals(List.of("cbv", "epcis"), result.getModuleIds());
     assertTrue(result.getDryRun());
   }
 
