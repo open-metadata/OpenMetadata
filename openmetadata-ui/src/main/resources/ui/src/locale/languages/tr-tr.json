@@ -6113,6 +6113,7 @@
     "persona-context-restore-confirmation": "AI bağlamı v{{version}} sürümüne geri yüklensin mi? Bu, o sürümün kuralları ve ayarlarıyla yeni bir sürüm oluşturur.",
     "persona-context-rule-deleted": "Yapay zekâ bağlam kuralı silindi.",
     "persona-context-rule-filter-incomplete": "Kaydetmeden önce tamamlanmamış koşulu tamamlayın veya kaldırın. Tamamlanmamış bir koşul yok sayılır ve bu kural her şeyle eşleşecek şekilde genişler.",
+    "persona-context-rule-filter-unrendered": "Kaydedilen filtre, görsel düzenleyicinin tam olarak gösteremediği bir biçim kullanıyor. Filtreyi burada düzenlemek orijinal koşulların yerini alabilir.",
     "persona-context-rule-saved": "Yapay zekâ bağlam kuralı kaydedildi.",
     "persona-context-rule-subtitle": "Bu kuralın bağlam belgesine eklediği meta verileri seçin.",
     "persona-context-rules-count": "Kurallar ({{count}})",
