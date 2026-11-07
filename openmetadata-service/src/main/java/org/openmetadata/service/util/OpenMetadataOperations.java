@@ -3145,7 +3145,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   }
 
   private static BigInteger decodeJwkNumber(String encoded) {
-    return new BigInteger(Base64.getUrlDecoder().decode(encoded));
+    return new BigInteger(1, Base64.getUrlDecoder().decode(encoded));
   }
 
   @Command(

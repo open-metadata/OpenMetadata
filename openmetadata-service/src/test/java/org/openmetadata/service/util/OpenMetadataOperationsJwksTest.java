@@ -20,6 +20,8 @@ import java.math.BigInteger;
 import java.security.KeyFactory;
 import java.security.interfaces.RSAPublicKey;
 import java.security.spec.RSAPublicKeySpec;
+import java.util.Arrays;
+import java.util.Base64;
 import org.junit.jupiter.api.Test;
 
 class OpenMetadataOperationsJwksTest {
@@ -43,6 +45,21 @@ class OpenMetadataOperationsJwksTest {
   @Test
   void jwksListingTheKidWithTheSameModulusAndExponentMatches() throws Exception {
     assertTrue(OpenMetadataOperations.jwksListsKey(JWKS, "new-key", key(MODULUS)));
+  }
+
+  @Test
+  void jwksWithAnUnpaddedModulusWithoutALeadingZeroByteMatches() throws Exception {
+    BigInteger modulus = new BigInteger("c0".repeat(256), 16);
+    String n = Base64.getUrlEncoder().withoutPadding().encodeToString(unsignedBytes(modulus));
+    String jwks =
+        "{\"keys\":[{\"kty\":\"RSA\",\"kid\":\"new-key\",\"n\":\"" + n + "\",\"e\":\"AQAB\"}]}";
+
+    assertTrue(OpenMetadataOperations.jwksListsKey(jwks, "new-key", key(modulus)));
+  }
+
+  private static byte[] unsignedBytes(BigInteger value) {
+    byte[] bytes = value.toByteArray();
+    return bytes[0] == 0 ? Arrays.copyOfRange(bytes, 1, bytes.length) : bytes;
   }
 
   @Test
