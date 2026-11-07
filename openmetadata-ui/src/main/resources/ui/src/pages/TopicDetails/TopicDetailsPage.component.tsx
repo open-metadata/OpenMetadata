@@ -72,7 +72,6 @@ const TopicDetailsPage: FunctionComponent = () => {
     isLoading: isPermissionsLoading,
     error: permissionsError,
     canViewBasic: canViewTopic,
-    hasViewAccess,
   } = useEntityPermissions(ResourceEntity.TOPIC, topicFQN);
 
   const topicCacheKey = useMemo(
@@ -340,7 +339,7 @@ const TopicDetailsPage: FunctionComponent = () => {
       </div>
     );
   }
-  if (!hasViewAccess) {
+  if (!canViewTopic) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
