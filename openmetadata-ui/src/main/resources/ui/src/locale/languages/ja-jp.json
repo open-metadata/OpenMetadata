@@ -6113,6 +6113,7 @@
     "persona-context-restore-confirmation": "AI コンテキストを v{{version}} に復元しますか？そのバージョンのルールと設定で新しいバージョンが作成されます。",
     "persona-context-rule-deleted": "AI コンテキストルールを削除しました。",
     "persona-context-rule-filter-incomplete": "保存する前に、未完了の条件を完成させるか削除してください。未完了の条件は無視されるため、このルールがすべてに一致するまで広がってしまいます。",
+    "persona-context-rule-filter-unrendered": "保存されたフィルターは、ビジュアルエディターで完全には表示できない形式を使用しています。ここでフィルターを編集すると、元の条件が置き換えられる可能性があります。",
     "persona-context-rule-saved": "AI コンテキストルールを保存しました。",
     "persona-context-rule-subtitle": "このルールがコンテキストドキュメントに追加するメタデータを選択します。",
     "persona-context-rules-count": "ルール（{{count}}）",

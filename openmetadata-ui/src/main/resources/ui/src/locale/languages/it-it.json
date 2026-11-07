@@ -6113,6 +6113,7 @@
     "persona-context-restore-confirmation": "Vuoi ripristinare il contesto AI alla v{{version}}? Verrà creata una nuova versione con le regole e le impostazioni di quella versione.",
     "persona-context-rule-deleted": "Regola del contesto AI eliminata.",
     "persona-context-rule-filter-incomplete": "Completa o rimuovi la condizione incompleta prima di salvare. Una condizione incompleta viene ignorata e questa regola finirebbe per corrispondere a tutto.",
+    "persona-context-rule-filter-unrendered": "Il filtro salvato usa un formato che l'editor visivo non può visualizzare completamente. Modificare il filtro qui potrebbe sostituire le condizioni originali.",
     "persona-context-rule-saved": "Regola del contesto AI salvata.",
     "persona-context-rule-subtitle": "Seleziona i metadati che questa regola aggiunge al documento di contesto.",
     "persona-context-rules-count": "Regole ({{count}})",
