@@ -15,20 +15,11 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.jena.rdf.model.Model;
-import org.apache.jena.rdf.model.Property;
-import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.Statement;
-import org.apache.jena.vocabulary.DCTerms;
-import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
-import org.apache.jena.vocabulary.RDFS;
-import org.apache.jena.vocabulary.SKOS;
 import org.apache.jena.vocabulary.XSD;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.ConceptMapping;
@@ -45,20 +36,16 @@ import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
-import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationState;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
-import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyLiteral;
 import org.openmetadata.schema.type.OntologyProfileViolation;
 import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
-import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.type.RelationProvenance;
-import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
@@ -110,7 +97,7 @@ public final class NativeOntologyRdfImporter {
   }
 
   public static NativeOntologyDocument read(final Model model) {
-    return new Reader(model).read();
+    return new NativeOntologyRdfReader(model).read();
   }
 
   public Source read(final PreviewNativeOntologyImport request) {
@@ -142,8 +129,7 @@ public final class NativeOntologyRdfImporter {
     final CreateOntologyChangeSet changeSet = plan.of(outcomes);
     final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
     return new NativeOntologyImportPreview()
-        .withSummary(
-            summary(source.format(), source.document().header(), outcomes).withItems(items))
+        .withSummary(summary(source.format(), source.document(), outcomes).withItems(items))
         .withChangeSet(changeSet);
   }
 
@@ -158,7 +144,7 @@ public final class NativeOntologyRdfImporter {
     plan.of(outcomes);
     final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
     items.forEach(item -> item.setOperationId(null));
-    return summary(source.format(), source.document().header(), outcomes).withItems(items);
+    return summary(source.format(), source.document(), outcomes).withItems(items);
   }
 
   public CreateOntologyChangeSet reconcile(
@@ -399,12 +385,14 @@ public final class NativeOntologyRdfImporter {
 
   private static NativeOntologyImportSummary summary(
       final NativeOntologyImportFormat format,
-      final NativeOntologyDocument.Header header,
+      final NativeOntologyDocument document,
       final Outcomes outcomes) {
+    final NativeOntologyDocument.Header header = document.header();
     return new NativeOntologyImportSummary()
         .withDetectedFormat(format)
         .withOntologyLabel(header == null ? null : header.label())
-        .withCounts(counts(outcomes));
+        .withCounts(counts(outcomes))
+        .withSkippedStatements(document.skipped());
   }
 
   private static NativeOntologyImportCounts counts(final Outcomes outcomes) {
@@ -1146,478 +1134,5 @@ public final class NativeOntologyRdfImporter {
 
   private static String label(final OntologyDefinition value) {
     return value.getDisplayName() == null ? value.getName() : value.getDisplayName();
-  }
-
-  private static final class Reader {
-    private final Model model;
-    private final Set<Statement> remaining;
-    private final OntologyExpressionRdfReader expressions;
-    private final Map<Statement, List<String>> sources = new HashMap<>();
-    private boolean nativeExport;
-    private String versionIri;
-    private NativeOntologyDocument.Header header;
-
-    private Reader(final Model model) {
-      this.model = model;
-      remaining = new LinkedHashSet<>(model.listStatements().toList());
-      expressions = new OntologyExpressionRdfReader(model, remaining);
-    }
-
-    private NativeOntologyDocument read() {
-      headers();
-      annotations();
-      final List<OntologyConcept> concepts = concepts();
-      final List<OntologyProperty> properties = properties();
-      final List<OntologyAxiom> axioms = axioms(properties);
-      references();
-      if (!remaining.isEmpty()) {
-        final Statement unsupported = remaining.iterator().next();
-        throw new BadRequestException(
-            "Unsupported RDF statement: " + diagnostic(unsupported.toString()));
-      }
-      return new NativeOntologyDocument(header, concepts, properties, axioms);
-    }
-
-    private static String diagnostic(final String value) {
-      return value.length() > 200 ? value.substring(0, 200) + "…" : value;
-    }
-
-    private void headers() {
-      if (model.contains(null, OWL2.imports)) {
-        throw new BadRequestException("owl:imports is not supported by native import");
-      }
-      final List<Resource> declared =
-          model.listSubjectsWithProperty(RDF.type, OWL2.Ontology).toList();
-      final NativeOntologyDocument.Header scheme = conceptScheme();
-      header = declared.isEmpty() ? scheme : null;
-      for (final Resource subject : declared) {
-        expressions.takeType(subject, OWL2.Ontology);
-        final NativeOntologyDocument.Header parsed =
-            new NativeOntologyDocument.Header(
-                subject.isURIResource() ? URI.create(subject.getURI()) : null,
-                text(subject, RDFS.label),
-                text(subject, RDFS.comment));
-        header = declared.size() == 1 ? parsed : null;
-        final RDFNode version = expressions.one(subject, OWL2.versionIRI);
-        if (version != null) {
-          versionIri = OntologyExpressionRdfReader.iri(version).toString();
-        }
-      }
-    }
-
-    /**
-     * A SKOS export states its title on a concept scheme. The scheme names the source the way an
-     * ontology header does, and each concept's {@code skos:inScheme} only repeats that membership.
-     */
-    private NativeOntologyDocument.Header conceptScheme() {
-      final List<Resource> schemes =
-          model.listSubjectsWithProperty(RDF.type, SKOS.ConceptScheme).toList();
-      NativeOntologyDocument.Header parsed = null;
-      for (final Resource scheme : schemes) {
-        expressions.takeType(scheme, SKOS.ConceptScheme);
-        final String label = firstText(scheme, SKOS.prefLabel, RDFS.label);
-        final String description = firstText(scheme, SKOS.definition, RDFS.comment);
-        parsed =
-            new NativeOntologyDocument.Header(
-                scheme.isURIResource() ? URI.create(scheme.getURI()) : null, label, description);
-        takeAll(scheme, SKOS.hasTopConcept);
-        model.listStatements(null, SKOS.inScheme, scheme).toList().forEach(remaining::remove);
-      }
-      return schemes.size() == 1 ? parsed : null;
-    }
-
-    private String firstText(
-        final Resource subject, final Property preferred, final Property fallback) {
-      final String value = text(subject, preferred);
-      final String other = text(subject, fallback);
-      return value == null ? other : value;
-    }
-
-    private void annotations() {
-      for (final Resource annotation :
-          model.listSubjectsWithProperty(RDF.type, OWL2.Axiom).toList()) {
-        expressions.takeType(annotation, OWL2.Axiom);
-        final Resource source =
-            resource(
-                expressions.require(annotation, OWL2.annotatedSource),
-                "RDF axiom source must be a resource");
-        final URI predicate =
-            OntologyExpressionRdfReader.iri(
-                expressions.require(annotation, OWL2.annotatedProperty));
-        final RDFNode target = expressions.require(annotation, OWL2.annotatedTarget);
-        final RDFNode hint = expressions.one(annotation, DCTerms.source);
-        final Statement base =
-            model.createStatement(source, model.createProperty(predicate.toString()), target);
-        if (!model.contains(base)) {
-          throw new BadRequestException(
-              "RDF axiom annotation does not describe an asserted triple");
-        }
-        if (hint != null) {
-          sources
-              .computeIfAbsent(base, ignored -> new ArrayList<>())
-              .add(OntologyExpressionRdfReader.iri(hint).toString());
-          nativeExport |=
-              versionIri != null
-                  && OntologyExpressionRdfReader.iri(hint).toString().startsWith(versionIri + ":");
-        }
-      }
-    }
-
-    private List<OntologyConcept> concepts() {
-      final Set<Resource> subjects = new LinkedHashSet<>();
-      subjects.addAll(model.listSubjectsWithProperty(RDF.type, OWL2.Class).toList());
-      subjects.addAll(model.listSubjectsWithProperty(RDF.type, SKOS.Concept).toList());
-      final List<OntologyConcept> parsed = new ArrayList<>();
-      for (final Resource subject : subjects) {
-        if (!subject.isURIResource()
-            || OwlEntityDeclarations.isReservedVocabulary(subject.getURI())
-            || (nativeExport && !model.contains(subject, RDFS.label) && referenced(subject))) {
-          continue;
-        }
-        final boolean owl = expressions.takeType(subject, OWL2.Class);
-        final boolean skos = expressions.takeType(subject, SKOS.Concept);
-        if (skos) {
-          expressions.takeType(subject, OWL2.NamedIndividual);
-        }
-        final OntologyConcept concept =
-            new OntologyConcept()
-                .withIri(URI.create(subject.getURI()))
-                .withConceptType(
-                    owl && skos
-                        ? OntologyConceptType.BOTH
-                        : owl ? OntologyConceptType.OWL_CLASS : OntologyConceptType.SKOS_CONCEPT)
-                .withDisplayName(conceptText(subject, SKOS.prefLabel, RDFS.label))
-                .withDescription(conceptText(subject, SKOS.definition, RDFS.comment))
-                .withAbstract(flag(subject, OntologyRdfVocabulary.ABSTRACT))
-                .withDefinitionSource(optionalIri(expressions.one(subject, DCTerms.source)))
-                .withDeprecated(flag(subject, OWL2.deprecated))
-                .withReplacedBy(optionalIri(expressions.one(subject, DCTerms.isReplacedBy)));
-        final Set<String> synonyms = new LinkedHashSet<>();
-        for (final RDFNode synonym : takeAll(subject, SKOS.altLabel)) {
-          synonyms.add(string(synonym));
-        }
-        concept.withSynonyms(synonyms);
-        final List<ConceptMapping> mappings = new ArrayList<>();
-        for (final var kind : ConceptMapping.ConceptMappingType.values()) {
-          final Property predicate = OntologyRdfVocabulary.mapping(kind);
-          for (final RDFNode target : takeAll(subject, predicate)) {
-            mappings.add(
-                new ConceptMapping()
-                    .withMappingType(kind)
-                    .withConceptIri(OntologyExpressionRdfReader.iri(target)));
-          }
-        }
-        concept.withConceptMappings(mappings);
-        parsed.add(concept);
-      }
-      return parsed;
-    }
-
-    private List<OntologyProperty> properties() {
-      final List<OntologyProperty> parsed = new ArrayList<>();
-      for (final OntologyPropertyKind kind : OntologyPropertyKind.values()) {
-        final Resource type =
-            switch (kind) {
-              case OBJECT -> OWL2.ObjectProperty;
-              case DATA -> OWL2.DatatypeProperty;
-              case ANNOTATION -> OWL2.AnnotationProperty;
-            };
-        for (final Resource subject : model.listSubjectsWithProperty(RDF.type, type).toList()) {
-          if (!subject.isURIResource()
-              || OwlEntityDeclarations.isReservedVocabulary(subject.getURI())
-              || OntologyRdfVocabulary.ANNOTATIONS.contains(subject)
-              || (nativeExport && !model.contains(subject, RDFS.label) && referenced(subject))) {
-            continue;
-          }
-          expressions.takeType(subject, type);
-          final OntologyProperty property =
-              new OntologyProperty()
-                  .withIri(URI.create(subject.getURI()))
-                  .withKind(kind)
-                  .withDisplayName(text(subject, RDFS.label))
-                  .withDescription(text(subject, RDFS.comment))
-                  .withDomain(iris(subject, RDFS.domain))
-                  .withInverse(optionalIri(expressions.one(subject, OWL2.inverseOf)))
-                  .withDisjointWith(iris(subject, OWL2.propertyDisjointWith))
-                  .withUnit(text(subject, OntologyRdfVocabulary.UNIT))
-                  .withDeprecated(flag(subject, OWL2.deprecated))
-                  .withReplacedBy(optionalIri(expressions.one(subject, DCTerms.isReplacedBy)));
-          final RDFNode identifier =
-              expressions.one(subject, OntologyRdfVocabulary.IDENTIFIER_INTENT);
-          property.withIsIdentifier(identifier != null && booleanValue(identifier));
-          final Set<RelationshipCharacteristic> characteristics = new LinkedHashSet<>();
-          for (final RelationshipCharacteristic characteristic :
-              RelationshipCharacteristic.values()) {
-            if (expressions.takeType(
-                subject, OntologyRdfVocabulary.characteristic(characteristic))) {
-              characteristics.add(characteristic);
-            }
-          }
-          property.withCharacteristics(characteristics);
-          final RDFNode chain = expressions.one(subject, OWL2.propertyChainAxiom);
-          property.withPropertyChain(
-              chain == null
-                  ? List.of()
-                  : expressions.list(chain, 0).stream()
-                      .map(OntologyExpressionRdfReader::iri)
-                      .toList());
-          final List<URI> ranges = new ArrayList<>();
-          final List<OntologyLiteral> enums = new ArrayList<>();
-          for (final RDFNode range : takeAll(subject, RDFS.range)) {
-            final Resource value = resource(range, "Property range must be a resource");
-            if (model.contains(value, OWL2.equivalentClass) || model.contains(value, OWL2.oneOf)) {
-              final Resource enumeration;
-              if (value.isURIResource()) {
-                if (!nativeExport
-                    || versionIri == null
-                    || !value
-                        .getURI()
-                        .matches(Pattern.quote(versionIri) + ":PROPERTY:[0-9a-fA-F-]{36}:values")) {
-                  throw new BadRequestException(
-                      "A named data enumeration cannot preserve its datatype IRI");
-                }
-                expressions.takeType(value, RDFS.Datatype);
-                enumeration =
-                    resource(
-                        expressions.require(value, OWL2.equivalentClass),
-                        "Data enumeration must be a resource");
-              } else {
-                enumeration = value;
-              }
-              expressions.takeType(enumeration, RDFS.Datatype);
-              for (final RDFNode item :
-                  expressions.list(expressions.require(enumeration, OWL2.oneOf), 0)) {
-                if (!item.isLiteral()) {
-                  throw new BadRequestException("A data enumeration requires literal values");
-                }
-                enums.add(OntologyExpressionRdfReader.literal(item.asLiteral()));
-              }
-            } else {
-              ranges.add(OntologyExpressionRdfReader.iri(range));
-            }
-          }
-          property.withRange(ranges).withEnumValues(enums);
-          parsed.add(property);
-        }
-      }
-      NativeOntologyDocument.linkInverses(parsed);
-      return parsed;
-    }
-
-    private List<OntologyAxiom> axioms(final List<OntologyProperty> properties) {
-      final Map<String, OntologyAxiom> grouped = new LinkedHashMap<>();
-      final Map<String, OntologyPropertyKind> kinds = new HashMap<>();
-      model
-          .listSubjectsWithProperty(RDF.type, OWL2.ObjectProperty)
-          .forEachRemaining(property -> kinds.put(property.getURI(), OntologyPropertyKind.OBJECT));
-      model
-          .listSubjectsWithProperty(RDF.type, OWL2.DatatypeProperty)
-          .forEachRemaining(property -> kinds.put(property.getURI(), OntologyPropertyKind.DATA));
-      properties.forEach(property -> kinds.put(property.getIri().toString(), property.getKind()));
-      for (final Statement statement : List.copyOf(remaining)) {
-        if (!remaining.contains(statement) || !statement.getSubject().isURIResource()) {
-          continue;
-        }
-        final Property predicate = statement.getPredicate();
-        final OntologyPropertyKind propertyKind = assertionPropertyKind(predicate.getURI(), kinds);
-        final OntologyAxiomType type =
-            predicate.equals(RDFS.subClassOf)
-                ? OntologyAxiomType.SUBCLASS_OF
-                : predicate.equals(OWL2.equivalentClass)
-                    ? OntologyAxiomType.EQUIVALENT_CLASS
-                    : predicate.equals(OWL2.disjointWith)
-                        ? OntologyAxiomType.DISJOINT_WITH
-                        : predicate.equals(RDF.type) && isClassExpression(statement.getObject())
-                            ? OntologyAxiomType.CLASS_ASSERTION
-                            : propertyKind == OntologyPropertyKind.OBJECT
-                                ? OntologyAxiomType.OBJECT_PROPERTY_ASSERTION
-                                : propertyKind == OntologyPropertyKind.DATA
-                                    ? OntologyAxiomType.DATA_PROPERTY_ASSERTION
-                                    : null;
-        if (type == null) {
-          continue;
-        }
-        remaining.remove(statement);
-        final List<String> hints = sources.getOrDefault(statement, List.of(statement.toString()));
-        for (final String hint : hints) {
-          final String key =
-              type
-                  + ":"
-                  + statement.getSubject().getURI()
-                  + ":"
-                  + hint
-                  + (type == OntologyAxiomType.OBJECT_PROPERTY_ASSERTION
-                          || type == OntologyAxiomType.DATA_PROPERTY_ASSERTION
-                          || type == OntologyAxiomType.CLASS_ASSERTION
-                      ? ":" + statement
-                      : "");
-          final OntologyAxiom axiom =
-              grouped.computeIfAbsent(
-                  key,
-                  ignored ->
-                      new OntologyAxiom()
-                          .withAxiomType(type)
-                          .withSubjectIri(URI.create(statement.getSubject().getURI()))
-                          .withExpressions(new ArrayList<>()));
-          switch (type) {
-            case SUBCLASS_OF, EQUIVALENT_CLASS, DISJOINT_WITH, CLASS_ASSERTION -> axiom
-                .getExpressions()
-                .add(expressions.read(statement.getObject()));
-            case OBJECT_PROPERTY_ASSERTION -> axiom
-                .withPropertyIri(URI.create(predicate.getURI()))
-                .withTargetIri(OntologyExpressionRdfReader.iri(statement.getObject()));
-            case DATA_PROPERTY_ASSERTION -> {
-              if (!statement.getObject().isLiteral()) {
-                throw new BadRequestException("Data property assertion requires a literal");
-              }
-              axiom
-                  .withPropertyIri(URI.create(predicate.getURI()))
-                  .withLiteral(OntologyExpressionRdfReader.literal(statement.getLiteral()));
-            }
-          }
-        }
-      }
-      return List.copyOf(grouped.values());
-    }
-
-    private static OntologyPropertyKind assertionPropertyKind(
-        final String iri, final Map<String, OntologyPropertyKind> kinds) {
-      return switch (OwlEntityDeclarations.vocabularyKind(iri)) {
-        case OBJECT_PROPERTY -> OntologyPropertyKind.OBJECT;
-        case DATA_PROPERTY -> OntologyPropertyKind.DATA;
-        case null -> kinds.get(iri);
-        default -> null;
-      };
-    }
-
-    private boolean isClassExpression(final RDFNode node) {
-      return node.isAnon()
-          || (node.isURIResource()
-              && (model.contains(node.asResource(), RDF.type, OWL2.Class)
-                  || model.contains(node.asResource(), RDF.type, SKOS.Concept)
-                  || OwlEntityDeclarations.vocabularyKind(node.asResource().getURI())
-                      == OwlEntityDeclarations.EntityKind.CLASS));
-    }
-
-    private void references() {
-      for (final Statement statement : List.copyOf(remaining)) {
-        if (!statement.getPredicate().equals(RDF.type)
-            || !statement.getSubject().isURIResource()
-            || !statement.getObject().isURIResource()) {
-          continue;
-        }
-        final Resource type = statement.getResource();
-        if ((OwlEntityDeclarations.isReservedVocabulary(statement.getSubject().getURI())
-                || OntologyRdfVocabulary.ANNOTATIONS.contains(statement.getSubject())
-                || referenced(statement.getSubject())
-                || usedAsPredicate(statement.getSubject())
-                || usedAsAssertionSubject(statement.getSubject()))
-            && Set.of(
-                    OWL2.Class,
-                    OWL2.NamedIndividual,
-                    OWL2.ObjectProperty,
-                    OWL2.DatatypeProperty,
-                    OWL2.AnnotationProperty,
-                    RDFS.Datatype)
-                .contains(type)) {
-          remaining.remove(statement);
-        }
-      }
-    }
-
-    private boolean referenced(final Resource subject) {
-      return model.listStatements(null, null, subject).hasNext();
-    }
-
-    private boolean usedAsPredicate(final Resource subject) {
-      return subject.isURIResource()
-          && model
-              .listStatements(null, model.createProperty(subject.getURI()), (RDFNode) null)
-              .toList()
-              .stream()
-              .anyMatch(statement -> !remaining.contains(statement));
-    }
-
-    private boolean usedAsAssertionSubject(final Resource subject) {
-      return model.listStatements(subject, null, (RDFNode) null).toList().stream()
-          .anyMatch(
-              statement ->
-                  !statement.getPredicate().equals(RDF.type) && !remaining.contains(statement));
-    }
-
-    private List<RDFNode> takeAll(final Resource subject, final Property predicate) {
-      final List<Statement> statements =
-          model.listStatements(subject, predicate, (RDFNode) null).toList();
-      statements.forEach(remaining::remove);
-      return statements.stream().map(Statement::getObject).toList();
-    }
-
-    private List<URI> iris(final Resource subject, final Property predicate) {
-      return takeAll(subject, predicate).stream().map(OntologyExpressionRdfReader::iri).toList();
-    }
-
-    private String text(final Resource subject, final Property predicate) {
-      final RDFNode value = expressions.one(subject, predicate);
-      return value == null ? null : string(value);
-    }
-
-    private String conceptText(
-        final Resource subject, final Property skosPredicate, final Property rdfsPredicate) {
-      final String skosText = text(subject, skosPredicate);
-      final String rdfsText = text(subject, rdfsPredicate);
-      if (skosText != null && rdfsText != null && !skosText.equals(rdfsText)) {
-        throw new BadRequestException(
-            "Conflicting concept annotations: " + skosPredicate + " and " + rdfsPredicate);
-      }
-      return skosText == null ? rdfsText : skosText;
-    }
-
-    private static String string(final RDFNode value) {
-      if (!value.isLiteral()
-          || !value.asLiteral().getLanguage().isEmpty()
-          || (value.asLiteral().getDatatypeURI() != null
-              && !XSD.xstring.getURI().equals(value.asLiteral().getDatatypeURI()))) {
-        throw new BadRequestException("Expected a plain RDF literal");
-      }
-      return value.asLiteral().getLexicalForm();
-    }
-
-    private static URI optionalIri(final RDFNode value) {
-      return value == null ? null : OntologyExpressionRdfReader.iri(value);
-    }
-
-    private boolean flag(final Resource subject, final Property predicate) {
-      final RDFNode value = expressions.one(subject, predicate);
-      if (value == null) {
-        return false;
-      }
-      final String lexical =
-          value.isLiteral() && XSD.xboolean.getURI().equals(value.asLiteral().getDatatypeURI())
-              ? value.asLiteral().getLexicalForm()
-              : "";
-      return switch (lexical) {
-        case "true", "1" -> true;
-        case "false", "0" -> false;
-        default -> throw new BadRequestException(
-            predicate.getURI() + " requires an xsd:boolean value");
-      };
-    }
-
-    private static boolean booleanValue(final RDFNode value) {
-      if (!value.isLiteral()
-          || !value.asLiteral().getLanguage().isEmpty()
-          || !XSD.xboolean.getURI().equals(value.asLiteral().getDatatypeURI())
-          || !"true".equals(value.asLiteral().getLexicalForm())) {
-        throw new BadRequestException("Identifier intent must be true");
-      }
-      return true;
-    }
-
-    private static Resource resource(final RDFNode value, final String message) {
-      if (!value.isResource()) {
-        throw new BadRequestException(message);
-      }
-      return value.asResource();
-    }
   }
 }
