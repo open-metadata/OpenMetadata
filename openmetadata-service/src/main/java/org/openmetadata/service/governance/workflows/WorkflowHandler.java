@@ -1798,10 +1798,9 @@ public class WorkflowHandler {
    * engine has zero running instances, which is the common case on tenants that don't use
    * governance workflows.
    *
-   * <p>Looks the instances up with one native {@code IN} query per chunk rather than Flowable's
-   * {@code or().variableValueEquals(...)} builder: that builder emits one correlated EXISTS per id,
-   * which Postgres and MySQL evaluate as a full ACT_RU_VARIABLE scan per id. With ~10k running
-   * instances a 100-id chunk took 15-18s, so hard-deleting an 800-concept ontology took ~100s.
+   * <p>One native {@code IN} lookup per chunk: Flowable's {@code or().variableValueEquals(...)}
+   * emits one EXISTS per id, which Postgres plans as a hashed subplan over all of ACT_RU_VARIABLE,
+   * so at ~10k running instances a 100-id chunk took 15-18s on Postgres and MySQL alike.
    */
   public void cancelInstancesForEntities(Collection<UUID> entityIds, String reason) {
     if (entityIds == null || entityIds.isEmpty()) {

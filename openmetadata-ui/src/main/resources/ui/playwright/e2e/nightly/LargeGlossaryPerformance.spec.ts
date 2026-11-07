@@ -87,7 +87,7 @@ test.describe('Large Glossary Performance Tests', () => {
       page.locator('[data-testid="glossary-terms-scroll-container"]')
     );
 
-    // The glossary terms pager defaults to the list scale's 15 rows (#35288).
+    // The glossary terms pager defaults to the list scale of 15 rows.
     const initialTerms = await page.locator('tbody tr[data-row-key]').count();
 
     expect(initialTerms).toBe(PAGE_SIZE);
