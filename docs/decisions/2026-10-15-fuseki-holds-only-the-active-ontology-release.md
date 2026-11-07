@@ -1,9 +1,9 @@
 # Fuseki holds only the active ontology release
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain) · v3 2026-11-06 (whole-graph journal cap bound to the Fuseki upload limit)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain) · v3 2026-11-06 (whole-graph journal cap bound to the Fuseki upload limit) · v4 2026-11-07 (the serving graph leaves out statement sources)
 - **Deciders:** Harsha
-- **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest#rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
+- **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseProjectionTest`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest#rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md), ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
 
 ## Context
@@ -82,3 +82,32 @@ rebuild absorbs at most four activations of the largest graph; should that bind,
 activation by release id and reproject from SQL on replay instead of raising the budget. The Fuseki
 PUT time for a graph near the cap was not measured here: the capacity IT runs in the lane without
 Fuseki, and the extension's 50 s write deadline applies to it.
+
+## Amendment v4 — 2026-11-07: the serving graph leaves out statement sources
+
+The active graph states each asserted statement once. `OntologyActiveGraph` projects a release
+with `OntologyReleaseProjection.StatementSources.OMITTED`, so Fuseki no longer receives the
+`owl:Axiom` node the projection adds per statement (`owl:annotatedSource`,
+`owl:annotatedProperty`, `owl:annotatedTarget` and a `dct:source` naming the release member).
+Activation measures the same projection it delivers. Exports, release and draft SPARQL queries
+and validation keep the sources (`ANNOTATED`, the default), because the importer reads them back
+(`NativeOntologyRdfReader.recordAxiomSource`) to recognise a native export and re-import it
+without changes.
+
+Nothing reads the sources from Fuseki. The service's SPARQL, the MCP tools, search, insights,
+inference and the Studio APIs (which read SQL) never name `owl:Axiom` or `owl:annotated*`, and
+neither do `openmetadata.ttl`, `RdfOntologyContractTest` (the entity projection) or
+`RdfRoundTripFidelityIT` (glossary exports). The only reader is the importer, and it reads export
+files.
+
+The sources were most of the graph. Measured on the upstream FIBO production quickstart (9,941
+members) and FHIR R5 (16,568 members) imported and sealed in memory: FIBO projects to 30,133
+triples and 5,032,083 bytes of RDF-Thrift instead of 157,928 triples and 21,670,556 bytes, and
+FHIR to 58,567 triples and 6,154,701 bytes instead of 247,162 and 27,899,511. Building and
+encoding the projection took 117 ms instead of 249 ms for FIBO and 178 ms instead of 366 ms for
+FHIR (best of three). English ESCO with its occupation-skill links goes from 389.9 MB to 66.7 MB.
+The v3 numbers were measured with the sources included.
+
+A SPARQL user who read statement provenance from the active graph gets no rows; the member that
+states a triple is in the release export and in SQL. The active release stays visible as the
+ontology's `owl:versionIRI`.

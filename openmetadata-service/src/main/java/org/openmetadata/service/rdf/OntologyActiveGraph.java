@@ -62,7 +62,14 @@ public final class OntologyActiveGraph {
     final var state = dao.ontologyStateDAO().get(ontologyId);
     final var release = dao.ontologyReleaseDAO().findEntityById(state.getActiveReleaseId());
     final var closure = new OntologyReleaseReader(dao).read(release, ignored -> {});
-    return new OntologyReleaseProjection().build(release, closure);
+    return project(release, closure);
+  }
+
+  /** The serving graph carries asserted statements only; their sources stay in SQL and exports. */
+  private static Model project(
+      final OntologyRelease release, final List<OntologyReleaseMember> closure) {
+    return new OntologyReleaseProjection(OntologyReleaseProjection.StatementSources.OMITTED)
+        .build(release, closure);
   }
 
   private boolean isActive(final UUID ontologyId) {
@@ -75,7 +82,7 @@ public final class OntologyActiveGraph {
 
   public static void requireProjectable(
       final OntologyRelease release, final List<OntologyReleaseMember> closure) {
-    final Model model = new OntologyReleaseProjection().build(release, closure);
+    final Model model = project(release, closure);
     try {
       RdfMutation.GraphReplace.capture(graph(release.getOntology().getId()), model);
     } catch (RdfPayloadTooLargeException tooLarge) {
