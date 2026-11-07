@@ -517,6 +517,7 @@ const ImportReview = ({
         <OntologyNativeImportItems
           isDisabled={isDisabled}
           items={items}
+          omittedItems={summary.omittedItems ?? 0}
           selection={selection}
           onSelectionChange={onSelectionChange}
         />

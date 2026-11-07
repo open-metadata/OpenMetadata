@@ -337,6 +337,20 @@ describe('OntologyNativeImportPanel', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeEnabled();
   });
 
+  it('says how many already-existing definitions the server left unlisted', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: { ...summary, omittedItems: 4_990 },
+      changeSet,
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.getByTestId('ontology-native-import-items-omitted')
+    ).toHaveTextContent('message.native-import-items-omitted');
+  });
+
   it('lists what the server skipped, grouped by reason and predicate', async () => {
     (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
       summary: {
