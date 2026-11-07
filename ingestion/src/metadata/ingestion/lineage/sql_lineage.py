@@ -39,6 +39,7 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureType,
 )
+from metadata.generated.schema.entity.data.table import Column as TableColumn
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
@@ -69,6 +70,9 @@ from metadata.utils.timeout import timeout
 logger = utils_logger()
 CUTOFF_NODES = 20
 NODE_PROCESSING_TIMEOUT = 30  # seconds
+# Column lineage map key for fields read through a STRUCT path (`customer.email`,
+# `customer.*`): the parser reports `customer` as a table the query never reads.
+STRUCT_FIELD_PARENT = "<struct>"
 
 
 # pylint: disable=too-many-function-args,protected-access
@@ -411,7 +415,8 @@ def get_column_lineage(
     if "*" in to_table_raw_name:
         return []
     column_lineage = []
-    pairs = column_lineage_map.get(to_table_raw_name, {}).get(from_table_raw_name, [])
+    sources = column_lineage_map.get(to_table_raw_name, {})
+    pairs = sources.get(from_table_raw_name, [])
     if "*" in from_table_raw_name:
         pairs = [(to_col, from_col) for to_col, from_col in pairs if "*" not in to_col and "*" not in from_col]
     if pairs:
@@ -423,11 +428,104 @@ def get_column_lineage(
             column_lineage_map[to_table_raw_name][from_table_raw_name] = pairs
 
         for to_col, from_col in pairs:
-            to_col_fqn = get_column_fqn(to_entity, to_col)
-            from_col_fqn = get_column_fqn(from_entity, from_col)
-            if to_col_fqn and from_col_fqn:
-                column_lineage.append(ColumnLineage(fromColumns=[from_col_fqn], toColumn=to_col_fqn))
+            from_column = _find_column(from_entity.columns, from_col)
+            to_column = _find_column(to_entity.columns, to_col)
+            if from_column and to_column:
+                column_lineage.extend(_nested_column_lineage(from_column, to_column))
+    for key, struct_pairs in sources.items():
+        if key.startswith(f"{STRUCT_FIELD_PARENT}."):
+            struct_name = key.removeprefix(f"{STRUCT_FIELD_PARENT}.")
+            column_lineage.extend(_struct_field_lineage(from_entity, to_entity, struct_name, struct_pairs))
     return column_lineage
+
+
+def _find_column(columns: list[TableColumn] | None, name: str) -> TableColumn | None:
+    """Column of that name among `columns`, ignoring case"""
+    return next((column for column in columns or [] if column.name.root.lower() == name.lower()), None)
+
+
+def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn) -> list[ColumnLineage]:
+    """
+    Lineage from one column to another, plus one edge per nested field the two share by
+    name, at any depth: selecting a STRUCT or ARRAY<STRUCT> carries every field with it.
+    """
+    if not from_column.fullyQualifiedName or not to_column.fullyQualifiedName:
+        return []
+    edges = [
+        ColumnLineage(
+            fromColumns=[from_column.fullyQualifiedName],
+            toColumn=to_column.fullyQualifiedName,
+        )
+    ]
+    for from_child in from_column.children or []:
+        if to_child := _find_column(to_column.children, from_child.name.root):
+            edges.extend(_nested_column_lineage(from_child, to_child))
+    return edges
+
+
+def _find_struct(columns: list[TableColumn], name: str) -> TableColumn | None:
+    """
+    The STRUCT a field path runs through. The parser keeps only the path segment above the
+    field, so `address.zip` and `customer.address.zip` both arrive as `address`: the path is
+    resolved only when exactly one STRUCT, at any depth, has that name.
+    """
+    found = []
+    pending = list(columns or [])
+    while pending:
+        column = pending.pop()
+        if column.children:
+            pending.extend(column.children)
+            if column.name.root.lower() == name.lower():
+                found.append(column)
+    return found[0] if len(found) == 1 else None
+
+
+def _struct_field_lineage(
+    from_entity: Table, to_entity: Table, struct_name: str, pairs: list[tuple[str, str]]
+) -> list[ColumnLineage]:
+    """Lineage for fields read through a STRUCT path: `struct.field AS alias` or `struct.*`"""
+    struct = _find_struct(from_entity.columns, struct_name)
+    if struct is None:
+        return []
+    edges = []
+    for to_col, from_col in pairs:
+        if from_col == "*":
+            fields = [(field, field.name.root) for field in struct.children or []]
+        else:
+            field = _find_column(struct.children, from_col)
+            fields = [(field, to_col)] if field else []
+        for field, target_name in fields:
+            if target := _find_column(to_entity.columns, target_name):
+                edges.extend(_nested_column_lineage(field, target))
+    return edges
+
+
+def _key_struct_field_parents(column_lineage_map: dict, lineage_parser: LineageParser) -> None:
+    """
+    Move the column lineage the parser attributes to a table the query never reads under
+    STRUCT_FIELD_PARENT. The parser reads `customer.email` and `customer.*` as columns of a
+    table `customer`; only an unqualified name can be such a STRUCT, and a name the query
+    does read as a table keeps its key.
+
+    The parser drops the qualifier of such a path, so it is resolved only when nothing else
+    in the query can own that name: one source, which is a table (a table-valued function or a
+    stage can read several), no intermediate table, and no subquery or CTE that could rename a
+    column to it. Otherwise the path keeps its key and gets no lineage rather than lineage from
+    the wrong column. ADR:2026-11-06-sql-column-lineage-follows-nested-fields
+    """
+    source_tables = cast("list", lineage_parser.source_tables)
+    intermediate_tables = cast("list", lineage_parser.intermediate_tables)
+    target_tables = cast("list", lineage_parser.target_tables)
+    single_table_source = len(source_tables) == 1 and isinstance(source_tables[0], LineageTable)
+    if not single_table_source or intermediate_tables or lineage_parser.has_subqueries:
+        return
+    read_tables = {str(table) for table in (*source_tables, *intermediate_tables, *target_tables)}
+    default_prefix = f"{DEFAULT_SCHEMA_NAME}."
+    for sources in column_lineage_map.values():
+        for key in list(sources):
+            name = key.removeprefix(default_prefix)
+            if key.startswith(default_prefix) and "." not in name and key not in read_tables:
+                sources.setdefault(f"{STRUCT_FIELD_PARENT}.{name}", []).extend(sources.pop(key))
 
 
 # pylint: disable=too-many-arguments
@@ -655,6 +753,7 @@ def get_lineage_by_query(
 
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
+        _key_struct_field_parents(column_lineage, lineage_parser)
 
         for intermediate_table in lineage_parser.intermediate_tables:
             for source_table in lineage_parser.source_tables:
