@@ -103,7 +103,7 @@ const FIBO_PACK: OntologyPackManifest = {
   description: 'A compact starter subset of financial concepts',
   id: 'fibo',
   industry: Industry.Finance,
-  name: 'FIBO Starter',
+  name: 'FIBO',
   standard: 'Financial Industry Business Ontology',
 };
 const UNKNOWN_PACK: OntologyPackManifest = {
@@ -171,7 +171,7 @@ describe('OntologyLibrary', () => {
       'ontology-pack-new-pack',
     ]);
     expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
-      'label.ontology-library-financial-services'
+      FIBO_PACK.name
     );
     expect(screen.getByTestId('ontology-pack-fibo')).toHaveTextContent(
       FIBO_PACK.description
