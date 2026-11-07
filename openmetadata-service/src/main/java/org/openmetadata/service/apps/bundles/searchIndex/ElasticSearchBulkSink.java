@@ -1477,7 +1477,6 @@ public class ElasticSearchBulkSink implements BulkSink {
       List<BulkOperation> operations = attempt.operations();
       long executionId = attempt.executionId();
       int numberOfActions = attempt.size();
-      int attemptNumber = attempt.attemptNumber();
 
       // Sink timing wraps the bulk HTTP round-trip — pure Elasticsearch latency.
       long bulkStartNanos = System.nanoTime();
@@ -1492,7 +1491,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         // activeBulkRequests count leak, eventually starving the pipeline and hanging close().
         // Mirror OpenSearchBulkSink so both backends clean up identically.
         sendPermits.releaseConnection();
-        circuitBreaker.recordBulkFailure(e, attemptNumber);
+        circuitBreaker.recordBulkFailure(e, attempt.bulkAlreadyCounted());
         boolean retryScheduled = handleBulkFailure(attempt, e);
         if (!retryScheduled) {
           finishBulk();
@@ -1510,7 +1509,7 @@ public class ElasticSearchBulkSink implements BulkSink {
             boolean retryScheduled = false;
             try {
               if (error != null) {
-                circuitBreaker.recordBulkFailure(error, attemptNumber);
+                circuitBreaker.recordBulkFailure(error, attempt.bulkAlreadyCounted());
                 retryScheduled = handleBulkFailure(attempt, error);
               } else if (response.errors()) {
                 circuitBreaker.recordSuccess();
@@ -1634,7 +1633,8 @@ public class ElasticSearchBulkSink implements BulkSink {
             attempt.attemptNumber() + 1,
             backoffTime,
             error.getMessage());
-        scheduleAttempt(() -> executeBulkWithRetry(attempt.next()), backoffTime, attempt);
+        scheduleAttempt(
+            () -> executeBulkWithRetry(attempt.nextAfterFailure(error)), backoffTime, attempt);
       } else {
         LOG.error(
             "Bulk request {} failed completely after {} attempts with {} actions",
