@@ -73,6 +73,16 @@ final class ConceptContextMarkdown {
           .append(String.join(", ", concept.getSynonyms()))
           .append('\n');
     }
+    if (!nullOrEmpty(concept.getFilters())) {
+      markdown.append("\n**Filters (apply with the definition):**\n");
+      AIContextMarkdown.appendSqlBlock(markdown, String.join("\n", concept.getFilters()));
+    }
+    if (!nullOrEmpty(concept.getGranularity())) {
+      markdown.append("\n**Granularity:** ").append(concept.getGranularity()).append('\n');
+    }
+    if (!nullOrEmpty(concept.getUnit())) {
+      markdown.append("\n**Unit:** ").append(PromptText.forPrompt(concept.getUnit())).append('\n');
+    }
   }
 
   private static void appendRelations(
