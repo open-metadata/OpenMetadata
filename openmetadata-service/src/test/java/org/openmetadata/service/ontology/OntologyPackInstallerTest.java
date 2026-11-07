@@ -36,20 +36,20 @@ class OntologyPackInstallerTest {
     final OntologyPackInstaller installer = installer(invocation);
     final InstallOntologyPack request =
         new InstallOntologyPack()
-            .withModuleIds(Set.of("clinical"))
-            .withTargetGlossaryName("Healthcare")
+            .withModuleIds(Set.of("ssn"))
+            .withTargetGlossaryName("Sensors")
             .withDryRun(false);
 
-    final OntologyPackInstallResult result = installer.install("fhir", request, context());
+    final OntologyPackInstallResult result = installer.install("sosa-ssn", request, context());
 
-    assertEquals(List.of("core", "clinical"), result.getModuleIds());
-    assertEquals(8, result.getConceptCount());
-    assertEquals(6, result.getRelationshipCount());
+    assertEquals(List.of("sosa", "ssn"), result.getModuleIds());
+    assertEquals(27, result.getConceptCount());
+    assertEquals(8, result.getRelationshipCount());
     assertFalse(result.getDryRun());
     assertNull(result.getInstallation());
-    assertTrue(invocation.get().rdf().contains("FHIR Resource"));
-    assertTrue(invocation.get().rdf().contains("Clinical Record"));
-    assertEquals("Healthcare", invocation.get().targetGlossary());
+    assertTrue(invocation.get().rdf().contains("sosa:Sensor"));
+    assertTrue(invocation.get().rdf().contains("ssn:System"));
+    assertEquals("Sensors", invocation.get().targetGlossary());
   }
 
   @Test
@@ -72,11 +72,11 @@ class OntologyPackInstallerTest {
     final OntologyPackInstaller installer = installer(new AtomicReference<>());
     final InstallOntologyPack request =
         new InstallOntologyPack()
-            .withModuleIds(Set.of("foundations"))
-            .withTargetGlossaryName("FinancePreview")
+            .withModuleIds(Set.of("dcat"))
+            .withTargetGlossaryName("CatalogPreview")
             .withDryRun(true);
 
-    final OntologyPackInstallResult result = installer.install("fibo", request, context());
+    final OntologyPackInstallResult result = installer.install("dcat", request, context());
 
     assertTrue(result.getDryRun());
     assertNull(result.getInstallation());

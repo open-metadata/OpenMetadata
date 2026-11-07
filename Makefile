@@ -93,6 +93,15 @@ generate-api-reference:  ## Generate docs/generated/api-reference.md from JAX-RS
 .PHONY: generate-reference-docs
 generate-reference-docs: generate-entity-index generate-api-reference  ## Regenerate all docs/generated/*.md
 
+## Ontology library packs (verbatim pinned upstream releases; see docs/decisions/2026-11-06-ontology-library-packs-are-verbatim-pinned-upstream-releases.md)
+.PHONY: ontology-packs
+ontology-packs:  ## Regenerate the bundled ontology library packs from scripts/ontology-packs/sources.json
+	python3 -I scripts/ontology-packs/generate.py $(if $(CACHE),--cache $(CACHE))
+
+.PHONY: ontology-packs-check
+ontology-packs-check:  ## Verify the bundled ontology library packs match sources.json (offline)
+	python3 -I scripts/ontology-packs/generate.py --check
+
 .PHONY: harness-check
 harness-check:  ## Warn on harness decay (dead refs, doc sizes, rule globs, generated-doc freshness)
 	python3 scripts/harness/check_harness.py

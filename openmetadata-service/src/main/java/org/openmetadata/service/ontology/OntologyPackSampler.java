@@ -21,14 +21,17 @@ import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import org.openmetadata.schema.api.data.OntologyPackSample;
 import org.openmetadata.schema.api.data.OntologyPackSampleConcept;
 import org.openmetadata.schema.api.data.OntologyPackSampleRelation;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.type.OntologyAxiomType;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
+import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
@@ -37,6 +40,8 @@ import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 public final class OntologyPackSampler {
   public static final int MAX_CONCEPTS = 60;
+  private static final URI SUBCLASS_OF =
+      URI.create("http://www.w3.org/2000/01/rdf-schema#subClassOf");
   private final OntologyPackCatalog catalog;
   private final OntologyPackContentLoader loader;
 
@@ -75,14 +80,7 @@ public final class OntologyPackSampler {
                 operation ->
                     operation.getOperationType() == OntologyChangeOperationType.UPSERT_AXIOM)
             .map(operation -> operation.getAxiom())
-            .filter(axiom -> axiom.getAxiomType() == OntologyAxiomType.OBJECT_PROPERTY_ASSERTION)
-            .map(
-                axiom ->
-                    new OntologyPackSampleRelation()
-                        .withSourceIri(axiom.getSubjectIri())
-                        .withPropertyIri(axiom.getPropertyIri())
-                        .withLabel(localName(axiom.getPropertyIri()))
-                        .withTargetIri(axiom.getTargetIri()))
+            .flatMap(axiom -> relation(axiom).stream())
             .toList();
     return bound(
         new OntologyPackSample()
@@ -96,6 +94,28 @@ public final class OntologyPackSampler {
             .withConcepts(concepts)
             .withRelations(relations),
         MAX_CONCEPTS);
+  }
+
+  private static Optional<OntologyPackSampleRelation> relation(final OntologyAxiom axiom) {
+    if (axiom.getAxiomType() == OntologyAxiomType.OBJECT_PROPERTY_ASSERTION) {
+      return Optional.of(
+          new OntologyPackSampleRelation()
+              .withSourceIri(axiom.getSubjectIri())
+              .withPropertyIri(axiom.getPropertyIri())
+              .withLabel(localName(axiom.getPropertyIri()))
+              .withTargetIri(axiom.getTargetIri()));
+    }
+    if (axiom.getAxiomType() == OntologyAxiomType.SUBCLASS_OF
+        && axiom.getExpressions().size() == 1
+        && axiom.getExpressions().getFirst().getKind() == OntologyExpressionKind.NAMED_CLASS) {
+      return Optional.of(
+          new OntologyPackSampleRelation()
+              .withSourceIri(axiom.getSubjectIri())
+              .withPropertyIri(SUBCLASS_OF)
+              .withLabel(localName(SUBCLASS_OF))
+              .withTargetIri(axiom.getExpressions().getFirst().getClassIri()));
+    }
+    return Optional.empty();
   }
 
   static OntologyPackSample bound(final OntologyPackSample sample, final int limit) {

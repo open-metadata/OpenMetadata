@@ -30,15 +30,12 @@ class OntologyPackSamplerTest {
 
   @Test
   void returnsTheConceptsAndRelationsAnEmptyInstallCreates() {
-    final OntologyPackSample sample =
-        sampler.sample("fibo", List.of("foundations", "business-entities"));
+    final OntologyPackSample sample = sampler.sample("sosa-ssn", List.of("sosa", "ssn"));
 
-    assertEquals(
-        List.of("foundations", "business-entities"), new ArrayList<>(sample.getModuleIds()));
-    assertEquals(8, sample.getConceptCount());
-    assertEquals(6, sample.getRelationCount());
-    assertEquals(8, sample.getConcepts().size());
-    assertEquals(6, sample.getRelations().size());
+    assertEquals(List.of("sosa", "ssn"), new ArrayList<>(sample.getModuleIds()));
+    assertEquals(22, sample.getConceptCount());
+    assertEquals(22, sample.getConcepts().size());
+    assertEquals(sample.getRelationCount(), sample.getRelations().size());
     assertTrue(
         sample.getRelations().stream()
             .allMatch(
@@ -49,16 +46,29 @@ class OntologyPackSamplerTest {
                             .anyMatch(
                                 concept -> concept.getIri().equals(relation.getTargetIri()))));
     assertEquals(
-        sample.getConcepts(),
-        sampler.sample("fibo", List.of("foundations", "business-entities")).getConcepts());
+        sample.getConcepts(), sampler.sample("sosa-ssn", List.of("sosa", "ssn")).getConcepts());
+  }
+
+  @Test
+  void boundsALargeVocabularyToTheSampleLimit() {
+    final OntologyPackSample sample = sampler.sample("odrl", List.of("odrl"));
+
+    assertEquals(214, sample.getConceptCount());
+    assertEquals(OntologyPackSampler.MAX_CONCEPTS, sample.getConcepts().size());
   }
 
   @Test
   void narrowsTheSampleWhenTheSelectionChanges() {
-    final OntologyPackSample sample = sampler.sample("fibo", List.of("foundations"));
+    final OntologyPackSample sample = sampler.sample("sosa-ssn", List.of("sosa"));
 
-    assertEquals(4, sample.getConceptCount());
-    assertEquals(3, sample.getRelationCount());
-    assertThrows(IllegalArgumentException.class, () -> sampler.sample("fibo", List.of("unknown")));
+    assertEquals(16, sample.getConceptCount());
+    assertThrows(
+        IllegalArgumentException.class, () -> sampler.sample("sosa-ssn", List.of("unknown")));
+  }
+
+  @Test
+  void refusesAPackThatTheBackgroundJobInstalls() {
+    assertThrows(
+        IllegalArgumentException.class, () -> sampler.sample("fibo", List.of("fibo-quickstart")));
   }
 }

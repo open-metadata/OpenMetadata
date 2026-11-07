@@ -186,16 +186,23 @@ public class NativeOntologyImportReviewIT extends BaseOntologyApprovalIT {
             .getHttpClient()
             .execute(
                 HttpMethod.POST,
-                "/v1/ontologies/" + ontology.getId() + "/library/fibo/review",
-                new PreviewNativeOntologyPack().withModuleIds(Set.of("foundations")),
+                "/v1/ontologies/" + ontology.getId() + "/library/dcat/review",
+                new PreviewNativeOntologyPack().withModuleIds(Set.of("dcat")),
                 NativeOntologyImportPreview.class);
 
     assertFalse(review.getSummary().getItems().isEmpty());
     assertTrue(
         review.getSummary().getItems().stream()
-            .allMatch(item -> item.getStatus() == NativeOntologyImportItemStatus.NEW));
+            .allMatch(
+                item ->
+                    item.getStatus() == NativeOntologyImportItemStatus.NEW
+                        || item.getStatus() == NativeOntologyImportItemStatus.SKIPPED),
+        "a first import of a library pack creates or skips, never updates");
+    assertTrue(
+        review.getSummary().getItems().stream()
+            .anyMatch(item -> item.getStatus() == NativeOntologyImportItemStatus.NEW));
     assertTrue(review.getSummary().getItems().stream().allMatch(item -> item.getWarning() == null));
-    assertEquals("fibo", review.getChangeSet().getSourcePack().getPackId());
+    assertEquals("dcat", review.getChangeSet().getSourcePack().getPackId());
   }
 
   @Test

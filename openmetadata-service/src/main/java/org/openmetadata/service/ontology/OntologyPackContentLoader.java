@@ -46,6 +46,11 @@ public final class OntologyPackContentLoader {
       throw new IllegalArgumentException(
           "Ontology pack '%s' requires an independently licensed payload".formatted(packId));
     }
+    if (manifest.getInstallMode() == OntologyPackManifest.InstallMode.BACKGROUND) {
+      throw new IllegalArgumentException(
+          "Ontology pack '%s' exceeds one interactive import and is installed by the background install job"
+              .formatted(packId));
+    }
     final List<OntologyPackModule> modules = catalog.select(manifest, moduleIds);
     final String format = requireSingleFormat(modules);
     final String body =

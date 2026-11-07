@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Harness-integrity checks — keep the agent-facing config from silently decaying.
 
-Nine checks, all emitting GitHub Actions **warning** annotations (never failing) unless
+Ten checks, all emitting GitHub Actions **warning** annotations (never failing) unless
 run with ``--strict``:
 
   1. dead-reference       — a path / make target / yarn script / maven goal named in the
@@ -25,6 +25,8 @@ run with ``--strict``:
   9. decision-records     — a docs/decisions/ record breaking the format, or an ADR citation
                             anywhere in the tree that resolves to no record (the same check
                             fails standalone and as a pre-commit hook)
+ 10. ontology-packs       — a bundled ontology library pack payload, manifest, README or
+                            NOTICE block that no longer matches scripts/ontology-packs/sources.json
 
 Run locally with ``make harness-check`` or ``python3 scripts/harness/check_harness.py``.
 Stdlib only; deterministic; safe to run anywhere in the tree.
@@ -644,6 +646,22 @@ def check_decision_records():
             for file, line, message in guard.check(pathlib.Path(REPO))]
 
 
+# ------------------------------------------------------------------------- check 10
+
+ONTOLOGY_PACKS_GENERATOR = "scripts/ontology-packs/generate.py"
+
+
+def check_ontology_packs():
+    if not os.path.exists(rp(ONTOLOGY_PACKS_GENERATOR)):
+        return []
+    result = subprocess.run([sys.executable, "-I", rp(ONTOLOGY_PACKS_GENERATOR), "--check"],
+                            cwd=REPO, capture_output=True, text=True, check=False)
+    if result.returncode == 0:
+        return []
+    return [Warn("ontology-packs", line.split(" ")[0], 1, line)
+            for line in (result.stdout + result.stderr).splitlines() if line.strip()]
+
+
 # ------------------------------------------------------------------------------ main
 
 
@@ -657,6 +675,7 @@ CHECKS = [
     check_baseline_freshness,
     check_java_impact_map,
     check_decision_records,
+    check_ontology_packs,
 ]
 
 

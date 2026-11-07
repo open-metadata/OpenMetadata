@@ -1,0 +1,463 @@
+{
+  "$comment": "Source list for the bundled ontology library packs. generate.py is the only writer of the manifests and payloads this file describes. Upstream payloads are published verbatim at a pinned URL and verified by downloadSha256; authored packs are OpenMetadata-written outlines whose payload is checked in by hand.",
+  "allowedLicenses": [
+    "CC BY 4.0",
+    "CC BY 1.0",
+    "CC0 1.0",
+    "MIT",
+    "BSD-3-Clause",
+    "Apache License 2.0",
+    "Open Data Commons PDDL 1.0",
+    "W3C Software and Document License",
+    "W3C Software and Document License or OGC Software License",
+    "W3C Document License"
+  ],
+  "packs": [
+    {
+      "id": "dcat",
+      "name": "DCAT 3",
+      "abbreviation": "DCAT",
+      "standard": "Data Catalog Vocabulary (DCAT) Version 3",
+      "publisher": "W3C",
+      "version": "3",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C vocabulary for describing data catalogs, datasets, distributions and data services, published verbatim.",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "sourceUrl": "https://www.w3.org/TR/vocab-dcat-3/",
+      "attribution": "DCAT Version 3, W3C Recommendation. Copyright W3C. Licensed under CC BY 4.0. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "dcat",
+          "name": "DCAT 3 vocabulary",
+          "description": "Catalogs, datasets, distributions, data services and their relationships.",
+          "url": "https://www.w3.org/ns/dcat3.ttl",
+          "format": "turtle",
+          "downloadSha256": "d1624d3bbf364f6fc1d43b9a188bbb9e67639b1a7d46a5cb7ea3f5d47d02b62f"
+        }
+      ]
+    },
+    {
+      "id": "prov-o",
+      "name": "PROV-O",
+      "abbreviation": "PROV-O",
+      "standard": "PROV-O: The PROV Ontology",
+      "publisher": "W3C",
+      "version": "2013-04-30",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C provenance ontology for describing entities, activities and agents, published verbatim.",
+      "license": "W3C Software and Document License",
+      "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+      "sourceUrl": "https://www.w3.org/TR/prov-o/",
+      "attribution": "PROV-O: The PROV Ontology, W3C Recommendation 30 April 2013. Copyright W3C (MIT, ERCIM, Keio, Beihang). Used under the W3C Software and Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "prov-o",
+          "name": "PROV-O",
+          "description": "Entities, activities, agents and the derivation, attribution and usage relations between them.",
+          "url": "https://www.w3.org/ns/prov-o.ttl",
+          "format": "turtle",
+          "downloadSha256": "7d203989f67b38bca572253942acc5a1bf24ce3ccfece16f072dcb4be2b79a96"
+        }
+      ]
+    },
+    {
+      "id": "org",
+      "name": "W3C Organization Ontology",
+      "abbreviation": "ORG",
+      "standard": "The Organization Ontology",
+      "publisher": "W3C",
+      "version": "0.8",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C ontology for organizational structure: organizations, units, roles, posts and membership, published verbatim.",
+      "license": "Open Data Commons PDDL 1.0",
+      "licenseUrl": "https://opendatacommons.org/licenses/pddl/1-0/",
+      "sourceUrl": "https://www.w3.org/TR/vocab-org/",
+      "attribution": "The Organization Ontology, W3C Recommendation 16 January 2014. Copyright W3C. The ontology file declares the Open Data Commons PDDL 1.0; the Recommendation text is under the W3C Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "org",
+          "name": "Organization ontology",
+          "description": "Organizations, organizational units, sites, posts, roles and memberships.",
+          "url": "https://www.w3.org/ns/org.ttl",
+          "format": "turtle",
+          "downloadSha256": "3e01f89a17475a88f8b1606ca0fae04800d34dbbf93adc6db12dc30929848729"
+        }
+      ]
+    },
+    {
+      "id": "owl-time",
+      "name": "OWL-Time",
+      "abbreviation": "Time",
+      "standard": "Time Ontology in OWL",
+      "publisher": "W3C and OGC",
+      "version": "2017-04-06",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C and OGC ontology of temporal concepts: instants, intervals, durations and calendar-clock descriptions, published verbatim.",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "sourceUrl": "https://www.w3.org/TR/owl-time/",
+      "attribution": "Time Ontology in OWL, W3C Recommendation. Copyright 2006-2017 W3C, OGC. Licensed under CC BY 4.0. W3C and OGC liability, trademark and document use rules apply. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "owl-time",
+          "name": "OWL-Time",
+          "description": "Temporal entities, positions, durations, calendar and clock descriptions, and Allen interval relations.",
+          "url": "https://www.w3.org/2006/time.ttl",
+          "format": "turtle",
+          "downloadSha256": "251bd6970b0d7a5efa97ff681afe81a297df85deab3d860fa4f8eeba72d8f16c"
+        }
+      ]
+    },
+    {
+      "id": "sosa-ssn",
+      "name": "SOSA and SSN",
+      "abbreviation": "SOSA/SSN",
+      "standard": "Semantic Sensor Network Ontology",
+      "publisher": "W3C and OGC",
+      "version": "2017-10-19",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C and OGC sensor, observation, sampling and actuation vocabulary. SOSA is the lightweight core; SSN adds systems, deployments and stimuli on top of it. Published verbatim.",
+      "license": "W3C Software and Document License or OGC Software License",
+      "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+      "sourceUrl": "https://www.w3.org/TR/vocab-ssn/",
+      "attribution": "Semantic Sensor Network Ontology, W3C Recommendation and OGC Implementation Standard 19 October 2017. Copyright 2017 W3C/OGC. Used under the W3C Software and Document License or the OGC Software License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "sosa",
+          "name": "SOSA",
+          "description": "Sensors, observations, samples, actuators and the platforms that host them.",
+          "url": "https://www.w3.org/ns/sosa/",
+          "accept": "text/turtle",
+          "format": "turtle",
+          "downloadSha256": "c70b0d1c843c0047e4c98e0a89392e46a05752ff6365bda7f7f55303905a0392"
+        },
+        {
+          "id": "ssn",
+          "name": "SSN",
+          "description": "Systems, deployments, stimuli and properties layered on SOSA.",
+          "url": "https://www.w3.org/ns/ssn/",
+          "accept": "text/turtle",
+          "format": "turtle",
+          "dependencies": ["sosa"],
+          "downloadSha256": "184d86189191146e314cc52b1bceb96fca11e70aacbc160d71588102a5153eb9"
+        }
+      ]
+    },
+    {
+      "id": "odrl",
+      "name": "ODRL 2.2",
+      "abbreviation": "ODRL",
+      "standard": "ODRL Vocabulary and Expression 2.2",
+      "publisher": "W3C",
+      "version": "2.2",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C Open Digital Rights Language vocabulary for policies, permissions, prohibitions, duties and constraints, published verbatim.",
+      "license": "W3C Document License",
+      "licenseUrl": "https://www.w3.org/copyright/document-license-2023/",
+      "sourceUrl": "https://www.w3.org/TR/odrl-vocab/",
+      "attribution": "ODRL Vocabulary and Expression 2.2, W3C Recommendation 15 February 2018. Copyright W3C. Used under the W3C Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "odrl",
+          "name": "ODRL 2.2 vocabulary",
+          "description": "Policies, rules, actions, constraints, parties and assets.",
+          "url": "https://www.w3.org/ns/odrl/2/ODRL22.ttl",
+          "format": "turtle",
+          "downloadSha256": "7895765e80d86d1d0349d945a28b8a2479f03169572345080a5b3e561ef31457"
+        }
+      ]
+    },
+    {
+      "id": "foaf",
+      "name": "FOAF",
+      "abbreviation": "FOAF",
+      "standard": "Friend of a Friend (FOAF) vocabulary",
+      "publisher": "Dan Brickley and Libby Miller",
+      "version": "0.99",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The Friend of a Friend vocabulary for people, groups, accounts and documents, published verbatim as RDF/XML.",
+      "license": "CC BY 1.0",
+      "licenseUrl": "http://creativecommons.org/licenses/by/1.0/",
+      "sourceUrl": "http://xmlns.com/foaf/spec/",
+      "attribution": "FOAF Vocabulary Specification 0.99 (Paddington Edition, 14 January 2014), Dan Brickley and Libby Miller. Licensed under CC BY 1.0. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "foaf",
+          "name": "FOAF vocabulary",
+          "description": "Persons, agents, groups, organizations, accounts, documents and images.",
+          "url": "https://xmlns.com/foaf/spec/index.rdf",
+          "format": "rdfxml",
+          "downloadSha256": "3d859b5d92a2c3d041545d014fa826f682ca06d056af8c7b31e32d930abf2bc5"
+        }
+      ]
+    },
+    {
+      "id": "dpv",
+      "name": "Data Privacy Vocabulary",
+      "abbreviation": "DPV",
+      "standard": "Data Privacy Vocabulary (DPV) 2.3",
+      "publisher": "W3C Data Privacy Vocabularies and Controls Community Group",
+      "version": "2.3",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C community vocabulary for personal data processing: purposes, processing, legal bases, data subjects and technical measures, plus the personal-data categories extension. Published verbatim.",
+      "license": "W3C Software and Document License",
+      "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+      "sourceUrl": "https://w3c.github.io/dpv/2.3/dpv/",
+      "attribution": "Data Privacy Vocabulary (DPV) 2.3, W3C Data Privacy Vocabularies and Controls Community Group. Copyright W3C. Used under the W3C Software and Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "installMode": "background",
+      "modules": [
+        {
+          "id": "dpv",
+          "name": "DPV core",
+          "description": "Core concepts for personal data handling, purposes, processing, legal bases and measures.",
+          "url": "https://w3c-cg.github.io/dpv/2.3/dpv/dpv-owl.ttl",
+          "format": "turtle",
+          "downloadSha256": "af2aa4776ac7afe4c6c66b310fe4b7cbb4ef12bddfc2092cf30c9ebf524112a5"
+        },
+        {
+          "id": "personal-data",
+          "name": "Personal data categories",
+          "description": "The personal-data extension: categories of personal data such as identifiers, contact details and financial data.",
+          "url": "https://w3c-cg.github.io/dpv/2.3/pd/pd-owl.ttl",
+          "format": "turtle",
+          "dependencies": ["dpv"],
+          "downloadSha256": "99308e733f9f4825ddc3783a973e94c8e005faa12bf644f103d03443126aa12a"
+        }
+      ]
+    },
+    {
+      "id": "gs1",
+      "name": "GS1 Web Vocabulary",
+      "abbreviation": "GS1",
+      "standard": "GS1 Web Vocabulary",
+      "publisher": "GS1",
+      "version": "1.18",
+      "industry": "retail",
+      "layer": "L2",
+      "description": "The GS1 Web Vocabulary for products, organizations, places, offers and the GS1 code lists, published verbatim.",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://ref.gs1.org/voc/",
+      "attribution": "GS1 Web Vocabulary 1.18. Copyright 2015-2019 GS1 AISBL. Licensed under the Apache License, Version 2.0. GS1 and the GS1 logo are registered trademarks of GS1 AISBL. Redistributed without changes.",
+      "origin": "upstream",
+      "installMode": "background",
+      "modules": [
+        {
+          "id": "gs1-voc",
+          "name": "GS1 Web Vocabulary",
+          "description": "Products, organizations, places, offers, certifications and code lists.",
+          "url": "https://ref.gs1.org/voc/data/gs1Voc.ttl",
+          "format": "turtle",
+          "downloadSha256": "b6039ed1b3229853a0aed1eb8568527f2d393925fd163d6fce5fddefe7ea1aa7"
+        }
+      ]
+    },
+    {
+      "id": "fibo",
+      "name": "FIBO",
+      "abbreviation": "FIBO",
+      "standard": "Financial Industry Business Ontology, production quickstart",
+      "publisher": "EDM Council and OMG",
+      "version": "2026Q2",
+      "industry": "finance",
+      "layer": "L2",
+      "description": "The Financial Industry Business Ontology production release as one merged file, including the OMG Commons and Languages, Countries and Codes terms. Published verbatim.",
+      "license": "MIT",
+      "licenseUrl": "https://opensource.org/licenses/MIT",
+      "sourceUrl": "https://spec.edmcouncil.org/fibo/",
+      "attribution": "Financial Industry Business Ontology (FIBO) production quickstart 2026Q2. Copyright 2018-2026 EDM Council Inc. Copyright 2018-2025 Object Management Group, Inc. Licensed under the MIT License. Redistributed without changes.",
+      "origin": "upstream",
+      "installMode": "background",
+      "modules": [
+        {
+          "id": "fibo-quickstart",
+          "name": "FIBO production quickstart",
+          "description": "All production FIBO modules merged into one ontology.",
+          "url": "https://spec.edmcouncil.org/fibo/ontology/master/2026Q2/prod.fibo-quickstart.ttl",
+          "format": "turtle",
+          "downloadSha256": "5cd164c787cdfb2d7c1c386bc21bb3410f5963199bc547dc000a70b3c0e195b1"
+        }
+      ]
+    },
+    {
+      "id": "fhir",
+      "name": "HL7 FHIR R5",
+      "abbreviation": "FHIR",
+      "standard": "HL7 FHIR Release 5 RDF ontology",
+      "publisher": "HL7 International",
+      "version": "5.0.0",
+      "industry": "healthcare",
+      "layer": "L2",
+      "description": "The FHIR R5 resource and element ontology. It carries no value sets or code systems. Published verbatim.",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceUrl": "https://hl7.org/fhir/R5/rdf.html",
+      "attribution": "HL7 FHIR Release 5 (5.0.0) RDF ontology, published by HL7 International under CC0 1.0 (https://hl7.org/fhir/R5/license.html). HL7 and FHIR are registered trademarks of Health Level Seven International. Redistributed without changes.",
+      "origin": "upstream",
+      "installMode": "background",
+      "modules": [
+        {
+          "id": "fhir-r5",
+          "name": "FHIR R5 ontology",
+          "description": "FHIR resources, data types and their elements.",
+          "url": "https://hl7.org/fhir/R5/fhir.ttl",
+          "format": "turtle",
+          "downloadSha256": "0ced303dc994ef7a05613aca91d911ab463477ad779851a0e65195d39de5497d"
+        }
+      ]
+    },
+    {
+      "id": "brick",
+      "name": "Brick Schema",
+      "abbreviation": "Brick",
+      "standard": "Brick Schema 1.4",
+      "publisher": "Brick Consortium",
+      "version": "1.4.2",
+      "industry": "buildings-and-energy",
+      "layer": "L2",
+      "description": "The Brick schema for building equipment, spaces, points and the relationships between them, published verbatim.",
+      "license": "BSD-3-Clause",
+      "licenseUrl": "https://opensource.org/licenses/BSD-3-Clause",
+      "sourceUrl": "https://brickschema.org/",
+      "attribution": "Brick Schema 1.4.2. Copyright 2016-2026, Brick Consortium, Inc. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted under the BSD 3-Clause License. The name of the Brick Consortium may not be used to endorse products derived from this software without permission. Redistributed without changes.",
+      "origin": "upstream",
+      "installMode": "background",
+      "modules": [
+        {
+          "id": "brick",
+          "name": "Brick schema",
+          "description": "Equipment, locations, points, collections and the Brick relationships.",
+          "url": "https://brickschema.org/schema/1.4/Brick.ttl",
+          "format": "turtle",
+          "downloadSha256": "c4a9a35355da6be158123f5dced3a7ad0714d3a2cab51c6a80c4720c3c8d28f0"
+        }
+      ]
+    },
+    {
+      "id": "isa-95",
+      "name": "ISA-95 Starter (OpenMetadata-authored)",
+      "abbreviation": "ISA-95",
+      "standard": "ANSI/ISA-95",
+      "publisher": "OpenMetadata",
+      "version": "2025Q1-om1",
+      "industry": "manufacturing",
+      "layer": "L2",
+      "description": "An OpenMetadata-authored concept outline aligned to the ANSI/ISA-95 equipment hierarchy and resource model. It is not the ISA-95 standard, which is a paid publication, and it does not reproduce its text.",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
+      "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to ANSI/ISA-95; ISA-95 is a standard of the International Society of Automation and is not licensed to this project.",
+      "origin": "authored",
+      "modules": [
+        {
+          "id": "manufacturing-operations",
+          "name": "Manufacturing operations",
+          "description": "A role-based equipment hierarchy and resource outline aligned to ISA-95.",
+          "format": "turtle"
+        }
+      ]
+    },
+    {
+      "id": "hr-open",
+      "name": "HR Open Starter (OpenMetadata-authored)",
+      "abbreviation": "HR Open",
+      "standard": "HR Open Standards",
+      "publisher": "OpenMetadata",
+      "version": "2025Q1-om1",
+      "industry": "human-resources",
+      "layer": "L2",
+      "description": "An OpenMetadata-authored concept outline aligned to HR Open Standards workforce concepts. HR Open publishes no RDF form of its standard, so this is not a copy of it.",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://www.hropenstandards.org/",
+      "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to HR Open Standards, which are not licensed to this project.",
+      "origin": "authored",
+      "modules": [
+        {
+          "id": "workforce",
+          "name": "Workforce",
+          "description": "Workers, positions, organizations and compensation concepts aligned to HR Open.",
+          "format": "turtle"
+        }
+      ]
+    },
+    {
+      "id": "epcis",
+      "name": "EPCIS Starter (OpenMetadata-authored)",
+      "abbreviation": "EPCIS",
+      "standard": "GS1 EPCIS",
+      "publisher": "OpenMetadata",
+      "version": "2025Q1-om1",
+      "industry": "supply-chain",
+      "layer": "L2",
+      "description": "An OpenMetadata-authored concept outline aligned to GS1 EPCIS supply-chain events. The GS1 EPCIS ontology carries no license grant we could confirm, so this is not a copy of it.",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://www.gs1.org/standards/epcis",
+      "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to GS1 EPCIS; GS1 and EPCIS are trademarks of GS1 AISBL.",
+      "origin": "authored",
+      "modules": [
+        {
+          "id": "event-model",
+          "name": "Event model",
+          "description": "Event types and the what, when, where and why dimensions aligned to EPCIS.",
+          "format": "turtle"
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "id": "schema-org",
+      "name": "schema.org",
+      "reason": "CC BY-SA 3.0. Share-alike terms need legal review before the vocabulary can ship inside an Apache-2.0 distribution."
+    },
+    {
+      "id": "epcis-cbv",
+      "name": "GS1 EPCIS and CBV ontologies",
+      "reason": "The files carry no license grant and GS1 IP policy terms for non-members are unconfirmed. The EPCIS starter is OpenMetadata-authored instead."
+    },
+    {
+      "id": "dcterms",
+      "name": "DCMI Terms",
+      "reason": "The file carries no license statement and the CC BY 4.0 claim on the DCMI site is unconfirmed."
+    },
+    {
+      "id": "saref",
+      "name": "ETSI SAREF",
+      "reason": "The ETSI Software License text could not be retrieved, so its terms are unconfirmed."
+    },
+    {
+      "id": "qudt",
+      "name": "QUDT",
+      "reason": "Not evaluated. Its file header carries a UCUM license notice that would need its own review."
+    },
+    {
+      "id": "isa-95-open",
+      "name": "ISA-95 and IEC 62264",
+      "reason": "A paid standard with no official open ontology. The ISA-95 starter is OpenMetadata-authored."
+    },
+    {
+      "id": "hr-open-rdf",
+      "name": "HR Open Standards",
+      "reason": "No official RDF or OWL form. The HR Open starter is OpenMetadata-authored."
+    }
+  ]
+}
