@@ -25,8 +25,8 @@ export interface NativeOntologyImportSummary {
      * The parsed definitions in the order the source lists them, each with the status applying
      * it would give, at most 5,000 of them. Past that budget ALREADY_EXISTS items are left out
      * first, since nothing can be done with them; `counts` still covers every definition. On a
-     * preview against a target each NEW or UPDATE item names its change set operation; a preview
-     * against a new ontology has no operations yet.
+     * preview against a target each NEW or UPDATE item names its change set operation; a
+     * preview against a new ontology has no operations yet.
      */
     items?: NativeOntologyImportItem[];
     /**
@@ -205,13 +205,16 @@ export interface SkipGroup {
  * field for. UNSUPPORTED_STRUCTURE: a construct the native model cannot represent
  * faithfully, such as a union domain or a SHACL shape. INDIVIDUAL: a statement about a
  * named individual that is not a class or concept. IMPORTS: an `owl:imports` statement; the
- * importer never fetches other documents.
+ * importer never fetches other documents. UNDECLARED_REFERENCE: a link, such as
+ * `rdfs:subPropertyOf`, to a property that neither the source nor the target ontology
+ * declares; the definition is kept without the link.
  */
 export enum SkipReason {
     ExtraValue = "EXTRA_VALUE",
     Imports = "IMPORTS",
     Individual = "INDIVIDUAL",
     NonPreferredLanguage = "NON_PREFERRED_LANGUAGE",
+    UndeclaredReference = "UNDECLARED_REFERENCE",
     UnsupportedAnnotation = "UNSUPPORTED_ANNOTATION",
     UnsupportedStructure = "UNSUPPORTED_STRUCTURE",
 }
