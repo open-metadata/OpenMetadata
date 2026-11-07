@@ -494,14 +494,13 @@ test.describe('AI Profile Team Detail', () => {
     const joinResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/') &&
-        response.request().method() === 'PATCH' &&
-        response.ok()
+        response.request().method() === 'PATCH'
     );
     await page
       .getByTestId('profile-content-header')
       .getByTestId('join-team-button')
       .click();
-    await joinResponse;
+    expect((await joinResponse).status()).toBe(200);
 
     const leaveButton = page
       .getByTestId('profile-content-header')
@@ -512,11 +511,10 @@ test.describe('AI Profile Team Detail', () => {
     const leaveResponse = page.waitForResponse(
       (response) =>
         response.url().includes('/api/v1/users/') &&
-        response.request().method() === 'PATCH' &&
-        response.ok()
+        response.request().method() === 'PATCH'
     );
     await leaveButton.click();
-    await leaveResponse;
+    expect((await leaveResponse).status()).toBe(200);
 
     await expect(
       page.getByTestId('profile-content-header').getByTestId('join-team-button')
