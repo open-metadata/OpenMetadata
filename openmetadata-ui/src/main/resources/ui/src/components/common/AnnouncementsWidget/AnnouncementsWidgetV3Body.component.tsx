@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Skeleton } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  PaginationDot,
+  Skeleton,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronLeft,
   ChevronRight,
@@ -67,6 +72,11 @@ const AnnouncementsWidgetV3Body = ({
     [index, total]
   );
 
+  const handlePageChange = useCallback((page: number) => {
+    setCurrentIndex(page - 1);
+    setExpanded(false);
+  }, []);
+
   const handleDismiss = useCallback(() => {
     setDismissedIds((prev) => [...prev, current.id]);
     setExpanded(false);
@@ -90,39 +100,52 @@ const AnnouncementsWidgetV3Body = ({
 
   return (
     <Box
-      align="center"
-      className={classNames('tw:gap-1', className)}
-      data-testid={testId}>
-      {total > 1 && (
-        <ButtonUtility
-          data-testid="announcement-prev-btn"
-          icon={ChevronLeft}
-          isDisabled={index === 0}
-          size="xs"
-          tooltip={t('label.previous')}
-          onClick={() => handleStep(-1)}
-        />
-      )}
+      className={classNames('tw:gap-2', className)}
+      data-testid={testId}
+      direction="col">
+      <Box align="center" className="tw:gap-1">
+        {total > 1 && (
+          <ButtonUtility
+            data-testid="announcement-prev-btn"
+            icon={ChevronLeft}
+            isDisabled={index === 0}
+            size="xs"
+            tooltip={t('label.previous')}
+            onClick={() => handleStep(-1)}
+          />
+        )}
 
-      <AnnouncementBanner
-        announcement={current}
-        className="tw:min-w-0 tw:flex-1"
-        expanded={expanded}
-        testId="announcement-banner"
-        onClick={() => onItemClick(current)}
-        onDismiss={handleDismiss}
-        onToggleExpand={() => setExpanded((prev) => !prev)}
-      />
+        <AnnouncementBanner
+          announcement={current}
+          className="tw:min-w-0 tw:flex-1"
+          expanded={expanded}
+          testId="announcement-banner"
+          onClick={() => onItemClick(current)}
+          onDismiss={handleDismiss}
+          onToggleExpand={() => setExpanded((prev) => !prev)}
+        />
+
+        {total > 1 && (
+          <ButtonUtility
+            data-testid="announcement-next-btn"
+            icon={ChevronRight}
+            isDisabled={index === total - 1}
+            size="xs"
+            tooltip={t('label.next')}
+            onClick={() => handleStep(1)}
+          />
+        )}
+      </Box>
 
       {total > 1 && (
-        <ButtonUtility
-          data-testid="announcement-next-btn"
-          icon={ChevronRight}
-          isDisabled={index === total - 1}
-          size="xs"
-          tooltip={t('label.next')}
-          onClick={() => handleStep(1)}
-        />
+        <Box data-testid="announcement-dots" justify="center">
+          <PaginationDot
+            page={index + 1}
+            size="sm"
+            total={total}
+            onPageChange={handlePageChange}
+          />
+        </Box>
       )}
     </Box>
   );
