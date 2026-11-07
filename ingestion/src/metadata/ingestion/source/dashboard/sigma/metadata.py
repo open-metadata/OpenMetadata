@@ -40,6 +40,7 @@ from metadata.generated.schema.type.basic import (
     Markdown,
     SourceUrl,
 )
+from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -60,6 +61,7 @@ from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.helpers import (
     get_database_name_for_lineage,
     get_standard_chart_type,
+    normalize_column_name,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -287,18 +289,12 @@ class SigmaSource(DashboardServiceSource):
                 if not nodes:
                     continue
 
-                for node in nodes:
-                    table_entity = self._get_table_entity_from_node(node, db_service_prefix)
-                    if table_entity:
-                        column_lineage = None
-                        if data_model.columns:
-                            columns_list = data_model.columns
-                            column_lineage = self._get_column_lineage(table_entity, data_model_entity, columns_list)
-                        yield self._get_add_lineage_request(
-                            to_entity=data_model_entity,
-                            from_entity=table_entity,
-                            column_lineage=column_lineage,
-                        )
+                tables = [
+                    table for node in nodes if (table := self._get_table_entity_from_node(node, db_service_prefix))
+                ]
+                yield from self._yield_table_and_column_lineage(
+                    tables, data_model_entity, data_model.columns, all_sources_found=len(tables) == len(nodes)
+                )
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -327,18 +323,10 @@ class SigmaSource(DashboardServiceSource):
             if not nodes:
                 return
 
-            for node in nodes:
-                table_entity = self._get_table_entity_from_node(node, db_service_prefix)
-                if table_entity:
-                    column_lineage = None
-                    if data_model.columns:
-                        columns_list = data_model.columns
-                        column_lineage = self._get_column_lineage(table_entity, data_model_entity, columns_list)
-                    yield self._get_add_lineage_request(
-                        to_entity=data_model_entity,
-                        from_entity=table_entity,
-                        column_lineage=column_lineage,
-                    )
+            tables = [table for node in nodes if (table := self._get_table_entity_from_node(node, db_service_prefix))]
+            yield from self._yield_table_and_column_lineage(
+                tables, data_model_entity, data_model.columns, all_sources_found=len(tables) == len(nodes)
+            )
         except Exception as exc:
             yield Either(
                 left=StackTraceError(
@@ -346,6 +334,41 @@ class SigmaSource(DashboardServiceSource):
                     error=f"Error in element file-based lineage fallback: {exc}",
                     stackTrace=traceback.format_exc(),
                 )
+            )
+
+    def _yield_table_and_column_lineage(
+        self,
+        tables: list[Table],
+        data_model_entity: DashboardDataModel,
+        labels: list[str] | None,
+        all_sources_found: bool,
+    ):
+        """
+        One edge per source table of an element, carrying the columns it feeds. Sigma labels warehouse
+        columns for reading (DEAL_SOURCE_NAME shows as "Deal Source Name"), so names are compared
+        normalized. Lineage must not guess, so a label is linked only when every source of the element was
+        found (a missing one could hold the column too) and exactly one column across its tables matches.
+        """
+        column_lineage: dict[str, list[ColumnLineage]] = {}
+        for label in (labels or []) if all_sources_found else []:
+            matches = [
+                (table, column_fqn)
+                for table in tables
+                for column in table.columns or []
+                if (column_fqn := column.fullyQualifiedName)
+                and normalize_column_name(column.name.root) == normalize_column_name(label)
+            ]
+            to_column = self._get_data_model_column_fqn(data_model_entity=data_model_entity, column=label)
+            if len(matches) == 1 and to_column:
+                table, column_fqn = matches[0]
+                column_lineage.setdefault(str(table.id.root), []).append(
+                    ColumnLineage(fromColumns=[column_fqn], toColumn=FullyQualifiedEntityName(to_column))
+                )
+        for table in tables:
+            yield self._get_add_lineage_request(
+                to_entity=data_model_entity,
+                from_entity=table,
+                column_lineage=column_lineage.get(str(table.id.root), []),
             )
 
     def yield_dashboard_lineage_details(
@@ -403,32 +426,45 @@ class SigmaSource(DashboardServiceSource):
                     parser_type=self.get_query_parser_type(),
                 )
 
-                for source_table in lineage_parser.source_tables or []:
-                    database_schema_table = fqn.split_table_name(str(source_table))
-                    database_name = database_schema_table.get("database")
-                    schema_name = database_schema_table.get("database_schema")
-                    table_name = database_schema_table.get("table")
+                tables: list[Table] = []
+                # LineageParser's third-party cached_property carries no type
+                source_tables: list = lineage_parser.source_tables or []  # pyright: ignore[reportAssignmentType]
+                for source_table in source_tables:
+                    try:
+                        database_schema_table = fqn.split_table_name(str(source_table))
+                        database_name = database_schema_table.get("database")
+                        schema_name = database_schema_table.get("database_schema")
+                        table_name = database_schema_table.get("table")
 
-                    if db_service_entity and database_name:
-                        database_name = get_database_name_for_lineage(db_service_entity, database_name)
+                        if db_service_entity and database_name:
+                            database_name = get_database_name_for_lineage(db_service_entity, database_name)
 
-                    fqn_search_string = build_es_fqn_search_string(
-                        service_name=db_service_name or "*",
-                        database_name=database_name,
-                        schema_name=schema_name,
-                        table_name=table_name,
-                    )
-
-                    table_entity = self.metadata.search_in_any_service(
-                        entity_type=Table,
-                        fqn_search_string=fqn_search_string,
-                    )
-
-                    if table_entity:
-                        yield self._get_add_lineage_request(
-                            to_entity=data_model_entity,
-                            from_entity=table_entity,
+                        fqn_search_string = build_es_fqn_search_string(
+                            service_name=db_service_name or "*",
+                            database_name=database_name,
+                            schema_name=schema_name,
+                            table_name=table_name,
                         )
+
+                        table_entity = self.metadata.search_in_any_service(
+                            entity_type=Table,
+                            fqn_search_string=fqn_search_string,
+                        )
+                    except Exception as exc:
+                        yield Either(
+                            left=StackTraceError(
+                                name=f"{dashboard_details.name} Lineage",
+                                error=f"Error looking up table [{source_table}] of element [{data_model.elementId}]: {exc}",
+                                stackTrace=traceback.format_exc(),
+                            ),
+                            right=None,
+                        )
+                        continue
+                    if isinstance(table_entity, Table):
+                        tables.append(table_entity)
+                yield from self._yield_table_and_column_lineage(
+                    tables, data_model_entity, data_model.columns, all_sources_found=len(tables) == len(source_tables)
+                )
 
             except Exception as exc:
                 yield Either(

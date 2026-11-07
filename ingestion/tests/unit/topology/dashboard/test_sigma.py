@@ -16,6 +16,9 @@ Test sigma Dashboard using the topology
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
+from uuid import NAMESPACE_URL, uuid5
+
+import pytest
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -24,7 +27,7 @@ from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -669,3 +672,156 @@ class SigmaUnitTest(TestCase):
 
         # Should return empty list or handle gracefully
         assert result == []
+
+
+def warehouse_table(name: str, columns: list[str]) -> Table:
+    table_fqn = f"snowflake_prod.PROD.NPL_COMMON.{name}"
+    return Table(
+        id=uuid5(NAMESPACE_URL, table_fqn),
+        name=name,
+        fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+        columns=[
+            Column(name=column, dataType=DataType.VARCHAR, fullyQualifiedName=f"{table_fqn}.{column}")
+            for column in columns
+        ],
+    )
+
+
+DIM_DEAL_SOURCE = warehouse_table("DIM_DEAL_SOURCE", ["DEAL_SOURCE_ID", "DEAL_SOURCE_NAME"])
+DIM_SEGMENT = warehouse_table("DIM_SEGMENT", ["SEGMENT_NAME", "DEAL_SOURCE_ID"])
+# Sigma labels an element's columns for reading (DEAL_SOURCE_NAME shows as "Deal Source Name"); "Deal Source Id"
+# is in both source tables and "Sum of GRV" is a calculated field
+GRV_ELEMENT = Elements(
+    elementId="grvBySegment",
+    name="Sum of GRV by Segment",
+    vizualizationType="bar",
+    columns=["Deal Source Name", "Deal Source Id", "Segment Name", "Sum of GRV"],
+)
+GRV_SQL = (
+    "SELECT d.DEAL_SOURCE_NAME, d.DEAL_SOURCE_ID, s.SEGMENT_NAME, SUM(d.GRV) "
+    "FROM PROD.NPL_COMMON.DIM_DEAL_SOURCE d JOIN PROD.NPL_COMMON.DIM_SEGMENT s ON d.DEAL_SOURCE_ID = s.DEAL_SOURCE_ID "
+    "GROUP BY 1, 2, 3"
+)
+GRV_MODEL_FQN = "mock_sigma.model.grvBySegment"
+EXPECTED_COLUMN_LINKS = {
+    DIM_DEAL_SOURCE.fullyQualifiedName.root: [
+        (f"{DIM_DEAL_SOURCE.fullyQualifiedName.root}.DEAL_SOURCE_NAME", f"{GRV_MODEL_FQN}.Deal Source Name")
+    ],
+    DIM_SEGMENT.fullyQualifiedName.root: [
+        (f"{DIM_SEGMENT.fullyQualifiedName.root}.SEGMENT_NAME", f"{GRV_MODEL_FQN}.Segment Name")
+    ],
+}
+
+
+@pytest.fixture
+def grv_source():
+    """SigmaSource whose OpenMetadata holds the GRV data model (built from the element's labels) and both tables"""
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+    source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+    data_model = DashboardDataModel(
+        id=uuid5(NAMESPACE_URL, GRV_MODEL_FQN),
+        name="grvBySegment",
+        fullyQualifiedName=GRV_MODEL_FQN,
+        dataModelType="SigmaDataModel",
+        columns=[
+            column.model_copy(
+                update={"fullyQualifiedName": FullyQualifiedEntityName(f"{GRV_MODEL_FQN}.{column.displayName}")}
+            )
+            for column in source.get_column_info(GRV_ELEMENT)
+        ],
+    )
+    source.metadata.get_by_name = lambda entity, fqn, **_: (
+        data_model if entity is DashboardDataModel else MOCK_DATABASE_SERVICE
+    )
+    source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **_: next(
+        (
+            table
+            for table in (DIM_DEAL_SOURCE, DIM_SEGMENT)
+            if fqn_search_string.lower().endswith(f".{table.name.root.lower()}")
+        ),
+        None,
+    )
+    source.data_models = [GRV_ELEMENT]
+    source.client = SimpleNamespace()
+    return source
+
+
+def column_links(results) -> dict[str, list[tuple[str, str]]]:
+    """For each table edge sent: its (table column, data model column) pairs"""
+    return {
+        either.right.edge.fromEntity.fullyQualifiedName: [
+            (column.fromColumns[0].root, column.toColumn.root)
+            for column in either.right.edge.lineageDetails.columnsLineage or []
+        ]
+        for either in results
+        if either.right
+    }
+
+
+def test_sql_lineage_links_each_label_to_the_one_warehouse_column_it_shows(grv_source):
+    grv_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="grvBySegment", name="GRV", sql=GRV_SQL)], total=1
+    )
+
+    results = list(grv_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+
+    assert column_links(results) == EXPECTED_COLUMN_LINKS
+
+
+@pytest.mark.parametrize(
+    "queries",
+    [None, WorkbookQueriesResponse(entries=[WorkbookQuery(elementId="grvBySegment", name="GRV")], total=1)],
+    ids=["no workbook queries", "element without sql"],
+)
+def test_fallback_lineage_links_labels_that_differ_from_the_column_in_case_and_separators(grv_source, queries):
+    grv_source.client.get_workbook_queries = lambda *_: queries
+    grv_source.client.get_lineage_details = lambda *_: [
+        NodeDetails(id=table.name.root, name=table.name.root, type="table", path="Snowflake Prod/PROD.NPL_COMMON")
+        for table in (DIM_DEAL_SOURCE, DIM_SEGMENT)
+    ]
+
+    results = list(grv_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+
+    assert column_links(results) == EXPECTED_COLUMN_LINKS
+
+
+def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(grv_source):
+    grv_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="grvBySegment", name="GRV", sql=GRV_SQL)], total=1
+    )
+    search = grv_source.metadata.search_in_any_service
+
+    def search_failing_for_deal_source(entity_type, fqn_search_string, **kwargs):
+        if fqn_search_string.lower().endswith(".dim_deal_source"):
+            raise RuntimeError("search unavailable")
+        return search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+
+    grv_source.metadata.search_in_any_service = search_failing_for_deal_source
+
+    results = list(grv_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+
+    # The other table keeps its edge; no column is linked, as the failed one could hold it too
+    assert column_links(results) == {DIM_SEGMENT.fullyQualifiedName.root: []}
+    assert ["search unavailable" in either.left.error for either in results if either.left] == [True]
+
+
+def test_a_source_table_missing_from_openmetadata_leaves_the_columns_unlinked(grv_source):
+    grv_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="grvBySegment", name="GRV", sql=GRV_SQL)], total=1
+    )
+    search = grv_source.metadata.search_in_any_service
+    grv_source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **kwargs: (
+        None
+        if fqn_search_string.lower().endswith(".dim_deal_source")
+        else search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+    )
+
+    results = list(grv_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+
+    # "Deal Source Id" looks unique without DIM_DEAL_SOURCE, which is exactly when linking it would guess
+    assert column_links(results) == {DIM_SEGMENT.fullyQualifiedName.root: []}
