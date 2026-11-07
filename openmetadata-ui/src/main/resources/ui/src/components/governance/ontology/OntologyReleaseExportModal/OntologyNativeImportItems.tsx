@@ -198,15 +198,17 @@ const OntologyNativeImportItems = ({
 
   return (
     <Box data-testid="ontology-native-import-items" direction="col" gap={4}>
-      <Typography
-        color="secondary"
-        data-testid="ontology-native-import-items-found"
-        size="text-sm">
-        {t('message.native-import-items-found', {
-          count: items.length,
-          skipped: items.length - selectable.length,
-        })}
-      </Typography>
+      {items.length > 0 && (
+        <Typography
+          color="secondary"
+          data-testid="ontology-native-import-items-found"
+          size="text-sm">
+          {t('message.native-import-items-found', {
+            count: items.length,
+            skipped: items.length - selectable.length,
+          })}
+        </Typography>
+      )}
       {omittedItems > 0 && (
         <Typography
           color="secondary"
