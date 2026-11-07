@@ -58,6 +58,8 @@ import org.openmetadata.service.rdf.rebuild.RdfMutation;
 @Isolated
 @ExtendWith(TestNamespaceExtension.class)
 public class RdfLibraryPackActivationIT extends BaseOntologyApprovalIT {
+  private static final int ONTOLOGY_ROOT_MEMBERS = 1;
+
   private static final String REPORT_PATH = System.getProperty("ontology.packs.report");
   private static final Duration INSTALL_TIMEOUT = Duration.ofMinutes(20);
 
@@ -103,7 +105,7 @@ public class RdfLibraryPackActivationIT extends BaseOntologyApprovalIT {
     report.put("captureMs", millisSince(captureStarted));
     report.put("releaseMembers", release.getMemberCount());
     report.put("releaseBytes", release.getTotalBytes());
-    assertEquals(job.getMemberCount() + 3, release.getMemberCount());
+    assertEquals(job.getMemberCount() + ONTOLOGY_ROOT_MEMBERS, release.getMemberCount());
 
     projection(release.getId(), report);
 

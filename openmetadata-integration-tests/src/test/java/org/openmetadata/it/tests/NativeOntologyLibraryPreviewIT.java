@@ -78,17 +78,22 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
   }
 
   private static final Map<String, Integer> PACK_OPERATIONS =
-      Map.of(
-          "dcat", 48,
-          "epcis", 18,
-          "foaf", 100,
-          "hr-open", 14,
-          "isa-95", 16,
-          "odrl", 756,
-          "org", 51,
-          "owl-time", 211,
-          "prov-o", 130,
-          "sosa-ssn", 144);
+      Map.ofEntries(
+          Map.entry("brick", 11810),
+          Map.entry("dcat", 48),
+          Map.entry("dpv", 3688),
+          Map.entry("epcis", 18),
+          Map.entry("fhir", 16404),
+          Map.entry("fibo", 9901),
+          Map.entry("foaf", 100),
+          Map.entry("gs1", 1071),
+          Map.entry("hr-open", 14),
+          Map.entry("isa-95", 16),
+          Map.entry("odrl", 756),
+          Map.entry("org", 50),
+          Map.entry("owl-time", 208),
+          Map.entry("prov-o", 130),
+          Map.entry("sosa-ssn", 144));
 
   @Test
   void everyPackPreviewsWithoutChangingTheTarget(TestNamespace ns) {
@@ -193,18 +198,6 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
     return plan.getOperations().stream()
         .filter(operation -> operation.getOperationType() == type)
         .count();
-  }
-
-  private static Set<String> allModules(final String packId) {
-    return SdkClients.adminClient()
-        .getHttpClient()
-        .execute(HttpMethod.GET, "/v1/ontologyPacks", null, OntologyPackList.class)
-        .getPacks()
-        .stream()
-        .filter(pack -> pack.getId().equals(packId))
-        .flatMap(pack -> pack.getModules().stream())
-        .map(module -> module.getId())
-        .collect(Collectors.toSet());
   }
 
   @Test
