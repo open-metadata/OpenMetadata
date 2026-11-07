@@ -13,12 +13,14 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.it.tests.CredentialFixtures.LOGGED_IN_USER;
 
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.algorithms.Algorithm;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -26,6 +28,7 @@ import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
+import java.util.List;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 /**
  * {@code OpenMetadataOperations regenerate-bot-tokens} writes new bot tokens straight to the
@@ -85,6 +89,10 @@ class OpsRegenerateBotTokensIT {
         200,
         CredentialFixtures.status(LOGGED_IN_USER, storedToken(Entity.INGESTION_BOT_NAME)),
         "the run left the current system bot working");
+    String event = changeEventAtVersion(bot, storedVersion(bot));
+    assertEquals(
+        "entityUpdated", JsonUtils.readTree(event).path("eventType").asText(), "audited update");
+    assertFalse(event.contains(newToken), "the change event carries no token");
   }
 
   @Test
@@ -139,6 +147,29 @@ class OpsRegenerateBotTokensIT {
     assertEquals(before, storedToken(bot), "no token was written");
   }
 
+  @Test
+  void aPrivateKeyFromAnotherPairStoresNoToken(TestNamespace ns, @TempDir Path keyDir)
+      throws Exception {
+    User bot = botWithRetiredKeyToken(ns, "keypairbot");
+    String before = storedToken(bot);
+    KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
+    generator.initialize(2048);
+    Path otherPrivateKey =
+        Files.write(
+            keyDir.resolve("private.der"), generator.generateKeyPair().getPrivate().getEncoded());
+
+    int exitCode =
+        ForkedOperations.run(
+            config ->
+                ((ObjectNode) config.path("jwtTokenConfiguration"))
+                    .put("rsaprivateKeyFilePath", otherPrivateKey.toString()),
+            "regenerate-bot-tokens");
+
+    assertEquals(
+        1, exitCode, "the public key matches the JWKS, the bot fails, see forked-ops logs");
+    assertEquals(before, storedToken(bot), "no token the servers would reject was stored");
+  }
+
   /**
    * The server mints a current token for every new bot, so the token is replaced in the table with
    * what a key rotation leaves behind: a token signed by another key under a {@code kid} the
@@ -183,6 +214,30 @@ class OpsRegenerateBotTokensIT {
     } catch (GeneralSecurityException failure) {
       throw new IllegalStateException(failure);
     }
+  }
+
+  private static String changeEventAtVersion(User bot, double version) {
+    String sql =
+        TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL
+            ? "SELECT CAST(json AS CHAR) FROM change_event WHERE json ->> '$.entityId' = :id"
+            : "SELECT json::text FROM change_event WHERE json ->> 'entityId' = :id";
+    List<String> events =
+        Entity.getJdbi()
+            .withHandle(
+                handle ->
+                    handle
+                        .createQuery(sql)
+                        .bind("id", bot.getId().toString())
+                        .mapTo(String.class)
+                        .list());
+    return events.stream()
+        .filter(json -> isAtVersion(JsonUtils.readTree(json), version))
+        .findFirst()
+        .orElseThrow(() -> new AssertionError("no change event at version " + version));
+  }
+
+  private static boolean isAtVersion(JsonNode event, double version) {
+    return Math.abs(event.path("currentVersion").asDouble() - version) < 1e-9;
   }
 
   private static double storedVersion(User bot) {

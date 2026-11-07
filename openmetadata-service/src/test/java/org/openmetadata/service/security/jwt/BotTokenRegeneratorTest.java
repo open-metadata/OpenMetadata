@@ -14,19 +14,25 @@
 package org.openmetadata.service.security.jwt;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.jwt.JWTTokenConfiguration;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.ServiceTokenType;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
+import org.openmetadata.service.secrets.InMemorySecretsManager;
+import org.openmetadata.service.secrets.SecretsManager;
 
 class BotTokenRegeneratorTest {
   private static final long ONE_HOUR = 3600;
@@ -116,5 +122,18 @@ class BotTokenRegeneratorTest {
     assertFalse(regenerator.isCurrent(null));
     assertFalse(regenerator.isCurrent(""));
     assertFalse(regenerator.isCurrent("not-a-jwt"));
+  }
+
+  @Test
+  void aTokenThatAnExternalSecretsManagerClearedOnRevokeReadsAsNoToken() {
+    SecretsManager externalSecretsManager =
+        InMemorySecretsManager.getInstance(
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of(), null));
+    AuthenticationMechanism revoked =
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(new JWTAuthMechanism());
+
+    assertNull(BotTokenRegenerator.readToken(externalSecretsManager, revoked));
   }
 }

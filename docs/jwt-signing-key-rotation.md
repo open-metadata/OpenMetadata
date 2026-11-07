@@ -58,16 +58,21 @@ The command:
 1. Fetches `GET <metadataApiEndpoint>/v1/system/config/jwks` and checks that it lists the
    configured `keyId` with the same public key. If not, it writes nothing, prints why and exits 2.
    There is no flag to skip this check.
-2. Gives every JWT bot a new token signed by the new key. A bot whose stored token already verifies
-   under the configured key, carries the configured `keyId` and has not expired is left unchanged,
-   so you can run the command again. A bot whose token was revoked is skipped and keeps no token,
-   so an administrator's revoke survives the rotation.
+2. Gives every JWT bot a new token signed by the new key, and records each change in the audit
+   log. A bot whose stored token already verifies under the configured key, carries the configured
+   `keyId` and has not expired is left unchanged, so you can run the command again. A bot whose
+   token was revoked is skipped and keeps no token, so an administrator's revoke survives the
+   rotation.
 3. Redeploys every ingestion pipeline with `deployed == true`, with the new ingestion-bot token.
    This runs on every run, so a re-run repairs a redeploy that failed before. When
    `pipelineServiceClientConfiguration.enabled` is `false`, it skips this step and says so.
 
 A bot changed by someone else while the command ran is reported as `FAILED` ("changed concurrently,
 re-run"). Run the command again.
+
+A new token that the configured public key does not verify is never stored. Each bot is then
+reported as `FAILED` ("Private key does not match the public key"). Check that
+`RSA_PRIVATE_KEY_FILE_PATH` and `RSA_PUBLIC_KEY_FILE_PATH` point at the two halves of one key pair.
 
 | Exit code | Meaning |
 |---|---|

@@ -433,10 +433,11 @@ public final class UserUtil {
   }
 
   /**
-   * Create and persist a ChangeEvent for SSO/LDAP user operations.
+   * Create and persist a ChangeEvent for a user written outside the REST layer, such as an SSO/LDAP
+   * sign-in or a bot token regeneration, which would otherwise reach no audit log or subscription.
    * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
    */
-  private static void createUserChangeEvent(User user, EventType eventType) {
+  public static void createUserChangeEvent(User user, EventType eventType) {
     try {
       ChangeEvent changeEvent =
           new ChangeEvent()

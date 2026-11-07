@@ -25,6 +25,7 @@ import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -33,6 +34,8 @@ import org.openmetadata.service.jdbi3.BotRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.UserRepository;
 import org.openmetadata.service.secrets.SecretsManager;
+import org.openmetadata.service.util.RestUtil.PutResponse;
+import org.openmetadata.service.util.UserUtil;
 
 /**
  * Gives every JWT bot a token signed by the configured signing key. The ops command runs it after
@@ -58,6 +61,9 @@ public class BotTokenRegenerator {
   // revokeToken stores an empty token; regenerating one would re-enable a bot an admin shut off
   static final String TOKEN_REVOKED = "Token revoked";
   static final String CHANGED_CONCURRENTLY = "changed concurrently, re-run";
+  // the JWKS check compares only the public key; a private key from another pair signs tokens
+  // that no server accepts
+  static final String KEY_PAIR_MISMATCH = "Private key does not match the public key";
 
   private final SecretsManager secretsManager;
   private final JWTTokenGenerator generator;
@@ -106,8 +112,7 @@ public class BotTokenRegenerator {
     if (isCurrent(storedToken)) {
       return new BotResult(botName, Outcome.ALREADY_CURRENT, "Token already current");
     }
-    replaceToken(botUser.get(), expiry);
-    return new BotResult(botName, Outcome.REGENERATED, "Token regenerated");
+    return replaceToken(botName, botUser.get(), expiry);
   }
 
   private Optional<User> findBotUser(String botName) {
@@ -127,28 +132,39 @@ public class BotTokenRegenerator {
   /**
    * Saves through {@code updateIfCurrent}, so a bot edited since it was read fails with
    * PreconditionFailedException instead of losing that edit. A JSON patch cannot be used: the user
-   * repository restores the authentication mechanism on every patch.
+   * repository restores the authentication mechanism on every patch. That save records no change
+   * event, which a REST write would, so the audit log gets one here.
    */
-  private void replaceToken(User botUser, JWTTokenExpiry expiry) {
+  private BotResult replaceToken(String botName, User botUser, JWTTokenExpiry expiry) {
+    JWTAuthMechanism token = generator.generateJWTToken(botUser, expiry);
+    if (!isCurrent(token.getJWTToken())) {
+      return new BotResult(botName, Outcome.FAILED, KEY_PAIR_MISMATCH);
+    }
     UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     User updated = JsonUtils.deepCopy(botUser, User.class);
     updated.setAuthenticationMechanism(
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.JWT)
-            .withConfig(generator.generateJWTToken(botUser, expiry)));
-    userRepository.updateIfCurrent(null, botUser, updated, Entity.ADMIN_USER_NAME);
+            .withConfig(token));
+    PutResponse<User> saved =
+        userRepository.updateIfCurrent(null, botUser, updated, Entity.ADMIN_USER_NAME);
+    UserUtil.createUserChangeEvent(saved.getEntity(), EventType.ENTITY_UPDATED);
+    return new BotResult(botName, Outcome.REGENERATED, "Token regenerated");
   }
 
   /**
    * The bot token as clients send it: decrypted, and resolved through the secrets manager when the
-   * stored value is a reference.
+   * stored value is a reference. Null when there is none: an external secrets manager deletes the
+   * secret of a revoked token and stores null in its place.
    */
   public static String readToken(SecretsManager secretsManager, AuthenticationMechanism mechanism) {
     JWTAuthMechanism jwtAuthMechanism =
         JsonUtils.convertValue(mechanism.getConfig(), JWTAuthMechanism.class);
     secretsManager.decryptJWTAuthMechanism(jwtAuthMechanism);
     String token = jwtAuthMechanism.getJWTToken();
-    return secretsManager.isSecret(token) ? secretsManager.getSecretValue(token) : token;
+    return token != null && secretsManager.isSecret(token)
+        ? secretsManager.getSecretValue(token)
+        : token;
   }
 
   boolean isCurrent(String token) {

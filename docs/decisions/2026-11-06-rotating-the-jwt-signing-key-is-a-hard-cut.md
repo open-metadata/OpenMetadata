@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `OpsRegenerateBotTokensIT` (a key that differs from the servers' JWKS exits 2 and changes no token; a second run leaves current tokens unchanged; a bot revoked through `PUT /v1/users/revokeToken` keeps an empty token, in `aBotWhoseTokenWasRevokedStaysRevoked`), `OpenMetadataOperationsJwksTest`, `BotTokenRegeneratorTest`
+- **Guard:** `OpsRegenerateBotTokensIT` (a key that differs from the servers' JWKS exits 2 and changes no token; a private key from another pair stores no token; a second run leaves current tokens unchanged; a regenerated bot has a change event without its token; a bot revoked through `PUT /v1/users/revokeToken` keeps an empty token, in `aBotWhoseTokenWasRevokedStaysRevoked`), `OpenMetadataOperationsJwksTest`, `BotTokenRegeneratorTest` (a token an external secrets manager cleared on revoke reads as no token)
 - **Related:** #36478, docs/jwt-signing-key-rotation.md
 
 ## Context
@@ -20,11 +20,18 @@ rarely and plan for.
 - `regenerate-bot-tokens` refuses to write anything, and exits 2, when the servers' JWKS does not
   list the configured `keyId` with the configured public key. A host configured with a different key
   would otherwise store tokens the servers reject.
+- Each new token is verified under the configured public key before it is saved. A private key
+  from another pair would sign tokens the servers reject, so the bot is reported as `FAILED`
+  ("Private key does not match the public key") and nothing is written.
+- Each regenerated bot records a masked `ENTITY_UPDATED` change event, as a REST write does, so the
+  regeneration reaches the audit log and event subscriptions. The event never carries the token.
 - A bot whose stored token verifies under the configured key, has the configured `kid` and has not
   expired is left unchanged. A bot saved through `updateIfCurrent` fails, rather than being
   overwritten, when it changed since it was read.
 - A bot whose stored token is null or blank was revoked by an administrator. It is reported as
-  `SKIPPED` ("Token revoked") and nothing is written, so regeneration never re-enables it.
+  `SKIPPED` ("Token revoked") and nothing is written, so regeneration never re-enables it. The
+  database secrets manager stores a revoked token as blank. An external one deletes the secret and
+  stores null.
 
 ## Consequences
 
