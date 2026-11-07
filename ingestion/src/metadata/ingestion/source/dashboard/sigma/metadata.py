@@ -66,6 +66,7 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Stable: tags already applied keep this name (ADR:2026-11-07-sigma-badges-are-tags-in-the-sigmabadge-classification)
 SIGMA_BADGE_CLASSIFICATION = "SigmaBadge"
 
 
