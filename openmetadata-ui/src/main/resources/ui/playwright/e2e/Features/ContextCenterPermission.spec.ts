@@ -250,6 +250,8 @@ test.describe('Context Center Permissions', () => {
         title: ownerMemoryTitle,
         question: 'Owned by admin for permission matrix tests',
         answer: 'Owned by admin for permission matrix tests',
+        // Collate starts memories Unprocessed, which hides them from non-owners.
+        entityStatus: 'Approved',
         shareConfig: { visibility: 'Entity' },
       },
     });

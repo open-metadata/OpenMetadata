@@ -500,23 +500,21 @@ test.describe('AI Profile Team Detail', () => {
       .getByTestId('profile-content-header')
       .getByTestId('join-team-button')
       .click();
-    await joinResponse;
+    expect((await joinResponse).status()).toBe(200);
 
     const leaveButton = page
       .getByTestId('profile-content-header')
       .getByTestId('leave-team-button');
     await expect(leaveButton).toBeVisible();
 
-    // Leaving removes the user from the team: DELETE /teams/<id>/users/<userId>.
+    // Leaving also patches the current user's teams, dropping this team.
     const leaveResponse = page.waitForResponse(
       (response) =>
-        response
-          .url()
-          .includes(`/api/v1/teams/${team.responseData.id}/users/`) &&
-        response.request().method() === 'DELETE'
+        response.url().includes('/api/v1/users/') &&
+        response.request().method() === 'PATCH'
     );
     await leaveButton.click();
-    await leaveResponse;
+    expect((await leaveResponse).status()).toBe(200);
 
     await expect(
       page.getByTestId('profile-content-header').getByTestId('join-team-button')
