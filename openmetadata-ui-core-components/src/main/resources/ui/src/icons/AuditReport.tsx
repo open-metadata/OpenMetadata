@@ -29,18 +29,17 @@ export const AuditReport: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.6 9.2v-.8c0-3.017 0-4.525-.936-5.463C13.726 2 12.218 2 9.2 2s-4.526 0-5.463.937S2.8 5.383 2.8 8.4v3.2c0 3.017 0 4.525.937 5.463S6.184 18 9.201 18"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m17.197 18.002-1.372-1.372m.458-2.286a2.743 2.743 0 1 1-5.486 0 2.743 2.743 0 0 1 5.486 0M5.998 6.004h6.4m-6.4 3.2h3.2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -26,6 +26,7 @@ export const AppLayout: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={2}
     viewBox="0 0 89 89"
     width={size}
     {...props}>
@@ -38,7 +39,6 @@ export const AppLayout: FC<Props> = ({
       stroke="#C4320A"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={2}
     />
   </svg>
 );

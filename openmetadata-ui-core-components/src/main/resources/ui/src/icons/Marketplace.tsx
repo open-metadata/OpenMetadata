@@ -29,22 +29,14 @@ export const Marketplace: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect
-      height={16}
-      rx={4}
-      stroke="currentColor"
-      strokeWidth={1.3}
-      width={16}
-      x={2}
-      y={2}
-    />
+    <rect height={16} rx={4} stroke="currentColor" width={16} x={2} y={2} />
     <path
       d="M2 6c0 1.657 1.194 3 2.667 3s2.666-1.343 2.666-3c0 1.657 1.194 3 2.667 3s2.667-1.343 2.667-3c0 1.657 1.194 3 2.666 3C16.806 9 18 7.657 18 6m-8 10v-2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

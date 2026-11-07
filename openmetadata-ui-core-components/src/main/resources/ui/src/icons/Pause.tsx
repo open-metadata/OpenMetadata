@@ -29,14 +29,11 @@ export const Pause: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M5.945 3.5v13m8.112-13v13"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M5.945 3.5v13m8.112-13v13" stroke="currentColor" />
   </svg>
 );
 Pause.displayName = 'Pause';

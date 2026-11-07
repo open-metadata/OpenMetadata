@@ -29,13 +29,13 @@ export const OutOfCredits: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M4.4 10A5.6 5.6 0 0 1 10 4.4m3.6 2-3.034 3.034m0 0L10 10m.566-.566a.8.8 0 1 0-1.131 1.131.8.8 0 0 0 1.13-1.13M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,18 +29,17 @@ export const CodeOutline: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5.676 7.84A5.24 5.24 0 0 1 7.7 9.632a1.27 1.27 0 0 1 0 1.425 5.3 5.3 0 0 1-2.025 1.783m5.681 0h3.333"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M7.497 18.67h5c4.167 0 5.834-1.666 5.834-5.833v-5c0-4.166-1.667-5.833-5.834-5.833h-5c-4.166 0-5.833 1.667-5.833 5.833v5c0 4.167 1.667 5.834 5.833 5.834"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

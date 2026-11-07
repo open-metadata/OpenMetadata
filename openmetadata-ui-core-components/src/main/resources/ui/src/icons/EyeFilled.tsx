@@ -29,6 +29,7 @@ export const EyeFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,13 +37,11 @@ export const EyeFilled: FC<Props> = ({
       d="M17.635 9.238c.243.341.365.512.365.764 0 .253-.122.423-.365.764-1.093 1.533-3.884 4.836-7.635 4.836S3.458 12.3 2.365 10.766c-.243-.34-.365-.511-.365-.764 0-.252.122-.423.365-.764C3.458 7.706 6.249 4.402 10 4.402s6.542 3.304 7.635 4.836"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       className="tw:stroke-bg-primary"
       d="M12.402 10.006a2.4 2.4 0 1 0-4.8 0 2.4 2.4 0 0 0 4.8 0"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

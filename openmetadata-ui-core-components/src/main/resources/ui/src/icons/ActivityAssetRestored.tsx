@@ -29,18 +29,17 @@ export const ActivityAssetRestored: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2.441 12.636A8 8 0 0 0 17.995 10a8 8 0 0 0-7.999-8c-3.289 0-6.31 2.378-7.385 4.889"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10 5.557V10l2.666 1.778m-6.67-4.671s-3.274.497-3.771 0 0-3.771 0-3.771"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

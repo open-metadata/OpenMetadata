@@ -29,18 +29,17 @@ export const AiAutomation02Filled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M9.299 7.836v3.283a.2.2 0 0 0 .11.178l1.836.918"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M16.54 9.833q.058.453.058.923a7.3 7.3 0 1 1-6.36-7.24"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       clipRule="evenodd"
@@ -48,7 +47,6 @@ export const AiAutomation02Filled: FC<Props> = ({
       fill="currentColor"
       fillRule="evenodd"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

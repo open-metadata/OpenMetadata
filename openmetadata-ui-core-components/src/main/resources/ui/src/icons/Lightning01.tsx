@@ -29,13 +29,13 @@ export const Lightning01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10.715 2.677c.025-.198-.224-.306-.352-.153L3.675 10.55c-.28.335-.419.503-.421.644a.4.4 0 0 0 .148.317c.11.089.328.089.764.089h5.607a.2.2 0 0 1 .199.225l-.687 5.498c-.025.198.224.306.352.153l6.688-8.026c.28-.335.419-.503.42-.644a.4.4 0 0 0-.148-.317c-.11-.089-.328-.089-.764-.089h-5.607a.2.2 0 0 1-.198-.225z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

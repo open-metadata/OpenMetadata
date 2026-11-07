@@ -29,19 +29,15 @@ export const ExpandPanel: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M6.667 2.5h6.666A4.166 4.166 0 0 1 17.5 6.667v6.666a4.166 4.166 0 0 1-4.167 4.167H6.667A4.166 4.166 0 0 1 2.5 13.333V6.667A4.166 4.166 0 0 1 6.667 2.5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="M7.5 12.5 10 10 7.5 7.5m5-1.667v8.334"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M7.5 12.5 10 10 7.5 7.5m5-1.667v8.334" stroke="currentColor" />
   </svg>
 );
 ExpandPanel.displayName = 'ExpandPanel';

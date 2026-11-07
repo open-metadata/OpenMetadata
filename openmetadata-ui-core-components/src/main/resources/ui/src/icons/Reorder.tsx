@@ -29,57 +29,16 @@ export const Reorder: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle
-      cx={7}
-      cy={10}
-      fill="currentColor"
-      r={1}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={7}
-      cy={4}
-      fill="currentColor"
-      r={1}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={7}
-      cy={16}
-      fill="currentColor"
-      r={1}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={13}
-      cy={10}
-      fill="currentColor"
-      r={1}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={13}
-      cy={4}
-      fill="currentColor"
-      r={1}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <circle
-      cx={13}
-      cy={16}
-      fill="currentColor"
-      r={1}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={7} cy={10} fill="currentColor" r={1} stroke="currentColor" />
+    <circle cx={7} cy={4} fill="currentColor" r={1} stroke="currentColor" />
+    <circle cx={7} cy={16} fill="currentColor" r={1} stroke="currentColor" />
+    <circle cx={13} cy={10} fill="currentColor" r={1} stroke="currentColor" />
+    <circle cx={13} cy={4} fill="currentColor" r={1} stroke="currentColor" />
+    <circle cx={13} cy={16} fill="currentColor" r={1} stroke="currentColor" />
   </svg>
 );
 Reorder.displayName = 'Reorder';

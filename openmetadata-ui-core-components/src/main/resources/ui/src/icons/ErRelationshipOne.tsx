@@ -29,14 +29,11 @@ export const ErRelationshipOne: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M16.73 2v16M11.264 2v16M3.27 10.004h7.995"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M16.73 2v16M11.264 2v16M3.27 10.004h7.995" stroke="currentColor" />
   </svg>
 );
 ErRelationshipOne.displayName = 'ErRelationshipOne';

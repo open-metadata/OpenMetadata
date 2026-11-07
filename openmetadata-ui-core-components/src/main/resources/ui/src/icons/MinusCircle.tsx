@@ -29,11 +29,12 @@ export const MinusCircle: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.8}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.8} />
-    <path d="M14 10H6" stroke="currentColor" strokeWidth={1.8} />
+    <circle cx={10} cy={10} r={8} stroke="currentColor" />
+    <path d="M14 10H6" stroke="currentColor" />
   </svg>
 );
 MinusCircle.displayName = 'MinusCircle';

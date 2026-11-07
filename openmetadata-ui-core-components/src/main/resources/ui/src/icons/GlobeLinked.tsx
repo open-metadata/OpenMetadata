@@ -29,36 +29,23 @@ export const GlobeLinked: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle
-      cx={7.244}
-      cy={7.138}
-      r={5.138}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={7.244} cy={7.138} r={5.138} stroke="currentColor" />
     <ellipse
       cx={7.245}
       cy={7.138}
       rx={2.055}
       ry={5.138}
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path d="M2.62 7.137h9.248" stroke="currentColor" strokeWidth={1.3} />
-    <circle
-      cx={15.344}
-      cy={15.447}
-      r={2.553}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M2.62 7.137h9.248" stroke="currentColor" />
+    <circle cx={15.344} cy={15.447} r={2.553} stroke="currentColor" />
     <path
       d="M13.047 15.45h4.595m-2.335-2.2v4.46m-7.655-3.394v1.243c0 .561.462 1.012 1.022 1.003 1.006-.016 2.078-.022 1.923.02"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

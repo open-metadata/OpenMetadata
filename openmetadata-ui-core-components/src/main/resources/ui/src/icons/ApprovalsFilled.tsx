@@ -29,6 +29,7 @@ export const ApprovalsFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -39,13 +40,11 @@ export const ApprovalsFilled: FC<Props> = ({
     <path
       d="M6.8 6.8V4.56c0-.896 0-1.344.174-1.686a1.6 1.6 0 0 1 .7-.7C8.016 2 8.464 2 9.36 2h6.08c.896 0 1.344 0 1.686.174a1.6 1.6 0 0 1 .7.7c.174.342.174.79.174 1.686v6.08c0 .896 0 1.344-.174 1.686a1.6 1.6 0 0 1-.7.7c-.342.174-.79.174-1.686.174H13.2M6.8 6.8h3.84c.896 0 1.344 0 1.686.174a1.6 1.6 0 0 1 .7.7c.174.342.174.79.174 1.686v3.84M6.8 6.8H4.56c-.896 0-1.344 0-1.686.174a1.6 1.6 0 0 0-.7.7C2 8.016 2 8.464 2 9.36v6.08c0 .896 0 1.344.174 1.686a1.6 1.6 0 0 0 .7.7c.342.174.79.174 1.686.174h6.08c.896 0 1.344 0 1.686-.174a1.6 1.6 0 0 0 .7-.7c.174-.342.174-.79.174-1.686V13.2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       className="tw:stroke-bg-primary"
       d="m5.2 12.398 1.6 1.6 3.6-3.6"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

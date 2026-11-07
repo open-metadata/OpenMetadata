@@ -29,10 +29,11 @@ export const BarChart03: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M4 18V2m12 16v-4m-6 4V8" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M4 18V2m12 16v-4m-6 4V8" stroke="currentColor" />
   </svg>
 );
 BarChart03.displayName = 'BarChart03';

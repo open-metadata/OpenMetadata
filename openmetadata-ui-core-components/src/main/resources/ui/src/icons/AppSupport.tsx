@@ -29,18 +29,14 @@ export const AppSupport: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0" stroke="currentColor" />
     <path
       d="M14.444 10a4.445 4.445 0 1 1-8.89-.001 4.445 4.445 0 0 1 8.89 0M10 5.556V2m0 12.444V18m4.444-8H18M5.556 10H2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const AiAnalyticsFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M9.61 3.43H6.327c-1.314 0-1.97 0-2.472.255-.442.225-.8.584-1.025 1.025-.256.502-.256 1.159-.256 2.472v6.567c0 1.313 0 1.97.256 2.472.225.441.583.8 1.025 1.025.501.255 1.158.255 2.472.255h6.566c1.314 0 1.97 0 2.472-.255.442-.225.8-.584 1.025-1.025.256-.502.256-1.159.256-2.472v-3.283m-3.909.781v3.127m-6.254-4.69v4.69M9.61 6.557v7.817"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       clipRule="evenodd"
@@ -43,7 +43,6 @@ export const AiAnalyticsFilled: FC<Props> = ({
       fill="currentColor"
       fillRule="evenodd"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

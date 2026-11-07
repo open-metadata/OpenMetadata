@@ -29,18 +29,17 @@ export const AppRdfInferenceMaterialization: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M16.4 13.2V6.8c0-2.263 0-3.394-.703-4.097S13.862 2 11.6 2H8.4c-2.263 0-3.395 0-4.097.703S3.6 4.537 3.6 6.8v6.4c0 2.263 0 3.394.703 4.097C5.005 18 6.137 18 8.4 18h3.2c2.262 0 3.394 0 4.097-.703s.703-1.834.703-4.097"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M12.8 2H7.2c0 1.131 0 1.697.35 2.049.352.351.918.351 2.05.351h.8c1.13 0 1.696 0 2.048-.351.351-.352.351-.918.351-2.049m-6 10.4h3.2m-3.2-3.2h6.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

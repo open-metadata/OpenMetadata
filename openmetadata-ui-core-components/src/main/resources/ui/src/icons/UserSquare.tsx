@@ -29,22 +29,14 @@ export const UserSquare: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <rect
-      height={16}
-      rx={2}
-      stroke="currentColor"
-      strokeWidth={1.3}
-      width={16}
-      x={2}
-      y={2}
-    />
+    <rect height={16} rx={2} stroke="currentColor" width={16} x={2} y={2} />
     <path
       d="M13.977 14.476a3.74 3.74 0 0 0-3.482-3.447L10 10.996a23 23 0 0 0-.497.019c-1.84.09-3.338 1.624-3.48 3.46m5.965-6.959a1.988 1.988 0 1 1-3.976 0 1.988 1.988 0 0 1 3.976 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

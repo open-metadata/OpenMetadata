@@ -29,13 +29,13 @@ export const LineChartUp01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 18H3.422c-.498 0-.747 0-.937-.097a.9.9 0 0 1-.388-.388C2 17.325 2 17.075 2 16.578V2m15.111 4.444-3.483 3.718c-.132.141-.198.212-.278.248a.44.44 0 0 1-.225.039c-.087-.008-.173-.053-.344-.142L9.886 8.804c-.172-.09-.257-.134-.345-.141a.45.45 0 0 0-.224.038c-.08.036-.146.107-.278.248l-3.483 3.718"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

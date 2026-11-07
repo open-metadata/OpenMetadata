@@ -29,13 +29,13 @@ export const Sparkle: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 2.5V5m0 10v2.5M2.5 10H5m10 0h2.5M4.667 4.667l1.75 1.75m7.166 7.166 1.75 1.75m-10.666 0 1.75-1.75m7.166-7.166 1.75-1.75M12.5 10a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

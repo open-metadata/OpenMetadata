@@ -29,13 +29,13 @@ export const TextEditorUnlink: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m2 2 16 16M7.6 14H6a4 4 0 0 1 0-8m11.2 6.4A4 4 0 0 0 14 6h-2.8m2.8 8h-1.6m-5.2-4H10"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

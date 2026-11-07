@@ -29,14 +29,11 @@ export const DashboardLayout: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g
-      clipPath="url(#a)"
-      fill="currentColor"
-      stroke="currentColor"
-      strokeWidth={1.3}>
+    <g clipPath="url(#a)" fill="currentColor" stroke="currentColor">
       <rect height={9.595} rx={1} width={6.807} x={2} y={2.129} />
       <rect
         height={9.595}

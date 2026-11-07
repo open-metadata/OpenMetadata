@@ -29,13 +29,13 @@ export const SearchRefraction: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m18 18-3.867-3.867M9.111 4.667a4.444 4.444 0 0 1 4.445 4.444m2.666 0A7.111 7.111 0 1 1 2 9.111a7.111 7.111 0 0 1 14.222 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

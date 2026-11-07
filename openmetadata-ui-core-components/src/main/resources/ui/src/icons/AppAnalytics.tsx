@@ -29,18 +29,17 @@ export const AppAnalytics: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 21 20"
     width={size}
     {...props}>
     <path
       d="M6.944 15.333a1.778 1.778 0 1 0 0-3.556 1.778 1.778 0 0 0 0 3.556m7.111-1.777a1.778 1.778 0 1 0 0-3.556 1.778 1.778 0 0 0 0 3.556m-6.221-2.222 1.131-3.111m1.98-.446 1.778 2.286M14.648 10l1.482-4.445m.593.001a1.778 1.778 0 1 0 0-3.556 1.778 1.778 0 0 0 0 3.556M9.612 8.224a1.778 1.778 0 1 0 0-3.556 1.778 1.778 0 0 0 0 3.556"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M18.5 18H8.722c-2.933 0-4.4 0-5.31-.911-.912-.912-.912-2.378-.912-5.311V2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

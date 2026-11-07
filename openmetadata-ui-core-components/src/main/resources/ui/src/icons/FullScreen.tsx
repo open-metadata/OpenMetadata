@@ -29,18 +29,17 @@ export const FullScreen: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2 10c0-3.771 0-5.657 1.172-6.828S6.229 2 10 2s5.657 0 6.828 1.172S18 6.229 18 10s0 5.657-1.172 6.828S13.771 18 10 18s-5.657 0-6.828-1.172S2 13.771 2 10Z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M5.625 5.65c-.484.485-.403 2.541-.403 2.541m.403-2.54c.484-.484 2.54-.404 2.54-.404m-2.54.404 3.383 3.382m5.346 5.336c-.484.484-2.54.403-2.54.403m2.54-.403c.484-.484.403-2.54.403-2.54m-.403 2.54-3.38-3.38"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

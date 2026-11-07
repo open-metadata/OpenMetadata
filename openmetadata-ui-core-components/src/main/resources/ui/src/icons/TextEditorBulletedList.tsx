@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const TextEditorBulletedList: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,13 +29,13 @@ export const TextEditorBulletedList: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M7.637 4.246H17.5M7.637 10H17.5m-9.863 5.75H17.5M2.808 4.245h-.103m.206 0a.205.205 0 1 1-.411 0 .205.205 0 0 1 .411 0m-.103 5.753h-.103m.206 0a.205.205 0 1 1-.41 0 .205.205 0 0 1 .41 0m-.103 5.754h-.103m.206 0a.205.205 0 1 1-.41 0 .205.205 0 0 1 .41 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

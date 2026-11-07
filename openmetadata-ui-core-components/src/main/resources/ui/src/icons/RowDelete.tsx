@@ -29,13 +29,13 @@ export const RowDelete: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.263 17.007H16a2 2 0 0 0 2-2V4.988a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v10.019a2 2 0 0 0 2 2h.44m13.556-7.038-15.555.026m4.805 7.017h5.507"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

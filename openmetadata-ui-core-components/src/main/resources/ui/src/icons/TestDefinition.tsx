@@ -29,13 +29,13 @@ export const TestDefinition: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m14.332 15.251.921-.921a2 2 0 0 0 0-2.829L8.498 4.746a2 2 0 0 0-2.828 0l-.922.922a2 2 0 0 0 0 2.828l6.755 6.755a2 2 0 0 0 2.829 0M7.083 7.082l1.333 1.333m1.167-3.833 1.333 1.333m-6.174 3.76 1.334 1.333"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

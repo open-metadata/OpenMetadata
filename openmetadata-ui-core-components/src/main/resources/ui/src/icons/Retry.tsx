@@ -29,14 +29,14 @@ export const Retry: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle cx={10} cy={10} r={8} stroke="currentColor" strokeWidth={1.3} />
+    <circle cx={10} cy={10} r={8} stroke="currentColor" />
     <path
       d="M14.374 10.263A4.382 4.382 0 0 1 6.21 12.2l-.168 2.24m-.415-4.703a4.382 4.382 0 0 1 8.158-1.949l.163-2.096"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

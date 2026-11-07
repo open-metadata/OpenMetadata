@@ -29,10 +29,11 @@ export const PlatformLineage: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <g stroke="currentColor" strokeWidth={1.3} transform="translate(1.35 2)">
+    <g stroke="currentColor" transform="translate(1.35 2)">
       <path d="M10.833 8H7.197m3.636 5.598a1.38 1.38 0 0 1-1.382-1.381V3.78c0-.763.618-1.382 1.381-1.382" />
       <rect height={6.4} rx={3.2} width={6.4} x={0.65} y={4.801} />
       <path d="M16 2a1.35 1.35 0 1 1-2.7 0A1.35 1.35 0 0 1 16 2Zm0 5.602a1.35 1.35 0 1 1-2.7 0 1.35 1.35 0 0 1 2.7 0ZM16 14a1.35 1.35 0 1 1-2.7 0 1.35 1.35 0 0 1 2.7 0Z" />

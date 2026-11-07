@@ -29,14 +29,11 @@ export const ArrowNarrowRight: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M3.333 10h13.333m0 0-5-5m5 5-5 5"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M3.333 10h13.333m0 0-5-5m5 5-5 5" stroke="currentColor" />
   </svg>
 );
 ArrowNarrowRight.displayName = 'ArrowNarrowRight';

@@ -29,14 +29,11 @@ export const Activity: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M18.333 10H15l-2.5 7.5-5-15L5 10H1.667"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M18.333 10H15l-2.5 7.5-5-15L5 10H1.667" stroke="currentColor" />
   </svg>
 );
 Activity.displayName = 'Activity';

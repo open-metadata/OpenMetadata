@@ -29,13 +29,13 @@ export const UploadCloud01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M3.333 13.535a3.75 3.75 0 0 1 1.734-6.852 5.002 5.002 0 0 1 9.867 0 3.75 3.75 0 0 1 1.733 6.852m-10-.202L10 10m0 0 3.333 3.333M10 10v7.5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

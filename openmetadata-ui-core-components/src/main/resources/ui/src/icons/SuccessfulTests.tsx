@@ -29,15 +29,12 @@ export const SuccessfulTests: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
-    <path d="m6.8 10.402 2 2 4.4-4.8" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0" stroke="currentColor" />
+    <path d="m6.8 10.402 2 2 4.4-4.8" stroke="currentColor" />
   </svg>
 );
 SuccessfulTests.displayName = 'SuccessfulTests';

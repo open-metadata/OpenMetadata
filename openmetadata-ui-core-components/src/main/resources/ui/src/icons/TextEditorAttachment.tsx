@@ -29,13 +29,13 @@ export const TextEditorAttachment: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m6 12.224 8.245-8.245a2.2 2.2 0 0 1 3.11 3.112l-8.917 8.917a3.771 3.771 0 1 1-5.333-5.333l7.784-7.784"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

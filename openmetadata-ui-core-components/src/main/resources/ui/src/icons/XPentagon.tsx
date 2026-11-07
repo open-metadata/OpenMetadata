@@ -29,13 +29,13 @@ export const XPentagon: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M3.477 11.363V4a2 2 0 0 1 2-2h9.048a2 2 0 0 1 2 2v7.12a2 2 0 0 1-.589 1.418l-4.204 4.19a2 2 0 0 1-2.676.133l-4.843-3.947a2 2 0 0 1-.736-1.55m8.509-5.118-1.985 1.985m0 0-1.993 1.993M10 8.231l1.994 1.993M10 8.231 8.016 6.246"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

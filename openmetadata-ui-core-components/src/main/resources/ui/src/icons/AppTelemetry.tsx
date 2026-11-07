@@ -29,13 +29,13 @@ export const AppTelemetry: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m15.601 17.997-4-7.2-4 7.2m5.534-14.399L6.02 7.802a1.704 1.704 0 0 0-.601 2.298l.821 1.456a1.62 1.62 0 0 0 2.244.616L15.6 7.967m-2.223-4.003a1.31 1.31 0 0 1 2.267-1.309l2.181 3.78a1.31 1.31 0 0 1-2.267 1.31zM2 11.81l.59 1.095m0 0 .591 1.094m-.59-1.094L5.6 11.199"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

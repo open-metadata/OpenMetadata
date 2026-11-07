@@ -26,6 +26,7 @@ export const AppMetadataExplorerColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,14 +41,12 @@ export const AppMetadataExplorerColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M15.077 21.595c-2.672 0-4.839-.812-4.839-1.815v-8.468m9.678 0v4.234m.706 4.677.134-1.138c.07-.605.106-.908-.06-1.074s-.469-.13-1.075-.06l-1.137.134m2.175-.037-3.384 3.384"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

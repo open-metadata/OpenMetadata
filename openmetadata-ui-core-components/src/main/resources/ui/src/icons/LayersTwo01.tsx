@@ -29,13 +29,13 @@ export const LayersTwo01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m1.667 12.083 8.035 4.018c.109.055.164.083.222.093q.076.015.153 0a.8.8 0 0 0 .222-.092l8.034-4.019M1.666 7.916l8.035-4.017a.8.8 0 0 1 .222-.092.4.4 0 0 1 .153 0 1 1 0 0 1 .222.093l8.035 4.017-8.035 4.018a1 1 0 0 1-.222.093.4.4 0 0 1-.153 0 .8.8 0 0 1-.222-.092z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

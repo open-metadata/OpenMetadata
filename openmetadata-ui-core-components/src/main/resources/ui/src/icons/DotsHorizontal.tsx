@@ -29,13 +29,13 @@ export const DotsHorizontal: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 10.833a.833.833 0 1 0 0-1.667.833.833 0 0 0 0 1.667m5.833 0a.833.833 0 1 0 0-1.667.833.833 0 0 0 0 1.667m-11.666 0a.833.833 0 1 0 0-1.667.833.833 0 0 0 0 1.667"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,23 +29,21 @@ export const Database: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M16.4 4.4c0 1.325-2.866 2.4-6.4 2.4S3.6 5.725 3.6 4.4 6.465 2 10 2c3.534 0 6.4 1.075 6.4 2.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M3.6 4.398v11.2c0 1.328 2.864 2.4 6.4 2.4s6.4-1.072 6.4-2.4v-11.2"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M3.6 10c0 1.328 2.864 2.4 6.4 2.4s6.4-1.072 6.4-2.4"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

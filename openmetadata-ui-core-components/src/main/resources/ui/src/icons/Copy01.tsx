@@ -29,6 +29,7 @@ export const Copy01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,16 +37,11 @@ export const Copy01: FC<Props> = ({
       height={13.333}
       rx={2.5}
       stroke="currentColor"
-      strokeWidth={1.3}
       width={13.333}
       x={2}
       y={4.668}
     />
-    <path
-      d="M7.332 2.001h7.666a3 3 0 0 1 3 3v7.667"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M7.332 2.001h7.666a3 3 0 0 1 3 3v7.667" stroke="currentColor" />
   </svg>
 );
 Copy01.displayName = 'Copy01';

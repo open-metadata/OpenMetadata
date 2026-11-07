@@ -29,13 +29,13 @@ export const Loading01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 1.875v2.083M10 15v3.333M4.792 10H1.875m15.833 0h-1.25m-1.077 5.381-.589-.589m.762-10.278-1.179 1.178M4.102 15.898l2.356-2.356M4.274 4.341l1.768 1.767"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

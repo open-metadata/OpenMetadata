@@ -29,13 +29,13 @@ export const AiStudioFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 8.977v5.369a3 3 0 0 1-3 3H8.222m-3.222 0h.556M2 11.37V6a3 3 0 0 1 3-3h5.889M14 3h-.444"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       clipRule="evenodd"
@@ -43,7 +43,6 @@ export const AiStudioFilled: FC<Props> = ({
       fill="currentColor"
       fillRule="evenodd"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

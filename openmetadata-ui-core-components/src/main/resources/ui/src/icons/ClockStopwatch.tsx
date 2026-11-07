@@ -29,13 +29,13 @@ export const ClockStopwatch: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 8v3.2l2 1.2m-2-8A6.8 6.8 0 1 0 10 18a6.8 6.8 0 0 0 0-13.6m0 0V2M8.4 2h3.2m5.062 2.874-1.2-1.2.6.6m-12.726.6 1.2-1.2-.6.6"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const RowCount: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.778 2.5H4.222C2.995 2.5 2 3.433 2 4.583v10.834c0 1.15.995 2.083 2.222 2.083h11.556c1.227 0 2.222-.933 2.222-2.083V4.583c0-1.15-.995-2.083-2.222-2.083M2 7.098h16m-16 5.57h16"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

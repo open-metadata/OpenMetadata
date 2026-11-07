@@ -29,6 +29,7 @@ export const MemoriesFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -39,7 +40,6 @@ export const MemoriesFilled: FC<Props> = ({
     <path
       d="m18.143 6.778-.928.889-.929-.89m1.042.667q.026-.218.026-.444c0-2.21-1.87-4-4.177-4S9 4.79 9 7s1.87 4 4.177 4a4.24 4.24 0 0 0 3.249-1.486m-3.249-4.736V7l1.392.889"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

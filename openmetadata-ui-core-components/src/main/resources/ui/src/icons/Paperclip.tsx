@@ -29,13 +29,13 @@ export const Paperclip: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m10 5.196 1.201-1.201a3.397 3.397 0 1 1 4.804 4.804l-7.206 7.206a3.397 3.397 0 0 1-4.804-4.804l2.702-2.702A2.123 2.123 0 0 1 9.7 11.5l-1.501 1.502"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

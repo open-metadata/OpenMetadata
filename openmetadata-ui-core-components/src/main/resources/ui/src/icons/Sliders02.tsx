@@ -29,13 +29,13 @@ export const Sliders02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M4.167 17.5v-5m0 0a1.667 1.667 0 1 0 0-3.333 1.667 1.667 0 0 0 0 3.333m0-6.667V2.5M10 17.5v-5m0-6.667V2.5m0 3.333a1.667 1.667 0 1 0 0 3.333 1.667 1.667 0 0 0 0-3.333M15.833 17.5v-3.333m0 0a1.667 1.667 0 1 0 0-3.333 1.667 1.667 0 0 0 0 3.333m0-6.667v-5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

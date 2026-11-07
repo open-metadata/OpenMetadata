@@ -29,6 +29,7 @@ export const ArticleFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,13 +37,11 @@ export const ArticleFilled: FC<Props> = ({
       d="M3 5a3 3 0 0 1 3-3h5.259a5 5 0 0 1 5 5v8a3 3 0 0 1-3 3H6a3 3 0 0 1-3-3z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       className="tw:stroke-bg-primary"
       d="M6.127 12.617h7.022M6.16 9.879h4.917M6.16 7.21h1.79M11.338 2v2.69a2 2 0 0 0 2 2h2.69"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

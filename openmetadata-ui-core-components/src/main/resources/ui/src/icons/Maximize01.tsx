@@ -29,13 +29,13 @@ export const Maximize01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M11.667 8.333 17.5 2.5m0 0h-5m5 0v5m-9.167 4.167L2.5 17.5m0 0h5m-5 0v-5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

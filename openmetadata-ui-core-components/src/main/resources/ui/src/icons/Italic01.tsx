@@ -29,13 +29,13 @@ export const Italic01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.833 3.333h-7.5m3.333 13.333H4.167M12.5 3.333l-5 13.334"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

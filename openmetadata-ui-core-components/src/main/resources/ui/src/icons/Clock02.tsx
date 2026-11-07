@@ -29,14 +29,14 @@ export const Clock02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M13.2 10H10V5.2" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M13.2 10H10V5.2" stroke="currentColor" />
     <path
       d="M2 10a8 8 0 1 0 8-8M4.524 3.736a9 9 0 0 0-.789.789M7.602 2a7.6 7.6 0 0 0-1.131.437M2.45 6.444A7.6 7.6 0 0 0 2 7.6"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

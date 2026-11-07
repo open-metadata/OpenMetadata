@@ -29,13 +29,13 @@ export const CornerDownRight: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2 2v1.4c0 3.36 0 5.04.654 6.324a6 6 0 0 0 2.622 2.622C6.56 13 8.24 13 11.6 13H18m-5 5 5-5-5-5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const BarChart: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M18 18H8.222c-2.933 0-4.4 0-5.31-.911C2 16.177 2 14.71 2 11.778V2m3.549 12.237v-3.221m6.349 3.221V9.94m-3.175 4.296V7.793m6.349 6.444V4.992"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,13 +29,13 @@ export const Upload01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M17.5 12.5v1c0 1.4 0 2.1-.272 2.635a2.5 2.5 0 0 1-1.092 1.093c-.536.272-1.236.272-2.636.272h-7c-1.4 0-2.1 0-2.635-.272a2.5 2.5 0 0 1-1.092-1.092C2.5 15.6 2.5 14.9 2.5 13.5v-1m11.667-5.833L10 2.5m0 0L5.833 6.667M10 2.5v10"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

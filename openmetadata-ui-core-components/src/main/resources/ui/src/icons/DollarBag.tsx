@@ -29,18 +29,17 @@ export const DollarBag: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 17.999c5.544 0 7.672-1.64 7.112-5.6C16.716 9.6 13.848 6.8 12 6H8c-1.848.8-4.716 3.6-5.113 6.4-.56 3.958 1.569 5.599 7.113 5.599M11.6 6c.8-.4 1.6-1.599 1.6-2.799C13.2 2.538 12.662 2 12 2H8.002c-.663 0-1.201.538-1.201 1.201 0 1.2.8 2.399 1.6 2.799"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10 14.4h.4a1.2 1.2 0 0 0 0-2.4h-.8a1.2 1.2 0 1 1 0-2.4h.4m0 4.8H8.4m1.6 0v.8m0-5.6h1.6m-1.6 0v-.8"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

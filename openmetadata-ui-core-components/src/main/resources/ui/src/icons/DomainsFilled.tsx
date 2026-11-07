@@ -29,6 +29,7 @@ export const DomainsFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,13 +37,11 @@ export const DomainsFilled: FC<Props> = ({
       d="M10 18a8 8 0 1 0 0-16 8 8 0 0 0 0 16Z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       className="tw:stroke-bg-primary"
       d="M13.2 10c0 4.418-1.432 8-3.2 8-1.767 0-3.2-3.582-3.2-8S8.234 2 10 2s3.2 3.582 3.2 8ZM2.8 10h14.4"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

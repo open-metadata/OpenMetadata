@@ -29,13 +29,13 @@ export const RowInsertBottom: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.022 15.373h.61a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H4.37a2 2 0 0 0-2 2v9.373a2 2 0 0 0 2 2h.328M17.629 8.66 2.79 8.685M10.006 18v-5.254m-2.631 2.633h5.254"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

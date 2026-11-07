@@ -29,13 +29,13 @@ export const ZoomOut: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m18 18-3.867-3.867M6.444 9.111h5.334m4.444 0A7.111 7.111 0 1 1 2 9.111a7.111 7.111 0 0 1 14.222 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

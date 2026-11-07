@@ -29,13 +29,13 @@ export const LayoutRows: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.67}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M5.417 3.75h9.167a1.667 1.667 0 0 1 1.667 1.667v1.667a1.667 1.667 0 0 1-1.667 1.667H5.417A1.667 1.667 0 0 1 3.75 7.084V5.417A1.667 1.667 0 0 1 5.417 3.75m0 7.5h9.167a1.667 1.667 0 0 1 1.667 1.667v1.667a1.667 1.667 0 0 1-1.667 1.667H5.417a1.667 1.667 0 0 1-1.667-1.667v-1.667a1.667 1.667 0 0 1 1.667-1.667"
       stroke="currentColor"
-      strokeWidth={1.67}
     />
   </svg>
 );

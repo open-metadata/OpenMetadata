@@ -29,13 +29,13 @@ export const Spreadsheet: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2 7.895h16M2.422 12.95H17.58M7.053 17.579V7.895m5.897 9.688V7.898M2 10c0-3.771 0-5.657 1.172-6.828S6.229 2 10 2s5.657 0 6.828 1.172S18 6.229 18 10s0 5.657-1.172 6.828S13.771 18 10 18s-5.657 0-6.828-1.172S2 13.771 2 10"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

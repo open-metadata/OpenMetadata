@@ -29,13 +29,13 @@ export const VariantType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m4.437 12.583-.424-5.798m3.202 8.133 6.603-1.167m-7.196-1.054L11.716 7m-4.982 5.785a2.266 2.266 0 1 1-2.762 3.593 2.266 2.266 0 0 1 2.762-3.593ZM5.555 3.932A1.983 1.983 0 1 1 2.41 6.346a1.983 1.983 0 0 1 3.145-2.414Zm8.69.009a1.983 1.983 0 1 1-2.417 3.144 1.983 1.983 0 0 1 2.417-3.144Zm2.832 7.87a1.983 1.983 0 1 1-2.12 3.351 1.983 1.983 0 0 1 2.12-3.35Z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

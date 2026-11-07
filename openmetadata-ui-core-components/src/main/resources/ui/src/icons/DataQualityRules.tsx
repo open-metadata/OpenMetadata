@@ -29,24 +29,19 @@ export const DataQualityRules: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M8.182 16.334H3.593c-.88 0-1.593-.753-1.593-1.68V4.57c0-.928.713-1.68 1.593-1.68h11.153c.88 0 1.593.752 1.593 1.68v2.16"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M4.51 6.927 5.764 8.18l2.51-2.51M4.51 12.305l1.254 1.254 2.51-2.509m2.688-4.122h2.868m3.578 3.076h-5.923a.59.59 0 0 0-.592.592v1.585a5.2 5.2 0 0 0 3.553 4.93A5.2 5.2 0 0 0 18 12.181v-1.585a.59.59 0 0 0-.593-.592"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="m13.31 12.95.845.804 1.969-1.875"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="m13.31 12.95.845.804 1.969-1.875" stroke="currentColor" />
   </svg>
 );
 DataQualityRules.displayName = 'DataQualityRules';

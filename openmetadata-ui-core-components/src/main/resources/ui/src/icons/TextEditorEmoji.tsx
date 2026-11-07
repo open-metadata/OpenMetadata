@@ -18,7 +18,7 @@ interface Props extends SVGProps<SVGSVGElement> {
 }
 
 export const TextEditorEmoji: FC<Props> = ({
-  size = 24,
+  size = 20,
   color = 'currentColor',
   ...props
 }) => (
@@ -29,18 +29,17 @@ export const TextEditorEmoji: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M6.25 8.125a1.125 1.125 0 0 1 2.25 0m3 0a1.125 1.125 0 0 1 2.25 0M11.501 11.5c.722 0 1.083 0 1.3.368.218.367.09.602-.167 1.07a3 3 0 0 1-5.266 0c-.257-.468-.385-.703-.167-1.07s.578-.368 1.3-.368z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M10 17.5a7.5 7.5 0 1 0 0-15 7.5 7.5 0 0 0 0 15"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

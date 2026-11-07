@@ -26,6 +26,7 @@ export const AppAutopilotColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -35,14 +36,12 @@ export const AppAutopilotColored: FC<Props> = ({
       stroke="#FAFAFA"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M21.85 15.35V13.4c0-1.838 0-2.758-.571-3.329s-1.49-.571-3.33-.571H13.4c-1.838 0-2.758 0-3.329.571s-.571 1.49-.571 3.33v3.25c0 1.838 0 2.757.571 3.328.571.572 1.49.572 3.329.572h1.3m-5.2-8.453h12.35"
       stroke="#FAFAFA"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

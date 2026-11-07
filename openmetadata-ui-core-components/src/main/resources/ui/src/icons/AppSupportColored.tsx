@@ -26,6 +26,7 @@ export const AppSupportColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -35,14 +36,12 @@ export const AppSupportColored: FC<Props> = ({
       stroke="#FAFAFA"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M19.61 15.998a3.611 3.611 0 1 1-7.221 0 3.611 3.611 0 0 1 7.222 0M16 12.389V9.5m0 10.111V22.5m3.611-6.5H22.5m-10.111 0H9.5"
       stroke="#FAFAFA"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

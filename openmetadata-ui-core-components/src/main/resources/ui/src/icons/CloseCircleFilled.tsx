@@ -29,6 +29,7 @@ export const CloseCircleFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,13 +37,8 @@ export const CloseCircleFilled: FC<Props> = ({
       d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="m12.401 12.402-4.8-4.8m.001 4.8 4.8-4.8"
-      stroke="#fff"
-      strokeWidth={1.3}
-    />
+    <path d="m12.401 12.402-4.8-4.8m.001 4.8 4.8-4.8" stroke="#fff" />
   </svg>
 );
 CloseCircleFilled.displayName = 'CloseCircleFilled';

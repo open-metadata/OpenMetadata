@@ -29,10 +29,11 @@ export const ChevronUp: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="m15 12.5-5-5-5 5" stroke="currentColor" strokeWidth={1.3} />
+    <path d="m15 12.5-5-5-5 5" stroke="currentColor" />
   </svg>
 );
 ChevronUp.displayName = 'ChevronUp';

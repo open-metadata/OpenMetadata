@@ -29,6 +29,7 @@ export const CheckCircleFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,12 +37,10 @@ export const CheckCircleFilled: FC<Props> = ({
       d="M18 10a8 8 0 1 0-16 0 8 8 0 0 0 16 0"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m6.8 10.402 1.646 1.645c.124.124.186.185.256.207a.3.3 0 0 0 .19-.004c.07-.025.13-.09.248-.218l4.06-4.43"
       stroke="#fff"
-      strokeWidth={1.3}
     />
   </svg>
 );

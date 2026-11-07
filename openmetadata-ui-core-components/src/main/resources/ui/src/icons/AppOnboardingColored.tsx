@@ -26,6 +26,7 @@ export const AppOnboardingColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -35,14 +36,12 @@ export const AppOnboardingColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M12.1 16.813v2.591c.02.46.273.875.67 1.098a15 15 0 0 0 .529.265 6.42 6.42 0 0 0 5.402 0c.103-.049.21-.103.425-.212a1.32 1.32 0 0 0 .772-1.151c.002-.028.002-.057.002-.117v-2.474m2.6-2.273v4.224"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

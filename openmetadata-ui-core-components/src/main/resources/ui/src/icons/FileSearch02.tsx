@@ -29,13 +29,13 @@ export const FileSearch02: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10.8 9.2H6m1.6 3.2H6M12.4 6H6m9.6 2.8V5.84c0-1.344 0-2.016-.26-2.53a2.4 2.4 0 0 0-1.05-1.048C13.777 2 13.105 2 11.76 2H6.64c-1.343 0-2.015 0-2.529.262A2.4 2.4 0 0 0 3.062 3.31c-.261.514-.261 1.186-.261 2.53v8.32c0 1.344 0 2.016.261 2.53a2.4 2.4 0 0 0 1.05 1.048C4.624 18 5.296 18 6.64 18H8.8m8.4 0L16 16.8m.8-2a2.8 2.8 0 1 1-5.6 0 2.8 2.8 0 0 1 5.6 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

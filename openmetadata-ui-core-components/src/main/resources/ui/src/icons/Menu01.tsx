@@ -29,14 +29,11 @@ export const Menu01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M2.5 10h15m-15-5h15m-15 10h15"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M2.5 10h15m-15-5h15m-15 10h15" stroke="currentColor" />
   </svg>
 );
 Menu01.displayName = 'Menu01';

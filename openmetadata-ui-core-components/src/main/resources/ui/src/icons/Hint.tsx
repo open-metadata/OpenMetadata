@@ -29,20 +29,14 @@ export const Hint: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle
-      cx={9.998}
-      cy={9.908}
-      r={4.998}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={9.998} cy={9.908} r={4.998} stroke="currentColor" />
     <path
       d="M8.27 14.906v1.364a1.73 1.73 0 0 0 3.46 0v-1.364M2.923 9.91H2.09m2.9-5.014-.624-.621m10.646.621.625-.621m2.274 5.637h-.833M10 2v.833"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

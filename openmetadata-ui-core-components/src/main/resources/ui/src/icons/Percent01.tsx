@@ -29,6 +29,7 @@ export const Percent01: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -39,7 +40,6 @@ export const Percent01: FC<Props> = ({
     <path
       d="M16.966 3.034 3.034 16.966M4.808 3.654a1.154 1.154 0 1 1-2.308 0 1.154 1.154 0 0 1 2.308 0M17.5 16.346a1.154 1.154 0 1 1-2.308 0 1.154 1.154 0 0 1 2.308 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

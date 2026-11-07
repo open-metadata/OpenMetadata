@@ -29,13 +29,13 @@ export const AppSearchIndexing: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2 7.477h3.368M2 11.688h3.368M2 3.266h13.474m.03 10.977 2.497 2.496m-1.264-5.474a4.21 4.21 0 1 0-8.42 0 4.21 4.21 0 0 0 8.42 0"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

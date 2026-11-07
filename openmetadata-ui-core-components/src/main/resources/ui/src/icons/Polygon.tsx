@@ -29,18 +29,17 @@ export const Polygon: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M12.975 7.132c0 .616-1.332 1.116-2.976 1.116s-2.976-.5-2.976-1.116S8.356 6.016 10 6.016s2.976.5 2.976 1.116m-.001 2.602c0 .617-1.332 1.116-2.976 1.116s-2.976-.5-2.976-1.116"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M12.975 7.133v5.208c0 .616-1.332 1.116-2.976 1.116s-2.976-.5-2.976-1.117V7.134m1.489 1.112v.744m0 1.862v.743"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <circle cx={3.012} cy={10.001} fill="currentColor" r={1.012} />
     <circle cx={16.987} cy={10.001} fill="currentColor" r={1.012} />

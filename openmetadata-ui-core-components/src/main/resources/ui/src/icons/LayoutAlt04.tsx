@@ -29,13 +29,13 @@ export const LayoutAlt04: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M10 10h7.5M10 2.5v15m-3.5-15h7c1.4 0 2.1 0 2.635.273a2.5 2.5 0 0 1 1.093 1.093C17.5 4.4 17.5 5.1 17.5 6.5v7c0 1.4 0 2.1-.272 2.635a2.5 2.5 0 0 1-1.092 1.093c-.536.272-1.236.272-2.636.272h-7c-1.4 0-2.1 0-2.635-.272a2.5 2.5 0 0 1-1.092-1.092C2.5 15.6 2.5 14.9 2.5 13.5v-7c0-1.4 0-2.1.273-2.635a2.5 2.5 0 0 1 1.093-1.092C4.4 2.5 5.1 2.5 6.5 2.5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

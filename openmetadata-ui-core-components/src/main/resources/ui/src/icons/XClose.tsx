@@ -29,10 +29,11 @@ export const XClose: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="M15 5 5 15M5 5l10 10" stroke="currentColor" strokeWidth={1.3} />
+    <path d="M15 5 5 15M5 5l10 10" stroke="currentColor" />
   </svg>
 );
 XClose.displayName = 'XClose';

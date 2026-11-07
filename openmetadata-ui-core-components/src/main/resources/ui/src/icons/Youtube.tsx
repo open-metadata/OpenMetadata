@@ -29,6 +29,7 @@ export const Youtube: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,7 +37,6 @@ export const Youtube: FC<Props> = ({
       height={11.606}
       rx={3}
       stroke="currentColor"
-      strokeWidth={1.3}
       width={16}
       x={2}
       y={4.195}
@@ -44,7 +44,6 @@ export const Youtube: FC<Props> = ({
     <path
       d="M8.965 8.127v3.738a.273.273 0 0 0 .414.232l2.997-1.87a.27.27 0 0 0 .095-.363.3.3 0 0 0-.095-.1L9.38 7.895a.273.273 0 0 0-.414.232Z"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

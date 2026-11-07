@@ -29,20 +29,14 @@ export const TableAdd: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <circle
-      cx={13.859}
-      cy={13.806}
-      r={4.142}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={13.859} cy={13.806} r={4.142} stroke="currentColor" />
     <path
       d="M13.857 12.36v1.445m0 0v1.449m0-1.45h1.45m-1.45 0h-1.445M2 6.715h12.653M2.332 10.71h6.591m-2.927 3.663V6.715m4.66 1.969v-1.97m3.997 1.666c0-2.981 0-4.472-.927-5.399-.926-.926-2.418-.926-5.4-.926s-4.473 0-5.4.926C2 3.908 2 5.4 2 8.381s0 4.473.926 5.4c.927.926 2.418.926 5.4.926"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

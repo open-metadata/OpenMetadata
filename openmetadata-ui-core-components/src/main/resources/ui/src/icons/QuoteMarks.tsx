@@ -29,6 +29,7 @@ export const QuoteMarks: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,24 +37,17 @@ export const QuoteMarks: FC<Props> = ({
       d="M11.6 13.198c0-1.508 0-2.262.469-2.73.468-.47 1.222-.47 2.731-.47s2.263 0 2.731.47c.469.468.469 1.222.469 2.73s0 2.263-.469 2.732c-.468.468-1.223.468-2.731.468-1.509 0-2.263 0-2.731-.468-.469-.469-.469-1.223-.469-2.732"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M11.6 14v-3.586c0-3.178 2.013-5.873 4.8-6.814"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="M2 13.198c0-1.508 0-2.262.469-2.73.469-.47 1.223-.47 2.731-.47 1.509 0 2.263 0 2.732.47.468.468.468 1.222.468 2.73s0 2.263-.468 2.732c-.469.468-1.223.468-2.732.468-1.508 0-2.262 0-2.731-.468S2 14.707 2 13.198"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <path
-      d="M2 14v-3.586C2 7.236 4.014 4.541 6.8 3.6"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M2 14v-3.586C2 7.236 4.014 4.541 6.8 3.6" stroke="currentColor" />
   </svg>
 );
 QuoteMarks.displayName = 'QuoteMarks';

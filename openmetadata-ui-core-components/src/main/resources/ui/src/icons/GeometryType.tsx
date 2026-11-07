@@ -29,21 +29,15 @@ export const GeometryType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 21 20"
     width={size}
     {...props}>
     <path
       d="M3.697 17.83h4.659a1 1 0 0 0 1-1v-4.658a1 1 0 0 0-1-1h-4.66a1 1 0 0 0-1 1v4.658a1 1 0 0 0 1 1m4.691-8.807h4.645a1 1 0 0 0 .866-1.5L11.575 3.5a1 1 0 0 0-1.732 0L7.521 7.523a1 1 0 0 0 .866 1.5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
-    <circle
-      cx={14.804}
-      cy={14.499}
-      r={3.5}
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <circle cx={14.804} cy={14.499} r={3.5} stroke="currentColor" />
   </svg>
 );
 GeometryType.displayName = 'GeometryType';

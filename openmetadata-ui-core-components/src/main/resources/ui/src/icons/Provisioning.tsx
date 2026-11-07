@@ -29,13 +29,13 @@ export const Provisioning: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M7.739 12.06H6.532c-1.124 0-1.685 0-2.142.138a3.22 3.22 0 0 0-2.146 2.146c-.139.457-.139 1.018-.139 2.141m10.06-10.864a3.621 3.621 0 1 1-7.243 0 3.621 3.621 0 0 1 7.243 0m2.417 5.758v3.31m0 0V18m0-3.31h3.31m-3.31 0h-3.31"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

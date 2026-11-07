@@ -29,14 +29,11 @@ export const FilterLines: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path
-      d="M5 10h10M2.5 5h15m-10 10h5"
-      stroke="currentColor"
-      strokeWidth={1.3}
-    />
+    <path d="M5 10h10M2.5 5h15m-10 10h5" stroke="currentColor" />
   </svg>
 );
 FilterLines.displayName = 'FilterLines';

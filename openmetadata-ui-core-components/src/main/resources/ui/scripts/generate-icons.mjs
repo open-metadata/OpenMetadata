@@ -138,6 +138,65 @@ async function eslintFix(code, filePath) {
   return result.output ?? code;
 }
 
+/** Hoist a common stroke-width from child elements to the root <svg> so that
+ *  consumer props (spread via {...props}) can override it. A per-path
+ *  presentation attribute outranks any inherited value, so a strokeWidth on a
+ *  <path> silently defeats the consumer's strokeWidth on the <svg> root.
+ *  Moving the designed weight to the root — ahead of the props spread — lets
+ *  paths inherit and consumers override. Only hoists when every stroked
+ *  descendant shares the same value; mixed-weight icons keep their per-element
+ *  attributes so their intentional weight contrast is preserved. */
+const hoistStrokeWidth = {
+  name: 'hoistStrokeWidth',
+  fn: (root) => {
+    let svgNode = null;
+    for (const child of root.children) {
+      if (child.type === 'element' && child.name === 'svg') {
+        svgNode = child;
+        break;
+      }
+    }
+    if (!svgNode) {
+      return;
+    }
+
+    const elementsWithStrokeWidth = [];
+    const distinctValues = new Set();
+
+    const collect = (node) => {
+      if (node.type !== 'element') {
+        return;
+      }
+      if (node.name !== 'svg') {
+        const sw = node.attributes['stroke-width'];
+        if (sw !== undefined && sw !== '') {
+          distinctValues.add(sw);
+          elementsWithStrokeWidth.push(node);
+        }
+      }
+      for (const child of node.children) {
+        if (child.type === 'element') {
+          collect(child);
+        }
+      }
+    };
+
+    for (const child of svgNode.children) {
+      if (child.type === 'element') {
+        collect(child);
+      }
+    }
+
+    if (distinctValues.size === 1) {
+      const [value] = distinctValues;
+      svgNode.attributes['stroke-width'] = value;
+      for (const el of elementsWithStrokeWidth) {
+        delete el.attributes['stroke-width'];
+      }
+    }
+  },
+};
+
 /** SVGO plugins shared by both pipelines. */
 const sharedPlugins = [
   normalizeToGrid,
@@ -152,13 +211,16 @@ const sharedPlugins = [
   { name: 'removeDimensions' },
   // Remove other layout/meta attributes that SVGR re-injects dynamically.
   // 'id' excluded — cleanupIds already prunes unreferenced ids safely.
-  // 'stroke-width' excluded — preserves each icon's designed stroke weight.
+  // 'stroke-width' is NOT removed here — hoistStrokeWidth below moves it to
+  // the root <svg> (before the props spread) so consumers can override it,
+  // then removes the per-element copies so paths inherit from the root.
   {
     name: 'removeAttrs',
     params: {
       attrs: ['xmlns', 'data-name', 'style'],
     },
   },
+  hoistStrokeWidth,
 ];
 
 /** Regular icons only: svgProps re-injects stroke-linecap/stroke-linejoin
@@ -318,10 +380,15 @@ async function main() {
   // since the last run — processFolder only ever adds/updates files, so
   // without this, a removed SVG's .tsx keeps existing (unused, unexported)
   // forever. Scoped to .tsx only: OUT_DIR also holds hand-authored files
-  // (e.g. types.ts) that generate-icons.mjs must never touch.
+  // (e.g. types.ts) that generate-icons.mjs must never touch. Test files
+  // (*.test.tsx) are hand-authored and kept alongside the generated icons.
   const expectedTsxFiles = new Set(generatedNames.map((name) => `${name}.tsx`));
   for (const existingFile of readdirSync(OUT_DIR)) {
-    if (existingFile.endsWith('.tsx') && !expectedTsxFiles.has(existingFile)) {
+    if (
+      existingFile.endsWith('.tsx') &&
+      !existingFile.endsWith('.test.tsx') &&
+      !expectedTsxFiles.has(existingFile)
+    ) {
       unlinkSync(join(OUT_DIR, existingFile));
       console.log(`  ✗ removed stale ${existingFile}`);
     }

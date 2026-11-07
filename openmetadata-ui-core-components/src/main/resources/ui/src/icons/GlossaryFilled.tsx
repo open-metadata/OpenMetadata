@@ -29,6 +29,7 @@ export const GlossaryFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.2}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -41,7 +42,6 @@ export const GlossaryFilled: FC<Props> = ({
       d="M13.174 10.489a.5.5 0 0 1-.854.353l-.88-.88a.5.5 0 0 0-.707 0l-.88.88A.5.5 0 0 1 9 10.49V3.696A.696.696 0 0 1 9.696 3h2.782a.696.696 0 0 1 .696.696z"
       fill="#fff"
       stroke="#fff"
-      strokeWidth={1.2}
     />
   </svg>
 );

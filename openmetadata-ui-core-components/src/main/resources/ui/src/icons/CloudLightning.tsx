@@ -29,13 +29,13 @@ export const CloudLightning: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M15.833 13.12a3.752 3.752 0 0 0-.9-7.271 5.002 5.002 0 0 0-9.867 0 3.75 3.75 0 0 0-.899 7.271m6.666-4.787-3.333 5h5l-3.333 5"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

@@ -29,6 +29,7 @@ export const DataProductFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -39,7 +40,6 @@ export const DataProductFilled: FC<Props> = ({
     <path
       d="M7.595 2c-2.237.051-3.544.265-4.437 1.158S2.05 5.358 2 7.595M12.405 2c2.237.051 3.544.265 4.437 1.158S17.95 5.358 18 7.595M12.405 18c2.237-.051 3.544-.265 4.437-1.158s1.107-2.2 1.158-4.437M7.595 18c-2.237-.051-3.544-.265-4.437-1.158S2.05 14.642 2 12.405"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

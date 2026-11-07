@@ -29,6 +29,7 @@ export const IpAddressType: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={0.2}
     viewBox="0 0 20 20"
     width={size}
     xmlnsXlink="http://www.w3.org/1999/xlink"
@@ -53,7 +54,6 @@ export const IpAddressType: FC<Props> = ({
       d="M10.469 15.268v-1.352l3.14-3.077a5.12 5.12 0 0 0 1.547-3.683A5.16 5.16 0 0 0 10 2a5.16 5.16 0 0 0-5.156 5.156c0 1.397.55 2.706 1.548 3.683l3.14 3.077v1.352a1.41 1.41 0 0 0-.858.857h-3.83v.938h3.83c.194.545.715.937 1.326.937s1.132-.392 1.326-.937h3.83v-.938h-3.83a1.41 1.41 0 0 0-.857-.857ZM5.78 7.156A4.224 4.224 0 0 1 10 2.938a4.224 4.224 0 0 1 4.219 4.218c0 1.143-.45 2.214-1.267 3.014L10 13.063 7.048 10.17A4.2 4.2 0 0 1 5.78 7.156ZM10 17.063a.47.47 0 1 1 .001-.94.47.47 0 0 1-.001.94Z"
       mask="url(#b)"
       stroke="currentColor"
-      strokeWidth={0.2}
     />
     <defs>
       <path

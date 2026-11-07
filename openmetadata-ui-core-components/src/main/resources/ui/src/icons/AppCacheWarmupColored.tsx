@@ -26,6 +26,7 @@ export const AppCacheWarmupColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,21 +41,18 @@ export const AppCacheWarmupColored: FC<Props> = ({
       stroke="#FAFAFA"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M21.713 15.414c.092.13.138.264.138.412 0 .638-.853 1.027-2.56 1.805l-1.108.505c-1.074.49-1.611.734-2.182.734s-1.108-.244-2.182-.734l-1.109-.505c-1.706-.778-2.56-1.167-2.56-1.805q0-.22.138-.412"
       stroke="#FAFAFA"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M21.446 18.773c.27.216.405.43.405.684 0 .639-.853 1.027-2.56 1.805l-1.108.505c-1.074.49-1.611.735-2.182.735s-1.108-.245-2.182-.735l-1.109-.505c-1.706-.778-2.56-1.166-2.56-1.805 0-.254.136-.468.406-.684"
       stroke="#FAFAFA"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient

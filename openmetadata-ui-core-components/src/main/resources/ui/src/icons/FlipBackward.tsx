@@ -29,13 +29,13 @@ export const FlipBackward: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="M2.5 7.5h11.25a3.75 3.75 0 1 1 0 7.5H10M2.5 7.5l3.333-3.333M2.5 7.5l3.333 3.333"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

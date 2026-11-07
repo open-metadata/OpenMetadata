@@ -29,18 +29,17 @@ export const AppMcpServer: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
     <path
       d="m2.648 9.784 7.068-7.068a2.446 2.446 0 1 1 3.46 3.46M11.73 18l-1.118-1.118a.865.865 0 0 1 0-1.223l6.023-6.024a2.446 2.446 0 0 0-3.46-3.459l-5.337 5.338"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m14.756 8.053-5.338 5.338a2.446 2.446 0 0 1-3.46-3.46l5.338-5.337"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

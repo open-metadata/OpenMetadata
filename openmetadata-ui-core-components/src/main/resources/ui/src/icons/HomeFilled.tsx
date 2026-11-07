@@ -29,6 +29,7 @@ export const HomeFilled: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
@@ -36,12 +37,10 @@ export const HomeFilled: FC<Props> = ({
       d="M3.6 16.934v-6.218a2 2 0 0 1 .53-1.357l4.4-4.766a2 2 0 0 1 2.94 0l4.4 4.766a2 2 0 0 1 .53 1.357v6.218a1 1 0 0 1-1 1H13a1 1 0 0 1-1-1v-2.595a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v2.595a1 1 0 0 1-1 1H4.6a1 1 0 0 1-1-1Z"
       fill="currentColor"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
     <path
       d="m2 11.535 6.54-6.977a2 2 0 0 1 2.92 0L18 11.535"
       stroke="currentColor"
-      strokeWidth={1.3}
     />
   </svg>
 );

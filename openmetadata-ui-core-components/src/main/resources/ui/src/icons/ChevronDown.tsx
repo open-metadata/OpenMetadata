@@ -29,10 +29,11 @@ export const ChevronDown: FC<Props> = ({
     stroke={color}
     strokeLinecap="round"
     strokeLinejoin="round"
+    strokeWidth={1.3}
     viewBox="0 0 20 20"
     width={size}
     {...props}>
-    <path d="m5 7.5 5 5 5-5" stroke="currentColor" strokeWidth={1.3} />
+    <path d="m5 7.5 5 5 5-5" stroke="currentColor" />
   </svg>
 );
 ChevronDown.displayName = 'ChevronDown';

@@ -26,6 +26,7 @@ export const AppWeeklyInsightsDigestColored: FC<Props> = ({
     aria-hidden="true"
     fill="none"
     height={size}
+    strokeWidth={1.2}
     viewBox="0 0 32 32"
     width={size}
     {...props}>
@@ -40,14 +41,12 @@ export const AppWeeklyInsightsDigestColored: FC<Props> = ({
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <path
       d="M23.677 15.192s.003.274.003.808c0 3.62 0 5.43-1.124 6.556C21.43 23.68 19.62 23.68 16 23.68s-5.43 0-6.555-1.124S8.32 19.62 8.32 16s0-5.43 1.125-6.555S12.38 8.32 16 8.32h.809"
       stroke="#fff"
       strokeLinecap="round"
       strokeLinejoin="round"
-      strokeWidth={1.2}
     />
     <defs>
       <linearGradient
