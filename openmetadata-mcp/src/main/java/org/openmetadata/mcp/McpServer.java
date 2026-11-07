@@ -271,6 +271,10 @@ public class McpServer implements McpServerProvider {
           io.modelcontextprotocol.server.McpServer.sync(statelessOauthTransport)
               .serverInfo("openmetadata-mcp-stateless", "1.1.0")
               .capabilities(serverCapabilities)
+              // SDK 2.x checks tools/call arguments against the tool schema by default. Kept off
+              // so this upgrade does not change what clients get back; the tools parse their own
+              // arguments today. Turning it on is tracked in #37248.
+              .validateToolInputs(false)
               .build();
       addToolsToServer(server, tools);
       addPromptsToServer(server, prompts);
@@ -362,7 +366,17 @@ public class McpServer implements McpServerProvider {
 
   public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
     for (McpSchema.Tool tool : tools) {
+      registerTool(server, tool);
+    }
+  }
+
+  // SDK 2.x rejects a tool whose inputSchema is not valid JSON Schema 2020-12. Skip that one tool
+  // rather than let the exception take down the whole /mcp endpoint.
+  private void registerTool(McpStatelessSyncServer server, McpSchema.Tool tool) {
+    try {
       server.addTool(getTool(tool));
+    } catch (IllegalArgumentException e) {
+      LOG.error("[MCP] Skipping tool '{}': {}", tool.name(), e.getMessage());
     }
   }
 
