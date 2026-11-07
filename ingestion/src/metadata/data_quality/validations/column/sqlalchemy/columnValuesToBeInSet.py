@@ -56,6 +56,10 @@ class ColumnValuesToBeInSetValidator(
         """
         return self.run_query_results(self.runner, metric, column, **kwargs)
 
+    def _run_results_and_row_count(self, metric: Metrics, column: Column, **kwargs) -> dict:
+        """Compute `countInSet` and the table row count in a single query"""
+        return self.run_query_results_with_row_count(self.runner, metric, column, **kwargs)
+
     def _execute_dimensional_validation(
         self,
         column: Column,

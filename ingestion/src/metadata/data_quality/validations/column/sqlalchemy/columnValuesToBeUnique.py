@@ -16,7 +16,7 @@ Validator for column values to be unique test case
 import logging
 from typing import cast
 
-from sqlalchemy import Column, case, func, inspect, literal_column, select
+from sqlalchemy import Column, case, func, inspect, select
 from sqlalchemy.exc import SQLAlchemyError
 
 from metadata.data_quality.validations.base_test_handler import (
@@ -76,29 +76,28 @@ class ColumnValuesToBeUniqueValidator(
             metric: metric
             column: column
         """
+        dataset = self.runner.dataset
         count = Metrics.valuesCount.value(column).fn()
         grouped_cte = (
             select(count.label(UNIQUE_COUNT_GROUP_ALIAS))  # type: ignore
-            .select_from(self.runner.dataset)
+            .select_from(dataset)
             .group_by(column)
             .cte("grouped_cte")
         )
-        unique_count = Metrics.uniqueCount.value(column).query(
-            sample=self.runner.dataset,
-            session=self.runner._session,  # pylint: disable=protected-access
-        )  # type: ignore
+        if self.runner.dialect == Dialects.BigQuery:
+            unique_count = Metrics.uniqueCount.value(column).query(
+                sample=dataset,
+                session=self.runner._session,  # pylint: disable=protected-access
+            )  # type: ignore
+        else:
+            unique_count = func.count(case((grouped_cte.c[UNIQUE_COUNT_GROUP_ALIAS] == 1, 1)))
 
         try:
-            if self.runner.dialect == Dialects.Oracle:
-                query_group_by_ = [literal_column("2")]
-            else:
-                query_group_by_ = None
-
             row = self.runner._select_from_dataset(
                 grouped_cte,
                 func.sum(grouped_cte.c[UNIQUE_COUNT_GROUP_ALIAS]).label(Metrics.valuesCount.name),
                 unique_count.label(Metrics.uniqueCount.name),
-                query_group_by_=query_group_by_,
+                query_group_by_=None,
             ).first()
             self.value = dict(row._mapping)  # type: ignore
             res = self.value.get(Metrics.valuesCount.name)

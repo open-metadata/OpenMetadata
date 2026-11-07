@@ -119,3 +119,54 @@ def test_flat_column_sum_and_countif_agree_with_the_grouped_cte_alias():
     alias = _cte_output_label(sql)
     assert _single_arg(sql, "sum") == f"`grouped_cte`.`{alias}`", sql
     assert _single_arg(sql, "countif") == f"`{alias}` = 1", sql
+
+
+def test_run_results_reads_runner_dataset_once():
+    """`runner.dataset` may be a dynamic property (e.g. a partitioned CTE); read it once so both metrics share the same CTE."""
+    dataset = sa.Table(TABLE_NAME, sa.MetaData(), sa.Column(FLAT_COLUMN, sa.String))
+    access_count = 0
+
+    class _CountingRunner(_RecordingRunner):
+        @property
+        def dataset(self):
+            nonlocal access_count
+            access_count += 1
+            return self._dataset
+
+        @dataset.setter
+        def dataset(self, value):
+            self._dataset = value
+
+    runner = _CountingRunner(dataset, _BigQuerySession())
+    validator = SimpleNamespace(runner=runner, value=None)
+
+    ColumnValuesToBeUniqueValidator._run_results(
+        validator,
+        metric=Metrics.valuesCount,
+        column=sa.Column(FLAT_COLUMN, sa.String),
+    )
+
+    assert access_count == 1
+    assert validator.value == {Metrics.valuesCount.name: 10, Metrics.uniqueCount.name: 7}
+
+
+def test_non_bigquery_unique_validator_scans_dataset_once_via_grouped_cte():
+    """Non-BigQuery dialects must aggregate uniqueCount from grouped_cte instead of a second subquery scan."""
+    from sqlalchemy.dialects import sqlite
+
+    dataset = sa.Table(TABLE_NAME, sa.MetaData(), sa.Column(FLAT_COLUMN, sa.String))
+    session = SimpleNamespace(get_bind=lambda: SimpleNamespace(dialect=sqlite.dialect()))
+    runner = _RecordingRunner(dataset, session)
+    runner.dialect = "sqlite"
+
+    ColumnValuesToBeUniqueValidator._run_results(
+        SimpleNamespace(runner=runner, value=None),
+        metric=Metrics.uniqueCount,
+        column=sa.Column(FLAT_COLUMN, sa.String),
+    )
+
+    assert runner.statement is not None
+    compiled = runner.statement.compile(dialect=sqlite.dialect(), compile_kwargs={"literal_binds": True})
+    sql = " ".join(str(compiled).split())
+    assert "only_once" not in sql
+    assert len(re.findall(r"\bFROM\s+" + re.escape(TABLE_NAME) + r"\b", sql)) == 1
