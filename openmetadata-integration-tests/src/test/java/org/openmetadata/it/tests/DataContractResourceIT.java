@@ -3409,6 +3409,48 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testLegacyRootSqlAssertionsArePreservedAtTheirExportScopes(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    String yaml =
+        """
+        apiVersion: v3.1.0
+        kind: DataContract
+        id: %s
+        name: %s
+        version: 1.0.0
+        status: active
+        schema:
+          - name: %s
+            logicalType: object
+            properties:
+              - name: email
+                logicalType: string
+                physicalType: VARCHAR
+        quality:
+          - name: root_response
+            type: sql
+            query: SELECT 'OK'
+            mustBe: OK
+          - name: column_response
+            type: sql
+            column: email
+            query: SELECT 'PASS'
+            mustBe: PASS
+        """
+            .formatted(UUID.randomUUID(), ns.prefix("legacy_root_sql"), table.getName());
+    DataContract contract =
+        client.dataContracts().importFromODCSYaml(yaml, table.getId(), "table", false);
+    JsonNode document =
+        new YAMLMapper().readTree(client.dataContracts().exportToODCSYaml(contract.getId()));
+    assertFalse(document.has("quality"));
+    assertEquals("OK", document.at("/schema/0/quality/0/mustBe").asText());
+    assertEquals("PASS", document.at("/schema/0/properties/0/quality/0/mustBe").asText());
+    assertFalse(document.at("/schema/0/properties/0/quality/0").has("column"));
+  }
+
+  @Test
   void testNativeCustomPropertiesExportAsValidOdcsAcrossAllRoutes(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();

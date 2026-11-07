@@ -62,6 +62,7 @@ public final class ODCSPreservedFields {
   public static JsonNode capture(JsonNode document, JsonNode applied, String selectedObject) {
     ObjectNode source = document.deepCopy();
     ODCSShapeNormalizer.normalizePreserved(source);
+    ODCSShapeNormalizer.projectRootQuality(source, applied, selectedObject);
     ArrayNode unapplied = JsonNodeFactory.instance.arrayNode();
     ObjectNode preserved =
         captureObject(source, applied, new Location(Section.ROOT, ""), unapplied);
@@ -151,6 +152,7 @@ public final class ODCSPreservedFields {
           captureNested(
               field.getValue(), applied.path(key), location.child(key, nested), unapplied));
     } else if ("quality".equals(key) && ODCSFieldCoverage.isMapped(location.section(), key)) {
+      if (field.getValue().isArray() && field.getValue().isEmpty()) return;
       if (!ODCSQualityMetadata.isProjection(field.getValue(), applied.path(key)))
         result.set(key, ODCSQualityMetadata.capture(field.getValue(), applied.path(key)));
     } else if (retained(key, applied, location.section())) {
@@ -238,7 +240,8 @@ public final class ODCSPreservedFields {
     JsonNode saved = field.getValue();
     JsonNode current = result.path(field.getKey());
     if ("quality".equals(field.getKey()) && ODCSQualityMetadata.isCapture(saved)) {
-      result.set(field.getKey(), ODCSQualityMetadata.restore(saved, current));
+      JsonNode merged = ODCSQualityMetadata.restore(saved, current);
+      if (!merged.isEmpty() || current.isArray()) result.set(field.getKey(), merged);
     } else if (location.section() != null && (saved.isArray() || saved.isObject())) {
       // Incompatible saved containers cannot replace a native collection that now exists.
       if ((saved.isArray() && current.isObject()) || (saved.isObject() && current.isArray())) {

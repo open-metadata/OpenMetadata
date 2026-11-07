@@ -134,6 +134,139 @@ class ODCSQualityRoundTripTest {
   }
 
   @Test
+  void importBaselineUsesTheSelectedTableBeforeEntityNamesAreResolved() throws Exception {
+    ObjectNode source = source("orders");
+    ((ObjectNode) source.at("/schema/0"))
+        .withArray("quality")
+        .add(sql("response", "SELECT 'OK'").put("mustBe", "OK"));
+    var read = ODCSLenientReader.readOrReject(JSON, source.deepCopy());
+    DataContract contract =
+        ODCSConverter.fromODCS(
+            read,
+            new EntityReference().withType("table"),
+            null,
+            ODCSImportIssues.discarding(),
+            source);
+    contract.getEntity().setName("renamed_orders");
+    for (String version : VERSIONS) {
+      JsonNode document = exporter.export(contract, version).requireValid();
+      assertEquals(
+          "OK",
+          declaration(document, version, "/schema/0/quality/0").path("mustBe").asText(),
+          version);
+    }
+    contract.setOdcsQualityRules(List.of());
+    for (String version : VERSIONS) {
+      JsonNode document = exporter.export(contract, version).requireValid();
+      assertTrue(
+          document
+              .at(version.startsWith("v2") ? "/dataset/0/quality" : "/schema/0/quality")
+              .isEmpty(),
+          version);
+    }
+  }
+
+  @Test
+  void emptyLegacyRootQualityDoesNotLeakIntoPublishedExports() throws Exception {
+    ObjectNode source = source("orders");
+    source.putArray("quality");
+    DataContract contract = imported(source);
+    for (String version : VERSIONS)
+      assertFalse(exporter.export(contract, version).requireValid().has("quality"), version);
+  }
+
+  @Test
+  void legacyRootRulesRemainScopedWhenTheBaselineAlsoContainsSchemaRules() throws Exception {
+    ObjectNode source = source("orders");
+    source.withArray("quality").addObject().put("name", "steward").put("type", "text");
+    source
+        .withArray("quality")
+        .addObject()
+        .put("name", "external")
+        .put("type", "custom")
+        .put("engine", "external")
+        .put("implementation", "custom check");
+    source.withArray("quality").add(sql("response", "SELECT 'OK'").put("mustBe", "OK"));
+    ((ObjectNode) source.at("/schema/0"))
+        .withArray("quality")
+        .addObject()
+        .put("name", "rows")
+        .put("type", "library")
+        .put("metric", "rowCount")
+        .put("mustBe", 1);
+    DataContract contract = imported(source);
+    for (String version : VERSIONS) {
+      JsonNode document = exporter.export(contract, version).requireValid();
+      assertFalse(document.has("quality"), version);
+      assertEquals(
+          4,
+          document.at(version.startsWith("v2") ? "/dataset/0/quality" : "/schema/0/quality").size(),
+          version);
+      assertEquals(
+          "OK",
+          declaration(document, version, "/schema/0/quality/2").path("mustBe").asText(),
+          version);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
+  void legacyRootColumnAssertionsFollowTheirColumnWithoutLeakingAnchors(String version)
+      throws Exception {
+    ObjectNode source = source("orders");
+    source
+        .withArray("quality")
+        .add(sql("response", "SELECT value").put("mustBe", "OK").put("column", "id"));
+    JsonNode document = exporter.export(imported(source), version).requireValid();
+    assertFalse(document.has("quality"));
+    JsonNode rule = declaration(document, version, "/schema/0/properties/0/quality/0");
+    assertEquals("OK", rule.path("mustBe").asText());
+    assertFalse(rule.has("column"));
+    if (version.startsWith("v2"))
+      assertEquals("id", document.at("/dataset/0/quality/0/column").asText());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"none", "flat", "array"})
+  void legacyRootMetadataSupportsMissingFlatAndArraySchemas(String shape) throws Exception {
+    ObjectNode source = source("orders");
+    String pointer = "/schema/0/quality/0";
+    ObjectNode rule = sql("response", "SELECT value").put("mustBe", "OK");
+    if ("none".equals(shape)) source.remove("schema");
+    else if ("flat".equals(shape)) {
+      JsonNode column = source.at("/schema/0/properties/0").deepCopy();
+      source.putArray("schema").add(column);
+      rule.put("column", "id");
+      pointer = "/schema/0/properties/0/quality/0";
+    } else {
+      ObjectNode column = (ObjectNode) source.at("/schema/0/properties/0");
+      column
+          .put("logicalType", "array")
+          .putObject("items")
+          .put("logicalType", "object")
+          .withArray("properties")
+          .addObject()
+          .put("name", "value")
+          .put("logicalType", "string");
+      rule.put("column", "id.value");
+      pointer = "/schema/0/properties/0/items/properties/0/quality/0";
+    }
+    source.withArray("quality").add(rule);
+    DataContract contract =
+        ODCSConverter.fromODCS(
+            ODCSLenientReader.readOrReject(JSON, source.deepCopy()),
+            new EntityReference().withType("table").withName("orders"),
+            null,
+            ODCSImportIssues.discarding(),
+            source);
+    for (String version : VERSIONS) {
+      JsonNode document = exporter.export(contract, version).requireValid();
+      assertFalse(document.has("quality"));
+      assertEquals("OK", declaration(document, version, pointer).path("mustBe").asText(), version);
+    }
+  }
+
+  @Test
   void numericStringSqlAssertionsAreNotChangedIntoNumbers() throws Exception {
     ObjectNode source = source("orders");
     ((ObjectNode) source.at("/schema/0"))
@@ -378,7 +511,8 @@ class ODCSQualityRoundTripTest {
 
   private static JsonNode declaration(JsonNode document, String version, String pointer)
       throws Exception {
-    JsonNode rule = document.at(version.startsWith("v2") ? "/dataset/0/quality/0" : pointer);
+    String index = pointer.isEmpty() ? "0" : pointer.substring(pointer.lastIndexOf('/') + 1);
+    JsonNode rule = document.at(version.startsWith("v2") ? "/dataset/0/quality/" + index : pointer);
     if (version.startsWith("v2")) {
       for (JsonNode property : rule.path("customProperties"))
         if ("odcsRule".equals(property.path("property").asText())) return property.path("value");

@@ -92,6 +92,11 @@ public final class ODCSExportService {
     return adapter(DEFAULT_VERSION).write(contract, rules);
   }
 
+  /** The compatibility reader uses v3.1; its baseline must precede target entity resolution. */
+  public static JsonNode importBaseline(DataContract contract, String sourceObject) {
+    return new ODCSV31Mapper().write(contract, List.of(), sourceObject);
+  }
+
   public static JsonNode document(
       DataContract contract, List<ODCSQualityRule> rules, Set<String> managedNames) {
     return ODCSMetadataOverlay.apply(contract, nativeDocument(contract, rules), managedNames);

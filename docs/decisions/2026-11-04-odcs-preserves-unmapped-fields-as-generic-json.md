@@ -35,6 +35,11 @@ objects remain outside the one-table contract and are reported as not imported.
 Partially readable quality declarations retain both their original JSON and the native import-time
 projection inside the opaque remainder. Export compares the current rule with that baseline: native
 edits and deletions win, while unchanged values regain their original JSON type and precision.
+The baseline uses the selected source table name before API storage resolves the target entity's
+name, so table rules are not misclassified as columns during import. Empty legacy quality arrays
+carry no declarations and are omitted from the remainder.
+Legacy document-level quality declarations are projected into their table/column scopes before
+capture, including flat schemas and array-item properties, so relocation does not discard repairs.
 Rules match by ID or name, with unchanged SQL query content as a fallback for anonymous rules.
 Unique IDs or names are needed to distinguish otherwise identical anonymous declarations after edits.
 The alternatives declared by the published comparison-operator schema prevent a preserved assertion

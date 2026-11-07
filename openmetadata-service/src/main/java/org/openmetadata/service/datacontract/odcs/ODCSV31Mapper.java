@@ -74,12 +74,17 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
 
   @Override
   public JsonNode write(DataContract contract, List<ODCSQualityRule> nativeRules) {
+    return write(contract, nativeRules, null);
+  }
+
+  JsonNode write(DataContract contract, List<ODCSQualityRule> nativeRules, String sourceObject) {
     OdcsContract document = document(contract);
     List<ODCSQualityRule> rules = new ArrayList<>(ODCSQualityRuleExporter.importedRules(contract));
     rules.addAll(listOrEmpty(nativeRules));
     List<RuleMetadata> metadata = new ArrayList<>();
     if (!nullOrEmpty(contract.getSchema()) || !rules.isEmpty()) {
       SchemaObject table = table(contract);
+      if (sourceObject != null) table.setName(sourceObject);
       document.setSchema(List.of(table));
       for (ODCSQualityRule rule : rules) placeRule(table, rule, metadata);
     }

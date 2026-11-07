@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
  * Rewrites the ways of writing a field that ODCS allows or that an older OpenMetadata accepted,
@@ -60,6 +61,66 @@ public final class ODCSShapeNormalizer {
 
   static void normalizePreserved(ObjectNode root) {
     normalize(root, ODCSImportIssues.discarding(), false);
+  }
+
+  static void projectRootQuality(ObjectNode root, JsonNode applied, String selected) {
+    // The reader accepts legacy document-level rules, but export places them under schema objects.
+    // Preservation must follow those scopes so relocation is not mistaken for native deletion.
+    JsonNode rules = root.path(QUALITY);
+    if (!rules.isArray()) return;
+    if (rules.isEmpty()) {
+      root.remove(QUALITY);
+      return;
+    }
+    ObjectNode table = preservationTable(root, applied, selected);
+    if (table == null) return;
+    for (JsonNode rule : rules) {
+      ObjectNode target = qualityTarget(table, rule.path("column").asText(""));
+      if (target.has(QUALITY) && !target.path(QUALITY).isArray()) return;
+      JsonNode copy = rule.deepCopy();
+      if (copy.isObject()) ((ObjectNode) copy).remove("column");
+      target.withArray(QUALITY).add(copy);
+    }
+    root.remove(QUALITY);
+  }
+
+  private static ObjectNode preservationTable(ObjectNode root, JsonNode applied, String selected) {
+    boolean objects = false;
+    for (JsonNode value : root.path(SCHEMA)) {
+      if (value.isObject()
+          && (value.has(PROPERTIES) || "object".equals(value.path("logicalType").asText()))) {
+        objects = true;
+        if (selected == null || selected.equalsIgnoreCase(value.path("name").asText()))
+          return (ObjectNode) value;
+      }
+    }
+    if (objects) return null;
+    ObjectNode table =
+        root.objectNode()
+            .put("name", applied.at("/schema/0/name").asText(root.path("name").asText("contract")))
+            .put("logicalType", "object");
+    if (root.path(SCHEMA).isArray()) table.set(PROPERTIES, root.path(SCHEMA).deepCopy());
+    root.set(SCHEMA, root.arrayNode().add(table));
+    return table;
+  }
+
+  private static ObjectNode qualityTarget(ObjectNode table, String column) {
+    if (column.isEmpty() || column.equals(table.path("name").asText())) return table;
+    ObjectNode target = table;
+    for (String segment : FullyQualifiedName.split(column)) {
+      if ("array".equals(target.path("logicalType").asText())) {
+        if (!target.path(ITEMS).isObject()) target.putObject(ITEMS).put("logicalType", "object");
+        target = (ObjectNode) target.path(ITEMS);
+      }
+      String name = FullyQualifiedName.unquoteName(segment);
+      ObjectNode child = null;
+      for (JsonNode property : target.path(PROPERTIES))
+        if (property.isObject() && name.equals(property.path("name").asText()))
+          child = (ObjectNode) property;
+      if (child == null) child = target.withArray(PROPERTIES).addObject().put("name", name);
+      target = child;
+    }
+    return target;
   }
 
   private static void normalize(ObjectNode root, ODCSImportIssues issues, boolean stringify) {

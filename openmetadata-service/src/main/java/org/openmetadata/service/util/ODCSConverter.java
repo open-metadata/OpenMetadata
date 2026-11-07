@@ -106,8 +106,8 @@ public class ODCSConverter {
     return ODCSExportService.document(contract, additionalQualityRules, managedNames);
   }
 
-  private static JsonNode captureBaseline(DataContract contract) {
-    ObjectNode applied = (ObjectNode) ODCSExportService.nativeDocument(contract, List.of());
+  private static JsonNode captureBaseline(DataContract contract, String sourceTable) {
+    ObjectNode applied = (ObjectNode) ODCSExportService.importBaseline(contract, sourceTable);
     ODCSShapeNormalizer.projectArrayItemsForReader(applied);
     if (contract.getOdcsQualityRules() != null && !contract.getOdcsQualityRules().isEmpty()) {
       applied.set("quality", MAPPER.valueToTree(contract.getOdcsQualityRules()));
@@ -211,11 +211,10 @@ public class ODCSConverter {
       contract.setOdcsQualityRules(allQualityRules);
     }
 
+    String importedObject = importedSchemaObjectName(odcs, entityRef, objectName).orElse(null);
     contract.setOdcsPreservedFields(
         ODCSPreservedFields.capture(
-            original,
-            captureBaseline(contract),
-            importedSchemaObjectName(odcs, entityRef, objectName).orElse(null)));
+            original, captureBaseline(contract, importedObject), importedObject));
     List<ODCSElementExtension> elementExtensions = collectElementExtensions(odcs);
     if (!elementExtensions.isEmpty()) {
       contract.setOdcsElementExtensions(elementExtensions);
