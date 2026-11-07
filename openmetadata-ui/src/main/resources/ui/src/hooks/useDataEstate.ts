@@ -39,8 +39,11 @@ export const DATA_ESTATE_CONNECTORS_QUERY_KEY = [
 export const DATA_ESTATE_TTL_MS = 5 * 60 * 1000;
 
 const SERVICE_TYPE_FIELD = 'serviceType';
-const SERVICE_NAME_FIELD = 'service.name.keyword';
-const SERVICE_DISPLAY_NAME_SOURCE = 'service.displayName';
+// By id: service names are unique only within a service category.
+const SERVICE_ID_FIELD = 'service.id';
+const SERVICE_LABEL_SOURCES = ['service.displayName', 'service.name'];
+// Prefixed so a custom slice's key can never equal a serviceType or OTHER_CONNECTORS_KEY.
+const CUSTOM_SERVICE_KEY_PREFIX = 'service:';
 
 /**
  * Connectors the bar names individually. The rest fold into one "Other"
@@ -54,7 +57,7 @@ export const OTHER_CONNECTORS_KEY = '__other__';
 export interface ConnectorCount {
   /**
    * The raw `serviceType`, e.g. `BigQuery` — stable across locales. For a
-   * custom connector, the service's name instead.
+   * custom connector, `service:<service id>` instead.
    */
   key: string;
   /** What the legend shows, e.g. `Big Query`. */
@@ -178,7 +181,9 @@ export const isCustomServiceType = (serviceType: string): boolean =>
 type TopHitsBucket = Bucket & {
   'top_hits#top'?: {
     hits?: {
-      hits?: Array<{ _source?: { service?: { displayName?: string } } }>;
+      hits?: Array<{
+        _source?: { service?: { displayName?: string; name?: string } };
+      }>;
     };
   };
 };
@@ -187,7 +192,8 @@ type TopHitsBucket = Bucket & {
  * Every custom connector shares one `serviceType`, so its slice would read
  * "Custom Dashboard" whatever the tool behind it. Split those slices by
  * service and name each after the service's `displayName`, then its name.
- * On failure the unsplit slices stay, so the bar still adds up.
+ * When the split fails or comes back incomplete, the unsplit slices stay, so
+ * the bar still adds up.
  */
 const splitCustomConnectors = async (
   custom: ConnectorCount[]
@@ -198,26 +204,33 @@ const splitCustomConnectors = async (
   try {
     const response = await postAggregateFieldOptions({
       deleted: false,
-      fieldName: SERVICE_NAME_FIELD,
+      fieldName: SERVICE_ID_FIELD,
       index: SearchIndex.DATA_ASSET,
       query: JSON.stringify({
         query: { terms: { [SERVICE_TYPE_FIELD]: custom.map((c) => c.key) } },
       }),
       size: AGGREGATE_PAGE_SIZE_LARGE,
-      sourceFields: [SERVICE_DISPLAY_NAME_SOURCE],
+      sourceFields: SERVICE_LABEL_SOURCES,
       topHits: { size: 1 },
     });
     const buckets: TopHitsBucket[] =
-      getAggregations(response.data.aggregations ?? {})[SERVICE_NAME_FIELD]
+      getAggregations(response.data.aggregations ?? {})[SERVICE_ID_FIELD]
         ?.buckets ?? [];
+    const services = buckets.map((bucket) => {
+      const service = bucket['top_hits#top']?.hits?.hits?.[0]?._source?.service;
 
-    return buckets.map((bucket) => ({
-      count: bucket.doc_count,
-      key: bucket.key,
-      name:
-        bucket['top_hits#top']?.hits?.hits?.[0]?._source?.service
-          ?.displayName || bucket.key,
-    }));
+      return {
+        count: bucket.doc_count,
+        key: `${CUSTOM_SERVICE_KEY_PREFIX}${bucket.key}`,
+        name: service?.displayName || service?.name || bucket.key,
+      };
+    });
+
+    // A response capped at the page size would drop assets from the bar.
+    const sum = (connectors: ConnectorCount[]) =>
+      connectors.reduce((total, connector) => total + connector.count, 0);
+
+    return sum(services) === sum(custom) ? services : custom;
   } catch {
     return custom;
   }
