@@ -2546,7 +2546,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   public Integer deployPipelines(
       @Option(
               names = {"--chunk-size"},
-              defaultValue = "20",
+              defaultValue = "" + DEFAULT_CHUNK_SIZE,
               description =
                   "Number of pipelines sent to the bulk deploy endpoint per request. The server "
                       + "deploys them sequentially, so a larger chunk needs a proportionally "
@@ -2554,7 +2554,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
           int chunkSize,
       @Option(
               names = {"--seconds-per-pipeline"},
-              defaultValue = "30",
+              defaultValue = "" + DEFAULT_SECONDS_PER_PIPELINE,
               description =
                   "Deploy deadline budgeted for each pipeline in a chunk. The request timeout is "
                       + "this value multiplied by the chunk size.")
@@ -3135,7 +3135,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
   /** The JWKS encodes n and e as URL-safe base64 of BigInteger bytes, so compare the numbers. */
   static boolean jwksListsKey(String jwksJson, String kid, RSAPublicKey key) {
     for (JsonNode jwk : JsonUtils.readTree(jwksJson).path("keys")) {
-      if (kid.equals(jwk.path("kid").asText())
+      if (Objects.equals(kid, jwk.path("kid").asText())
           && key.getModulus().equals(decodeJwkNumber(jwk.path("n").asText()))
           && key.getPublicExponent().equals(decodeJwkNumber(jwk.path("e").asText()))) {
         return true;

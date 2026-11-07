@@ -16,8 +16,9 @@ package org.openmetadata.service.security.jwt;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
@@ -39,7 +40,8 @@ import org.openmetadata.service.secrets.SecretsManager;
  * already verifies under the configured key, carries the configured {@code kid} and has not
  * expired is left alone, so a re-run changes nothing that is already current.
  *
- * <p>Results carry the bot name, an outcome and a detail, and never a token.
+ * <p>Results carry the bot name, an outcome and a detail, and never a token or an exception
+ * message, because an in-server caller may return them over HTTP.
  */
 @Slf4j
 public class BotTokenRegenerator {
@@ -53,7 +55,6 @@ public class BotTokenRegenerator {
   public record BotResult(String botName, Outcome outcome, String detail) {}
 
   static final String CHANGED_CONCURRENTLY = "changed concurrently, re-run";
-  private static final String UPDATED_BY = "admin";
 
   private final SecretsManager secretsManager;
   private final JWTTokenGenerator generator;
@@ -69,53 +70,67 @@ public class BotTokenRegenerator {
 
   public List<BotResult> regenerateAll(JWTTokenExpiry expiry) {
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
     List<Bot> bots =
         botRepository.listAll(
             botRepository.getFields("botUser"), new ListFilter(Include.NON_DELETED));
-    List<BotResult> results = new ArrayList<>();
-    for (Bot listedBot : bots) {
-      results.add(regenerate(botRepository, userRepository, listedBot.getName(), expiry));
-    }
-    return results;
+    return bots.stream().map(bot -> regenerate(bot.getName(), expiry)).toList();
   }
 
-  private BotResult regenerate(
-      BotRepository botRepository,
-      UserRepository userRepository,
-      String botName,
-      JWTTokenExpiry expiry) {
+  private BotResult regenerate(String botName, JWTTokenExpiry expiry) {
     try {
-      // Fetched individually so that setFields populates the botUser relationship
-      Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
-      if (bot.getBotUser() == null) {
-        return new BotResult(botName, Outcome.SKIPPED, "No bot user associated");
-      }
-      User botUser =
-          userRepository.getByName(
-              null,
-              bot.getBotUser().getFullyQualifiedName(),
-              userRepository.getFieldsWithUserAuth("*"));
-      AuthenticationMechanism mechanism = botUser.getAuthenticationMechanism();
-      if (mechanism == null || mechanism.getAuthType() != AuthenticationMechanism.AuthType.JWT) {
-        return new BotResult(botName, Outcome.SKIPPED, "Not using JWT authentication");
-      }
-      if (isCurrent(readToken(secretsManager, mechanism))) {
-        return new BotResult(botName, Outcome.ALREADY_CURRENT, "Token already current");
-      }
-      User updated = JsonUtils.deepCopy(botUser, User.class);
-      updated.setAuthenticationMechanism(
-          new AuthenticationMechanism()
-              .withAuthType(AuthenticationMechanism.AuthType.JWT)
-              .withConfig(generator.generateJWTToken(botUser, expiry)));
-      userRepository.updateIfCurrent(null, botUser, updated, UPDATED_BY);
-      return new BotResult(botName, Outcome.REGENERATED, "Token regenerated");
+      return regenerateUserOf(botName, expiry);
     } catch (PreconditionFailedException e) {
       return new BotResult(botName, Outcome.FAILED, CHANGED_CONCURRENTLY);
-    } catch (Exception e) {
+    } catch (RuntimeException e) {
       LOG.error("Failed to regenerate token for bot: {}", botName, e);
-      return new BotResult(botName, Outcome.FAILED, e.getMessage());
+      return new BotResult(
+          botName, Outcome.FAILED, e.getClass().getSimpleName() + ", see the server log");
     }
+  }
+
+  private BotResult regenerateUserOf(String botName, JWTTokenExpiry expiry) {
+    Optional<User> botUser = findBotUser(botName);
+    if (botUser.isEmpty()) {
+      return new BotResult(botName, Outcome.SKIPPED, "No bot user associated");
+    }
+    AuthenticationMechanism mechanism = botUser.get().getAuthenticationMechanism();
+    if (mechanism == null || mechanism.getAuthType() != AuthenticationMechanism.AuthType.JWT) {
+      return new BotResult(botName, Outcome.SKIPPED, "Not using JWT authentication");
+    }
+    if (isCurrent(readToken(secretsManager, mechanism))) {
+      return new BotResult(botName, Outcome.ALREADY_CURRENT, "Token already current");
+    }
+    replaceToken(botUser.get(), expiry);
+    return new BotResult(botName, Outcome.REGENERATED, "Token regenerated");
+  }
+
+  private Optional<User> findBotUser(String botName) {
+    BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
+    // Fetched individually so that setFields populates the botUser relationship
+    Bot bot = botRepository.getByName(null, botName, botRepository.getFields("botUser"));
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    return Optional.ofNullable(bot.getBotUser())
+        .map(
+            reference ->
+                userRepository.getByName(
+                    null,
+                    reference.getFullyQualifiedName(),
+                    userRepository.getFieldsWithUserAuth("*")));
+  }
+
+  /**
+   * Saves through {@code updateIfCurrent}, so a bot edited since it was read fails with
+   * PreconditionFailedException instead of losing that edit. A JSON patch cannot be used: the user
+   * repository restores the authentication mechanism on every patch.
+   */
+  private void replaceToken(User botUser, JWTTokenExpiry expiry) {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    User updated = JsonUtils.deepCopy(botUser, User.class);
+    updated.setAuthenticationMechanism(
+        new AuthenticationMechanism()
+            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+            .withConfig(generator.generateJWTToken(botUser, expiry)));
+    userRepository.updateIfCurrent(null, botUser, updated, Entity.ADMIN_USER_NAME);
   }
 
   /**
@@ -137,7 +152,7 @@ public class BotTokenRegenerator {
     try {
       DecodedJWT verified =
           JWT.require(generator.internalVerificationAlgorithm()).build().verify(token);
-      return generator.getKid().equals(verified.getKeyId());
+      return Objects.equals(generator.getKid(), verified.getKeyId());
     } catch (JWTVerificationException e) {
       return false;
     }
