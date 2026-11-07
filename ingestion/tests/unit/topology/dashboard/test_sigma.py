@@ -939,17 +939,20 @@ def lineage_sources(
     catalog: list[Table],
     sql: str | None,
     service_type: DatabaseServiceType = DatabaseServiceType.Snowflake,
+    searches: list[str] | None = None,
 ) -> list[str]:
     """
     FQNs of the tables wb-1's element is linked to, over every dbServicePrefixes entry as the base class
     runs it. OpenMetadata's search answers from `catalog` with its wildcard matching; `sql` None takes
-    the fallback path (no queries, element lineage then /files).
+    the fallback path (no queries, element lineage then /files). Table searches are recorded in `searches`.
     """
     services = {table.fullyQualifiedName.root.split(".")[0] for table in catalog}
 
     def es_search_from_fqn(entity_type, fqn_search_string, **_):
         if entity_type is DatabaseService:
             return [warehouse_service(fqn_search_string, service_type)] if fqn_search_string in services else []
+        if searches is not None:
+            searches.append(fqn_search_string)
         return [table for table in catalog if fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())]
 
     def get_by_name(entity, fqn, **_):
@@ -972,6 +975,20 @@ def lineage_sources(
 
 
 SIGMA_SQL = "SELECT * FROM ANALYTICS.PUBLIC.ORDERS"
+
+
+def test_a_table_reference_is_searched_once_per_prefix_in_a_run(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    prefixes = ["wh_a", "wh_b", "wh_c"]
+    searches: list[str] = []
+
+    linked = lineage_sources(
+        source, routes, prefixes, [warehouse_table("wh_a", "ORDERS")], SIGMA_SQL, searches=searches
+    )
+
+    assert linked == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+    # The lineage stage runs once per prefix; the reference is resolved across all of them only once
+    assert len(searches) == len(prefixes)
 
 
 @pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
@@ -1018,9 +1035,13 @@ def test_a_failed_table_search_links_nothing(sigma_over_http, routes):
     def search_down(*_, **__):
         raise requests.ConnectionError("search is down")
 
-    lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], None)
+    # A fresh run whose search is down: a reference resolved earlier in the same run would be reused
     source.metadata.es_search_from_fqn = search_down
+    source.metadata.get_by_name = lambda entity, fqn, **_: MOCK_DATA_MODEL if entity is DashboardDataModel else None
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=["wh_a"])
+    routes["GET", "/v2/workbooks/wb-1/queries"] = {"entries": [], "nextPage": None}
     details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    list(source.yield_datamodel(details))
 
     assert list(source.yield_dashboard_lineage_details(details, "wh_a")) == []
 

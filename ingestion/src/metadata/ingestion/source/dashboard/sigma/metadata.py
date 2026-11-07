@@ -14,6 +14,8 @@ import traceback
 from collections.abc import Iterable
 from functools import cached_property
 
+from cachetools import LRUCache
+
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup, UnsupportedTableReferenceError
 from metadata.entity_resolution.table_search import get_table_binding_resolution
@@ -73,6 +75,9 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
+# Distinct table references resolved per run; past it a reference is searched again
+MAX_RESOLVED_TABLES = 1_000
+
 # Sigma connection types, lower-cased, as the spec names them for the warehouses OpenMetadata parses
 SIGMA_CONNECTION_DIALECTS = {
     "bigquery": Dialect.BIGQUERY,
@@ -111,6 +116,10 @@ class SigmaSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.data_models: list[Elements] = []
+        # The lineage stage runs once per dbServicePrefixes entry, and each run needs every prefix's match
+        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str] | None] = LRUCache(
+            maxsize=MAX_RESOLVED_TABLES
+        )
 
     def get_dashboards_list(self) -> list[Workbook] | None:
         """
@@ -249,10 +258,19 @@ class SigmaSource(DashboardServiceSource):
         """
         The one table the reference names across the dbServicePrefixes, returned on the call for the
         prefix it was found under. Lineage must not guess, so a reference matching several tables, or
-        with no prefix configured, resolves to none.
+        with no prefix configured, resolves to none. A reference is resolved once per run, as every
+        prefix's call needs the same answer.
         """
         if not (schema and table):
             return None
+        key = (database, schema, table)
+        if key not in self._resolved_tables:
+            self._resolved_tables[key] = self._resolve_table(database, schema, table)
+        resolved = self._resolved_tables[key]
+        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+
+    def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str] | None:
+        """The one table the reference names across the dbServicePrefixes, with the prefix it was found under"""
         matches: dict[str, tuple[Table, str]] = {}
         for prefix in self.get_db_service_prefixes():
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
@@ -279,8 +297,7 @@ class SigmaSource(DashboardServiceSource):
         if len(matches) != 1:
             logger.debug("Skipping Sigma table reference %s: it matches %d tables", table, len(matches))
             return None
-        found, prefix = next(iter(matches.values()))
-        return found if prefix == db_service_prefix else None
+        return next(iter(matches.values()))
 
     def _get_table_entity_from_node(
         self,
