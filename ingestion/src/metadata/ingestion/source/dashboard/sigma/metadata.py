@@ -12,6 +12,7 @@
 
 import traceback
 from collections.abc import Iterable
+from datetime import datetime
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -39,8 +40,10 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Markdown,
     SourceUrl,
+    Timestamp,
 )
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
@@ -62,8 +65,13 @@ from metadata.utils.helpers import (
     get_standard_chart_type,
 )
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
+
+
+def _access_details(moment: datetime | None) -> AccessDetails | None:
+    return AccessDetails(timestamp=Timestamp(datetime_to_timestamp(moment, milliseconds=True))) if moment else None
 
 
 class SigmaSource(DashboardServiceSource):
@@ -152,6 +160,10 @@ class SigmaSource(DashboardServiceSource):
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_details.url),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
+                lifeCycle=LifeCycle(
+                    created=_access_details(dashboard_details.createdAt),
+                    updated=_access_details(dashboard_details.updatedAt),
+                ),
             )
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
