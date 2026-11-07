@@ -713,13 +713,25 @@ final class NativeOntologyRdfReader {
 
   /**
    * Whatever no definition or axiom consumed is outside the native model. Statements about named
-   * resources go first so that each takes the blank-node structure hanging off it; the blank
-   * nodes nothing reaches are counted last.
+   * resources go first so that each takes the blank-node structure hanging off it. Blank nodes no
+   * other leftover reaches follow, so that a list or restriction is counted from its head whatever
+   * order the parser produced; only the nodes inside a blank-node cycle are left to statement order.
    */
   private void skipRemaining() {
     final List<Statement> leftovers = List.copyOf(remaining);
     for (final Statement statement : leftovers) {
       if (statement.getSubject().isURIResource() && remaining.contains(statement)) {
+        skipStatement(reasonFor(statement), statement);
+      }
+    }
+    final Set<Resource> reached = new HashSet<>();
+    for (final Statement statement : leftovers) {
+      if (statement.getObject().isAnon()) {
+        reached.add(statement.getObject().asResource());
+      }
+    }
+    for (final Statement statement : leftovers) {
+      if (!reached.contains(statement.getSubject()) && remaining.contains(statement)) {
         skipStatement(reasonFor(statement), statement);
       }
     }

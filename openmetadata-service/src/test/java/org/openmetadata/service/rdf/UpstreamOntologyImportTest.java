@@ -5,9 +5,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Statement;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
@@ -60,6 +68,27 @@ class UpstreamOntologyImportTest {
             .withData(load("dcat3.ttl"));
 
     assertEquals(importer.read(request).document(), importer.read(request).document());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"dcat3.ttl", "org.ttl", "odrl.ttl"})
+  void statementOrderDoesNotChangeTheDocumentOrTheSkipReport(String file) throws IOException {
+    final var request =
+        new PreviewNativeOntologyImport()
+            .withFormat(NativeOntologyImportFormat.TURTLE)
+            .withData(load(file));
+    final NativeOntologyDocument expected = importer.read(request).document();
+    final List<Statement> statements =
+        importer.parse(request.getData(), RdfSerializationFormat.TURTLE).listStatements().toList();
+
+    for (int seed = 0; seed < 5; seed++) {
+      final List<Statement> shuffled = new ArrayList<>(statements);
+      Collections.shuffle(shuffled, new Random(seed));
+      final Model reordered = ModelFactory.createDefaultModel().add(shuffled);
+      final NativeOntologyDocument actual = NativeOntologyRdfImporter.read(reordered);
+      assertEquals(expected, actual, file + " seed " + seed);
+      assertEquals(expected.skipped(), actual.skipped(), file + " seed " + seed);
+    }
   }
 
   private static String load(final String file) throws IOException {

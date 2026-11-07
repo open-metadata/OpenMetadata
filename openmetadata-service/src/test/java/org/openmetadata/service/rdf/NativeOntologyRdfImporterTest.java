@@ -345,6 +345,25 @@ class NativeOntologyRdfImporterTest {
   }
 
   @Test
+  void aBlankNodeListIsCountedFromItsHeadWhateverOrderTheParserProduces() {
+    final var source = new StringBuilder();
+    for (int index = 0; index < 60; index++) {
+      source.append(
+          "[ <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <https://example.org/a%d> ;\n"
+              .formatted(index));
+      source.append(
+          "  <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> [\n"
+              + "    <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> <https://example.org/b> ;\n"
+              + "    <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest>"
+              + " <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> ] ] .\n");
+    }
+
+    for (int run = 0; run < 5; run++) {
+      assertEquals(120, readDocument(source.toString()).skipped().getTotal(), "run " + run);
+    }
+  }
+
+  @Test
   void skippedReportStaysSmallWhateverTheSourceStates() {
     final var document =
         readDocument(
