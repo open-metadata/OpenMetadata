@@ -16,11 +16,11 @@ import {
   TestCaseResult,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
+import { formatRunDuration } from '../../../../utils/date-time/DateTimeUtils';
 import {
   formatDifference,
   formatExpectation,
   formatFound,
-  formatRunDuration,
   getComparisonBars,
   getFoundValue,
   getRunDetails,

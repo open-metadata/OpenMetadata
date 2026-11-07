@@ -46,7 +46,10 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import {
+  convertMillisecondsToHumanReadableFormat,
+  customFormatDateTime,
+} from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
@@ -110,19 +113,16 @@ const QueryCard: FC<QueryCardProp> = ({
       return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
     }
 
-    const duration = Duration.fromObject({
-      milliseconds: durationInMilliSeconds,
-    });
-
-    let formatString;
-    if (durationInMilliSeconds < ONE_MINUTE_IN_MILLISECOND) {
-      formatString = "s.S 'sec'";
-    } else {
-      formatString = "m 'min' s 'sec'";
+    if (durationInMilliSeconds >= ONE_MINUTE_IN_MILLISECOND) {
+      return `${t('label.runs-for')} ${convertMillisecondsToHumanReadableFormat(
+        durationInMilliSeconds,
+        2
+      )}`;
     }
 
-    // Format the duration as a string using the chosen format string
-    return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
+    return Duration.fromObject({
+      milliseconds: durationInMilliSeconds,
+    }).toFormat(`'${t('label.runs-for')}' s.SSS 'sec'`);
   }, [query]);
 
   const updateSqlQuery = async () => {

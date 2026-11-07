@@ -25,6 +25,7 @@ import {
   formatDateTimeLong,
   formatDurationToHHMMSS,
   formatMonth,
+  formatRunDuration,
   formatTimeDurationFromSeconds,
   getActiveTimeFormat,
   getElapsedTime,
@@ -93,6 +94,19 @@ describe('DateTimeUtils tests', () => {
     expect(formatDurationToHHMMSS(210)).toBe('210 ms');
     expect(formatDurationToHHMMSS(999.6)).toBe('999 ms');
     expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
+  });
+
+  it(`formatRunDuration should keep sub-minute precision`, () => {
+    expect(formatRunDuration(0)).toBe('<1ms');
+    expect(formatRunDuration(210)).toBe('210ms');
+    expect(formatRunDuration(1999)).toBe('2.0s');
+    expect(formatRunDuration(42_300)).toBe('42.3s');
+  });
+
+  it(`formatRunDuration should roll long runs up into hours and minutes`, () => {
+    expect(formatRunDuration(125_000)).toBe('2m 5s');
+    expect(formatRunDuration(9_936_000)).toBe('2h 45m 36s');
+    expect(formatRunDuration(90_000_000)).toBe('1d 1h');
   });
 
   it(`customFormatDateTime should formate date and time both`, () => {
