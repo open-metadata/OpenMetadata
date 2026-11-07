@@ -3,6 +3,7 @@ package org.openmetadata.service.rdf;
 import java.net.URI;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -804,7 +805,8 @@ final class NativeOntologyRdfReader {
 
   private List<Statement> takeAllStatements(final Resource subject, final Property predicate) {
     final List<Statement> statements =
-        model.listStatements(subject, predicate, (RDFNode) null).toList();
+        new ArrayList<>(model.listStatements(subject, predicate, (RDFNode) null).toList());
+    statements.sort(Comparator.comparing(statement -> statement.getObject().toString()));
     statements.forEach(remaining::remove);
     return statements;
   }
