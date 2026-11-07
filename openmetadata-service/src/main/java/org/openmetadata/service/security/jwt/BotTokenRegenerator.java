@@ -38,7 +38,8 @@ import org.openmetadata.service.secrets.SecretsManager;
  * Gives every JWT bot a token signed by the configured signing key. The ops command runs it after
  * the key was replaced, and an in-server caller can run it the same way. A bot whose stored token
  * already verifies under the configured key, carries the configured {@code kid} and has not
- * expired is left alone, so a re-run changes nothing that is already current.
+ * expired is left alone, so a re-run changes nothing that is already current. A bot whose token
+ * was revoked is skipped and stays without a token.
  *
  * <p>Results carry the bot name, an outcome and a detail, and never a token or an exception
  * message, because an in-server caller may return them over HTTP.
@@ -54,6 +55,8 @@ public class BotTokenRegenerator {
 
   public record BotResult(String botName, Outcome outcome, String detail) {}
 
+  // revokeToken stores an empty token; regenerating one would re-enable a bot an admin shut off
+  static final String TOKEN_REVOKED = "Token revoked";
   static final String CHANGED_CONCURRENTLY = "changed concurrently, re-run";
 
   private final SecretsManager secretsManager;
@@ -83,8 +86,7 @@ public class BotTokenRegenerator {
       return new BotResult(botName, Outcome.FAILED, CHANGED_CONCURRENTLY);
     } catch (RuntimeException e) {
       LOG.error("Failed to regenerate token for bot: {}", botName, e);
-      return new BotResult(
-          botName, Outcome.FAILED, e.getClass().getSimpleName() + ", see the server log");
+      return new BotResult(botName, Outcome.FAILED, e.getClass().getSimpleName() + ", see the log");
     }
   }
 
@@ -97,7 +99,11 @@ public class BotTokenRegenerator {
     if (mechanism == null || mechanism.getAuthType() != AuthenticationMechanism.AuthType.JWT) {
       return new BotResult(botName, Outcome.SKIPPED, "Not using JWT authentication");
     }
-    if (isCurrent(readToken(secretsManager, mechanism))) {
+    String storedToken = readToken(secretsManager, mechanism);
+    if (storedToken == null || storedToken.isBlank()) {
+      return new BotResult(botName, Outcome.SKIPPED, TOKEN_REVOKED);
+    }
+    if (isCurrent(storedToken)) {
       return new BotResult(botName, Outcome.ALREADY_CURRENT, "Token already current");
     }
     replaceToken(botUser.get(), expiry);

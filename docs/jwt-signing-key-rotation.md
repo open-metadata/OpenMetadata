@@ -60,7 +60,8 @@ The command:
    There is no flag to skip this check.
 2. Gives every JWT bot a new token signed by the new key. A bot whose stored token already verifies
    under the configured key, carries the configured `keyId` and has not expired is left unchanged,
-   so you can run the command again.
+   so you can run the command again. A bot whose token was revoked is skipped and keeps no token,
+   so an administrator's revoke survives the rotation.
 3. Redeploys every ingestion pipeline with `deployed == true`, with the new ingestion-bot token.
    This runs on every run, so a re-run repairs a redeploy that failed before. When
    `pipelineServiceClientConfiguration.enabled` is `false`, it skips this step and says so.
@@ -74,8 +75,8 @@ re-run"). Run the command again.
 | 1 | A bot or a pipeline failed, or the command could not run. See the table and log |
 | 2 | The configured key differs from the servers' JWKS, or the JWKS could not be read. Nothing was written |
 
-The report lists each bot as `REGENERATED`, `ALREADY_CURRENT`, `SKIPPED` (no bot user, or not
-JWT) or `FAILED`.
+The report lists each bot as `REGENERATED`, `ALREADY_CURRENT`, `SKIPPED` (no bot user, not
+JWT, or token revoked) or `FAILED`.
 
 A bot works again as soon as its new token is stored. Servers accept a regenerated token on its
 first request, without a restart. `OpsRegenerateBotTokensIT` asserts this.
@@ -83,7 +84,7 @@ first request, without a restart. `OpsRegenerateBotTokensIT` asserts this.
 ## 4. Check the result
 
 - `GET /api/v1/system/config/jwks` lists only the new `keyId`.
-- The report shows every bot as `REGENERATED` or `ALREADY_CURRENT`.
+- The report shows every bot as `REGENERATED` or `ALREADY_CURRENT`, except bots you revoked, which show `SKIPPED`.
 - Pipelines run again from their schedules or from a manual trigger.
 
 ## Who else is affected

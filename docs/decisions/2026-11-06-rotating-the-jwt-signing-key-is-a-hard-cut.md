@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** Sriharsha Chintalapani
-- **Guard:** `OpsRegenerateBotTokensIT` (a key that differs from the servers' JWKS exits 2 and changes no token; a second run leaves current tokens unchanged), `OpenMetadataOperationsJwksTest`, `BotTokenRegeneratorTest`
+- **Guard:** `OpsRegenerateBotTokensIT` (a key that differs from the servers' JWKS exits 2 and changes no token; a second run leaves current tokens unchanged; a bot revoked through `PUT /v1/users/revokeToken` keeps an empty token, in `aBotWhoseTokenWasRevokedStaysRevoked`), `OpenMetadataOperationsJwksTest`, `BotTokenRegeneratorTest`
 - **Related:** #36478, docs/jwt-signing-key-rotation.md
 
 ## Context
@@ -23,6 +23,8 @@ rarely and plan for.
 - A bot whose stored token verifies under the configured key, has the configured `kid` and has not
   expired is left unchanged. A bot saved through `updateIfCurrent` fails, rather than being
   overwritten, when it changed since it was read.
+- A bot whose stored token is null or blank was revoked by an administrator. It is reported as
+  `SKIPPED` ("Token revoked") and nothing is written, so regeneration never re-enables it.
 
 ## Consequences
 

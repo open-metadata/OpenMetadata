@@ -103,6 +103,20 @@ class OpsRegenerateBotTokensIT {
   }
 
   @Test
+  void aBotWhoseTokenWasRevokedStaysRevoked(TestNamespace ns) {
+    User bot = botWithRetiredKeyToken(ns, "revokedbot");
+    CredentialFixtures.revokeBotToken(bot);
+    assertEquals("", storedToken(bot), "the revoke endpoint emptied the token");
+    double versionAfterRevoke = storedVersion(bot);
+
+    int exitCode = ForkedOperations.run("regenerate-bot-tokens");
+
+    assertEquals(0, exitCode, "a revoked bot is skipped, not failed, see forked-ops logs");
+    assertEquals("", storedToken(bot), "the revoked bot did not get a token back");
+    assertEquals(versionAfterRevoke, storedVersion(bot), 1e-9, "the bot was not rewritten");
+  }
+
+  @Test
   void aKeyThatDiffersFromTheServersJwksExitsWithTwoAndChangesNothing(
       TestNamespace ns, @TempDir Path keyDir) throws Exception {
     User bot = botWithRetiredKeyToken(ns, "mismatchbot");
