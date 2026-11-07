@@ -160,6 +160,12 @@ def test_invalid_get_table_or_column_fqn(entity_link, error):
         get_table_or_column_fqn(entity_link)
 
 
+def test_invalid_get_table_or_column_fqn_message_names_the_link_parts():
+    """The error message shows the parsed parts of the rejected entity link"""
+    with pytest.raises(ValueError, match=r"\['table', 'rds\.dev\.dbt_jaffle\.customers', 'columns'\]"):
+        get_table_or_column_fqn("<#E::table::rds.dev.dbt_jaffle.customers::columns>")
+
+
 @pytest.mark.parametrize(
     "entity_link,expected",
     [
