@@ -72,6 +72,19 @@ export enum DATA_CONTRACT_ACTION_DROPDOWN_KEY {
 
 export type ContractImportFormat = 'odcs' | 'openmetadata';
 
+export const ODCS_EXPORT_VERSIONS = [
+  'v3.1.0',
+  'v3.0.2',
+  'v3.0.1',
+  'v3.0.0',
+  'v2.2.2',
+  'v2.2.1',
+] as const;
+
+export type ODCSExportVersion = (typeof ODCS_EXPORT_VERSIONS)[number];
+
+export const DEFAULT_ODCS_EXPORT_VERSION: ODCSExportVersion = 'v3.1.0';
+
 export enum DATA_CONTRACT_SLA {
   REFRESH_FREQUENCY = 'refresh_frequency',
   MAX_LATENCY = 'max_latency',

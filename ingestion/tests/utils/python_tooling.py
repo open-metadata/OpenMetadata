@@ -96,6 +96,7 @@ install-project = {str(name in ("runtime", "dev", "test")).lower()}
         "scripts/check_generated_models.py",
         "scripts/generate_ingestion_models.py",
         "scripts/datamodel_generation.py",
+        "openmetadata-spec/scripts/prepare_model_schemas.py",
     ]:
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)

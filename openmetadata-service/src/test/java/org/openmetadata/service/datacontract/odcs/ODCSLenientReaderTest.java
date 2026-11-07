@@ -23,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSDataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssue;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
@@ -204,6 +205,84 @@ class ODCSLenientReaderTest {
     ODCSSchemaElement item = contract.getSchema().getFirst().getProperties().getFirst().getItems();
     assertEquals(List.of("pii"), item.getTags());
     assertEquals("{\"check\":\"not_null\"}", item.getQuality().getFirst().getImplementation());
+  }
+
+  @Test
+  void legacyMapFormCustomPropertiesAreReadAsTheArrayForm() throws JsonProcessingException {
+    ODCSImportIssues issues = new ODCSImportIssues();
+
+    ODCSDataContract contract =
+        read(
+            HEADER
+                + """
+                servers:
+                  - server: prod
+                    type: snowflake
+                    customProperties:
+                      username: svc_account
+                      replication: 2
+                quality:
+                  - name: RowCount
+                    customProperties:
+                      engineVersion: 1.2
+                """,
+            issues);
+
+    ODCSCustomProperty username =
+        contract.getServers().getFirst().getCustomProperties().stream()
+            .filter(property -> "username".equals(property.getProperty()))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("svc_account", username.getValue());
+    assertTrue(
+        contract.getServers().getFirst().getCustomProperties().stream()
+            .anyMatch(
+                property ->
+                    "replication".equals(property.getProperty())
+                        && Integer.valueOf(2).equals(property.getValue())));
+    assertTrue(
+        contract.getQuality().getFirst().getCustomProperties().stream()
+            .anyMatch(
+                property ->
+                    "engineVersion".equals(property.getProperty())
+                        && Double.valueOf(1.2).equals(property.getValue())));
+    assertTrue(
+        issues.toList().stream()
+            .allMatch(issue -> issue.getSeverity() == ODCSImportIssueSeverity.INFO));
+  }
+
+  @Test
+  void bareArrayTeamIsReadAsTheObjectForm() throws JsonProcessingException {
+    ODCSImportIssues issues = new ODCSImportIssues();
+
+    ODCSDataContract contract =
+        read(HEADER + "team:\n  - username: alice\n    role: owner\n", issues);
+
+    assertEquals(1, contract.getTeam().getMembers().size());
+    assertEquals("alice", contract.getTeam().getMembers().getFirst().getUsername());
+    assertTrue(
+        issues.toList().stream()
+            .anyMatch(issue -> issue.getSeverity() == ODCSImportIssueSeverity.INFO));
+  }
+
+  @Test
+  void legacyArrayOfApproversIsReadAsTheStringForm() throws JsonProcessingException {
+    ODCSImportIssues issues = new ODCSImportIssues();
+
+    ODCSDataContract contract =
+        read(
+            HEADER
+                + """
+                roles:
+                  - role: analyst
+                    firstLevelApprovers: [approver1@example.com, approver2@example.com]
+                """,
+            issues);
+
+    assertEquals(
+        "approver1@example.com,approver2@example.com",
+        contract.getRoles().getFirst().getFirstLevelApprovers());
+    assertEquals("roles[0].firstLevelApprovers", issues.toList().getFirst().getPath());
   }
 
   private static ODCSDataContract read(String yaml, ODCSImportIssues issues)
