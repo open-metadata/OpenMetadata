@@ -481,3 +481,40 @@ class TestAnalyzeWithAnyLanguageRecognizerRealPresidia:
         )
         result = analyzer.analyze(str_values=["user@example.com"])
         assert result.score > 0
+
+
+def test_secondary_language_model_failure_propagates_after_healthy_language(
+    pii_classification,
+    column,
+    monkeypatch,
+):
+    from metadata.pii import tag_analyzer
+    from metadata.pii.algorithms.presidio_utils import load_nlp_engine
+    from metadata.pii.model_loading import ClassificationModelLoadError
+
+    languages = []
+    failure = ClassificationModelLoadError("fr_core_news_md", "fr", "fr", "local_load")
+
+    def load_language(*, classification_language):
+        languages.append(classification_language)
+        if classification_language == ClassificationLanguage.fr:
+            raise failure
+        return load_nlp_engine(classification_language=classification_language)
+
+    monkeypatch.setattr(tag_analyzer, "load_nlp_engine", load_language)
+    analyzer = TagAnalyzer(
+        tag=_make_en_tag(pii_classification),
+        column=column,
+        nlp_engine=load_nlp_engine(classification_language=ClassificationLanguage.en),
+        language=ClassificationLanguage.any,
+    )
+    recognizers = [
+        PatternRecognizer(
+            supported_entity="EMAIL", supported_language=language, patterns=[Pattern("email", r".+@.+", 0.8)]
+        )
+        for language in ["en", "fr"]
+    ]
+    with pytest.raises(ClassificationModelLoadError) as error:
+        analyzer._analyze_with("person@example.test", recognizers)
+    assert error.value is failure
+    assert languages == [ClassificationLanguage.en, ClassificationLanguage.fr]
