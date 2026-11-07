@@ -621,7 +621,7 @@ def topology_source_for_mode(extraction_fails, grouping, incremental):
     source.database_source_state = set()
     source._table_obj_cache = LRUCache(10)
     source._dataset_obj_cache = LRUCache(10)
-    source._table_ddl_cache = {}
+    source._table_ddl_cache = LRUCache(10)
 
     class WarehouseInventory(Inventory):
         def get_table(self, name):
