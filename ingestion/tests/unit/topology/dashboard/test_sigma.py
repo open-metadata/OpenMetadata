@@ -47,7 +47,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -175,25 +175,22 @@ EXPECTED_CHARTS = [
         name="1a",
         displayName="chart1",
         chartType="Table",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=1a",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="2b",
         displayName="chart2",
         chartType="BoxPlot",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=2b",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="3c",
         displayName="chart3",
         chartType="Pie",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=3c",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
 ]
 
@@ -692,6 +689,7 @@ def sigma_workbook(workbook_id: str, owner_id: str) -> dict:
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": "2026-01-02T00:00:00Z",
         "isArchived": False,
+        "description": "Quarterly sales by region",
     }
 
 
@@ -773,3 +771,32 @@ def test_each_workbook_reads_its_elements_once(sigma_over_http):
     assert charts == data_models == ["el-wb-1"]
     assert calls["GET", "/v2/workbooks/wb-1/pages"] == 1
     assert calls["GET", "/v2/workbooks/wb-1/pages/page-1/elements"] == 1
+
+
+def test_chart_links_to_its_element(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1?:nodeId=el-wb-1"
+
+
+def test_chart_does_not_copy_the_workbook_description(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.description is None
+
+
+def test_dashboard_keeps_the_workbook_description_and_link(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeOwners = False
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (dashboard,) = [either.right for either in source.yield_dashboard(details)]
+
+    assert dashboard.description.root == "Quarterly sales by region"
+    assert dashboard.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1"

@@ -185,8 +185,7 @@ class SigmaSource(DashboardServiceSource):
                     displayName=chart.name or f"Element {chart.elementId}",
                     chartType=get_standard_chart_type(chart.vizualizationType or ""),
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                    sourceUrl=SourceUrl(dashboard_details.url),
-                    description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
+                    sourceUrl=SourceUrl(f"{dashboard_details.url}?:nodeId={chart.elementId}"),
                 )
                 yield Either(right=chart_request)
                 self.register_record_chart(chart_request=chart_request)
