@@ -64,6 +64,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  */
 public final class NativeOntologyRdfImporter {
   public static final int MAX_CHANGED_DEFINITIONS = 1000;
+  public static final int MAX_LISTED_ITEMS = 5_000;
   private static final int MAX_NAME_LENGTH = 64;
   private static final int ITEM_DIGEST_LENGTH = 16;
   private static final OntologyWorkingSnapshot.Snapshot PREVIEW_TARGET =
@@ -128,9 +129,9 @@ public final class NativeOntologyRdfImporter {
     final Outcomes outcomes = reject(classify(source.document(), stored), stored);
     final Plan plan = new Plan(stored, working, SourceFamily.of(source.format()));
     final CreateOntologyChangeSet changeSet = plan.of(outcomes);
-    final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
     return new NativeOntologyImportPreview()
-        .withSummary(summary(source.format(), source.document(), outcomes).withItems(items))
+        .withSummary(
+            listing(summary(source.format(), source.document(), outcomes), plan.itemsWithClashes()))
         .withChangeSet(changeSet);
   }
 
@@ -145,7 +146,40 @@ public final class NativeOntologyRdfImporter {
     plan.of(outcomes);
     final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
     items.forEach(item -> item.setOperationId(null));
-    return summary(source.format(), source.document(), outcomes).withItems(items);
+    return listing(summary(source.format(), source.document(), outcomes), items);
+  }
+
+  /**
+   * Lists at most {@link #MAX_LISTED_ITEMS} items in source order. ALREADY_EXISTS items go first
+   * when the budget is short: nothing can be done with them, and the counts still cover them.
+   */
+  static NativeOntologyImportSummary listing(
+      final NativeOntologyImportSummary summary, final List<NativeOntologyImportItem> items) {
+    if (items.size() <= MAX_LISTED_ITEMS) {
+      return summary.withItems(items).withOmittedItems(0);
+    }
+    long existingBudget =
+        Math.max(
+            0,
+            MAX_LISTED_ITEMS
+                - items.stream()
+                    .filter(
+                        item -> item.getStatus() != NativeOntologyImportItemStatus.ALREADY_EXISTS)
+                    .count());
+    final List<NativeOntologyImportItem> listed = new ArrayList<>(MAX_LISTED_ITEMS);
+    for (final NativeOntologyImportItem item : items) {
+      if (listed.size() == MAX_LISTED_ITEMS) {
+        break;
+      }
+      if (item.getStatus() == NativeOntologyImportItemStatus.ALREADY_EXISTS) {
+        if (existingBudget == 0) {
+          continue;
+        }
+        existingBudget--;
+      }
+      listed.add(item);
+    }
+    return summary.withItems(listed).withOmittedItems(items.size() - listed.size());
   }
 
   public CreateOntologyChangeSet reconcile(
