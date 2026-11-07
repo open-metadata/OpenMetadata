@@ -1,27 +1,53 @@
-# Label when source files are for UI team
-ui:
-  - "openmetadata-ui/**/*"
-  - "openmetadata-ui-core-components/**/*"
+# Area labels applied by the `Team Label` job (.github/workflows/team-labeler.yml) from the files a
+# PR changes (ADR:2026-11-05-pr-labels-follow-paths-and-ci-trust-follows-org-membership).
+# A PR touching several areas gets every matching label. Keys are the repository's label names.
 
-# Label for Devops when source files is in docker or github
-devops:
-  - "docker/**/*"
-  - ".github/**/*"
+UI:
+  - changed-files:
+      - any-glob-to-any-file:
+          - openmetadata-ui/**
+          - openmetadata-ui-core-components/**
+          - tooling/**
 
-# Label for backend team
 backend:
-    - "openmetadata-service/**/*"
-    - "openmetadata-clients/**/*"
-    - "openmetadata-dist/**/*"
-    - "openmetadata-service/**/*"
-    - "openmetadata-spec/**/*"
+  - changed-files:
+      - any-glob-to-any-file:
+          - openmetadata-service/**
+          - openmetadata-spec/**
+          - openmetadata-clients/**
+          - openmetadata-dist/**
+          - openmetadata-sdk/**
+          - openmetadata-mcp/**
+          - openmetadata-integration-tests/**
+          - openmetadata-shaded-deps/**
+          - openmetadata-k8s-operator/**
+          - common/**
+          - bootstrap/**
+          - conf/**
+          - bin/**
+          - pom.xml
 
-# Label for ingestion, when source file is in ingestion or airflow
-ingestion:
-  - "openmetadata-airflow-apis/**/*"
-  - "ingestion/**/*"
-  - "ingestion-core/**/*"
+Ingestion:
+  - changed-files:
+      - any-glob-to-any-file:
+          - ingestion/**
+          - openmetadata-airflow-apis/**
 
-# Label to help us track spec changes
+devops:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docker/**
+          - .github/**
+          - openmetadata-k8s-operator/**
+          - .devcontainer/**
+          - Makefile
+
 spec:
-  - "openmetadata-spec/**/*"
+  - changed-files:
+      - any-glob-to-any-file:
+          - openmetadata-spec/**
+
+documentation:
+  - changed-files:
+      - any-glob-to-any-file:
+          - docs/**
