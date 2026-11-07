@@ -35,12 +35,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.OntologyPackInstallPlan;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPackModuleInstallation;
+import org.openmetadata.schema.type.OntologyPackSlice;
 import org.openmetadata.schema.type.OntologyPackSource;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
@@ -48,6 +50,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.ontology.OntologyPackInstallations.PlanLedger;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot.Entry;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot.Snapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
@@ -407,6 +410,95 @@ class OntologyPackInstallationsTest {
         .forEach(property -> property.setOwners(new ArrayList<>()));
 
     OntologyPackInstallations.requireMatchingOperations(expected, stored);
+  }
+
+  @Test
+  void aSliceIsVerifiedAgainstTheJobsRecordedPlanAndOnlyTheLastRecordsTheInstallation() {
+    final var draft = plan("fhir", List.of("clinical"), emptySnapshot);
+    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 5, "ab".repeat(32));
+    assertEquals(3, slicePlan.slices().size());
+    final PlanLedger ledger = ledgerOf(slicePlan);
+
+    final List<Boolean> recordsInstallation =
+        slicePlan.slices().stream()
+            .map(
+                slice ->
+                    OntologyPackInstallations.prepareSlice(
+                            catalog, ledger, sliceChangeSet(draft, slicePlan, slice), "steward", 5L)
+                        != null)
+            .toList();
+
+    assertEquals(List.of(false, false, true), recordsInstallation);
+  }
+
+  @Test
+  void rejectsASliceWhoseOperationsDifferFromThePlanOrWhoseStampIsForeign() {
+    final var draft = plan("fhir", List.of("clinical"), emptySnapshot);
+    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 5, "ab".repeat(32));
+    final PlanLedger ledger = ledgerOf(slicePlan);
+    final var first = slicePlan.slices().getFirst();
+
+    final var altered = sliceChangeSet(draft, slicePlan, first);
+    altered.getOperations().getFirst().getConcept().setDisplayName("Changed label");
+    assertSliceRejected(ledger, altered);
+
+    final var swapped = sliceChangeSet(draft, slicePlan, first);
+    swapped.getSourcePack().getSlice().setIndex(1);
+    assertSliceRejected(ledger, swapped);
+
+    final var otherJob = sliceChangeSet(draft, slicePlan, first);
+    otherJob.getSourcePack().getSlice().setJobId(8L);
+    assertSliceRejected(ledger, otherJob);
+
+    final var otherPlan = sliceChangeSet(draft, slicePlan, first);
+    otherPlan.getSourcePack().getSlice().setPlanDigest("cd".repeat(32));
+    assertSliceRejected(ledger, otherPlan);
+
+    final var otherOntology = sliceChangeSet(draft, slicePlan, first);
+    otherOntology.setOntology(new EntityReference().withId(UUID.randomUUID()).withType("ontology"));
+    assertSliceRejected(ledger, otherOntology);
+
+    final var partial = sliceChangeSet(draft, slicePlan, first);
+    partial.setUndoCursor(partial.getOperations().size() - 1);
+    assertSliceRejected(ledger, partial);
+  }
+
+  private void assertSliceRejected(final PlanLedger ledger, final OntologyChangeSet changeSet) {
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> OntologyPackInstallations.prepareSlice(catalog, ledger, changeSet, "steward", 5L));
+  }
+
+  private PlanLedger ledgerOf(final OntologyPackSlicePlan slicePlan) {
+    final OntologyPackInstallPlan recorded =
+        new OntologyPackInstallPlan()
+            .withPlanDigest(slicePlan.planDigest())
+            .withSliceDigests(slicePlan.sliceDigests())
+            .withMemberCount(slicePlan.memberCount())
+            .withMembersApplied(0);
+    return (jobId, ontologyId) -> jobId == 7L && ontologyId.equals(root.getId()) ? recorded : null;
+  }
+
+  private OntologyChangeSet sliceChangeSet(
+      final OntologyChangeSet draft,
+      final OntologyPackSlicePlan slicePlan,
+      final OntologyPackSlicePlan.Slice slice) {
+    final List<OntologyChangeOperation> operations =
+        JsonUtils.readObjects(
+            JsonUtils.pojoToJson(slice.operations()), OntologyChangeOperation.class);
+    return new OntologyChangeSet()
+        .withOntology(root.getEntityReference())
+        .withBaseWorkingRevision(0L)
+        .withOperations(new ArrayList<>(operations))
+        .withUndoCursor(operations.size())
+        .withSourcePack(
+            JsonUtils.deepCopy(draft.getSourcePack(), OntologyPackSource.class)
+                .withSlice(
+                    new OntologyPackSlice()
+                        .withJobId(7L)
+                        .withIndex(slice.index())
+                        .withCount(slicePlan.slices().size())
+                        .withPlanDigest(slicePlan.planDigest())));
   }
 
   private void assertRejected(final OntologyChangeSet draft, final Snapshot snapshot) {
