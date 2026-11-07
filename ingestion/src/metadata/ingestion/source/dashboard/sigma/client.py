@@ -15,6 +15,8 @@ REST Auth & Client for Sigma
 import traceback
 from base64 import b64encode
 
+from cachetools import LRUCache
+
 from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
     SigmaConnection,
 )
@@ -81,6 +83,9 @@ class SigmaApiClient:
         )
 
         self.client = TrackedREST(client_config, source_name="sigma")
+        # Successful reads only: a failed read stays retryable for the next workbook or element.
+        self._owner_cache: LRUCache[str, OwnerDetails] = LRUCache(maxsize=512)
+        self._file_cache: LRUCache[str, NodeDetails] = LRUCache(maxsize=512)
 
     def get_auth_token(self) -> tuple[str, int]:
         """
@@ -95,7 +100,6 @@ class SigmaApiClient:
         """
         method to test fetch dashboards from api
         """
-        result = self.client.get("/workbooks")
         result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
         if result:
             return result.entries
@@ -106,7 +110,6 @@ class SigmaApiClient:
         """
         workbooks = []
         try:
-            result = self.client.get("/workbooks")
             result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
             if result:
                 workbooks.extend(result.entries)
@@ -137,9 +140,12 @@ class SigmaApiClient:
         """
         method to fetch dashboard owner details from api
         """
+        if owner_id in self._owner_cache:
+            return self._owner_cache[owner_id]
         try:
             result = OwnerDetails.model_validate(self.client.get(f"/members/{owner_id}"))
             if result:
+                self._owner_cache[owner_id] = result
                 return result
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
@@ -244,7 +250,11 @@ class SigmaApiClient:
                     continue
 
                 try:
-                    node_details = NodeDetails.model_validate(self.client.get(f"/files/{edge.node_id}"))
+                    if edge.node_id not in self._file_cache:
+                        self._file_cache[edge.node_id] = NodeDetails.model_validate(
+                            self.client.get(f"/files/{edge.node_id}")
+                        )
+                    node_details = self._file_cache[edge.node_id]
 
                     if node_details.node_type in ["table", "dataset"]:
                         source_nodes.append(node_details)
