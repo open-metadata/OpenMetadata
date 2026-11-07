@@ -195,6 +195,34 @@ class ConversationResourceIT {
   }
 
   @Test
+  void testReactivatedThreadSurfacesInLastActivityWindow(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "window");
+    String about = entityLink(table);
+    Conversation oldThread = createConversation(about, "Old thread created before the window");
+    long createdAt = oldThread.getCreatedAt();
+
+    Thread.sleep(20);
+    addReply(oldThread.getId(), "Fresh reply bumps last activity into the window");
+    Conversation reactivated = getConversation(oldThread.getId());
+    long lastActivity = reactivated.getUpdatedAt();
+    assertTrue(lastActivity > createdAt, "reply must advance updatedAt past createdAt");
+
+    ConversationList inWindow = listConversations(about, 100, lastActivity, null);
+    assertContainsConversation(inWindow, oldThread.getId());
+    assertEquals(
+        1,
+        inWindow.getPaging().getTotal(),
+        "reactivated thread must be listed and counted when the window opens after creation");
+
+    ConversationList beforeActivity = listConversations(about, 100, null, lastActivity - 1);
+    assertFalse(
+        containsConversation(beforeActivity, oldThread.getId()),
+        "thread whose last activity is after the window end must be excluded");
+
+    deleteConversation(oldThread.getId());
+  }
+
+  @Test
   void testReplyPaginationUsesIndependentCursor(TestNamespace ns) throws Exception {
     Conversation conversation =
         createConversation(entityLink(createTestTable(ns, "reply-cursor")), "Cursor root");
@@ -616,6 +644,26 @@ class ConversationResourceIT {
       String about, int limit, String after, String before, Boolean resolved) throws Exception {
     return listConversations(
         SdkClients.adminClient(), about, null, null, limit, after, before, resolved);
+  }
+
+  private static ConversationList listConversations(
+      String about, int limit, Long startTs, Long endTs) throws Exception {
+    RequestOptions.Builder options =
+        RequestOptions.builder().queryParam("limit", String.valueOf(limit));
+    if (about != null) {
+      options.queryParam("entityLink", about);
+    }
+    if (startTs != null) {
+      options.queryParam("startTs", startTs.toString());
+    }
+    if (endTs != null) {
+      options.queryParam("endTs", endTs.toString());
+    }
+    String json =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, CONVERSATIONS_PATH, null, options.build());
+    return MAPPER.readValue(json, ConversationList.class);
   }
 
   private static ConversationList listConversations(
