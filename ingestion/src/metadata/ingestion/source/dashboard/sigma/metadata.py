@@ -110,7 +110,10 @@ class SigmaSource(DashboardServiceSource):
         """
         get dashboard details
         """
-        return self.client.get_dashboard_detail(dashboard.workbookId)
+        dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
+        if dashboard_details:
+            dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
+        return dashboard_details
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -172,16 +175,15 @@ class SigmaSource(DashboardServiceSource):
             logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541
             return
 
-        charts = self.client.get_chart_details(dashboard_details.workbookId)
-        for chart in charts or []:
+        for chart in dashboard_details.elements:
             try:
-                if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
+                if filter_by_chart(self.source_config.chartFilterPattern, chart.name or ""):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart.elementId)),
                     displayName=chart.name or f"Element {chart.elementId}",
-                    chartType=get_standard_chart_type(chart.vizualizationType),
+                    chartType=get_standard_chart_type(chart.vizualizationType or ""),
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                     sourceUrl=SourceUrl(dashboard_details.url),
                     description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
@@ -468,7 +470,7 @@ class SigmaSource(DashboardServiceSource):
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = self.client.get_chart_details(dashboard_details.workbookId)
+            self.data_models = dashboard_details.elements
             for data_model in self.data_models or []:
                 # Skip non-visualization elements (text boxes, dividers, buttons, controls)
                 # to avoid creating DataModel entries for elements that have no data source.

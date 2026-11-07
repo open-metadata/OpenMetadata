@@ -13,9 +13,15 @@
 Test sigma Dashboard using the topology
 """
 
+import json
+from collections import Counter
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
+
+import pytest
+import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -45,10 +51,12 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markd
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
     NodeDetails,
+    Workbook,
     WorkbookDetails,
     WorkbookQueriesResponse,
     WorkbookQuery,
@@ -146,6 +154,7 @@ MOCK_DASHBOARD_DETAILS = WorkbookDetails(
     createdAt="today",
     url="http://url.com/to/dashboard",
     isArchived=False,
+    elements=MOCK_CHARTS,
 )
 
 
@@ -299,7 +308,6 @@ class SigmaUnitTest(TestCase):
         """
         Function for testing charts
         """
-        self.sigma.client.get_chart_details = lambda *_: MOCK_CHARTS
         chart_list = []
         results = self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
         for result in results:
@@ -454,9 +462,9 @@ class SigmaUnitTest(TestCase):
         viz_element = Elements(elementId="viz1", name="chart1", vizualizationType="table")
         non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
 
-        self.sigma.client.get_chart_details = lambda *_: [viz_element, non_viz_element]
+        dashboard_details = MOCK_DASHBOARD_DETAILS.model_copy(update={"elements": [viz_element, non_viz_element]})
 
-        results = [r.right for r in self.sigma.yield_datamodel(MOCK_DASHBOARD_DETAILS) if r.right]
+        results = [r.right for r in self.sigma.yield_datamodel(dashboard_details) if r.right]
         # Only the visualization element should produce a DataModel request
         self.assertEqual(len(results), 1)
         self.assertEqual(str(results[0].name.root), "viz1")
@@ -516,7 +524,6 @@ class SigmaUnitTest(TestCase):
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        self.sigma.client.get_chart_details = lambda *_: MOCK_CHARTS
         self.sigma.chart_source_state = set()
         list(self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
         assert len(self.sigma.chart_source_state) == 3
@@ -669,3 +676,100 @@ class SigmaUnitTest(TestCase):
 
         # Should return empty list or handle gracefully
         assert result == []
+
+
+def sigma_workbook(workbook_id: str, owner_id: str) -> dict:
+    return {
+        "workbookId": workbook_id,
+        "workbookUrlId": f"url-{workbook_id}",
+        "name": f"Sales {workbook_id}",
+        "url": f"https://app.sigmacomputing.com/acme/workbook/{workbook_id}",
+        "path": "Shared/Finance",
+        "latestVersion": 3,
+        "ownerId": owner_id,
+        "createdBy": owner_id,
+        "updatedBy": owner_id,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+        "isArchived": False,
+    }
+
+
+SIGMA_WORKBOOKS = [sigma_workbook("wb-1", "member-1")]
+
+
+def sigma_routes() -> dict:
+    """Sigma responses valid against its OpenAPI spec, keyed by (method, path)"""
+    routes = {
+        ("POST", "/v2/auth/token"): {"access_token": "token", "token_type": "bearer", "expires_in": 3600},
+        ("GET", "/v2/files/T1"): {
+            "id": "T1",
+            "urlId": "t1-url",
+            "name": "ORDERS",
+            "type": "table",
+            "parentId": "P1",
+            "parentUrlId": "p1-url",
+            "permission": "view",
+            "path": "Connection Root/ANALYTICS.PUBLIC",
+            "badge": None,
+            "isArchived": False,
+            "createdBy": "member-1",
+            "updatedBy": "member-1",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-02T00:00:00Z",
+        },
+    }
+    for workbook in SIGMA_WORKBOOKS:
+        workbook_path = f"/v2/workbooks/{workbook['workbookId']}"
+        element_id = f"el-{workbook['workbookId']}"
+        routes["GET", workbook_path] = workbook
+        routes["GET", f"{workbook_path}/pages"] = {"entries": [{"pageId": "page-1"}], "nextPage": None, "total": 1}
+        routes["GET", f"{workbook_path}/pages/page-1/elements"] = {
+            "entries": [{"elementId": element_id, "name": "Revenue", "vizualizationType": "bar"}],
+            "nextPage": None,
+            "total": 1,
+        }
+        routes["GET", f"{workbook_path}/lineage/elements/{element_id}"] = {
+            "dependencies": {},
+            "edges": [{"source": "inode-T1", "target": f"sheet-{element_id}", "type": "source"}],
+        }
+    return routes
+
+
+@pytest.fixture
+def sigma_over_http():
+    """SigmaSource with its real client; HTTP is answered from sigma_routes() and counted per (method, path)"""
+    routes = sigma_routes()
+    calls = Counter()
+
+    def request(method, url, **_):
+        path = urlparse(str(url)).path
+        calls[method, path] += 1
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps(routes[method, path]).encode()
+        return response
+
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+    source.client = SigmaApiClient(source.service_connection)
+    source.client.client._session.request = request
+    source.client.token_client._session.request = request
+    source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+    return source, calls
+
+
+def test_each_workbook_reads_its_elements_once(sigma_over_http):
+    source, calls = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [either.right.name.root for either in source.yield_dashboard_chart(details)]
+    data_models = [either.right.name.root for either in source.yield_datamodel(details)]
+
+    assert charts == data_models == ["el-wb-1"]
+    assert calls["GET", "/v2/workbooks/wb-1/pages"] == 1
+    assert calls["GET", "/v2/workbooks/wb-1/pages/page-1/elements"] == 1
