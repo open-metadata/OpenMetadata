@@ -606,13 +606,16 @@ final class NativeOntologyRdfReader {
 
   private Operand dataOperand(final Statement statement) {
     final RDFNode object = statement.getObject();
-    final boolean assertable = object.isLiteral() && object.asLiteral().getLanguage().isEmpty();
-    if (!assertable) {
+    final OntologyLiteral literal =
+        object.isLiteral() && object.asLiteral().getLanguage().isEmpty()
+            ? OntologyExpressionRdfReader.literal(object.asLiteral())
+            : null;
+    // Applying an assertion refuses a datatype outside OWL 2, such as a vocabulary's own `gs1:AI`.
+    if (literal == null || !OwlDatatypeSupport.isValidLiteral(literal)) {
       skipStatement(NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE, statement);
+      return null;
     }
-    return assertable
-        ? new Operand(null, null, OntologyExpressionRdfReader.literal(statement.getLiteral()))
-        : null;
+    return new Operand(null, null, literal);
   }
 
   private void addAxiom(

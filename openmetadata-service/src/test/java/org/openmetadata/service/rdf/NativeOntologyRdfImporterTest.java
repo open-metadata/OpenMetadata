@@ -312,6 +312,28 @@ class NativeOntologyRdfImporterTest {
   }
 
   @Test
+  void aValueOfADatatypeOutsideOwl2IsReportedInsteadOfAssertedWhereApplyingWouldRefuseIt() {
+    final var document =
+        readDocument(
+            """
+            ex:P a owl:DatatypeProperty ;
+              skos:notation "15"^^ex:AI ;
+              skos:notation "12"^^xsd:integer .
+            """);
+
+    assertEquals(
+        List.of("12"),
+        document.axioms().stream()
+            .filter(axiom -> axiom.getAxiomType() == OntologyAxiomType.DATA_PROPERTY_ASSERTION)
+            .map(axiom -> axiom.getLiteral().getValue())
+            .toList());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2004/02/skos/core#notation x1"
+            + " [https://example.org/P]]",
+        skippedGroups(document));
+  }
+
+  @Test
   void unrepresentedStatementIsReportedInsteadOfLost() {
     final var document =
         readDocument("<https://example.org/Customer> <https://example.org/unknown> \"lost\" .");
