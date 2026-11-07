@@ -364,6 +364,39 @@ class NativeOntologyRdfImporterTest {
   }
 
   @Test
+  void anAxiomNamingAPropertyThePlanRefusesIsRefusedWithIt() {
+    final var root = root();
+    final var snapshot =
+        new OntologyWorkingSnapshot.Snapshot(
+            state(root), List.of(new OntologyWorkingSnapshot.Entry(MemberKind.ONTOLOGY, root)));
+    final var request =
+        new PreviewNativeOntologyImport()
+            .withFormat(NativeOntologyImportFormat.TURTLE)
+            .withData(
+                TURTLE_PREFIXES
+                    + """
+                    ex:Org a owl:Class .
+                    ex:hasMember a owl:ObjectProperty ; rdfs:domain ex:Org ; rdfs:range ex:Elsewhere .
+                    ex:Collab a owl:Class ; owl:equivalentClass [ a owl:Restriction ;
+                      owl:onProperty ex:hasMember ; owl:allValuesFrom ex:Org ] .
+                    """);
+
+    final var preview = importer.preview(importer.read(request), snapshot);
+
+    final var operations = preview.getChangeSet().getOperations();
+    assertEquals(
+        2, operations.stream().filter(operation -> operation.getConcept() != null).count());
+    assertTrue(
+        operations.stream().noneMatch(operation -> operation.getProperty() != null),
+        "the property names a class nothing declares");
+    assertTrue(
+        operations.stream().noneMatch(operation -> operation.getAxiom() != null),
+        "the restriction names the refused property");
+    assertEquals(1, preview.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(1, preview.getSummary().getCounts().getSkippedRelations());
+  }
+
+  @Test
   void skippedReportStaysSmallWhateverTheSourceStates() {
     final var document =
         readDocument(

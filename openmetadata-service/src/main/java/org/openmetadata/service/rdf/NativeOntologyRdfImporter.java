@@ -6,6 +6,7 @@ import java.net.URI;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -36,24 +37,24 @@ import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyAxiom;
 import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.entity.data.OntologyProperty;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationState;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyLiteral;
-import org.openmetadata.schema.type.OntologyProfileViolation;
-import org.openmetadata.schema.type.OntologyProfileViolationSeverity;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyCsvCodec;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
-import org.openmetadata.service.ontology.OntologyClassHierarchy;
 import org.openmetadata.service.ontology.OntologyDisjointnessClashes;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPropertyRules;
+import org.openmetadata.service.ontology.OntologyStructureValidator;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -440,38 +441,85 @@ public final class NativeOntologyRdfImporter {
     return new Plan(stored, working, family).of(outcomes);
   }
 
-  /** Refuses what applying the draft would refuse, so a preview never lists what apply rejects. */
+  /**
+   * Refuses what applying the draft would refuse, so a preview never lists what apply rejects.
+   * Refusing one definition can strand another that names it, so the check repeats on what is
+   * left until nothing more is refused. Concepts are never refused: a stored concept the source
+   * touches keeps whatever it already holds, and only what names a concept can be refused.
+   */
   private static Outcomes reject(final Outcomes outcomes, final Stored stored) {
-    final OntologyClassHierarchy hierarchy =
-        new OntologyClassHierarchy(afterImport(outcomes, stored));
-    return new Outcomes(
-        outcomes.concepts(),
-        outcomes.properties().stream().map(outcome -> refuse(outcome, hierarchy)).toList(),
-        outcomes.axioms().stream().map(outcome -> refuse(outcome, hierarchy)).toList());
+    Outcomes current = outcomes;
+    int refused = -1;
+    while (refused < count(current)) {
+      refused = count(current);
+      current = refuseWhatApplyWouldRefuse(current, stored);
+    }
+    return current;
   }
 
+  private static int count(final Outcomes outcomes) {
+    return count(outcomes.concepts(), Rejected.class)
+        + count(outcomes.properties(), Rejected.class)
+        + count(outcomes.axioms(), Rejected.class);
+  }
+
+  private static Outcomes refuseWhatApplyWouldRefuse(final Outcomes outcomes, final Stored stored) {
+    final Map<Outcome<?>, UUID> candidateIds = new IdentityHashMap<>();
+    final List<OntologyDefinition> definitions = afterImport(outcomes, stored, candidateIds);
+    final Map<UUID, String> errors =
+        OntologyStructureValidator.workingErrors(definitions, new HashSet<>(candidateIds.values()));
+    return new Outcomes(
+        outcomes.concepts(),
+        outcomes.properties().stream()
+            .map(outcome -> refuse(outcome, candidateIds, errors))
+            .toList(),
+        outcomes.axioms().stream().map(outcome -> refuse(outcome, candidateIds, errors)).toList());
+  }
+
+  /** The target as applying the surviving outcomes leaves it; each candidate gets a throwaway id. */
   private static List<OntologyDefinition> afterImport(
-      final Outcomes outcomes, final Stored stored) {
+      final Outcomes outcomes, final Stored stored, final Map<Outcome<?>, UUID> candidateIds) {
     final Map<String, OntologyConcept> concepts = new LinkedHashMap<>(stored.concepts());
-    outcomes.concepts().forEach(outcome -> overlay(concepts, outcome));
+    outcomes.concepts().forEach(outcome -> overlay(concepts, outcome, candidateIds));
     final Map<String, OntologyProperty> properties = new LinkedHashMap<>(stored.properties());
-    outcomes.properties().forEach(outcome -> overlay(properties, outcome));
+    outcomes.properties().forEach(outcome -> overlay(properties, outcome, candidateIds));
     final List<OntologyDefinition> definitions = new ArrayList<>(concepts.values());
     definitions.addAll(properties.values());
     stored.axioms().values().forEach(definitions::addAll);
     outcomes.axioms().stream()
         .filter(Added.class::isInstance)
-        .forEach(outcome -> definitions.add(((Added<OntologyAxiom>) outcome).parsed()));
+        .forEach(outcome -> definitions.add(identified(candidate(outcome), outcome, candidateIds)));
     return definitions;
   }
 
   private static <T extends OntologyDefinition> void overlay(
-      final Map<String, T> index, final Outcome<T> outcome) {
-    switch (outcome) {
-      case Added<T> added -> index.put(iriOf(added.parsed()), added.parsed());
-      case Updated<T> updated -> index.put(iriOf(updated.proposed()), updated.proposed());
-      default -> {}
+      final Map<String, T> index,
+      final Outcome<T> outcome,
+      final Map<Outcome<?>, UUID> candidateIds) {
+    final T candidate = candidate(outcome);
+    if (candidate != null && !(outcome instanceof Rejected)) {
+      index.put(iriOf(candidate), identified(candidate, outcome, candidateIds));
     }
+  }
+
+  private static <T extends OntologyDefinition> T candidate(final Outcome<T> outcome) {
+    return switch (outcome) {
+      case Added<T> added -> added.parsed();
+      case Updated<T> updated -> updated.proposed();
+      default -> null;
+    };
+  }
+
+  @SuppressWarnings("unchecked")
+  private static <T extends OntologyDefinition> T identified(
+      final T candidate, final Outcome<?> outcome, final Map<Outcome<?>, UUID> candidateIds) {
+    final T copy = (T) JsonUtils.deepCopy(candidate, candidate.getClass());
+    copy.setId(UUID.randomUUID());
+    if (copy.getOntology() == null) {
+      copy.setOntology(new EntityReference().withId(new UUID(0, 0)).withType(Entity.ONTOLOGY));
+    }
+    candidateIds.put(outcome, copy.getId());
+    return copy;
   }
 
   private static String iriOf(final OntologyDefinition definition) {
@@ -481,23 +529,11 @@ public final class NativeOntologyRdfImporter {
   }
 
   private static <T extends OntologyDefinition> Outcome<T> refuse(
-      final Outcome<T> outcome, final OntologyClassHierarchy hierarchy) {
-    final T candidate =
-        switch (outcome) {
-          case Added<T> added -> added.parsed();
-          case Updated<T> updated -> updated.proposed();
-          default -> null;
-        };
-    if (candidate == null) {
-      return outcome;
-    }
-    final List<OntologyProfileViolation> violations = new ArrayList<>();
-    hierarchy.validate(candidate, violations::add);
-    return violations.stream()
-        .filter(violation -> violation.getSeverity() == OntologyProfileViolationSeverity.ERROR)
-        .findFirst()
-        .<Outcome<T>>map(violation -> new Rejected<>(candidate, violation.getMessage()))
-        .orElse(outcome);
+      final Outcome<T> outcome,
+      final Map<Outcome<?>, UUID> candidateIds,
+      final Map<UUID, String> errors) {
+    final String error = errors.get(candidateIds.get(outcome));
+    return error == null ? outcome : new Rejected<>(candidate(outcome), error);
   }
 
   /** Gives added definitions their catalog identity and wraps every change as a draft operation. */

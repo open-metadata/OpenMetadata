@@ -65,9 +65,11 @@ class NativeOntologyImportListRulesTest {
         importer.read(
             csv(
                 property("e", "DATA", Column.ENUM_VALUES, "a;b"),
+                property("x", "OBJECT", Column.LABEL, "x"),
+                property("y", "OBJECT", Column.LABEL, "y"),
                 property("c", "OBJECT", Column.PROPERTY_CHAIN, EX + "x;" + EX + "y")));
 
-    assertEquals(2, importer.preview(source, empty()).getSummary().getCounts().getNewProperties());
+    assertEquals(4, importer.preview(source, empty()).getSummary().getCounts().getNewProperties());
   }
 
   @Test
