@@ -13,9 +13,16 @@
 Test sigma Dashboard using the topology
 """
 
+import json
+from collections import Counter
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
+from uuid import NAMESPACE_URL, uuid5
+
+import pytest
+import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -41,14 +48,22 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.basic import EntityExtension, FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    build_patch,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
     NodeDetails,
+    Workbook,
     WorkbookDetails,
     WorkbookQueriesResponse,
     WorkbookQuery,
@@ -669,3 +684,248 @@ class SigmaUnitTest(TestCase):
 
         # Should return empty list or handle gracefully
         assert result == []
+
+
+def sigma_workbook(workbook_id: str, owner_id: str) -> dict:
+    return {
+        "workbookId": workbook_id,
+        "workbookUrlId": f"url-{workbook_id}",
+        "name": f"Sales {workbook_id}",
+        "url": f"https://app.sigmacomputing.com/acme/workbook/{workbook_id}",
+        "path": "Shared/Finance",
+        "latestVersion": 3,
+        "ownerId": owner_id,
+        "createdBy": owner_id,
+        "updatedBy": owner_id,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+    }
+
+
+def sigma_member(member_id: str, email: str) -> dict:
+    return {
+        "organizationId": "org-1",
+        "memberId": member_id,
+        "memberType": "admin",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "email": email,
+        "profileImgUrl": None,
+        "createdBy": member_id,
+        "updatedBy": member_id,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+        "homeFolderId": "folder-1",
+        "userKind": "internal",
+    }
+
+
+SIGMA_WORKBOOKS = [
+    sigma_workbook("wb-1", "member-1"),
+    sigma_workbook("wb-2", "member-1"),
+    sigma_workbook("wb-3", "member-2"),
+]
+
+
+def sigma_routes() -> dict:
+    """Sigma responses valid against its OpenAPI spec, keyed by (method, path)"""
+    routes = {
+        ("POST", "/v2/auth/token"): {"access_token": "token", "token_type": "bearer", "expires_in": 3600},
+        ("GET", "/v2/workbooks"): {"entries": SIGMA_WORKBOOKS, "nextPage": None},
+        ("GET", "/v2/connections"): {"entries": [], "nextPage": None},
+        ("GET", "/v2/members/member-1"): sigma_member("member-1", "ada@example.com"),
+        ("GET", "/v2/members/member-2"): sigma_member("member-2", "grace@example.com"),
+        ("GET", "/v2/files/T1"): {
+            "id": "T1",
+            "urlId": "t1-url",
+            "name": "ORDERS",
+            "type": "table",
+            "parentId": "P1",
+            "parentUrlId": "p1-url",
+            "permission": "view",
+            "path": "Connection Root/ANALYTICS.PUBLIC",
+            "badge": None,
+            "isArchived": False,
+            "createdBy": "member-1",
+            "updatedBy": "member-1",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-02T00:00:00Z",
+        },
+    }
+    for workbook in SIGMA_WORKBOOKS:
+        workbook_path = f"/v2/workbooks/{workbook['workbookId']}"
+        element_id = f"el-{workbook['workbookId']}"
+        routes["GET", workbook_path] = workbook
+        routes["GET", f"{workbook_path}/pages"] = {"entries": [{"pageId": "page-1"}], "nextPage": None}
+        routes["GET", f"{workbook_path}/lineage"] = {"entries": [], "nextPage": None}
+        routes["GET", f"{workbook_path}/pages/page-1/elements"] = {
+            "entries": [{"elementId": element_id, "name": "Revenue", "vizualizationType": "bar"}],
+            "nextPage": None,
+        }
+        routes["GET", f"{workbook_path}/lineage/elements/{element_id}"] = {
+            "dependencies": {},
+            "edges": [{"source": "inode-T1", "target": f"sheet-{element_id}", "type": "source"}],
+        }
+    return routes
+
+
+@pytest.fixture
+def routes() -> dict:
+    return sigma_routes()
+
+
+@pytest.fixture
+def sigma_over_http(routes):
+    """
+    SigmaSource with its real client; HTTP is answered from `routes` and counted per (method, path).
+    A `page` query parameter is part of the route key, and an int route answers with that error status.
+    """
+    calls = Counter()
+
+    def request(method, url, params=None, **_):
+        path = urlparse(str(url)).path
+        calls[method, path] += 1
+        page = (params or {}).get("page")
+        body = routes[(method, path, page) if page else (method, path)]
+        response = requests.Response()
+        response.status_code = body if isinstance(body, int) else 200
+        response._content = b"" if isinstance(body, int) else json.dumps(body).encode()
+        return response
+
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+    source.client = SigmaApiClient(source.service_connection)
+    source.client.client._session.request = request
+    # OpenMetadata's user lookup is the other boundary: no user matches unless a test says so
+    source.metadata.get_reference_by_email = lambda email: None
+    source.client.token_client._session.request = request
+    source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+    return source, calls
+
+
+class FakeDashboardProperties:
+    """OpenMetadata's dashboard custom properties and the Sigma dashboard, as the server holds them"""
+
+    def __init__(self, properties=(), extension=None):
+        self.properties = [{"name": name, "propertyType": {"name": data_type}} for name, data_type in properties]
+        self.registered = []
+        self.dashboard = LineageDashboard(
+            id=uuid5(NAMESPACE_URL, "wb-1"),
+            name="wb-1",
+            fullyQualifiedName="mock_sigma.wb-1",
+            service=EntityReference(id=MOCK_DASHBOARD_SERVICE.id, type="dashboardService"),
+            extension=EntityExtension(extension) if extension else None,
+        )
+
+    def serve(self, source):
+        source.metadata.get_entity_custom_properties = lambda entity_type: self.properties
+        source.metadata.get_property_type_ref = lambda data_type: PropertyType(
+            EntityReference(id=uuid5(NAMESPACE_URL, data_type.value), type="type", name=data_type.value)
+        )
+        source.metadata.create_or_update_custom_property = self.register
+        source.metadata.get_by_name = lambda entity, fqn, fields=None: (
+            self.dashboard if fqn == self.dashboard.fullyQualifiedName.root else None
+        )
+
+    def register(self, record):
+        request = record.createCustomPropertyRequest
+        self.registered.append((request.name.root, request.propertyType.root.name))
+        self.properties.append({"name": request.name.root, "propertyType": {"name": request.propertyType.root.name}})
+
+
+def patched_extension(source, workbook_id="wb-1"):
+    """The extension the dashboard holds once the sink applies the workbook's patch"""
+    details = source.get_dashboard_details(Workbook(workbookId=workbook_id))
+    requests_sent = [either.right for either in source.yield_dashboard_extension(details)]
+    if not requests_sent:
+        return None
+    (request,) = requests_sent
+    dashboard_patch = build_patch(
+        source=request.original_entity,
+        destination=request.new_entity,
+        allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+        restrict_update_fields=RESTRICT_UPDATE_LIST,
+        override_metadata=request.override_metadata,
+    )
+    assert all(op["path"].startswith("/extension") and op["op"] != "remove" for op in dashboard_patch.patch)
+    return dashboard_patch.apply(request.original_entity.model_dump(mode="json", exclude_none=True))["extension"]
+
+
+@pytest.mark.parametrize("version", [3, 1.1])
+def test_the_workbook_version_is_patched_onto_its_dashboard(sigma_over_http, routes, version):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    routes["GET", "/v2/workbooks/wb-1"] = {**routes["GET", "/v2/workbooks/wb-1"], "latestVersion": version}
+    server = FakeDashboardProperties(extension={"team": "finance", "latestVersion": 2})
+    server.serve(source)
+
+    assert patched_extension(source) == {"team": "finance", "latestVersion": version}
+    assert patched_extension(source, "wb-2") is None
+    assert server.registered == [("latestVersion", "number")]
+
+
+def test_a_latest_version_property_of_another_type_is_left_alone(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties(properties=[("latestVersion", "string")])
+    server.serve(source)
+
+    assert patched_extension(source) is None
+    assert server.registered == []
+
+
+def test_no_workbook_version_is_set_without_custom_properties(sigma_over_http):
+    source, _ = sigma_over_http
+    server = FakeDashboardProperties()
+    server.serve(source)
+
+    assert patched_extension(source) is None
+    assert server.registered == []
+
+
+def test_a_failed_registration_sets_no_version_and_is_not_retried(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties()
+    server.serve(source)
+    attempts = []
+
+    def refuse(record):
+        attempts.append(record.createCustomPropertyRequest.name.root)
+        raise requests.HTTPError("403 Forbidden")
+
+    source.metadata.create_or_update_custom_property = refuse
+
+    assert patched_extension(source) is None
+    assert patched_extension(source, "wb-2") is None
+    assert attempts == ["latestVersion"]
+
+
+def test_a_registered_latest_version_property_is_reused(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties(properties=[("latestVersion", "number")])
+    server.serve(source)
+
+    assert patched_extension(source) == {"latestVersion": 3}
+    assert server.registered == []
+
+
+def test_a_failed_dashboard_read_is_reported_for_the_workbook(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    FakeDashboardProperties().serve(source)
+
+    def unreachable(entity, fqn, fields=None):
+        raise requests.ConnectionError("OpenMetadata unreachable")
+
+    source.metadata.get_by_name = unreachable
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (either,) = source.yield_dashboard_extension(details)
+    assert either.right is None
+    assert "Sigma workbook wb-1: OpenMetadata unreachable" in either.left.error
