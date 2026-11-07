@@ -13,6 +13,7 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.SKOS;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -27,6 +28,7 @@ import org.openmetadata.schema.api.data.NativeOntologyImportItem;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipped;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -750,6 +752,166 @@ class NativeOntologyRdfImporterTest {
   }
 
   @Test
+  void superpropertyLinksOfEveryKindReadBackAndASelfLinkIsSkipped() {
+    final var document =
+        readDocument(
+            """
+            ex:a a owl:ObjectProperty ; rdfs:subPropertyOf ex:b, ex:a, <https://schema.org/relatedTo> .
+            ex:b a owl:ObjectProperty .
+            ex:c a owl:DatatypeProperty ; rdfs:subPropertyOf ex:d .
+            ex:d a owl:DatatypeProperty .
+            ex:e a owl:AnnotationProperty ; rdfs:subPropertyOf rdfs:label .
+            """);
+
+    final var byIri =
+        document.properties().stream()
+            .collect(
+                Collectors.toMap(property -> property.getIri().toString(), property -> property));
+    assertEquals(
+        List.of(URI.create("https://example.org/b"), URI.create("https://schema.org/relatedTo")),
+        byIri.get("https://example.org/a").getSuperProperties());
+    assertEquals(
+        List.of(URI.create("https://example.org/d")),
+        byIri.get("https://example.org/c").getSuperProperties());
+    assertEquals(
+        List.of(URI.create(RDFS.label.getURI())),
+        byIri.get("https://example.org/e").getSuperProperties());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/a]]",
+        skippedGroups(document));
+  }
+
+  @Test
+  void aSuperpropertyNothingDeclaresOrOfAnotherKindIsDroppedWhileThePropertyImports() {
+    final var source =
+        importer.read(
+            turtleRequest(
+                TURTLE_PREFIXES
+                    + """
+                    ex:a a owl:ObjectProperty ; rdfs:subPropertyOf <https://schema.org/relatedTo>, ex:b .
+                    ex:b a owl:ObjectProperty .
+                    ex:c a owl:DatatypeProperty ; rdfs:subPropertyOf ex:b .
+                    """));
+
+    final var summary = importer.summarize(source);
+    assertEquals(3, summary.getCounts().getNewProperties());
+    assertEquals(0, summary.getCounts().getSkippedDefinitions());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/c];"
+            + " UNDECLARED_REFERENCE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/a]]",
+        skippedGroups(summary.getSkippedStatements()));
+
+    final var planned =
+        importer.preview(source, emptySnapshot(root())).getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getProperty() != null)
+            .collect(
+                Collectors.toMap(
+                    operation -> operation.getProperty().getIri().toString(),
+                    OntologyChangeOperation::getProperty));
+    assertEquals(
+        List.of(URI.create("https://example.org/b")),
+        planned.get("https://example.org/a").getSuperProperties());
+    assertEquals(List.of(), planned.get("https://example.org/c").getSuperProperties());
+  }
+
+  @Test
+  void aLinkToASuperpropertyThePlanRefusesIsDroppedInsteadOfRefusingTheSubproperty() {
+    final var source =
+        importer.read(
+            turtleRequest(
+                TURTLE_PREFIXES
+                    + """
+                    ex:s a owl:ObjectProperty ; owl:inverseOf ex:missing .
+                    ex:p a owl:ObjectProperty ; rdfs:subPropertyOf ex:s .
+                    """));
+
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    assertEquals(1, preview.getSummary().getCounts().getNewProperties());
+    assertEquals(1, preview.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(
+        "[UNDECLARED_REFERENCE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x1"
+            + " [https://example.org/p]]",
+        skippedGroups(preview.getSummary().getSkippedStatements()));
+    final var kept =
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getProperty() != null)
+            .map(OntologyChangeOperation::getProperty)
+            .toList();
+    assertEquals(1, kept.size());
+    assertEquals("https://example.org/p", kept.getFirst().getIri().toString());
+    assertEquals(List.of(), kept.getFirst().getSuperProperties());
+  }
+
+  @Test
+  void theLinksOfASuperpropertyCycleAreDroppedAndItsPropertiesImport() {
+    final var source =
+        importer.read(
+            turtleRequest(
+                TURTLE_PREFIXES
+                    + """
+                    ex:a a owl:ObjectProperty ; rdfs:subPropertyOf ex:b .
+                    ex:b a owl:ObjectProperty ; rdfs:subPropertyOf ex:a, ex:top .
+                    ex:c a owl:ObjectProperty ; rdfs:subPropertyOf ex:a .
+                    ex:top a owl:ObjectProperty .
+                    """));
+
+    final var preview = importer.preview(source, emptySnapshot(root()));
+
+    assertEquals(4, preview.getSummary().getCounts().getNewProperties());
+    assertEquals(0, preview.getSummary().getCounts().getSkippedDefinitions());
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#subPropertyOf x2"
+            + " [https://example.org/a, https://example.org/b]]",
+        skippedGroups(preview.getSummary().getSkippedStatements()));
+    final var planned =
+        preview.getChangeSet().getOperations().stream()
+            .filter(operation -> operation.getProperty() != null)
+            .collect(
+                Collectors.toMap(
+                    operation -> operation.getProperty().getIri().toString(),
+                    operation -> operation.getProperty().getSuperProperties()));
+    assertEquals(List.of(), planned.get("https://example.org/a"));
+    assertEquals(
+        List.of(URI.create("https://example.org/top")), planned.get("https://example.org/b"));
+    assertEquals(
+        List.of(URI.create("https://example.org/a")), planned.get("https://example.org/c"));
+  }
+
+  @Test
+  void aStoredPropertyWhoseOnlyChangeIsAnUnresolvableLinkStaysAsItIs() {
+    final var root = root();
+    final var snapshot =
+        imported(root, TURTLE_PREFIXES + "ex:a a owl:ObjectProperty . ex:b a owl:ObjectProperty .");
+
+    final var unresolved =
+        importer.preview(
+            importer.read(
+                turtleRequest(
+                    TURTLE_PREFIXES
+                        + "ex:a a owl:ObjectProperty ; rdfs:subPropertyOf <https://schema.org/relatedTo> .")),
+            snapshot);
+    assertEquals(0, unresolved.getSummary().getCounts().getUpdatedProperties());
+    assertEquals(
+        NativeOntologyImportItemStatus.ALREADY_EXISTS,
+        unresolved.getSummary().getItems().getFirst().getStatus());
+    assertEquals(1, unresolved.getSummary().getSkippedStatements().getTotal());
+
+    final var linked =
+        importer.preview(
+            importer.read(
+                turtleRequest(
+                    TURTLE_PREFIXES + "ex:a a owl:ObjectProperty ; rdfs:subPropertyOf ex:b .")),
+            snapshot);
+    assertEquals(1, linked.getSummary().getCounts().getUpdatedProperties());
+    assertEquals("Superproperties", linked.getSummary().getItems().getFirst().getDetail());
+    assertEquals(0, linked.getSummary().getSkippedStatements().getTotal());
+  }
+
+  @Test
   void aPreviewCarriesTheSkippedReportAndANativeCsvCarriesNone() {
     final var source =
         importer.read(
@@ -969,24 +1131,24 @@ class NativeOntologyRdfImporterTest {
       return turtleRequest(METADATA_BASE + (populated ? METADATA_ANNOTATIONS : ""));
     }
     final String header =
-        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,superProperties,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
     final List<String> rows = new ArrayList<>();
     rows.add(header);
     for (final String name : List.of("Customer", "Account", "code", "identifier")) {
       final boolean concept = name.equals("Customer") || name.equals("Account");
-      final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+      final var cells = new ArrayList<>(Collections.nCopies(28, ""));
       cells.set(0, concept ? "CONCEPT" : "PROPERTY");
       cells.set(1, "https://example.org/" + name);
       cells.set(concept ? 4 : 8, concept ? "OWL_CLASS" : "DATA");
       if (populated && name.equals("Customer")) {
-        cells.set(23, "true");
-        cells.set(24, "https://example.org/standard");
-        cells.set(25, "true");
-        cells.set(26, "https://example.org/Account");
+        cells.set(24, "true");
+        cells.set(25, "https://example.org/standard");
+        cells.set(26, "true");
+        cells.set(27, "https://example.org/Account");
       }
       if (populated && name.equals("code")) {
-        cells.set(25, "true");
-        cells.set(26, "https://example.org/identifier");
+        cells.set(26, "true");
+        cells.set(27, "https://example.org/identifier");
       }
       rows.add(String.join(",", cells));
     }
@@ -1325,7 +1487,11 @@ class NativeOntologyRdfImporterTest {
   }
 
   private static String skippedGroups(final NativeOntologyDocument document) {
-    return document.skipped().getGroups().stream()
+    return skippedGroups(document.skipped());
+  }
+
+  private static String skippedGroups(final NativeOntologyImportSkipped skipped) {
+    return skipped.getGroups().stream()
         .map(
             group ->
                 group.getReason()

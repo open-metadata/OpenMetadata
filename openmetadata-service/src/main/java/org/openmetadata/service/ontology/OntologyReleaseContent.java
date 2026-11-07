@@ -51,6 +51,7 @@ public final class OntologyReleaseContent {
           "characteristics",
           "propertyChain",
           "disjointWith",
+          "superProperties",
           "deprecated",
           "replacedBy");
       case OntologyAxiom ignored -> List.of(

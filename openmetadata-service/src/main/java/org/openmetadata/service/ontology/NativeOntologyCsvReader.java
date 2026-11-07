@@ -206,6 +206,7 @@ final class NativeOntologyCsvReader {
             .withCharacteristics(characteristics(row))
             .withPropertyChain(iris(row, Column.PROPERTY_CHAIN, false))
             .withDisjointWith(iris(row, Column.DISJOINT_WITH, true))
+            .withSuperProperties(iris(row, Column.SUPER_PROPERTIES, true))
             .withDeprecated(flag(row, Column.DEPRECATED))
             .withReplacedBy(
                 row.filled(Column.REPLACED_BY)

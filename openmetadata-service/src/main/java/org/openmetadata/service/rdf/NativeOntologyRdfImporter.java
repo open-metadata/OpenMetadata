@@ -16,11 +16,13 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.vocabulary.RDF;
+import org.apache.jena.vocabulary.RDFS;
 import org.apache.jena.vocabulary.XSD;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.ConceptMapping;
@@ -31,6 +33,8 @@ import org.openmetadata.schema.api.data.NativeOntologyImportItem;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipped;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -43,6 +47,7 @@ import org.openmetadata.schema.type.OntologyChangeOperationState;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyLiteral;
+import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.type.RelationProvenance;
@@ -126,12 +131,15 @@ public final class NativeOntologyRdfImporter {
       final Source source, final OntologyWorkingSnapshot.Snapshot working) {
     final Stored stored = Stored.index(working);
     requireApplicable(source.document(), stored, source.propertyRows());
-    final Outcomes outcomes = reject(classify(source.document(), stored), stored);
+    final RdfSkipLedger dropped = RdfSkipLedger.continuing(source.document().skipped());
+    final Outcomes outcomes = reject(classify(source.document(), stored), stored, dropped);
     final Plan plan = new Plan(stored, working, SourceFamily.of(source.format()));
     final CreateOntologyChangeSet changeSet = plan.of(outcomes);
     return new NativeOntologyImportPreview()
         .withSummary(
-            listing(summary(source.format(), source.document(), outcomes), plan.itemsWithClashes()))
+            listing(
+                summary(source.format(), source.document(), outcomes, dropped.report()),
+                plan.itemsWithClashes()))
         .withChangeSet(changeSet);
   }
 
@@ -140,13 +148,21 @@ public final class NativeOntologyRdfImporter {
    * operation, because no change set exists until the ontology does.
    */
   public NativeOntologyImportSummary summarize(final Source source) {
+    final NativeOntologyImportSummary summary = summarize(source, MAX_CHANGED_DEFINITIONS);
+    return listing(summary, summary.getItems());
+  }
+
+  /** The same summary with every item listed and {@code maxChanged} as the size limit. */
+  NativeOntologyImportSummary summarize(final Source source, final int maxChanged) {
     requireApplicable(source.document(), Stored.EMPTY, source.propertyRows());
-    final Outcomes outcomes = reject(classify(source.document(), Stored.EMPTY), Stored.EMPTY);
+    final RdfSkipLedger dropped = RdfSkipLedger.continuing(source.document().skipped());
+    final Outcomes outcomes =
+        reject(classify(source.document(), Stored.EMPTY, maxChanged), Stored.EMPTY, dropped);
     final Plan plan = new Plan(Stored.EMPTY, PREVIEW_TARGET, SourceFamily.of(source.format()));
     plan.of(outcomes);
     final List<NativeOntologyImportItem> items = plan.itemsWithClashes();
     items.forEach(item -> item.setOperationId(null));
-    return listing(summary(source.format(), source.document(), outcomes), items);
+    return summary(source.format(), source.document(), outcomes, dropped.report()).withItems(items);
   }
 
   /**
@@ -187,7 +203,11 @@ public final class NativeOntologyRdfImporter {
     final Stored stored = Stored.index(working);
     final NativeOntologyDocument document = read(model);
     requireApplicable(document, stored, Map.of());
-    return plan(reject(classify(document, stored), stored), stored, working, SourceFamily.RDF);
+    return plan(
+        reject(classify(document, stored), stored, new RdfSkipLedger()),
+        stored,
+        working,
+        SourceFamily.RDF);
   }
 
   /**
@@ -200,7 +220,7 @@ public final class NativeOntologyRdfImporter {
     final NativeOntologyDocument document = read(model);
     requireApplicable(document, stored, Map.of());
     return plan(
-        reject(classify(document, stored, Integer.MAX_VALUE), stored),
+        reject(classify(document, stored, Integer.MAX_VALUE), stored, new RdfSkipLedger()),
         stored,
         working,
         SourceFamily.RDF);
@@ -415,6 +435,7 @@ public final class NativeOntologyRdfImporter {
             .withCharacteristics(parsed.getCharacteristics())
             .withPropertyChain(parsed.getPropertyChain())
             .withDisjointWith(parsed.getDisjointWith())
+            .withSuperProperties(parsed.getSuperProperties())
             .withDeprecated(parsed.getDeprecated())
             .withReplacedBy(parsed.getReplacedBy());
     overlayLabel(proposed, parsed.getDisplayName(), parsed.getDescription());
@@ -442,13 +463,14 @@ public final class NativeOntologyRdfImporter {
   private static NativeOntologyImportSummary summary(
       final NativeOntologyImportFormat format,
       final NativeOntologyDocument document,
-      final Outcomes outcomes) {
+      final Outcomes outcomes,
+      final NativeOntologyImportSkipped skipped) {
     final NativeOntologyDocument.Header header = document.header();
     return new NativeOntologyImportSummary()
         .withDetectedFormat(format)
         .withOntologyLabel(header == null ? null : header.label())
         .withCounts(counts(outcomes))
-        .withSkippedStatements(document.skipped());
+        .withSkippedStatements(skipped);
   }
 
   private static NativeOntologyImportCounts counts(final Outcomes outcomes) {
@@ -501,15 +523,146 @@ public final class NativeOntologyRdfImporter {
    * Refusing one definition can strand another that names it, so the check repeats on what is
    * left until nothing more is refused. Concepts are never refused: a stored concept the source
    * touches keeps whatever it already holds, and only what names a concept can be refused.
+   *
+   * <p>A superproperty link is the one reference that is dropped rather than refused with its
+   * definition: real vocabularies specialize properties of other vocabularies, and refusing each
+   * such property would take its whole subtree with it. Each pass drops the links that no longer
+   * resolve, including links to definitions the previous pass refused, before it checks the rest.
    */
-  private static Outcomes reject(final Outcomes outcomes, final Stored stored) {
+  private static Outcomes reject(
+      final Outcomes outcomes, final Stored stored, final RdfSkipLedger dropped) {
     Outcomes current = outcomes;
     int refused = -1;
     while (refused < count(current)) {
       refused = count(current);
-      current = refuseWhatApplyWouldRefuse(current, stored);
+      current =
+          refuseWhatApplyWouldRefuse(
+              dropUnresolvedSuperProperties(current, stored, dropped), stored);
     }
     return current;
+  }
+
+  /**
+   * Drops the links to a property that is neither declared nor a fixed-vocabulary property of the
+   * candidate's kind, then the links on a cycle. A cycle states that its properties are equivalent,
+   * which the native model does not hold, so its links go and its properties stay, as a subclass
+   * cycle drops its axioms and keeps its classes.
+   */
+  private static Outcomes dropUnresolvedSuperProperties(
+      final Outcomes outcomes, final Stored stored, final RdfSkipLedger dropped) {
+    final Map<String, OntologyPropertyKind> kinds = new HashMap<>();
+    stored.properties().forEach((iri, property) -> kinds.put(iri, property.getKind()));
+    for (final Outcome<OntologyProperty> outcome : outcomes.properties()) {
+      final OntologyProperty candidate = candidate(outcome);
+      if (candidate != null) {
+        kinds.put(candidate.getIri().toString(), candidate.getKind());
+      }
+    }
+    final Outcomes resolved =
+        pruneSuperProperties(
+            outcomes,
+            dropped,
+            (candidate, superProperty) -> {
+              final OntologyPropertyKind kind =
+                  kinds.containsKey(superProperty.toString())
+                      ? kinds.get(superProperty.toString())
+                      : vocabularyPropertyKind(superProperty);
+              if (kind == candidate.getKind()) {
+                return null;
+              }
+              return kind == null
+                  ? NativeOntologyImportSkipReason.UNDECLARED_REFERENCE
+                  : NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE;
+            });
+    final Map<String, List<URI>> links = new HashMap<>();
+    stored
+        .properties()
+        .forEach((iri, property) -> links.put(iri, listOrEmpty(property.getSuperProperties())));
+    for (final Outcome<OntologyProperty> outcome : resolved.properties()) {
+      final OntologyProperty candidate = candidate(outcome);
+      if (candidate != null) {
+        links.put(candidate.getIri().toString(), listOrEmpty(candidate.getSuperProperties()));
+      }
+    }
+    return pruneSuperProperties(
+        resolved,
+        dropped,
+        (candidate, superProperty) ->
+            reaches(links, superProperty.toString(), candidate.getIri().toString())
+                ? NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE
+                : null);
+  }
+
+  private static boolean reaches(
+      final Map<String, List<URI>> links, final String from, final String to) {
+    final Set<String> visited = new HashSet<>();
+    final List<String> pending = new ArrayList<>(List.of(from));
+    while (!pending.isEmpty()) {
+      final String next = pending.removeLast();
+      if (next.equals(to)) {
+        return true;
+      }
+      if (visited.add(next)) {
+        listOrEmpty(links.get(next)).forEach(iri -> pending.add(iri.toString()));
+      }
+    }
+    return false;
+  }
+
+  /** Removes each link {@code dropReason} names a reason for, and records it under that reason. */
+  private static Outcomes pruneSuperProperties(
+      final Outcomes outcomes,
+      final RdfSkipLedger dropped,
+      final BiFunction<OntologyProperty, URI, NativeOntologyImportSkipReason> dropReason) {
+    return new Outcomes(
+        outcomes.concepts(),
+        outcomes.properties().stream()
+            .map(outcome -> pruneSuperProperties(outcome, dropped, dropReason))
+            .toList(),
+        outcomes.axioms());
+  }
+
+  private static Outcome<OntologyProperty> pruneSuperProperties(
+      final Outcome<OntologyProperty> outcome,
+      final RdfSkipLedger dropped,
+      final BiFunction<OntologyProperty, URI, NativeOntologyImportSkipReason> dropReason) {
+    final OntologyProperty candidate = candidate(outcome);
+    if (candidate == null || listOrEmpty(candidate.getSuperProperties()).isEmpty()) {
+      return outcome;
+    }
+    final List<URI> kept = new ArrayList<>();
+    for (final URI superProperty : candidate.getSuperProperties()) {
+      final NativeOntologyImportSkipReason reason = dropReason.apply(candidate, superProperty);
+      if (reason == null) {
+        kept.add(superProperty);
+      } else {
+        dropped.skip(reason, candidate.getIri().toString(), RDFS.subPropertyOf);
+      }
+    }
+    if (kept.size() == candidate.getSuperProperties().size()) {
+      return outcome;
+    }
+    // The parsed document stays as read, so a second preview of the same source sees every link.
+    final OntologyProperty pruned =
+        JsonUtils.deepCopy(candidate, OntologyProperty.class)
+            .withSuperProperties(List.copyOf(kept));
+    return switch (outcome) {
+      case Added<OntologyProperty> added -> new Added<>(pruned, added.key());
+      case Updated<OntologyProperty> updated -> sameProperty(updated.current(), pruned)
+          ? new Unchanged<>(pruned)
+          : new Updated<>(updated.current(), pruned);
+      default -> outcome;
+    };
+  }
+
+  private static OntologyPropertyKind vocabularyPropertyKind(final URI iri) {
+    return switch (OwlEntityDeclarations.vocabularyKind(iri.toString())) {
+      case OBJECT_PROPERTY -> OntologyPropertyKind.OBJECT;
+      case DATA_PROPERTY -> OntologyPropertyKind.DATA;
+      case ANNOTATION_PROPERTY -> OntologyPropertyKind.ANNOTATION;
+      case CLASS, DATATYPE, NAMED_INDIVIDUAL -> null;
+      case null -> null;
+    };
   }
 
   private static int count(final Outcomes outcomes) {
@@ -1046,6 +1199,11 @@ public final class NativeOntologyRdfImporter {
             false),
         change("Inverse", iriText(current.getInverse()), iriText(next.getInverse()), false),
         change(
+            "Superproperties",
+            iriSet(current.getSuperProperties()),
+            iriSet(next.getSuperProperties()),
+            false),
+        change(
             "Deprecation",
             flag(current.getDeprecated()) + String.valueOf(current.getReplacedBy()),
             flag(next.getDeprecated()) + String.valueOf(next.getReplacedBy()),
@@ -1161,6 +1319,7 @@ public final class NativeOntologyRdfImporter {
             .toList()
             .equals(listOrEmpty(b.getPropertyChain()).stream().map(URI::toString).toList())
         && iriSet(a.getDisjointWith()).equals(iriSet(b.getDisjointWith()))
+        && iriSet(a.getSuperProperties()).equals(iriSet(b.getSuperProperties()))
         && sameDeprecation(
             a.getDeprecated(), a.getReplacedBy(), b.getDeprecated(), b.getReplacedBy());
   }
