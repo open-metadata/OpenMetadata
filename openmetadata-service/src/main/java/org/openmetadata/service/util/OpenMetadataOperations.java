@@ -228,10 +228,9 @@ public class OpenMetadataOperations implements Callable<Integer> {
     LOG.info(
         "Use 'cleanup-flowable-history --delete --runtime-batch-size=1000 --history-batch-size=1000' for Flowable cleanup with custom options");
     LOG.info(
-        "Use 'regenerate-bot-tokens' after a signing key change to replace the bot JWT tokens the "
-            + "new key does not sign; add --all to replace current tokens too, and --expiry <value> "
-            + "to set the new tokens' expiry. Expiry values: OneHour, One (1 day), Seven (7 days), "
-            + "Thirty, Sixty, Ninety, Unlimited (default)");
+        "Use 'regenerate-bot-tokens --expiry <value>' to regenerate all bot JWT tokens; add "
+            + "--skip-current to leave the tokens the configured key already signs unchanged. "
+            + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
     return 0;
   }
 
@@ -3042,11 +3041,12 @@ public class OpenMetadataOperations implements Callable<Integer> {
   @Command(
       name = "regenerate-bot-tokens",
       description =
-          "Regenerates the JWT tokens of all bot users that the configured signing key does not "
-              + "sign yet, then redeploys the deployed ingestion pipelines. Run it after "
-              + "restarting every server with a new signing key. With --all it also replaces "
-              + "current tokens. Revoked tokens stay revoked. Exit codes: 0 done, 1 a bot or "
-              + "pipeline failed, 2 the configured key differs from the servers' JWKS.")
+          "Regenerates the JWT tokens of all bot users, then redeploys the deployed ingestion "
+              + "pipelines. Use this after rotating JWT signing keys, after changing the cluster "
+              + "name, or to replace leaked tokens. Revoked tokens stay revoked. With "
+              + "--skip-current, tokens the configured key already signs are left unchanged. Exit "
+              + "codes: 0 done, 1 a bot or pipeline failed, 2 the configured key differs from the "
+              + "servers' JWKS.")
   public Integer regenerateBotTokens(
       @Option(
               names = {"--expiry"},
@@ -3056,11 +3056,11 @@ public class OpenMetadataOperations implements Callable<Integer> {
               defaultValue = "Unlimited")
           JWTTokenExpiry expiry,
       @Option(
-              names = {"--all"},
+              names = {"--skip-current"},
               description =
-                  "Also replace the tokens the configured key already signs, for example after a "
-                      + "token leaked or to give every bot a new --expiry.")
-          boolean all) {
+                  "Leave the tokens the configured key already signs unchanged, so a re-run during "
+                      + "a key rotation keeps the tokens an earlier run gave.")
+          boolean skipCurrent) {
     try {
       parseConfig();
       initializeCollectionRegistry();
@@ -3080,7 +3080,7 @@ public class OpenMetadataOperations implements Callable<Integer> {
       initOrganization();
 
       BotTokenRegenerator.Scope scope =
-          all ? BotTokenRegenerator.Scope.ALL : BotTokenRegenerator.Scope.STALE;
+          skipCurrent ? BotTokenRegenerator.Scope.STALE : BotTokenRegenerator.Scope.ALL;
       List<BotTokenRegenerator.BotResult> results =
           new BotTokenRegenerator(secretsManager).regenerateAll(expiry, scope);
       List<List<String>> rows =

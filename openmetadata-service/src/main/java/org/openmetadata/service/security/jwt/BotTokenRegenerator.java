@@ -38,12 +38,11 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 import org.openmetadata.service.util.UserUtil;
 
 /**
- * Gives every JWT bot a token signed by the configured signing key. The ops command runs it after
- * the key was replaced, and an in-server caller can run it the same way. With {@link Scope#STALE},
- * a bot whose stored token already verifies under the configured key, carries the configured
- * {@code kid} and has not expired is left alone, so a re-run changes nothing that is already
- * current. {@link Scope#ALL} replaces those tokens too. A bot whose token was revoked is skipped in
- * both and stays without a token.
+ * Gives JWT bots tokens signed by the configured signing key. The ops command runs it, and an
+ * in-server caller can run it the same way. {@link Scope#ALL} replaces every token. With {@link
+ * Scope#STALE}, a bot whose stored token already verifies under the configured key, carries the
+ * configured {@code kid} and has not expired is left alone, so a re-run changes nothing that is
+ * already current. A bot whose token was revoked is skipped in both and stays without a token.
  *
  * <p>Results carry the bot name, an outcome and a detail, and never a token or an exception
  * message, because an in-server caller may return them over HTTP.
@@ -61,10 +60,10 @@ public class BotTokenRegenerator {
 
   /** Which bot tokens a run replaces. */
   public enum Scope {
+    /** Every token: after a token leaked, for a new expiry, or after the cluster name changed. */
+    ALL,
     /** Only tokens the configured key does not sign: what a signing key change leaves behind. */
-    STALE,
-    /** Current tokens too, for example after one leaked or to give every bot a new expiry. */
-    ALL
+    STALE
   }
 
   // revokeToken stores an empty token; regenerating one would re-enable a bot an admin shut off
@@ -86,11 +85,8 @@ public class BotTokenRegenerator {
     this.generator = generator;
   }
 
-  public List<BotResult> regenerateAll(JWTTokenExpiry expiry) {
-    return regenerateAll(expiry, Scope.STALE);
-  }
-
   public List<BotResult> regenerateAll(JWTTokenExpiry expiry, Scope scope) {
+    Objects.requireNonNull(scope, "scope");
     BotRepository botRepository = (BotRepository) Entity.getEntityRepository(Entity.BOT);
     List<Bot> bots =
         botRepository.listAll(

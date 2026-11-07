@@ -28,7 +28,9 @@ import java.security.GeneralSecurityException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.interfaces.RSAPrivateKey;
+import java.time.Duration;
 import java.util.List;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,7 +52,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * {@code OpenMetadataOperations regenerate-bot-tokens} writes new bot tokens straight to the
  * database from its own JVM. It has no verifier and sends no hint to any server, so the suite's
  * server learns of the change from the database alone: the new token is accepted on its first use.
- * A token the configured key still signs is left alone, unless the run passes {@code --all}.
+ * A plain run replaces every bot token; with {@code --skip-current}, a token the configured key
+ * still signs is left alone.
  *
  * <p>The command regenerates every bot's token, not only this test's bot, so the class runs in the
  * multi-node lane, which runs one class at a time.
@@ -65,10 +68,11 @@ class OpsRegenerateBotTokensIT {
     String oldToken = storedToken(bot);
     String otherOldToken = storedToken(otherBot);
     double oldVersion = storedVersion(bot);
+    String systemBotToken = storedToken(Entity.INGESTION_BOT_NAME);
     assertEquals(401, CredentialFixtures.status(LOGGED_IN_USER, oldToken), "retired key rejected");
     assertEquals(
         200,
-        CredentialFixtures.status(LOGGED_IN_USER, storedToken(Entity.INGESTION_BOT_NAME)),
+        CredentialFixtures.status(LOGGED_IN_USER, systemBotToken),
         "the system bot's token is current before the run");
 
     int exitCode = ForkedOperations.run("regenerate-bot-tokens", "--expiry", "Seven");
@@ -85,10 +89,12 @@ class OpsRegenerateBotTokensIT {
         200,
         CredentialFixtures.status(LOGGED_IN_USER, otherNewToken),
         "first use of the other bot's new token");
+    String newSystemBotToken = storedToken(Entity.INGESTION_BOT_NAME);
+    assertNotEquals(systemBotToken, newSystemBotToken, "a plain run also replaced a current token");
     assertEquals(
         200,
-        CredentialFixtures.status(LOGGED_IN_USER, storedToken(Entity.INGESTION_BOT_NAME)),
-        "the run left the current system bot working");
+        CredentialFixtures.status(LOGGED_IN_USER, newSystemBotToken),
+        "first use of the system bot's new token");
     String eventJson = changeEventAtVersion(bot, storedVersion(bot));
     JsonNode event = JsonUtils.readTree(eventJson);
     assertEquals("entityUpdated", event.path("eventType").asText(), "audited update");
@@ -103,7 +109,7 @@ class OpsRegenerateBotTokensIT {
   }
 
   @Test
-  void aSecondRunLeavesCurrentTokensUnchanged(TestNamespace ns) {
+  void aRunWithSkipCurrentLeavesCurrentTokensUnchanged(TestNamespace ns) {
     User bot = botWithRetiredKeyToken(ns, "idempotentbot");
     assertEquals(
         0, ForkedOperations.run("regenerate-bot-tokens"), "first run, see forked-ops logs");
@@ -111,7 +117,9 @@ class OpsRegenerateBotTokensIT {
     double versionAfterFirstRun = storedVersion(bot);
 
     assertEquals(
-        0, ForkedOperations.run("regenerate-bot-tokens"), "second run, see forked-ops logs");
+        0,
+        ForkedOperations.run("regenerate-bot-tokens", "--skip-current"),
+        "second run, see forked-ops logs");
 
     assertEquals(afterFirstRun, storedToken(bot), "the current token was not replaced");
     assertEquals(versionAfterFirstRun, storedVersion(bot), 1e-9, "the bot was not rewritten");
@@ -131,23 +139,26 @@ class OpsRegenerateBotTokensIT {
     assertEquals(versionAfterRevoke, storedVersion(bot), 1e-9, "the bot was not rewritten");
   }
 
+  /** The token a run replaced stops working, which is what a run after a token leaked relies on. */
   @Test
-  void allAlsoReplacesCurrentTokensAndLeavesRevokedBotsRevoked(TestNamespace ns) {
-    User bot = registeredBot(ns, "allbot");
-    User revokedBot = registeredBot(ns, "allrevokedbot");
-    CredentialFixtures.revokeBotToken(revokedBot);
-    String currentToken = storedToken(bot);
+  void aTokenThatARunReplacedIsRejected(TestNamespace ns) {
+    User bot = registeredBot(ns, "leakedbot");
+    String leakedToken = storedToken(bot);
     assertEquals(
-        200, CredentialFixtures.status(LOGGED_IN_USER, currentToken), "current before the run");
+        200, CredentialFixtures.status(LOGGED_IN_USER, leakedToken), "current before the run");
 
-    int exitCode = ForkedOperations.run("regenerate-bot-tokens", "--all");
+    int exitCode = ForkedOperations.run("regenerate-bot-tokens");
 
     assertEquals(0, exitCode, "see forked-ops logs");
     String newToken = storedToken(bot);
-    assertNotEquals(currentToken, newToken, "--all replaced a current token");
+    assertNotEquals(leakedToken, newToken, "the run replaced the current token");
     assertEquals(
         200, CredentialFixtures.status(LOGGED_IN_USER, newToken), "first use of the new token");
-    assertEquals("", storedToken(revokedBot), "--all did not give a revoked bot a token back");
+    Awaitility.await("the replaced token is rejected within the server's credential staleness")
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> assertEquals(401, CredentialFixtures.status(LOGGED_IN_USER, leakedToken)));
   }
 
   @Test

@@ -50,7 +50,7 @@ Restart all servers. From then on:
 ## 3. Regenerate the bot tokens
 
 ```bash
-./bootstrap/openmetadata-ops.sh -c <config.yaml> regenerate-bot-tokens [--expiry Unlimited]
+./bootstrap/openmetadata-ops.sh -c <config.yaml> regenerate-bot-tokens [--expiry Unlimited] [--skip-current]
 ```
 
 The command:
@@ -59,20 +59,21 @@ The command:
    configured `keyId` with the same public key. If not, it writes nothing, prints why and exits 2.
    There is no flag to skip this check.
 2. Gives every JWT bot a new token signed by the new key, and records each change in the audit
-   log as an update by `admin`. A bot whose stored token already verifies under the configured key, carries the configured
-   `keyId` and has not expired is left unchanged, so you can run the command again. A bot whose
-   token was revoked is skipped and keeps no token, so an administrator's revoke survives the
-   rotation.
+   log as an update by `admin`. A bot whose token was revoked is skipped and keeps no token, so an
+   administrator's revoke survives the rotation.
 3. Redeploys every ingestion pipeline with `deployed == true`, with the new ingestion-bot token.
    This runs on every run, so a re-run repairs a redeploy that failed before. When
    `pipelineServiceClientConfiguration.enabled` is `false`, it skips this step and says so.
 
-A bot changed by someone else while the command ran is reported as `FAILED` ("changed concurrently,
-re-run"). Run the command again.
+With `--skip-current`, a bot whose stored token already verifies under the configured key, carries
+the configured `keyId` and has not expired is left unchanged and reported as `ALREADY_CURRENT`. Use
+it to run the command again during a rotation without replacing the tokens an earlier run gave.
+Without it, the command replaces every token except a revoked one, which is what you want after a
+bot token leaked, to give every bot a new expiry, or after changing the cluster name. A token the
+command replaced stops working.
 
-To replace tokens the current key already signs, for example after a bot token leaked or to give
-every bot a new expiry, add `--all`. It replaces the token of every JWT bot except a revoked one, and
-redeploys the pipelines as above.
+A bot changed by someone else while the command ran is reported as `FAILED` ("changed concurrently,
+re-run"). Run the command again with `--skip-current`.
 
 A new token that the configured public key does not verify is never stored. Each bot is then
 reported as `FAILED` ("Private key does not match the public key"). Check that
@@ -84,8 +85,8 @@ reported as `FAILED` ("Private key does not match the public key"). Check that
 | 1 | A bot or a pipeline failed, or the command could not run. See the table and log |
 | 2 | The configured key differs from the servers' JWKS, or the JWKS could not be read. Nothing was written |
 
-The report lists each bot as `REGENERATED`, `ALREADY_CURRENT`, `SKIPPED` (no bot user, not
-JWT, or token revoked) or `FAILED`.
+The report lists each bot as `REGENERATED`, `ALREADY_CURRENT` (only with `--skip-current`),
+`SKIPPED` (no bot user, not JWT, or token revoked) or `FAILED`.
 
 A bot works again as soon as its new token is stored. Servers accept a regenerated token on its
 first request, without a restart. `OpsRegenerateBotTokensIT` asserts this.
@@ -93,7 +94,8 @@ first request, without a restart. `OpsRegenerateBotTokensIT` asserts this.
 ## 4. Check the result
 
 - `GET /api/v1/system/config/jwks` lists only the new `keyId`.
-- The report shows every bot as `REGENERATED` or `ALREADY_CURRENT`, except bots you revoked, which show `SKIPPED`.
+- The report shows every bot as `REGENERATED`, or `ALREADY_CURRENT` on a `--skip-current` run,
+  except bots you revoked, which show `SKIPPED`.
 - Pipelines run again from their schedules or from a manual trigger.
 
 ## Who else is affected
