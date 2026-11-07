@@ -142,33 +142,44 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         self.schema_desc_map.clear()
         with self.engine.connect() as conn:
             results = conn.execute(text(MSSQL_GET_SCHEMA_COMMENTS)).all()
-        self.schema_desc_map = {(row.DATABASE_NAME, row.SCHEMA_NAME): row.COMMENT for row in results}
+        # The database name is case-folded because in single-database mode the
+        # user-configured casing (yielded into context.database) can disagree
+        # with the server-stored casing reported by DB_NAME(). Schema names are
+        # not folded: both the map keys and the lookup values come from the
+        # server catalogue (sys.schemas.name), so they already match, and a
+        # case-sensitive collation can hold two distinct schemas that differ
+        # only in casing — folding would silently drop one of them.
+        self.schema_desc_map = {(row.DATABASE_NAME.casefold(), row.SCHEMA_NAME): row.COMMENT for row in results}
 
     def set_database_description_map(self) -> None:
         self.database_desc_map.clear()
         with self.engine.connect() as conn:
             results = conn.execute(text(MSSQL_GET_DATABASE_COMMENTS)).all()
-        self.database_desc_map = {row.DATABASE_NAME: row.COMMENT for row in results}
+        self.database_desc_map = {row.DATABASE_NAME.casefold(): row.COMMENT for row in results}
 
     def set_stored_procedure_description_map(self) -> None:
         self.stored_procedure_desc_map.clear()
         with self.engine.connect() as conn:
             results = conn.execute(text(MSSQL_GET_STORED_PROCEDURE_COMMENTS)).all()
+        # Only the database name is case-folded (see set_schema_description_map).
+        # Schema and stored-procedure names come from the server catalogue in both
+        # the map and the lookup path, so they already match; folding them would
+        # collide distinct procedures on a case-sensitive collation.
         self.stored_procedure_desc_map = {
-            (row.DATABASE_NAME, row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
+            (row.DATABASE_NAME.casefold(), row.SCHEMA_NAME, row.STORED_PROCEDURE): row.COMMENT for row in results
         }
 
     def get_schema_description(self, schema_name: str) -> str | None:
         """
         Method to fetch the schema description
         """
-        return self.schema_desc_map.get((self.context.get().database, schema_name))
+        return self.schema_desc_map.get((self.context.get().database.casefold(), schema_name))
 
     def get_database_description(self, database_name: str) -> str | None:
         """
         Method to fetch the database description
         """
-        return self.database_desc_map.get(database_name)
+        return self.database_desc_map.get(database_name.casefold())
 
     def _get_encrypted_procedures(self, database_name: str, schema_name: str) -> set[str]:
         """Fetch and cache encrypted stored procedure names for a database and schema"""
@@ -196,7 +207,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         """
         description = self.stored_procedure_desc_map.get(
             (
-                self.context.get().database,
+                self.context.get().database.casefold(),
                 self.context.get().database_schema,
                 stored_procedure,
             )
