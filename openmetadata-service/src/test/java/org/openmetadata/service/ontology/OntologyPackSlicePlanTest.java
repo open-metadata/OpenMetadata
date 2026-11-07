@@ -95,11 +95,11 @@ class OntologyPackSlicePlanTest {
 
     assertEquals(
         List.of(
-            "dcaeb5e00e83f93588c5a39ec85d42aba2145d80c1f084411a5b7191ce55fdfc",
-            "cc246c47dbd1ed89b138ded4010798d649d1e7a5193be07fbc7840a95dec86bc"),
+            "5282ae56d199b5b4bfe1025eca19df14be88d6a2626aa1f19bf3d20246010a1b",
+            "37cdeff66bd64315abe39fbb14e85e4608bf8d0391f2742033c88f3c1fc3095a"),
         plan.sliceDigests());
     assertEquals(
-        "a3640b4f14faf87dbf39ac4dbdb874f323d261ee4b62f4f61fcf0c1cce110851", plan.planDigest());
+        "c94318c9f40798c71085ca78e2e60f2ba9163ad7938f65bd9ed52247fcc1e2d4", plan.planDigest());
   }
 
   @Test
@@ -129,6 +129,103 @@ class OntologyPackSlicePlanTest {
         () -> OntologyPackSlicePlan.of(List.of(concept("c1")), 0, PACK_DIGEST));
   }
 
+  @Test
+  void aDefinitionFollowsTheDefinitionsItNamesAndAPairStaysInOneSlice() {
+    final List<OntologyChangeOperation> input =
+        List.of(
+            property("a", null, "d"),
+            property("b", "c", null),
+            property("c", "b", null),
+            property("d", null, null));
+
+    final OntologyPackSlicePlan plan = OntologyPackSlicePlan.of(input, 2, PACK_DIGEST);
+
+    assertEquals(List.of(List.of("b", "c"), List.of("d", "a")), names(plan));
+  }
+
+  @Test
+  void aChainOfReplacementsAppliesFromTheEndBackward() {
+    final List<OntologyChangeOperation> input =
+        List.of(concept("x", "y"), concept("y", "z"), concept("z", null), concept("w", null));
+
+    final OntologyPackSlicePlan plan = OntologyPackSlicePlan.of(input, 1, PACK_DIGEST);
+
+    assertEquals(List.of(List.of("w"), List.of("z"), List.of("y"), List.of("x")), names(plan));
+  }
+
+  @Test
+  void aReferenceToADefinitionOutsideThePlanDoesNotOrderAnything() {
+    final List<OntologyChangeOperation> input = List.of(concept("b", "stored"), concept("a", null));
+
+    assertEquals(
+        List.of(List.of("a"), List.of("b")),
+        names(OntologyPackSlicePlan.of(input, 1, PACK_DIGEST)));
+  }
+
+  @Test
+  void aUnitThatDoesNotFitTheRestOfASliceStartsTheNextOne() {
+    final List<OntologyChangeOperation> input =
+        List.of(
+            property("a", null, null),
+            property("b", "c", null),
+            property("c", "d", null),
+            property("d", "b", null));
+
+    assertEquals(
+        List.of(List.of("a"), List.of("b", "c", "d")),
+        names(OntologyPackSlicePlan.of(input, 3, PACK_DIGEST)));
+  }
+
+  @Test
+  void aCycleLargerThanASliceIsRefusedBeforeAnythingIsApplied() {
+    final List<OntologyChangeOperation> input =
+        List.of(property("b", "c", null), property("c", "b", null));
+
+    assertThrows(
+        IllegalStateException.class, () -> OntologyPackSlicePlan.of(input, 1, PACK_DIGEST));
+  }
+
+  @Test
+  void theSamePlanComesOutWhateverOrderTheOperationsArriveIn() {
+    final List<OntologyChangeOperation> input =
+        List.of(
+            property("a", null, "d"),
+            property("b", "c", null),
+            property("c", "b", null),
+            property("d", null, null),
+            concept("x", "y"),
+            concept("y", null));
+    final List<OntologyChangeOperation> reversed = new ArrayList<>(input);
+    Collections.reverse(reversed);
+
+    final OntologyPackSlicePlan plan = OntologyPackSlicePlan.of(input, 2, PACK_DIGEST);
+
+    assertEquals(List.of(List.of("y", "x"), List.of("b", "c"), List.of("d", "a")), names(plan));
+    assertEquals(
+        plan.planDigest(), OntologyPackSlicePlan.of(reversed, 2, PACK_DIGEST).planDigest());
+  }
+
+  @Test
+  void aLongChainOfReferencesDoesNotOverflowTheStack() {
+    final List<OntologyChangeOperation> chain =
+        IntStream.range(0, 20_000)
+            .mapToObj(i -> concept("c%05d".formatted(i), "c%05d".formatted(i + 1)))
+            .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+    Collections.reverse(chain);
+
+    final OntologyPackSlicePlan plan = OntologyPackSlicePlan.of(chain, 1000, PACK_DIGEST);
+
+    assertEquals("c19999", name(plan.slices().getFirst().operations().getFirst()));
+    assertEquals("c00000", name(plan.slices().getLast().operations().getLast()));
+    assertEquals(20, plan.slices().size());
+  }
+
+  private static List<List<String>> names(final OntologyPackSlicePlan plan) {
+    return plan.slices().stream()
+        .map(slice -> slice.operations().stream().map(OntologyPackSlicePlanTest::name).toList())
+        .toList();
+  }
+
   private static List<Integer> sizesOf(final int members, final int sliceMembers) {
     final List<OntologyChangeOperation> operations =
         IntStream.range(0, members).mapToObj(index -> concept("c" + index)).toList();
@@ -154,6 +251,24 @@ class OntologyPackSlicePlanTest {
                 .withId(UUID.randomUUID())
                 .withName(name)
                 .withIri(URI.create("https://example.org/" + name)));
+  }
+
+  private static OntologyChangeOperation concept(final String name, final String replacedBy) {
+    final OntologyChangeOperation operation = concept(name);
+    operation.getConcept().setReplacedBy(replacedBy == null ? null : iri(replacedBy));
+    return operation;
+  }
+
+  private static OntologyChangeOperation property(
+      final String name, final String inverse, final String replacedBy) {
+    final OntologyChangeOperation operation = property(name);
+    operation.getProperty().setInverse(inverse == null ? null : iri(inverse));
+    operation.getProperty().setReplacedBy(replacedBy == null ? null : iri(replacedBy));
+    return operation;
+  }
+
+  private static URI iri(final String name) {
+    return URI.create("https://example.org/" + name);
   }
 
   private static OntologyChangeOperation property(final String name) {

@@ -93,22 +93,17 @@ public final class OntologyPackInstallJobManager {
 
   public OntologyPackInstallJob schedule(
       final OntologyPackInstallJobArguments arguments, final String user) {
-    final Long active =
-        jobDao.findActiveOntologyPackInstallJobId(arguments.getOntologyId().toString());
-    if (active != null) {
-      return sameInstall(arguments, active);
-    }
-    final long id =
-        jobDao.insertTrackedJobInternal(
-            BackgroundJob.JobType.ONTOLOGY_PACK_INSTALL.name(),
+    final JobDAO.OntologyPackInstallEnqueue enqueued =
+        jobDao.enqueueOntologyPackInstall(
+            arguments.getOntologyId().toString(),
             HANDLER_NAME,
             JsonUtils.pojoToJson(arguments),
             user,
-            null,
-            0,
-            0,
             QUEUED_MESSAGE);
-    return get(id);
+    if (enqueued == null) {
+      throw new NotFoundException("Ontology '" + arguments.getOntologyId() + "' was not found");
+    }
+    return enqueued.inserted() ? get(enqueued.jobId()) : sameInstall(arguments, enqueued.jobId());
   }
 
   /** A repeated start whose response was lost joins the running job instead of failing. */

@@ -1,0 +1,28 @@
+{
+  "abbreviation": "GS1",
+  "bundled": true,
+  "description": "Test-only copy of the full GS1 Web Vocabulary 1.18.",
+  "id": "gs1",
+  "industry": "retail",
+  "layer": "L2",
+  "license": "Apache-2.0",
+  "licenseUrl": "http://www.apache.org/licenses/LICENSE-2.0",
+  "modules": [
+    {
+      "conceptCount": 0,
+      "dependencies": [],
+      "description": "The complete GS1 Web Vocabulary.",
+      "format": "turtle",
+      "id": "core-vocabulary",
+      "name": "Core vocabulary",
+      "relationshipCount": 0,
+      "resourcePath": "ontology/gs1-web-vocabulary/gs1Voc.ttl",
+      "selectedByDefault": true,
+      "sha256": "b6039ed1b3229853a0aed1eb8568527f2d393925fd163d6fce5fddefe7ea1aa7"
+    }
+  ],
+  "name": "GS1 Web Vocabulary (test)",
+  "sourceUrl": "https://ref.gs1.org/voc/data/gs1Voc.ttl",
+  "standard": "GS1 Web Vocabulary",
+  "version": "2025Q1-om1"
+}

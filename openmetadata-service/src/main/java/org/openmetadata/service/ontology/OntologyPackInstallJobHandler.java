@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.ontology;
 
+import java.sql.SQLException;
+import java.sql.SQLTransactionRollbackException;
 import java.time.Clock;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -40,6 +42,8 @@ import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
  * and the importer's identical-definition classification leaves them out of the new plan.
  */
 public final class OntologyPackInstallJobHandler implements JobHandler {
+  private static final int MAX_SLICE_ATTEMPTS = 3;
+
   private final OntologyPackCatalog catalog;
   private final ModelSource models;
   private final OntologyWorkingSnapshot snapshot;
@@ -60,6 +64,15 @@ public final class OntologyPackInstallJobHandler implements JobHandler {
       final ModelSource models,
       final int sliceMembers,
       final UnaryOperator<SliceApplier> applierWrapper) {
+    return create(OntologyPackCatalog.bundled(), models, sliceMembers, applierWrapper);
+  }
+
+  /** As above, installing the packs of the given catalogue. */
+  public static OntologyPackInstallJobHandler create(
+      final OntologyPackCatalog catalog,
+      final ModelSource models,
+      final int sliceMembers,
+      final UnaryOperator<SliceApplier> applierWrapper) {
     final OntologyChangeSetRepository changeSets =
         (OntologyChangeSetRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CHANGE_SET);
     final OntologyRepository ontologies =
@@ -71,7 +84,7 @@ public final class OntologyPackInstallJobHandler implements JobHandler {
             (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM),
             clock);
     return new OntologyPackInstallJobHandler(
-        OntologyPackCatalog.bundled(),
+        catalog,
         models,
         OntologyWorkingSnapshot.production(),
         applierWrapper.apply(new OntologyPackSliceApplier(changeSets, applications, ontologies)),
@@ -164,10 +177,40 @@ public final class OntologyPackInstallJobHandler implements JobHandler {
     int membersApplied = 0;
     for (final OntologyPackSlicePlan.Slice slice : progress.plan().slices()) {
       manager.checkpoint(progress.jobId());
-      applier.apply(progress.request(slice));
+      applyOnce(progress.jobId(), progress.request(slice));
       membersApplied += slice.operations().size();
       manager.recordProgress(progress.jobId(), progress.ledger(membersApplied), slice.index() + 1);
     }
+  }
+
+  /**
+   * A slice is one transaction, so a database that picks it as a deadlock victim has rolled it
+   * back whole and running it again is safe. Concurrent writes to the reference index of other
+   * ontologies can cause it.
+   */
+  private void applyOnce(final long jobId, final SliceRequest request) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        applier.apply(request);
+        return;
+      } catch (RuntimeException exception) {
+        if (attempt == MAX_SLICE_ATTEMPTS || !isRolledBackByDatabase(exception)) {
+          throw exception;
+        }
+        manager.checkpoint(jobId);
+      }
+    }
+  }
+
+  private static boolean isRolledBackByDatabase(final Throwable failure) {
+    for (Throwable cause = failure; cause != null; cause = cause.getCause()) {
+      if (cause instanceof SQLException sql
+          && (sql instanceof SQLTransactionRollbackException
+              || (sql.getSQLState() != null && sql.getSQLState().startsWith("40")))) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private static String failureMessage(final RuntimeException exception) {

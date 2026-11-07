@@ -434,6 +434,37 @@ public interface JobDAO {
       connectionType = POSTGRES)
   Long findActiveOntologyPackInstallJobId(@Bind("ontologyId") String ontologyId);
 
+  /** The job that was already active for the ontology, or the id of the one this call inserted. */
+  record OntologyPackInstallEnqueue(long jobId, boolean inserted) {}
+
+  // Two starts for one ontology both read "no active job" and both insert unless they queue on a
+  // row they share. The ontology row is that row, and the lock releases when the transaction ends.
+  @Transaction
+  default OntologyPackInstallEnqueue enqueueOntologyPackInstall(
+      String ontologyId, String methodName, String jobArgs, String createdBy, String message) {
+    if (lockOntologyForPackInstall(ontologyId) == null) {
+      return null;
+    }
+    final Long active = findActiveOntologyPackInstallJobId(ontologyId);
+    if (active != null) {
+      return new OntologyPackInstallEnqueue(active, false);
+    }
+    return new OntologyPackInstallEnqueue(
+        insertTrackedJobInternal(
+            BackgroundJob.JobType.ONTOLOGY_PACK_INSTALL.name(),
+            methodName,
+            jobArgs,
+            createdBy,
+            null,
+            0,
+            0,
+            message),
+        true);
+  }
+
+  @SqlQuery("SELECT id FROM ontology_entity WHERE id = :ontologyId FOR UPDATE")
+  String lockOntologyForPackInstall(@Bind("ontologyId") String ontologyId);
+
   @SqlUpdate("UPDATE background_jobs SET result = :result, updatedAt = :updatedAt WHERE id = :id")
   void updateJobResult(
       @Bind("id") long id, @Bind("result") String result, @Bind("updatedAt") long updatedAt);
