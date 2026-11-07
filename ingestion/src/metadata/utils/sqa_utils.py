@@ -35,6 +35,11 @@ from metadata.utils.logger import query_runner_logger
 logger = query_runner_logger()
 
 
+def escape_identifier_for_text_clause(identifier: str) -> str:
+    """Keep identifier colons from becoming binds when SQLAlchemy parses text()."""
+    return identifier.replace(":", r"\:")
+
+
 # pylint: disable=cell-var-from-loop
 def build_query_filter(filters: list[tuple[Column, str, Any]], or_filter: bool = False) -> BinaryExpression | None:
     """Dynamically build query filter

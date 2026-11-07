@@ -24,6 +24,7 @@ from metadata.data_quality.validations.table.base.tableRuleLibrarySqlExpressionV
 )
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import test_suite_logger
+from metadata.utils.sqa_utils import escape_identifier_for_text_clause
 
 if TYPE_CHECKING:
     from metadata.profiler.processor.runner import QueryRunner
@@ -34,6 +35,10 @@ logger = test_suite_logger()
 class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
     """SQLAlchemy implementation of Table Rule Library SQL Expression validator."""
 
+    def get_table_name(self) -> str:
+        """Use the same physical table and bind as the rule's row-count query."""
+        return cast("QueryRunner", self.runner).get_table_reference()
+
     def compile_sql_expression(self, table_name: str) -> tuple[str, dict[str, str]]:
         """Compile SQL expression with SQLAlchemy bind parameters."""
         sql_template = self.runtime_params.test_definition.sqlExpression
@@ -42,7 +47,7 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
 
         user_params = self._get_user_params()
 
-        bind_params_template = {"table_name": table_name}
+        bind_params_template = {"table_name": escape_identifier_for_text_clause(table_name)}
         for param_name in user_params:
             bind_params_template[param_name] = f":{param_name}"
 
