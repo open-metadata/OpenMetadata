@@ -44,6 +44,52 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
 }
 
 /**
+ * Returns `true` when the `testCases` form field value represents a valid
+ * selection — either an explicit list of test case names/references, or a
+ * picker {@link AddTestCaseListChangePayload} that selects all test cases
+ * (`selectAll: true`) or includes specific ids. Mirrors the validation logic
+ * in `BundleSuiteFormBody.tsx` so the pipeline form and the bundle suite form
+ * treat the same picker payload consistently.
+ *
+ * The picker intentionally emits `selectAll: true` with an *empty* `testCases`
+ * array for "Select all N test cases" (the backend resolves the full set via
+ * `selectAll`/`excludeIds`/`filter`), so validating purely on
+ * `normalizeSelectedTestProp(value).length` rejects a full selection.
+ */
+export function isValidTestCaseSelection(value: unknown): boolean {
+  if (value == null) {
+    return false;
+  }
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
+  if (typeof value === 'object' && value !== null && 'selectAll' in value) {
+    const p = value as AddTestCaseListChangePayload;
+
+    return Boolean(p.selectAll) || (p.includeIds?.length ?? 0) > 0;
+  }
+
+  return false;
+}
+
+/**
+ * Returns `true` when the `testCases` form field value is a picker
+ * {@link AddTestCaseListChangePayload} with `selectAll: true` — the picker's
+ * "Select all N test cases" state, which the backend resolves via
+ * `selectAll`/`excludeIds`/`filter` rather than by enumerating every test
+ * case. Submit-side conversions use this to treat a picker select-all the
+ * same as the top-level "select all test cases" switch (run all).
+ */
+export function isSelectAllPayload(value: unknown): boolean {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    'selectAll' in value &&
+    Boolean((value as AddTestCaseListChangePayload).selectAll)
+  );
+}
+
+/**
  * Seeds the modal's `selectedItems` map from `existingTest` (tests already in
  * the parent suite), keyed by id. Entries start as partial TestCases and are
  * upgraded with the full payload when the matching record loads.

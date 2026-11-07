@@ -320,6 +320,52 @@ describe('buildTestSuitePipelinePayload', () => {
     expect(payload.sourceConfig.config?.testCases).toBeUndefined();
   });
 
+  it('treats a picker select-all payload as "run all" even with selectAllTestCases false', () => {
+    const payload = buildTestSuitePipelinePayload(
+      {
+        testLevel: TestLevel.TABLE,
+        cron: '0 0 * * *',
+        selectAllTestCases: false,
+        testCases: {
+          selectAll: true,
+          includeIds: [],
+          excludeIds: ['tc-excluded'],
+          testCases: [],
+        } as unknown as EntityReference[],
+      },
+      {
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
+        createdTestCaseName: 'tc1',
+        selectedTable: 'svc.db.sch.t',
+      }
+    );
+
+    expect(payload.sourceConfig.config?.testCases).toBeUndefined();
+  });
+
+  it('uses specific test cases when the picker payload has selectAll false', () => {
+    const payload = buildTestSuitePipelinePayload(
+      {
+        testLevel: TestLevel.TABLE,
+        cron: '0 0 * * *',
+        selectAllTestCases: false,
+        testCases: {
+          selectAll: false,
+          includeIds: ['tc-2'],
+          excludeIds: [],
+          testCases: [{ id: 'tc-2', name: 'tc2' }],
+        } as unknown as EntityReference[],
+      },
+      {
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
+        createdTestCaseName: 'tc1',
+        selectedTable: 'svc.db.sch.t',
+      }
+    );
+
+    expect(payload.sourceConfig.config?.testCases).toEqual(['tc1', 'tc2']);
+  });
+
   it('sets entityFullyQualifiedName to the table FQN, not the test suite FQN', () => {
     const payload = buildTestSuitePipelinePayload(
       {
