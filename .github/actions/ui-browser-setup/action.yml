@@ -1,0 +1,26 @@
+name: UI browser tests setup
+description: Node, ANTLR, yarn deps and Playwright Chromium for the Vitest browser suite.
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v5
+      with:
+        node-version-file: openmetadata-ui/src/main/resources/ui/.nvmrc
+    - name: Restore Yarn dependencies
+      uses: actions/cache/restore@v6
+      with:
+        path: ~/.cache/yarn
+        key: yarn-pkg-cache-${{ runner.os }}-${{ hashFiles('openmetadata-ui/src/main/resources/ui/yarn.lock') }}
+        restore-keys: |
+          yarn-pkg-cache-${{ runner.os }}-
+    - name: Install Antlr4 CLI
+      shell: bash
+      run: sudo make install_antlr_cli
+    - name: Install Yarn packages
+      shell: bash
+      working-directory: openmetadata-ui/src/main/resources/ui
+      run: yarn install --frozen-lockfile
+    - name: Install Chromium
+      shell: bash
+      working-directory: openmetadata-ui/src/main/resources/ui
+      run: npx playwright install --with-deps chromium

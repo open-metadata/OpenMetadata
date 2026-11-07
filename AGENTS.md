@@ -124,6 +124,7 @@ prose and code blocks.
 | `frontend-a11y.md` | UI `*.{ts,tsx}` — semantics over `div`+`role`, keyboard, focus, contrast, targets |
 | `i18n.md` | UI `*.{ts,tsx}` + `src/locale/**` — no string literals, `yarn i18n`, translate placeholders |
 | `frontend-playwright.md` | UI `playwright/**` — E2E test constraints |
+| `frontend-browser-tests.md` | UI `*.browser.test.tsx`, `src/test/browser/**`, `playwright/e2e/**` — which test layer a check belongs in; writing a Vitest browser test; tagging a migrated Playwright test |
 | `python-ingestion.md` | `ingestion/src/**/*.py` — pytest style, connector-specific-file rule, `model_str()` |
 | `schema-first.md` | `openmetadata-spec/.../schema/**` and any `generated/**` — regen, never hand-edit generated |
 | `migrations.md` | `bootstrap/sql/**` — append-only, native path, MySQL+Postgres, idempotent |
