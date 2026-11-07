@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest
+- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
 - **Related:** Ontology Studio publication and release contracts
 
 ## Context
