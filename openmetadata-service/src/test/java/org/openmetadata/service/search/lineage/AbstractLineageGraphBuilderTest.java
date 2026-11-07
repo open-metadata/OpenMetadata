@@ -891,4 +891,105 @@ class AbstractLineageGraphBuilderTest {
 
     assertTrue(builder.checkCacheForTest(request).isPresent());
   }
+
+  // --- Cache key differentiation tests (bug: omitted fields caused collisions) ---
+
+  @Test
+  void cacheKeyDifferentiatesByLayerFrom() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerFrom(0);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerFrom(100);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in layerFrom must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByLayerSize() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerSize(50);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withLayerSize(999);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in layerSize must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByIncludeDeleted() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withIncludeDeleted(true);
+    SearchLineageRequest requestB =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withIncludeDeleted(false);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in includeDeleted must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByIncludeDeletedNullVsFalse() {
+    SearchLineageRequest requestNull =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3);
+    SearchLineageRequest requestFalse =
+        new SearchLineageRequest().withFqn(ROOT_FQN).withUpstreamDepth(3).withIncludeDeleted(false);
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestNull, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestFalse).isPresent(),
+        "Requests differing in includeDeleted (null vs false) must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeyDifferentiatesByIncludeSourceFields() {
+    SearchLineageRequest requestA =
+        new SearchLineageRequest()
+            .withFqn(ROOT_FQN)
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("columns"));
+    SearchLineageRequest requestB =
+        new SearchLineageRequest()
+            .withFqn(ROOT_FQN)
+            .withUpstreamDepth(3)
+            .withIncludeSourceFields(Set.of("columns", "tags"));
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(requestA, result);
+
+    assertFalse(
+        builder.checkCacheForTest(requestB).isPresent(),
+        "Requests differing only in includeSourceFields must not share a cache entry");
+  }
+
+  @Test
+  void cacheKeySameRequestProducesCacheHit() {
+    SearchLineageRequest request =
+        new SearchLineageRequest()
+            .withFqn(ROOT_FQN)
+            .withUpstreamDepth(3)
+            .withLayerFrom(10)
+            .withLayerSize(50)
+            .withIncludeDeleted(true)
+            .withIncludeSourceFields(Set.of("columns"));
+    SearchLineageResult result = new SearchLineageResult().withNodes(new HashMap<>());
+
+    builder.cacheResultForTest(request, result);
+
+    assertTrue(
+        builder.checkCacheForTest(request).isPresent(), "Same request must produce a cache hit");
+  }
 }
