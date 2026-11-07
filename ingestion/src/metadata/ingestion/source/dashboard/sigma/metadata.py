@@ -77,7 +77,8 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 # Dashboard custom property set from the workbook (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
-# The spec types it number(double), so it is not registered as an integer.
+# The spec types it number(double), so it is not registered as an integer
+# (ADR:2026-11-07-sigma-latest-version-is-a-number-dashboard-custom-property).
 LATEST_VERSION = "latestVersion"
 
 
