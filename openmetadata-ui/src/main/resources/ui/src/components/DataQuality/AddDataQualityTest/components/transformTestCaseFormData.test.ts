@@ -329,7 +329,7 @@ describe('buildTestSuitePipelinePayload', () => {
         testCases: {
           selectAll: true,
           includeIds: [],
-          excludeIds: ['tc-excluded'],
+          excludeIds: [],
           testCases: [],
         } as unknown as EntityReference[],
       },
@@ -341,6 +341,33 @@ describe('buildTestSuitePipelinePayload', () => {
     );
 
     expect(payload.sourceConfig.config?.testCases).toBeUndefined();
+  });
+
+  it('does not treat a select-all with exclusions as "run all"', () => {
+    const payload = buildTestSuitePipelinePayload(
+      {
+        testLevel: TestLevel.TABLE,
+        cron: '0 0 * * *',
+        selectAllTestCases: false,
+        testCases: {
+          selectAll: true,
+          includeIds: [],
+          excludeIds: ['tc-excluded'],
+          testCases: [],
+        } as unknown as EntityReference[],
+      },
+      {
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
+        createdTestCaseName: 'tc1',
+        selectedTable: 'svc.db.sch.t',
+      }
+    );
+
+    // A select-all with exclusions must not widen to "run all"; the pipeline
+    // config can't carry excludeIds, so submit falls back to the explicit list
+    // (here just the created test case, since the picker's testCases is empty
+    // in select-all mode and validation rejects it before submit).
+    expect(payload.sourceConfig.config?.testCases).toEqual(['tc1']);
   });
 
   it('uses specific test cases when the picker payload has selectAll false', () => {

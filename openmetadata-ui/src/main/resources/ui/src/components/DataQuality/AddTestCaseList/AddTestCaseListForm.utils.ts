@@ -55,6 +55,11 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
  * array for "Select all N test cases" (the backend resolves the full set via
  * `selectAll`/`excludeIds`/`filter`), so validating purely on
  * `normalizeSelectedTestProp(value).length` rejects a full selection.
+ *
+ * A select-all carrying `excludeIds` or an active `filter` is rejected here:
+ * the pipeline config only accepts a flat list of test case names, so those
+ * fields cannot be carried through, and accepting the payload would silently
+ * widen the run to every test case (including rows the user unticked).
  */
 export function isValidTestCaseSelection(value: unknown): boolean {
   if (value == null) {
@@ -66,27 +71,31 @@ export function isValidTestCaseSelection(value: unknown): boolean {
   if (typeof value === 'object' && value !== null && 'selectAll' in value) {
     const p = value as AddTestCaseListChangePayload;
 
-    return Boolean(p.selectAll) || (p.includeIds?.length ?? 0) > 0;
+    if (p.selectAll) {
+      return (p.excludeIds?.length ?? 0) === 0 && !p.filter;
+    }
+
+    return (p.includeIds?.length ?? 0) > 0;
   }
 
   return false;
 }
 
 /**
- * Returns `true` when the `testCases` form field value is a picker
- * {@link AddTestCaseListChangePayload} with `selectAll: true` — the picker's
- * "Select all N test cases" state, which the backend resolves via
- * `selectAll`/`excludeIds`/`filter` rather than by enumerating every test
- * case. Submit-side conversions use this to treat a picker select-all the
- * same as the top-level "select all test cases" switch (run all).
+ * Returns `true` when the `testCases` form field value is a *clean* picker
+ * select-all — `selectAll: true` with no exclusions and no active filter —
+ * the only select-all shape the pipeline can save as "run all", since its
+ * config takes a flat list of test case names and cannot represent
+ * `excludeIds`/`filter`. Select-all with exclusions or a filter is rejected
+ * in {@link isValidTestCaseSelection} rather than silently widened.
  */
 export function isSelectAllPayload(value: unknown): boolean {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'selectAll' in value &&
-    Boolean((value as AddTestCaseListChangePayload).selectAll)
-  );
+  if (typeof value !== 'object' || value === null || !('selectAll' in value)) {
+    return false;
+  }
+  const p = value as AddTestCaseListChangePayload;
+
+  return Boolean(p.selectAll) && (p.excludeIds?.length ?? 0) === 0 && !p.filter;
 }
 
 /**

@@ -68,13 +68,32 @@ describe('toTestSuiteIngestionData', () => {
       testCases: {
         selectAll: true,
         includeIds: [],
-        excludeIds: ['tc-excluded'],
+        excludeIds: [],
         testCases: [],
       } as unknown as string[],
     });
 
     expect(result.testCases).toBeUndefined();
     expect(result.selectAllTestCases).toBe(true);
+  });
+
+  it('does not treat a select-all with exclusions as "run all"', () => {
+    const result = toTestSuiteIngestionData({
+      selectAllTestCases: false,
+      testCases: {
+        selectAll: true,
+        includeIds: [],
+        excludeIds: ['tc-excluded'],
+        testCases: [],
+      } as unknown as string[],
+    });
+
+    // The pipeline config has no field for excludeIds, so a select-all with
+    // exclusions must not collapse to "run all" (it would run the excluded
+    // rows). Validation rejects this payload before submit; this test guards
+    // the submit side against silently widening it.
+    expect(result.testCases).toBeUndefined();
+    expect(result.selectAllTestCases).toBe(false);
   });
 
   it('preserves selectAllTestCases when already true', () => {

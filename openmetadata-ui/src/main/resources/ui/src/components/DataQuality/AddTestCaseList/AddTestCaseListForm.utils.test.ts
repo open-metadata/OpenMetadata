@@ -80,7 +80,7 @@ describe('isValidTestCaseSelection', () => {
     ).toBe(true);
   });
 
-  it('returns true for a select-all payload with exclusions', () => {
+  it('returns false for a select-all payload with exclusions', () => {
     expect(
       isValidTestCaseSelection({
         selectAll: true,
@@ -88,7 +88,19 @@ describe('isValidTestCaseSelection', () => {
         excludeIds: ['tc-excluded'],
         testCases: [],
       })
-    ).toBe(true);
+    ).toBe(false);
+  });
+
+  it('returns false for a select-all payload with an active filter', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: { any: 'fullyQualifiedName:svc.db.sch.t' },
+      })
+    ).toBe(false);
   });
 
   it('returns true for a partial payload with includeIds', () => {
@@ -130,6 +142,29 @@ describe('isSelectAllPayload', () => {
         testCases: [],
       })
     ).toBe(true);
+  });
+
+  it('returns false for a select-all payload with exclusions', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: ['tc-excluded'],
+        testCases: [],
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for a select-all payload with an active filter', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: { any: 'fullyQualifiedName:svc.db.sch.t' },
+      })
+    ).toBe(false);
   });
 
   it('returns false for a partial-selection payload', () => {
