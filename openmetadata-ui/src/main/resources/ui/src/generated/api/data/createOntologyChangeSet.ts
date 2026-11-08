@@ -1220,7 +1220,35 @@ export interface OntologyPackSource {
      */
     moduleIds: string[];
     packId:    string;
-    version:   string;
+    /**
+     * Set when a library install job cut the pack into change sets. Applying the change set
+     * verifies its operations against the job's recorded plan.
+     */
+    slice?:  Slice;
+    version: string;
+}
+
+/**
+ * Set when a library install job cut the pack into change sets. Applying the change set
+ * verifies its operations against the job's recorded plan.
+ */
+export interface Slice {
+    /**
+     * Number of slices in the plan.
+     */
+    count: number;
+    /**
+     * Zero-based position of this slice in the plan.
+     */
+    index: number;
+    /**
+     * Background job that planned this slice.
+     */
+    jobId: number;
+    /**
+     * SHA-256 of the plan's ordered slice digests.
+     */
+    planDigest: string;
 }
 
 export enum CreateOntologyChangeSetState {

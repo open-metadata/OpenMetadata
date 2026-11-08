@@ -755,7 +755,12 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyConceptQueryServiceTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyConceptBindingDaoTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseReviewListTest.java",
-        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseRepositoryTest.java"
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseRepositoryTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackSlicePlanTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackModelsTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackInstallationsTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyChangeApplicationServiceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/rdf/SafeRdfModelParserTest.java"
       ],
       "tests": [
         "*Ontology*IT",

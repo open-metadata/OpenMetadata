@@ -28,6 +28,7 @@ import jakarta.ws.rs.DELETE;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
 import org.openmetadata.schema.api.data.CreateOntology;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
+import org.openmetadata.schema.api.data.InstallNativeOntologyPack;
 import org.openmetadata.schema.api.data.NativeOntologyDataGraph;
 import org.openmetadata.schema.api.data.NativeOntologyDataGraphPage;
 import org.openmetadata.schema.api.data.NativeOntologyDataGraphPageRequest;
@@ -60,6 +62,7 @@ import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyPackInstallJob;
 import org.openmetadata.schema.api.data.OntologyProfileReport;
 import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
@@ -97,6 +100,7 @@ import org.openmetadata.service.ontology.OntologyDraftQuery;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
+import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
 import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
@@ -134,6 +138,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   private final OntologyReleaseHistory releaseHistory;
   private final OntologyPackCatalog packCatalog;
   private final OntologyPackContentLoader packContentLoader;
+  private final OntologyPackInstallJobManager installJobs;
   private final OntologyConceptBindingStore bindingStore =
       new OntologyConceptBindingStore(
           Entity.getCollectionDAO(), OntologyConceptBindingStore.registeredAssetTables());
@@ -157,6 +162,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     addViewOperation("publicationStatus", MetadataOperation.VIEW_BASIC);
     packCatalog = new OntologyPackCatalog(getClass().getClassLoader());
     packContentLoader = new OntologyPackContentLoader(getClass().getClassLoader());
+    installJobs = new OntologyPackInstallJobManager(Entity.getJobDAO(), Clock.systemUTC());
     releaseHistory = new OntologyReleaseHistory(repository.getDaoCollection().ontologyReleaseDAO());
     releaseActivation =
         new OntologyReleaseActivation(
@@ -382,6 +388,66 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
                 .withData(selected.body()));
     preview.getChangeSet().withSourcePack(OntologyPackInstallations.sourcePack(selected));
     return preview;
+  }
+
+  @POST
+  @Path("/{id}/library/{packId}/install")
+  @Operation(
+      operationId = "installNativeOntologyPack",
+      summary = "Install verified library modules into a native ontology as a background job",
+      description =
+          "Queues one job that applies the modules in dependency-ordered slices of at most 1,000 definitions. Poll the job for progress; installing again after a failure or cancellation resumes from what already landed.")
+  public Response installLibraryPack(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("packId") final String packId,
+      @NotNull @Valid final InstallNativeOntologyPack request) {
+    final Ontology ontology =
+        getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireLibraryInstall(authorizer, securityContext, ontology);
+    final OntologyPackInstallJob job =
+        installJobs.start(packCatalog, id, packId, request.getModuleIds(), user(securityContext));
+    return Response.accepted(job).build();
+  }
+
+  @GET
+  @Path("/{id}/library/jobs/{jobId}")
+  @Operation(
+      operationId = "getNativeOntologyPackInstallJob",
+      summary = "Get a library install job of this ontology")
+  public OntologyPackInstallJob getLibraryInstallJob(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("jobId") final long jobId) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    return requireJobOf(id, jobId);
+  }
+
+  @PUT
+  @Path("/{id}/library/jobs/{jobId}/cancel")
+  @Operation(
+      operationId = "cancelNativeOntologyPackInstallJob",
+      summary = "Cancel a library install job after its current slice")
+  public OntologyPackInstallJob cancelLibraryInstallJob(
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("jobId") final long jobId) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL),
+        getResourceContextById(id));
+    requireJobOf(id, jobId);
+    return installJobs.requestCancel(jobId);
+  }
+
+  private OntologyPackInstallJob requireJobOf(final UUID ontologyId, final long jobId) {
+    final OntologyPackInstallJob job = installJobs.get(jobId);
+    if (!ontologyId.equals(job.getOntologyId())) {
+      throw new NotFoundException("Library install job '" + jobId + "' was not found");
+    }
+    return job;
   }
 
   @POST

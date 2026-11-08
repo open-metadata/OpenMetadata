@@ -63,7 +63,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * change, and plans the regular native change-set request that applies it.
  */
 public final class NativeOntologyRdfImporter {
-  private static final int MAX_CHANGED_DEFINITIONS = 1000;
+  public static final int MAX_CHANGED_DEFINITIONS = 1000;
   private static final int MAX_NAME_LENGTH = 64;
   private static final int ITEM_DIGEST_LENGTH = 16;
   private static final OntologyWorkingSnapshot.Snapshot PREVIEW_TARGET =
@@ -154,6 +154,22 @@ public final class NativeOntologyRdfImporter {
     final NativeOntologyDocument document = read(model);
     requireApplicable(document, stored, Map.of());
     return plan(reject(classify(document, stored), stored), stored, working, SourceFamily.RDF);
+  }
+
+  /**
+   * Reconciles checksum-verified bundled content, which a library install job cuts into slices of
+   * at most {@link #MAX_CHANGED_DEFINITIONS}, so the whole change is not held to that limit.
+   */
+  public CreateOntologyChangeSet reconcileUnbounded(
+      final Model model, final OntologyWorkingSnapshot.Snapshot working) {
+    final Stored stored = Stored.index(working);
+    final NativeOntologyDocument document = read(model);
+    requireApplicable(document, stored, Map.of());
+    return plan(
+        reject(classify(document, stored, Integer.MAX_VALUE), stored),
+        stored,
+        working,
+        SourceFamily.RDF);
   }
 
   /** Applying a draft refuses these properties, so a preview must not count them as importable. */
@@ -292,6 +308,11 @@ public final class NativeOntologyRdfImporter {
   }
 
   private static Outcomes classify(final NativeOntologyDocument document, final Stored stored) {
+    return classify(document, stored, MAX_CHANGED_DEFINITIONS);
+  }
+
+  private static Outcomes classify(
+      final NativeOntologyDocument document, final Stored stored, final int maxChanged) {
     final Outcomes outcomes =
         new Outcomes(
             firstOccurrences(
@@ -306,7 +327,7 @@ public final class NativeOntologyRdfImporter {
                     classifyProperty(
                         property, stored.properties().get(property.getIri().toString()))),
             classifyAxioms(document.axioms(), stored.axioms()));
-    if (outcomes.changed() > MAX_CHANGED_DEFINITIONS) {
+    if (outcomes.changed() > maxChanged) {
       throw new BadRequestException("A native import accepts at most 1000 changed definitions");
     }
     return outcomes;

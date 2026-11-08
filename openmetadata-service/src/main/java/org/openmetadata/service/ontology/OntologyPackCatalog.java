@@ -49,10 +49,15 @@ public final class OntologyPackCatalog {
   private final OntologyPackContentLoader contentLoader;
 
   public OntologyPackCatalog(final ClassLoader classLoader) {
+    this(classLoader, MANIFEST_PATHS);
+  }
+
+  /** A catalogue of the manifests at these paths, for callers that serve their own pack set. */
+  public OntologyPackCatalog(final ClassLoader classLoader, final List<String> manifestPaths) {
     final ClassLoader requiredClassLoader = Objects.requireNonNull(classLoader);
     contentLoader = new OntologyPackContentLoader(requiredClassLoader);
     verifier = new OntologyPackVerifier(contentLoader);
-    manifests = load(requiredClassLoader);
+    manifests = load(requiredClassLoader, manifestPaths);
     requireUniquePackIds(manifests);
     manifests.forEach(verifier::verify);
   }
@@ -78,8 +83,9 @@ public final class OntologyPackCatalog {
     return contentLoader.loadSelected(this, packId, moduleIds);
   }
 
-  private static List<OntologyPackManifest> load(final ClassLoader classLoader) {
-    return MANIFEST_PATHS.stream().map(path -> loadManifest(classLoader, path)).toList();
+  private static List<OntologyPackManifest> load(
+      final ClassLoader classLoader, final List<String> manifestPaths) {
+    return manifestPaths.stream().map(path -> loadManifest(classLoader, path)).toList();
   }
 
   private static OntologyPackManifest loadManifest(
