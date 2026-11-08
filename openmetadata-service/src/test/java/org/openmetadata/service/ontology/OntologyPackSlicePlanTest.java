@@ -95,11 +95,11 @@ class OntologyPackSlicePlanTest {
 
     assertEquals(
         List.of(
-            "5282ae56d199b5b4bfe1025eca19df14be88d6a2626aa1f19bf3d20246010a1b",
-            "37cdeff66bd64315abe39fbb14e85e4608bf8d0391f2742033c88f3c1fc3095a"),
+            "dcaeb5e00e83f93588c5a39ec85d42aba2145d80c1f084411a5b7191ce55fdfc",
+            "cc246c47dbd1ed89b138ded4010798d649d1e7a5193be07fbc7840a95dec86bc"),
         plan.sliceDigests());
     assertEquals(
-        "c94318c9f40798c71085ca78e2e60f2ba9163ad7938f65bd9ed52247fcc1e2d4", plan.planDigest());
+        "a3640b4f14faf87dbf39ac4dbdb874f323d261ee4b62f4f61fcf0c1cce110851", plan.planDigest());
   }
 
   @Test
