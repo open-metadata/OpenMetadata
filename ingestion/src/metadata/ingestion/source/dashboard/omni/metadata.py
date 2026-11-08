@@ -224,8 +224,10 @@ class OmniSource(DashboardServiceSource):
     def _resolve_topic(self, table_ref: str | None) -> OmniTopic | None:
         """Resolve a tile's table/view reference to a single topic.
 
-        Returns None when the reference is unknown or ambiguous across models, so we
-        never attach lineage to the wrong model's data model.
+        Returns None when the reference is unknown or several data models share it
+        (the same name in two models, or two topics of one model sitting on a base
+        view that has no data model of its own), so we never attach lineage to the
+        wrong data model.
         """
         if not table_ref:
             return None
@@ -241,9 +243,9 @@ class OmniSource(DashboardServiceSource):
                 return matches[0]
             if len(matches) > 1:
                 logger.warning(
-                    "Ambiguous tile reference %r across %d models; skipping lineage",
+                    "Ambiguous tile reference %r matches data models %s; skipping lineage",
                     table_ref,
-                    len(matches),
+                    ", ".join(sorted(self._datamodel_name(match) for match in matches)),
                 )
                 return None
         return None
