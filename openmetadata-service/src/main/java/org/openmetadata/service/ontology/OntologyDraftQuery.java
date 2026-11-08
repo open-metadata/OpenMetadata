@@ -21,7 +21,7 @@ import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
  * built here exist only for the length of the query.
  */
 public final class OntologyDraftQuery {
-  /** Reads the working definitions under the ontology's state lock; see {@link OntologyWorkingSnapshot}. */
+  /** Reads the working definitions; see {@link OntologyWorkingSnapshot}. */
   @FunctionalInterface
   public interface Source {
     <T> T read(

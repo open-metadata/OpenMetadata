@@ -1,7 +1,7 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
 - **Related:** Ontology Studio publication and release contracts
@@ -98,3 +98,33 @@ The handler loads the bundled modules, checks each module checksum, and parses t
 The plan digest is the SHA-256 of the pack digest and the ordered slice digests. A slice digest is the SHA-256 of its sorted canonical operations without generated ids. The job records the plan digest and slice digests in its result column. Applying a stamped slice checks the stamp against that record instead of parsing and reconciling the whole pack again. Only the recorded slice, with its recorded digest, can apply.
 
 Job states are QUEUED, RUNNING, COMPLETED, FAILED and CANCELLED. `installedPacks` is written only after the final slice. A failed or cancelled job is terminal. Installing again starts a new job, which reconciles again; the importer skips definitions that already match, so the new plan holds only what is missing and a finished pack yields zero slices. Starting an install that is identical to the running one for the same ontology returns that job, so a lost response is safe to repeat. The check and the insert run in one transaction that holds a lock on the ontology row, so two concurrent starts cannot both queue a job. A different install while one runs returns 409. The UI starts the job, polls it every second and shows slices and definitions applied. Resuming against an ontology above the 10,000 definition snapshot cap waits for a separate bulk-snapshot design.
+
+## Amendment
+
+v11, 2026-11-06: a preview lists at most 5,000 items and reports the rest in `omittedItems`.
+`counts` still covers every parsed definition. When the budget is short, ALREADY_EXISTS items are
+left out first, since nothing can be done with them, and the selection logic in the import panel
+only follows NEW concepts; a user upload cannot change more than 1,000 definitions, so the listing
+holds every NEW, UPDATE, DUPLICATE and SKIPPED item in practice and only a re-import of an
+installed standard trims. The panel says how many were left unlisted. The user upload limits of
+this record (10 MiB, 100,000 statements, 1,000 changed definitions, 30 s) are unchanged.
+
+The working snapshot that reconcile, preview, working diff and validation read now allows 50,000
+definitions and pages 1,000 per query, and those readers no longer hold the `ontology_state` row
+lock (ADR:2026-10-14-ontology-releases-seal-canonical-sql-members). On MySQL,
+`NativeOntologyCapacityPerfIT` installed a FHIR-shaped synthetic ontology of 10,000 members in
+76 s as 10 slices of 6.9 s to 8.6 s with the old reads and in 60 s with the new ones;
+35,000 members installed in 223 s as 35 slices with a median of
+6.5 s. The slice time is flat in the ontology size, so an install is linear in its
+members. The per-write closure bounds in `OntologyWriteClosureLimits` stay at 10,000: a synthetic
+hub of 20,000 members, one class with 9,999 direct subclasses, installed, diffed, captured and
+activated, and only deleting its hub concept exceeded the deletion-impact bound. No shipped
+standard has a class with that many direct dependents, so that bound was not raised. The import preview of the 10,000-member file took 6.1 s and 1.0 s.
+
+The upstream files themselves do not install yet, for reasons outside the size limits: the FHIR
+R5 vocabulary fails the OWL 2 profile check on a data range (`OwlProfileGuard`, "A data range
+requires supported OWL 2 datatypes or their intersection/union") after its first slice applies,
+and the FIBO production quickstart plans a slice whose operation needs
+`https://www.omg.org/spec/Commons/TextDatatype/Text`, a datatype the plan does not declare as a
+concept (`OntologyChangePreflight`). Both are importer defects to fix in the library install
+change, not capacity limits.

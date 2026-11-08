@@ -1,7 +1,7 @@
 # Fuseki holds only the active ontology release
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain) · v3 2026-11-06 (whole-graph journal cap bound to the Fuseki upload limit)
 - **Deciders:** Harsha
 - **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest#rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md), ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
@@ -60,3 +60,25 @@ replacement. Rebuilds must wait for this lock rather than skip a refresh.
 The live drain acquires the same row with `FOR UPDATE SKIP LOCKED` and defers delivery while a
 rebuild holds it. Activation can still commit and enqueue a write during that refresh; delivery
 then follows the rebuild's replacement, so an older release cannot overwrite the newer activation.
+
+## Amendment v3 — 2026-11-06: whole-graph journal cap bound to the Fuseki upload limit
+
+A journaled graph replacement (`RdfMutation.GraphReplace`) is bounded by
+`GraphReplace.MAX_GRAPH_BYTES`, 64 MiB of RDF-Thrift, instead of the 16 MiB per-entity cap that
+`EntityWrite` keeps. Activation checks the same bound before it commits, with or without RDF.
+
+The number is the Fuseki extension's default upload limit (`OPENMETADATA_MAX_UPLOAD_BYTES`, 64
+MiB decompressed per request, see `docs/rdf-production-setup.md`). `replaceGraph` sends the whole
+graph as one RDF-Thrift Graph Store PUT, so the journal bytes are the upload bytes, and an
+activation the journal accepts is one the default Fuseki also accepts. A larger cap would let an
+activation commit in SQL and then dead-letter at delivery.
+
+Measured on MySQL by `NativeOntologyCapacityPerfIT` with the FHIR-shaped synthetic fixture: 10,000
+members project to 149,742 triples and 16,637,179 bytes of RDF-Thrift, 140,037 bytes under the old
+16 MiB cap, and 35,000 members to 524,434 triples and 58,393,583 bytes. A 50,000-member
+release of that shape would not fit 64 MiB; the member cap is a count bound and this byte bound
+decides for dense ontologies. The rebuild journal budget stays 256 MiB and 100,000 records, so one
+rebuild absorbs at most four activations of the largest graph; should that bind, journal the
+activation by release id and reproject from SQL on replay instead of raising the budget. The Fuseki
+PUT time for a graph near the cap was not measured here: the capacity IT runs in the lane without
+Fuseki, and the extension's 50 s write deadline applies to it.

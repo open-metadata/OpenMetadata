@@ -69,7 +69,10 @@ const OntologyNativePackReview = ({
     );
   }
   const summary = review.data?.summary;
-  if (!summary || importItemsOf(summary).length === 0) {
+  if (
+    !summary ||
+    (importItemsOf(summary).length === 0 && !summary.omittedItems)
+  ) {
     return null;
   }
 
@@ -78,6 +81,7 @@ const OntologyNativePackReview = ({
       <OntologyNativeImportItems
         isDisabled
         items={importItemsOf(summary)}
+        omittedItems={summary.omittedItems ?? 0}
         selection={initialSelection(summary)}
         onSelectionChange={() => undefined}
       />

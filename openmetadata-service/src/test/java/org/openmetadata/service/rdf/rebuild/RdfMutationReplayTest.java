@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.rdf.rebuild;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -23,6 +25,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
+import org.openmetadata.service.rdf.storage.RdfPayloadTooLargeException;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /**
@@ -44,5 +47,24 @@ class RdfMutationReplayTest {
 
     verify(storage)
         .storeEntity(eq("table"), eq(id), any(Model.class), eq(RdfEntityWriteStrategy.REPLACE));
+  }
+
+  @Test
+  void aWholeGraphMayExceedThePerEntityJournalCap() {
+    final Model projection = ModelFactory.createDefaultModel();
+    projection
+        .createResource(ENTITY + "graph")
+        .addProperty(RDFS.comment, "x".repeat(RdfMutation.MAX_MODEL_BYTES + 1));
+    try {
+      assertThrows(
+          RdfPayloadTooLargeException.class,
+          () -> RdfMutation.EntityWrite.capture("table", UUID.randomUUID(), projection));
+      final RdfMutation.GraphReplace replace =
+          RdfMutation.GraphReplace.capture("urn:graph", projection);
+      assertTrue(replace.rdf().length > RdfMutation.MAX_MODEL_BYTES);
+      assertTrue(replace.rdf().length <= RdfMutation.GraphReplace.MAX_GRAPH_BYTES);
+    } finally {
+      projection.close();
+    }
   }
 }

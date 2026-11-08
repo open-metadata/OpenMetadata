@@ -1,9 +1,9 @@
 # Ontology releases seal canonical SQL members
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v10 2026-10-15 (single-ontology releases, captured comparison baseline, active-only projection); v11 2026-10-30 (SKOS, SKOS-XL and CSV export, export options and the SHACL gate)
+- **Revisions:** v1 2026-10-14 (initial); v10 2026-10-15 (single-ontology releases, captured comparison baseline, active-only projection); v11 2026-10-30 (SKOS, SKOS-XL and CSV export, export options and the SHACL gate); v12 2026-11-06 (50,000 members, batched capture, cached and unlocked reads); v13 2026-11-08 (account for parsed release cache heap)
 - **Deciders:** Harsha
-- **Guard:** `OntologyReleaseManifestTest`, `OntologyReleaseDAOTest`, `OntologyReleaseCaptureTest`, `OntologyWorkingStateTest`, `OntologyReleaseProjectionTest`, `OntologyStructureValidatorTest`, `OntologyReleaseComparisonTest`, `OntologyReleaseComparisonStorageTest`, `IndependentOntologyReleaseDiffIT`, `IndependentOntologyReleaseIT`, `IndependentOntologyReleaseExportIT`, `IndependentOntologyRetentionIT`, `OntologySkosProjectionTest`, `OntologyReleaseExporterTest`, `OntologyBoundAssetLinksTest`, `OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`, `IndependentOntologyReleaseExportAssetsIT`, `IndependentOntologyReleaseExportGateIT`
+- **Guard:** `OntologyReleaseManifestTest`, `OntologyReleaseDAOTest`, `OntologyReleaseCaptureTest`, `NativeOntologyCapacityPerfIT`, `OntologyWorkingStateTest`, `OntologyReleaseProjectionTest`, `OntologyStructureValidatorTest`, `OntologyReleaseComparisonTest`, `OntologyReleaseComparisonStorageTest`, `IndependentOntologyReleaseDiffIT`, `IndependentOntologyReleaseIT`, `IndependentOntologyReleaseExportIT`, `IndependentOntologyRetentionIT`, `OntologySkosProjectionTest`, `OntologyReleaseExporterTest`, `OntologyBoundAssetLinksTest`, `OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`, `IndependentOntologyReleaseExportAssetsIT`, `IndependentOntologyReleaseExportGateIT`
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md)
 
 ## Context
@@ -129,3 +129,56 @@ A sealed Draft of an ontology with no reviewers becomes `APPROVED` with `approva
 `NO_REVIEWERS_CONFIGURED` when an author activates it; see the review decision's 2026-11-02
 amendment. Activating the release that is already active returns the current state and appends no
 event, so the activation revision and history only move when the active pointer does.
+
+## Amendment: 50,000 members, batched capture, cached and unlocked reads (2026-11-06)
+
+A release holds at most 50,000 members and 256 MiB of payload; a member stays at 1 MiB. The
+upstream standards the library ships are the reason: the FHIR R5 vocabulary plans 16,407
+members and the FIBO production quickstart 10,115, so the 10,000 cap kept both out of one
+ontology. `NativeOntologyCapacityPerfIT` measured the whole-ontology paths on MySQL with a
+FHIR-shaped synthetic fixture (one named parent and four restrictions per class, one property per
+twelve members). The 10,000-member release holds 7.9 MB of payload, so 256 MiB is a safety net at
+about five times that density, not a target.
+
+Capture inserts members with a JDBI batch of 500 rows per round trip. Each row still goes through
+the `INSERT ... SELECT ... WHERE sealedAt IS NULL` guard, and a short count means another capture
+sealed the release first, so the whole capture fails with 412 as before. At 10,000 members capture
+took 10.3 s with one insert per member and 2.4 s with batches; at 35,000 it took
+11.9 s.
+
+Reads page 1,000 members per query instead of 100. A sealed release never changes, so
+`OntologyReleaseReader` keeps verified member lists in one process-wide Caffeine cache, keyed by
+release id and content digest, bounded to 128 MiB of payload bytes and 10 minutes idle. A cache hit
+still authorizes every member for the caller, and `OntologyReleaseCaptureTest` checks both the
+reuse and the denial. The release diff at 10,000 members went from 982 ms to
+118 ms warm, and the draft SPARQL endpoint from 1,105 ms to
+258 ms.
+
+Read-only callers of the working draft (working diff, working validation, import preview, draft
+export, draft SPARQL, and the install job's reconcile) use `OntologyWorkingSnapshot.readUnlocked`.
+It reads `ontology_state` without `FOR UPDATE`, pages the definitions, and re-reads the state at
+the end: a working or activation revision that moved means the pages may disagree, so the read
+starts over, and after three torn reads it fails with 412. The revisions are boxed longs and are
+compared by value; a reference compare passed the unit tests, whose revisions stayed inside the
+boxed cache, and reported every read torn in the integration tests. Under the row lock a concept create that takes 35 ms alone
+took 7,168 ms while a working diff ran at 10,000 members; without the lock it took
+17 ms. On MySQL the unlocked path must not run the `INSERT ... ON DUPLICATE
+KEY UPDATE` initializer for a row that exists, because that statement holds an exclusive lock on
+the duplicate row until the transaction ends. MySQL's REPEATABLE READ keeps the whole unlocked read
+on one snapshot, so the revision check fires only on PostgreSQL's READ COMMITTED; the capture test
+asserts each dialect's outcome.
+
+`docs/plans/2026-10-14-organizational-ontology-design.md` carries the same numbers.
+
+## Amendment: account for parsed release cache heap (2026-11-08)
+
+This replaces v12's cache sizing rule above. The cache is bounded to 128 MiB of estimated heap,
+weighed as six times the summed serialized payload bytes. The factor of six reserves headroom
+for parsed JSON nodes, strings and member objects; it is a sizing estimate, not a measured heap
+limit. The 10-minute idle expiry and authorization on every read stay unchanged.
+
+The cache therefore holds at most about 21.3 MiB of serialized payload in total. A release above
+that size is read and verified from SQL on every call. The v12 warm-read timings apply only to
+releases that fit this smaller payload budget; they do not describe larger uncached releases.
+`OntologyReleaseCaptureTest` verifies that a 23 MB release remains readable without staying
+cached on both MySQL and PostgreSQL, alongside cache reuse and authorization for smaller releases.
