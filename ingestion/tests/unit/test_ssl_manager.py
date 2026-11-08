@@ -1016,3 +1016,78 @@ class HiveSSLManagerTest(TestCase):
         self.assertIsNone(args.get("ssl_certfile"))
         self.assertIsNone(args.get("ssl_keyfile"))
         ssl_manager.cleanup_temp_files()
+
+
+class MysqlSSLManagerTest(TestCase):
+    """
+    Tests that setup_ssl for MysqlConnection, DorisConnection, and StarRocksConnection
+    uses the PyMySQL ssl dict keys (ca, cert, key) so PyMySQL verifies server certificates.
+    """
+
+    def test_setup_ssl_sets_pymysql_ssl_dict_keys(self):
+        """MySQL, Doris, and StarRocks populate ssl={'ca': ..., 'cert': ..., 'key': ...}"""
+        from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+            DorisConnection,
+        )
+        from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+            MysqlConnection,
+        )
+        from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+            StarRocksConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        for connection_cls in (MysqlConnection, DorisConnection, StarRocksConnection):
+            with self.subTest(connection_cls=connection_cls.__name__):
+                connection = connection_cls(
+                    hostPort="localhost:3306",
+                    username="user",
+                    sslConfig={
+                        "caCertificate": "caCertificateData",
+                        "sslCertificate": "sslCertificateData",
+                        "sslKey": "sslKeyData",
+                    },
+                )
+
+                ssl_manager = check_ssl_and_init(connection)
+                updated_connection = ssl_manager.setup_ssl(connection)
+
+                ssl_args = updated_connection.connectionArguments.root.get("ssl", {})
+                self.assertEqual(ssl_args.get("ca"), ssl_manager.ca_file_path)
+                self.assertEqual(ssl_args.get("cert"), ssl_manager.cert_file_path)
+                self.assertEqual(ssl_args.get("key"), ssl_manager.key_file_path)
+                self.assertNotIn("ssl_ca", ssl_args)
+                self.assertNotIn("ssl_cert", ssl_args)
+                self.assertNotIn("ssl_key", ssl_args)
+
+                ssl_manager.cleanup_temp_files()
+
+    def test_setup_ssl_ca_only_enables_pymysql_verification(self):
+        """CA-only config passes 'ca' in the ssl dict so PyMySQL enables CERT_REQUIRED"""
+        import ssl
+
+        from pymysql.connections import Connection
+
+        from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+            MysqlConnection,
+        )
+        from metadata.utils.ssl_manager import check_ssl_and_init
+
+        connection = MysqlConnection(
+            hostPort="localhost:3306",
+            username="user",
+            sslConfig={"caCertificate": "caCertificateData"},
+        )
+
+        ssl_manager = check_ssl_and_init(connection)
+        updated_connection = ssl_manager.setup_ssl(connection)
+        ssl_args = updated_connection.connectionArguments.root["ssl"]
+
+        self.assertEqual(ssl_args, {"ca": ssl_manager.ca_file_path})
+        with patch.object(ssl.SSLContext, "load_verify_locations") as mock_load_verify:
+            ctx = Connection._create_ssl_ctx(None, ssl_args)
+            mock_load_verify.assert_called_once_with(ssl_manager.ca_file_path, None, None)
+        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
+        self.assertTrue(ctx.check_hostname)
+
+        ssl_manager.cleanup_temp_files()
