@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -23,6 +24,7 @@ import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 
 @Execution(ExecutionMode.CONCURRENT)
+@ResourceLock("ontology-sparql-worker")
 @ExtendWith(TestNamespaceExtension.class)
 public class OntologyDraftQueryIT extends BaseOntologyApprovalIT {
   private static final SparqlQuery CLASSES =
