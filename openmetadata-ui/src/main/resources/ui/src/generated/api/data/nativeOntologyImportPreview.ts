@@ -1234,7 +1234,35 @@ export interface OntologyPackSource {
      */
     moduleIds: string[];
     packId:    string;
-    version:   string;
+    /**
+     * Set when a library install job cut the pack into change sets. Applying the change set
+     * verifies its operations against the job's recorded plan.
+     */
+    slice?:  Slice;
+    version: string;
+}
+
+/**
+ * Set when a library install job cut the pack into change sets. Applying the change set
+ * verifies its operations against the job's recorded plan.
+ */
+export interface Slice {
+    /**
+     * Number of slices in the plan.
+     */
+    count: number;
+    /**
+     * Zero-based position of this slice in the plan.
+     */
+    index: number;
+    /**
+     * Background job that planned this slice.
+     */
+    jobId: number;
+    /**
+     * SHA-256 of the plan's ordered slice digests.
+     */
+    planDigest: string;
 }
 
 export enum ChangeSetState {
@@ -1257,11 +1285,17 @@ export interface NativeOntologyImportSummary {
      */
     detectedFormat: Format;
     /**
-     * Every parsed definition in the order the source lists them, each with the status applying
-     * it would give. On a preview against a target each NEW or UPDATE item names its change set
-     * operation; a preview against a new ontology has no operations yet.
+     * The parsed definitions in the order the source lists them, each with the status applying
+     * it would give, at most 5,000 of them. Past that budget ALREADY_EXISTS items are left out
+     * first, since nothing can be done with them; `counts` still covers every definition. On a
+     * preview against a target each NEW or UPDATE item names its change set operation; a
+     * preview against a new ontology has no operations yet.
      */
     items?: NativeOntologyImportItem[];
+    /**
+     * Parsed definitions beyond the listed items.
+     */
+    omittedItems?: number;
     /**
      * Label of the source ontology, when the source declares exactly one ontology header with a
      * label.
