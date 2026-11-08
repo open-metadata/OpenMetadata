@@ -26,12 +26,14 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  */
 public final class OntologyReleaseReader {
   private static final int PAGE_SIZE = 1_000;
-  static final long MAX_CACHED_PAYLOAD_BYTES = 128L * 1024 * 1024;
+  static final long MAX_CACHED_HEAP_BYTES = 128L * 1024 * 1024;
+  // Parsed trees and member objects occupy several times their serialized payload size.
+  private static final int HEAP_EXPANSION_FACTOR = 6;
   private static final Cache<String, List<OntologyReleaseMember>> VERIFIED =
       Caffeine.newBuilder()
-          .maximumWeight(MAX_CACHED_PAYLOAD_BYTES)
+          .maximumWeight(MAX_CACHED_HEAP_BYTES)
           .<String, List<OntologyReleaseMember>>weigher(
-              (key, members) -> (int) Math.min(Integer.MAX_VALUE, payloadBytes(members)))
+              (key, members) -> (int) Math.min(Integer.MAX_VALUE, estimatedHeapBytes(members)))
           .expireAfterAccess(Duration.ofMinutes(10))
           .build();
   private final CollectionDAO dao;
@@ -79,8 +81,9 @@ public final class OntologyReleaseReader {
     return List.copyOf(members);
   }
 
-  private static long payloadBytes(final List<OntologyReleaseMember> members) {
-    return members.stream().mapToLong(OntologyReleaseMember::getPayloadBytes).sum();
+  private static long estimatedHeapBytes(final List<OntologyReleaseMember> members) {
+    return members.stream().mapToLong(OntologyReleaseMember::getPayloadBytes).sum()
+        * HEAP_EXPANSION_FACTOR;
   }
 
   public static void requireBounds(final int count, final long bytes) {
