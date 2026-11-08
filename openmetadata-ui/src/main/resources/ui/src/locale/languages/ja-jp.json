@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "インポートした概念は下書きになります",
     "native-import-format-undetected": "このファイルの形式を検出できませんでした。Turtle、RDF/XML、N-Triples、JSON-LD、またはネイティブ CSV を使用してください。",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "オントロジーに既に存在する定義のうち、さらに{{count}}件は表示されていません",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "オントロジー「{{name}}」を作成します。",
     "native-import-nothing-persisted": "まだ何も保存されていません",

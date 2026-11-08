@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "आयात केलेल्या संकल्पना मसुद्यात जातात",
     "native-import-format-undetected": "या फाइलचा फॉरमॅट ओळखता आला नाही. Turtle, RDF/XML, N-Triples, JSON-LD किंवा नेटिव्ह CSV वापरा.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "ऑन्टोलॉजीमध्ये आधीपासून असलेल्या आणखी {{count}} व्याख्या सूचीमध्ये दाखवलेल्या नाहीत",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "“{{name}}” ही ऑन्टोलॉजी तयार होईल.",
     "native-import-nothing-persisted": "अजून काहीही जतन केलेले नाही",

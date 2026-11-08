@@ -164,7 +164,7 @@ public final class OntologyPackInstallJobHandler implements JobHandler {
       final OntologyPackInstallJobArguments arguments, final List<OntologyPackModule> modules) {
     final Model model = models.load(modules);
     try {
-      return snapshot.read(
+      return snapshot.readUnlocked(
           arguments.getOntologyId(),
           ignored -> {},
           working -> new NativeOntologyRdfImporter().reconcileUnbounded(model, working));

@@ -80,7 +80,9 @@ public final class OntologyActiveGraph {
       RdfMutation.GraphReplace.capture(graph(release.getOntology().getId()), model);
     } catch (RdfPayloadTooLargeException tooLarge) {
       throw new BadRequestException(
-          "Ontology RDF projection exceeds the 16 MiB rebuild journal limit");
+          "Ontology RDF projection exceeds the "
+              + RdfMutation.GraphReplace.MAX_GRAPH_BYTES / (1024 * 1024)
+              + " MiB active graph limit");
     } finally {
       model.close();
     }

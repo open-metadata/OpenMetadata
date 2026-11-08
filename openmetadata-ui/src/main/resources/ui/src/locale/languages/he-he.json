@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "מושגים שיובאו נכנסים כטיוטה",
     "native-import-format-undetected": "לא ניתן לזהות את פורמט הקובץ. השתמשו ב-Turtle,‏ RDF/XML,‏ N-Triples,‏ JSON-LD או CSV מקורי.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "{{count}} הגדרות נוספות שכבר קיימות באונטולוגיה אינן מוצגות ברשימה",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "ייווצרה האונטולוגיה „{{name}}”.",
     "native-import-nothing-persisted": "עדיין לא נשמר דבר",

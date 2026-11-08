@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "I concetti importati entrano in Bozza",
     "native-import-format-undetected": "Impossibile rilevare il formato di questo file. Usa Turtle, RDF/XML, N-Triples, JSON-LD o CSV nativo.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "Altre {{count}} definizioni già presenti nell’ontologia non sono elencate",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "Crea l'ontologia «{{name}}».",
     "native-import-nothing-persisted": "Ancora nulla di salvato",

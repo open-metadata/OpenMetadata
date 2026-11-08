@@ -233,7 +233,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
                   user(context),
                   () ->
                       draft
-                          ? new OntologyDraftQuery(releaseCapture.snapshot()::read)
+                          ? new OntologyDraftQuery(releaseCapture.snapshot()::readUnlocked)
                               .query(id, request, authorize)
                           : release.query(id, request, authorize));
       return Response.ok(result.body(), result.mediaType()).build();
@@ -313,7 +313,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
         definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
     return releaseCapture
         .snapshot()
-        .read(
+        .readUnlocked(
             id,
             authorize,
             working ->
@@ -338,7 +338,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
         definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
     return releaseCapture
         .snapshot()
-        .read(
+        .readUnlocked(
             id,
             authorize,
             working ->
@@ -467,7 +467,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     final NativeOntologyRdfImporter.Source source = importer.read(request);
     return releaseCapture
         .snapshot()
-        .read(
+        .readUnlocked(
             id,
             definitions ->
                 OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
@@ -668,7 +668,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     final String content =
         releaseCapture
             .snapshot()
-            .read(
+            .readUnlocked(
                 id,
                 definitions ->
                     OntologyResourceAccess.requireView(authorizer, securityContext, definitions),

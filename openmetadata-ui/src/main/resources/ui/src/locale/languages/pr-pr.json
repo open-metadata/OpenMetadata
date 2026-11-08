@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "مفاهیم واردشده به‌صورت پیش‌نویس درمی‌آیند",
     "native-import-format-undetected": "قالب این فایل شناسایی نشد. از Turtle، RDF/XML، N-Triples، JSON-LD یا CSV بومی استفاده کنید.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "{{count}} تعریف دیگر که از قبل در هستی‌شناسی وجود دارند، در فهرست نمایش داده نمی‌شوند",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "هستی‌شناسی «{{name}}» ایجاد می‌شود.",
     "native-import-nothing-persisted": "هنوز چیزی ذخیره نشده است",

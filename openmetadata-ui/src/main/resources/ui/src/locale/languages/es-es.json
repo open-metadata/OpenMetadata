@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "Los conceptos importados pasan a Borrador",
     "native-import-format-undetected": "No se pudo detectar el formato de este archivo. Use Turtle, RDF/XML, N-Triples, JSON-LD o CSV nativo.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "No se muestran otras {{count}} definiciones que ya están en la ontología",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "Crea la ontología «{{name}}».",
     "native-import-nothing-persisted": "Todavía no se ha guardado nada",

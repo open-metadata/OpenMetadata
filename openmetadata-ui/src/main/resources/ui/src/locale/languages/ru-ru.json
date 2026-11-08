@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "Импортированные понятия попадут в черновик",
     "native-import-format-undetected": "Не удалось определить формат файла. Используйте Turtle, RDF/XML, N-Triples, JSON-LD или собственный CSV.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "Ещё {{count}} определений, уже существующих в онтологии, не показаны в списке",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "Создаст онтологию «{{name}}».",
     "native-import-nothing-persisted": "Пока ничего не сохранено",

@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "İçe aktarılan kavramlar Taslak olarak girer",
     "native-import-format-undetected": "Bu dosyanın biçimi algılanamadı. Turtle, RDF/XML, N-Triples, JSON-LD veya yerel CSV kullanın.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "Ontolojide zaten bulunan {{count}} tanım daha listelenmiyor",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "“{{name}}” ontolojisini oluşturur.",
     "native-import-nothing-persisted": "Henüz hiçbir şey kaydedilmedi",

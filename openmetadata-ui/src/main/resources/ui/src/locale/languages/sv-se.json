@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "Importerade begrepp hamnar i Utkast",
     "native-import-format-undetected": "Filens format kunde inte identifieras. Använd Turtle, RDF/XML, N-Triples, JSON-LD eller inbyggd CSV.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "Ytterligare {{count}} definitioner som redan finns i ontologin visas inte i listan",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "Skapar ontologin ”{{name}}”.",
     "native-import-nothing-persisted": "Inget har sparats ännu",

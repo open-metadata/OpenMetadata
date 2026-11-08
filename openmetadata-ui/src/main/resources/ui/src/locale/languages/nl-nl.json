@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "Geïmporteerde concepten komen in Concept",
     "native-import-format-undetected": "Het formaat van dit bestand kon niet worden gedetecteerd. Gebruik Turtle, RDF/XML, N-Triples, JSON-LD of native CSV.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "{{count}} andere definities die al in de ontologie staan, worden niet weergegeven",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "Maakt de ontologie “{{name}}” aan.",
     "native-import-nothing-persisted": "Nog niets opgeslagen",

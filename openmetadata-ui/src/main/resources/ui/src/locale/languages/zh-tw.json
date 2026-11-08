@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "匯入的概念將進入草稿狀態",
     "native-import-format-undetected": "無法偵測此檔案的格式。請使用 Turtle、RDF/XML、N-Triples、JSON-LD 或原生 CSV。",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "另有 {{count}} 個已存在於本體中的定義未列出",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "將建立本體「{{name}}」。",
     "native-import-nothing-persisted": "尚未儲存任何內容",

@@ -23,7 +23,11 @@ import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.ConceptMapping.ConceptMappingType;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
+import org.openmetadata.schema.api.data.NativeOntologyImportItem;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -46,6 +50,38 @@ class NativeOntologyRdfImporterTest {
   private static final URI ROOT_IRI = URI.create("https://example.org/ontology");
   private static final URI CONCEPT_IRI = URI.create("https://example.org/Customer");
   private final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
+
+  @Test
+  void aListingKeepsEveryActionableItemAndDropsExistingOnesPastTheBudget() {
+    final List<NativeOntologyImportItem> items = new ArrayList<>();
+    for (int i = 0; i < NativeOntologyRdfImporter.MAX_LISTED_ITEMS + 200; i++) {
+      final boolean actionable = i % 1_000 == 999;
+      items.add(
+          new NativeOntologyImportItem()
+              .withId("item-" + i)
+              .withKind(NativeOntologyImportItemKind.CONCEPT)
+              .withStatus(
+                  actionable
+                      ? NativeOntologyImportItemStatus.NEW
+                      : NativeOntologyImportItemStatus.ALREADY_EXISTS));
+    }
+    final NativeOntologyImportSummary summary =
+        NativeOntologyRdfImporter.listing(new NativeOntologyImportSummary(), items);
+    assertEquals(NativeOntologyRdfImporter.MAX_LISTED_ITEMS, summary.getItems().size());
+    assertEquals(200, summary.getOmittedItems());
+    assertEquals(
+        List.of("item-999", "item-1999", "item-2999", "item-3999", "item-4999"),
+        summary.getItems().stream()
+            .filter(item -> item.getStatus() == NativeOntologyImportItemStatus.NEW)
+            .map(NativeOntologyImportItem::getId)
+            .toList());
+    assertEquals("item-0", summary.getItems().getFirst().getId());
+    assertEquals("item-4999", summary.getItems().getLast().getId());
+    assertEquals(
+        0,
+        NativeOntologyRdfImporter.listing(new NativeOntologyImportSummary(), items.subList(0, 3))
+            .getOmittedItems());
+  }
 
   @Test
   void bundledPacksPreviewAsNativeConceptsAndExactSkosRelations() {

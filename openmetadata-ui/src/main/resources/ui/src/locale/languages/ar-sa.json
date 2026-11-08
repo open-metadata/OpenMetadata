@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "تدخل المفاهيم المستوردة في حالة المسودة",
     "native-import-format-undetected": "تعذّر اكتشاف تنسيق هذا الملف. استخدم Turtle أو RDF/XML أو N-Triples أو JSON-LD أو CSV الأصلي.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "لم تُدرج {{count}} تعريفات إضافية موجودة بالفعل في الأنطولوجيا",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "سيتم إنشاء الأنطولوجيا «{{name}}».",
     "native-import-nothing-persisted": "لم يتم حفظ أي شيء بعد",

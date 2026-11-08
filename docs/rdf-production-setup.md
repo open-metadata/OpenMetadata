@@ -250,7 +250,11 @@ Throughput therefore depends on the number and size of write transactions:
 
 The image includes a Graph Store extension (`OPENMETADATA_EXTENSION_ENABLED=true`). Its defaults
 are 50 seconds per upload, 64 MiB decompressed per request, and 16 simultaneous receivers. Override
-the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`.
+the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`. An
+activated native ontology release reaches Fuseki as one RDF-Thrift PUT of its whole graph, and the
+server refuses to activate a release whose graph exceeds 64 MiB (a FHIR-shaped ontology of 35,000
+members projects to about 56 MiB), so keep the upload limit at or above that
+bound; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
 Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
 used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
 read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any

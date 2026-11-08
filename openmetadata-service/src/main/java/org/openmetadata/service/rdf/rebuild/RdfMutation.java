@@ -52,7 +52,7 @@ public sealed interface RdfMutation {
 
   record EntityWrite(String entityType, UUID entityId, byte[] rdf) implements RdfMutation {
     public static EntityWrite capture(final String type, final UUID id, final Model model) {
-      return new EntityWrite(type, id, encode(model));
+      return new EntityWrite(type, id, encode(model, MAX_MODEL_BYTES));
     }
 
     @Override
@@ -181,8 +181,16 @@ public sealed interface RdfMutation {
   }
 
   record GraphReplace(String graph, byte[] rdf) implements RdfMutation {
+    /**
+     * A whole active ontology graph, sent to Fuseki as one RDF-Thrift Graph Store PUT. The bound
+     * is the Fuseki extension's default upload limit (OPENMETADATA_MAX_UPLOAD_BYTES, 64 MiB), so
+     * an activation the journal accepts is one the default Fuseki also accepts; see
+     * ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release for the measured sizes.
+     */
+    public static final int MAX_GRAPH_BYTES = 64 * 1024 * 1024;
+
     public static GraphReplace capture(final String graph, final Model model) {
-      return new GraphReplace(graph, encode(model));
+      return new GraphReplace(graph, encode(model, MAX_GRAPH_BYTES));
     }
 
     @Override
@@ -191,7 +199,7 @@ public sealed interface RdfMutation {
     }
   }
 
-  private static byte[] encode(final Model model) {
+  private static byte[] encode(final Model model, final int limit) {
     final ByteArrayOutputStream output =
         new ByteArrayOutputStream() {
           @Override
@@ -207,7 +215,7 @@ public sealed interface RdfMutation {
           }
 
           private void requireCapacity(final int additional) {
-            if (additional > MAX_MODEL_BYTES - count) {
+            if (additional > limit - count) {
               throw new RdfPayloadTooLargeException("RDF model exceeds journal capture limit");
             }
           }

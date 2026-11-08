@@ -5440,6 +5440,7 @@
     "native-import-enters-draft": "Importierte Konzepte werden zum Entwurf",
     "native-import-format-undetected": "Das Format dieser Datei konnte nicht erkannt werden. Verwenden Sie Turtle, RDF/XML, N-Triples, JSON-LD oder natives CSV.",
     "native-import-items-found": "{{count}} items found, {{skipped}} won't be imported",
+    "native-import-items-omitted": "{{count}} weitere Definitionen, die bereits in der Ontologie vorhanden sind, werden nicht aufgeführt",
     "native-import-needs-concept": "Needs {{name}}, which is not ticked",
     "native-import-new-ontology-named": "Erstellt die Ontologie „{{name}}“.",
     "native-import-nothing-persisted": "Noch nichts gespeichert",
