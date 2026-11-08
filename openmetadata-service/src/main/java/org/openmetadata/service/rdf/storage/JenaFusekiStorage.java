@@ -155,6 +155,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private final long writeRetryMaxBackoffMs;
   private final int maxUpdatePayloadBytes;
   private final int maxAppendPayloadBytes;
+  private final int graphReplaceChunkBytes;
   private final boolean streamingAppendEnabled;
   private final boolean gzipRequests;
   private final HttpClient streamingHttpClient;
@@ -203,6 +204,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     this.writeRetryMaxBackoffMs = resolveWriteRetryMaxBackoffMs(config);
     this.maxUpdatePayloadBytes = RdfStorageInterface.resolveMaxUpdatePayloadBytes(config);
     this.maxAppendPayloadBytes = RdfStorageInterface.resolveMaxAppendPayloadBytes(config);
+    this.graphReplaceChunkBytes =
+        config.getGraphReplaceChunkBytes() != null
+            ? config.getGraphReplaceChunkBytes()
+            : ChunkedGraphReplace.DEFAULT_CHUNK_BYTES;
     this.streamingAppendEnabled =
         config.getStreamingAppendEnabled() == null || config.getStreamingAppendEnabled();
     this.gzipRequests = Boolean.TRUE.equals(config.getGzipRequests());
@@ -1674,11 +1679,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void replaceGraph(final String graphUri, final Model model) {
+  public void replaceGraph(final String graphUri, final UUID releaseId, final Model model) {
     throwIfCircuitOpen("replaceGraph");
     final String graph = requireAbsoluteGraphUri(graphUri).toString();
     try {
-      runWriteWithRetry(() -> connection.put(graph, model), "replaceGraph");
+      new ChunkedGraphReplace(new FusekiGraphStore(), graphReplaceChunkBytes).replace(graph, model);
       recordSuccess();
     } catch (RuntimeException failure) {
       if (isCircuitBreakerFailure(failure)) {
@@ -1905,6 +1910,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     if (connection != null) {
       connection.close();
       LOG.info("Closed connection to Fuseki server");
+    }
+  }
+
+  private final class FusekiGraphStore implements ChunkedGraphReplace.GraphStore {
+    @Override
+    public void put(final String graph, final Model content) {
+      runWriteWithRetry(() -> connection.put(graph, content), "replaceGraph");
+    }
+
+    @Override
+    public void update(final String sparqlUpdate) {
+      runWriteWithRetry(() -> connection.update(sparqlUpdate), "replaceGraphSwap");
+    }
+
+    @Override
+    public List<String> graphs() {
+      return getAllGraphs();
     }
   }
 }

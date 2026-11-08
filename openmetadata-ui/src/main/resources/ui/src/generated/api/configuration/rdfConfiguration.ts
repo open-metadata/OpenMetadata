@@ -78,6 +78,13 @@ export interface RDFConfiguration {
      */
     federation?: Federation;
     /**
+     * Largest RDF-Thrift request, in bytes, used to replace a whole named graph such as an
+     * active ontology release. A graph above it is uploaded in chunks into staging graphs and
+     * moved into place in one SPARQL update. Keep it at or below the Fuseki upload limit
+     * (OPENMETADATA_MAX_UPLOAD_BYTES).
+     */
+    graphReplaceChunkBytes?: number;
+    /**
      * Compress streamed insert-only request bodies with gzip. The backend reads the request
      * body inside its single-writer transaction, so on network-constrained links compression
      * directly shortens writer-lock hold time. Off by default; enable after verifying

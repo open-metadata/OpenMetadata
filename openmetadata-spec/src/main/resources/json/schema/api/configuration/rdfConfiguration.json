@@ -110,6 +110,13 @@
       "default": 16777216,
       "minimum": 65536
     },
+    "graphReplaceChunkBytes": {
+      "description": "Largest RDF-Thrift request, in bytes, used to replace a whole named graph such as an active ontology release. A graph above it is uploaded in chunks into staging graphs and moved into place in one SPARQL update. Keep it at or below the Fuseki upload limit (OPENMETADATA_MAX_UPLOAD_BYTES).",
+      "type": "integer",
+      "default": 16777216,
+      "minimum": 65536,
+      "maximum": 67108864
+    },
     "bulkAppendEntityBatchSize": {
       "description": "Maximum number of entity models written in a single insert-only (append) bulk request. Acts as a guard alongside maxAppendPayloadBytes so a chunk of very small entities cannot grow without bound.",
       "type": "integer",

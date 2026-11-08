@@ -966,6 +966,7 @@ rdf:
   bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
   maxUpdatePayloadBytes: ${RDF_MAX_UPDATE_PAYLOAD_BYTES:-4194304}
   maxAppendPayloadBytes: ${RDF_MAX_APPEND_PAYLOAD_BYTES:-16777216}
+  graphReplaceChunkBytes: ${RDF_GRAPH_REPLACE_CHUNK_BYTES:-16777216}
   bulkAppendEntityBatchSize: ${RDF_BULK_APPEND_ENTITY_BATCH_SIZE:-1000}
   streamingAppendEnabled: ${RDF_STREAMING_APPEND_ENABLED:-true}
   gzipRequests: ${RDF_GZIP_REQUESTS:-false}

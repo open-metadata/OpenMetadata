@@ -35,7 +35,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData
 
 @JsonTypeInfo(use = JsonTypeInfo.Id.NAME, property = "operation")
 @JsonSubTypes({
-  @JsonSubTypes.Type(value = RdfMutation.GraphReplace.class, name = "replaceGraph"),
+  @JsonSubTypes.Type(value = RdfMutation.GraphReplace.class, name = "replaceReleaseGraph"),
   @JsonSubTypes.Type(value = RdfMutation.EntityWrite.class, name = "entity"),
   @JsonSubTypes.Type(value = RdfMutation.EntityBatch.class, name = "entities"),
   @JsonSubTypes.Type(value = RdfMutation.EntityDelete.class, name = "delete"),
@@ -48,7 +48,7 @@ import org.openmetadata.service.rdf.storage.RdfStorageInterface.RelationshipData
 public sealed interface RdfMutation {
   int MAX_MODEL_BYTES = 16 * 1024 * 1024;
 
-  void apply(RdfStorageInterface storage);
+  void apply(RdfStorageInterface storage, ReleaseGraphs releases);
 
   record EntityWrite(String entityType, UUID entityId, byte[] rdf) implements RdfMutation {
     public static EntityWrite capture(final String type, final UUID id, final Model model) {
@@ -56,7 +56,7 @@ public sealed interface RdfMutation {
     }
 
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       // Replay replaces, as it did before entity writes sent differences: a difference would add a
       // read, and the check after it, to every replayed write inside the promotion's replay budget.
       withModel(
@@ -92,7 +92,7 @@ public sealed interface RdfMutation {
     }
 
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       final List<EntityWriteRequest> requests = new ArrayList<>();
       try {
         for (EntityWrite entity : entities) {
@@ -107,7 +107,7 @@ public sealed interface RdfMutation {
 
   record EntityDelete(String entityType, UUID entityId) implements RdfMutation {
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       storage.deleteEntity(entityType, entityId);
     }
   }
@@ -131,7 +131,7 @@ public sealed interface RdfMutation {
 
   record RelationshipWrite(Relation relation) implements RdfMutation {
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       storage.storeRelationship(
           relation.from().type(),
           relation.from().id(),
@@ -154,48 +154,47 @@ public sealed interface RdfMutation {
     }
 
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       storage.bulkStoreRelationships(relationships.stream().map(Relation::data).toList(), sources);
     }
   }
 
   record Sparql(String statement) implements RdfMutation {
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       storage.executeSparqlUpdate(statement);
     }
   }
 
   record Turtle(byte[] rdf, String graph) implements RdfMutation {
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       storage.loadTurtleFile(new ByteArrayInputStream(rdf), graph);
     }
   }
 
   record GraphClear(String graph) implements RdfMutation {
     @Override
-    public void apply(final RdfStorageInterface storage) {
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
       storage.clearGraph(graph);
     }
   }
 
-  record GraphReplace(String graph, byte[] rdf) implements RdfMutation {
-    /**
-     * A whole active ontology graph, sent to Fuseki as one RDF-Thrift Graph Store PUT. The bound
-     * is the Fuseki extension's default upload limit (OPENMETADATA_MAX_UPLOAD_BYTES, 64 MiB), so
-     * an activation the journal accepts is one the default Fuseki also accepts; see
-     * ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release for the measured sizes.
-     */
-    public static final int MAX_GRAPH_BYTES = 64 * 1024 * 1024;
-
-    public static GraphReplace capture(final String graph, final Model model) {
-      return new GraphReplace(graph, encode(model, MAX_GRAPH_BYTES));
-    }
-
+  /**
+   * A whole active ontology graph, journaled by the release it projects (null: an empty graph) and
+   * projected again from SQL on replay, so an entry stays a few hundred bytes whatever the graph
+   * size; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
+   */
+  record GraphReplace(String graph, UUID releaseId) implements RdfMutation {
     @Override
-    public void apply(final RdfStorageInterface storage) {
-      withModel(rdf, model -> storage.replaceGraph(graph, model));
+    public void apply(final RdfStorageInterface storage, final ReleaseGraphs releases) {
+      final Model model =
+          releaseId == null ? ModelFactory.createDefaultModel() : releases.project(releaseId);
+      try {
+        storage.replaceGraph(graph, releaseId, model);
+      } finally {
+        model.close();
+      }
     }
   }
 

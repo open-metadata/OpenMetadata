@@ -1,9 +1,9 @@
 # Fuseki holds only the active ontology release
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain) · v3 2026-11-06 (whole-graph journal cap bound to the Fuseki upload limit) · v4 2026-11-07 (the serving graph leaves out statement sources)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-10-17 (rebuild excludes live drain) · v3 2026-11-06 (whole-graph journal cap bound to the Fuseki upload limit) · v4 2026-11-07 (the serving graph leaves out statement sources) · v5 2026-11-07 (staged chunked replacement, journal by release)
 - **Deciders:** Harsha
-- **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseProjectionTest`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest#rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
+- **Guard:** `IndependentOntologyActivationIT`, `OntologyReleaseProjectionTest`, `ChunkedGraphReplaceTest`, `RdfMutationReplayTest`, `RdfOntologyChunkedActivationIT`, `OntologyReleaseActivationTest`, `OntologyActiveGraphStorageTest#rebuildCannotOverwriteAnActivationDeliveredWhileItsModelWasBeingBuilt`, `RdfOntologyActivationIT`, `RdfBlueGreenRebuildIT`, `RdfLiveWriteRecoveryIT`, reviewer
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md), ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
 
 ## Context
@@ -111,3 +111,59 @@ The v3 numbers were measured with the sources included.
 A SPARQL user who read statement provenance from the active graph gets no rows; the member that
 states a triple is in the release export and in SQL. The active release stays visible as the
 ontology's `owl:versionIRI`.
+
+## Amendment v5 — 2026-11-07: staged chunked replacement, journal by release
+
+This amendment replaces the single Graph Store PUT of the decision and the journal cap of v3.
+
+`replaceGraph` cuts the graph into chunks of at most `rdfConfiguration.graphReplaceChunkBytes`
+(`RDF_GRAPH_REPLACE_CHUNK_BYTES`, default 16 MiB, at most 64 MiB, the extension's upload limit).
+The size of a chunk is an estimate that overstates its RDF-Thrift encoding. Fuseki scopes blank
+node labels to one request, so each connected blank-node structure travels whole in one chunk; a
+structure larger than a chunk travels alone, and one larger than 64 MiB is refused before
+anything is sent. A graph that fits one chunk is still one PUT of the live graph. A larger graph:
+
+1. drops the staging graphs a crashed attempt left for this live graph;
+2. PUTs each chunk into `https://open-metadata.org/graph/staging/<first 16 bytes of the
+   SHA-256 of the live graph IRI, hex>/<index>`;
+3. sends one SPARQL update: `MOVE SILENT` chunk 0 to the live graph, then `ADD SILENT` and
+   `DROP SILENT` for each further chunk.
+
+One update is one TDB2 transaction, so a reader of the live graph sees the old release or the new
+one, never a mix. A failure before the update leaves the live graph as it was, and the next attempt
+drops the stale staging graphs first. A `SILENT` operation on a missing graph does nothing, so
+resending an update that already committed changes nothing. The live-write queue retries the
+whole replacement.
+
+Staging graphs are outside the ontology graph prefix, so a rebuild neither reprojects nor deletes
+them as orphans, and `AssertedOnlyQueries` excludes them from the asserted graphs. A query over
+the union default graph that is not restricted to asserted graphs can see staged triples while a
+replacement uploads, once beside the old release.
+
+The journal stores the release, not its bytes. `RdfMutation.GraphReplace` records the graph and
+the release id (`replaceReleaseGraph`), and replay projects that release again from SQL through
+`OntologyActiveGraph.releaseModel`. A sealed release does not change, so the replayed graph is the
+graph that was delivered. No release, or a release since deleted, replays as an empty graph. An
+entry journaled by an older server (`replaceGraph`, with base64 RDF) no longer decodes, so a
+rebuild that spans the upgrade fails to promote instead of replaying it; run the rebuild again
+after the upgrade.
+
+The journal and the upload limit no longer bound the graph, so activation checks
+`OntologyActiveGraph.MAX_GRAPH_BYTES`, 256 MiB of RDF-Thrift, with or without RDF. The bound comes
+from the final update, which holds TDB2's writer under the server's 50 s update deadline. Measured
+on `openmetadata/fuseki:6.2.0-318ff87` with its databases on tmpfs, best of three:
+
+| Graph | Triples | RDF-Thrift | One PUT | Chunked, 16 MiB | Chunked, 1 MiB |
+|---|---|---|---|---|---|
+| FIBO quickstart, with sources | 157,928 | 21,670,556 | 1,082 ms | 3,046 ms | 3,003 ms |
+| FIBO quickstart, served | 30,133 | 5,032,083 | 205 ms | 211 ms (one PUT) | 519 ms |
+| FHIR R5, with sources | 247,162 | 27,899,511 | 1,817 ms | 4,748 ms | 4,682 ms |
+| FHIR R5, served | 58,567 | 6,154,701 | 393 ms | 395 ms (one PUT) | 1,021 ms |
+| English ESCO with links, served | 357,307 | 62,117,620 | 2,807 ms | 7,141 ms | not run |
+
+Activation of FIBO now delivers in 211 ms instead of 1,082 ms, and FHIR in 395 ms instead of
+1,817 ms, because v4 removed the sources and the served graph fits one chunk. ESCO's six chunks
+took about 0.5 s each and its update 4.0 s. At that rate a 256 MiB graph spends about 17 s in the
+update. Every chunked graph served the same triples as one PUT of the same graph. A slower
+persistent volume or a busy writer lowers the margin. The server holds the whole projection and
+its chunks in memory during a replacement, so heap, not Fuseki, limits a graph near the cap.

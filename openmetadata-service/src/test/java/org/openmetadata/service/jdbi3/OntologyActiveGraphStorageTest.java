@@ -79,7 +79,7 @@ class OntologyActiveGraphStorageTest {
                       return call.callRealMethod();
                     })
                 .when(storage)
-                .replaceGraph(anyString(), any(Model.class));
+                .replaceGraph(anyString(), any(), any(Model.class));
             final var rebuilding = workers.submit(() -> projection.rebuild(storage));
             try {
               assertTrue(modelBuilt.await(10, TimeUnit.SECONDS));
