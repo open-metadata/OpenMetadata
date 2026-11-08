@@ -86,6 +86,7 @@ import {
   selectChanges,
   selectionOf,
 } from './OntologyNativeImportPanel.utils';
+import OntologyNativeImportSkipped from './OntologyNativeImportSkipped';
 
 interface OntologyNativeImportPanelProps {
   readonly canImport: boolean;
@@ -509,6 +510,9 @@ const ImportReview = ({
         isNewTarget={isNewTarget}
         summary={summary}
       />
+      {summary.skippedStatements && summary.skippedStatements.total > 0 && (
+        <OntologyNativeImportSkipped skipped={summary.skippedStatements} />
+      )}
       {items.length > 0 && (
         <OntologyNativeImportItems
           isDisabled={isDisabled}
