@@ -118,27 +118,55 @@ This amendment replaces the single Graph Store PUT of the decision and the journ
 
 `replaceGraph` cuts the graph into chunks of at most `rdfConfiguration.graphReplaceChunkBytes`
 (`RDF_GRAPH_REPLACE_CHUNK_BYTES`, default 16 MiB, at most 64 MiB, the extension's upload limit).
-The size of a chunk is an estimate that overstates its RDF-Thrift encoding. Fuseki scopes blank
-node labels to one request, so each connected blank-node structure travels whole in one chunk; a
-structure larger than a chunk travels alone, and one larger than 64 MiB is refused before
-anything is sent. A graph that fits one chunk is still one PUT of the live graph. A larger graph:
+The size of a chunk is an estimate that overstates its RDF-Thrift encoding. Each connected
+blank-node structure travels whole in one chunk; a structure larger than a chunk travels alone, and
+one larger than 64 MiB is refused before anything is sent. RDF-Thrift keeps blank node labels
+across requests, so this is not needed for identity, but it keeps every chunk a well-formed graph
+on its own. A graph that fits one chunk is still one PUT of the live graph. A larger graph:
 
-1. drops the staging graphs a crashed attempt left for this live graph;
+1. drops every staging graph an earlier attempt left for this live graph;
 2. PUTs each chunk into `https://open-metadata.org/graph/staging/<first 16 bytes of the
-   SHA-256 of the live graph IRI, hex>/<index>`;
-3. sends one SPARQL update: `MOVE SILENT` chunk 0 to the live graph, then `ADD SILENT` and
-   `DROP SILENT` for each further chunk.
+   SHA-256 of the live graph IRI, hex>/<attempt id>/<index>`, where the attempt id is a random
+   UUID;
+3. sends one SPARQL update: `ADD GRAPH <chunk> TO GRAPH <chunk>` for each chunk, `DROP SILENT`
+   of the live graph, one `INSERT { GRAPH <live> { ?s ?p ?o } } WHERE { VALUES ?staged { <chunk>
+   ... } GRAPH ?staged { ?s ?p ?o } }`, and `DROP SILENT` of each chunk.
 
 One update is one TDB2 transaction, so a reader of the live graph sees the old release or the new
-one, never a mix. A failure before the update leaves the live graph as it was, and the next attempt
-drops the stale staging graphs first. A `SILENT` operation on a missing graph does nothing, so
-resending an update that already committed changes nothing. The live-write queue retries the
+one, never a mix. Adding a graph to itself changes nothing, but it fails when the graph is
+missing, and the failure aborts the whole request. A swap whose chunks are gone therefore changes
+nothing: a newer attempt dropped them, or the same swap already committed. A failure before the
+update leaves the live graph as it was, and the next attempt drops the stale staging graphs
+first. The ontology graph refresh is a replayable live write, so the live-write queue retries the
 whole replacement.
 
+The copy is not `MOVE` and `ADD`. Jena 6.2.0 runs both as `GraphOps.addAll(dest, src.find())`, which
+iterates the source while inserting into the same TDB2 quad indexes inside one write transaction,
+and that iteration skips triples. Which triples it skips depends on what the dataset held before.
+FIBO with sources (157,928 triples), replaced in 1 MiB chunks in a dataset where
+`RdfOntologyChunkedActivationIT` had run, served 157,898 every time: six `owl:Axiom` structures of
+the last chunk were skipped by its `ADD`, and the `DROP` that followed deleted their only copy. An
+embedded TDB2 replay of the same swap lost triples in 20 of 21 trials, and in 17 of 21 with every
+`DROP` moved to the end. `INSERT WHERE` collects its solutions before it writes and lost none in 32
+trials. Fuseki accepts only one operation with a `WHERE` clause per request when `arq:updateTimeout`
+is set, so the copy is one operation over a `VALUES` list of the chunks.
+
+Collecting the solutions costs Fuseki heap. On the pinned image with a 512 MiB heap, a copy of
+762,718 triples took 8.1 s and one of 1.78 million failed with `Java heap space` and rolled back.
+With a 1,500 MiB heap, 1.78 million took 15.0 s and 2.5 million took 23.9 s. A graph at the
+256 MiB bound below holds about 1.5 to 2 million triples (ESCO spends 174 bytes of RDF-Thrift a
+triple, FIBO with sources 137), so it needs at least the development heap of 1,500 MiB; the
+production default `FUSEKI_HEAP` is 4 GiB.
+
 Staging graphs are outside the ontology graph prefix, so a rebuild neither reprojects nor deletes
-them as orphans, and `AssertedOnlyQueries` excludes them from the asserted graphs. A query over
-the union default graph that is not restricted to asserted graphs can see staged triples while a
-replacement uploads, once beside the old release.
+them as orphans, and `AssertedOnlyQueries` excludes them from the asserted graphs when materialized
+inference is on. Every other read of the union default graph can see staged triples beside the old
+release: the SPARQL endpoint, the MCP tools that query or describe entities, semantic search, the
+reasoning and validation endpoints, and the asserted-only reads when inference is off. It sees them
+from a replacement's first chunk until its swap commits, and after a failed attempt until the next
+attempt drops them. Inference materialization also reads the union, so a run in either window can
+derive conclusions from staged triples. Those conclusions do not outlive the window: a replacement
+that succeeds marks every rule dirty, and the next run clears every rule graph before it recomputes.
 
 The journal stores the release, not its bytes. `RdfMutation.GraphReplace` records the graph and
 the release id (`replaceReleaseGraph`), and replay projects that release again from SQL through
@@ -151,7 +179,8 @@ after the upgrade.
 The journal and the upload limit no longer bound the graph, so activation checks
 `OntologyActiveGraph.MAX_GRAPH_BYTES`, 256 MiB of RDF-Thrift, with or without RDF. The bound comes
 from the final update, which holds TDB2's writer under the server's 50 s update deadline. Measured
-on `openmetadata/fuseki:6.2.0-318ff87` with its databases on tmpfs, best of three:
+on `openmetadata/fuseki:6.2.0-318ff87` with its databases on tmpfs, best of three, with the
+`MOVE` and `ADD` swap this amendment first shipped:
 
 | Graph | Triples | RDF-Thrift | One PUT | Chunked, 16 MiB | Chunked, 1 MiB |
 |---|---|---|---|---|---|
@@ -163,7 +192,12 @@ on `openmetadata/fuseki:6.2.0-318ff87` with its databases on tmpfs, best of thre
 
 Activation of FIBO now delivers in 211 ms instead of 1,082 ms, and FHIR in 395 ms instead of
 1,817 ms, because v4 removed the sources and the served graph fits one chunk. ESCO's six chunks
-took about 0.5 s each and its update 4.0 s. At that rate a 256 MiB graph spends about 17 s in the
-update. Every chunked graph served the same triples as one PUT of the same graph. A slower
-persistent volume or a busy writer lowers the margin. The server holds the whole projection and
-its chunks in memory during a replacement, so heap, not Fuseki, limits a graph near the cap.
+took about 0.5 s each and its update 4.0 s. These runs served every triple; the loss described
+above appeared only once other tests had written to the dataset first. With the `INSERT WHERE`
+swap, FIBO with sources took 3,161 ms in 16 MiB chunks (best of three) and about 3.2 s in 1 MiB
+chunks, and served 157,928 triples in all eight runs after `RdfOntologyChunkedActivationIT`.
+ESCO's update took 5.0 s over a served graph. A 256 MiB graph spends about 21 s in the update at
+that rate, and the 2.5 million triple copy above took 23.9 s. A slower persistent volume or a busy
+writer lowers the margin. The server holds the whole projection and its chunks in memory during a
+replacement, and Fuseki holds every copied triple during the update, so heap on both sides limits
+a graph near the cap.

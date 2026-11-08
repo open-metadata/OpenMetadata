@@ -224,10 +224,12 @@ are 50 seconds per upload, 64 MiB decompressed per request, and 16 simultaneous 
 the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`. An
 activated native ontology release reaches Fuseki in RDF-Thrift chunks of at most
 `RDF_GRAPH_REPLACE_CHUNK_BYTES` (default 16 MiB). A graph larger than one chunk is staged in
-`https://open-metadata.org/graph/staging/...` graphs and moved into place by one SPARQL update, so
+`https://open-metadata.org/graph/staging/...` graphs and copied into place by one SPARQL update, so
 keep the upload limit at or above the chunk size and the update deadline above the time that
-update takes (about 4 s for a 62 MB graph). The server refuses to activate a release whose graph
-exceeds 256 MiB; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
+update takes (about 5 s for a 62 MB graph). The copy holds every triple of the graph in Fuseki's
+heap: a 512 MiB heap failed on 1.78 million triples, and a graph near the 256 MiB activation limit
+needs at least 1,500 MiB. The server refuses to activate a release whose graph exceeds
+256 MiB; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
 Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
 used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
 read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
