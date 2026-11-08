@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.lang.reflect.Constructor;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyPair;
@@ -39,8 +40,8 @@ class BotTokenRegeneratorTest {
   @TempDir static Path dir;
   private static KeyPair keyA;
   private static KeyPair keyB;
-  private final BotTokenRegenerator regenerator =
-      new BotTokenRegenerator(null, JWTTokenGenerator.getInstance());
+  private final JWTTokenGenerator tokenGenerator = newTokenGenerator();
+  private final BotTokenRegenerator regenerator = new BotTokenRegenerator(null, tokenGenerator);
 
   @BeforeAll
   static void generateKeys() throws Exception {
@@ -50,24 +51,23 @@ class BotTokenRegeneratorTest {
     keyB = generator.generateKeyPair();
   }
 
-  private static void configure(KeyPair pair, String kid) throws Exception {
+  private void configure(KeyPair pair, String kid) throws Exception {
     Path privateKey =
         Files.write(dir.resolve(kid + ".private.der"), pair.getPrivate().getEncoded());
     Path publicKey = Files.write(dir.resolve(kid + ".public.der"), pair.getPublic().getEncoded());
-    JWTTokenGenerator.getInstance()
-        .init(
-            new AuthenticationConfiguration()
-                .withTokenValidationAlgorithm(
-                    AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
-            new JWTTokenConfiguration()
-                .withRsaprivateKeyFilePath(privateKey.toString())
-                .withRsapublicKeyFilePath(publicKey.toString())
-                .withJwtissuer("open-metadata.org")
-                .withKeyId(kid));
+    tokenGenerator.init(
+        new AuthenticationConfiguration()
+            .withTokenValidationAlgorithm(
+                AuthenticationConfiguration.TokenValidationAlgorithm.RS_256),
+        new JWTTokenConfiguration()
+            .withRsaprivateKeyFilePath(privateKey.toString())
+            .withRsapublicKeyFilePath(publicKey.toString())
+            .withJwtissuer("open-metadata.org")
+            .withKeyId(kid));
   }
 
-  private static String mint(long expiryInSeconds) {
-    return JWTTokenGenerator.getInstance()
+  private String mint(long expiryInSeconds) {
+    return tokenGenerator
         .generateJWTToken(
             "bot",
             Set.of(),
@@ -77,6 +77,17 @@ class BotTokenRegeneratorTest {
             true,
             ServiceTokenType.BOT)
         .getJWTToken();
+  }
+
+  private static JWTTokenGenerator newTokenGenerator() {
+    try {
+      final Constructor<JWTTokenGenerator> constructor =
+          JWTTokenGenerator.class.getDeclaredConstructor();
+      constructor.setAccessible(true);
+      return constructor.newInstance();
+    } catch (ReflectiveOperationException exception) {
+      throw new AssertionError("Could not construct an isolated JWTTokenGenerator", exception);
+    }
   }
 
   @Test
@@ -127,8 +138,8 @@ class BotTokenRegeneratorTest {
   @Test
   void aTokenThatAnExternalSecretsManagerClearedOnRevokeReadsAsNoToken() {
     SecretsManager externalSecretsManager =
-        InMemorySecretsManager.getInstance(
-            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of(), null));
+        new InMemorySecretsManager(
+            new SecretsManager.SecretsConfig("openmetadata", "prefix", List.of(), null)) {};
     AuthenticationMechanism revoked =
         new AuthenticationMechanism()
             .withAuthType(AuthenticationMechanism.AuthType.JWT)

@@ -1,8 +1,8 @@
 # Rotating the JWT signing key
 
-OpenMetadata signs the tokens it issues with one RSA key, set in `jwtTokenConfiguration`. Rotating
-it is a hard cut. Every server restarts with the new key, every token the old key signed stops
-working, and you then regenerate the bot tokens. There is no overlap window where two keys verify.
+OpenMetadata signs the tokens it issues with one RSA key, set in `jwtTokenConfiguration`. This
+procedure makes rotation a hard cut: stop every server before starting any with the new key,
+then regenerate the bot tokens. Tokens signed by the old key stop working.
 
 Plan for a short outage. Between the restart and the regeneration, every bot (ingestion, automation,
 integrations) is rejected with 401.
@@ -30,7 +30,14 @@ rm private_key.pem
 Choose a new `keyId`. It must differ from the current one, so that anything caching the JWKS
 fetches the new key.
 
-## 2. Configure and restart every server
+## 2. Stop every server, configure the new key, and start them again
+
+Stop every OpenMetadata server before starting any with the new key. Do not use a rolling restart
+for this procedure. When `authenticationConfiguration.publicKeyUrls` (`AUTHENTICATION_PUBLIC_KEYS`)
+includes an OpenMetadata URL behind a load balancer, a restarted server can fetch the old key from
+a peer that has not restarted. It can cache that key for up to 24 hours and continue accepting
+old user tokens and PATs. The default `localhost` JWKS URL avoids fetching another server's
+old key.
 
 Set these in the configuration of every server and of the host that runs `openmetadata-ops.sh`.
 All of them must hold the same values.
@@ -41,7 +48,10 @@ All of them must hold the same values.
 | `jwtTokenConfiguration.rsapublicKeyFilePath` | `RSA_PUBLIC_KEY_FILE_PATH` | New `public_key.der` |
 | `jwtTokenConfiguration.keyId` | `JWT_KEY_ID` | New key id |
 
-Restart all servers. From then on:
+Start all servers with the new configuration. Verify that each server's
+`/api/v1/system/config/jwks` endpoint lists only the new `keyId`; checking the load balancer alone
+does not verify every server. If you already performed a rolling restart with a shared JWKS URL,
+stop all servers and start them again to clear any cached old keys. From then on:
 
 - Users get 401 on their old sessions and sign in again.
 - Holders of personal access tokens create new tokens.
@@ -58,13 +68,25 @@ The command:
 1. Fetches `GET <metadataApiEndpoint>/v1/system/config/jwks` and checks that it lists the
    configured `keyId` with the same public key. If not, it writes nothing, prints why and exits 2.
    There is no flag to skip this check. It reads the one server behind `metadataApiEndpoint`, so it
-   cannot tell whether every server restarted. Restart them all first.
+   cannot tell whether every server restarted. Complete step 2 first.
 2. Gives every JWT bot a new token signed by the new key, and records each change in the audit
    log as an update by `admin`. A bot whose token was revoked is skipped and keeps no token, so an
    administrator's revoke survives the rotation.
 3. Redeploys every ingestion pipeline with `deployed == true`, with the new ingestion-bot token.
    This runs on every run, so a re-run repairs a redeploy that failed before. When
    `pipelineServiceClientConfiguration.enabled` is `false`, it skips this step and says so.
+
+A pipeline whose `deployed` flag is false or unset is not redeployed, even if it is running
+outside OpenMetadata. For pipelines registered in OpenMetadata that need deployment regardless
+of that flag, run:
+
+```bash
+./bootstrap/openmetadata-ops.sh -c <config.yaml> deploy-pipelines
+```
+
+This deploys all registered pipelines, including ones that have never been deployed. For pipelines
+managed entirely outside OpenMetadata, update the copied bot token in their configuration and
+redeploy them through their own scheduler.
 
 With `--skip-current`, a bot whose stored token already verifies under the configured key, carries
 the configured `keyId` and has not expired is left unchanged and reported as `ALREADY_CURRENT`. Use
@@ -96,7 +118,7 @@ first request, without a restart. `OpsRegenerateBotTokensIT` asserts this.
 
 ## 4. Check the result
 
-- `GET /api/v1/system/config/jwks` lists only the new `keyId`.
+- `GET /api/v1/system/config/jwks` on each server lists only the new `keyId`.
 - The report shows every bot as `REGENERATED`, or `ALREADY_CURRENT` on a `--skip-current` run,
   except bots you revoked, which show `SKIPPED`.
 - Pipelines run again from their schedules or from a manual trigger.
@@ -104,10 +126,19 @@ first request, without a restart. `OpsRegenerateBotTokensIT` asserts this.
 ## Who else is affected
 
 - **Users and PAT holders.** Users sign in again. Personal access tokens signed by the old key
-  stop working and must be created again.
+  stop working and must be created again. The command does not re-sign, report, or delete PATs.
+  Their rows remain in the token table, so the UI can show them as unexpired even though requests
+  return 401. Notify PAT holders to revoke the old entries, create replacements, and update their
+  clients. Re-signing a stored PAT would not update the copy held by its owner.
 - **Bots whose token you copied elsewhere.** The regenerated token replaces the stored one. Copy the
   new token from the bot's page or API wherever a system holds the old one (CI jobs, external
   pipelines).
+- **Airflow lineage backend.** Replace `[lineage] jwt_token` in `airflow.cfg`, or
+  `metadata_config.securityConfig.jwtToken` in the JSON file selected by
+  `OPENMETADATA_LINEAGE_CONFIG`. Pipeline redeployment does not update these copies.
+- **Airflow `OpenMetadataHook`.** Replace the password in the Airflow connection the hook uses
+  (`openmetadata_default` unless configured otherwise). Pipeline redeployment does not update
+  this connection.
 - **Services that verify OpenMetadata tokens through the JWKS.** They must reload the JWKS and
-  accept the new `keyId`. Tokens signed by the old key no longer exist, so drop any pinned copy of
-  the old public key.
+  accept the new `keyId`. Remove cached or pinned copies of the old public key so that these
+  services reject tokens signed by it.
