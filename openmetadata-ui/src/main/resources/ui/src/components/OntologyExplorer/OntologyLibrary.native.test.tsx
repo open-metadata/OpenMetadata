@@ -327,7 +327,7 @@ describe('OntologyLibrary native installation', () => {
         return { data: { ...sampleResponse().data, packId: dcat.id } };
       }
 
-      return { data: draft };
+      return { data: {} };
     });
     renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
     await act(async () => undefined);
@@ -364,7 +364,7 @@ describe('OntologyLibrary native installation', () => {
         return { data: { packs: [fibo], installations: [] } };
       }
 
-      return { data: draft };
+      return { data: {} };
     });
     renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
     await act(async () => undefined);
