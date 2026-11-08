@@ -177,7 +177,8 @@ public final class SearchEntityTypeCounts {
     ObjectNode bucket = aggregations.putObject(settings.type());
     bucket.set("filter", indexFilter);
     if (settings.probe()) {
-      addPrecisionAggregations(bucket, broad, queries.build(perType, settings.precise()), indexFilter);
+      addPrecisionAggregations(
+          bucket, broad, queries.build(perType, settings.precise()), indexFilter);
     }
   }
 

@@ -153,8 +153,7 @@ class SearchEntityTypeCountsTest {
                 assertEquals(
                     repository.getIndexOrAliasName(type),
                     precise.at("/filter/term/_index").asText());
-                assertEquals(
-                    "data quality", precise.at("/must/match_phrase/description").asText());
+                assertEquals("data quality", precise.at("/must/match_phrase/description").asText());
               }
               return response(body);
             },
