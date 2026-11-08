@@ -1,7 +1,7 @@
 # Ontology releases seal canonical SQL members
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v10 2026-10-15 (single-ontology releases, captured comparison baseline, active-only projection); v11 2026-10-30 (SKOS, SKOS-XL and CSV export, export options and the SHACL gate); v12 2026-11-06 (50,000 members, batched capture, cached and unlocked reads)
+- **Revisions:** v1 2026-10-14 (initial); v10 2026-10-15 (single-ontology releases, captured comparison baseline, active-only projection); v11 2026-10-30 (SKOS, SKOS-XL and CSV export, export options and the SHACL gate); v12 2026-11-06 (50,000 members, batched capture, cached and unlocked reads); v13 2026-11-08 (account for parsed release cache heap)
 - **Deciders:** Harsha
 - **Guard:** `OntologyReleaseManifestTest`, `OntologyReleaseDAOTest`, `OntologyReleaseCaptureTest`, `NativeOntologyCapacityPerfIT`, `OntologyWorkingStateTest`, `OntologyReleaseProjectionTest`, `OntologyStructureValidatorTest`, `OntologyReleaseComparisonTest`, `OntologyReleaseComparisonStorageTest`, `IndependentOntologyReleaseDiffIT`, `IndependentOntologyReleaseIT`, `IndependentOntologyReleaseExportIT`, `IndependentOntologyRetentionIT`, `OntologySkosProjectionTest`, `OntologyReleaseExporterTest`, `OntologyBoundAssetLinksTest`, `OntologyExportGateTest`, `IndependentOntologyReleaseExportFormatsIT`, `IndependentOntologyReleaseExportAssetsIT`, `IndependentOntologyReleaseExportGateIT`
 - **Related:** [Organizational ontology design](../plans/2026-10-14-organizational-ontology-design.md)
@@ -169,3 +169,16 @@ on one snapshot, so the revision check fires only on PostgreSQL's READ COMMITTED
 asserts each dialect's outcome.
 
 `docs/plans/2026-10-14-organizational-ontology-design.md` carries the same numbers.
+
+## Amendment: account for parsed release cache heap (2026-11-08)
+
+This replaces v12's cache sizing rule above. The cache is bounded to 128 MiB of estimated heap,
+weighed as six times the summed serialized payload bytes. The factor of six reserves headroom
+for parsed JSON nodes, strings and member objects; it is a sizing estimate, not a measured heap
+limit. The 10-minute idle expiry and authorization on every read stay unchanged.
+
+The cache therefore holds at most about 21.3 MiB of serialized payload in total. A release above
+that size is read and verified from SQL on every call. The v12 warm-read timings apply only to
+releases that fit this smaller payload budget; they do not describe larger uncached releases.
+`OntologyReleaseCaptureTest` verifies that a 23 MB release remains readable without staying
+cached on both MySQL and PostgreSQL, alongside cache reuse and authorization for smaller releases.
