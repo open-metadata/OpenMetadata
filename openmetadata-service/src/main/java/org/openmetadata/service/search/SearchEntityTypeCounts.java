@@ -26,7 +26,6 @@ import java.util.concurrent.Semaphore;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -35,7 +34,6 @@ import org.openmetadata.service.util.AsyncService;
 import org.slf4j.MDC;
 
 /** Counts all requested types in one search while preserving each type's ranked matching rules. */
-@Slf4j
 public final class SearchEntityTypeCounts {
   private static final String PRECISE = "precise";
   private static final String PROBE = "probe";
@@ -358,10 +356,8 @@ public final class SearchEntityTypeCounts {
     JsonNode shards = body.path("_shards");
     int failedShards = shards.path("failed").asInt();
     if (timedOut || failedShards > 0) {
-      // Only the engine's response says why shards failed. The reasons stay in the server log
-      // rather than the API error, which shouldn't carry engine internals to callers.
-      LOG.warn(
-          "Incomplete search counts for {}: timed_out={}, _shards={}", index, timedOut, shards);
+      // The per-shard reasons are already logged by SearchShardFailures (the shard-failure-aware
+      // clients), and stay out of the API error so engine internals don't reach callers.
       throw new IOException(
           String.format(
               "Incomplete search counts for %s (timed out: %s, failed shards: %d of %d)",
