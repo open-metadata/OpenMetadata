@@ -80,6 +80,18 @@ describe('isValidTestCaseSelection', () => {
     ).toBe(true);
   });
 
+  it('returns true for a select-all payload with the empty filter the picker sends', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: {},
+      })
+    ).toBe(true);
+  });
+
   it('returns false for a select-all payload with exclusions', () => {
     expect(
       isValidTestCaseSelection({
@@ -140,6 +152,18 @@ describe('isSelectAllPayload', () => {
         includeIds: [],
         excludeIds: [],
         testCases: [],
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for a select-all payload with the empty filter the picker sends', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: {},
       })
     ).toBe(true);
   });

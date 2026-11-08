@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { isEmpty } from 'lodash';
 import { EntityReference, TestCase } from '../../../generated/tests/testCase';
 import { AddTestCaseListChangePayload } from './AddTestCaseList.interface';
 
@@ -43,6 +44,12 @@ export function normalizeSelectedTestProp(selectedTest: unknown): string[] {
   return [];
 }
 
+// The picker always sends `filter`, as `{}` when no search or filter is
+// active, so only a filter with keys narrows the selection.
+function isUnscopedSelectAll(p: AddTestCaseListChangePayload): boolean {
+  return isEmpty(p.excludeIds) && isEmpty(p.filter);
+}
+
 /**
  * Returns `true` when the `testCases` form field value represents a valid
  * selection — either an explicit list of test case names/references, or a
@@ -72,7 +79,7 @@ export function isValidTestCaseSelection(value: unknown): boolean {
     const p = value as AddTestCaseListChangePayload;
 
     if (p.selectAll) {
-      return (p.excludeIds?.length ?? 0) === 0 && !p.filter;
+      return isUnscopedSelectAll(p);
     }
 
     return (p.includeIds?.length ?? 0) > 0;
@@ -95,7 +102,7 @@ export function isSelectAllPayload(value: unknown): boolean {
   }
   const p = value as AddTestCaseListChangePayload;
 
-  return Boolean(p.selectAll) && (p.excludeIds?.length ?? 0) === 0 && !p.filter;
+  return Boolean(p.selectAll) && isUnscopedSelectAll(p);
 }
 
 /**

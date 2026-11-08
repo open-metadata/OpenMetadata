@@ -84,6 +84,7 @@ jest.mock('../../AddTestCaseList/AddTestCaseList.component', () => ({
               includeIds: [],
               excludeIds: [],
               testCases: [],
+              filter: {},
             })
           }>
           select-all
