@@ -58,7 +58,7 @@ import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 class OntologyPackInstallationsTest {
   private static final Set<String> PACKS_FOR_THE_INSTALL_JOB =
-      Set.of("brick", "dpv", "fhir", "fibo", "gs1");
+      Set.of("brick", "dpv", "fhir", "fibo", "gs1", "iof");
 
   @BeforeAll
   static void registerOntologyType() {
