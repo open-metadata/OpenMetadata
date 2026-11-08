@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -9,6 +10,7 @@ import static org.openmetadata.service.jdbi3.OntologyCaptureFixture.withCapture;
 
 import jakarta.ws.rs.ForbiddenException;
 import java.net.URI;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -362,6 +364,50 @@ class OntologyReleaseCaptureTest {
                       fixture.releases.get(null, release.getId(), fixture.releases.getFields("")),
                       definitions -> {})
                   .size());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void releasesAboveTheParsedHeapBudgetRemainReadableWithoutBeingCached(ConnectionType dialect) {
+    withCapture(
+        dialect,
+        fixture -> {
+          final String description = "x".repeat(100_000);
+          for (int index = 0; index < 230; index++) {
+            fixture.concepts.create(
+                null,
+                new OntologyConcept()
+                    .withId(UUID.randomUUID())
+                    .withName("LargeConcept" + index)
+                    .withDescription(description)
+                    .withOntology(fixture.ontology.getEntityReference())
+                    .withConceptType(OntologyConceptType.OWL_CLASS)
+                    .withVersion(0.1)
+                    .withUpdatedAt(1L)
+                    .withUpdatedBy("admin"));
+          }
+          final OntologyRelease release = fixture.capture(reference -> {});
+          final OntologyReleaseReader reader = new OntologyReleaseReader(Entity.getCollectionDAO());
+          final var cold = reader.read(release, definitions -> {});
+          assertEquals(231, cold.size());
+          final var concepts =
+              cold.stream().filter(member -> member.getMemberKind() == MemberKind.CONCEPT).toList();
+          assertEquals(230, concepts.size());
+          concepts.forEach(
+              member ->
+                  assertEquals(description, member.getPayload().path("description").asText()));
+          await()
+              .atMost(Duration.ofSeconds(10))
+              .untilAsserted(
+                  () -> {
+                    final var reread = reader.read(release, definitions -> {});
+                    assertTrue(
+                        cold != reread, "A release above the heap budget must not stay cached");
+                    assertEquals(cold, reread);
+                  });
         });
   }
 
