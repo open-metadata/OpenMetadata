@@ -205,6 +205,11 @@ export interface OntologyPackModule {
      */
     sha256?: string;
     /**
+     * Lowercase SHA-256 of the published file, recorded only when the generator converted it to
+     * the bundled Turtle payload.
+     */
+    sourceSha256?: string;
+    /**
      * Authoritative external source: where a catalogue-only module is obtained, or where a
      * bundled module was published.
      */
