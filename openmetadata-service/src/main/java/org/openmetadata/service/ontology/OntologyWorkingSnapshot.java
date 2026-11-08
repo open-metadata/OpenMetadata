@@ -14,6 +14,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.OntologyEntityRepository;
@@ -40,6 +41,18 @@ public final class OntologyWorkingSnapshot {
       final Map<MemberKind, OntologyEntityRepository<?>> definitions) {
     this.ontologies = ontologies;
     this.definitions = Map.copyOf(definitions);
+  }
+
+  public static OntologyWorkingSnapshot production() {
+    return new OntologyWorkingSnapshot(
+        (OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY),
+        Map.of(
+            MemberKind.CONCEPT,
+            (OntologyEntityRepository<?>) Entity.getEntityRepository(Entity.ONTOLOGY_CONCEPT),
+            MemberKind.PROPERTY,
+            (OntologyEntityRepository<?>) Entity.getEntityRepository(Entity.ONTOLOGY_PROPERTY),
+            MemberKind.AXIOM,
+            (OntologyEntityRepository<?>) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM)));
   }
 
   public <T> T read(

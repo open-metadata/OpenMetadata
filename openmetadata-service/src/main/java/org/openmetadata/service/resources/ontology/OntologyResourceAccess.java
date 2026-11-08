@@ -11,10 +11,16 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
+import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyAxiom;
+import org.openmetadata.schema.entity.data.OntologyConcept;
+import org.openmetadata.schema.entity.data.OntologyProperty;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -24,6 +30,37 @@ final class OntologyResourceAccess {
   private static final Set<String> CONTENT_FIELDS = Set.of("description", "tags");
 
   private OntologyResourceAccess() {}
+
+  /**
+   * A library install writes definitions through the job's own repository calls, so the caller
+   * needs here what applying a stamped library change set needs: edit on the ontology and create
+   * on each kind of definition the install adds.
+   */
+  static void requireLibraryInstall(
+      final Authorizer authorizer, final SecurityContext context, final Ontology ontology) {
+    authorizer.authorize(
+        context,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(Entity.ONTOLOGY, ontology.getId(), null));
+    final EntityReference parent = ontology.getEntityReference();
+    requireCreate(
+        authorizer, context, Entity.ONTOLOGY_CONCEPT, new OntologyConcept().withOntology(parent));
+    requireCreate(
+        authorizer, context, Entity.ONTOLOGY_PROPERTY, new OntologyProperty().withOntology(parent));
+    requireCreate(
+        authorizer, context, Entity.ONTOLOGY_AXIOM, new OntologyAxiom().withOntology(parent));
+  }
+
+  private static <T extends EntityInterface<?>> void requireCreate(
+      final Authorizer authorizer,
+      final SecurityContext context,
+      final String type,
+      final T probe) {
+    authorizer.authorize(
+        context,
+        new OperationContext(type, MetadataOperation.CREATE),
+        new CreateResourceContext<>(type, probe));
+  }
 
   /**
    * Description and tag edits land in the next release for everyone, so on ontology resources they
