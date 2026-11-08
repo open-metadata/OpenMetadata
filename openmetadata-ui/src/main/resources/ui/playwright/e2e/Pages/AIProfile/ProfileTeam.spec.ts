@@ -33,6 +33,7 @@ import { uuid } from '../../../utils/common';
 import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
 import { dragAndDropElement } from '../../../utils/dragDrop';
 import { waitForOwnedAssetCount } from '../../../utils/polling';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
@@ -488,33 +489,36 @@ test.describe('AI Profile Team Detail', () => {
     const { apiContext } = await performAdminLogin(browser);
     // Public group team the admin is not a member of.
     const team = await makeTeam(apiContext, { isJoinable: true });
+    const admin = await okJson<{ id: string }>(
+      await apiContext.get('/api/v1/users/loggedInUser'),
+      'GET loggedInUser'
+    );
+    // Join and leave both patch the admin's own teams, not the team entity.
+    const waitForOwnTeamsPatch = () =>
+      waitForResponseWithStatus(
+        page,
+        (response) =>
+          new URL(response.url()).pathname === `/api/v1/users/${admin.id}` &&
+          response.request().method() === 'PATCH',
+        200
+      );
     await openCreatedTeam(page, team);
 
-    // Joining patches the current (admin) user's teams, not the team entity.
-    const joinResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users/') &&
-        response.request().method() === 'PATCH'
-    );
+    const joinResponse = waitForOwnTeamsPatch();
     await page
       .getByTestId('profile-content-header')
       .getByTestId('join-team-button')
       .click();
-    expect((await joinResponse).status()).toBe(200);
+    await joinResponse;
 
     const leaveButton = page
       .getByTestId('profile-content-header')
       .getByTestId('leave-team-button');
     await expect(leaveButton).toBeVisible();
 
-    // Leaving also patches the current user's teams, dropping this team.
-    const leaveResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users/') &&
-        response.request().method() === 'PATCH'
-    );
+    const leaveResponse = waitForOwnTeamsPatch();
     await leaveButton.click();
-    expect((await leaveResponse).status()).toBe(200);
+    await leaveResponse;
 
     await expect(
       page.getByTestId('profile-content-header').getByTestId('join-team-button')
