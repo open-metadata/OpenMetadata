@@ -16,11 +16,17 @@ rarely and plan for.
 ## Decision
 
 - OpenMetadata keeps one signing key, the one in `jwtTokenConfiguration`.
-- Rotation is a restart of every server with the new key, then `regenerate-bot-tokens`.
+- Rotation stops every server before any server starts with the new key, then runs
+  `regenerate-bot-tokens`. A rolling restart is not a rotation. A token whose `kid` is not the
+  server's own is checked against the keys fetched from `publicKeyUrls`, which
+  `MultiUrlJwkProvider` keeps for 24 hours (`KEY_LIFETIME`). When those URLs reach a load-balanced
+  peer that still runs the old key, a restarted server can fetch and keep the old key, and accept
+  old user tokens and PATs for up to a day.
 - `regenerate-bot-tokens` refuses to write anything, and exits 2, when the JWKS of the server behind
   `metadataApiEndpoint` does not list the configured `keyId` with the configured public key, or
   cannot be read. A host configured with a different key would otherwise store tokens the servers
-  reject. The check reads one server, so it cannot prove that every server restarted.
+  reject. The check reads one server, so it cannot prove that every server restarted. Operators
+  check each server's JWKS themselves.
 - Each new token is verified under the configured public key before it is saved. A private key
   from another pair would sign tokens the servers reject, so the bot is reported as `FAILED`
   ("Private key does not match the public key") and nothing is written.
@@ -45,5 +51,6 @@ rarely and plan for.
 
 ## Consequences
 
-Users, PAT holders and bots lose access at the restart, and bots regain it at regeneration. The
-JWKS has a single key. Revisit only if operators need zero-downtime rotation.
+A rotation takes the whole cluster down between the stop and the start. When the servers come back
+on the new key, users sign in again, PAT holders create new tokens, and bots work again only after
+regeneration. The JWKS has a single key. Revisit only if operators need zero-downtime rotation.
