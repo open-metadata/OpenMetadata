@@ -21,6 +21,7 @@ import java.util.HexFormat;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.apache.jena.graph.Node;
 import org.apache.jena.graph.Triple;
 import org.apache.jena.rdf.model.Model;
@@ -28,10 +29,10 @@ import org.apache.jena.rdf.model.ModelFactory;
 
 /**
  * Replaces a whole named graph without sending any request larger than a chunk. A graph that fits
- * one chunk is one Graph Store PUT. A larger one is PUT into numbered staging graphs and moved
- * into place by one SPARQL update, which Fuseki applies in one transaction: a reader of the graph
- * sees the old content or the new, and a failure before the move leaves the graph as it was.
- * Staging names derive from the graph, so a retry overwrites or drops what a failed attempt left.
+ * one chunk is one Graph Store PUT. A larger one is PUT into staging graphs named for this attempt
+ * and copied into place by one SPARQL update, which Fuseki applies in one transaction: a reader of
+ * the graph sees the old content or the new, and a failure before the swap leaves the graph as it
+ * was. Each attempt first drops every staging graph an earlier attempt at the same graph left.
  * See ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
  */
 public final class ChunkedGraphReplace {
@@ -70,10 +71,13 @@ public final class ChunkedGraphReplace {
       if (chunks.size() == 1) {
         store.put(graph, chunks.getFirst());
       } else {
+        final String attempt = stagingBase(graph) + UUID.randomUUID().toString().replace("-", "");
+        final List<String> staged = new ArrayList<>();
         for (int index = 0; index < chunks.size(); index++) {
-          store.put(staging(graph, index), chunks.get(index));
+          staged.add(attempt + "/" + index);
+          store.put(staged.getLast(), chunks.get(index));
         }
-        store.update(swap(graph, chunks.size()));
+        store.update(swap(graph, staged));
       }
     } finally {
       chunks.forEach(Model::close);
@@ -81,8 +85,9 @@ public final class ChunkedGraphReplace {
   }
 
   /**
-   * Groups the triples so that every blank node stays in one chunk: Fuseki scopes blank node labels
-   * to one request, so a structure split across two would become two unrelated nodes.
+   * Groups the triples so that every blank node stays in one chunk. RDF-Thrift keeps blank node
+   * labels across requests, but a chunk that holds a whole structure stays well-formed on its own,
+   * whatever format or parser carries it.
    */
   public static List<Model> chunks(final Model model, final long chunkBytes) {
     final List<Model> chunks = new ArrayList<>();
@@ -107,10 +112,6 @@ public final class ChunkedGraphReplace {
     return chunks;
   }
 
-  public static String staging(final String graph, final int index) {
-    return stagingBase(graph) + index;
-  }
-
   private void dropStaging(final String graph) {
     final String base = stagingBase(graph);
     final List<String> stale =
@@ -122,14 +123,24 @@ public final class ChunkedGraphReplace {
     }
   }
 
-  /** Re-running a committed swap changes nothing: every SILENT operation on a missing source is skipped. */
-  private static String swap(final String graph, final int count) {
+  /**
+   * Copies the staged triples with INSERT WHERE, which collects every solution before it writes.
+   * MOVE and ADD instead stream the source while inserting into the same TDB2 indexes, and in Jena
+   * 6.2 that skips triples. Adding a staging graph to itself changes nothing but fails when the graph
+   * is missing, because a newer attempt dropped it or this swap already committed, and the failure
+   * aborts the whole request before the served graph changes.
+   */
+  private static String swap(final String graph, final List<String> staged) {
     final List<String> operations = new ArrayList<>();
-    operations.add("MOVE SILENT GRAPH <" + staging(graph, 0) + "> TO GRAPH <" + graph + ">");
-    for (int index = 1; index < count; index++) {
-      operations.add("ADD SILENT GRAPH <" + staging(graph, index) + "> TO GRAPH <" + graph + ">");
-      operations.add("DROP SILENT GRAPH <" + staging(graph, index) + ">");
-    }
+    staged.forEach(name -> operations.add("ADD GRAPH <" + name + "> TO GRAPH <" + name + ">"));
+    operations.add("DROP SILENT GRAPH <" + graph + ">");
+    operations.add(
+        "INSERT { GRAPH <"
+            + graph
+            + "> { ?s ?p ?o } } WHERE { VALUES ?staged { "
+            + String.join(" ", staged.stream().map(name -> "<" + name + ">").toList())
+            + " } GRAPH ?staged { ?s ?p ?o } }");
+    staged.forEach(name -> operations.add("DROP SILENT GRAPH <" + name + ">"));
     return String.join(" ;\n", operations);
   }
 

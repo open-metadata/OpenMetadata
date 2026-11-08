@@ -21,8 +21,11 @@ import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.jena.atlas.iterator.Iter;
+import org.apache.jena.dboe.base.file.Location;
+import org.apache.jena.graph.Graph;
+import org.apache.jena.graph.Node;
+import org.apache.jena.graph.NodeFactory;
 import org.apache.jena.query.Dataset;
-import org.apache.jena.query.DatasetFactory;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.RDFNode;
@@ -30,7 +33,9 @@ import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
+import org.apache.jena.tdb2.TDB2Factory;
 import org.apache.jena.update.UpdateAction;
+import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.OWL2;
 import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
@@ -48,7 +53,7 @@ class ChunkedGraphReplaceTest {
 
   @BeforeEach
   void openDataset() {
-    dataset = DatasetFactory.createTxnMem();
+    dataset = TDB2Factory.connectDataset(Location.mem());
     fuseki = new InMemoryFuseki(dataset);
   }
 
@@ -73,6 +78,24 @@ class ChunkedGraphReplaceTest {
   }
 
   @Test
+  void aReplacementOverTheServedReleaseServesEveryStagedTriple() {
+    final Model old = axioms("old", 1);
+    final Model next = axioms("new", 1_000);
+    try {
+      new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, old);
+      new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, next);
+
+      final Model served = served();
+      assertEquals(5_000, served.size(), "served triples");
+      assertTrue(served.isIsomorphicWith(next));
+      assertEquals(List.of(GRAPH), graphs());
+    } finally {
+      old.close();
+      next.close();
+    }
+  }
+
+  @Test
   void aGraphThatFitsOneChunkIsOnePutOfTheGraphItself() {
     final Model content = ontology("small", 2);
     try {
@@ -87,7 +110,7 @@ class ChunkedGraphReplaceTest {
   }
 
   @Test
-  void aFailureBeforeTheMoveLeavesTheGraphAsItWasAndARetryConverges() {
+  void aFailureBeforeTheSwapLeavesTheGraphAsItWasAndARetryConverges() {
     final Model old = ontology("old", 3);
     final Model next = ontology("new", 120);
     try {
@@ -149,16 +172,49 @@ class ChunkedGraphReplaceTest {
   }
 
   @Test
-  void resendingACommittedMoveChangesNothing() {
+  void resendingACommittedSwapIsRefusedAndKeepsTheServedGraph() {
     final Model content = ontology("new", 120);
     try {
       fuseki.sendEachUpdateTwice = true;
-      new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, content);
+      assertThrows(
+          RuntimeException.class,
+          () -> new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, content));
 
       assertTrue(served().isIsomorphicWith(content));
       assertEquals(List.of(GRAPH), graphs());
     } finally {
       content.close();
+    }
+  }
+
+  @Test
+  void aSwapWhoseChunksANewerAttemptDroppedIsRefused() {
+    final Model old = ontology("old", 3);
+    final Model first = ontology("first", 120);
+    final Model newer = ontology("newer", 120);
+    try {
+      new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, old);
+      fuseki.beforeSwap =
+          () -> {
+            fuseki.failOnPut = fuseki.putGraphs.size() + 2;
+            assertThrows(
+                IllegalStateException.class,
+                () -> new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, newer));
+            fuseki.failOnPut = -1;
+          };
+
+      assertThrows(
+          RuntimeException.class,
+          () -> new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, first));
+      assertTrue(served().isIsomorphicWith(old));
+
+      new ChunkedGraphReplace(fuseki, CHUNK_BYTES).replace(GRAPH, newer);
+      assertTrue(served().isIsomorphicWith(newer));
+      assertEquals(List.of(GRAPH), graphs());
+    } finally {
+      old.close();
+      first.close();
+      newer.close();
     }
   }
 
@@ -229,17 +285,42 @@ class ChunkedGraphReplaceTest {
     return model;
   }
 
+  /**
+   * Statement sources as the annotated projection writes them, one blank node each. The labels are
+   * fixed, so every run lays out the TDB2 indexes alike.
+   */
+  private static Model axioms(final String version, final int count) {
+    final Model model = ModelFactory.createDefaultModel();
+    final Graph graph = model.getGraph();
+    for (int index = 0; index < count; index++) {
+      final Node axiom = NodeFactory.createBlankNode(version + "-axiom-" + index);
+      graph.add(axiom, RDF.type.asNode(), OWL2.Axiom.asNode());
+      graph.add(axiom, OWL2.annotatedSource.asNode(), NodeFactory.createURI(EX + "C" + index % 97));
+      graph.add(axiom, OWL2.annotatedProperty.asNode(), RDFS.label.asNode());
+      graph.add(
+          axiom,
+          OWL2.annotatedTarget.asNode(),
+          NodeFactory.createLiteralString(version + " label " + index));
+      graph.add(
+          axiom,
+          DCTerms.source.asNode(),
+          NodeFactory.createURI("urn:member:" + version + ":" + index));
+    }
+    return model;
+  }
+
   private Model served() {
-    return dataset.getNamedModel(GRAPH);
+    return dataset.calculateRead(
+        () -> ModelFactory.createDefaultModel().add(dataset.getNamedModel(GRAPH)));
   }
 
   private List<String> graphs() {
-    return Iter.toList(dataset.listNames()).stream().sorted().toList();
+    return dataset.calculateRead(() -> Iter.toList(dataset.listNames()).stream().sorted().toList());
   }
 
   /**
-   * Behaves as Fuseki does for these requests: each PUT body is parsed on its own, so its blank
-   * nodes are new nodes, and each SPARQL update runs in one transaction.
+   * Behaves as Fuseki does for these requests: the dataset is TDB2, Fuseki's store; a PUT body is
+   * RDF-Thrift, whose blank node labels Fuseki keeps as sent; each request is one transaction.
    */
   private static final class InMemoryFuseki implements ChunkedGraphReplace.GraphStore {
     private final Dataset dataset;
@@ -248,6 +329,7 @@ class ChunkedGraphReplaceTest {
     final List<String> updates = new ArrayList<>();
     int failOnPut = -1;
     boolean sendEachUpdateTwice;
+    Runnable beforeSwap;
 
     InMemoryFuseki(final Dataset dataset) {
       this.dataset = dataset;
@@ -262,23 +344,28 @@ class ChunkedGraphReplaceTest {
       RDFDataMgr.write(body, content, RDFFormat.RDF_THRIFT);
       final Model received = ModelFactory.createDefaultModel();
       RDFDataMgr.read(received, new ByteArrayInputStream(body.toByteArray()), Lang.RDFTHRIFT);
-      dataset.replaceNamedModel(graph, received);
+      dataset.executeWrite(() -> dataset.replaceNamedModel(graph, received));
       putGraphs.add(graph);
       putBytes.add(body.size());
     }
 
     @Override
     public void update(final String sparqlUpdate) {
+      if (beforeSwap != null && sparqlUpdate.contains("INSERT")) {
+        final Runnable newerAttempt = beforeSwap;
+        beforeSwap = null;
+        newerAttempt.run();
+      }
       updates.add(sparqlUpdate);
-      UpdateAction.parseExecute(sparqlUpdate, dataset);
+      dataset.executeWrite(() -> UpdateAction.parseExecute(sparqlUpdate, dataset));
       if (sendEachUpdateTwice) {
-        UpdateAction.parseExecute(sparqlUpdate, dataset);
+        dataset.executeWrite(() -> UpdateAction.parseExecute(sparqlUpdate, dataset));
       }
     }
 
     @Override
     public List<String> graphs() {
-      return Iter.toList(dataset.listNames());
+      return dataset.calculateRead(() -> Iter.toList(dataset.listNames()));
     }
   }
 }
