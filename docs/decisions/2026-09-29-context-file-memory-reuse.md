@@ -3,11 +3,12 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-09-29 (initial) · v2 2026-11-03 (deduplication keeps conflicting numbers) ·
   v3 2026-11-09 (a ranked lookup; candidates in every stage keep their decision; the AI provider
-  supplies the judge)
+  supplies the judge; a restricted copy is never named on a memory)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
   `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `AiProviderHolderTest`,
-  `ContextMemoryExtractionIT`
+  `MemorySourceDisclosureTest`, `ContextMemoryRepositoryTest`, `ContextMemoryExtractionIT`,
+  `ContextMemoryExtractedApprovalIT`
 - **Related:** Context Center file upload and memory extraction; PR #34154
 
 ## Context
@@ -165,5 +166,13 @@ a memory covers every document that states its fact.
   Approved memories alone.
 - §1's identical upload links every memory of the earlier file that is not soft-deleted, whatever
   its stage, corrections included, provided each is entity-visible and entity-scoped.
+- A linked document joins the memory's related entities only when everyone may read it: a live
+  article, or a file shared with the whole organization. One shared with only some people, a
+  private copy included, is linked by its source edge alone, so its name never reaches the memory,
+  a listing of it or its history, and nobody approving the memory trips over a file they cannot
+  read; its owners still list the memory from it. The memory's `sourceEntity` is its anchor among
+  the documents linked to it, else the first one everyone may read, and a restricted one only when
+  no other states it (`MemorySourceDisclosure`). A link names a document with a write conditional
+  on the memory as read, so a decision written meanwhile is read again, never reverted.
 - Stop words count toward the 30%, so most new facts find some candidate: expect about one small
   judge call per new fact that has candidates, and none for a verbatim fact or an identical file.

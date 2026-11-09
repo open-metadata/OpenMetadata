@@ -139,6 +139,31 @@ public class ContextMemoryExtractedApprovalIT {
     assertEquals(ContextMemoryStatus.APPROVED, status(window));
   }
 
+  /**
+   * Another user's private copy links the original's memories by their source edges alone, so the
+   * original's owner approves them as themselves: nothing they approve names a file they cannot
+   * read, the copy sorting first by name included.
+   */
+  @Test
+  void anOriginalsOwnerApprovesTheMemoriesAnotherUsersPrivateCopyAlsoStates(TestNamespace ns) {
+    EntityReference original = file(ns, "b-original", shared().USER1_REF);
+    EntityReference copy = privateFile(ns, "a-private-copy", shared().USER2_REF);
+    ContextMemory window = stored(ns, original, "What is the refund window?", "30 days", pending());
+    ContextMemory fee = stored(ns, original, "What is the refund fee?", "5%", pending());
+    memoryRepository().linkExtractedMemory(window.getId(), copy);
+    memoryRepository().linkExtractedMemory(fee.getId(), copy);
+
+    ExtractedMemoryApproval preview = preview(SdkClients.user1Client(), original);
+    ExtractedMemoryApproval result =
+        approve(SdkClients.user1Client(), original, preview.getApprovable());
+
+    assertEquals(Set.of(window.getId(), fee.getId()), comparedIds(preview.getApprovable()));
+    assertEquals(2, result.getApproved());
+    assertEquals(0, result.getFailed());
+    assertEquals(ContextMemoryStatus.APPROVED, status(window));
+    assertEquals(ContextMemoryStatus.APPROVED, status(fee));
+  }
+
   @Test
   void aDocumentsOwnerCannotPreviewOrApproveALinkedMemoryMadePrivate(TestNamespace ns)
       throws Exception {
@@ -355,6 +380,17 @@ public class ContextMemoryExtractedApprovalIT {
   }
 
   private static EntityReference file(TestNamespace ns, String label, EntityReference owner) {
+    return file(ns, label, owner, null);
+  }
+
+  /** A file only its owner may read. */
+  private static EntityReference privateFile(
+      TestNamespace ns, String label, EntityReference owner) {
+    return file(ns, label, owner, new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+  }
+
+  private static EntityReference file(
+      TestNamespace ns, String label, EntityReference owner, MemoryShareConfig sharing) {
     ContextFile file =
         fileRepository()
             .create(
@@ -365,6 +401,7 @@ public class ContextMemoryExtractedApprovalIT {
                     .withHeadContentId(UUID.randomUUID().toString())
                     .withProcessingStatus(ProcessingStatus.Processed)
                     .withOwners(owner == null ? null : List.of(owner))
+                    .withShareConfig(sharing)
                     .withUpdatedBy(Entity.ADMIN_USER_NAME)
                     .withUpdatedAt(System.currentTimeMillis()));
     return ns.trackRoot(Entity.CONTEXT_FILE, file).getEntityReference();

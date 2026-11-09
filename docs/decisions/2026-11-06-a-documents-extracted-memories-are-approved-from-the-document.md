@@ -97,4 +97,6 @@ for decided memories that hold each pending value stating a number, by the rule 
 holds it with
 (ADR:2026-09-29-context-file-memory-reuse, v3), and leave it pending for the document's owners.
 Rejecting stays with admins
-(ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3).
+(ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3). Another
+user's private copy never blocks an owner's approval, which is written as that owner: a restricted
+copy is linked by its source edge alone and never named on the memory, its source included.
