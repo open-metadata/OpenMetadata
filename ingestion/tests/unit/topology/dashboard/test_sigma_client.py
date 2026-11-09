@@ -262,7 +262,7 @@ def test_table_file_is_read_once_for_elements_sharing_it(sigma_client_over_http)
     client, calls = sigma_client_over_http
 
     tables = [
-        [node.name for node in client.get_lineage_details(workbook_id, f"el-{workbook_id}")]
+        [node.name for node in client.get_lineage_details(workbook_id, f"el-{workbook_id}")[0]]
         for workbook_id in ("wb-1", "wb-2")
     ]
 

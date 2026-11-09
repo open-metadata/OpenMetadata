@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -398,7 +398,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
-        self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
+        self.sigma.client.get_lineage_details = lambda *_: ([MOCK_NODE_DETAILS], True)
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
@@ -858,7 +858,7 @@ def test_table_file_is_read_once_for_elements_sharing_it(sigma_over_http):
     source, calls = sigma_over_http
 
     tables = [
-        [node.name for node in source.client.get_lineage_details(workbook_id, f"el-{workbook_id}")]
+        [node.name for node in source.client.get_lineage_details(workbook_id, f"el-{workbook_id}")[0]]
         for workbook_id in ("wb-1", "wb-2")
     ]
 
@@ -1069,7 +1069,7 @@ def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
     }
     routes["GET", "/v2/files/49HFLTr6xytgrPly3PFsNC"] = sigma_file("49HFLTr6xytgrPly3PFsNC", "PETS", "dataset")
 
-    assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1") or []] == ["PETS"]
+    assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1")[0]] == ["PETS"]
 
 
 def sigma_connection(connection_id: str, connection_type: str) -> dict:
@@ -1412,3 +1412,204 @@ def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_h
     assert lineage == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
     assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 1
     assert calls["GET", "/v2/files/T1"] == 1
+
+
+def sales_table(name: str, columns: list[str]) -> Table:
+    table_fqn = f"warehouse.SALES.PUBLIC.{name}"
+    return Table(
+        id=uuid5(NAMESPACE_URL, table_fqn),
+        name=name,
+        fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+        columns=[
+            Column(name=column, dataType=DataType.VARCHAR, fullyQualifiedName=f"{table_fqn}.{column}")
+            for column in columns
+        ],
+    )
+
+
+CUSTOMERS = sales_table("CUSTOMERS", ["CUSTOMER_ID", "CUSTOMER_NAME"])
+ORDERS = sales_table("ORDERS", ["ORDER_STATUS", "CUSTOMER_ID"])
+# Sigma labels an element's columns for reading (CUSTOMER_NAME shows as "Customer Name"); "Customer Id"
+# is in both source tables and "Sum of Amount" is a calculated field
+AMOUNT_ELEMENT = Elements(
+    elementId="amountByCustomer",
+    name="Sum of Amount by Customer",
+    vizualizationType="bar",
+    columns=["Customer Name", "Customer Id", "Order Status", "Sum of Amount"],
+)
+AMOUNT_SQL = (
+    "SELECT c.CUSTOMER_NAME, c.CUSTOMER_ID, o.ORDER_STATUS, SUM(o.AMOUNT) "
+    "FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID "
+    "GROUP BY 1, 2, 3"
+)
+AMOUNT_MODEL_FQN = "mock_sigma.model.amountByCustomer"
+EXPECTED_COLUMN_LINKS = {
+    CUSTOMERS.fullyQualifiedName.root: [
+        (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_NAME", f"{AMOUNT_MODEL_FQN}.Customer Name")
+    ],
+    ORDERS.fullyQualifiedName.root: [
+        (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+    ],
+}
+
+
+@pytest.fixture
+def lineage_source():
+    """SigmaSource whose OpenMetadata holds the data model (built from the element's labels) and both tables"""
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+    source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+    data_model = DashboardDataModel(
+        id=uuid5(NAMESPACE_URL, AMOUNT_MODEL_FQN),
+        name="amountByCustomer",
+        fullyQualifiedName=AMOUNT_MODEL_FQN,
+        dataModelType="SigmaDataModel",
+        columns=[
+            column.model_copy(
+                update={"fullyQualifiedName": FullyQualifiedEntityName(f"{AMOUNT_MODEL_FQN}.{column.displayName}")}
+            )
+            for column in source.get_column_info(AMOUNT_ELEMENT)
+        ],
+    )
+    source.metadata.get_by_name = lambda entity, fqn, **_: (
+        data_model if entity is DashboardDataModel else MOCK_DATABASE_SERVICE
+    )
+    source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **_: next(
+        (table for table in (CUSTOMERS, ORDERS) if fqn_search_string.lower().endswith(f".{table.name.root.lower()}")),
+        None,
+    )
+    # Tables resolve within the dbServicePrefixes services, through es_search_from_fqn: answer it from the
+    # search_in_any_service stub above, which a test can replace
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=["mock_mysql"])
+    source.metadata.es_search_from_fqn = lambda entity_type, fqn_search_string, **_: (
+        [MOCK_DATABASE_SERVICE]
+        if entity_type is DatabaseService
+        else [table]
+        if (
+            table := source.metadata.search_in_any_service(entity_type=entity_type, fqn_search_string=fqn_search_string)
+        )
+        else []
+    )
+    source.data_models = [AMOUNT_ELEMENT]
+    source.client = SimpleNamespace(get_workbook_lineage=lambda *_: [])
+    return source
+
+
+def column_links(results) -> dict[str, list[tuple[str, str]]]:
+    """For each table edge sent: its (table column, data model column) pairs"""
+    return {
+        either.right.edge.fromEntity.fullyQualifiedName: [
+            (column.fromColumns[0].root, column.toColumn.root)
+            for column in either.right.edge.lineageDetails.columnsLineage or []
+        ]
+        for either in results
+        if either.right
+    }
+
+
+def test_sql_lineage_links_each_label_to_the_one_warehouse_column_it_shows(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
+    )
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    assert column_links(results) == EXPECTED_COLUMN_LINKS
+
+
+@pytest.mark.parametrize(
+    "queries",
+    [None, WorkbookQueriesResponse(entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount")], total=1)],
+    ids=["no workbook queries", "element without sql"],
+)
+def test_fallback_lineage_links_labels_that_differ_from_the_column_in_case_and_separators(lineage_source, queries):
+    lineage_source.client.get_workbook_queries = lambda *_: queries
+    lineage_source.client.get_lineage_details = lambda *_: (
+        [
+            NodeDetails(id=table.name.root, name=table.name.root, type="table", path="Snowflake/SALES.PUBLIC")
+            for table in (CUSTOMERS, ORDERS)
+        ],
+        True,
+    )
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    assert column_links(results) == EXPECTED_COLUMN_LINKS
+
+
+def test_fallback_lineage_links_no_column_when_a_source_could_not_be_read(lineage_source):
+    def sigma_get(path):
+        if path.endswith("/lineage/elements/amountByCustomer"):
+            return {
+                "dependencies": {},
+                "edges": [
+                    {"source": f"inode-{node}", "target": "amountByCustomer", "type": "source"}
+                    for node in ("customers", "orders")
+                ],
+            }
+        if path == "/files/customers":
+            return {"id": "customers", "name": "CUSTOMERS", "type": "table", "path": "Snowflake/SALES.PUBLIC"}
+        raise RuntimeError("403 Forbidden")
+
+    client = SigmaApiClient.__new__(SigmaApiClient)
+    client.client = SimpleNamespace(get=sigma_get)
+    client.get_workbook_queries = lambda *_: None
+    client.get_workbook_lineage = lambda *_: []
+    client._file_cache = {}
+    lineage_source.client = client
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    # "Customer Id" looks unique without ORDERS, which is exactly when linking it would guess
+    assert column_links(results) == {CUSTOMERS.fullyQualifiedName.root: []}
+
+
+def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
+    )
+    search = lineage_source.metadata.search_in_any_service
+
+    def search_failing_for_customers(entity_type, fqn_search_string, **kwargs):
+        if fqn_search_string.lower().endswith(".customers"):
+            raise RuntimeError("search unavailable")
+        return search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+
+    lineage_source.metadata.search_in_any_service = search_failing_for_customers
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    # The other table keeps its edge; no column is linked, as the failed one could hold it too
+    assert column_links(results) == {ORDERS.fullyQualifiedName.root: []}
+    assert ["search unavailable" in either.left.error for either in results if either.left] == [True]
+
+
+def test_a_source_table_missing_from_openmetadata_leaves_the_columns_unlinked(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
+    )
+    search = lineage_source.metadata.search_in_any_service
+    lineage_source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **kwargs: (
+        None
+        if fqn_search_string.lower().endswith(".customers")
+        else search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+    )
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    # "Customer Id" looks unique without CUSTOMERS, which is exactly when linking it would guess
+    assert column_links(results) == {ORDERS.fullyQualifiedName.root: []}
