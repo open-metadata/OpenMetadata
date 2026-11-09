@@ -320,7 +320,7 @@ class TestBuildSampleWhereClause:
             ),
             (
                 build_table(DatabaseServiceType.Oracle, ("id", DataType.INT), key_columns=["id"]),
-                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(id || 'salt', 'MD5'))), 1, 8) < '19999999'",
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(id || 'salt'), 'MD5'))), 1, 8) < '19999999'",
             ),
             (
                 build_table(
@@ -329,7 +329,7 @@ class TestBuildSampleWhereClause:
                     ("name", DataType.VARCHAR),
                     key_columns=["name"],
                 ),
-                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(name || 'salt', 'MD5'))), 1, 8) < '19999999'",
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(name || 'salt'), 'MD5'))), 1, 8) < '19999999'",
             ),
             (
                 build_table(
@@ -339,11 +339,11 @@ class TestBuildSampleWhereClause:
                     ("payload", DataType.VARCHAR),
                     key_columns=["name", "id"],
                 ),
-                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(id || name || 'salt', 'MD5'))), 1, 8) < '19999999'",
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(id || name || 'salt'), 'MD5'))), 1, 8) < '19999999'",
             ),
             (
                 build_table(DatabaseServiceType.Oracle, ("CustomerId", DataType.INT), key_columns=["CustomerId"]),
-                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(\"CustomerId\" || 'salt', 'MD5'))), 1, 8) < '19999999'",
+                "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(\"CustomerId\" || 'salt'), 'MD5'))), 1, 8) < '19999999'",
             ),
             # SQL Server's + would add an integer key to the salt: the key is cast to text first
             (
@@ -467,7 +467,7 @@ class TestSamplingWithOracle:
                 config={"profileSample": sample, "profileSampleType": sample_type},
             ),
         )
-        oracle_clause = f"SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(id || 'salt', 'MD5'))), 1, 8) < '{nonce}'"
+        oracle_clause = f"SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(id || 'salt'), 'MD5'))), 1, 8) < '{nonce}'"
         other_clause = (
             oracle_clause
             if other_service == DatabaseServiceType.Oracle

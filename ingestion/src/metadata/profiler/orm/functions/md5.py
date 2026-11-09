@@ -55,4 +55,5 @@ def _(element, compiler, **kw):
 
 @compiles(MD5, PythonDialects.Oracle.value)
 def _(element: MD5, compiler: SQLCompiler, **kw: Any) -> str:
-    return f"LOWER(RAWTOHEX(STANDARD_HASH({compiler.process(element.clauses, **kw)}, 'MD5')))"
+    # Convert national-character inputs to database-character-set text before hashing.
+    return f"LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR({compiler.process(element.clauses, **kw)}), 'MD5')))"

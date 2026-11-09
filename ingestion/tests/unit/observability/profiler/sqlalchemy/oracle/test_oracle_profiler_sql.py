@@ -26,10 +26,10 @@ from metadata.profiler.orm.functions.substr import Substr
     "expression, expected",
     (
         (Substr(literal("abcdef"), 2, 3), "SUBSTR('abcdef', 2, 3)"),
-        (MD5(literal("a'b")), "LOWER(RAWTOHEX(STANDARD_HASH('a''b', 'MD5')))"),
+        (MD5(literal("a'b")), "LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR('a''b'), 'MD5')))"),
         (
             Substr(MD5(literal("abc")), 1, 8) < "0000000a",
-            "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH('abc', 'MD5'))), 1, 8) < '0000000a'",
+            "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR('abc'), 'MD5'))), 1, 8) < '0000000a'",
         ),
     ),
     ids=("substring-positions", "escaped-hash-input", "sampling-prefix-and-threshold"),
@@ -46,7 +46,7 @@ def test_oracle_compilers_preserve_bound_parameters() -> None:
 
     assert (
         str(compiled)
-        == "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(:key_text, 'MD5'))), :prefix_start, :prefix_length) < :nonce"
+        == "SUBSTR(LOWER(RAWTOHEX(STANDARD_HASH(TO_CHAR(:key_text), 'MD5'))), :prefix_start, :prefix_length) < :nonce"
     )
     assert set(compiled.params) == {"key_text", "prefix_start", "prefix_length", "nonce"}
 
