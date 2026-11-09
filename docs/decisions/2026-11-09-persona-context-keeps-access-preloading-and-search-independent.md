@@ -58,6 +58,8 @@ The four source caches have serialized-character weight budgets of 16 million, 1
 retention to at most 1,500 entries and keeps large enrichment payloads from crowding out the pod.
 Sources expire after 60 seconds, matching the existing cap for referenced-metadata drift.
 Successful scope validations have a separate 1,000-entry cache with the same expiration.
+Generation tokens and compilation diagnostics each retain at most 1,000 personas; eviction
+requires a reload or drops an old diagnostic, and never grants access.
 
 Every read performs canonical permission checks and filters a copy, including attached knowledge,
 column definitions, related assets and lineage nodes. Its permission memo is bounded to 1,000
@@ -69,6 +71,8 @@ Apply `maxAssets` after checking candidate visibility, continuing through search
 visible selection is full or candidates are exhausted. If selection stops before every candidate
 was checked, omit the optional `matched` total, mark the document truncated and say the total is
 unavailable in markdown. A selected count must never masquerade as the complete visible total.
+Continuation cursors and short or empty pages determine exhaustion. Search totals can be capped
+lower bounds, so reaching the reported total must never stop pagination.
 
 Bots count only through explicit persona assignments or explicit user defaults. Team inheritance
 and the implicit system-default branch exclude them. Generic PUT may match an unchanged rule by

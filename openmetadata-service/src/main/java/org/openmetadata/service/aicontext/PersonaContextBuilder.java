@@ -329,7 +329,6 @@ public class PersonaContextBuilder {
     List<Map<String, Object>> documents = new ArrayList<>(maxAssets);
     Object[] searchAfter = null;
     int matched = 0;
-    long scanned = 0;
     int visibleCount = 0;
     boolean exhausted = false;
     String sortField =
@@ -342,14 +341,13 @@ public class PersonaContextBuilder {
       while (documents.size() < maxAssets) {
         int pageSize = SEARCH_BATCH_SIZE;
         SearchResultListMapper page = searchPage(rule, queryFilter, sort, pageSize, searchAfter);
-        if (scanned == 0) {
+        if (searchAfter == null) {
           matched = page.getTotal() > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) page.getTotal();
         }
         if (page.getResults() == null || page.getResults().isEmpty()) {
           exhausted = true;
           break;
         }
-        scanned += page.getResults().size();
         for (Map<String, Object> document : page.getResults()) {
           if (canView(rule.getEntityType(), stringValue(document.get("fullyQualifiedName")))) {
             visibleCount++;
@@ -359,10 +357,7 @@ public class PersonaContextBuilder {
           }
         }
         searchAfter = page.getLastHitSortValues();
-        exhausted =
-            searchAfter == null
-                || page.getResults().size() < pageSize
-                || scanned >= page.getTotal();
+        exhausted = searchAfter == null || page.getResults().size() < pageSize;
         if (exhausted) {
           break;
         }

@@ -20,8 +20,8 @@ HTTP 400 identifies an invalid filter, while HTTP 503 requires restoring search 
 retrying. Run this check against staging with a copy of the existing definitions before upgrading
 production. The same preview endpoint can check existing definitions on the previous release.
 
-After rollout, Context Center shows Failed and the failing rule's name if a legacy filter was
-missed. Open the rule, correct or disable it, then regenerate. Removing a search default does not
+After rollout, regenerating a persona with a missed legacy filter returns HTTP 503 with the
+failing rule's name. Open the rule, correct or disable it, then regenerate. Removing a search default does not
 change the user's asset permissions, but can change relevance; review the replacement scope with
 the persona's owner.
 

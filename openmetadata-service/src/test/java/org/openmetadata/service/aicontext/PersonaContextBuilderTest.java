@@ -78,6 +78,45 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 class PersonaContextBuilderTest {
   @Test
+  void memberSelectionContinuesBeyondTheSearchEnginesCappedTotal() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class)))
+        .thenAnswer(
+            invocation -> {
+              Object[] cursor = invocation.getArgument(6);
+              int start = cursor == null ? 0 : Integer.parseInt(cursor[0].toString()) + 1;
+              int end = Math.min(start + 100, 10001);
+              return new SearchResultListMapper(
+                  documents(start, end), 10000, end < 10001 ? new Object[] {end - 1} : null);
+            });
+    Authorizer authorizer = mock(Authorizer.class);
+    AtomicInteger checked = new AtomicInteger();
+    doAnswer(
+            invocation -> {
+              if (checked.getAndIncrement() < 10000) {
+                throw new AuthorizationException("Hidden asset");
+              }
+              return null;
+            })
+        .when(authorizer)
+        .authorize(any(), any(), any());
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      var result =
+          new PersonaContextBuilder(persona(), repository)
+              .withSecurity(authorizer, mock(SecurityContext.class))
+              .search(assetRule("Visible beyond total", "").withMaxAssets(1));
+      assertEquals(1, result.documents().size());
+      assertEquals(1, result.matched());
+      assertEquals(
+          "service.db.schema.table-10000", result.documents().getFirst().get("fullyQualifiedName"));
+    }
+  }
+
+  @Test
   void dataProductSelectionPagesPastHiddenMembersAndReusesItsSourcePages() throws IOException {
     UUID productId = UUID.randomUUID();
     DataProductRepository products = mock(DataProductRepository.class);
