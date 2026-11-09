@@ -29,6 +29,7 @@ import {
 } from '../../generated/entity/policies/accessControl/resourcePermission';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
+import { getResourcePermission } from '../../rest/permissionAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../rest/testAPI';
@@ -864,6 +865,18 @@ describe('TestDetailsPageV1 component', () => {
         ([operation, value]) => ({ operation, access: value } as Permission)
       );
     };
+
+    it('should hold the page skeleton until the Query permission resolves', async () => {
+      (getResourcePermission as jest.Mock).mockImplementationOnce(
+        () => new Promise(() => undefined)
+      );
+
+      await renderOnSchemaTab();
+
+      expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+      expect(getQueriesTabProps()).toHaveLength(0);
+      expect(getQueriesList).not.toHaveBeenCalled();
+    });
 
     it('should hide the Queries tab and skip the count when the Query resource is denied', async () => {
       setQueryResourceAccess({ ViewAll: Access.Allow, ViewBasic: Access.Deny });

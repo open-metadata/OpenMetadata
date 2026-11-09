@@ -105,6 +105,7 @@ import {
 } from '../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { PERMISSION_POLICY } from '../../utils/permissionPolicy';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getOperationPermissions,
@@ -154,12 +155,12 @@ const useTableQueryCount = (tableId: string, canListQueries: boolean) =>
     enabled: Boolean(tableId) && canListQueries,
   });
 
-// conditionalAllow counts as permitted here: the queries list is filtered per query by the
-// backend, so only an outright deny on the Query resource hides the tab (permissionPolicy.ts).
+// The Queries tab shows only with Query view access that is allow or, per
+// PERMISSION_POLICY.tableQueriesTabConditionalAllow, conditionalAllow.
 const fetchQueryResourcePermission = async () =>
   getOperationPermissions(
     await getResourcePermission(ResourceEntity.QUERY),
-    true
+    PERMISSION_POLICY.tableQueriesTabConditionalAllow === 'attempt'
   );
 
 const TableDetailsPageV1: React.FC = () => {
@@ -212,7 +213,10 @@ const TableDetailsPageV1: React.FC = () => {
     canViewUsage: viewUsagePermission,
     canViewTests: viewTestCasePermission,
   } = getDerivedPermissionFlags(tablePermissions);
-  const { data: queryResourcePermission } = useQuery({
+  const {
+    data: queryResourcePermission,
+    isLoading: isQueryResourcePermissionLoading,
+  } = useQuery({
     queryKey: permissionQueryKeys.resourceAllowingConditional(
       ResourceEntity.QUERY
     ),
@@ -973,8 +977,9 @@ const TableDetailsPageV1: React.FC = () => {
 
   // Wait for permissions to resolve before deciding what to render — without this we'd flash
   // a "no permission" placeholder during the brief window before the permissions endpoint
-  // returns. Once permissions are in, this gate falls through naturally.
-  if (isPermissionsLoading) {
+  // returns. Once permissions are in, this gate falls through naturally. The Query permission
+  // decides whether the Queries tab exists, so a deep link to it must not resolve to Schema first.
+  if (isPermissionsLoading || isQueryResourcePermissionLoading) {
     return <EntityDetailsPageSkeleton />;
   }
 
