@@ -732,6 +732,44 @@ WHERE name = 'DomainOnlyAccessPolicy'
   AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
     JSON_OBJECT('name', 'DomainAccessDenyTeamAndUserRule'));
 
+-- OrganizationPolicy: anyone may set the owner of an unowned data asset, meaning an item that lives
+-- in a service and describes something in the source system. The claim rule is narrowed from every
+-- type to those types, only where it still reads exactly as shipped (allow, EditOwners on all,
+-- noOwner()): a rule an administrator changed is left alone.
+-- ADR:2026-11-09-only-data-assets-can-be-claimed-by-default
+UPDATE policy_entity
+SET json = JSON_SET(
+    json,
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.resources'),
+    JSON_ARRAY('apiCollection', 'apiEndpoint', 'chart', 'container', 'dashboard', 'dashboardDataModel',
+        'database', 'databaseSchema', 'directory', 'file', 'llmModel', 'mcpServer', 'mlmodel', 'pipeline',
+        'query', 'report', 'searchIndex', 'spreadsheet', 'storedProcedure', 'table', 'topic', 'worksheet'),
+    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.description'),
+    'Allow anyone to set the owner of a data asset that has no owner set.'
+)
+WHERE name = 'OrganizationPolicy'
+  AND JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name') IS NOT NULL
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.effect'))) = 'allow'
+  AND JSON_UNQUOTE(JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.condition'))) = 'noOwner()'
+  AND JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.operations')) = JSON_ARRAY('EditOwners')
+  AND JSON_LENGTH(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.resources')) = 1
+  AND LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.resources[0]')))) = 'all';
+
+-- OrganizationPolicy: the owner of a policy cannot change or delete it; admins manage policies. A deny
+-- only removes access, so it is added to every install that does not have it yet, customised or not.
+-- ADR:2026-11-09-only-data-assets-can-be-claimed-by-default
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
+    'name', 'OrganizationPolicy-OwnerNoPolicyEdit-Rule',
+    'description', 'Deny owners of a policy changing or deleting it. Admins manage policies.',
+    'effect', 'deny',
+    'resources', JSON_ARRAY('policy'),
+    'operations', JSON_ARRAY('Delete', 'EditAll'),
+    'condition', 'isOwner()'))
+WHERE name = 'OrganizationPolicy'
+  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
+    JSON_OBJECT('name', 'OrganizationPolicy-OwnerNoPolicyEdit-Rule'));
+
 -- SSO Test Login (#28784). A test spans several requests (start, the identity provider's callback,
 -- the result polls, the credentials) that can reach different servers, so its state lives here
 -- rather than in one server's memory. pending_state holds the candidate configuration with its
@@ -1219,41 +1257,3 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
-
--- OrganizationPolicy: anyone may set the owner of an unowned data asset, meaning an item that lives
--- in a service and describes something in the source system. The claim rule is narrowed from every
--- type to those types, only where it still reads exactly as shipped (allow, EditOwners on all,
--- noOwner()): a rule an administrator changed is left alone.
--- ADR:2026-11-09-only-data-assets-can-be-claimed-by-default
-UPDATE policy_entity
-SET json = JSON_SET(
-    json,
-    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.resources'),
-    JSON_ARRAY('apiCollection', 'apiEndpoint', 'chart', 'container', 'dashboard', 'dashboardDataModel',
-        'database', 'databaseSchema', 'directory', 'file', 'llmModel', 'mcpServer', 'mlmodel', 'pipeline',
-        'query', 'report', 'searchIndex', 'spreadsheet', 'storedProcedure', 'table', 'topic', 'worksheet'),
-    REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.description'),
-    'Allow anyone to set the owner of a data asset that has no owner set.'
-)
-WHERE name = 'OrganizationPolicy'
-  AND JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name') IS NOT NULL
-  AND JSON_UNQUOTE(JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.effect'))) = 'allow'
-  AND JSON_UNQUOTE(JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.condition'))) = 'noOwner()'
-  AND JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.operations')) = JSON_ARRAY('EditOwners')
-  AND JSON_LENGTH(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.resources')) = 1
-  AND LOWER(JSON_UNQUOTE(JSON_EXTRACT(json, REPLACE(JSON_UNQUOTE(JSON_SEARCH(json, 'one', 'OrganizationPolicy-NoOwner-Rule', NULL, '$.rules[*].name')), '.name', '.resources[0]')))) = 'all';
-
--- OrganizationPolicy: the owner of a policy cannot change or delete it; admins manage policies. A deny
--- only removes access, so it is added to every install that does not have it yet, customised or not.
--- ADR:2026-11-09-only-data-assets-can-be-claimed-by-default
-UPDATE policy_entity
-SET json = JSON_ARRAY_APPEND(json, '$.rules', JSON_OBJECT(
-    'name', 'OrganizationPolicy-OwnerNoPolicyEdit-Rule',
-    'description', 'Deny owners of a policy changing or deleting it. Admins manage policies.',
-    'effect', 'deny',
-    'resources', JSON_ARRAY('policy'),
-    'operations', JSON_ARRAY('Delete', 'EditAll'),
-    'condition', 'isOwner()'))
-WHERE name = 'OrganizationPolicy'
-  AND NOT JSON_CONTAINS(JSON_EXTRACT(json, '$.rules'),
-    JSON_OBJECT('name', 'OrganizationPolicy-OwnerNoPolicyEdit-Rule'));
