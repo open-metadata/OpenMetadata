@@ -49,7 +49,7 @@ public class CompiledRule extends Rule {
    * The rules a policy enforces. A disabled policy grants and denies nothing
    * (ADR:2026-11-03-a-disabled-policy-has-no-rules).
    */
-  static List<CompiledRule> enforcedRules(Policy policy) {
+  public static List<CompiledRule> enforcedRules(Policy policy) {
     List<CompiledRule> rules = new ArrayList<>();
     if (Boolean.FALSE.equals(policy.getEnabled()) || policy.getRules() == null) {
       return rules;
@@ -267,6 +267,11 @@ public class CompiledRule extends Rule {
         }
       }
     }
+  }
+
+  /** Whether this rule governs {@code operation} on {@code resource}, whatever its condition. */
+  public boolean appliesTo(String resource, MetadataOperation operation) {
+    return matchResource(resource) && matchOperation(operation);
   }
 
   /** Returns true if this rule applies to the given resource name. */

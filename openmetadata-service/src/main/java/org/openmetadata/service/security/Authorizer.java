@@ -16,8 +16,10 @@ package org.openmetadata.service.security;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.security.listaccess.CallerScope;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
@@ -43,6 +45,15 @@ public interface Authorizer {
 
   void authorizeRequests(
       SecurityContext securityContext, List<AuthRequest> requests, AuthorizationLogic logic);
+
+  /**
+   * The rows of {@code entityType} a listing may return to the caller, as a condition its query
+   * applies. An authorizer that decides rows only one at a time selects them all and checks each.
+   */
+  default CallerScope listScope(
+      SecurityContext securityContext, String entityType, List<MetadataOperation> operations) {
+    return CallerScope.eachRowChecked();
+  }
 
   /**
    * Authorizes the author a write records, and the bot it was impersonated by, for checks that run

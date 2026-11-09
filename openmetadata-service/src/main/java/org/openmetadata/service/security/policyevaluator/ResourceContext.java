@@ -139,6 +139,11 @@ public class ResourceContext<T extends EntityInterface<?>> implements ResourceCo
     this.bulkFieldHydrator = bulkFieldHydrator;
   }
 
+  /** Names a type and no entity of it, as the context a listing authorizes against does. */
+  public boolean isTypeLevel() {
+    return id == null && name == null && entity == null;
+  }
+
   @Override
   public List<EntityReference> getOwners() {
     resolveEntity();

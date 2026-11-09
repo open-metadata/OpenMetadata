@@ -28,6 +28,7 @@ import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository.IncidentDateField;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
+import org.openmetadata.service.security.listaccess.CallerScope;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -45,6 +46,7 @@ public class ListFilter extends Filter<ListFilter> {
   private String sortField;
   private String sortOrder;
   private String entityTableName;
+  private CallerScope accessScope = CallerScope.allRows();
 
   private static final String TASK_STATUS_GROUP_OPEN = "open";
   private static final String TASK_STATUS_GROUP_ACTIVE = "active";
@@ -92,6 +94,31 @@ public class ListFilter extends Filter<ListFilter> {
     this.sortField = sortField;
     this.sortOrder = sortOrder;
     return this;
+  }
+
+  /**
+   * Limits the rows to those the caller may read
+   * (ADR:2026-11-09-a-listing-filters-its-rows-in-sql-through-a-required-access-scope).
+   */
+  public ListFilter withAccessScope(CallerScope accessScope) {
+    this.accessScope = accessScope;
+    return this;
+  }
+
+  /** Whether the rows depend on who lists them, beyond the query parameters. */
+  public boolean isScopedToCaller() {
+    return accessScope.filtersRows();
+  }
+
+  /**
+   * A copy without the query parameter {@code name}, for a query that applies it itself. The copy
+   * keeps the access scope, which a filter rebuilt from the parameters alone would drop.
+   */
+  public ListFilter copyWithoutQueryParam(String name) {
+    ListFilter copy = new ListFilter(include).withAccessScope(accessScope);
+    queryParams.forEach(copy::addQueryParam);
+    copy.removeQueryParam(name);
+    return copy;
   }
 
   public String getCondition(String tableName) {
@@ -185,6 +212,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getOntologyChangeSetStateCondition(tableName));
     conditions.add(getMemorySourcedChangeSetCondition(tableName));
     conditions.add(getChangeSetOntologyCondition(tableName));
+    conditions.add(getAccessScopeCondition(tableName));
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
   }
@@ -1083,6 +1111,11 @@ public class ListFilter extends Filter<ListFilter> {
     return dateField == null
         ? IncidentDateField.CREATED_AT.value()
         : IncidentDateField.fromValue(dateField).value();
+  }
+
+  /** Every override of {@link #getCondition(String)} must add this, or it lists unreadable rows. */
+  protected final String getAccessScopeCondition(String tableName) {
+    return accessScope.sqlCondition(tableName != null ? tableName : entityTableName);
   }
 
   public String getIncludeCondition(String tableName) {
