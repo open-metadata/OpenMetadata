@@ -132,6 +132,9 @@ name = "pl-core-news-md"
 version = "3.8.0"
 requires-dist = []
 
+[tool.openmetadata.python-environments]
+supported-python = ["3.10", "3.11", "3.12"]
+
 [tool.openmetadata.python-environments.profiles.runtime]
 groups = ["bootstrap"]
 extras = []

@@ -909,12 +909,37 @@ def test_model_preparation_retries_only_transient_failures(tmp_path, model_origi
             assert "Hash mismatch" in result.stderr
 
 
+@pytest.mark.skipif(sys.version_info < (3, 11), reason="CI bootstrap uses stdlib tomllib")
+@pytest.mark.parametrize(
+    ("versions", "maximum"),
+    [(["3.10", "3.11", "3.12"], "3.12"), (["3.9", "3.10"], "3.10")],
+)
+def test_python_matrix_bootstraps_from_pyproject_without_site_packages(tmp_path, versions, maximum):
+    project = tmp_path / "ingestion"
+    project.mkdir()
+    (project / "pyproject.toml").write_text(
+        "[tool.openmetadata.python-environments]\nsupported-python = " + json.dumps(versions) + "\n"
+    )
+
+    result = run(
+        sys.executable,
+        "-I",
+        "-S",
+        str(REPO_ROOT / "scripts/prepare_classification_models.py"),
+        "matrix",
+        "--project",
+        str(project),
+        cwd=tmp_path,
+    )
+
+    assert_success(result)
+    assert json.loads(result.stdout) == {"python-versions": versions, "discovery-python": maximum}
+
+
 def test_model_discovery_rejects_metadata_version_mismatch_and_tracks_identity(tmp_path):
     project = tmp_path / "ingestion"
     project.mkdir()
     config = project / "pyproject.toml"
-    (tmp_path / ".github").mkdir()
-    shutil.copyfile(REPO_ROOT / ".github/python-versions.json", tmp_path / ".github/python-versions.json")
     original = (REPO_ROOT / "ingestion/pyproject.toml").read_text()
     config.write_text(original)
     result = model_helper("discover", "--project", str(project), cwd=tmp_path)

@@ -80,7 +80,6 @@ jobs:
             python:
               - 'ingestion/**'
               - 'scripts/prepare_classification_models.py'
-              - '.github/python-versions.json'
               - '.github/scripts/classification_model_revisions.py'
               - '.github/workflows/prepare-classification-models.yml'
               - '.github/workflows/write-classification-models.yml'
@@ -186,7 +185,9 @@ jobs:
           allow-unsafe-pr-checkout: true
           persist-credentials: false
       - id: matrix
-        run: echo "versions=$(cat .github/python-versions.json)" >> "$GITHUB_OUTPUT"
+        run: |
+          matrix=$(python3 scripts/prepare_classification_models.py matrix --project ingestion)
+          echo "versions=$(jq -c '."python-versions"' <<< "$matrix")" >> "$GITHUB_OUTPUT"
 
   prepare-spacy-model:
     needs: changes

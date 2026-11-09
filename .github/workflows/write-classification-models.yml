@@ -30,7 +30,6 @@ jobs:
           path: requested
           sparse-checkout: |
             ingestion/pyproject.toml
-            .github/python-versions.json
           sparse-checkout-cone-mode: false
           persist-credentials: false
       - id: matrix

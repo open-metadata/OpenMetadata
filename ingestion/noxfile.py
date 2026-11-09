@@ -26,6 +26,11 @@ from pathlib import Path
 import nox
 from nox.virtualenv import PassthroughEnv
 
+try:
+    import tomllib
+except ImportError:
+    import tomli as tomllib
+
 # NOTE: This is still a work in progress! We still need to:
 #    - Fix ignored unit tests
 #    - Add integration tests
@@ -33,9 +38,10 @@ from nox.virtualenv import PassthroughEnv
 
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
-SUPPORTED_PYTHON_VERSIONS = json.loads(
-    (Path(__file__).resolve().parents[1] / ".github/python-versions.json").read_text()
-)
+with (Path(__file__).resolve().parent / "pyproject.toml").open("rb") as configuration:
+    SUPPORTED_PYTHON_VERSIONS = tomllib.load(configuration)["tool"]["openmetadata"]["python-environments"][
+        "supported-python"
+    ]
 
 
 def get_python_versions():

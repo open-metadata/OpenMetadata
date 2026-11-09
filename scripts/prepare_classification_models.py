@@ -53,9 +53,20 @@ def model_record(requirement, uv_version):
     }
 
 
+def read_project(project):
+    """Read project metadata without loading ingestion or Nox."""
+    try:
+        import tomllib
+    except ImportError:
+        import tomli as tomllib
+
+    with (project / "pyproject.toml").open("rb") as stream:
+        return tomllib.load(stream)
+
+
 def python_matrix(project):
     """Read the shared CI interpreter matrix without loading ingestion or Nox."""
-    versions = json.loads((project.parent / ".github/python-versions.json").read_text())
+    versions = read_project(project)["tool"]["openmetadata"]["python-environments"]["supported-python"]
     if not versions or any(not re.fullmatch(r"3\.[0-9]+", version) for version in versions):
         raise ValueError("Expected a nonempty Python version matrix")
     return {
@@ -66,13 +77,7 @@ def python_matrix(project):
 
 def discover(project):
     """Read model requirements and matching static metadata without application imports."""
-    try:
-        import tomllib
-    except ImportError:
-        import tomli as tomllib
-
-    with (project / "pyproject.toml").open("rb") as stream:
-        config = tomllib.load(stream)
+    config = read_project(project)
     if "classification-models" not in config.get("dependency-groups", {}):
         raise ValueError("Requested revision lacks the classification-models layout and is unsupported")
     uv = config["tool"]["uv"]
@@ -91,12 +96,7 @@ def discover(project):
         if len(metadata) != 1 or "requires-dist" not in metadata[0]:
             raise ValueError(f"Missing exact static dependency metadata for {record['name']} {record['version']}")
         record["metadata"] = metadata[0]
-    versions = python_matrix(project)["python-versions"]
-    return {
-        "include": records,
-        "python-versions": versions,
-        "discovery-python": max(versions, key=lambda v: tuple(map(int, v.split(".")))),
-    }
+    return {"include": records, **python_matrix(project)}
 
 
 def verify(project):

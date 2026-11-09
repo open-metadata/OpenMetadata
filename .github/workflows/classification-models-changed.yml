@@ -6,7 +6,6 @@ on:
     paths:
       - ingestion/pyproject.toml
       - ingestion/uv.lock
-      - .github/python-versions.json
       - scripts/prepare_classification_models.py
       - .github/workflows/prepare-classification-models.yml
       - .github/workflows/write-classification-models.yml
