@@ -41,6 +41,14 @@ public interface SearchManagementClient {
       throws IOException;
 
   /**
+   * Context memories best ranked by the terms they share with {@code text}, any 30% of them
+   * admitting a hit, narrowed without scoring by the query DSL {@code filterJson}. A system lookup:
+   * no subject visibility applies, so the caller checks what it may reuse.
+   */
+  SearchResultListMapper searchSimilarContextMemories(String text, String filterJson, int size)
+      throws IOException;
+
+  /**
    * Execute a preview search with custom search settings.
    * This is typically used for testing search configurations before applying them.
    *

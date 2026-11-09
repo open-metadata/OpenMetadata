@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -27,11 +28,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.CompletionOptions;
@@ -148,6 +150,30 @@ class SemanticMemoryDuplicateFinderTest {
     verify(repository, never()).create(any(), any());
   }
 
+  private void rankedHits(List<ContextMemory> memories) throws IOException {
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    List<Map<String, Object>> hits =
+        memories.stream()
+            .map(memory -> Map.<String, Object>of("id", memory.getId().toString()))
+            .toList();
+    when(searchClient.searchSimilarContextMemories(anyString(), anyString(), eq(20)))
+        .thenReturn(new SearchResultListMapper(hits, hits.size()));
+  }
+
+  private void eligible(ContextMemory candidate) {
+    lenient()
+        .when(
+            repository.get(
+                isNull(), eq(candidate.getId()), isNull(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(candidate);
+    lenient().when(repository.hasOrgWideAnchor(candidate)).thenReturn(true);
+  }
+
+  private SemanticMemoryDuplicateFinder keywordFinder() {
+    return new SemanticMemoryDuplicateFinder(
+        repository, () -> null, () -> searchRepository, completionClient);
+  }
+
   /** A linked fact stays anchored to its own file, hiding it from readers of a restricted one. */
   @Test
   void factAnchoredToARestrictedFileIsNotReused() throws Exception {
@@ -155,12 +181,7 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
     SemanticMemoryDuplicateFinder finder = finderWithCandidate(candidate);
     when(repository.hasOrgWideAnchor(candidate)).thenReturn(false);
-    when(searchRepository.getSearchClient()).thenReturn(searchClient);
-    when(searchRepository.getIndexOrAliasName("contextMemory"))
-        .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(
-            any(SearchRequest.class), eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
-        .thenReturn(new SearchResultListMapper(List.of(), 0));
+    rankedHits(List.of());
 
     assertNull(
         finder.findEquivalent(
@@ -197,12 +218,7 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is the growth rate?", "The growth rate is -15%.");
     ContextMemory derived =
         memory(UUID.randomUUID(), "What is the growth rate?", "The growth rate is +15%.");
-    when(searchRepository.getSearchClient()).thenReturn(searchClient);
-    when(searchRepository.getIndexOrAliasName("contextMemory"))
-        .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(
-            any(SearchRequest.class), eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
-        .thenReturn(new SearchResultListMapper(List.of(), 0));
+    rankedHits(List.of());
 
     assertNull(finderWithCandidate(candidate).findEquivalent(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
@@ -249,12 +265,7 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days.");
     ContextMemory derived =
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 30 days.");
-    when(searchRepository.getSearchClient()).thenReturn(searchClient);
-    when(searchRepository.getIndexOrAliasName("contextMemory"))
-        .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(
-            any(SearchRequest.class), eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
-        .thenReturn(new SearchResultListMapper(List.of(), 0));
+    rankedHits(List.of());
     assertNull(finderWithCandidate(candidate).findEquivalent(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
@@ -273,17 +284,8 @@ class SemanticMemoryDuplicateFinderTest {
             isNull(),
             eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
         .thenThrow(new IllegalStateException("vector index unavailable"));
-    when(searchRepository.getSearchClient()).thenReturn(searchClient);
-    when(searchRepository.getIndexOrAliasName("contextMemory"))
-        .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(
-            any(SearchRequest.class), eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
-        .thenReturn(
-            new SearchResultListMapper(List.of(Map.of("id", candidate.getId().toString())), 1));
-    when(repository.get(
-            isNull(), eq(candidate.getId()), isNull(), eq(Include.NON_DELETED), eq(false)))
-        .thenReturn(candidate);
-    when(repository.hasOrgWideAnchor(candidate)).thenReturn(true);
+    rankedHits(List.of(candidate));
+    eligible(candidate);
 
     ContextMemory found =
         new SemanticMemoryDuplicateFinder(
@@ -292,11 +294,59 @@ class SemanticMemoryDuplicateFinderTest {
                 memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer()));
 
     assertEquals(candidate, found);
-    ArgumentCaptor<SearchRequest> request = ArgumentCaptor.forClass(SearchRequest.class);
-    verify(searchClient)
-        .searchForExport(request.capture(), eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT));
-    assertTrue(request.getValue().getQuery().contains("what is churn"));
-    assertTrue(request.getValue().getQueryFilter().contains("FileExtraction"));
+    ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<String> filter = ArgumentCaptor.forClass(String.class);
+    verify(searchClient).searchSimilarContextMemories(text.capture(), filter.capture(), eq(20));
+    assertEquals("what is churn churn is the share of customers lost", text.getValue());
+    assertTrue(filter.getValue().contains("FileExtraction"));
+    assertTrue(filter.getValue().contains("{\"deleted\":false}"), "an archived fact is no match");
+  }
+
+  /** Of the twenty ranked hits, the first five that may be reused go to the judge. */
+  @Test
+  void judgesTheFirstFiveEligibleOfTheRankedHits() throws Exception {
+    List<ContextMemory> ranked = new ArrayList<>();
+    for (String topic : List.of("alpha", "beta", "gamma", "delta", "epsilon", "zeta", "eta")) {
+      ranked.add(memory(UUID.randomUUID(), "What is " + topic + "?", "Rules for " + topic + "."));
+    }
+    ranked.forEach(this::eligible);
+    when(repository.hasOrgWideAnchor(ranked.getFirst())).thenReturn(false);
+    rankedHits(ranked);
+    ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+    when(completionClient.completeStructured(
+            anyString(), prompt.capture(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
+        .thenReturn(List.of());
+
+    assertNull(
+        keywordFinder()
+            .findEquivalent(memory(UUID.randomUUID(), "What is omega?", "Omega rules.")));
+
+    List<String> judged = new ArrayList<>();
+    JsonUtils.readTree(prompt.getValue())
+        .path("candidates")
+        .forEach(candidate -> judged.add(candidate.path("question").asText()));
+    assertEquals(
+        ranked.subList(1, 6).stream().map(ContextMemory::getQuestion).toList(),
+        judged,
+        "the restricted best hit is skipped and the sixth eligible one is never judged");
+  }
+
+  /** The type an extraction gives a fact is no part of the claim, so the judge decides. */
+  @Test
+  void aMemoryOfAnotherTypeIsLeftToTheJudge() throws Exception {
+    ContextMemory candidate =
+        memory(UUID.randomUUID(), "What is churn?", "Customers lost during the period.")
+            .withMemoryType(ContextMemoryType.FAQ);
+    ContextMemory derived =
+        memory(UUID.randomUUID(), "Define customer churn", "The portion of customers who leave.")
+            .withMemoryType(ContextMemoryType.NOTE);
+    rankedHits(List.of(candidate));
+    eligible(candidate);
+    when(completionClient.completeStructured(
+            anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
+        .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
+
+    assertEquals(candidate, keywordFinder().findEquivalent(derived));
   }
 
   @Test
@@ -312,10 +362,7 @@ class SemanticMemoryDuplicateFinderTest {
             eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
         .thenThrow(new IllegalStateException("vector index unavailable"));
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
-    when(searchRepository.getIndexOrAliasName("contextMemory"))
-        .thenReturn("context_memory_search_index");
-    when(searchClient.searchForExport(
-            any(SearchRequest.class), eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
+    when(searchClient.searchSimilarContextMemories(anyString(), anyString(), eq(20)))
         .thenThrow(new IOException("search index unavailable"));
     SemanticMemoryDuplicateFinder finder =
         new SemanticMemoryDuplicateFinder(

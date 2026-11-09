@@ -40,6 +40,12 @@ public class ContextMemoryIndex implements TaggableIndex {
   public static final String FIELD_OUTCOMES = "outcomes";
   public static final String UNANCHORED = "unanchored";
 
+  /** What a similar-memory lookup ranks on, and the share of the text's terms a hit must hold. */
+  public static final List<String> SIMILARITY_FIELDS =
+      List.of("question", "answer", "title", "summary");
+
+  public static final String SIMILARITY_MINIMUM_SHOULD_MATCH = "30%";
+
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
       Set.of(
           ContextMemoryRepository.FIELD_PRIMARY_ENTITY,

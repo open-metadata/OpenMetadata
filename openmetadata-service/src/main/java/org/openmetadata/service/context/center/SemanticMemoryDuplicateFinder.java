@@ -1,10 +1,13 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
@@ -13,7 +16,6 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
-import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -21,6 +23,7 @@ import org.openmetadata.service.context.center.ContextMemoryReconciler.Duplicate
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.llm.LLMCompletionClient;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.vector.VectorIndexService;
@@ -32,6 +35,10 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private static final int CANDIDATE_LIMIT = 5;
   private static final int KNN_LIMIT = 20;
+
+  /** Ranked hits read so that some remain after the reuse checks the index cannot apply. */
+  private static final int KEYWORD_FETCH_LIMIT = 20;
+
   private static final String EQUIVALENCE_PROMPT =
       "The input is JSON data containing one proposed memory and candidate memories. "
           + "Choose a candidate only if its question and answer express the same factual claim "
@@ -41,11 +48,11 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
           + "is equivalent, or [{\"index\": N}] for one equivalent candidate index.";
 
   /**
-   * Both lookups run as a synthetic admin, as {@code EntityUpdater} uses for system writes, so they
-   * do not depend on a user named admin existing. An admin skips memory visibility, which matters
-   * because an anonymous search admits only unanchored memories and every extracted memory is
-   * anchored to its source; it still sees only Approved ones. The id makes it resolvable: without
-   * one, search treats the subject as anonymous.
+   * The vector lookup runs as a synthetic admin, as {@code EntityUpdater} uses for system writes,
+   * so it does not depend on a user named admin existing. An admin skips memory visibility, which
+   * matters because an anonymous search admits only unanchored memories and every extracted memory
+   * is anchored to its source; it still sees only Approved ones. The id makes it resolvable:
+   * without one, search treats the subject as anonymous.
    */
   static final SubjectContext SEARCH_SUBJECT =
       new SubjectContext(
@@ -120,28 +127,25 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     return loadCandidates(response == null ? null : response.getHits(), derived);
   }
 
+  /** A ranked lookup: a rewording shares most of a fact's words, never all of them in one field. */
   private List<ContextMemory> keywordCandidates(ContextMemory derived) {
-    SearchRepository searchRepository = searchRepositorySupplier.get();
-    if (searchRepository == null || searchRepository.getSearchClient() == null) {
-      throw new IllegalStateException("Memory search index is unavailable");
-    }
-    SearchRequest request =
-        new SearchRequest()
-            .withIndex(searchRepository.getIndexOrAliasName(Entity.CONTEXT_MEMORY))
-            .withQuery(keywordQuery(derived))
-            .withQueryFilter(keywordQueryFilter())
-            .withSize(CANDIDATE_LIMIT)
-            .withFrom(0)
-            .withDeleted(false)
-            .withFetchSource(true)
-            .withIncludeAggregations(false);
     try {
       SearchResultListMapper result =
-          searchRepository.getSearchClient().searchForExport(request, SEARCH_SUBJECT);
+          searchClient()
+              .searchSimilarContextMemories(
+                  keywordQuery(derived), keywordQueryFilter(), KEYWORD_FETCH_LIMIT);
       return loadCandidates(result.getResults(), derived);
     } catch (IOException e) {
       throw new IllegalStateException("Memory search index lookup failed", e);
     }
+  }
+
+  private SearchClient searchClient() {
+    SearchRepository searchRepository = searchRepositorySupplier.get();
+    if (searchRepository == null || searchRepository.getSearchClient() == null) {
+      throw new IllegalStateException("Memory search index is unavailable");
+    }
+    return searchRepository.getSearchClient();
   }
 
   private String keywordQuery(ContextMemory derived) {
@@ -155,22 +159,19 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         List.of(
             Map.of("term", Map.of("entityStatus", ContextMemoryStatus.APPROVED.value())),
             Map.of("term", Map.of("sourceType", ContextMemorySourceType.FILE_EXTRACTION.value())),
-            Map.of("term", Map.of("visibility", MemoryVisibility.ENTITY.value())));
+            Map.of("term", Map.of("visibility", MemoryVisibility.ENTITY.value())),
+            Map.of("term", Map.of(Entity.FIELD_DELETED, false)));
     return JsonUtils.pojoToJson(Map.of("bool", Map.of("filter", filters)));
   }
 
+  /** Hits stay in rank order; only the first few that may be reused are compared. */
   private List<ContextMemory> loadCandidates(
       List<Map<String, Object>> hits, ContextMemory derived) {
-    List<ContextMemory> candidates = new ArrayList<>();
-    if (hits != null) {
-      for (Map<String, Object> hit : hits) {
-        ContextMemory candidate = loadCandidate(hit, derived);
-        if (candidate != null) {
-          candidates.add(candidate);
-        }
-      }
-    }
-    return candidates;
+    return listOrEmpty(hits).stream()
+        .map(hit -> loadCandidate(hit, derived))
+        .filter(Objects::nonNull)
+        .limit(CANDIDATE_LIMIT)
+        .toList();
   }
 
   private ContextMemory loadCandidate(Map<String, Object> hit, ContextMemory derived) {
@@ -194,7 +195,6 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         && candidate.getShareConfig() != null
         && candidate.getShareConfig().getVisibility() == MemoryVisibility.ENTITY
         && candidate.getMemoryScope() == derived.getMemoryScope()
-        && candidate.getMemoryType() == derived.getMemoryType()
         && !hasConflictingNumbers(candidate, derived)
         && repository.hasOrgWideAnchor(candidate);
   }

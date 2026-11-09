@@ -6,16 +6,22 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -77,6 +83,26 @@ import org.openmetadata.service.llm.NoopCompletionClient;
 class ContextMemoryExtractionIT {
   private static final String PAGES = "v1/contextCenter/pages";
   private static final String FILES = "v1/contextCenter/drive/files";
+  // Facts share too few words with one another to rank as each other's candidates.
+  private static final Fact KAFKA_OWNER =
+      new Fact(
+          "Which squad maintains the Kafka ingestion cluster?",
+          "Squad Orion maintains the Kafka ingestion cluster.");
+  private static final Fact PAYROLL =
+      new Fact("How often does payroll run?", "Payroll runs every second Friday.");
+  private static final Fact PAYROLL_REWORDED =
+      new Fact("How frequently does payroll run?", "Payroll runs on alternate Fridays.");
+  private static final Fact VACATION =
+      new Fact(
+          "How many vacation days do employees get?", "Employees get 25 vacation days per year.");
+  private static final Fact VACATION_REPLACED =
+      new Fact(VACATION.question(), "Employees get 30 vacation days per year.");
+  private static final Fact RECOVERY_SITE =
+      new Fact(
+          "Which city hosts the disaster recovery site?",
+          "The disaster recovery site is in Lisbon.");
+  private static final Fact BRAND_COLOR =
+      new Fact("Which color does company branding use?", "Company branding uses teal.");
   private final AtomicInteger calls = new AtomicInteger();
   private AiProvider previousProvider;
   private boolean partial;
@@ -217,6 +243,51 @@ class ContextMemoryExtractionIT {
     assertGone("v1/contextCenter/memories/" + pill.getId());
   }
 
+  /** Another file's rewording links to the first file's fact; a replaced number never does. */
+  @Test
+  void oss_crossDocument_reusesRewordedFactsAndKeepsReplacedNumbers(TestNamespace ns)
+      throws Exception {
+    assumeTrue(
+        Entity.getSearchRepository().getVectorIndexService() == null,
+        "covers the memory index lookup that runs without vector search");
+    ContextFile first = file(ns, "handbook", "Handbook " + ns.shortPrefix());
+    ContextFile second = file(ns, "handbook-revised", "Revised handbook " + ns.shortPrefix());
+    scriptFacts(
+        Map.of(
+            first.getId(),
+            List.of(KAFKA_OWNER, PAYROLL, VACATION, RECOVERY_SITE),
+            second.getId(),
+            List.of(KAFKA_OWNER, PAYROLL_REWORDED, VACATION_REPLACED, BRAND_COLOR)));
+    runFile(first);
+    Map<String, ContextMemory> original = byQuestion(extracted(first.getEntityReference()));
+    awaitSearchable(original.values());
+    DuplicateJudge judge =
+        new DuplicateJudge(Map.of(PAYROLL_REWORDED.question(), PAYROLL.question()));
+    LLMClientHolder.setForTesting(judge);
+
+    runFile(second);
+
+    assertEquals(
+        List.of(PAYROLL_REWORDED.question()),
+        judge.judgedQuestions(),
+        "only the rewording needs the judge: the verbatim fact links without it, the replaced"
+            + " number never reaches it");
+    Map<String, ContextMemory> linked = byQuestion(extracted(second.getEntityReference()));
+    assertEquals(
+        Set.of(
+            KAFKA_OWNER.question(),
+            PAYROLL.question(),
+            VACATION.question(),
+            BRAND_COLOR.question()),
+        linked.keySet());
+    assertEquals(
+        original.get(KAFKA_OWNER.question()).getId(), linked.get(KAFKA_OWNER.question()).getId());
+    assertEquals(original.get(PAYROLL.question()).getId(), linked.get(PAYROLL.question()).getId());
+    assertNotEquals(
+        original.get(VACATION.question()).getId(), linked.get(VACATION.question()).getId());
+    assertEquals(VACATION_REPLACED.answer(), linked.get(VACATION.question()).getAnswer());
+  }
+
   @Test
   void fileProcessingKeepsMetadataEditedDuringDerivation(TestNamespace ns) throws Exception {
     ContextFile file = file(ns, "edited-file", "Definition " + ns.shortPrefix());
@@ -349,6 +420,84 @@ class ContextMemoryExtractionIT {
   private Map<UUID, String> persistedAnswers(ContextFile file) {
     return extracted(file.getEntityReference()).stream()
         .collect(Collectors.toMap(ContextMemory::getId, ContextMemory::getAnswer));
+  }
+
+  private void scriptFacts(Map<UUID, List<Fact>> factsBySource) {
+    extractor =
+        (text, source, type) -> {
+          List<ContextMemory> pills =
+              factsBySource.get(source.getId()).stream()
+                  .map(fact -> pill(fact.answer(), source, type).withQuestion(fact.question()))
+                  .toList();
+          return new DocumentMemoryExtractor.DeriveResult(pills, 1, 1);
+        };
+  }
+
+  private static Map<String, ContextMemory> byQuestion(List<ContextMemory> memories) {
+    return memories.stream()
+        .collect(Collectors.toMap(ContextMemory::getQuestion, Function.identity()));
+  }
+
+  /** The duplicate check reads the search index, which shows a new memory only once refreshed. */
+  private static void awaitSearchable(Collection<ContextMemory> memories) {
+    Awaitility.await("the first file's memories are searchable")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(() -> memories.forEach(memory -> assertTrue(isSearchable(memory))));
+  }
+
+  private static boolean isSearchable(ContextMemory memory) {
+    String byId = "{\"query\":{\"term\":{\"id.keyword\":\"" + memory.getId() + "\"}}}";
+    return SdkClients.adminClient()
+        .search()
+        .query("*")
+        .index("context_memory_search_index")
+        .queryFilter(byId)
+        .execute()
+        .contains(memory.getId().toString());
+  }
+
+  private record Fact(String question, String answer) {}
+
+  /** Pairs each rewording with its original, as the model would, and records every fact judged. */
+  private static final class DuplicateJudge extends LLMCompletionClient {
+    private final Map<String, String> originalByRewording;
+    private final List<String> judgedQuestions = new CopyOnWriteArrayList<>();
+
+    DuplicateJudge(Map<String, String> originalByRewording) {
+      super(1);
+      this.originalByRewording = originalByRewording;
+    }
+
+    List<String> judgedQuestions() {
+      return List.copyOf(judgedQuestions);
+    }
+
+    @Override
+    protected CompletionResult doComplete(
+        String systemPrompt, String userPrompt, CompletionOptions options) {
+      JsonNode comparison = JsonUtils.readTree(userPrompt);
+      String question = comparison.path("question").asText();
+      judgedQuestions.add(question);
+      return new CompletionResult(
+          choice(comparison.path("candidates"), originalByRewording.get(question)), 0, 0);
+    }
+
+    private static String choice(JsonNode candidates, String originalQuestion) {
+      String choice = "[]";
+      for (JsonNode candidate : candidates) {
+        if (candidate.path("question").asText().equals(originalQuestion)) {
+          choice = "[{\"index\":" + candidate.path("index").asInt() + "}]";
+        }
+      }
+      return choice;
+    }
+
+    @Override
+    public String getModelId() {
+      return "duplicate-judge-test";
+    }
   }
 
   private LLMCompletionClient invalidJsonClient(AtomicInteger attempts) {
