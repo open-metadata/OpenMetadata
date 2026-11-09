@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -18,6 +19,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -387,6 +389,50 @@ public class IngestionPipelineLogStreamingResourceIT {
           runId,
           e.getMessage());
     }
+  }
+
+  @Test
+  @Order(200)
+  void testEveryAgentBotCanShipItsRunLogs(TestNamespace ns) {
+    IngestionPipeline pipeline = createTestPipeline(ns);
+
+    assertLogWriteNotRefused(pipeline, "autoclassification-bot");
+    assertLogWriteNotRefused(pipeline, "profiler-bot");
+    assertLogWriteNotRefused(pipeline, "ingestion-bot");
+  }
+
+  @Test
+  @Order(201)
+  void testLogWriteWithoutPermissionIsForbidden(TestNamespace ns) {
+    UserTestFactory.getDataConsumer(null);
+    IngestionPipeline pipeline = createTestPipeline(ns);
+    OpenMetadataClient client = SdkClients.dataConsumerClient();
+
+    assertEquals(403, statusOfLogWrite(client, logPath(pipeline)));
+    assertEquals(403, statusOfLogWrite(client, logPath(pipeline) + "/close"));
+  }
+
+  private void assertLogWriteNotRefused(IngestionPipeline pipeline, String botName) {
+    String email = botName + "@open-metadata.org";
+    OpenMetadataClient bot = SdkClients.createClient(email, email, new String[] {"bot"});
+
+    assertNotEquals(403, statusOfLogWrite(bot, logPath(pipeline)), botName + " writing logs");
+    assertEquals(
+        200, statusOfLogWrite(bot, logPath(pipeline) + "/close"), botName + " closing logs");
+  }
+
+  private String logPath(IngestionPipeline pipeline) {
+    return BASE_PATH + "/logs/" + pipeline.getFullyQualifiedName() + "/" + UUID.randomUUID();
+  }
+
+  private int statusOfLogWrite(OpenMetadataClient client, String path) {
+    int status = 200;
+    try {
+      client.getHttpClient().executeForString(HttpMethod.POST, path, Map.of("logs", "line\n"));
+    } catch (OpenMetadataException e) {
+      status = e.getStatusCode();
+    }
+    return status;
   }
 
   private String getLogs(String pipelineFQN, UUID runId) throws OpenMetadataException {

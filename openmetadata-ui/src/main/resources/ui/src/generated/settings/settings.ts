@@ -2266,7 +2266,7 @@ export interface LogStorageConfiguration {
      */
     earlyFlushWatermarkBytes?: number;
     /**
-     * Enable it for pipelines deployed in the server
+     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3.
      */
     enabled?: boolean;
     /**

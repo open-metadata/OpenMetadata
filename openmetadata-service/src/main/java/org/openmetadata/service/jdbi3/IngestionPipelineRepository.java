@@ -687,6 +687,10 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           String.format("Deployment failed: %s. Changes not saved.", errorContext));
     }
 
+    // The deploy hook ran on the decrypted copy. Carry its result back so the stored pipeline reads
+    // its logs from where the deployed one writes them.
+    ingestionPipeline.setEnableStreamableLogs(decrypted.getEnableStreamableLogs());
+
     LOG.info(
         "Pipeline '{}' deployed successfully to {} with response: {}",
         decrypted.getName(),
@@ -1490,13 +1494,15 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
       compareAndUpdate(
           "raiseOnError",
           () -> updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError()));
+
+      // Before the flag is compared, because a deploy can change it.
+      deployIfRequired(original, updated);
+
       compareAndUpdate(
           "enableStreamableLogs",
           () ->
               updateEnableStreamableLogs(
                   original.getEnableStreamableLogs(), updated.getEnableStreamableLogs()));
-
-      deployIfRequired(original, updated);
     }
 
     private void deployIfRequired(IngestionPipeline original, IngestionPipeline updated) {
@@ -1997,9 +2003,14 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   }
 
   // Single deploy-time hook for enableStreamableLogs, shared by every deploy path.
-  // Default keeps the pipeline's own value; overrides resolve the pipeline's owning ingestion
-  // runner (service / test-suite / application) and derive the flag from it.
-  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {}
+  // Default turns the flag on when the server stores logs in S3, and otherwise keeps the pipeline's
+  // own value; overrides resolve the pipeline's owning ingestion runner (service / test-suite /
+  // application) and derive the flag from it.
+  protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {
+    if (isS3LogStorageEnabled()) {
+      ingestionPipeline.setEnableStreamableLogs(true);
+    }
+  }
 
   public boolean isIngestionRunnerStreamableLogsEnabled(EntityReference ingestionRunner) {
     return false; // Default implementation

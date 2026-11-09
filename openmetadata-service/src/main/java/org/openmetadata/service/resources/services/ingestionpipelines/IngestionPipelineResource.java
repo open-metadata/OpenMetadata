@@ -1670,11 +1670,24 @@ public class IngestionPipelineResource
 
   // Preserve existing EditAll access while allowing roles to grant only the scoped action.
   private List<AuthRequest> getPipelineOperationAuthRequests(UUID id, MetadataOperation operation) {
-    ResourceContext<IngestionPipeline> resourceContext = getResourceContextById(id);
+    return getPipelineOperationAuthRequests(getResourceContextById(id), operation);
+  }
+
+  private List<AuthRequest> getPipelineOperationAuthRequests(
+      ResourceContext<IngestionPipeline> resourceContext, MetadataOperation operation) {
     return List.of(
         new AuthRequest(new OperationContext(entityType, operation), resourceContext),
         new AuthRequest(
             new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext));
+  }
+
+  // A run ships its logs with the token of its agent's bot, the same one that reports its status.
+  private void authorizeLogWrite(SecurityContext securityContext, String fqn) {
+    authorizer.authorizeRequests(
+        securityContext,
+        getPipelineOperationAuthRequests(
+            getResourceContextByName(fqn), MetadataOperation.EDIT_INGESTION_PIPELINE_STATUS),
+        AuthorizationLogic.ANY);
   }
 
   private Response createOrUpdateAfterPipelineOperation(
@@ -1752,6 +1765,7 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "Successfully wrote logs",
             content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "403", description = "Not allowed to write logs"),
         @ApiResponse(responseCode = "404", description = "Pipeline not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
@@ -1768,12 +1782,8 @@ public class IngestionPipelineResource
           UUID runId,
       @Parameter(description = "Log content - either raw string or LogBatch object")
           Object logData) {
+    authorizeLogWrite(securityContext, fqn);
     try {
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
       // Parse log data
       String logContent;
       if (logData instanceof String) {
@@ -1824,6 +1834,7 @@ public class IngestionPipelineResource
             responseCode = "200",
             description = "Successfully closed log stream",
             content = @Content(mediaType = "application/json")),
+        @ApiResponse(responseCode = "403", description = "Not allowed to write logs"),
         @ApiResponse(responseCode = "404", description = "Pipeline not found"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
       })
@@ -1837,12 +1848,8 @@ public class IngestionPipelineResource
           String fqn,
       @Parameter(description = "Run ID", schema = @Schema(type = "string")) @PathParam("runId")
           UUID runId) {
+    authorizeLogWrite(securityContext, fqn);
     try {
-      // Authorize the request
-      OperationContext operationContext =
-          new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-      authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
-
       // Close the log stream
       repository.closeStream(fqn, runId);
 

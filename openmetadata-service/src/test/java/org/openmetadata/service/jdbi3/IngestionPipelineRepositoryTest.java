@@ -31,8 +31,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.ServiceEntityInterface;
+import org.openmetadata.schema.api.configuration.LogStorageConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineServiceClientResponse;
@@ -41,14 +44,18 @@ import org.openmetadata.schema.metadataIngestion.LogLevels;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
+import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.RunOptions;
 import org.openmetadata.sdk.exception.IngestionRunnerUnavailableException;
 import org.openmetadata.sdk.exception.PipelineServiceClientException;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.logstorage.LogStorageInterface;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
 class IngestionPipelineRepositoryTest {
 
@@ -369,6 +376,89 @@ class IngestionPipelineRepositoryTest {
         Arguments.of("metadata", "metadata2"),
         Arguments.of("ab", "a_b"),
         Arguments.of("snowflake_metadata_Ab12", "snowflake_metadata_Cd34"));
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("logStorageSettings")
+  void deployFollowsTheServerLogStorageSetting(
+      String scenario, LogStorageConfiguration logStorage, boolean stored, boolean expected) {
+    IngestionPipeline pipeline =
+        pipelineWithConfig(new HashMap<>(Map.of("type", "DatabaseMetadata")))
+            .withEnableStreamableLogs(stored);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    deploymentRepository.setLogStorage(mock(LogStorageInterface.class));
+    deploymentRepository.setLogStorageConfiguration(logStorage);
+
+    deploymentRepository.deployIngestionPipeline(pipeline, mock(ServiceEntityInterface.class));
+
+    assertEquals(expected, pipeline.getEnableStreamableLogs(), scenario);
+    verify(pipelineServiceClient).deployPipeline(any(), any());
+  }
+
+  private static Stream<Arguments> logStorageSettings() {
+    LogStorageConfiguration s3 =
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName("logs");
+    LogStorageConfiguration s3NoBucket =
+        new LogStorageConfiguration().withType(LogStorageConfiguration.Type.S_3);
+    LogStorageConfiguration defaultStorage =
+        new LogStorageConfiguration().withType(LogStorageConfiguration.Type.DEFAULT);
+    return Stream.of(
+        Arguments.of("S3 turns it on", s3, false, true),
+        Arguments.of("S3 keeps it on", s3, true, true),
+        Arguments.of("S3 without a bucket leaves it off", s3NoBucket, false, false),
+        Arguments.of("default storage leaves it off", defaultStorage, false, false),
+        Arguments.of("default storage keeps a pipeline's own value", defaultStorage, true, true));
+  }
+
+  @Test
+  void deployWithoutLogStorageConfigurationKeepsThePipelinesOwnValue() {
+    IngestionPipeline pipeline =
+        pipelineWithConfig(new HashMap<>(Map.of("type", "DatabaseMetadata")))
+            .withEnableStreamableLogs(true);
+    IngestionPipelineRepository deploymentRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+
+    deploymentRepository.deployIngestionPipeline(pipeline, mock(ServiceEntityInterface.class));
+
+    assertTrue(pipeline.getEnableStreamableLogs());
+  }
+
+  @Test
+  void redeployBeforeUpdateKeepsTheFlagTheDeployDecided() {
+    IngestionPipeline pipeline =
+        createBasicPipeline()
+            .withSourceConfig(
+                new SourceConfig().withConfig(new HashMap<>(Map.of("type", "DatabaseMetadata"))))
+            .withEnableStreamableLogs(false);
+    PipelineServiceClientInterface pipelineServiceClient =
+        mock(PipelineServiceClientInterface.class);
+    when(pipelineServiceClient.deployPipeline(any(), any()))
+        .thenReturn(new PipelineServiceClientResponse().withCode(200));
+    IngestionPipelineRepository deploymentRepository = repositoryWithClient(pipelineServiceClient);
+    deploymentRepository.setLogStorage(mock(LogStorageInterface.class));
+    deploymentRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName("logs"));
+
+    try (MockedConstruction<OpenMetadataConnectionBuilder> connectionBuilder =
+            Mockito.mockConstruction(
+                OpenMetadataConnectionBuilder.class,
+                (builder, context) ->
+                    when(builder.build()).thenReturn(new OpenMetadataConnection()));
+        MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntity(any(EntityReference.class), any(), any(Include.class)))
+          .thenReturn(mock(ServiceEntityInterface.class));
+
+      deploymentRepository.deployPipelineBeforeUpdate(pipeline);
+    }
+
+    assertTrue(pipeline.getEnableStreamableLogs());
   }
 
   @Test
