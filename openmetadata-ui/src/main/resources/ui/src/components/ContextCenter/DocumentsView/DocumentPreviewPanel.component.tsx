@@ -21,6 +21,7 @@ import {
 import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { CONTEXT_FILE_ENTITY_TYPE } from '../../../constants/ContextCenter.constants';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -157,6 +158,8 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
 
         <ExtractedMemoriesCard
           sourceId={file.id}
+          sourceOwners={file.owners}
+          sourceType={CONTEXT_FILE_ENTITY_TYPE}
           titleClassName="tw:uppercase"
         />
       </Box>

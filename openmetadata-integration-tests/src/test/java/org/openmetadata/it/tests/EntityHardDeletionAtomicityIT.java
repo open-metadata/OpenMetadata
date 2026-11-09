@@ -11,11 +11,13 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
 import java.time.Duration;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -96,6 +98,37 @@ class EntityHardDeletionAtomicityIT {
       assertEquals(
           rollback ? 1 : 0,
           runtime.createProcessInstanceQuery().processInstanceId(instance).count());
+    } finally {
+      engine.deleteDeployment(deployment.getId(), true);
+    }
+  }
+
+  @Test
+  void bulkCancellationEndsOnlyTheDeletedEntitiesWorkflows() {
+    final var workflows = WorkflowHandler.getInstance();
+    final var engine = workflows.getRepositoryService();
+    final String key = "cancelProbe_" + UUID.randomUUID().toString().replace('-', '_');
+    final var deployment =
+        engine.createDeployment().addString(key + ".bpmn20.xml", process(key)).deploy();
+    try {
+      final var runtime = workflows.getRuntimeService();
+      final String variable =
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_ID_VARIABLE);
+      final UUID first = UUID.randomUUID();
+      final UUID second = UUID.randomUUID();
+      final UUID kept = UUID.randomUUID();
+      final Map<UUID, String> instances = new HashMap<>();
+      for (UUID entity : List.of(first, second, kept)) {
+        instances.put(
+            entity,
+            runtime.startProcessInstanceByKey(key, Map.of(variable, entity.toString())).getId());
+      }
+
+      workflows.cancelInstancesForEntities(List.of(first, second), "Entity deleted");
+
+      final var running = runtime.createProcessInstanceQuery().processDefinitionKey(key);
+      assertEquals(
+          List.of(instances.get(kept)), running.list().stream().map(i -> i.getId()).toList());
     } finally {
       engine.deleteDeployment(deployment.getId(), true);
     }

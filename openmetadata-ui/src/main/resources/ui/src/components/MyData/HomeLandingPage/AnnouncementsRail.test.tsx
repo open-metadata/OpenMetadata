@@ -179,10 +179,18 @@ const mockListAnnouncementsApi = listAnnouncements as jest.MockedFunction<
 // by page size: the dialog pages at ALL_ANNOUNCEMENTS_PAGE_SIZE, the rail does not.
 const mockGetActiveAnnouncements = jest.fn();
 const mockListAnnouncements = jest.fn();
-const routeListAnnouncements = (params?: ListAnnouncementsParams) =>
-  params?.limit === ALL_ANNOUNCEMENTS_PAGE_SIZE
+// The dialog also reads the banner's criticals, the one request asking for
+// system announcements alone.
+const mockListCriticalAnnouncements = jest.fn();
+const routeListAnnouncements = (params?: ListAnnouncementsParams) => {
+  if (params?.system) {
+    return mockListCriticalAnnouncements(params);
+  }
+
+  return params?.limit === ALL_ANNOUNCEMENTS_PAGE_SIZE
     ? mockListAnnouncements(params)
     : mockGetActiveAnnouncements(params);
+};
 
 const USER_ID = 'user-1';
 const ANNOUNCEMENT_ID = 'announcement-1';
@@ -280,16 +288,41 @@ describe('AnnouncementsRail cache integration', () => {
     mockListAnnouncements.mockResolvedValue({ data: [] } as never);
   });
 
-  it('lists only asset announcements, leaving system ones to the critical banner', async () => {
+  it('asks for asset and system announcements alike', async () => {
     renderWithQueryClient(<AnnouncementsRail />);
 
     await waitFor(() => {
       expect(mockGetActiveAnnouncements).toHaveBeenCalledWith({
         active: true,
         limit: 100,
-        system: false,
       });
     });
+  });
+
+  it('shows every system announcement but the criticals the banner already shows', async () => {
+    mockGetActiveAnnouncements.mockResolvedValue({
+      data: [
+        makeAnnouncement('asset-critical', { type: AnnouncementType.Critical }),
+        makeAnnouncement('system-notice', {
+          entityLink: undefined,
+          type: AnnouncementType.Notice,
+        }),
+        makeAnnouncement('system-critical', {
+          entityLink: undefined,
+          type: AnnouncementType.Critical,
+        }),
+      ],
+    } as never);
+
+    renderWithQueryClient(<AnnouncementsRail />);
+
+    expect(
+      await screen.findByTestId(cardId('system-notice'))
+    ).toBeInTheDocument();
+    expect(screen.getByTestId(cardId('asset-critical'))).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(cardId('system-critical'))
+    ).not.toBeInTheDocument();
   });
 
   it('deduplicates concurrent active-announcement requests', async () => {
@@ -616,6 +649,7 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     mockListAnnouncements.mockResolvedValue({
       data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
     } as never);
+    mockListCriticalAnnouncements.mockResolvedValue({ data: [] } as never);
   });
 
   const openDialog = async () => {
@@ -654,8 +688,9 @@ describe('AnnouncementsRail all-announcements dialog', () => {
     await openDialog();
 
     expect(mockListAnnouncements).toHaveBeenCalledWith(
-      expect.objectContaining({ active: true, system: false })
+      expect.objectContaining({ active: true })
     );
+    expect(mockListAnnouncements.mock.calls[0][0]).not.toHaveProperty('system');
 
     const list = screen.getByTestId('all-announcements-list');
 
@@ -664,6 +699,64 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       within(list).queryByTestId('announcement-status')
     ).not.toBeInTheDocument();
     expect(within(list).getAllByLabelText(DISMISS_LABEL)).toHaveLength(2);
+  });
+
+  it('lists system announcements too, leaving the criticals to the banner', async () => {
+    mockListAnnouncements.mockResolvedValue({
+      data: [
+        makeAnnouncement('system-critical', {
+          entityLink: undefined,
+          type: AnnouncementType.Critical,
+        }),
+        makeAnnouncement('system-notice', { entityLink: undefined }),
+      ],
+    } as never);
+    await openDialog();
+
+    const list = screen.getByTestId('all-announcements-list');
+
+    expect(list).toContainElement(screen.getByTestId(cardId('system-notice')));
+    expect(
+      within(list).queryByTestId(cardId('system-critical'))
+    ).not.toBeInTheDocument();
+  });
+
+  it("leaves the banner's criticals out of the badge's server total", async () => {
+    const critical = makeAnnouncement('system-critical', {
+      entityLink: undefined,
+      type: AnnouncementType.Critical,
+    });
+    mockListCriticalAnnouncements.mockResolvedValue({
+      data: [critical],
+    } as never);
+    mockListAnnouncements.mockResolvedValue({
+      data: [critical, makeAnnouncement('a1'), makeAnnouncement('a2')],
+      paging: { after: 'cursor-2', total: 5 },
+    } as never);
+    await openDialog();
+
+    // 5 on the server, less the banner's one critical. Two are listed, so the
+    // fallback count could not produce this.
+    await waitFor(() => {
+      expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
+        '4'
+      );
+    });
+  });
+
+  it('counts what it lists while the banner criticals are unknown', async () => {
+    mockListCriticalAnnouncements.mockRejectedValue(new Error('unavailable'));
+    mockListAnnouncements.mockResolvedValue({
+      data: [makeAnnouncement('a1'), makeAnnouncement('a2')],
+      paging: { total: 3 },
+    } as never);
+    await openDialog();
+
+    await waitFor(() => {
+      expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
+        '2'
+      );
+    });
   });
 
   it('closes itself when an announcement in it is opened', async () => {
@@ -727,7 +820,6 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       active: true,
       after: undefined,
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
-      system: false,
     });
     // The badge counts the whole list, not just the page on screen.
     expect(screen.getByTestId('all-announcements-count')).toHaveTextContent(
@@ -742,7 +834,6 @@ describe('AnnouncementsRail all-announcements dialog', () => {
       active: true,
       after: 'cursor-2',
       limit: ALL_ANNOUNCEMENTS_PAGE_SIZE,
-      system: false,
     });
     expect(
       screen.queryByTestId('all-announcements-load-more')

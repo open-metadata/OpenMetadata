@@ -16,7 +16,7 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isObject, isUndefined } from 'lodash';
+import { isBoolean, isEmpty, isObject, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import type {
@@ -912,22 +912,215 @@ export const getJsonTreePropertyFromQueryFilter = (
   return convertedObj;
 };
 
+// Normalises a bool clause (`must`/`should`/`filter`/`must_not`) to an array.
+// The ES DSL allows each to be a single object or an array; the branch handlers
+// below always operate on arrays.
+const toClauseArray = (
+  clauses: QueryFieldInterface | QueryFieldInterface[] | undefined
+): QueryFieldInterface[] | undefined => {
+  if (Array.isArray(clauses)) {
+    return clauses;
+  }
+  if (clauses) {
+    return [clauses];
+  }
+
+  return undefined;
+};
+
+// Extracts the clause list, conjunction, and negation from a bool query body.
+// The backend honors `must`, `should`, `filter`, and `must_not` verbatim, but
+// the original parser only read `query.bool.must` — the shape a root-AND UI
+// group serializes to. Every other supported shape was silently discarded, so
+// rules created via the REST API (which never populates `filterJsonTree`)
+// showed an empty editor and lost their saved conditions on the first edit.
+const extractBoolClauses = (
+  bool: EsBoolQuery | undefined
+): {
+  clauses: QueryFieldInterface[] | undefined;
+  conjunction: 'AND' | 'OR';
+  not: boolean;
+  unwrapInner: boolean;
+} => {
+  if (!bool) {
+    return {
+      clauses: undefined,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: false,
+      unwrapInner: false,
+    };
+  }
+
+  const mustClauses = toClauseArray(bool.must as QueryFieldInterface[]);
+  const shouldClauses = toClauseArray(bool.should as QueryFieldInterface[]);
+  const filterClauses = toClauseArray(bool.filter as QueryFieldInterface[]);
+  const mustNotClauses = toClauseArray(bool.must_not as QueryFieldInterface[]);
+
+  if (mustClauses?.length) {
+    return {
+      clauses: mustClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: false,
+      unwrapInner: true,
+    };
+  }
+  if (shouldClauses?.length) {
+    return {
+      clauses: shouldClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.OR,
+      not: false,
+      unwrapInner: false,
+    };
+  }
+  if (filterClauses?.length) {
+    return {
+      clauses: filterClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: false,
+      unwrapInner: false,
+    };
+  }
+  if (mustNotClauses?.length) {
+    return {
+      clauses: mustNotClauses,
+      conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+      not: true,
+      unwrapInner: false,
+    };
+  }
+
+  return {
+    clauses: undefined,
+    conjunction: QUERY_BUILDER_CONJUNCTION.AND,
+    not: false,
+    unwrapInner: false,
+  };
+};
+
+// A bare term/exists/wildcard (no bool wrapper) — the shape the integration
+// tests use for `{"query": {"term": {...}}}`. Returns the query body as a
+// single-element clause array, or undefined when the body has no leaf clause.
+const bareClause = (
+  queryBody: QueryFieldInterface
+): QueryFieldInterface[] | undefined => {
+  if (
+    queryBody.term ||
+    queryBody.exists ||
+    (queryBody as unknown as EsWildCard).wildcard
+  ) {
+    return [queryBody];
+  }
+
+  return undefined;
+};
+
+const BOOL_CLAUSE_KEYS = ['must', 'should', 'filter', 'must_not'] as const;
+
+// The backend stores the DSL `query` node verbatim; some API clients omit the
+// `query` wrapper and pass the body directly.
+const getQueryBody = (
+  queryFilter: QueryFilterInterface
+): QueryFieldInterface | undefined => {
+  const queryBody = queryFilter?.query ?? queryFilter;
+
+  return queryBody && typeof queryBody === 'object'
+    ? (queryBody as QueryFieldInterface)
+    : undefined;
+};
+
+// A root bool the tree reads only in part: a second clause kind
+// (`should` + `filter`) or a `minimum_should_match` above one.
+const hasUnreadBoolParts = (bool: EsBoolQuery | undefined): boolean => {
+  const boolRecord = (bool ?? {}) as Record<string, unknown>;
+  const clauseKinds = BOOL_CLAUSE_KEYS.filter(
+    (key) =>
+      toClauseArray(boolRecord[key] as QueryFieldInterface[] | undefined)
+        ?.length
+  ).length;
+  const minimumShouldMatch = boolRecord.minimum_should_match;
+
+  return (
+    clauseKinds > 1 ||
+    (!isUndefined(minimumShouldMatch) && String(minimumShouldMatch) !== '1')
+  );
+};
+
+// The clauses the tree is built from, and whether reading them left part of the
+// filter out (see hasUnreadBoolParts, plus siblings of the unwrapped inner `must`).
+const getRootClauses = (queryBody: QueryFieldInterface) => {
+  const bool = queryBody.bool as EsBoolQuery | undefined;
+  const { clauses: boolClauses, ...grouping } = extractBoolClauses(bool);
+  const clauses = boolClauses ?? bareClause(queryBody);
+
+  // The UI's root-AND group serializes to a double-nested
+  // `query.bool.must[0].bool.must[...]`; unwrap the inner `must` when
+  // present so the branch handlers see the actual conditions. Only safe
+  // for the `must` case — `should`/`filter`/`must_not` clauses carry
+  // their own semantics that unwrapping would lose.
+  const innerBool = grouping.unwrapInner
+    ? (clauses?.[0]?.bool as EsBoolQuery | undefined)
+    : undefined;
+  const innerMust = innerBool?.must as QueryFieldInterface[] | undefined;
+
+  const dropsInnerSiblings = Boolean(
+    innerMust &&
+      ((clauses?.length ?? 0) > 1 || Object.keys(innerBool ?? {}).length > 1)
+  );
+  const partial = hasUnreadBoolParts(bool) || dropsInnerSiblings;
+
+  return { ...grouping, clauses: innerMust ?? clauses, partial };
+};
+
+const isRenderedClause = (clause: QueryFieldInterface, fields?: Fields) =>
+  QUERY_FILTER_BRANCH_HANDLERS.some(
+    (handler) =>
+      !isEmpty(handler(clause, [], fields, getJsonTreePropertyFromQueryFilter))
+  );
+
+// False when getJsonTreeFromQueryFilter would leave part of `queryFilter` out of
+// its tree, so an editor seeded from that tree drops those conditions on its
+// first change. `match_all` is the empty builder, so it counts as rendered.
+export const isQueryFilterFullyRepresentable = (
+  queryFilter: QueryFilterInterface,
+  fields?: Fields
+): boolean => {
+  const queryBody = getQueryBody(queryFilter);
+  if (!queryBody) {
+    return false;
+  }
+  if ((queryBody as Record<string, unknown>).match_all) {
+    return Object.keys(queryBody).length === 1;
+  }
+  const { clauses, partial } = getRootClauses(queryBody);
+
+  return (
+    Boolean(clauses?.length) &&
+    !partial &&
+    withoutCustomPropertyScope(clauses ?? []).every((clause) =>
+      isRenderedClause(clause, fields)
+    )
+  );
+};
+
 export const getJsonTreeFromQueryFilter = (
   queryFilter: QueryFilterInterface,
   fields?: Fields
 ): OldJsonTree => {
   try {
-    const id1 = generateUUID();
-    const id2 = generateUUID();
-    const mustFilters = queryFilter?.query?.bool?.must as QueryFieldInterface[];
+    const queryBody = getQueryBody(queryFilter);
 
-    if (!mustFilters?.length) {
+    if (!queryBody) {
       return {} as OldJsonTree;
     }
 
-    const innerMust = (mustFilters[0]?.bool as EsBoolQuery)?.must as
-      | QueryFieldInterface[]
-      | undefined;
+    const { clauses, conjunction, not } = getRootClauses(queryBody);
+
+    if (!clauses?.length) {
+      return {} as OldJsonTree;
+    }
+
+    const id1 = generateUUID();
+    const id2 = generateUUID();
 
     return {
       type: 'group',
@@ -935,13 +1128,10 @@ export const getJsonTreeFromQueryFilter = (
       children1: {
         [id2]: {
           type: 'group',
-          properties: {
-            conjunction: QUERY_BUILDER_CONJUNCTION.AND,
-            not: false,
-          },
+          properties: { conjunction, not },
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
-            innerMust ?? mustFilters,
+            clauses,
             fields
           ),
           id: id2,
