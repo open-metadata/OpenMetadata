@@ -37,6 +37,7 @@ class WorkbookDetails(BaseModel):
     updatedAt: datetime | None = None  # noqa: N815
     url: str
     path: str | None = None
+    latestVersion: int | float | None = None  # noqa: N815
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None

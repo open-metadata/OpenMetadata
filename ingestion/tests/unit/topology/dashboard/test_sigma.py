@@ -53,12 +53,18 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import EntityExtension, FullyQualifiedEntityName
+from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    build_patch,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
@@ -1682,3 +1688,127 @@ def test_dashboard_records_when_the_workbook_was_created_and_updated(sigma_over_
     assert dashboard.lifeCycle == LifeCycle(
         created=AccessDetails(timestamp=1713188691477), updated=AccessDetails(timestamp=1713189117302)
     )
+
+
+class FakeDashboardProperties:
+    """OpenMetadata's dashboard custom properties and the Sigma dashboard, as the server holds them"""
+
+    def __init__(self, properties=(), extension=None):
+        self.properties = [{"name": name, "propertyType": {"name": data_type}} for name, data_type in properties]
+        self.registered = []
+        self.dashboard = LineageDashboard(
+            id=uuid5(NAMESPACE_URL, "wb-1"),
+            name="wb-1",
+            fullyQualifiedName="mock_sigma.wb-1",
+            service=EntityReference(id=MOCK_DASHBOARD_SERVICE.id, type="dashboardService"),
+            extension=EntityExtension(extension) if extension else None,
+        )
+
+    def serve(self, source):
+        source.metadata.get_entity_custom_properties = lambda entity_type: self.properties
+        source.metadata.get_property_type_ref = lambda data_type: PropertyType(
+            EntityReference(id=uuid5(NAMESPACE_URL, data_type.value), type="type", name=data_type.value)
+        )
+        source.metadata.create_or_update_custom_property = self.register
+        source.metadata.get_by_name = lambda entity, fqn, fields=None: (
+            self.dashboard if fqn == self.dashboard.fullyQualifiedName.root else None
+        )
+
+    def register(self, record):
+        request = record.createCustomPropertyRequest
+        self.registered.append((request.name.root, request.propertyType.root.name))
+        self.properties.append({"name": request.name.root, "propertyType": {"name": request.propertyType.root.name}})
+
+
+def patched_extension(source, workbook_id="wb-1"):
+    """The extension the dashboard holds once the sink applies the workbook's patch"""
+    details = source.get_dashboard_details(Workbook(workbookId=workbook_id))
+    requests_sent = [either.right for either in source.yield_dashboard_extension(details)]
+    if not requests_sent:
+        return None
+    (request,) = requests_sent
+    dashboard_patch = build_patch(
+        source=request.original_entity,
+        destination=request.new_entity,
+        allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+        restrict_update_fields=RESTRICT_UPDATE_LIST,
+        override_metadata=request.override_metadata,
+    )
+    assert all(op["path"].startswith("/extension") and op["op"] != "remove" for op in dashboard_patch.patch)
+    return dashboard_patch.apply(request.original_entity.model_dump(mode="json", exclude_none=True))["extension"]
+
+
+@pytest.mark.parametrize("version", [3, 1.1])
+def test_the_workbook_version_is_patched_onto_its_dashboard(sigma_over_http, routes, version):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    routes["GET", "/v2/workbooks/wb-1"] = {**routes["GET", "/v2/workbooks/wb-1"], "latestVersion": version}
+    server = FakeDashboardProperties(extension={"team": "finance", "latestVersion": 2})
+    server.serve(source)
+
+    assert patched_extension(source) == {"team": "finance", "latestVersion": version}
+    assert patched_extension(source, "wb-2") is None
+    assert server.registered == [("latestVersion", "number")]
+
+
+def test_a_latest_version_property_of_another_type_is_left_alone(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties(properties=[("latestVersion", "string")])
+    server.serve(source)
+
+    assert patched_extension(source) is None
+    assert server.registered == []
+
+
+def test_no_workbook_version_is_set_without_custom_properties(sigma_over_http):
+    source, _ = sigma_over_http
+    server = FakeDashboardProperties()
+    server.serve(source)
+
+    assert patched_extension(source) is None
+    assert server.registered == []
+
+
+def test_a_failed_registration_sets_no_version_and_is_not_retried(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties()
+    server.serve(source)
+    attempts = []
+
+    def refuse(record):
+        attempts.append(record.createCustomPropertyRequest.name.root)
+        raise requests.HTTPError("403 Forbidden")
+
+    source.metadata.create_or_update_custom_property = refuse
+
+    assert patched_extension(source) is None
+    assert patched_extension(source, "wb-2") is None
+    assert attempts == ["latestVersion"]
+
+
+def test_a_registered_latest_version_property_is_reused(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties(properties=[("latestVersion", "number")])
+    server.serve(source)
+
+    assert patched_extension(source) == {"latestVersion": 3}
+    assert server.registered == []
+
+
+def test_a_failed_dashboard_read_is_reported_for_the_workbook(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    FakeDashboardProperties().serve(source)
+
+    def unreachable(entity, fqn, fields=None):
+        raise requests.ConnectionError("OpenMetadata unreachable")
+
+    source.metadata.get_by_name = unreachable
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (either,) = source.yield_dashboard_extension(details)
+    assert either.right is None
+    assert "Sigma workbook wb-1: OpenMetadata unreachable" in either.left.error
