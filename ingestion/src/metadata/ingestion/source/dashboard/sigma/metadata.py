@@ -12,7 +12,13 @@
 
 import traceback
 from collections.abc import Iterable
+from functools import cached_property
 
+from cachetools import LRUCache
+
+from metadata.domain.table_reference import TableReference
+from metadata.entity_resolution.table_binding import TableLookup, UnsupportedTableReferenceError
+from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
@@ -23,7 +29,7 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
 )
-from metadata.generated.schema.entity.data.table import Column, DataType, Table
+from metadata.generated.schema.entity.data.table import Column, ColumnName, DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
     SigmaConnection,
 )
@@ -46,18 +52,21 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
+    DataModel,
     Elements,
     NodeDetails,
     Workbook,
     WorkbookDetails,
+    WorkbookLineageEntry,
 )
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart
-from metadata.utils.fqn import build_es_fqn_search_string
+from metadata.utils.filters import filter_by_chart, filter_by_datamodel
 from metadata.utils.helpers import (
     get_database_name_for_lineage,
     get_standard_chart_type,
@@ -66,6 +75,21 @@ from metadata.utils.helpers import (
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
+
+# Distinct table references resolved per run; past it a reference is searched again
+MAX_RESOLVED_TABLES = 1_000
+
+# Sigma connection types, lower-cased, as the spec names them for the warehouses OpenMetadata parses
+SIGMA_CONNECTION_DIALECTS = {
+    "bigquery": Dialect.BIGQUERY,
+    "databricks": Dialect.DATABRICKS,
+    "mysql": Dialect.MYSQL,
+    "postgres": Dialect.POSTGRES,
+    "redshift": Dialect.REDSHIFT,
+    "snowflake": Dialect.SNOWFLAKE,
+    "azuresql": Dialect.TSQL,
+    "sqlserver": Dialect.TSQL,
+}
 
 
 class SigmaSource(DashboardServiceSource):
@@ -93,6 +117,10 @@ class SigmaSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.data_models: list[Elements] = []
+        # The lineage stage runs once per dbServicePrefixes entry, and each run needs every prefix's match
+        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str] | None] = LRUCache(
+            maxsize=MAX_RESOLVED_TABLES
+        )
 
     def get_dashboards_list(self) -> list[Workbook] | None:
         """
@@ -112,7 +140,10 @@ class SigmaSource(DashboardServiceSource):
         """
         get dashboard details
         """
-        return self.client.get_dashboard_detail(dashboard.workbookId)
+        dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
+        if dashboard_details:
+            dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
+        return dashboard_details
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -174,19 +205,18 @@ class SigmaSource(DashboardServiceSource):
             logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541
             return
 
-        charts = self.client.get_chart_details(dashboard_details.workbookId)
-        for chart in charts or []:
+        for chart in dashboard_details.elements:
             try:
-                if filter_by_chart(self.source_config.chartFilterPattern, chart.name):
-                    self.status.filter(chart.name, "Chart Pattern not allowed")
+                display_name = chart.name or f"Element {chart.elementId}"
+                if filter_by_chart(self.source_config.chartFilterPattern, display_name):
+                    self.status.filter(display_name, "Chart Pattern not allowed")
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart.elementId)),
-                    displayName=chart.name or f"Element {chart.elementId}",
-                    chartType=get_standard_chart_type(chart.vizualizationType),
+                    displayName=display_name,
+                    chartType=get_standard_chart_type(chart.vizualizationType or ""),
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                    sourceUrl=SourceUrl(dashboard_details.url),
-                    description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
+                    sourceUrl=SourceUrl(f"{dashboard_details.url}?:nodeId={chart.elementId}"),
                 )
                 yield Either(right=chart_request)
                 self.register_record_chart(chart_request=chart_request)
@@ -215,6 +245,61 @@ class SigmaSource(DashboardServiceSource):
             )
         return None
 
+    @cached_property
+    def _db_services(self) -> dict[str, DatabaseService | None]:
+        """The database service of each dbServicePrefixes entry, read once per run"""
+        return {
+            prefix: self.metadata.get_by_name(entity=DatabaseService, fqn=prefix.split(".")[0])
+            for prefix in self.get_db_service_prefixes()
+        }
+
+    def _get_table_entity(
+        self, database: str | None, schema: str | None, table: str | None, db_service_prefix: str | None
+    ) -> Table | None:
+        """
+        The one table the reference names across the dbServicePrefixes, returned on the call for the
+        prefix it was found under. Lineage must not guess, so a reference matching several tables, or
+        with no prefix configured, resolves to none. A reference is resolved once per run, as every
+        prefix's call needs the same answer.
+        """
+        if not (schema and table):
+            return None
+        key = (database, schema, table)
+        if key not in self._resolved_tables:
+            self._resolved_tables[key] = self._resolve_table(database, schema, table)
+        resolved = self._resolved_tables[key]
+        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+
+    def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str] | None:
+        """The one table the reference names across the dbServicePrefixes, with the prefix it was found under"""
+        matches: dict[str, tuple[Table, str]] = {}
+        for prefix in self.get_db_service_prefixes():
+            service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
+            if any(
+                expected and actual and expected.lower() != actual.lower()
+                for expected, actual in ((prefix_database, database), (prefix_schema, schema), (prefix_table, table))
+            ):
+                continue
+            service_entity = self._db_services[prefix]
+            searched_database = (
+                get_database_name_for_lineage(service_entity, database) if database and service_entity else database
+            )
+            try:
+                found_tables = get_table_binding_resolution(self.metadata, service).resolve(
+                    TableReference(searched_database or prefix_database, schema, table),
+                    service_name=service,
+                    lookup=TableLookup.SEARCH,
+                )
+            except UnsupportedTableReferenceError as exc:
+                logger.debug("Skipping unsupported Sigma table reference %s in %s: %s", table, service, exc)
+                continue
+            for found in found_tables:
+                matches.setdefault(model_str(found.id), (found, prefix))
+        if len(matches) != 1:
+            logger.debug("Skipping Sigma table reference %s: it matches %d tables", table, len(matches))
+            return None
+        return next(iter(matches.values()))
+
     def _get_table_entity_from_node(
         self,
         node: NodeDetails,
@@ -223,47 +308,16 @@ class SigmaSource(DashboardServiceSource):
         """
         Get the table entity for lineage
         """
-        (
-            prefix_service_name,
-            prefix_database_name,
-            prefix_schema_name,
-            prefix_table_name,
-        ) = self.parse_db_service_prefix(db_service_prefix or "*")
-
-        if node.node_schema:
-            schema_parts = node.node_schema.split(".")
-            schema_name = schema_parts[-1]
-            database_name = schema_parts[0] if len(schema_parts) > 1 else None
-            table_name = node.name
-
-            if prefix_table_name and table_name and prefix_table_name.lower() != table_name.lower():
-                logger.debug(f"Table {table_name} does not match prefix {prefix_table_name}")
-                return None
-
-            if prefix_schema_name and schema_name and prefix_schema_name.lower() != schema_name.lower():
-                logger.debug(f"Schema {schema_name} does not match prefix {prefix_schema_name}")
-                return None
-
-            if prefix_database_name and database_name and prefix_database_name.lower() != database_name.lower():
-                logger.debug(f"Database {database_name} does not match prefix {prefix_database_name}")
-                return None
-
-            try:
-                fqn_search_string = build_es_fqn_search_string(
-                    service_name=prefix_service_name,
-                    database_name=prefix_database_name or database_name,
-                    schema_name=prefix_schema_name or schema_name,
-                    table_name=prefix_table_name or table_name,
-                )
-                table_result = self.metadata.search_in_any_service(
-                    entity_type=Table,
-                    fqn_search_string=fqn_search_string,
-                )
-                return table_result  # noqa: RET504, TRY300
-            except Exception as exc:
-                logger.debug(traceback.format_exc())
-                logger.warning(f"Error occured while finding table fqn: {exc}")
-
+        if not node.node_schema:
+            return None
+        schema_parts = node.node_schema.split(".")
+        try:
+            return self._get_table_entity(
+                schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name, db_service_prefix
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Error occured while finding table fqn: %s", exc)
         return None
 
     def _yield_lineage_from_files(
@@ -275,38 +329,9 @@ class SigmaSource(DashboardServiceSource):
         Yield lineage using file-based API (fallback method)
         """
         for data_model in self.data_models or []:
-            try:
-                # Skip non-visualization elements to avoid Sigma API 500 errors.
-                if not data_model.vizualizationType:
-                    continue
-
-                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
-                if not data_model_entity:
-                    continue
-
-                lineage = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
-
-                if not lineage:
-                    continue
-
-                nodes, all_sources_read = lineage
-                tables = [
-                    table for node in nodes if (table := self._get_table_entity_from_node(node, db_service_prefix))
-                ]
-                yield from self._yield_table_and_column_lineage(
-                    tables,
-                    data_model_entity,
-                    data_model.columns,
-                    all_sources_found=all_sources_read and len(tables) == len(nodes),
-                )
-            except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name=f"{dashboard_details.name} File-Based Lineage",
-                        error=f"Error in file-based lineage: {exc}",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
+            # Skip non-visualization elements to avoid Sigma API 500 errors.
+            if data_model.vizualizationType:
+                yield from self._yield_lineage_from_files_for_element(dashboard_details, data_model, db_service_prefix)
 
     def _yield_lineage_from_files_for_element(
         self,
@@ -390,6 +415,9 @@ class SigmaSource(DashboardServiceSource):
         if not dashboard_details:
             logger.warning(f"Skipping lineage - dashboard details are None (API error)")  # noqa: F541
             return
+        if not db_service_prefix:
+            # Tables resolve only within the dbServicePrefixes services: without one there is nothing to link
+            return
 
         queries_response = self.client.get_workbook_queries(dashboard_details.workbookId)
 
@@ -397,12 +425,8 @@ class SigmaSource(DashboardServiceSource):
             yield from self._yield_lineage_from_files(dashboard_details, db_service_prefix)
             return
 
-        db_service_name = None
-        db_service_entity = None
-        if db_service_prefix:
-            (db_service_name, _, _, _) = self.parse_db_service_prefix(db_service_prefix)
-            if db_service_name:
-                db_service_entity = self.metadata.get_by_name(entity=DatabaseService, fqn=db_service_name)
+        db_service_entity = self._db_services.get(db_service_prefix)
+        dialect = None
 
         queries_by_element = {q.elementId: q for q in queries_response.entries}
 
@@ -426,13 +450,16 @@ class SigmaSource(DashboardServiceSource):
                     )
                     continue
 
-                lineage_parser = LineageParser(
-                    query_obj.sql,
-                    ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
-                    if db_service_entity
-                    else Dialect.ANSI,
-                    parser_type=self.get_query_parser_type(),
+                dialect = (
+                    dialect
+                    or self._workbook_dialect(dashboard_details)
+                    or (
+                        ConnectionTypeDialectMapper.dialect_of(db_service_entity.serviceType.value)
+                        if db_service_entity
+                        else Dialect.ANSI
+                    )
                 )
+                lineage_parser = LineageParser(query_obj.sql, dialect, parser_type=self.get_query_parser_type())
 
                 tables: list[Table] = []
                 # LineageParser's third-party cached_property carries no type
@@ -440,23 +467,11 @@ class SigmaSource(DashboardServiceSource):
                 for source_table in source_tables:
                     try:
                         database_schema_table = fqn.split_table_name(str(source_table))
-                        database_name = database_schema_table.get("database")
-                        schema_name = database_schema_table.get("database_schema")
-                        table_name = database_schema_table.get("table")
-
-                        if db_service_entity and database_name:
-                            database_name = get_database_name_for_lineage(db_service_entity, database_name)
-
-                        fqn_search_string = build_es_fqn_search_string(
-                            service_name=db_service_name or "*",
-                            database_name=database_name,
-                            schema_name=schema_name,
-                            table_name=table_name,
-                        )
-
-                        table_entity = self.metadata.search_in_any_service(
-                            entity_type=Table,
-                            fqn_search_string=fqn_search_string,
+                        table_entity = self._get_table_entity(
+                            database_schema_table.get("database"),
+                            database_schema_table.get("database_schema"),
+                            database_schema_table.get("table"),
+                            db_service_prefix,
                         )
                     except Exception as exc:
                         yield Either(
@@ -486,6 +501,42 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
 
+    def _workbook_lineage(self, dashboard_details: WorkbookDetails) -> list[WorkbookLineageEntry]:
+        if dashboard_details.lineage is None:
+            dashboard_details.lineage = self.client.get_workbook_lineage(dashboard_details.workbookId)
+        return dashboard_details.lineage or []
+
+    def _workbook_dialect(self, dashboard_details: WorkbookDetails) -> Dialect | None:
+        """The dialect of the warehouse Sigma runs the workbook's SQL on, when all its sources use one connection"""
+        connection_ids = {
+            entry.connectionId for entry in self._workbook_lineage(dashboard_details) if entry.connectionId
+        }
+        if len(connection_ids) != 1:
+            return None
+        connection_type = self.client.get_connection_type(next(iter(connection_ids)))
+        return SIGMA_CONNECTION_DIALECTS.get((connection_type or "").lower())
+
+    def yield_dashboard_lineage(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaLineageRequest]]:
+        """Also link each Sigma Data Model to the workbook elements reading it, once per workbook"""
+        yield from super().yield_dashboard_lineage(dashboard_details)
+        if not (dashboard_details and self.source_config.includeDataModels):
+            return
+        lineage = self._workbook_lineage(dashboard_details)
+        data_model_ids = {entry.dataModelId for entry in lineage if entry.dataModelId}
+        # An element row lists the data models it reads among its root sources (dataSourceIds)
+        links = {
+            (data_model_id, entry.elementId)
+            for entry in lineage
+            if entry.elementId
+            for data_model_id in data_model_ids.intersection(entry.dataSourceIds or [])
+        }
+        for data_model_id, element_id in sorted(links):
+            from_entity, to_entity = self._get_datamodel(data_model_id), self._get_datamodel(element_id)
+            if from_entity and to_entity:
+                yield from self.yield_lineage_request(
+                    self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+                )
+
     def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
         datamodel_columns = []
@@ -512,16 +563,21 @@ class SigmaSource(DashboardServiceSource):
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = self.client.get_chart_details(dashboard_details.workbookId)
-            for data_model in self.data_models or []:
+            self.data_models = []
+            for data_model in dashboard_details.elements:
                 # Skip non-visualization elements (text boxes, dividers, buttons, controls)
                 # to avoid creating DataModel entries for elements that have no data source.
                 if not data_model.vizualizationType:
                     continue
+                display_name = data_model.name or f"Element {data_model.elementId}"
+                if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
+                    self.status.filter(display_name, "Data model filtered out.")
+                    continue
+                self.data_models.append(data_model)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
-                        displayName=data_model.name or f"Element {data_model.elementId}",
+                        displayName=display_name,
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,
@@ -538,7 +594,63 @@ class SigmaSource(DashboardServiceSource):
                         )
                     )
 
-    def get_owner_ref(self, dashboard_details: WorkbookDetails) -> EntityReferenceList | None:
+    def list_datamodels(self) -> Iterable[DataModel]:
+        """Sigma Data Models, ingested before the workbooks that read from them"""
+        return self.client.get_data_models() if self.source_config.includeDataModels else []
+
+    def yield_bulk_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, data_model: DataModel
+    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        """One data model per Sigma Data Model, with a table column per element, as PowerBI models a dataset"""
+        display_name = data_model.name or data_model.dataModelId
+        if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
+            self.status.filter(display_name, "Data model filtered out.")
+            return
+        try:
+            elements = self.client.get_data_model_elements(data_model.dataModelId)
+            if elements is None:
+                # Rebuilt from an unread element list, the data model would lose its columns: keep it as it is
+                self.datamodel_source_state.add(
+                    fqn.build(
+                        self.metadata,
+                        entity_type=DashboardDataModel,
+                        service_name=vars(self.context.get())["dashboard_service"],
+                        data_model_name=data_model.dataModelId,
+                    )
+                )
+                return
+            data_model_request = CreateDashboardDataModelRequest(
+                name=EntityName(data_model.dataModelId),
+                displayName=display_name,
+                service=FullyQualifiedEntityName(vars(self.context.get())["dashboard_service"]),
+                dataModelType=DataModelType.SigmaDataModel,
+                serviceType=self.service_connection.type.value,
+                sourceUrl=SourceUrl(data_model.url) if data_model.url else None,
+                owners=self.get_owner_ref(data_model),
+                columns=[
+                    Column(
+                        name=ColumnName(truncate_column_name(element.elementId)),
+                        displayName=element.name or element.elementId,
+                        dataType=DataType.TABLE,
+                        dataTypeDisplay="Sigma Data Model Element",
+                        children=self.get_column_info(element),
+                    )
+                    for element in elements
+                ],
+            )
+            yield Either(left=None, right=data_model_request)
+            self.register_record_datamodel(datamodel_request=data_model_request)
+        except Exception as exc:
+            yield Either(
+                right=None,
+                left=StackTraceError(
+                    name=data_model.dataModelId,
+                    error=f"Error yielding Sigma data model [{data_model.dataModelId}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+            )
+
+    def get_owner_ref(self, dashboard_details: WorkbookDetails | DataModel) -> EntityReferenceList | None:
         """
         Get owner from email
         """
@@ -547,7 +659,7 @@ class SigmaSource(DashboardServiceSource):
                 return None
             if dashboard_details.ownerId:
                 owner = self.client.get_owner_detail(dashboard_details.ownerId)
-                return self.metadata.get_reference_by_email(owner.email)
+                return self.metadata.get_reference_by_email(owner.email.lower()) if owner else None
             return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())

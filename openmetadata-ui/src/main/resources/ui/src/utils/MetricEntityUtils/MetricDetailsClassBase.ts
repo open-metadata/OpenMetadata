@@ -19,11 +19,15 @@ import {
   GLOSSARY_TERMS_WIDGET,
   GridSizes,
   KNOWLEDGE_ARTICLE_WIDGET,
+  REVIEWER_WIDGET,
   TAGS_WIDGET,
 } from '../../constants/CustomizeWidgets.constants';
 import { METRIC_DUMMY_DATA } from '../../constants/Metric.constants';
 import type { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
+import {
+  DetailPageWidgetKeys,
+  GlossaryTermDetailPageWidgetKeys,
+} from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import type { Metric } from '../../generated/entity/data/metric';
 import type { Tab } from '../../generated/system/ui/uiCustomization';
@@ -65,7 +69,8 @@ type MetricWidgetKeys =
   | DetailPageWidgetKeys.METRIC_HIERARCHY
   | DetailPageWidgetKeys.METRIC_DEFINITION
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
-  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
+  | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE
+  | GlossaryTermDetailPageWidgetKeys.REVIEWER;
 
 class MetricDetailsClassBase {
   defaultWidgetHeight: Record<MetricWidgetKeys, number>;
@@ -81,6 +86,7 @@ class MetricDetailsClassBase {
       [DetailPageWidgetKeys.METRIC_DEFINITION]: 4,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
+      [GlossaryTermDetailPageWidgetKeys.REVIEWER]: 2,
     };
   }
 
@@ -154,6 +160,14 @@ class MetricDetailsClassBase {
         static: true,
       },
       {
+        h: this.defaultWidgetHeight[GlossaryTermDetailPageWidgetKeys.REVIEWER],
+        i: GlossaryTermDetailPageWidgetKeys.REVIEWER,
+        w: 2,
+        x: 6,
+        y: 0,
+        static: false,
+      },
+      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.DATA_PRODUCTS],
         i: DetailPageWidgetKeys.DATA_PRODUCTS,
         w: 2,
@@ -211,6 +225,7 @@ class MetricDetailsClassBase {
     return [
       DESCRIPTION_WIDGET,
       DATA_PRODUCTS_WIDGET,
+      REVIEWER_WIDGET,
       TAGS_WIDGET,
       GLOSSARY_TERMS_WIDGET,
       {

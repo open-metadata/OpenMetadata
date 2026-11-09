@@ -24,7 +24,12 @@ import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../enums/entity.enum';
 import { TestCaseStatus } from '../../generated/tests/testCase';
-import { TagSource } from '../../generated/type/tagLabel';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../generated/type/tagLabel';
 import { useChangeSummary } from '../../hooks/useChangeSummary';
 import { patchDashboardDetails } from '../../rest/dashboardAPI';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
@@ -327,9 +332,18 @@ jest.mock('../common/GlossaryTermsSection/GlossaryTermsSection', () => {
 jest.mock('../common/TagsSection/TagsSection', () => {
   return jest
     .fn()
-    .mockImplementation(() => (
-      <div data-testid="tags-section">Tags Section</div>
-    ));
+    .mockImplementation(
+      (props: { tags?: Array<{ tagFQN?: string; source?: string }> }) => (
+        <div data-testid="tags-section">
+          Tags Section
+          {(props?.tags ?? []).map((tag) => (
+            <span data-testid={`mock-tag-${tag.tagFQN}`} key={tag.tagFQN ?? ''}>
+              {tag.source}:{tag.tagFQN}
+            </span>
+          ))}
+        </div>
+      )
+    );
 });
 
 jest.mock('../common/DataProductsSection/DataProductsSection', () => {
@@ -1124,6 +1138,77 @@ describe('DataAssetSummaryPanelV1', () => {
         expect(
           screen.queryByText('EN:label.owner-plural')
         ).not.toBeInTheDocument();
+      }
+    );
+  });
+
+  describe('Glossary tag preservation in TagsSection prop (regression)', () => {
+    const tierTag: TagLabel = {
+      tagFQN: 'Tier.Tier1',
+      source: TagSource.Classification,
+      name: 'Tier1',
+      displayName: 'Tier 1',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+    const classificationTag: TagLabel = {
+      tagFQN: 'PII.Sensitive',
+      source: TagSource.Classification,
+      name: 'Sensitive',
+      displayName: 'Sensitive',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+    const glossaryTag: TagLabel = {
+      tagFQN: 'Glossary.CustomerData',
+      source: TagSource.Glossary,
+      name: 'CustomerData',
+      displayName: 'Customer Data',
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    };
+
+    const dataAssetWithGlossaryTags = {
+      ...mockDataAsset,
+      tags: [tierTag, classificationTag, glossaryTag],
+    } as unknown as DataAssetType;
+
+    // Regression for bug where the Data Product and misc summary layouts
+    // filtered glossary tags out of the `tags` prop passed to TagsSection.
+    // TagsSection treats the `tags` prop as a full replacement on save, so
+    // filtering glossary tags upstream caused classification-tag edits to
+    // silently delete all glossary term taggings on the entity.
+    it.each([
+      ['DATA_PRODUCT', EntityType.DATA_PRODUCT],
+      ['USER (misc layout)', EntityType.USER],
+      ['TABLE (common layout)', EntityType.TABLE],
+    ])(
+      'passes unfiltered tags (including glossary) to TagsSection for %s',
+      async (_label, type) => {
+        await act(async () => {
+          render(
+            <DataAssetSummaryPanelV1
+              {...defaultProps}
+              dataAsset={dataAssetWithGlossaryTags}
+              entityType={type}
+            />
+          );
+        });
+
+        await waitFor(() => {
+          expect(screen.getByTestId('tags-section')).toBeInTheDocument();
+        });
+
+        // The glossary tag must be present in the tags passed to TagsSection
+        expect(
+          screen.getByTestId('mock-tag-Glossary.CustomerData')
+        ).toBeInTheDocument();
+        // The classification tag must also be present
+        expect(
+          screen.getByTestId('mock-tag-PII.Sensitive')
+        ).toBeInTheDocument();
+        // The tier tag must also be present
+        expect(screen.getByTestId('mock-tag-Tier.Tier1')).toBeInTheDocument();
       }
     );
   });

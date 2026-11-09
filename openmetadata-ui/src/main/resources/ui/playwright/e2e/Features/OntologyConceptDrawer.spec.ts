@@ -689,6 +689,14 @@ for (const mode of ['classic', 'ai'] as const) {
           await expect(
             page.getByRole('button', { name: /Select Ontology/ })
           ).toHaveCount(0);
+          // All ontologies lists every worker's ontologies, and the drawer
+          // preselects the first unless one is remembered. A parallel worker
+          // deleting that one 404s the drawer's model and leaves it loading.
+          await page.evaluate(
+            (id) =>
+              localStorage.setItem('ontology-studio-last-concept-ontology', id),
+            owner.id
+          );
           await page.getByTestId('ontology-add-concept').click();
           const panel = page.getByTestId('ontology-new-class-panel');
           await expect(panel).toBeVisible();
@@ -756,8 +764,9 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.getByTestId('mode-tab-edit').click();
         await page.getByTestId('ontology-add-concept').click();
         await page.getByTestId('new-class-label').fill('Unsaved class');
+        // Collate overrides label.unsaved-changes as "Unsaved Changes".
         await expect(page.getByTestId('new-class-save-status')).toHaveText(
-          'Unsaved changes'
+          /^unsaved changes$/i
         );
 
         await test.step('switching nodes', async () => {

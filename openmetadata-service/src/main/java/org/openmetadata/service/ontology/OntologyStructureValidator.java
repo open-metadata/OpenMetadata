@@ -6,6 +6,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -123,6 +124,21 @@ public final class OntologyStructureValidator {
     if (validator.violationCount != 0) {
       throw new OntologyValidationException(validator.violationCount, validator.findings);
     }
+  }
+
+  /**
+   * The first error each affected definition draws from the checks a save runs, by definition id.
+   * An import uses it to drop what applying would refuse before it writes the plan.
+   */
+  public static Map<UUID, String> workingErrors(
+      final List<OntologyDefinition> values, final Set<UUID> affected) {
+    final Map<UUID, String> errors = new LinkedHashMap<>();
+    validateWorkingDefinitions(values, affected).findings.stream()
+        .filter(
+            issue -> issue.getViolation().getSeverity() == OntologyProfileViolationSeverity.ERROR)
+        .forEach(
+            issue -> errors.putIfAbsent(issue.getMemberId(), issue.getViolation().getMessage()));
+    return errors;
   }
 
   public static OntologyProfileReport validateWorking(final List<OntologyDefinition> values) {

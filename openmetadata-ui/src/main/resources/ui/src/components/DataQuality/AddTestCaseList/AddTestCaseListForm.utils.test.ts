@@ -12,6 +12,8 @@
  */
 import { EntityReference } from '../../../generated/tests/testCase';
 import {
+  isSelectAllPayload,
+  isValidTestCaseSelection,
   normalizeSelectedTestProp,
   seedSelectedFromExistingTest,
 } from './AddTestCaseListForm.utils';
@@ -46,6 +48,170 @@ describe('normalizeSelectedTestProp', () => {
         testCases: [],
       })
     ).toEqual([]);
+  });
+});
+
+describe('isValidTestCaseSelection', () => {
+  it('returns false for nullish values', () => {
+    expect(isValidTestCaseSelection(undefined)).toBe(false);
+    expect(isValidTestCaseSelection(null)).toBe(false);
+  });
+
+  it('returns true for a non-empty array of names', () => {
+    expect(isValidTestCaseSelection(['tc_a', 'tc_b'])).toBe(true);
+  });
+
+  it('returns false for an empty array', () => {
+    expect(isValidTestCaseSelection([])).toBe(false);
+  });
+
+  it('returns true for a non-empty array of test case objects', () => {
+    expect(isValidTestCaseSelection([{ name: 'tc_a' }])).toBe(true);
+  });
+
+  it('returns true for a select-all payload even with empty testCases', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for a select-all payload with the empty filter the picker sends', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: {},
+      })
+    ).toBe(true);
+  });
+
+  it('returns false for a select-all payload with exclusions', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: ['tc-excluded'],
+        testCases: [],
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for a select-all payload with an active filter', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: { any: 'fullyQualifiedName:svc.db.sch.t' },
+      })
+    ).toBe(false);
+  });
+
+  it('returns true for a partial payload with includeIds', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: false,
+        includeIds: ['id-1'],
+        excludeIds: [],
+        testCases: [{ id: 'id-1', name: 'tc_one' }],
+      })
+    ).toBe(true);
+  });
+
+  it('returns false for a partial payload with no includeIds and empty testCases', () => {
+    expect(
+      isValidTestCaseSelection({
+        selectAll: false,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for non-payload objects', () => {
+    expect(isValidTestCaseSelection({ foo: 'bar' })).toBe(false);
+    expect(isValidTestCaseSelection(42)).toBe(false);
+    expect(isValidTestCaseSelection('tc_a')).toBe(false);
+  });
+});
+
+describe('isSelectAllPayload', () => {
+  it('returns true for a select-all payload', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+      })
+    ).toBe(true);
+  });
+
+  it('returns true for a select-all payload with the empty filter the picker sends', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: {},
+      })
+    ).toBe(true);
+  });
+
+  it('returns false for a select-all payload with exclusions', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: ['tc-excluded'],
+        testCases: [],
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for a select-all payload with an active filter', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: true,
+        includeIds: [],
+        excludeIds: [],
+        testCases: [],
+        filter: { any: 'fullyQualifiedName:svc.db.sch.t' },
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for a partial-selection payload', () => {
+    expect(
+      isSelectAllPayload({
+        selectAll: false,
+        includeIds: ['id-1'],
+        excludeIds: [],
+        testCases: [{ id: 'id-1', name: 'tc_one' }],
+      })
+    ).toBe(false);
+  });
+
+  it('returns false for arrays', () => {
+    expect(isSelectAllPayload(['tc_a'])).toBe(false);
+    expect(isSelectAllPayload([])).toBe(false);
+  });
+
+  it('returns false for nullish and non-object values', () => {
+    expect(isSelectAllPayload(undefined)).toBe(false);
+    expect(isSelectAllPayload(null)).toBe(false);
+    expect(isSelectAllPayload(42)).toBe(false);
+    expect(isSelectAllPayload('tc_a')).toBe(false);
   });
 });
 
