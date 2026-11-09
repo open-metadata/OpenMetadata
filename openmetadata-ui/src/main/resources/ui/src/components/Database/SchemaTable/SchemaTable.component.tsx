@@ -465,9 +465,8 @@ const SchemaTable = () => {
   }, [tableColumns]);
 
   // Propagates column edits made elsewhere (e.g. the column detail panel writes to the
-  // table query cache) into the loaded page. Reference equality, not a deep compare, and
-  // a single Map-based pass: wide tables made the old deep isEqual + per-column nested
-  // merge block the main thread for hundreds of ms on every navigation.
+  // table query cache) into the loaded page. Reference equality so the first load (and
+  // unchanged refetches) skip a second setTableColumns, which re-rendered the whole table.
   // Assumes every writer to the table query cache replaces the `columns` array; mutating
   // it in place and then calling setQueryData would be skipped here.
   useEffect(() => {
