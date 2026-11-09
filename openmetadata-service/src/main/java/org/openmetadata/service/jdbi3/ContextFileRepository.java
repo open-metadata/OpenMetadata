@@ -208,8 +208,8 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   // Memory cleanup runs in these hooks while the file -> memory MENTIONED_IN edges still exist; a
-  // hard delete's cleanup() removes them before postDelete. Archiving keeps the memories for a
-  // restore, a permanent delete releases them. Mirrors KnowledgePageRepository.
+  // hard delete's cleanup() removes them before postDelete. Archiving keeps the memories, restoring
+  // brings them back, and a permanent delete releases them.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
@@ -220,6 +220,13 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
     memorySourceLifecycle().releaseExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+  }
+
+  // Runs for a single restore and for each file of a restored folder, once the file is live again.
+  @Override
+  @Transaction
+  protected void restoreAdditionalChildren(UUID fileId, String restoredBy) {
+    memorySourceLifecycle().restoreExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   private MemorySourceLifecycle memorySourceLifecycle() {

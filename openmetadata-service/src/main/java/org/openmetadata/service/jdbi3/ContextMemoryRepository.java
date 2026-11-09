@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
 import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
@@ -222,12 +223,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   protected void postDelete(ContextMemory memory, boolean hardDelete) {
     super.postDelete(memory, hardDelete);
     MemoryConflictReviewTasks.afterDelete(memory, hardDelete);
+    new ArchivedWithSources(daoCollection.entityExtensionDAO()).clear(memory.getId());
   }
 
   @Override
   protected void postRestore(ContextMemory memory) {
     super.postRestore(memory);
     MemoryConflictReviewTasks.afterWrite(null, memory);
+    new ArchivedWithSources(daoCollection.entityExtensionDAO()).clear(memory.getId());
   }
 
   /** Whether the memory row exists, soft-deleted or not; provenance may point at either. */
@@ -1160,35 +1163,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return memories;
   }
 
+  /** Links a memory to another source that states it, as {@link MemorySourceLifecycle} does. */
   public void linkExtractedMemory(UUID memoryId, EntityReference source) {
-    boolean alreadyLinked =
-        findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, source.getType())
-            .stream()
-            .anyMatch(existing -> source.getId().equals(existing.getId()));
-    if (alreadyLinked) {
-      return;
-    }
-    ContextMemory current =
-        get(null, memoryId, getFields(SOURCE_LINK_FIELDS), Include.NON_DELETED, false);
-    boolean isPrimary =
-        current.getPrimaryEntity() != null
-            && source.getId().equals(current.getPrimaryEntity().getId());
-    boolean isRelated =
-        listOrEmpty(current.getRelatedEntities()).stream()
-            .anyMatch(related -> source.getId().equals(related.getId()));
-    if (!isPrimary && !isRelated) {
-      ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
-      List<EntityReference> related = new ArrayList<>(listOrEmpty(current.getRelatedEntities()));
-      related.add(source);
-      updated.setRelatedEntities(related);
-      update(null, current, updated, Entity.ADMIN_USER_NAME);
-    }
-    addRelationship(
-        source.getId(),
-        memoryId,
-        source.getType(),
-        Entity.CONTEXT_MEMORY,
-        Relationship.MENTIONED_IN);
+    new MemorySourceLifecycle(this).linkExtractedMemory(memoryId, source);
   }
 
   /**

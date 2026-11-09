@@ -3,6 +3,7 @@ package org.openmetadata.it.drive;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
 import org.apache.http.client.HttpResponseException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,8 +28,11 @@ import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreateContextFile;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.MoveContextFileRequest;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -38,6 +43,7 @@ import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.sdk.test.util.TestNamespace;
@@ -53,6 +59,7 @@ class ContextFileIT {
   private static final String FILE_PATH = "v1/contextCenter/drive/files";
   private static final String FOLDER_PATH = "v1/contextCenter/drive/folders";
   private static final String MEMORY_PATH = "v1/contextCenter/memories";
+  private static final String TASK_PATH = "v1/tasks";
 
   private ContextFile createFile(RestClient rest, CreateContextFile request)
       throws HttpResponseException {
@@ -103,6 +110,48 @@ class ContextFileIT {
       assertTrue(
           JsonUtils.readTree(archived.readEntity(String.class)).get("deleted").asBoolean(),
           "the memory is archived, not deleted");
+    }
+  }
+
+  /** The live memory: an ordinary read finds it. */
+  private ContextMemory getMemory(RestClient rest, UUID memoryId) throws HttpResponseException {
+    return rest.getById(MEMORY_PATH, memoryId, "", ContextMemory.class);
+  }
+
+  /** Holds the memory in review against {@code disputed}, as reconciliation does. */
+  private ContextMemory holdForReview(RestClient rest, ContextMemory memory, ContextMemory disputed)
+      throws HttpResponseException {
+    ContextMemory current = getMemory(rest, memory.getId());
+    ContextMemory held =
+        JsonUtils.deepCopy(current, ContextMemory.class)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withStatusReason("contradicts: the order threshold differs")
+            .withDisputes(
+                List.of(
+                    new MemoryDispute()
+                        .withMemory(disputed.getEntityReference())
+                        .withReason("Five orders against three orders")));
+    return rest.patch(
+        MEMORY_PATH, memory.getId(), JsonUtils.pojoToJson(current), held, ContextMemory.class);
+  }
+
+  /** The id of the memory's one open conflict review task. */
+  private UUID openReviewId(RestClient rest, ContextMemory memory) {
+    String path =
+        TASK_PATH
+            + "?type=MemoryConflictReview&status=Open&fields=about&aboutEntity="
+            + encode(memory.getFullyQualifiedName());
+    try (Response response = rest.rawGet(path)) {
+      assertEquals(200, response.getStatus());
+      JsonNode tasks = JsonUtils.readTree(response.readEntity(String.class)).path("data");
+      List<UUID> open =
+          StreamSupport.stream(tasks.spliterator(), false)
+              .filter(
+                  task -> memory.getId().toString().equals(task.path("about").path("id").asText()))
+              .map(task -> UUID.fromString(task.path("id").asText()))
+              .toList();
+      assertEquals(1, open.size(), "exactly one open review");
+      return open.getFirst();
     }
   }
 
@@ -445,6 +494,108 @@ class ContextFileIT {
               assertEquals(404, memoryStatusIncludingDeleted(rest, first.getId()));
               assertEquals(404, memoryStatusIncludingDeleted(rest, second.getId()));
             });
+  }
+
+  /**
+   * Restoring the file brings back the memory its archive took, but not the ones a person deleted:
+   * before the archive, after restoring it on its own, or again while it was archived.
+   */
+  @Test
+  void testRestoringAFileKeepsTheMemoriesAPersonDeleted(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("restored-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory archived = createExtractedMemory(rest, ns.prefix("pill-archived"), file);
+    ContextMemory deletedFirst = createExtractedMemory(rest, ns.prefix("pill-deleted"), file);
+    ContextMemory restoredAlone = createExtractedMemory(rest, ns.prefix("pill-restored"), file);
+    ContextMemory deletedAgain = createExtractedMemory(rest, ns.prefix("pill-redeleted"), file);
+    rest.delete(MEMORY_PATH, deletedFirst.getId());
+    rest.delete(FILE_PATH, file.getId());
+    rest.restore(MEMORY_PATH, restoredAlone.getId(), ContextMemory.class);
+    rest.delete(MEMORY_PATH, restoredAlone.getId());
+    rest.delete(MEMORY_PATH, deletedAgain.getId());
+
+    rest.restore(FILE_PATH, file.getId(), ContextFile.class);
+
+    assertEquals(archived.getId(), getMemory(rest, archived.getId()).getId());
+    assertArchived(rest, deletedFirst.getId());
+    assertArchived(rest, restoredAlone.getId());
+    assertArchived(rest, deletedAgain.getId());
+    assertEquals(1, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
+  }
+
+  @Test
+  void testRestoringAFolderBringsBackTheMemoriesOfItsFiles(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Folder folder = createFolder(rest, new CreateFolder().withName(ns.prefix("restored-folder")));
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("pills-in-folder"))
+                .withFolder(folder.getFullyQualifiedName())
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory pill = createExtractedMemory(rest, ns.prefix("pill-in-folder"), file);
+    rest.delete(FOLDER_PATH, folder.getId());
+    assertArchived(rest, pill.getId());
+
+    rest.restore(FOLDER_PATH, folder.getId(), Folder.class);
+
+    assertEquals(pill.getId(), getMemory(rest, pill.getId()).getId());
+    assertEquals(1, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
+  }
+
+  /**
+   * Archiving cancels the review of a memory held for a conflict, so resolving it is refused rather
+   * than failing; restoring brings the memory back in review, with a fresh task.
+   */
+  @Test
+  void testRestoringAFileReopensTheReviewOfItsMemoryInReview(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("reviewed-pills"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory disputed =
+        rest.create(
+            MEMORY_PATH,
+            new CreateContextMemory()
+                .withName(ns.prefix("pill-disputed"))
+                .withTitle(ns.prefix("pill-disputed"))
+                .withQuestion("Who qualifies as a customer?")
+                .withAnswer("Customers need at least five orders."),
+            ContextMemory.class);
+    ContextMemory held =
+        holdForReview(
+            rest, createExtractedMemory(rest, ns.prefix("pill-in-review"), file), disputed);
+    UUID review = openReviewId(rest, held);
+    rest.delete(FILE_PATH, file.getId());
+    try (Response refused =
+        rest.rawPost(
+            TASK_PATH + "/" + review + "/resolve",
+            new ResolveTask()
+                .withTransitionId("approve")
+                .withResolutionType(TaskResolutionType.Approved))) {
+      assertEquals(400, refused.getStatus(), "the archive cancelled the review");
+    }
+
+    rest.restore(FILE_PATH, file.getId(), ContextFile.class);
+
+    ContextMemory restored = getMemory(rest, held.getId());
+    assertEquals(ContextMemoryStatus.DRAFT, restored.getEntityStatus());
+    assertEquals(
+        List.of(disputed.getId()),
+        restored.getDisputes().stream().map(dispute -> dispute.getMemory().getId()).toList());
+    assertNotEquals(review, openReviewId(rest, restored), "a fresh review");
   }
 
   // --- File in Folder ---

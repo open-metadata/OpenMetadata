@@ -83,6 +83,7 @@ import org.openmetadata.service.llm.NoopCompletionClient;
 class ContextMemoryExtractionIT {
   private static final String PAGES = "v1/contextCenter/pages";
   private static final String FILES = "v1/contextCenter/drive/files";
+  private static final String MEMORIES = "v1/contextCenter/memories";
   private final AtomicInteger calls = new AtomicInteger();
   private AiProvider previousProvider;
   private boolean partial;
@@ -298,6 +299,120 @@ class ContextMemoryExtractionIT {
     assertSource(fresh, copy.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION);
     assertEquals(Set.of(original.getId()), sourceIds(archived));
     assertArchived(ns, archived);
+  }
+
+  /** The same memories come back with a person's edit and their usage, and nothing is re-extracted. */
+  @Test
+  void restoringAnArchivedDocumentBringsBackItsMemories(TestNamespace ns) throws Exception {
+    ContextFile file = file(ns, "restored", "Restored definition " + ns.shortPrefix());
+    runFile(file);
+    ContextMemory memory = extracted(file.getEntityReference()).getFirst();
+    ContextMemory edited = editAnswer(memory, "Edited by a person " + ns.shortPrefix());
+    Entity.getCollectionDAO()
+        .contextMemoryDAO()
+        .recordUsage(memory.getId(), System.currentTimeMillis());
+    ContextMemory beforeArchive = readMemory(memory);
+    ContextFile fileBeforeArchive = readFile(file);
+    RestClient.admin().delete(FILES, file.getId());
+    assertArchived(ns, memory);
+
+    RestClient.admin().restore(FILES, file.getId(), ContextFile.class);
+
+    assertEquals(List.of(memory.getId()), ids(extracted(file.getEntityReference())));
+    ContextMemory restored = readMemory(memory);
+    assertEquals(beforeArchive.getEntityStatus(), restored.getEntityStatus());
+    assertEquals(edited.getAnswer(), restored.getAnswer());
+    assertEquals(beforeArchive.getUsageCount(), restored.getUsageCount());
+    ContextFile restoredFile = readFile(file);
+    assertEquals(fileBeforeArchive.getMemoryCount(), restoredFile.getMemoryCount());
+    assertEquals(fileBeforeArchive.getProcessingStatus(), restoredFile.getProcessingStatus());
+    assertNull(Entity.getJobDAO().findPendingMemoryJobId(fileJobKey(file)), "nothing re-extracts");
+    assertEquals(1, calls.get());
+    awaitChips(ns, memory, file, Set.of());
+  }
+
+  @Test
+  void restoringANonLastCopyShowsItsMemoriesAgain(TestNamespace ns) throws Exception {
+    String text = "Restored copy " + ns.shortPrefix();
+    ContextFile original = file(ns, "kept-original", text);
+    runFile(original);
+    ContextFile copy = file(ns, "restored-copy", text);
+    runFile(copy);
+    ContextMemory shared = extracted(copy.getEntityReference()).getFirst();
+    RestClient.admin().delete(FILES, copy.getId());
+    awaitChips(ns, shared, original, Set.of());
+
+    RestClient.admin().restore(FILES, copy.getId(), ContextFile.class);
+
+    awaitChips(ns, shared, original, Set.of(copy.getId()));
+    assertEquals(List.of(shared.getId()), ids(extracted(copy.getEntityReference())));
+    assertEquals(1, readFile(copy).getMemoryCount());
+  }
+
+  /** The org-wide copy that took the anchor keeps it, and the restored file is a source again. */
+  @Test
+  void restoringTheFormerAnchorLeavesTheAnchorOnAnOrgWideCopy(TestNamespace ns) throws Exception {
+    String text = "Former anchor " + ns.shortPrefix();
+    ContextFile original = file(ns, "former-anchor", text);
+    runFile(original);
+    ContextFile copy = file(ns, "org-wide-copy", text);
+    runFile(copy);
+    ContextMemory shared = extracted(original.getEntityReference()).getFirst();
+    RestClient.admin().delete(FILES, original.getId());
+    awaitChips(ns, shared, copy, Set.of());
+
+    RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
+
+    awaitChips(ns, shared, copy, Set.of(original.getId()));
+    assertEquals(copy.getId(), storedAnchor(shared).getId());
+  }
+
+  /** A private copy holds the anchor only while no org-wide source is live. */
+  @Test
+  void restoringAnOrgWideFileTakesTheAnchorBackFromAPrivateCopy(TestNamespace ns) throws Exception {
+    String text = "Anchor back " + ns.shortPrefix();
+    ContextFile original = file(ns, "org-wide-original", text);
+    runFile(original);
+    ContextFile copy =
+        file(
+            ns,
+            "private-copy",
+            text,
+            new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    runFile(copy);
+    ContextMemory shared = extracted(original.getEntityReference()).getFirst();
+    awaitChips(ns, shared, original, Set.of(copy.getId()));
+    RestClient.admin().delete(FILES, original.getId());
+    awaitChips(ns, shared, copy, Set.of());
+
+    RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
+
+    awaitChips(ns, shared, original, Set.of(copy.getId()));
+    assertEquals(original.getId(), storedAnchor(shared).getId());
+  }
+
+  /**
+   * Permanently deleting the archived anchor moves the memory's anchor edge to the other archived
+   * copy, but its stored anchor still names the deleted file until that copy is restored.
+   */
+  @Test
+  void restoringAfterTheArchivedAnchorIsDeletedRepairsTheStoredAnchor(TestNamespace ns)
+      throws Exception {
+    String text = "Anchor moved in the Archive " + ns.shortPrefix();
+    ContextFile kept = file(ns, "kept-copy", text);
+    runFile(kept);
+    ContextFile deleted = file(ns, "deleted-copy", text);
+    runFile(deleted);
+    ContextMemory shared = extracted(kept.getEntityReference()).getFirst();
+    RestClient.admin().delete(FILES, kept.getId());
+    RestClient.admin().delete(FILES, deleted.getId());
+    permanentlyDelete(deleted);
+    assertArchived(ns, shared);
+
+    RestClient.admin().restore(FILES, kept.getId(), ContextFile.class);
+
+    awaitChips(ns, shared, kept, Set.of());
+    assertEquals(kept.getId(), storedAnchor(shared).getId());
   }
 
   @Test
@@ -556,6 +671,41 @@ class ContextMemoryExtractionIT {
         .untilAsserted(() -> assertGone(FILES + "/" + file.getId()));
   }
 
+  /** A person's edit through the API, as the memory dialog makes it. */
+  private ContextMemory editAnswer(ContextMemory memory, String answer) throws Exception {
+    ContextMemory current = readMemory(memory);
+    return RestClient.admin()
+        .patch(
+            MEMORIES,
+            memory.getId(),
+            JsonUtils.pojoToJson(current),
+            JsonUtils.deepCopy(current, ContextMemory.class).withAnswer(answer),
+            ContextMemory.class);
+  }
+
+  private ContextMemory readMemory(ContextMemory memory) throws Exception {
+    return RestClient.admin().getById(MEMORIES, memory.getId(), "", ContextMemory.class);
+  }
+
+  private ContextFile readFile(ContextFile file) throws Exception {
+    return RestClient.admin().getById(FILES, file.getId(), "memoryCount", ContextFile.class);
+  }
+
+  private static List<UUID> ids(List<ContextMemory> memories) {
+    return memories.stream().map(ContextMemory::getId).toList();
+  }
+
+  private static String fileJobKey(ContextFile file) {
+    return ContextMemoryExtractionJobHandler.Args.file(
+            file.getId(), UUID.fromString(file.getHeadContentId()))
+        .jobKey();
+  }
+
+  /** The anchor the memory's row stores; a read names the one its anchor edge points to. */
+  private EntityReference storedAnchor(ContextMemory memory) {
+    return memoryRepository().find(memory.getId(), Include.NON_DELETED, false).getPrimaryEntity();
+  }
+
   /** Every file linked to the memory as a source, archived ones included. */
   private Set<UUID> sourceIds(ContextMemory memory) {
     return memoryRepository()
@@ -667,6 +817,11 @@ class ContextMemoryExtractionIT {
   }
 
   private ContextFile file(TestNamespace ns, String label, String text) throws Exception {
+    return file(ns, label, text, null);
+  }
+
+  private ContextFile file(
+      TestNamespace ns, String label, String text, MemoryShareConfig shareConfig) throws Exception {
     UUID contentId = UUID.randomUUID();
     ContextFile file =
         ns.trackRoot(
@@ -678,6 +833,7 @@ class ContextMemoryExtractionIT {
                         .withId(UUID.randomUUID())
                         .withName(ns.prefix(label))
                         .withHeadContentId(contentId.toString())
+                        .withShareConfig(shareConfig)
                         .withProcessingStatus(ProcessingStatus.ExtractingContext)
                         .withUpdatedBy(Entity.ADMIN_USER_NAME)
                         .withUpdatedAt(System.currentTimeMillis())));
