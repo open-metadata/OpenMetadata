@@ -6128,14 +6128,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // Must run before the relationship delete below: the Task 2.0 artifacts
     // (tasks/announcements) are found via the entity --MENTIONED_IN--> artifact edge,
-    // which deleteAll() removes, so collecting them afterwards would orphan them.
+    // which deleteRelationshipRows() removes, so collecting them afterwards would orphan them.
     deleteFeedArtifactsAbout(id);
 
     // Delete all the relationships to other entities
-    daoCollection.relationshipDAO().deleteAll(id, entityType);
+    deleteRelationshipRows(List.of(id));
 
     // Delete all the extensions of entity
-    daoCollection.entityExtensionDAO().deleteAll(id);
+    deleteExtensionRows(List.of(id));
 
     // The FQN-prefix deletes run together, after entity_extension, to match the table order in
     // bulkCleanupReferences(). Both paths delete the same rows for overlapping subtrees — a direct
@@ -6212,6 +6212,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * row locks here, so the sweep cannot run ahead of a writer's uncommitted edge.
    */
   protected void lockRowsForDelete(List<T> entities) {}
+
+  /** Deletes every entity_relationship row from or to the entities a hard delete removes. */
+  protected void deleteRelationshipRows(List<UUID> ids) {
+    daoCollection.relationshipDAO().batchDeleteRelationships(ids, entityType);
+  }
+
+  /** Deletes every entity_extension row of the entities a hard delete removes. */
+  protected void deleteExtensionRows(List<UUID> ids) {
+    daoCollection.entityExtensionDAO().deleteAllBatch(ids.stream().map(UUID::toString).toList());
+  }
 
   /**
    * Whether a hard delete removes the FQN-keyed rows under this entity: its field relationships,
@@ -8826,27 +8836,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private void bulkCleanupReferences(List<T> entities) {
-    List<UUID> entityIds = new ArrayList<>(entities.size());
-    List<String> entityIdStrings = new ArrayList<>(entities.size());
-    for (T entity : entities) {
-      entityIds.add(entity.getId());
-      entityIdStrings.add(entity.getId().toString());
-    }
+    List<UUID> entityIds = entityIds(entities);
     // The table order here is shared with cleanup() — entity_relationship, entity_extension, then
     // the FQN-prefix deletes — because the two paths delete the same rows whenever a direct delete
     // races a cascade over an overlapping subtree. Reorder one and you reintroduce an AB-BA
     // deadlock between them; change both together.
     //
-    // Must run before batchDeleteRelationships: the Task 2.0 artifacts are found via the
+    // Must run before deleteRelationshipRows: the Task 2.0 artifacts are found via the
     // entity --MENTIONED_IN--> artifact edge, which the relationship delete below removes.
     try (var ignored = phase("bulkHardDeleteFeedArtifacts")) {
       bulkDeleteFeedArtifactsAbout(entityIds);
     }
     try (var ignored = phase("bulkHardDeleteRelationships")) {
-      daoCollection.relationshipDAO().batchDeleteRelationships(entityIds, entityType);
+      deleteRelationshipRows(entityIds);
     }
     try (var ignored = phase("bulkHardDeleteExtensions")) {
-      daoCollection.entityExtensionDAO().deleteAllBatch(entityIdStrings);
+      deleteExtensionRows(entityIds);
     }
     // field_relationship and tag_usage are keyed by FQN hash, so a single prefix delete on an
     // ancestor's FQN clears the whole subtree. For FQN-nested types the recursive delete root's

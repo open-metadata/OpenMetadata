@@ -397,8 +397,7 @@ public final class OntologyChangeApplicationService {
                         concepts.getTableName(),
                         ontologyId,
                         batch.stream().map(DigestUtils::md5Hex).toList(),
-                        batch.size(),
-                        "")
+                        batch.size())
                     .forEach(
                         json ->
                             declared.add(

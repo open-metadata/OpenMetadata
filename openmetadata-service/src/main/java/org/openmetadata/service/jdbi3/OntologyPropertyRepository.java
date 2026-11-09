@@ -184,7 +184,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
     final var properties = daoCollection.ontologyPropertyDAO();
     return properties
         .findDeclarations(
-            properties.getTableName(), ontologyId, List.of(DigestUtils.md5Hex(iri)), 2, "")
+            properties.getTableName(), ontologyId, List.of(DigestUtils.md5Hex(iri)), 2)
         .stream()
         .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
         .anyMatch(property -> property.getKind() == OntologyPropertyKind.OBJECT);
@@ -236,16 +236,12 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
             properties.getTableName(),
             ontologyId,
             iris.stream().map(DigestUtils::md5Hex).toList(),
-            limit,
-            "FOR UPDATE");
+            limit);
     final List<String> pointing =
         daoCollection
             .ontologyReferenceDAO()
             .incomingInverses(
-                ontologyId,
-                iris.stream().map(DigestUtils::sha256Hex).toList(),
-                limit,
-                "FOR UPDATE");
+                ontologyId, iris.stream().map(DigestUtils::sha256Hex).toList(), limit);
     if (declared.size() >= limit || pointing.size() >= limit) {
       throw new BadRequestException(
           "Ontology validation exceeds the "

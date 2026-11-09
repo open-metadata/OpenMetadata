@@ -1,7 +1,9 @@
 package org.openmetadata.service.jdbi3;
 
 import java.net.URI;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
@@ -11,6 +13,7 @@ import org.openmetadata.schema.type.OntologyReferenceRole;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
+import org.openmetadata.service.jdbi3.OntologyReferenceDAO.SourceKey;
 import org.openmetadata.service.ontology.OntologyReferences;
 import org.openmetadata.service.util.RestUtil;
 
@@ -29,16 +32,33 @@ final class OntologyReferenceIndex {
       final UUID sourceId,
       final boolean existed,
       final OntologyDefinition current) {
-    // Deleting a source that has no rows still takes a MySQL gap lock, and two concurrent creates
-    // then deadlock on their inserts.
-    if (existed) {
-      dao.delete(sourceType, sourceId);
-    }
+    // Only changed keys are written, each by its full primary key: a delete by source alone takes a
+    // MySQL gap lock that a concurrent insert of another ontology waits on
+    // (ADR:2026-11-08-native-ontology-writers-take-no-gap-locks).
+    final Map<SourceKey, OntologyReference> next = keyed(current);
+    final Set<SourceKey> stored = existed ? Set.copyOf(dao.keys(sourceType, sourceId)) : Set.of();
+    stored.stream()
+        .filter(key -> !next.containsKey(key))
+        .forEach(key -> dao.delete(sourceType, sourceId, key));
+    next.forEach(
+        (key, reference) -> {
+          if (!stored.contains(key)) {
+            dao.insert(reference, key.iriHash());
+          }
+        });
+  }
+
+  private static Map<SourceKey, OntologyReference> keyed(final OntologyDefinition current) {
+    final Map<SourceKey, OntologyReference> keyed = new LinkedHashMap<>();
     if (current != null) {
       for (final OntologyReference reference : OntologyReferences.collect(current)) {
-        dao.insert(reference, DigestUtils.sha256Hex(reference.getIri().toString()));
+        keyed.putIfAbsent(
+            new SourceKey(
+                reference.getRole().value(), DigestUtils.sha256Hex(reference.getIri().toString())),
+            reference);
       }
     }
+    return keyed;
   }
 
   ResultList<OntologyReference> list(

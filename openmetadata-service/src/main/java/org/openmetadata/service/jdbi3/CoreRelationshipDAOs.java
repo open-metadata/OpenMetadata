@@ -392,6 +392,22 @@ public interface CoreRelationshipDAOs {
       EntityDAO.updateInChunks(ids, this::deleteAllBatchInternal);
     }
 
+    /** The keys of every extension row of these entities, read without locking. */
+    @SqlQuery("SELECT id, extension FROM entity_extension WHERE id IN (<ids>)")
+    @RegisterRowMapper(ExtensionKeyMapper.class)
+    List<ExtensionKey> findKeys(@BindList("ids") List<String> ids);
+
+    @SqlBatch("DELETE FROM entity_extension WHERE id = :id AND extension = :extension")
+    @BatchChunkSize(500)
+    void deleteByKeysInternal(@BindMethods List<ExtensionKey> keys);
+
+    /** Deletes each row by its full primary key, which locks only that row on MySQL. */
+    default void deleteByKeys(List<ExtensionKey> keys) {
+      if (!nullOrEmpty(keys)) {
+        deleteByKeysInternal(keys);
+      }
+    }
+
     @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>) AND jsonSchema = :jsonSchema")
     void deleteByJsonSchemaBatchInternal(
         @BindList("ids") List<String> ids, @Bind("jsonSchema") String jsonSchema);
@@ -709,6 +725,27 @@ public interface CoreRelationshipDAOs {
 
   /** An edge into a context memory from an entity that may anchor it. */
   record MemoryAnchorEdge(UUID fromId, String fromEntity, int relation) {}
+
+  /** The primary key of one {@code entity_relationship} row. */
+  record RelationshipKey(String fromId, String toId, int relation) {}
+
+  class RelationshipKeyMapper implements RowMapper<RelationshipKey> {
+    @Override
+    public RelationshipKey map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new RelationshipKey(
+          rs.getString("fromId"), rs.getString("toId"), rs.getInt("relation"));
+    }
+  }
+
+  /** The primary key of one {@code entity_extension} row. */
+  record ExtensionKey(String id, String extension) {}
+
+  class ExtensionKeyMapper implements RowMapper<ExtensionKey> {
+    @Override
+    public ExtensionKey map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ExtensionKey(rs.getString("id"), rs.getString("extension"));
+    }
+  }
 
   record OntologyRelationshipRow(
       UUID fromId,
@@ -2032,6 +2069,29 @@ public interface CoreRelationshipDAOs {
 
     @SqlUpdate("DELETE FROM entity_relationship WHERE toId IN (<ids>) AND toEntity = :entityType")
     void batchDeleteTo(@BindList("ids") List<String> ids, @Bind("entityType") String entityType);
+
+    /** The keys of every relationship from or to these entities, read without locking. */
+    @SqlQuery(
+        "SELECT fromId, toId, relation FROM entity_relationship "
+            + "WHERE fromId IN (<ids>) AND fromEntity = :entityType "
+            + "UNION SELECT fromId, toId, relation FROM entity_relationship "
+            + "WHERE toId IN (<ids>) AND toEntity = :entityType")
+    @RegisterRowMapper(RelationshipKeyMapper.class)
+    List<RelationshipKey> findKeys(
+        @BindList("ids") List<String> ids, @Bind("entityType") String entityType);
+
+    @SqlBatch(
+        "DELETE FROM entity_relationship "
+            + "WHERE fromId = :fromId AND toId = :toId AND relation = :relation")
+    @BatchChunkSize(500)
+    void deleteByKeysInternal(@BindMethods List<RelationshipKey> keys);
+
+    /** Deletes each row by its full primary key, which locks only that row on MySQL. */
+    default void deleteByKeys(List<RelationshipKey> keys) {
+      if (!nullOrEmpty(keys)) {
+        deleteByKeysInternal(keys);
+      }
+    }
 
     @SqlUpdate(
         "DELETE FROM entity_relationship "

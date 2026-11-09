@@ -173,8 +173,7 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
               concepts.getTableName(),
               ontologyId,
               subjects,
-              OntologyReleaseManifest.MAX_MEMBERS + 1,
-              "")
+              OntologyReleaseManifest.MAX_MEMBERS + 1)
           .forEach(json -> context.add(JsonUtils.readValue(json, OntologyConcept.class)));
     }
     return OntologyStructureValidator.deletionImpact(concept, context);

@@ -132,8 +132,7 @@ public final class OntologyConceptBindingStore {
                 properties.getTableName(),
                 ontologyId,
                 iris.stream().map(iri -> DigestUtils.md5Hex(iri.toString())).toList(),
-                iris.size(),
-                "")
+                iris.size())
             .stream()
             .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
             .toList();
@@ -236,8 +235,7 @@ public final class OntologyConceptBindingStore {
               .ancestors(
                   concept.getOntology().getId(),
                   pending.stream().map(DigestUtils::sha256Hex).toList(),
-                  MAX_ANCESTORS + 1,
-                  "");
+                  MAX_ANCESTORS + 1);
       traversed += axioms.size();
       requireBound(Math.max(visited.size(), traversed));
       pending = parents(axioms, pending, visited);

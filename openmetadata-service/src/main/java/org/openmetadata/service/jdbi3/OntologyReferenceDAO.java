@@ -14,7 +14,6 @@ import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMethods;
-import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.openmetadata.schema.type.EntityReference;
@@ -23,6 +22,11 @@ import org.openmetadata.schema.type.OntologyReferenceRole;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.util.jdbi.BindUUID;
 
+/**
+ * No read here locks. Writers already serialize on the ontology's state lock, and a locking range
+ * read takes gap locks that block inserts of other ontologies
+ * (ADR:2026-11-08-native-ontology-writers-take-no-gap-locks).
+ */
 public interface OntologyReferenceDAO {
   String TARGET = " FROM ontology_reference WHERE ontologyId = :ontologyId AND iriHash = :iriHash ";
   String AFTER =
@@ -65,9 +69,22 @@ public interface OntologyReferenceDAO {
         iriHash);
   }
 
+  /** The primary key of a reference within its source: what it points at, and in which role. */
+  record SourceKey(String role, String iriHash) {}
+
+  @SqlQuery(
+      "SELECT role, iriHash FROM ontology_reference "
+          + "WHERE sourceType = :sourceType AND sourceId = :sourceId")
+  @RegisterRowMapper(SourceKeyMapper.class)
+  List<SourceKey> keys(@Bind("sourceType") String sourceType, @BindUUID("sourceId") UUID sourceId);
+
   @SqlUpdate(
-      "DELETE FROM ontology_reference WHERE sourceType = :sourceType AND sourceId = :sourceId")
-  void delete(@Bind("sourceType") String sourceType, @BindUUID("sourceId") UUID sourceId);
+      "DELETE FROM ontology_reference WHERE sourceType = :sourceType AND sourceId = :sourceId "
+          + "AND role = :key.role AND iriHash = :key.iriHash")
+  void delete(
+      @Bind("sourceType") String sourceType,
+      @BindUUID("sourceId") UUID sourceId,
+      @BindMethods("key") SourceKey key);
 
   @ConnectionAwareSqlQuery(
       value = "SELECT *" + TARGET + "AND BINARY iri = BINARY :iri" + AFTER,
@@ -98,9 +115,9 @@ public interface OntologyReferenceDAO {
 
   @SqlQuery(
       "SELECT * FROM ontology_reference WHERE ontologyId = :ontologyId AND iriHash IN (<iriHashes>) "
-          + "ORDER BY sourceType, sourceId, role LIMIT :limit FOR UPDATE")
+          + "ORDER BY sourceType, sourceId, role LIMIT :limit")
   @RegisterRowMapper(ReferenceMapper.class)
-  List<OntologyReference> referencingForUpdate(
+  List<OntologyReference> referencing(
       @BindUUID("ontologyId") UUID ontologyId,
       @BindList("iriHashes") List<String> iriHashes,
       @Bind("limit") int limit);
@@ -110,36 +127,33 @@ public interface OntologyReferenceDAO {
           + "ON r.sourceId = a.id AND r.ontologyId = a.ontologyId "
           + "WHERE a.ontologyId = :ontologyId AND a.deleted = FALSE AND a.axiomType = 'SUBCLASS_OF' "
           + "AND r.sourceType = 'ontologyAxiom' AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>) "
-          + "ORDER BY a.name, a.id LIMIT :limit <locking>")
+          + "ORDER BY a.name, a.id LIMIT :limit")
   List<String> ancestors(
       @BindUUID("ontologyId") UUID ontologyId,
       @BindList("iriHashes") List<String> iriHashes,
-      @Bind("limit") int limit,
-      @Define("locking") String locking);
+      @Bind("limit") int limit);
 
   @SqlQuery(
       "SELECT a.json FROM ontology_axiom_entity a JOIN ontology_reference r "
           + "ON r.sourceId = a.id AND r.ontologyId = a.ontologyId "
           + "WHERE a.ontologyId = :ontologyId AND a.deleted = FALSE AND a.axiomType = 'DISJOINT_WITH' "
           + "AND r.sourceType = 'ontologyAxiom' AND r.role = 'AXIOM_SUBJECT' AND r.iriHash IN (<iriHashes>) "
-          + "ORDER BY a.name, a.id LIMIT :limit <locking>")
+          + "ORDER BY a.name, a.id LIMIT :limit")
   List<String> disjointAxioms(
       @BindUUID("ontologyId") UUID ontologyId,
       @BindList("iriHashes") List<String> iriHashes,
-      @Bind("limit") int limit,
-      @Define("locking") String locking);
+      @Bind("limit") int limit);
 
   @SqlQuery(
       "SELECT p.json FROM ontology_property_entity p JOIN ontology_reference r "
           + "ON r.sourceId = p.id AND r.ontologyId = p.ontologyId "
           + "WHERE p.ontologyId = :ontologyId AND p.deleted = FALSE "
           + "AND r.sourceType = 'ontologyProperty' AND r.role = 'INVERSE' AND r.iriHash IN (<iriHashes>) "
-          + "ORDER BY p.name, p.id LIMIT :limit <locking>")
+          + "ORDER BY p.name, p.id LIMIT :limit")
   List<String> incomingInverses(
       @BindUUID("ontologyId") UUID ontologyId,
       @BindList("iriHashes") List<String> iriHashes,
-      @Bind("limit") int limit,
-      @Define("locking") String locking);
+      @Bind("limit") int limit);
 
   @SqlQuery(
       "SELECT a.json FROM ontology_axiom_entity a WHERE a.ontologyId IN (<ontologyIds>) "
@@ -192,6 +206,13 @@ public interface OntologyReferenceDAO {
         throws SQLException {
       return new EdgeAxiomRow(
           rows.getString("name"), UUID.fromString(rows.getString("id")), rows.getString("json"));
+    }
+  }
+
+  class SourceKeyMapper implements RowMapper<SourceKey> {
+    @Override
+    public SourceKey map(final ResultSet rows, final StatementContext context) throws SQLException {
+      return new SourceKey(rows.getString("role"), rows.getString("iriHash"));
     }
   }
 

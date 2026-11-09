@@ -63,7 +63,7 @@ final class OntologyWorkingModel {
   }
 
   void requireValid(final UUID ontologyId, final List<Change> changes) {
-    final var context = new Context(ontologyId, true, false);
+    final var context = new Context(ontologyId, false);
     for (final var change : changes) {
       if (!structure(change.before()).equals(structure(change.after()))) {
         if (change.after() != null) {
@@ -81,7 +81,7 @@ final class OntologyWorkingModel {
   }
 
   OntologyProfileReport validate(final OntologyAxiom proposed) {
-    final var context = new Context(proposed.getOntology().getId(), false, true);
+    final var context = new Context(proposed.getOntology().getId(), true);
     context.add(proposed, true);
     context.expand();
     return OntologyStructureValidator.validateWorking(context.values(), context.affected);
@@ -95,7 +95,6 @@ final class OntologyWorkingModel {
 
   private final class Context {
     private final UUID ontologyId;
-    private final String locking;
     private final boolean withDisjointness;
     private final Map<UUID, OntologyDefinition> definitions = new LinkedHashMap<>();
     private final Set<UUID> affected = new HashSet<>();
@@ -104,10 +103,9 @@ final class OntologyWorkingModel {
     private final Set<String> ancestorIris = new HashSet<>();
     private long bytes;
 
-    Context(final UUID ontologyId, final boolean forUpdate, final boolean withDisjointness) {
+    Context(final UUID ontologyId, final boolean withDisjointness) {
       this.ontologyId = ontologyId;
       this.withDisjointness = withDisjointness;
-      this.locking = forUpdate ? "FOR UPDATE" : "";
     }
 
     List<OntologyDefinition> values() {
@@ -142,7 +140,7 @@ final class OntologyWorkingModel {
         requireBound(dependentIris.size());
         final var references =
             dao.ontologyReferenceDAO()
-                .referencingForUpdate(
+                .referencing(
                     ontologyId, pending.stream().map(DigestUtils::sha256Hex).toList(), LIMIT + 1);
         requireBound(references.size());
         final var next = new HashSet<String>();
@@ -183,8 +181,7 @@ final class OntologyWorkingModel {
               entities.getTableName(),
               ontologyId,
               iris.stream().map(DigestUtils::md5Hex).toList(),
-              LIMIT + 1,
-              locking);
+              LIMIT + 1);
       requireBound(rows.size());
       for (final var json : rows) {
         final var property = JsonUtils.readValue(json, OntologyProperty.class);
@@ -227,8 +224,7 @@ final class OntologyWorkingModel {
           final var hashes = iris.stream().map(DigestUtils::md5Hex).toList();
           for (final var entities : List.of(dao.ontologyConceptDAO(), dao.ontologyPropertyDAO())) {
             final var rows =
-                entities.findDeclarations(
-                    entities.getTableName(), ontologyId, hashes, LIMIT + 1, locking);
+                entities.findDeclarations(entities.getTableName(), ontologyId, hashes, LIMIT + 1);
             requireBound(rows.size());
             rows.stream()
                 .map(json -> JsonUtils.readValue(json, entities.getEntityClass()))
@@ -237,10 +233,7 @@ final class OntologyWorkingModel {
           final var inverses =
               dao.ontologyReferenceDAO()
                   .incomingInverses(
-                      ontologyId,
-                      iris.stream().map(DigestUtils::sha256Hex).toList(),
-                      LIMIT + 1,
-                      locking);
+                      ontologyId, iris.stream().map(DigestUtils::sha256Hex).toList(), LIMIT + 1);
           requireBound(inverses.size());
           inverses.stream()
               .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
@@ -250,10 +243,7 @@ final class OntologyWorkingModel {
           final var rows =
               dao.ontologyReferenceDAO()
                   .ancestors(
-                      ontologyId,
-                      parents.stream().map(DigestUtils::sha256Hex).toList(),
-                      LIMIT + 1,
-                      locking);
+                      ontologyId, parents.stream().map(DigestUtils::sha256Hex).toList(), LIMIT + 1);
           requireBound(rows.size());
           rows.stream()
               .map(json -> JsonUtils.readValue(json, OntologyAxiom.class))
@@ -264,8 +254,7 @@ final class OntologyWorkingModel {
                     .disjointAxioms(
                         ontologyId,
                         parents.stream().map(DigestUtils::sha256Hex).toList(),
-                        LIMIT + 1,
-                        locking);
+                        LIMIT + 1);
             requireBound(disjoint.size());
             disjoint.stream()
                 .map(json -> JsonUtils.readValue(json, OntologyAxiom.class))

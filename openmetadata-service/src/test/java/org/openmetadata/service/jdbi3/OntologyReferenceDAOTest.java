@@ -7,13 +7,16 @@ import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
 
 import java.net.URI;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyReference;
 import org.openmetadata.schema.type.OntologyReferenceRole;
+import org.openmetadata.service.jdbi3.OntologyReferenceDAO.SourceKey;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 
 class OntologyReferenceDAOTest {
@@ -90,20 +93,69 @@ class OntologyReferenceDAOTest {
                       1)
                   .getFirst();
           assertEquals(OntologyReferenceRole.RANGE, second.getRole());
+          final SourceKey domainKey = new SourceKey("DOMAIN", hash);
+          final SourceKey rangeKey = new SourceKey("RANGE", hash);
+          assertEquals(
+              Set.of(domainKey, rangeKey), Set.copyOf(dao.keys("ontologyProperty", source)));
+          assertEquals(List.of(), dao.keys("ontologyConcept", source));
           assertThrows(
               IllegalStateException.class,
               () ->
                   handle.useTransaction(
                       ignored -> {
-                        dao.delete("ontologyProperty", source);
+                        dao.delete("ontologyProperty", source, domainKey);
                         throw new IllegalStateException("Rollback definition write");
                       }));
           assertEquals(2, dao.count(ontology, hash, iri));
-          dao.delete("ontologyConcept", source);
+          dao.delete("ontologyConcept", source, domainKey);
           assertEquals(2, dao.count(ontology, hash, iri));
-          dao.delete("ontologyProperty", source);
-          assertEquals(0, dao.count(ontology, hash, iri));
+          dao.delete("ontologyProperty", source, domainKey);
+          assertEquals(List.of(rangeKey), dao.keys("ontologyProperty", source));
         });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void replacingADefinitionWritesOnlyTheReferencesThatChanged(ConnectionType dialect) {
+    withDatabase(
+        dialect,
+        handle -> {
+          migrate(handle, dialect);
+          final var collection = handle.attach(CollectionDAO.class);
+          final var index = new OntologyReferenceIndex(collection);
+          final var dao = collection.ontologyReferenceDAO();
+          final OntologyProperty property =
+              new OntologyProperty()
+                  .withId(UUID.randomUUID())
+                  .withOntology(
+                      new EntityReference().withId(UUID.randomUUID()).withType("ontology"))
+                  .withIri(URI.create("urn:partOf"))
+                  .withDomain(List.of(URI.create("urn:Part")))
+                  .withInverse(URI.create("urn:hasPart"));
+
+          index.replace("ontologyProperty", property.getId(), false, property);
+          assertEquals(
+              Set.of(key("DOMAIN", "urn:Part"), key("INVERSE", "urn:hasPart")),
+              Set.copyOf(dao.keys("ontologyProperty", property.getId())));
+
+          index.replace(
+              "ontologyProperty",
+              property.getId(),
+              true,
+              property.withInverse(URI.create("urn:contains")));
+          assertEquals(
+              Set.of(key("DOMAIN", "urn:Part"), key("INVERSE", "urn:contains")),
+              Set.copyOf(dao.keys("ontologyProperty", property.getId())));
+
+          index.replace("ontologyProperty", property.getId(), true, null);
+          assertEquals(List.of(), dao.keys("ontologyProperty", property.getId()));
+        });
+  }
+
+  private static SourceKey key(String role, String iri) {
+    return new SourceKey(role, DigestUtils.sha256Hex(iri));
   }
 
   private static OntologyReference reference(UUID ontology, UUID source, String iri) {

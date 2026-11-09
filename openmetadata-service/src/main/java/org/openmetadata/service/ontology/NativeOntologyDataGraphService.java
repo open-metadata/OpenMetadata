@@ -364,8 +364,7 @@ public final class NativeOntologyDataGraphService {
             PROPERTY_TABLE,
             ontologyId,
             iris.stream().map(DigestUtils::md5Hex).toList(),
-            iris.size(),
-            "")
+            iris.size())
         .stream()
         .map(json -> JsonUtils.readValue(json, OntologyProperty.class))
         .toList();

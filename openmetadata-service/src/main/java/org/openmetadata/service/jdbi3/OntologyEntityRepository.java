@@ -1,10 +1,12 @@
 package org.openmetadata.service.jdbi3;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Lists;
 import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import java.util.function.Supplier;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.OntologyDefinition;
@@ -26,6 +28,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 /** Common persistence and lifecycle invariants for independent ontology definitions. */
 public abstract class OntologyEntityRepository<T extends OntologyDefinition>
     extends EntityRepository<T> {
+  private static final int KEY_READ_CHUNK = 100;
   private final List<String> definitionFields;
   protected final OntologyWorkingState workingState;
 
@@ -140,6 +143,32 @@ public abstract class OntologyEntityRepository<T extends OntologyDefinition>
   @Override
   protected <R> R executeEntityWrite(final List<T> entities, final Supplier<R> work) {
     return executeInTransaction(() -> workingState.mutate(dao, entities, work));
+  }
+
+  /**
+   * The ontology's state lock, taken before the transaction's first read, already orders every
+   * writer of these rows, so they are read without locking and deleted by full primary key. A
+   * range delete would take gap locks that block other ontologies' inserts
+   * (ADR:2026-11-08-native-ontology-writers-take-no-gap-locks).
+   */
+  @Override
+  protected void deleteRelationshipRows(final List<UUID> ids) {
+    final var relationships = daoCollection.relationshipDAO();
+    for (final List<String> chunk : keyReadChunks(ids)) {
+      relationships.deleteByKeys(relationships.findKeys(chunk, entityType));
+    }
+  }
+
+  @Override
+  protected void deleteExtensionRows(final List<UUID> ids) {
+    final var extensions = daoCollection.entityExtensionDAO();
+    for (final List<String> chunk : keyReadChunks(ids)) {
+      extensions.deleteByKeys(extensions.findKeys(chunk));
+    }
+  }
+
+  private static List<List<String>> keyReadChunks(final List<UUID> ids) {
+    return Lists.partition(ids.stream().map(UUID::toString).toList(), KEY_READ_CHUNK);
   }
 
   @Override

@@ -147,13 +147,12 @@ public interface RdfInfraDAOs {
   interface OntologyMemberDAO<T extends OntologyDefinition> extends EntityDAO<T> {
     @SqlQuery(
         "SELECT json FROM <table> WHERE ontologyId = :ontologyId AND deleted = FALSE "
-            + "AND iriHash IN (<iriHashes>) ORDER BY name, id LIMIT :limit <locking>")
+            + "AND iriHash IN (<iriHashes>) ORDER BY name, id LIMIT :limit")
     List<String> findDeclarations(
         @Define("table") String table,
         @BindUUID("ontologyId") UUID ontologyId,
         @BindList("iriHashes") List<String> iriHashes,
-        @Bind("limit") int limit,
-        @Define("locking") String locking);
+        @Bind("limit") int limit);
   }
 
   interface OntologyConceptDAO extends OntologyMemberDAO<OntologyConcept> {
