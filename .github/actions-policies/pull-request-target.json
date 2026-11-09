@@ -1,0 +1,45 @@
+{
+  "name": "Retain approved pull_request_target automation",
+  "enforcement": "active",
+  "conditions": {
+    "workflow_path": {
+      "include": [
+        ".github/workflows/airflow-apis-tests.yml",
+        ".github/workflows/backport-labeled-prs.yaml",
+        ".github/workflows/data-access-request-e2e.yml",
+        ".github/workflows/java-checkstyle.yml",
+        ".github/workflows/maven-build-collate.yml",
+        ".github/workflows/maven-sonar-build.yml",
+        ".github/workflows/merge-queue-dequeue-report.yml",
+        ".github/workflows/playwright-impact-map-drift.yml",
+        ".github/workflows/pr-auto-assign.yml",
+        ".github/workflows/pr-metadata-validation.yml",
+        ".github/workflows/prune-ephemeral-caches.yml",
+        ".github/workflows/py-checkstyle.yml",
+        ".github/workflows/py-operator-build-test.yml",
+        ".github/workflows/py-tests-postgres.yml",
+        ".github/workflows/py-tests.yml",
+        ".github/workflows/team-labeler.yml",
+        ".github/workflows/typescript-type-generation.yml",
+        ".github/workflows/ui-checkstyle.yml",
+        ".github/workflows/validate-jsons-yamls.yml",
+        ".github/workflows/yarn-coverage.yml"
+      ],
+      "exclude": []
+    }
+  },
+  "rules": [
+    {
+      "type": "restrict_action_events",
+      "parameters": {
+        "allowed_events": [
+          "merge_group",
+          "pull_request_target",
+          "push",
+          "schedule",
+          "workflow_dispatch"
+        ]
+      }
+    }
+  ]
+}

@@ -22,6 +22,7 @@ verdict cites an artifact that was checked to still exist):
 | `AGENTS.md` | Always-loaded session guidance for every harness; the pointer index to `.claude/rules/*` and skills. `CLAUDE.md` and `.github/copilot-instructions.md` are symlinks to it |
 | `ARCHITECTURE.md` | System map — modules, the request/ingestion/search paths, the invariants that hold |
 | `DEVELOPER.md` | How to build, test, and add an entity or connector (end-to-end checklists) |
+| `.github/actions-policies/README.md` | Retain `pull_request_target` workflows through an administrator-applied Actions event policy; scope, existing approval gates, validation, and recovery |
 
 ## Backend & platform design docs (`docs/`)
 
