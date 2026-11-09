@@ -44,9 +44,12 @@ public interface AiProvider {
         : new ExtractionAvailability().withAvailable(false).withReason(whyLlmCannotExtract());
   }
 
-  /** An LLM that was switched on but whose client could not be built is unavailable, not off. */
+  /** Unavailable, not off, only while extraction is switched on but its LLM failed to build. */
   private static ExtractionAvailability.Reason whyLlmCannotExtract() {
-    return LLMClientHolder.getUnavailableReason().isPresent()
+    final boolean switchedOnButUnbuilt =
+        LLMClientHolder.isMemoryExtractionSwitchedOn()
+            && LLMClientHolder.getUnavailableReason().isPresent();
+    return switchedOnButUnbuilt
         ? ExtractionAvailability.Reason.ProviderUnavailable
         : ExtractionAvailability.Reason.ExtractionDisabled;
   }

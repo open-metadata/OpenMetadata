@@ -31,7 +31,6 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.configuration.LLMBedrockConfig;
@@ -173,10 +172,11 @@ class ContextMemoryResourceTest {
         JsonUtils.pojoToJson(readExtractionAvailability()));
   }
 
-  /** An admin who turned the LLM on is told it is unavailable, not asked to turn it on. */
+  /** Switched on, a failed LLM build reads as unavailable; switched off, it still reads as off. */
   @ParameterizedTest
-  @ValueSource(booleans = {true, false})
-  void anLlmThatFailedToBuildMakesTheProviderUnavailable(boolean memoryExtractionEnabled) {
+  @CsvSource({"true,ProviderUnavailable", "false,ExtractionDisabled"})
+  void anLlmThatFailedToBuildIsUnavailableOnlyWhileExtractionIsSwitchedOn(
+      boolean memoryExtractionEnabled, String reason) {
     useBuiltInProvider(
         new LLMConfiguration()
             .withEnabled(true)
@@ -185,7 +185,7 @@ class ContextMemoryResourceTest {
             .withBedrock(new LLMBedrockConfig().withAwsConfig(new AWSBaseConfig().withRegion(""))));
 
     assertEquals(
-        "{\"available\":false,\"reason\":\"ProviderUnavailable\"}",
+        "{\"available\":false,\"reason\":\"" + reason + "\"}",
         JsonUtils.pojoToJson(readExtractionAvailability()));
   }
 
