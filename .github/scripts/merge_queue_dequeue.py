@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Explain dequeued jobs using existing GitHub metadata and logs only.
+"""Explain why a PR left the merge queue from the queue commit's GitHub data.
+
+Each workflow run is reported by its first failed job. Jobs that gate or summarise
+other jobs need them, so they finish later: they are listed after the cause, never
+as it. The script only reads GitHub; the workflow posts what it writes.
 
 ADR:2026-11-09-dequeue-alerts-separate-observed-causes-from-attribution
 """
@@ -9,16 +13,28 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import re
 import subprocess
 import sys
 import tempfile
+from collections import defaultdict
+from collections.abc import Sequence
 from datetime import timedelta
 from pathlib import Path
 
 import merge_queue_metrics as mq
 
 MAX_LOG_BYTES = 2 * 1024 * 1024
+CAUSES = {"failure", "timed_out"}
+PASSING = {None, "success", "neutral", "skipped"}
+RUN_URL = re.compile(r"^(.*/actions/runs/\d+)/job/\d+$")
+# Test steps print application HTTP errors, so only other steps are read for symptoms.
+TEST_STEP = re.compile(r"\btests\b|pytest", re.IGNORECASE)
+NOT_REQUIRED = (
+    "No required check failed — the entry may have timed out, or been dequeued "
+    "while a required check was still pending."
+)
 
 
 def failed_steps(job: dict) -> list[str]:
@@ -74,145 +90,182 @@ def network_failure(logs: str) -> str:
         logs[max(0, status.start() - 1500) : status.end() + 1500],
         re.IGNORECASE,
     ):
-        return f"Dependency download failed with HTTP {status[1]}; PR causation unconfirmed."
+        return f"dependency download failed with HTTP {status[1]}"
     if re.search(
         r"Could not resolve host|Temporary failure in name resolution|EAI_AGAIN|ECONNRESET",
         logs,
     ):
-        return "Network error; PR causation unconfirmed."
+        return "network error"
     return ""
 
 
-def main_context(
-    repo: str, sha: str, branch: str, run: dict, name: str, token: str
-) -> str:
-    # Git ancestry supplies the base without a producer-side artifact or branch-name parsing.
-    base = mq.rest(f"/repos/{repo}/compare/{sha}...{branch}", token)[
-        "merge_base_commit"
-    ]["sha"]
-    runs = mq.paginated_items(
-        f"/repos/{repo}/actions/workflows/{run['workflow_id']}/runs?head_sha={base}&status=completed",
-        "workflow_runs",
-        token,
-        max_pages=1,
-    )
-    for baseline in runs:
-        event, head_branch = baseline["event"], baseline.get("head_branch", "")
-        target = (event in {"push", "workflow_dispatch"} and head_branch == branch) or (
-            event == "merge_group"
-            and head_branch.startswith(f"gh-readonly-queue/{branch}/")
-        )
-        if (
-            baseline["head_sha"] != base
-            or not target
-            or baseline["conclusion"] not in {"success", "failure"}
-        ):
-            continue
-        jobs = mq.paginated_items(
-            f"/repos/{repo}/actions/runs/{baseline['id']}/attempts/{baseline['run_attempt']}/jobs",
-            "jobs",
-            token,
-        )
-        job = next(
-            (
-                job
-                for job in jobs
-                if job["name"] == name and job["conclusion"] in {"success", "failure"}
-            ),
-            None,
-        )
-        if job is None:
-            continue
-        link = f"https://github.com/{repo}/actions/runs/{baseline['id']}"
-        if job["conclusion"] == "success":
-            return f"Job passed on main at {base[:7]}; possible PR/merge-group regression or flake. {link}"
-        steps = ", ".join(failed_steps(job)) or "unrecorded step"
-        return f"Main also failed this job at {base[:7]} ({steps}); matching cause unconfirmed. {link}"
-    return f"No completed matching main job at {base[:7]}; origin unconfirmed."
-
-
-def diagnose(repo: str, sha: str, url: str, name: str, branch: str, token: str) -> str:
-    match = re.search(r"/actions/runs/(\d+)/job/(\d+)$", url)
-    if match is None:
-        return "No Actions job reference."
-    run_id, job_id = match.groups()
-    run = mq.rest(f"/repos/{repo}/actions/runs/{run_id}", token)
-    jobs = mq.paginated_items(
-        f"/repos/{repo}/actions/runs/{run_id}/attempts/{run['run_attempt']}/jobs",
-        "jobs",
-        token,
-    )
-    job = next(
-        (job for job in jobs if str(job["id"]) == job_id and job["name"] == name), None
-    )
-    if run["head_sha"] != sha or run["event"] != "merge_group" or job is None:
-        return "Job is not from the current queue-run attempt."
-    if job["conclusion"] != "failure":
-        return f"Job conclusion: {job['conclusion'] or 'pending'}; origin unconfirmed."
-    others = [
-        other["name"]
-        for other in jobs
-        if other["id"] != job["id"] and other.get("conclusion") == "failure"
-    ]
-    if name.endswith("-summary") and others:
-        return "Summary check; failed jobs in this run: " + ", ".join(others) + "."
+def describe(repo: str, job: dict) -> str:
     steps = failed_steps(job)
-    detail = "Failed step: " + (", ".join(steps) or "not recorded") + "."
-    if not any(re.search(r"\btests\b|pytest", step, re.IGNORECASE) for step in steps):
-        try:
-            network = network_failure(failed_logs(repo, job))
-        except (OSError, ValueError, subprocess.SubprocessError):
-            network = ""  # Logs can expire or lag the job conclusion.
-        if network:
-            return f"{detail} {network}"
+    verb = "timed out" if job["conclusion"] == "timed_out" else "failed"
+    text = f"{verb} at {', '.join(steps) or 'an unrecorded step'}"
+    if any(TEST_STEP.search(step) for step in steps):
+        return text
     try:
-        context = main_context(repo, sha, branch, run, name, token)
-    except Exception as exc:
-        # GitHub reads are auxiliary: keep the observed cause if comparison fails.
-        print(
-            f"::warning::Main comparison unavailable: {type(exc).__name__}",
-            file=sys.stderr,
+        symptom = network_failure(failed_logs(repo, job))
+    except (OSError, ValueError, subprocess.SubprocessError):
+        symptom = ""  # Logs can expire or lag the job conclusion.
+    return f"{text}; {symptom}" if symptom else text
+
+
+def label(check: dict) -> str:
+    name = mq.shorten_check_name(check["name"])
+    return (
+        name if check["conclusion"] == "failure" else f"{name} ({check['conclusion']})"
+    )
+
+
+def run_line(repo: str, run_url: str, checks: list[dict], token: str) -> list:
+    """The run's first failed job and what failed after it, as text and links."""
+    failed = [check for check in checks if check["conclusion"] in CAUSES]
+    first = (failed or checks)[0]
+    try:
+        job = mq.rest(f"/repos/{repo}/actions/jobs/{first['id']}", token)
+    except mq.ApiError as exc:
+        print(f"::warning::Could not read job {first['id']}: {exc}", file=sys.stderr)
+        names = ", ".join(map(label, checks))
+        return [
+            (f"run {run_url.rsplit('/', 1)[1]}", run_url),
+            f": {names} (details unavailable).",
+        ]
+    line = [(job["workflow_name"], run_url), ": "]
+    if not failed:
+        return line + [", ".join(map(label, checks)) + "."]
+    also = ", ".join(label(check) for check in checks if check is not first)
+    line += [(mq.shorten_check_name(first["name"]), first["html_url"])]
+    return line + [
+        f" {describe(repo, job)}" + (f". Also: {also}" if also else "") + "."
+    ]
+
+
+def blocked(repo: str, branch: str, checks: list[dict], token: str) -> str:
+    try:
+        rules = mq.rest(f"/repos/{repo}/rules/branches/{branch}", token)
+    except mq.ApiError as exc:
+        print(f"::warning::Could not read required checks: {exc}", file=sys.stderr)
+        return "Required checks could not be read."
+    required = {
+        check["context"]
+        for rule in rules
+        if rule["type"] == "required_status_checks"
+        for check in rule["parameters"]["required_status_checks"]
+    }
+    names = dict.fromkeys(label(check) for check in checks if check["name"] in required)
+    return f"Blocked the queue: {', '.join(names)}" if names else NOT_REQUIRED
+
+
+def details(args: argparse.Namespace, token: str) -> tuple[str, list[list]]:
+    """A summary line, and one entry per workflow run or external check that failed."""
+    if not args.sha:
+        return (
+            "The entry left the queue before it was built, so no checks ran against it.",
+            [],
         )
-        context = "Main comparison unavailable; origin unconfirmed."
-    return f"{detail} {context}"
-
-
-def report(args: argparse.Namespace) -> None:
-    token = mq.env_token()
-    markdown, slack = [], []
-    for line in args.failures.read_text(encoding="utf-8").splitlines():
-        url, separator, name = line.partition("\t")
-        if not separator:
-            name, reason = "", "Malformed Actions job reference."
+    owner, name = args.repo.split("/")
+    try:
+        checks = mq.commit_checks(args.sha, owner, name, token)
+    except mq.ApiError as exc:
+        print(f"::warning::Could not read check runs: {exc}", file=sys.stderr)
+        return f"Could not read the checks of merge-queue commit {args.sha[:7]}.", []
+    checks = sorted(
+        (check for check in checks if check["conclusion"] not in PASSING),
+        key=lambda check: (check["completed_at"] or "", check["id"]),
+    )
+    if not checks:
+        return (
+            f"No failing check on merge-queue commit {args.sha[:7]} — invalidated by an "
+            "entry ahead in the queue, or a required check timed out.",
+            [],
+        )
+    runs, external = defaultdict(list), []
+    for check in checks:
+        # Checks API reports (e.g. "Unit Test Report") belong to no job.
+        if match := RUN_URL.match(check["html_url"]):
+            runs[match[1]].append(check)
         else:
-            try:
-                reason = diagnose(args.repo, args.sha, url, name, args.branch, token)
-            except Exception as exc:
-                print(
-                    f"::warning::Could not read job details: {type(exc).__name__}",
-                    file=sys.stderr,
-                )
-                reason = "Job details unavailable; inspect the linked run."
-        name, reason = " ".join(name.split()), " ".join(reason.split())
-        literal = re.sub(
-            r"([\\`*_\[\]])",
-            r"\\\1",
-            html.escape(f"{name}: {reason}" if name else reason, quote=False),
-        ).replace("@", "&#64;")
-        markdown.append(f"Cause: {literal}")
-        slack.append(
-            "Cause: " + mq.sanitize_external(f"{name}: {reason}" if name else reason)
-        )
-    print(json.dumps({"markdown": "\n".join(markdown), "slack": "\n".join(slack)}))
+            external.append([(label(check), check["html_url"])])
+    entries = [run_line(args.repo, url, group, token) for url, group in runs.items()]
+    return blocked(args.repo, args.branch, checks, token), entries + external
+
+
+def markdown_text(text: str) -> str:
+    text = html.escape(re.sub(r"\s+", " ", text), quote=False)
+    return re.sub(r"([\\`*_\[\]])", r"\\\1", text).replace("@", "&#64;")
+
+
+def slack_text(text: str) -> str:
+    return mq.sanitize_external(re.sub(r"\s+", " ", text))
+
+
+def render(parts: list, escape, link) -> str:
+    return "".join(
+        escape(part) if isinstance(part, str) else link(escape(part[0]), part[1])
+        for part in parts
+    )
+
+
+def report(
+    args: argparse.Namespace, token: str, tests: Sequence[str] = ()
+) -> tuple[str, str]:
+    """The PR comment in Markdown and the same report in Slack mrkdwn.
+
+    `tests` are failed test names a workflow published elsewhere, listed as given.
+    """
+    summary, entries = details(args, token)
+    server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
+    title = f"the {args.queue} — `{args.reason}`"
+    markdown = [
+        f"### 🚦 Removed from {title} ({args.created})",
+        "",
+        markdown_text(summary),
+    ]
+    if entries:
+        markdown.append("")
+    markdown += [
+        "- " + render(entry, markdown_text, lambda text, url: f"[{text}]({url})")
+        for entry in entries
+    ]
+    slack = [
+        f":rotating_light: *<{server}/{args.repo}/pull/{args.pr}|PR #{args.pr}>* removed from {title}",
+        slack_text(summary),
+    ] + [
+        "• " + render(entry, slack_text, lambda text, url: f"<{url}|{text}>")
+        for entry in entries
+    ]
+    if tests:
+        markdown += ["", "Failed tests:"] + [f"- {markdown_text(t)}" for t in tests]
+        slack += ["Failed tests:"] + [f"• {slack_text(t)}" for t in tests]
+    return "\n".join(markdown), "\n".join(slack)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--repo", required=True)
-    parser.add_argument("--sha", required=True)
-    parser.add_argument("--branch", required=True)
-    parser.add_argument("--failures", type=Path, required=True)
-    report(parser.parse_args())
+    for flag in (
+        "--repo",
+        "--pr",
+        "--branch",
+        "--queue",
+        "--reason",
+        "--created",
+        "--channel",
+    ):
+        parser.add_argument(flag, required=True)
+    parser.add_argument("--sha", default="")
+    parser.add_argument("--body", type=Path, required=True)
+    parser.add_argument("--slack", type=Path, required=True)
+    parser.add_argument("--failed-tests", type=Path, help="one test name per line")
+    args = parser.parse_args()
+    lines = args.failed_tests.read_text(encoding="utf-8") if args.failed_tests else ""
+    tests = [line for line in lines.splitlines() if line.strip()]
+    markdown, slack = report(args, mq.env_token(), tests)
+    args.body.write_text(markdown + "\n", encoding="utf-8")
+    args.slack.write_text(
+        json.dumps({"channel": args.channel, "text": slack}), encoding="utf-8"
+    )
 
 
 if __name__ == "__main__":

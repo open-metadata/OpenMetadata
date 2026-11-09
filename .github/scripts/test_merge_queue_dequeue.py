@@ -1,195 +1,341 @@
 import argparse
-import io
 import json
 import subprocess
+import sys
 import tempfile
 import unittest
-from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
 import merge_queue_dequeue as dequeue
 
+URL = "https://github.com/org/repo"
+# The real failure in PR #8069's 07:30 dequeue: a spaCy model download timed out.
+SPACY_504 = (
+    "cause: HTTP status server error (504 Gateway Timeout) for url (https://github.com/"
+    "explosion/spacy-models/releases/download/en_core_web_md-3.8.0/"
+    "en_core_web_md-3.8.0-py3-none-any.whl)"
+)
+
+
+def check(job_id, run_id, name, completed_at, conclusion="failure"):
+    return {
+        "id": job_id,
+        "name": name,
+        "conclusion": conclusion,
+        "completed_at": completed_at,
+        "html_url": f"{URL}/actions/runs/{run_id}/job/{job_id}",
+    }
+
+
+def job(job_id, workflow, name, step, conclusion="failure"):
+    return {
+        "id": job_id,
+        "workflow_name": workflow,
+        "name": name,
+        "conclusion": conclusion,
+        "steps": [
+            {"name": "Set up job", "conclusion": "success"},
+            {"name": step, "conclusion": conclusion},
+        ],
+    }
+
 
 class ReportTest(unittest.TestCase):
     def setUp(self) -> None:
-        self.run = {
-            "id": 101,
-            "run_attempt": 2,
-            "head_sha": "a" * 40,
-            "event": "merge_group",
-            "workflow_id": 44,
+        # PR #8069's 07:30 dequeue: the build failed first, then the two gates checking it.
+        self.checks = [
+            check(13, 1, "py-run-tests", "2026-11-09T07:29:42Z"),
+            check(
+                11,
+                1,
+                "python-tests / Build Collate Distribution",
+                "2026-11-09T07:29:30Z",
+            ),
+            check(12, 1, "python-tests / Verify Expected Jobs", "2026-11-09T07:29:36Z"),
+            check(99, 9, "lint", "2026-11-09T07:20:00Z", "success"),
+        ]
+        self.jobs = {
+            11: job(
+                11,
+                "py-tests",
+                "python-tests / Build Collate Distribution",
+                "Generate Python models",
+            ),
+            12: job(
+                12, "py-tests", "python-tests / Verify Expected Jobs", "Check results"
+            ),
+            13: job(13, "py-tests", "py-run-tests", "Check Python test workflow"),
         }
-        self.job = {
-            "id": 301,
-            "name": "java",
-            "conclusion": "failure",
-            "steps": [{"name": "Unit Tests", "conclusion": "failure"}],
-        }
-        self.baseline = {
-            "id": 201,
-            "run_attempt": 1,
-            "head_sha": "b" * 40,
-            "event": "push",
-            "head_branch": "main",
-            "conclusion": "success",
-        }
-        self.base_job = {"id": 401, "name": "java", "conclusion": "success"}
-        self.pages = {
-            "/repos/org/repo/actions/runs/101/attempts/2/jobs": [self.job],
-            f"/repos/org/repo/actions/workflows/44/runs?head_sha={'b' * 40}&status=completed": [
-                self.baseline
-            ],
-            "/repos/org/repo/actions/runs/201/attempts/1/jobs": [self.base_job],
-        }
-        self.rest = self.enterContext(
-            patch.object(
-                dequeue.mq,
-                "rest",
-                side_effect=lambda path, token: (
-                    self.run
-                    if path.endswith("/101")
-                    else {"merge_base_commit": {"sha": "b" * 40}}
-                ),
-            )
-        )
+        self.rules = [
+            {"type": "pull_request", "parameters": {}},
+            {
+                "type": "required_status_checks",
+                "parameters": {"required_status_checks": [{"context": "py-run-tests"}]},
+            },
+        ]
+        self.read_jobs = []
         self.enterContext(
             patch.object(
-                dequeue.mq,
-                "paginated_items",
-                side_effect=lambda path, key, token, **kwargs: self.pages[path],
+                dequeue.mq, "paginated_items", side_effect=self.paginated_items
             )
         )
+        self.enterContext(patch.object(dequeue.mq, "rest", side_effect=self.rest))
         self.logs = self.enterContext(
-            patch.object(dequeue, "failed_logs", return_value="")
+            patch.object(dequeue, "failed_logs", return_value=SPACY_504)
         )
 
-    def diagnose(self) -> str:
-        return dequeue.diagnose(
-            "org/repo",
-            "a" * 40,
-            "https://github.com/org/repo/actions/runs/101/job/301",
-            self.job["name"],
-            "main",
-            "token",
+    def paginated_items(self, path, key, token, **kwargs):
+        self.assertEqual(f"/repos/org/repo/commits/{'a' * 40}/check-runs", path)
+        if isinstance(self.checks, Exception):
+            raise self.checks
+        return self.checks
+
+    def rest(self, path, token):
+        if path == "/repos/org/repo/rules/branches/main":
+            if isinstance(self.rules, Exception):
+                raise self.rules
+            return self.rules
+        job_id = int(path.rsplit("/", 1)[-1])
+        self.read_jobs.append(job_id)
+        if isinstance(self.jobs, Exception):
+            raise self.jobs
+        return self.jobs[job_id]
+
+    def report(self, sha="a" * 40, tests=()):
+        args = argparse.Namespace(
+            repo="org/repo",
+            pr="8069",
+            sha=sha,
+            reason="FAILED_CHECKS",
+            created="2026-11-09T07:30:01Z",
+            branch="main",
+            queue="Collate merge queue",
+        )
+        return dequeue.report(args, "token", tests)
+
+    def test_each_run_is_explained_by_its_first_failed_job(self) -> None:
+        markdown, _ = self.report()
+        self.assertEqual(
+            [
+                "### 🚦 Removed from the Collate merge queue — `FAILED_CHECKS` (2026-11-09T07:30:01Z)",
+                "",
+                "Blocked the queue: py-run-tests",
+                "",
+                f"- [py-tests]({URL}/actions/runs/1): "
+                f"[python-tests / Build Collate Distribution]({URL}/actions/runs/1/job/11) "
+                "failed at Generate Python models; dependency download failed with HTTP 504. "
+                "Also: python-tests / Verify Expected Jobs, py-run-tests.",
+            ],
+            markdown.splitlines(),
+        )
+        self.assertEqual([11], self.read_jobs)
+        self.assertEqual(11, self.logs.call_args.args[1]["id"])
+
+    def test_slack_gets_the_same_report_with_a_pr_link(self) -> None:
+        _, slack = self.report()
+        self.assertEqual(
+            [
+                f":rotating_light: *<{URL}/pull/8069|PR #8069>* removed from the "
+                "Collate merge queue — `FAILED_CHECKS`",
+                "Blocked the queue: py-run-tests",
+                f"• <{URL}/actions/runs/1|py-tests>: "
+                f"<{URL}/actions/runs/1/job/11|python-tests / Build Collate Distribution> "
+                "failed at Generate Python models; dependency download failed with HTTP 504. "
+                "Also: python-tests / Verify Expected Jobs, py-run-tests.",
+            ],
+            slack.splitlines(),
         )
 
-    def test_main_job_outcomes_are_context_not_proof_of_identical_failures(
-        self,
-    ) -> None:
-        self.assertIn("possible PR/merge-group regression or flake", self.diagnose())
-        self.base_job.update(
-            conclusion="failure", steps=[{"name": "Build", "conclusion": "failure"}]
+    def test_a_required_check_failing_in_two_runs_is_named_once(self) -> None:
+        self.checks.append(check(23, 2, "py-run-tests", "2026-11-09T07:30:43Z"))
+        self.jobs[23] = job(
+            23, "py-tests-postgres", "py-run-tests", "Check Python test workflow"
         )
-        text = self.diagnose()
-        self.assertIn("Main also failed this job", text)
-        self.assertIn("matching cause unconfirmed", text)
-        self.assertIn("https://github.com/org/repo/actions/runs/201", text)
+        markdown, _ = self.report()
+        self.assertIn("Blocked the queue: py-run-tests", markdown.splitlines())
 
-    def test_exact_shared_main_commit_in_queue_is_a_valid_baseline(self) -> None:
-        self.baseline.update(
-            event="merge_group", head_branch="gh-readonly-queue/main/pr-123-base"
+    def test_cancelled_jobs_are_listed_but_never_the_cause(self) -> None:
+        self.checks += [
+            check(21, 2, "collate-unit-tests", "2026-11-09T07:40:14Z", "cancelled"),
+            check(
+                22, 2, "integration-tests-mysql", "2026-11-09T07:40:08Z", "cancelled"
+            ),
+            check(31, 3, "setup", "2026-11-09T07:00:00Z", "cancelled"),
+            check(32, 3, "unit", "2026-11-09T07:10:00Z"),
+        ]
+        self.jobs[21] = job(
+            21, "Maven CI", "collate-unit-tests", "Unit Tests", "cancelled"
         )
-        self.assertIn("Job passed on main", self.diagnose())
-        self.assertIn(f"compare/{'a' * 40}...main", self.rest.call_args_list[1].args[0])
+        self.jobs[22] = job(
+            22, "Maven CI", "integration-tests-mysql", "Tests", "cancelled"
+        )
+        self.jobs[32] = job(32, "Unit", "unit", "Build")
+        lines = self.report()[0].splitlines()
+        self.assertIn(
+            f"- [Maven CI]({URL}/actions/runs/2): "
+            "integration-tests-mysql (cancelled), collate-unit-tests (cancelled).",
+            lines,
+        )
+        self.assertIn(
+            f"- [Unit]({URL}/actions/runs/3): [unit]({URL}/actions/runs/3/job/32) failed at "
+            "Build; dependency download failed with HTTP 504. Also: setup (cancelled).",
+            lines,
+        )
+        self.assertNotIn(21, self.read_jobs)
+        self.assertNotIn(31, self.read_jobs)
+        logged = [call.args[1]["id"] for call in self.logs.call_args_list]
+        self.assertNotIn(22, logged)
 
-    def test_wrong_revision_branch_event_or_incomplete_job_is_not_a_baseline(
-        self,
-    ) -> None:
-        for field, value in (
-            ("head_sha", "c" * 40),
-            ("head_branch", "feature"),
-            ("event", "pull_request"),
-            ("conclusion", "cancelled"),
-        ):
-            with self.subTest(field=field), patch.dict(self.baseline, {field: value}):
-                self.assertIn("No completed matching main job", self.diagnose())
-        for conclusion in ("skipped", "cancelled", None):
-            self.base_job["conclusion"] = conclusion
-            self.assertIn("No completed matching main job", self.diagnose())
-
-    def test_stale_attempt_or_wrong_queue_commit_is_rejected(self) -> None:
-        self.job["id"] = 999
-        self.assertIn("not from the current queue-run attempt", self.diagnose())
-        self.job["id"] = 301
-        self.run["head_sha"] = "c" * 40
-        self.assertIn("not from the current queue-run attempt", self.diagnose())
-
-    def test_reported_504s_are_explained_without_artifacts_or_baseline_reads(
-        self,
-    ) -> None:
-        self.run["status"] = "in_progress"
+    def test_setup_step_504s_are_explained_without_leaking_the_log(self) -> None:
+        # Steps that failed with HTTP 504s in the #8399 dequeues.
+        self.logs.return_value = (
+            "Failed to download https://user:password@example.com/file?token=abcd\n"
+            "HTTP status server error (504 Gateway timeout)"
+        )
         for step in (
             "Set up Python 3.10",
             "Wait for OpenMetadata model generation",
             "Generate OpenMetadata ingestion models",
             "Install Python Prerequisites & Generate Models",
         ):
-            self.job["steps"] = [{"name": step, "conclusion": "failure"}]
-            self.logs.return_value = "Failed to download https://user:password@example.com/file?token=abcd\nHTTP status server error (504 Gateway timeout)"
-            text = self.diagnose()
-            self.assertIn(step, text)
-            self.assertIn("HTTP 504", text)
-            self.assertNotIn("password", text)
-            self.assertNotIn("Job passed on main", text)
-        self.assertTrue(
-            all(call.args[0].endswith("/101") for call in self.rest.call_args_list)
-        )
+            self.jobs[11] = job(11, "py-tests", "build", step)
+            markdown, slack = self.report()
+            for text in (markdown, slack):
+                self.assertIn("dependency download failed with HTTP 504", text)
+                self.assertNotIn("password", text)
 
-    def test_curl_status_without_a_protocol_name_is_a_download_failure(
-        self,
-    ) -> None:
+    def test_curl_status_without_a_protocol_name_is_a_download_failure(self) -> None:
         # Install Compose in the #8399 dequeue: curl -f prints the bare status.
-        self.job["steps"] = [{"name": "Install Compose", "conclusion": "failure"}]
+        self.jobs[11] = job(11, "e2e", "caip-integration-tests", "Install Compose")
         self.logs.return_value = (
             "Download Compose v2.29.7 for linux-aarch64 from https://github.com/"
             "docker/compose/releases/download/v2.29.7/docker-compose-linux-aarch64\n"
             "curl: (22) The requested URL returned error: 504\n"
             "##[error]Process completed with exit code 22."
         )
-        self.assertIn("HTTP 504", self.diagnose())
-        self.assertTrue(
-            all(call.args[0].endswith("/101") for call in self.rest.call_args_list)
-        )
+        self.assertIn("dependency download failed with HTTP 504", self.report()[0])
 
-    def test_java_and_browser_application_errors_are_not_download_failures(
-        self,
-    ) -> None:
+    def test_test_steps_are_not_read_for_download_errors(self) -> None:
         self.logs.return_value = "Application failed to fetch response: HTTP status 500"
         for step in (
             "Unit Tests",
             "Integration Tests (MySQL + Elasticsearch)",
-            "Integration Tests (Postgres + OpenSearch)",
             "Run Playwright tests",
+            "Run pytest",
         ):
-            self.job["steps"] = [{"name": step, "conclusion": "failure"}]
-            self.assertNotIn("download", self.diagnose())
+            self.jobs[11] = job(11, "py-tests", "build", step)
+            self.assertIn(f"failed at {step}.", self.report()[0])
         self.logs.assert_not_called()
 
-    def test_summary_points_to_the_other_failed_job(self) -> None:
-        self.pages["/repos/org/repo/actions/runs/101/attempts/2/jobs"].append(
-            {"id": 302, "name": "build", "conclusion": "failure"}
-        )
-        for name in ("playwright-summary", "caip-playwright-summary"):
-            self.job["name"] = name
-            self.assertEqual(
-                "Summary check; failed jobs in this run: build.", self.diagnose()
-            )
-        self.logs.assert_not_called()
-
-    def test_unavailable_main_context_preserves_the_failed_step(self) -> None:
-        self.rest.side_effect = [self.run, dequeue.mq.ApiError("HTTP 403")]
-        self.assertIn(
-            "Failed step: Unit Tests. Main comparison unavailable", self.diagnose()
-        )
-
-    def test_logs_expiring_does_not_prevent_main_context(self) -> None:
-        self.job["steps"] = [{"name": "Build", "conclusion": "failure"}]
+    def test_unreadable_logs_keep_the_failed_step(self) -> None:
         self.logs.side_effect = subprocess.TimeoutExpired("gh", 60)
-        self.assertIn("Failed step: Build. Job passed on main", self.diagnose())
+        self.assertIn("failed at Generate Python models. Also:", self.report()[0])
+
+    def test_unreadable_job_keeps_the_run_listed(self) -> None:
+        self.jobs = dequeue.mq.ApiError("HTTP 403", status=403)
+        self.assertIn(
+            f"- [run 1]({URL}/actions/runs/1): python-tests / Build Collate Distribution, "
+            "python-tests / Verify Expected Jobs, py-run-tests (details unavailable).",
+            self.report()[0].splitlines(),
+        )
+
+    def test_unreadable_checks_or_rules_are_reported_as_unknown(self) -> None:
+        self.rules = dequeue.mq.ApiError("HTTP 403", status=403)
+        self.assertIn(
+            "Required checks could not be read.", self.report()[0].splitlines()
+        )
+        self.checks = dequeue.mq.ApiError("HTTP 403", status=403)
+        self.assertIn(
+            "Could not read the checks of merge-queue commit aaaaaaa.",
+            self.report()[0].splitlines(),
+        )
+
+    def test_reports_without_a_failed_required_job(self) -> None:
+        self.assertIn(
+            "The entry left the queue before it was built, so no checks ran against it.",
+            self.report(sha="")[0].splitlines(),
+        )
+        self.rules[1]["parameters"]["required_status_checks"] = [{"context": "lint"}]
+        self.assertIn(
+            "No required check failed — the entry may have timed out, or been dequeued "
+            "while a required check was still pending.",
+            self.report()[0].splitlines(),
+        )
+        self.checks = [check(99, 9, "lint", "2026-11-09T07:20:00Z", "success")]
+        self.assertIn(
+            "No failing check on merge-queue commit aaaaaaa — invalidated by an entry "
+            "ahead in the queue, or a required check timed out.",
+            self.report()[0].splitlines(),
+        )
+
+    def test_checks_api_reports_are_listed_without_reading_a_job(self) -> None:
+        self.checks.append(
+            {
+                "id": 41,
+                "name": "Unit Test Report",
+                "conclusion": "failure",
+                "completed_at": "2026-11-09T07:31:00Z",
+                "html_url": f"{URL}/runs/41",
+            }
+        )
+        self.assertIn(
+            f"- [Unit Test Report]({URL}/runs/41)", self.report()[0].splitlines()
+        )
+        self.assertNotIn(41, self.read_jobs)
+
+    def test_untrusted_names_cannot_add_markup_or_mentions(self) -> None:
+        name = "<!channel> [link](https://evil.example) @team `x`"
+        self.checks = [check(11, 1, name, "2026-11-09T07:29:30Z")]
+        self.jobs[11] = job(11, "py-tests", name, "Unit Tests")
+        markdown, slack = self.report()
+        self.assertNotIn("<!channel>", slack)
+        self.assertIn("&lt;!channel&gt;", slack)
+        self.assertNotIn("[link](https://evil.example)", markdown)
+        self.assertIn("\\[link\\]", markdown)
+        self.assertIn("&#64;team", markdown)
+        self.assertNotIn("`x`", markdown)
+
+    def test_failed_tests_named_by_the_workflow_are_listed_escaped(self) -> None:
+        markdown, slack = self.report(tests=["Login › signs in <!channel>"])
+        self.assertEqual(
+            ["", "Failed tests:", "- Login › signs in &lt;!channel&gt;"],
+            markdown.splitlines()[-3:],
+        )
+        self.assertEqual(
+            ["Failed tests:", "• Login › signs in &lt;!channel&gt;"],
+            slack.splitlines()[-2:],
+        )
+
+    def test_main_writes_the_comment_and_the_slack_payload(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            body, payload = Path(directory) / "body.md", Path(directory) / "slack.json"
+            tests = Path(directory) / "tests.txt"
+            tests.write_text("Login › signs in\n\n")
+            argv = [
+                "merge_queue_dequeue.py",
+                "--repo", "org/repo", "--pr", "8069", "--branch", "main",
+                "--queue", "Collate merge queue", "--reason", "FAILED_CHECKS",
+                "--sha", "a" * 40, "--created", "2026-11-09T07:30:01Z",
+                "--channel", "C123", "--body", str(body), "--slack", str(payload),
+                "--failed-tests", str(tests),
+            ]  # fmt: skip
+            with (
+                patch.object(sys, "argv", argv),
+                patch.object(dequeue.mq, "env_token", return_value="token"),
+            ):
+                dequeue.main()
+            self.assertIn("Blocked the queue: py-run-tests", body.read_text())
+            self.assertTrue(
+                body.read_text().endswith("Failed tests:\n- Login › signs in\n")
+            )
+            slack = json.loads(payload.read_text())
+            self.assertEqual("C123", slack["channel"])
+            self.assertIn("Blocked the queue: py-run-tests", slack["text"])
+            self.assertTrue(slack["text"].endswith("Failed tests:\n• Login › signs in"))
 
 
-class LogsAndRenderingTest(unittest.TestCase):
+class LogsTest(unittest.TestCase):
     def test_direct_job_logs_are_bounded_and_filtered_to_the_failed_step(self) -> None:
         job = {
             "id": 2,
@@ -223,36 +369,6 @@ class LogsAndRenderingTest(unittest.TestCase):
             patch.object(dequeue, "MAX_LOG_BYTES", 10),
         ):
             self.assertEqual("", dequeue.failed_logs("org/repo", job))
-
-    def test_failure_read_and_untrusted_text_do_not_break_other_reports(self) -> None:
-        with tempfile.TemporaryDirectory() as directory:
-            path = Path(directory) / "failures.tsv"
-            path.write_text(
-                "bad line\nhttps://github.com/org/repo/actions/runs/1/job/2\tfirst\nhttps://github.com/org/repo/actions/runs/3/job/4\t<!channel>\n"
-            )
-            args = argparse.Namespace(
-                repo="org/repo", sha="a" * 40, branch="main", failures=path
-            )
-            output = io.StringIO()
-            with (
-                patch.object(dequeue.mq, "env_token", return_value="token"),
-                patch.object(
-                    dequeue,
-                    "diagnose",
-                    side_effect=[
-                        RuntimeError("unreadable"),
-                        "Step [link](https://evil.example) @team",
-                    ],
-                ),
-                redirect_stdout(output),
-            ):
-                dequeue.report(args)
-            result = json.loads(output.getvalue())
-            self.assertIn("Malformed Actions job reference", result["slack"])
-            self.assertIn("Job details unavailable", result["slack"])
-            self.assertIn("&lt;!channel&gt;", result["slack"])
-            self.assertIn("\\[link\\]", result["markdown"])
-            self.assertIn("&#64;team", result["markdown"])
 
 
 if __name__ == "__main__":

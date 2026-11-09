@@ -1,4 +1,4 @@
-# Dequeue reports use existing GitHub data in a single workflow
+# Dequeue alerts report observed causes, not attribution
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-09 (initial)
@@ -8,36 +8,28 @@
 
 ## Context
 
-The previous approach required build/test jobs to publish a new artifact protocol. It missed
-other check families and coupled the reporter to each producer. Dequeue reporting must instead
-happen entirely within its own workflow, using data GitHub already retains.
+The previous approach had build and test jobs publish evidence artifacts so the dequeue report could
+compare failures with main. Job families without a collector reported only "Unknown", and every
+producer carried reporting steps. Comparing a queue job with the same job on main does not settle
+the cause either: main's runs can fail for reasons queue runs do not share. In Collate, push runs of
+py-tests fail in Detect Changes, a step queue runs pass, so "main also failed" would clear any PR
+that broke Python tests.
 
 ## Decision
 
-Remove evidence collectors, their action, schema, parsers and test workflow. The dequeue
-workflow reads current-attempt jobs, failed steps and completed-job logs. Summary checks point
-to other failed jobs. Download HTTP 429/5xx and network symptoms are reported without claiming
-that the PR is innocent; application test-step HTTP errors are not classified as download errors.
-No raw log messages or download URLs are included in notifications.
+Diagnosis lives only in the dequeue workflow and reads only what GitHub already keeps for the queue
+commit. Each workflow run is reported by its first failed or timed-out job by completion time. Jobs
+that gate or summarise other jobs need them, so they finish later and are listed after the cause,
+never as it. Cancelled jobs are listed and never blamed. For the cause, report its failed steps and,
+outside test steps, a dependency download (HTTP 429/5xx) or network error found in their logs.
+Notifications never copy raw log text or URLs from logs.
 
-For main context, use the Git merge base of the queue commit and target branch, then look for
-completed executions of the same workflow and displayed job at that commit. Push/manual runs
-must target the branch; queue runs must target its queue. Inspect the first API page (up to 100
-runs) at that exact commit. A passing job supports a possible PR/merge-group regression or flake.
-A failed job means main also failed that job; it does not establish an identical cause. Floating
-dependencies, different test selections and flaky tests prevent stronger claims. Missing baseline
-jobs remain inconclusive. No extra workflows or baseline test runs are dispatched.
-
-Logs use the completed-job endpoint so live siblings do not delay reporting. Inspect the final
-2 MiB, restricted to failed-step timestamps, with a 60-second CLI timeout; output stays in a
-temporary file. Step metadata rounds to seconds, so include the completed second in full.
-Unavailable logs or baseline reads preserve the failed step and the rest of the notification.
+The report makes no claim about whether the PR, main or a flake caused a failure. No other workflow
+publishes reporting data, and no comparison runs are read or dispatched.
 
 ## Consequences
 
-One dequeue call performs the diagnosis and sends the report. Existing build/test workflows
-need no reporting instrumentation. Main context is deliberately job-level, not a claim about
-which PR or individual test introduced a failure. Manual removals remain silent.
-
-The diagnosis is tested on pull requests that change it, never inside the report:
+Build and test workflows carry no reporting steps. A second, independent failure in the same run is
+listed after the first, not explained. An unrecognised infrastructure error shows only its failed
+step. The diagnosis is tested on pull requests that change it, never inside the report:
 `pull_request_target` runs `main`'s copy, and a failing test there would suppress the alert.
