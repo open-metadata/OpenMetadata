@@ -434,6 +434,7 @@ plugins: dict[str, set[str]] = {
         DATA_DIFF["mysql"],
     },
     "neo4j": {VERSIONS["neo4j"]},
+    "neptune": {VERSIONS["boto3"]},
     "nifi": {},  # uses requests
     "openlineage": {*COMMONS["kafka"], *COMMONS["nats"]},
     "oracle": {"oracledb>=3.4.2,<4", DATA_DIFF["oracle"]},
