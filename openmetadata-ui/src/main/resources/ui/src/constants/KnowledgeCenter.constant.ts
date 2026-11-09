@@ -49,6 +49,7 @@ const KNOWLEDGE_PAGE_FIELDS = {
   EDITORS: 'editors',
   PARENT: 'parent',
   EXTENSION: TabSpecificField.EXTENSION,
+  NEVER_EXTRACTED: 'neverExtracted',
 };
 
 const getKnowledgePageFields = (additionalFields?: string[]): string => {

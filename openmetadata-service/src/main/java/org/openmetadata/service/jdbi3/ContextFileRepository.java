@@ -1,6 +1,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.context.center.MemoryExtractionState.NEVER_EXTRACTED;
 import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
@@ -30,6 +31,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.context.center.MemoryExtractionState;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
@@ -66,6 +68,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     this.assetRepository = new AssetRepository(dao.assetDAO());
     this.contentRepository = new ContextFileContentRepository(jdbi);
     this.contextFileDAO = (CollectionDAO.ContextFileDAO) getDao();
+    fieldFetchers.put(NEVER_EXTRACTED, this::fetchAndSetNeverExtracted);
   }
 
   public AssetRepository getAssetRepository() {
@@ -89,6 +92,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
                   Entity.CONTEXT_MEMORY)
               .size());
     }
+    fetchAndSetNeverExtracted(List.of(file), fields);
   }
 
   @Override
@@ -97,6 +101,26 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     if (!fields.contains("memoryCount")) {
       file.setMemoryCount(null);
     }
+    if (!fields.contains(NEVER_EXTRACTED)) {
+      file.setNeverExtracted(null);
+    }
+  }
+
+  private void fetchAndSetNeverExtracted(List<ContextFile> files, EntityUtil.Fields fields) {
+    if (fields.contains(NEVER_EXTRACTED)) {
+      files.forEach(file -> file.setNeverExtracted(MemoryExtractionState.neverExtracted(file)));
+    }
+  }
+
+  /** neverExtracted is derived from the file's own state on every read that asks for it. */
+  @Override
+  protected List<String> getFieldsStrippedFromStorageJson() {
+    return List.of(NEVER_EXTRACTED);
+  }
+
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(NEVER_EXTRACTED);
   }
 
   @Override

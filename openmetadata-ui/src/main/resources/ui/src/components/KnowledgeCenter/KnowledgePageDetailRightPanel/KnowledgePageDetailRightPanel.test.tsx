@@ -106,10 +106,15 @@ jest.mock('../ArticleStatusBadge/ArticleStatusBadge.component', () =>
     ({
       page,
     }: {
-      page: { processingError?: string; processingStatus?: string };
+      page: {
+        neverExtracted?: boolean;
+        processingError?: string;
+        processingStatus?: string;
+      };
     }) => (
       <span
         data-error={page.processingError}
+        data-never-extracted={page.neverExtracted}
         data-status={page.processingStatus}
         data-testid="status-badge"
       />
@@ -373,21 +378,23 @@ describe('KnowledgePageDetailRightPanel', () => {
     );
   });
 
-  it('hides the status row for an article with no body and no extraction run', () => {
-    renderPanel(article);
-
-    expect(screen.queryByTestId('status-badge')).not.toBeInTheDocument();
-  });
-
-  it('shows the status row for an article whose memories were never extracted', () => {
+  // The server owns the rule: a body alone does not make the article Not processed.
+  it('hides the status row until the article has a status or is reported never extracted', () => {
     renderPanel({
       ...article,
       description: '<p>GDPR covers the personal data of every EU resident.</p>',
     });
 
+    expect(screen.queryByTestId('status-badge')).not.toBeInTheDocument();
+  });
+
+  it('shows the status row for an article the server reports as never extracted', () => {
+    renderPanel({ ...article, neverExtracted: true });
+
     expect(screen.getByText('label.memory-extraction')).toBeInTheDocument();
-    expect(screen.getByTestId('status-badge')).not.toHaveAttribute(
-      'data-status'
+    expect(screen.getByTestId('status-badge')).toHaveAttribute(
+      'data-never-extracted',
+      'true'
     );
   });
 

@@ -21,30 +21,33 @@ import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 
 /**
- * Whether a document's memories were never extracted, so it reads "Not processed". The UI mirrors
- * these rules in {@code utils/ContextCenterMemoryExtractionPureUtils.ts}.
+ * Whether a document's memories were never extracted, so it reads "Not processed". Files and pages
+ * serve it as their {@value #NEVER_EXTRACTED} field, computed on read and never stored.
  */
 public final class MemoryExtractionState {
+  public static final String NEVER_EXTRACTED = "neverExtracted";
+
   private MemoryExtractionState() {}
 
   /**
-   * Processed with no extraction run on record. A Collate chat attachment has no content snapshot
-   * and is deliberately never extracted, so it stays Processed.
+   * Processed with text and no extraction run on record. A Collate chat attachment has no content
+   * snapshot, and the engine skips a file without text, so both stay Processed.
    */
   public static boolean neverExtracted(ContextFile file) {
     return file.getProcessingStatus() == ProcessingStatus.Processed
         && file.getExtractionStats() == null
-        && file.getHeadContentId() != null;
+        && file.getHeadContentId() != null
+        && hasText(file.getExtractedText());
   }
 
   /** An article with a body that was never queued for extraction, since queuing sets a status. */
   public static boolean neverExtracted(Page page) {
     return page.getPageType() == PageType.ARTICLE
         && page.getProcessingStatus() == null
-        && hasBody(page.getDescription());
+        && hasText(page.getDescription());
   }
 
-  private static boolean hasBody(String body) {
-    return !nullOrEmpty(body) && !body.isBlank();
+  private static boolean hasText(String text) {
+    return !nullOrEmpty(text) && !text.isBlank();
   }
 }

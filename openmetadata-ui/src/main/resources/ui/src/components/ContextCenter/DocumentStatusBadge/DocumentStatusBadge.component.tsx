@@ -22,7 +22,6 @@ import {
   ExtractionStats,
   ProcessingStatus,
 } from '../../../generated/entity/data/contextFile';
-import { isFileNeverExtracted } from '../../../utils/ContextCenterMemoryExtractionPureUtils';
 import { DocumentStatusBadgeProps } from './DocumentStatusBadge.interface';
 
 type BadgeColor = 'gray' | 'blue' | 'indigo' | 'success' | 'error' | 'warning';
@@ -64,6 +63,7 @@ const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({ file }) => {
   const { t } = useTranslation();
   const {
     extractionStats: stats,
+    neverExtracted,
     processingError: error,
     processingStatus: status,
   } = file;
@@ -73,7 +73,7 @@ const DocumentStatusBadge: FC<DocumentStatusBadgeProps> = ({ file }) => {
   }
 
   // A backend newer than this UI can report a status we don't know yet
-  const config: StatusConfig | undefined = isFileNeverExtracted(file)
+  const config: StatusConfig | undefined = neverExtracted
     ? NOT_PROCESSED_CONFIG
     : STATUS_CONFIG[status];
 

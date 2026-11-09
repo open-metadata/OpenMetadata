@@ -38,15 +38,23 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
-const article = {
-  description: '<p>GDPR covers the personal data of every EU resident.</p>',
-  pageType: PageType.ARTICLE,
-};
-
 describe('ArticleStatusBadge', () => {
-  it('renders nothing for an article with no body and no status', () => {
+  it('renders nothing for an article with no status that is not reported as never extracted', () => {
+    const { container } = render(<ArticleStatusBadge page={{}} />);
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  // The server owns the rule: an article with a body stays unlabelled without the flag.
+  it('does not work out Not processed from the article itself', () => {
+    const looksNeverExtracted = {
+      description: '<p>GDPR covers the personal data of every EU resident.</p>',
+      pageType: PageType.ARTICLE,
+      processingStatus: undefined,
+    };
+
     const { container } = render(
-      <ArticleStatusBadge page={{ pageType: PageType.ARTICLE }} />
+      <ArticleStatusBadge page={looksNeverExtracted} />
     );
 
     expect(container).toBeEmptyDOMElement();
@@ -55,10 +63,7 @@ describe('ArticleStatusBadge', () => {
   it('renders nothing for an unknown status value', () => {
     const { container } = render(
       <ArticleStatusBadge
-        page={{
-          ...article,
-          processingStatus: 'FutureStatus' as PageProcessingStatus,
-        }}
+        page={{ processingStatus: 'FutureStatus' as PageProcessingStatus }}
       />
     );
 
@@ -69,7 +74,6 @@ describe('ArticleStatusBadge', () => {
     render(
       <ArticleStatusBadge
         page={{
-          ...article,
           processingError: 'provider exploded',
           processingStatus: PageProcessingStatus.Failed,
         }}
@@ -85,7 +89,7 @@ describe('ArticleStatusBadge', () => {
   it('renders no tooltip on a Queued badge', () => {
     render(
       <ArticleStatusBadge
-        page={{ ...article, processingStatus: PageProcessingStatus.Queued }}
+        page={{ processingStatus: PageProcessingStatus.Queued }}
       />
     );
 
@@ -95,8 +99,8 @@ describe('ArticleStatusBadge', () => {
     );
   });
 
-  it('shows Not processed for an article whose memories were never extracted', () => {
-    render(<ArticleStatusBadge page={article} />);
+  it('shows Not processed when the server reports the article was never extracted', () => {
+    render(<ArticleStatusBadge page={{ neverExtracted: true }} />);
 
     const badge = screen.getByTestId('article-status-badge');
 
@@ -113,9 +117,7 @@ describe('ArticleStatusBadge', () => {
     [PageProcessingStatus.Processed, 'label.processed', 'success'],
     [PageProcessingStatus.Failed, 'label.failed', 'error'],
   ])('renders %s with label %s and color %s', (status, label, color) => {
-    render(
-      <ArticleStatusBadge page={{ ...article, processingStatus: status }} />
-    );
+    render(<ArticleStatusBadge page={{ processingStatus: status }} />);
 
     const badge = screen.getByTestId('article-status-badge');
 

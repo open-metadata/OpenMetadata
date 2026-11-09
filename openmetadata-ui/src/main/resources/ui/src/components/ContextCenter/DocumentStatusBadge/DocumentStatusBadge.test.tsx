@@ -39,7 +39,7 @@ jest.mock('react-i18next', () => ({
 
 const extractedFile = {
   extractionStats: { chunksProcessed: 12, chunksTotal: 12, pillsCreated: 3 },
-  headContentId: 'content-1',
+  neverExtracted: false,
   processingStatus: ProcessingStatus.Processed,
 };
 
@@ -101,10 +101,13 @@ describe('DocumentStatusBadge', () => {
     );
   });
 
-  it('shows Not processed for a file whose memories were never extracted', () => {
+  it('shows Not processed when the server reports the file was never extracted', () => {
     render(
       <DocumentStatusBadge
-        file={{ ...extractedFile, extractionStats: undefined }}
+        file={{
+          neverExtracted: true,
+          processingStatus: ProcessingStatus.Processed,
+        }}
       />
     );
 
@@ -117,16 +120,12 @@ describe('DocumentStatusBadge', () => {
     );
   });
 
-  it('keeps Processed for a file extracted into no memories', () => {
+  it('keeps Processed when the server reports the file was extracted', () => {
     render(
       <DocumentStatusBadge
         file={{
-          ...extractedFile,
-          extractionStats: {
-            chunksProcessed: 1,
-            chunksTotal: 1,
-            pillsCreated: 0,
-          },
+          neverExtracted: false,
+          processingStatus: ProcessingStatus.Processed,
         }}
       />
     );
@@ -136,13 +135,14 @@ describe('DocumentStatusBadge', () => {
     );
   });
 
-  // A Collate chat attachment is copied in Processed but with no content snapshot.
-  it('keeps Processed for a chat attachment', () => {
-    render(
-      <DocumentStatusBadge
-        file={{ processingStatus: ProcessingStatus.Processed }}
-      />
-    );
+  // The server owns the rule: a file that looks never extracted stays Processed without the flag.
+  it('does not work out Not processed from the file itself', () => {
+    const looksNeverExtracted = {
+      headContentId: 'content-1',
+      processingStatus: ProcessingStatus.Processed,
+    };
+
+    render(<DocumentStatusBadge file={looksNeverExtracted} />);
 
     expect(screen.getByTestId('document-status-badge')).toHaveTextContent(
       'label.processed'

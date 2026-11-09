@@ -9,6 +9,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Article;
@@ -62,6 +64,17 @@ class MemoryExtractionStateTest {
             uploadedWhileExtractionWasOff().withShareConfig(PRIVATE)));
   }
 
+  // A scanned PDF or an empty text file: the engine skips a source with no text, so Extract
+  // would never change the label.
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {" \n\t "})
+  void aFileWithoutTextStaysProcessed(String extractedText) {
+    assertFalse(
+        MemoryExtractionState.neverExtracted(
+            uploadedWhileExtractionWasOff().withExtractedText(extractedText)));
+  }
+
   @ParameterizedTest
   @EnumSource(value = ProcessingStatus.class, names = "Processed", mode = EnumSource.Mode.EXCLUDE)
   void onlyAProcessedFileCanBeNotProcessed(ProcessingStatus status) {
@@ -109,6 +122,7 @@ class MemoryExtractionStateTest {
         .withName("revenue-recognition.pdf")
         .withAssetId(UUID.randomUUID().toString())
         .withHeadContentId(UUID.randomUUID().toString())
+        .withExtractedText("Revenue is recognised when the service is delivered.")
         .withProcessingStatus(ProcessingStatus.Processed);
   }
 

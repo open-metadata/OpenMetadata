@@ -12,7 +12,7 @@
  */
 
 import { Include } from '../generated/type/include';
-import { getContextFileById } from './assetAPI';
+import { getContextFileById, listContextFiles } from './assetAPI';
 import APIClient from './axiosClient';
 
 jest.mock('./axiosClient', () => ({
@@ -44,5 +44,29 @@ describe('getContextFileById', () => {
     await getContextFileById('file-1');
 
     expect(mockGet.mock.calls[0][1].params.include).toBeUndefined();
+  });
+});
+
+// The status badge shows Not processed from the server's neverExtracted, which a
+// read returns only when asked for it.
+describe('neverExtracted on file reads', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('is requested when a file is fetched by id', async () => {
+    await getContextFileById('file-1');
+
+    expect(mockGet.mock.calls[0][1].params.fields.split(',')).toContain(
+      'neverExtracted'
+    );
+  });
+
+  it('is requested when files are listed', async () => {
+    mockGet.mockResolvedValueOnce({ data: { data: [], paging: {} } });
+
+    await listContextFiles();
+
+    expect(mockGet.mock.calls[0][1].params.fields.split(',')).toContain(
+      'neverExtracted'
+    );
   });
 });

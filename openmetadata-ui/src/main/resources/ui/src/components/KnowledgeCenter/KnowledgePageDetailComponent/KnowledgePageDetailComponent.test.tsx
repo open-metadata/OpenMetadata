@@ -336,6 +336,16 @@ describe('KnowledgePageDetailComponent custom properties', () => {
     });
   });
 
+  it('requests whether the article was never extracted, for its status badge', async () => {
+    renderComponent();
+
+    await waitFor(() => {
+      expect(getKnowledgePageByFqn).toHaveBeenCalledWith('test.page.fqn', {
+        fields: expect.stringContaining('neverExtracted'),
+      });
+    });
+  });
+
   it('renders the custom property table for the article with its permissions', async () => {
     renderComponent();
 

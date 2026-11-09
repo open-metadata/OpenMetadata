@@ -16,6 +16,6 @@ import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 export interface ArticleStatusBadgeProps {
   page: Pick<
     KnowledgePage,
-    'description' | 'pageType' | 'processingError' | 'processingStatus'
+    'neverExtracted' | 'processingError' | 'processingStatus'
   >;
 }

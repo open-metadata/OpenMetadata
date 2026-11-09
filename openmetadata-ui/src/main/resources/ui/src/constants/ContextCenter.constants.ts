@@ -22,6 +22,8 @@ import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const CONTEXT_FILE_ENTITY_TYPE = 'contextFile';
+/** The fields every file read asks for; neverExtracted drives the Not processed badge. */
+export const CONTEXT_FILE_FIELDS = 'folder,memoryCount,neverExtracted';
 
 /**
  * The status reason the server stores when a Query a memory cites is deleted (MemoryEvidenceHolds),

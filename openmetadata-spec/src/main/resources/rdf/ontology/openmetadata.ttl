@@ -3349,6 +3349,10 @@ om:namespaces a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "namespaces" .
 
+om:neverExtracted a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "neverExtracted" .
+
 om:nextDeadline a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "nextDeadline" .

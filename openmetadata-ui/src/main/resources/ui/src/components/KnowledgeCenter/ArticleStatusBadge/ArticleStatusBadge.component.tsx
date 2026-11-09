@@ -19,7 +19,6 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PageProcessingStatus } from '../../../generated/entity/data/page';
-import { isArticleNeverExtracted } from '../../../utils/ContextCenterMemoryExtractionPureUtils';
 import { ArticleStatusBadgeProps } from './ArticleStatusBadge.interface';
 
 type BadgeColor = 'gray' | 'blue' | 'success' | 'error';
@@ -46,10 +45,14 @@ const STATUS_CONFIG: Record<PageProcessingStatus, StatusConfig> = {
 
 const ArticleStatusBadge: FC<ArticleStatusBadgeProps> = ({ page }) => {
   const { t } = useTranslation();
-  const { processingError: error, processingStatus: status } = page;
+  const {
+    neverExtracted,
+    processingError: error,
+    processingStatus: status,
+  } = page;
 
   let config: StatusConfig | undefined;
-  if (isArticleNeverExtracted(page)) {
+  if (neverExtracted) {
     config = NOT_PROCESSED_CONFIG;
   } else if (status) {
     // A backend newer than this UI can report a status we don't know yet

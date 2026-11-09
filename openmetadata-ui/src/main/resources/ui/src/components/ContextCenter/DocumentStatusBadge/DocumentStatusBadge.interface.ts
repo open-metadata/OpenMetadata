@@ -16,6 +16,9 @@ import { ContextFile } from '../../../generated/entity/data/contextFile';
 export interface DocumentStatusBadgeProps {
   file: Pick<
     ContextFile,
-    'extractionStats' | 'headContentId' | 'processingError' | 'processingStatus'
+    | 'extractionStats'
+    | 'neverExtracted'
+    | 'processingError'
+    | 'processingStatus'
   >;
 }

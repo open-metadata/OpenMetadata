@@ -10,6 +10,7 @@ import static org.openmetadata.service.Entity.FIELD_PARENT;
 import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.Entity.getEntity;
 import static org.openmetadata.service.Entity.getEntityReferencesByIds;
+import static org.openmetadata.service.context.center.MemoryExtractionState.NEVER_EXTRACTED;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
@@ -48,6 +49,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.AiProviderHolder;
+import org.openmetadata.service.context.center.MemoryExtractionState;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.llm.LLMClientHolder;
@@ -97,6 +99,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
     this.daoExtension = jdbi.onDemand(CollectionDAO.class).knowledgePageDAO();
     this.assetDAO = jdbi.onDemand(CollectionDAO.class).assetDAO();
+    fieldFetchers.put(NEVER_EXTRACTED, this::fetchAndSetNeverExtracted);
   }
 
   @Override
@@ -131,6 +134,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
                   Entity.CONTEXT_MEMORY)
               .size());
     }
+    fetchAndSetNeverExtracted(List.of(knowledgePage), fields);
     if (knowledgePage.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (knowledgePage.getPage() != null) {
@@ -177,6 +181,12 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         MemoryCountFetcher.countByEntityId(
             daoCollection, entityListToStrings(entities), KNOWLEDGE_PAGE_ENTITY);
     entities.forEach(page -> page.setMemoryCount(countsByPageId.getOrDefault(page.getId(), 0)));
+  }
+
+  private void fetchAndSetNeverExtracted(List<Page> pages, EntityUtil.Fields fields) {
+    if (fields.contains(NEVER_EXTRACTED)) {
+      pages.forEach(page -> page.setNeverExtracted(MemoryExtractionState.neverExtracted(page)));
+    }
   }
 
   private void fetchAndSetParents(List<Page> entities, EntityUtil.Fields fields) {
@@ -406,6 +416,9 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     if (!fields.contains(MEMORY_COUNT)) {
       entity.setMemoryCount(null);
     }
+    if (!fields.contains(NEVER_EXTRACTED)) {
+      entity.setNeverExtracted(null);
+    }
     if (entity.getPageType().equals(PageType.ARTICLE)) {
       Article article = new Article();
       if (entity.getPage() != null) {
@@ -536,11 +549,16 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
    * store time and nothing persists it. That is a coincidence of the field list rather than a
    * guarantee: adding editors to the patch or update fields would start writing a snapshot of the
    * relationship into the entity json, where setFields would then serve it back to any caller that
-   * did not ask for the field.
+   * did not ask for the field. neverExtracted is derived from the page's own state on every read.
    */
   @Override
   protected List<String> getFieldsStrippedFromStorageJson() {
-    return List.of(EDITORS);
+    return List.of(EDITORS, NEVER_EXTRACTED);
+  }
+
+  @Override
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(NEVER_EXTRACTED);
   }
 
   @Override

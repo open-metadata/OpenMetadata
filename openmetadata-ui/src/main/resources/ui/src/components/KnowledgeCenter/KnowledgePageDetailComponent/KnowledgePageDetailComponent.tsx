@@ -270,6 +270,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
           KNOWLEDGE_PAGE_FIELDS.EDITORS,
           KNOWLEDGE_PAGE_FIELDS.PARENT,
           KNOWLEDGE_PAGE_FIELDS.EXTENSION,
+          KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
         ]),
       });
 
