@@ -443,6 +443,33 @@ class ContextMemoryExtractionIT {
   }
 
   /**
+   * OSS: a fact a person rejected, which another file states again, links to the rejected memory
+   * through the real repository and stays rejected: the second file takes the decision.
+   */
+  @Test
+  void oss_aRejectedFactAnotherFileStatesStaysRejected(TestNamespace ns) throws Exception {
+    assumeTrue(
+        Entity.getSearchRepository().getVectorIndexService() == null,
+        "covers the memory index lookup that runs without vector search");
+    ContextFile first = file(ns, "a-payroll", "Payroll " + ns.shortPrefix(), null);
+    ContextFile second =
+        file(
+            ns, "b-payroll", "Revised payroll " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
+    scriptFacts(Map.of(first.getId(), List.of(PAYROLL), second.getId(), List.of(PAYROLL)));
+    runFile(first);
+    ContextMemory rejected = reject(extracted(first.getEntityReference()).getFirst());
+    awaitIndexedIn(first.getEntityReference(), List.of(rejected), ContextMemoryStatus.REJECTED);
+    DuplicateJudge judge = new DuplicateJudge(Map.of());
+    LLMClientHolder.setForTesting(judge);
+
+    runFile(second);
+
+    assertEquals(Set.of(rejected.getId()), ids(extracted(second.getEntityReference())));
+    assertEquals(Set.of(ContextMemoryStatus.REJECTED), statuses(List.of(rejected)));
+    assertEquals(List.of(), judge.judgedQuestions(), "the same fact links without the judge");
+  }
+
+  /**
    * OSS: a person's correction holds the figure it replaced when another file states that figure.
    * The memory index finds a correction by the file it names, which a later write of the
    * correction, here linking a copy, still indexes.
