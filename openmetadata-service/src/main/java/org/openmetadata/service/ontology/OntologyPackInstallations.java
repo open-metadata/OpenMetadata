@@ -16,6 +16,7 @@ package org.openmetadata.service.ontology;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
@@ -156,7 +157,19 @@ public final class OntologyPackInstallations {
     if (copy.getTargetId() == null && NativeOntologyChanges.definition(copy) != null) {
       NativeOntologyChanges.definition(copy).setId(null);
     }
-    return JsonUtils.getObjectMapper().valueToTree(copy);
+    final JsonNode tree = JsonUtils.getObjectMapper().valueToTree(copy);
+    dropEmptyOwners(tree);
+    return tree;
+  }
+
+  private static void dropEmptyOwners(final JsonNode node) {
+    if (node instanceof ObjectNode object) {
+      final JsonNode owners = object.get("owners");
+      if (owners != null && owners.isArray() && owners.isEmpty()) {
+        object.remove("owners");
+      }
+    }
+    node.forEach(OntologyPackInstallations::dropEmptyOwners);
   }
 
   public static List<OntologyPackInstallation> record(

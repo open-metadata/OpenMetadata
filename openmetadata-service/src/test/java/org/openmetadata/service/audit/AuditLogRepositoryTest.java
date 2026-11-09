@@ -29,10 +29,13 @@ import ch.qos.logback.core.read.ListAppender;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -242,6 +245,152 @@ class AuditLogRepositoryTest {
 
     assertFalse(masked.toString(StandardCharsets.UTF_8).contains("alice@"));
     assertTrue(plain.toString(StandardCharsets.UTF_8).contains("alice@example.com"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void appRecordsUseTheSameProjectionForAllReaders(boolean readsUserEmails) throws Exception {
+    for (Object snapshot : List.of(appSnapshot(), JsonUtils.pojoToJson(appSnapshot()))) {
+      ChangeEvent event =
+          new ChangeEvent()
+              .withId(UUID.randomUUID())
+              .withEventType(EventType.ENTITY_UPDATED)
+              .withEntityType(Entity.APPLICATION)
+              .withEntityFullyQualifiedName("configuration-test")
+              .withEntity(snapshot)
+              .withChangeDescription(
+                  new ChangeDescription()
+                      .withFieldsAdded(
+                          List.of(
+                              new FieldChange()
+                                  .withName("privateConfiguration")
+                                  .withNewValue("runtime-parameter")))
+                      .withFieldsUpdated(
+                          List.of(
+                              new FieldChange()
+                                  .withName("openMetadataServerConnection.securityConfig.jwtToken")
+                                  .withOldValue("runtime-old")
+                                  .withNewValue("runtime-new"),
+                              new FieldChange().withName("description").withNewValue("kept")))
+                      .withFieldsDeleted(
+                          List.of(
+                              new FieldChange()
+                                  .withName("openMetadataServerConnection")
+                                  .withOldValue("runtime-deleted"))));
+      stubAppRecord(JsonUtils.pojoToJson(event));
+      AuditLogEntry entry =
+          repository
+              .list(
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  null,
+                  25,
+                  null,
+                  null,
+                  readsUserEmails)
+              .getData()
+              .getFirst();
+      String response = JsonUtils.pojoToJson(entry);
+      assertFalse(response.contains("runtime-"), response);
+      assertTrue(response.contains("kept"), response);
+      assertEquals(1, entry.getChangeEvent().getChangeDescription().getFieldsUpdated().size());
+      ByteArrayOutputStream output = new ByteArrayOutputStream();
+      repository.streamExportAsJson(
+          output, null, null, null, null, null, 0L, 1L, null, 1, readsUserEmails, null);
+      assertFalse(output.toString(StandardCharsets.UTF_8).contains("runtime-"));
+    }
+  }
+
+  @Test
+  void invalidAppRecordDoesNotReturnItsRawPayload() {
+    stubAppRecord("{invalid runtime-value");
+    AuditLogEntry entry =
+        repository
+            .list(null, null, null, null, null, null, null, null, null, 25, null, null)
+            .getData()
+            .getFirst();
+    assertFalse(JsonUtils.pojoToJson(entry).contains("runtime-value"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"not-json", "[]", "null"})
+  void invalidAppSnapshotsAreOmitted(String snapshot) {
+    stubAppRecord(
+        JsonUtils.pojoToJson(
+            new ChangeEvent()
+                .withEntity(snapshot)
+                .withEntityType(Entity.APPLICATION)
+                .withEventType(EventType.ENTITY_CREATED)));
+    AuditLogEntry entry =
+        repository
+            .list(null, null, null, null, null, null, null, null, null, 25, null, null)
+            .getData()
+            .getFirst();
+    assertEquals(null, entry.getChangeEvent().getEntity());
+  }
+
+  @Test
+  void incrementalAppChangesUseTheSameProjection() {
+    ChangeDescription changes =
+        new ChangeDescription()
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName("privateConfiguration[parameter]")
+                        .withNewValue("runtime-value"),
+                    new FieldChange()
+                        .withName("openMetadataServerConnection/securityConfig")
+                        .withOldValue("runtime-old")));
+    stubAppRecord(
+        JsonUtils.pojoToJson(
+            new ChangeEvent()
+                .withEventType(EventType.ENTITY_UPDATED)
+                .withEntityType(Entity.APPLICATION)
+                .withIncrementalChangeDescription(changes)
+                .withEntity(
+                    Map.of(
+                        "name", "configuration-test", "incrementalChangeDescription", changes))));
+    AuditLogEntry entry =
+        repository
+            .list(null, null, null, null, null, null, null, null, null, 25, null, null)
+            .getData()
+            .getFirst();
+    assertFalse(JsonUtils.pojoToJson(entry).contains("runtime-"));
+  }
+
+  private Object appSnapshot() {
+    return Map.of(
+        "name",
+        "configuration-test",
+        "privateConfiguration",
+        Map.of("parameter", "runtime-private"),
+        "openMetadataServerConnection",
+        Map.of("securityConfig", Map.of("jwtToken", "runtime-token")),
+        "description",
+        "kept");
+  }
+
+  private void stubAppRecord(String json) {
+    when(auditLogDAO.list(
+            any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(),
+            any(), any(), any(), anyInt()))
+        .thenReturn(
+            List.of(
+                AuditLogRecord.builder()
+                    .id(1L)
+                    .eventTs(1L)
+                    .eventType(EventType.ENTITY_UPDATED.value())
+                    .entityType(Entity.APPLICATION)
+                    .entityFQN("configuration-test")
+                    .eventJson(json)
+                    .build()));
+    stubCount();
   }
 
   private void stubAUserEventWithEmails() {

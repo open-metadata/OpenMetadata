@@ -61,6 +61,10 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import {
+  permissionQueryKeys,
+  PERMISSION_STALE_TIME,
+} from '../../hooks/useEntityPermissions/permissionQueryKeys';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
@@ -68,6 +72,7 @@ import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
+import { getResourcePermission } from '../../rest/permissionAPI';
 import {
   tableQueryCountFn,
   tableQueryCountKey,
@@ -100,6 +105,11 @@ import {
 } from '../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { PERMISSION_POLICY } from '../../utils/permissionPolicy';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getOperationPermissions,
+} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
@@ -138,12 +148,20 @@ const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
 
 // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
 // the render that starts the request, so the badge never flashes a placeholder 0.
-const useTableQueryCount = (tableId: string) =>
+const useTableQueryCount = (tableId: string, canListQueries: boolean) =>
   useQuery({
     queryKey: tableQueryCountKey(tableId),
     queryFn: tableQueryCountFn(tableId),
-    enabled: Boolean(tableId),
+    enabled: Boolean(tableId) && canListQueries,
   });
+
+// The Queries tab shows only with Query view access that is allow or, per
+// PERMISSION_POLICY.tableQueriesTabConditionalAllow, conditionalAllow.
+const fetchQueryResourcePermission = async () =>
+  getOperationPermissions(
+    await getResourcePermission(ResourceEntity.QUERY),
+    PERMISSION_POLICY.tableQueriesTabConditionalAllow === 'attempt'
+  );
 
 const TableDetailsPageV1: React.FC = () => {
   const { currentUser } = useApplicationStore();
@@ -195,6 +213,19 @@ const TableDetailsPageV1: React.FC = () => {
     canViewUsage: viewUsagePermission,
     canViewTests: viewTestCasePermission,
   } = getDerivedPermissionFlags(tablePermissions);
+  const {
+    data: queryResourcePermission,
+    isLoading: isQueryResourcePermissionLoading,
+  } = useQuery({
+    queryKey: permissionQueryKeys.tableQueriesTab(),
+    queryFn: fetchQueryResourcePermission,
+    staleTime: PERMISSION_STALE_TIME,
+  });
+  // Table-level ViewQueries is not enough: a deny on the Query resource must hide the tab.
+  const { canViewBasic: viewQueryResourcePermission } =
+    getDerivedPermissionFlags(
+      queryResourcePermission ?? DEFAULT_ENTITY_PERMISSION
+    );
   // Same value as viewBasicPermission above, named for what it means at its one call site
   // (the entity useQuery's `enabled` a few lines down) rather than re-destructured.
   const canViewTableInQuery = viewBasicPermission;
@@ -258,7 +289,10 @@ const TableDetailsPageV1: React.FC = () => {
   const tableDetailsId = tableDetails?.id ?? '';
 
   const { data: queryCount = 0, isFetching: isQueryCountLoading } =
-    useTableQueryCount(tableDetailsId);
+    useTableQueryCount(
+      tableDetailsId,
+      viewQueryResourcePermission && viewQueriesPermission
+    );
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
   // render so the navigate call doesn't fire during the same commit that returns the query
@@ -583,6 +617,7 @@ const TableDetailsPageV1: React.FC = () => {
       editCustomAttributePermission,
       viewSampleDataPermission,
       viewQueriesPermission,
+      viewQueryResourcePermission,
       viewProfilerPermission,
       editLineagePermission,
       fetchTableDetails: refetchTableDetails,
@@ -615,6 +650,7 @@ const TableDetailsPageV1: React.FC = () => {
     editCustomAttributePermission,
     viewSampleDataPermission,
     viewQueriesPermission,
+    viewQueryResourcePermission,
     viewProfilerPermission,
     editLineagePermission,
     refetchTableDetails,
@@ -939,8 +975,9 @@ const TableDetailsPageV1: React.FC = () => {
 
   // Wait for permissions to resolve before deciding what to render — without this we'd flash
   // a "no permission" placeholder during the brief window before the permissions endpoint
-  // returns. Once permissions are in, this gate falls through naturally.
-  if (isPermissionsLoading) {
+  // returns. Once permissions are in, this gate falls through naturally. The Query permission
+  // decides whether the Queries tab exists, so a deep link to it must not resolve to Schema first.
+  if (isPermissionsLoading || isQueryResourcePermissionLoading) {
     return <EntityDetailsPageSkeleton />;
   }
 

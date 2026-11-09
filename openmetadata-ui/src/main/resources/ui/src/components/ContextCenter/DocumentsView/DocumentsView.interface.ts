@@ -39,6 +39,7 @@ export interface DocumentsViewProps {
   onOpenPreview?: (file: ContextFile) => void;
   onPreview?: (file: ContextFile | undefined) => void;
   onSelectFile?: (fileId: string) => void;
+  onClearSelection?: () => void;
   onBulkDelete?: () => void;
   onBulkMove?: (folderId: string) => void;
   onBulkDownload?: () => void;
