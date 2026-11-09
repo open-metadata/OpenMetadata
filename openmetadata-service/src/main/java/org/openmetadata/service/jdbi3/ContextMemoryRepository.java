@@ -41,6 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
 import org.openmetadata.service.context.review.MemoryEvidenceHolds;
+import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
@@ -1274,6 +1275,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
           Entity.CONTEXT_MEMORY,
           Relationship.RELATED_TO);
     }
+    refreshSearchDocument(memoryId);
   }
 
   private boolean hasSourceRelationship(
@@ -1323,6 +1325,16 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               .toList());
     }
     update(null, current, updated, Entity.ADMIN_USER_NAME);
+  }
+
+  /**
+   * Reindexes the memory from the database after the write commits. A source-link change can leave
+   * the stored memory unchanged, and an unchanged update never rewrites the search document.
+   */
+  public void refreshSearchDocument(UUID memoryId) {
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntityUpdated(
+            new EntityReference().withId(memoryId).withType(Entity.CONTEXT_MEMORY), null);
   }
 
   /**
