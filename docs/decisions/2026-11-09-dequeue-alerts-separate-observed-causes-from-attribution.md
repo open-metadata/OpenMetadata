@@ -1,9 +1,9 @@
 # Dequeue alerts report observed causes, not attribution
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial)
+- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-09 (remove internal tooling tests)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `.github/scripts/test_merge_queue_dequeue.py`, run by `merge-queue-dequeue-tests.yml`
+- **Guard:** reviewer
 - **Related:** ADR:2026-11-06-dequeue-attribution-requires-comparable-test-evidence; ADR:openmetadata-collate/2026-11-09-dequeue-alerts-separate-observed-causes-from-attribution
 
 ## Context
@@ -33,3 +33,9 @@ Build and test workflows carry no reporting steps. A second, independent failure
 listed after the first, not explained. An unrecognised infrastructure error shows only its failed
 step. The diagnosis is tested on pull requests that change it, never inside the report:
 `pull_request_target` runs `main`'s copy, and a failing test there would suppress the alert.
+
+## Amendment — internal tooling tests
+
+Per maintainer request, the dequeue helper carries no automated tests or dedicated test workflow.
+This replaces the PR-test setup above. Changes use code review and relevant syntax, formatting and
+reference checks; none of that validation executes inside the dequeue report.
