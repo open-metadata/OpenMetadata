@@ -10,6 +10,35 @@ full rebuild required to replace legacy lineage and extension triples when upgra
 The [catalog scale harness](rdf-scale-validation.md) measures full rebuilds, serving queries,
 resource peaks, cancellation, and restart persistence against a specified catalog size.
 
+## Size local ontology queries separately
+
+Glossary and native ontology SPARQL queries run in a disposable JVM on the OpenMetadata server,
+including when RDF storage is disabled. Each server admits one such query at a time. Concurrent
+requests wait fairly for up to five seconds within their request deadline. Saturation returns
+HTTP 429 with `Retry-After: 1`; an expired request deadline returns HTTP 503. The existing global
+and per-principal admission limits still apply. Queries exceeding their memory or response budget
+receive HTTP 400. The deadline includes admission wait, worker startup and input transfer.
+Smaller queries pay JVM startup latency on each request.
+
+Reserve additional container memory for the worker, beyond the server's heap and existing native
+memory allowance. The worker heap is 64 MiB plus 24 times the serialized input length, rounded up
+to MiB and capped at 256 MiB. Its other JVM caps are 64 MiB metaspace, 32 MiB code cache and 16 MiB
+direct buffers. These caps total at most 368 MiB, but do not bound the worker's total RSS. Measure
+the worker's peak RSS under your workload and leave headroom for stacks, native allocations and file cache.
+A container limit equal to the server's `-Xmx` cannot accommodate this worker. The query JVM
+protects the server heap, but the container's OOM killer can still terminate the server if the
+container is undersized.
+
+Keep the server's Java executable available and its temporary directory writable. Each request
+uses private temporary files capped at 32 MiB of input, 10 MiB of output and 4 KiB of status.
+The input cap bounds transport, not the size of every graph that can fit in memory. If parsing
+exhausts the worker heap, HTTP 400 identifies the ontology as too large to load. Query evaluation
+or inference can independently exhaust the execution budget, even for a smaller input.
+The server deletes them when the request ends and terminates the worker on timeout or cancellation.
+Source-model materialization still occurs in the server, so catalogs already too large to
+materialize need separate sizing. See
+[the worker execution decision](decisions/2026-11-04-ontology-sparql-runs-in-a-bounded-worker.md).
+
 ## The Fuseki image
 
 Run the published `openmetadata/fuseki` image, pinned to an immutable `<version>-<commit>` tag

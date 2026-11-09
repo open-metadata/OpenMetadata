@@ -110,9 +110,24 @@ jest.mock('../ArticleStatusBadge/ArticleStatusBadge.component', () =>
 jest.mock(
   '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component',
   () =>
-    jest.fn(({ sourceId }: { sourceId: string }) => (
-      <div data-source-id={sourceId} data-testid="extracted-memories-card" />
-    ))
+    jest.fn(
+      ({
+        sourceId,
+        sourceOwners,
+        sourceType,
+      }: {
+        sourceId: string;
+        sourceOwners?: { id: string }[];
+        sourceType: string;
+      }) => (
+        <div
+          data-owner-ids={sourceOwners?.map((owner) => owner.id).join(',')}
+          data-source-id={sourceId}
+          data-source-type={sourceType}
+          data-testid="extracted-memories-card"
+        />
+      )
+    )
 );
 
 jest.mock('react-i18next', () => ({
@@ -308,6 +323,19 @@ describe('KnowledgePageDetailRightPanel', () => {
       'data-source-id',
       'page-1'
     );
+  });
+
+  // The card offers the article's owners the approval of its extracted memories.
+  it('names the article and its owners to the memories card', () => {
+    renderPanel({
+      ...article,
+      owners: [{ id: 'team-finance', type: 'team', name: 'finance' }],
+    });
+
+    const card = screen.getByTestId('extracted-memories-card');
+
+    expect(card).toHaveAttribute('data-source-type', 'page');
+    expect(card).toHaveAttribute('data-owner-ids', 'team-finance');
   });
 
   it('shows the extraction status badge once the article has a status', () => {

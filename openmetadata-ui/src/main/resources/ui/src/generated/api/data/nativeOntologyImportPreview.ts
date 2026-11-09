@@ -1266,7 +1266,8 @@ export interface NativeOntologyImportSummary {
      * Label of the source ontology, when the source declares exactly one ontology header with a
      * label.
      */
-    ontologyLabel?: string;
+    ontologyLabel?:     string;
+    skippedStatements?: SkippedStatements;
 }
 
 /**
@@ -1381,4 +1382,65 @@ export enum Status {
     New = "NEW",
     Skipped = "SKIPPED",
     Update = "UPDATE",
+}
+
+/**
+ * What the importer left out of an RDF source because the native model cannot hold it, so a
+ * reviewer sees what the preview does not cover. A native export re-imported skips nothing.
+ */
+export interface SkippedStatements {
+    /**
+     * At most 100 groups, largest first.
+     */
+    groups: SkipGroup[];
+    /**
+     * Groups beyond the listed ones.
+     */
+    omittedGroups: number;
+    /**
+     * Statements skipped across all groups, including groups omitted from the list.
+     */
+    total: number;
+}
+
+/**
+ * RDF statements skipped for one reason and predicate. Blank-node structure hanging off a
+ * skipped statement is part of that statement and is not counted separately.
+ */
+export interface SkipGroup {
+    count: number;
+    /**
+     * IRI of the object, set only when the predicate is rdf:type.
+     */
+    object?: string;
+    /**
+     * IRI of the skipped statements' predicate. Absent for INDIVIDUAL, which covers every
+     * predicate of the individual.
+     */
+    predicate?: string;
+    reason:     SkipReason;
+    /**
+     * A bounded sample of the subjects, the lexicographically first, so the sample is the same
+     * on every parse.
+     */
+    subjects?: string[];
+}
+
+/**
+ * Why an RDF statement was left out. NON_PREFERRED_LANGUAGE: another language of a text the
+ * import keeps in its preferred language (untagged, then `en`, then the lexicographically
+ * first tag). EXTRA_VALUE: a further value of a single-valued field; the import keeps the
+ * lexicographically first. UNSUPPORTED_ANNOTATION: an annotation the native model has no
+ * field for. UNSUPPORTED_STRUCTURE: a construct the native model cannot represent
+ * faithfully, such as a union domain or a SHACL shape. INDIVIDUAL: a statement about a
+ * named individual that is not a class or concept. IMPORTS: an `owl:imports` statement; the
+ * importer never fetches other documents.
+ */
+export enum SkipReason {
+    ExtraValue = "EXTRA_VALUE",
+    Imports = "IMPORTS",
+    Individual = "INDIVIDUAL",
+    NonPreferredLanguage = "NON_PREFERRED_LANGUAGE",
+    UnsupportedAnnotation = "UNSUPPORTED_ANNOTATION",
+    UnsupportedStructure = "UNSUPPORTED_STRUCTURE",
 }
