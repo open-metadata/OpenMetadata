@@ -19,7 +19,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -102,7 +101,7 @@ class SemanticMemoryDuplicateFinderTest {
         .thenReturn(candidate);
     lenient().when(repository.hasOrgWideAnchor(candidate)).thenReturn(true);
     return new SemanticMemoryDuplicateFinder(
-        repository, () -> vectorService, () -> searchRepository, Optional.of(client));
+        repository, () -> vectorService, () -> searchRepository, client);
   }
 
   @Test
@@ -204,7 +203,7 @@ class SemanticMemoryDuplicateFinderTest {
 
   private SemanticMemoryDuplicateFinder keywordFinder() {
     return new SemanticMemoryDuplicateFinder(
-        repository, () -> null, () -> searchRepository, Optional.of(completionClient));
+        repository, () -> null, () -> searchRepository, completionClient);
   }
 
   /** A linked fact stays anchored to its own file, hiding it from readers of a restricted one. */
@@ -242,8 +241,7 @@ class SemanticMemoryDuplicateFinderTest {
     rankedHits(List.of(stated));
     eligible(stated);
     SemanticMemoryDuplicateFinder finder =
-        new SemanticMemoryDuplicateFinder(
-            repository, () -> null, () -> searchRepository, Optional.empty());
+        SemanticMemoryDuplicateFinder.exactOnly(repository, () -> null, () -> searchRepository);
 
     assertEquals(
         new DuplicateMatch.Equivalent(stated),
@@ -352,10 +350,7 @@ class SemanticMemoryDuplicateFinderTest {
 
     DuplicateMatch found =
         new SemanticMemoryDuplicateFinder(
-                repository,
-                () -> vectorService,
-                () -> searchRepository,
-                Optional.of(completionClient))
+                repository, () -> vectorService, () -> searchRepository, completionClient)
             .findMatch(memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer()));
 
     assertEquals(new DuplicateMatch.Equivalent(candidate), found);
@@ -509,10 +504,7 @@ class SemanticMemoryDuplicateFinderTest {
     new ContextMemoryReconciler(
             repository,
             new SemanticMemoryDuplicateFinder(
-                repository,
-                () -> vectorService,
-                () -> searchRepository,
-                Optional.of(completionClient)))
+                repository, () -> vectorService, () -> searchRepository, completionClient))
         .reconcile(
             file,
             Entity.CONTEXT_FILE,
@@ -550,10 +542,7 @@ class SemanticMemoryDuplicateFinderTest {
 
     assertTrue(
         new SemanticMemoryDuplicateFinder(
-                repository,
-                () -> vectorService,
-                () -> searchRepository,
-                Optional.of(completionClient))
+                repository, () -> vectorService, () -> searchRepository, completionClient)
             .isHeldByADecision(pending));
     verify(vectorService, never())
         .search(anyString(), any(), anyInt(), anyInt(), anyInt(), anyDouble(), any(), any());
@@ -681,10 +670,7 @@ class SemanticMemoryDuplicateFinderTest {
 
     assertFalse(
         new SemanticMemoryDuplicateFinder(
-                repository,
-                () -> vectorService,
-                () -> searchRepository,
-                Optional.of(completionClient))
+                repository, () -> vectorService, () -> searchRepository, completionClient)
             .isHeldByADecision(pending));
     verify(searchRepository, never()).getSearchClient();
     verify(vectorService, never())
@@ -708,7 +694,7 @@ class SemanticMemoryDuplicateFinderTest {
         .thenThrow(new IOException("search index unavailable"));
     SemanticMemoryDuplicateFinder finder =
         new SemanticMemoryDuplicateFinder(
-            repository, () -> vectorService, () -> searchRepository, Optional.of(completionClient));
+            repository, () -> vectorService, () -> searchRepository, completionClient);
 
     assertThrows(
         IllegalStateException.class,

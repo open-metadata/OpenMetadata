@@ -19,7 +19,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -1262,7 +1261,7 @@ class ContextMemoryReconcilerTest {
     return new ContextMemoryReconciler(
         memoryRepository,
         new SemanticMemoryDuplicateFinder(
-            memoryRepository, () -> null, () -> searchRepository, Optional.of(judge)));
+            memoryRepository, () -> null, () -> searchRepository, judge));
   }
 
   /** A person rejected the fact: another file stating it links to that decision, not a copy. */

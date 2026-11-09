@@ -16,6 +16,7 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -304,6 +305,58 @@ class ContextMemoryExtractionIT {
     assertNotEquals(
         original.get(VACATION.question()).getId(), linked.get(VACATION.question()).getId());
     assertEquals(VACATION_REPLACED.answer(), linked.get(VACATION.question()).getAnswer());
+  }
+
+  /**
+   * A provider that supplies no judge never falls back to the built-in model, as Collate relies on:
+   * another file's rewording is a new memory, while a verbatim fact still links.
+   */
+  @Test
+  void aProviderWithoutAJudgeLinksOnlyVerbatimFacts(TestNamespace ns) throws Exception {
+    assumeTrue(
+        Entity.getSearchRepository().getVectorIndexService() == null,
+        "covers the memory index lookup that runs without vector search");
+    ContextFile first = file(ns, "handbook", "Handbook " + ns.shortPrefix());
+    ContextFile second = file(ns, "handbook-revised", "Revised handbook " + ns.shortPrefix());
+    scriptFacts(
+        Map.of(
+            first.getId(),
+            List.of(KAFKA_OWNER, PAYROLL),
+            second.getId(),
+            List.of(KAFKA_OWNER, PAYROLL_REWORDED)));
+    runFile(first);
+    Map<String, ContextMemory> original = byQuestion(extracted(first.getEntityReference()));
+    awaitSearchable(original.values());
+    DuplicateJudge builtIn =
+        new DuplicateJudge(Map.of(PAYROLL_REWORDED.question(), PAYROLL.question()));
+    LLMClientHolder.setForTesting(builtIn);
+    AiProviderHolder.setForTesting(providerWithoutAJudge());
+
+    runFile(second);
+
+    assertEquals(List.of(), builtIn.judgedQuestions(), "the provider supplies no judge");
+    Map<String, ContextMemory> linked = byQuestion(extracted(second.getEntityReference()));
+    assertEquals(Set.of(KAFKA_OWNER.question(), PAYROLL_REWORDED.question()), linked.keySet());
+    assertEquals(
+        original.get(KAFKA_OWNER.question()).getId(), linked.get(KAFKA_OWNER.question()).getId());
+    assertFalse(
+        ids(original.values()).contains(linked.get(PAYROLL_REWORDED.question()).getId()),
+        "the rewording is a new memory");
+  }
+
+  /** Extracts as scripted and supplies no duplicate judge. */
+  private AiProvider providerWithoutAJudge() {
+    return new AiProvider() {
+      @Override
+      public DocumentMemoryExtractor documentExtractor() {
+        return extractor;
+      }
+
+      @Override
+      public Optional<LLMCompletionClient> duplicateJudge() {
+        return Optional.empty();
+      }
+    };
   }
 
   /**

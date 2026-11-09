@@ -83,31 +83,52 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private final ContextMemoryRepository repository;
   private final Supplier<VectorIndexService> vectorServiceSupplier;
   private final Supplier<SearchRepository> searchRepositorySupplier;
-  private final Optional<LLMCompletionClient> judge;
+  private final EquivalenceJudge judge;
 
   public SemanticMemoryDuplicateFinder(
       ContextMemoryRepository repository,
       Supplier<VectorIndexService> vectorServiceSupplier,
-      Optional<LLMCompletionClient> judge) {
+      LLMCompletionClient judge) {
     this(repository, vectorServiceSupplier, Entity::getSearchRepository, judge);
-  }
-
-  /** A lookup that only answers {@link #isHeldByADecision}: it never judges equivalence. */
-  public static SemanticMemoryDuplicateFinder forDecisionChecks(
-      ContextMemoryRepository repository) {
-    return new SemanticMemoryDuplicateFinder(
-        repository, () -> null, Entity::getSearchRepository, Optional.empty());
   }
 
   SemanticMemoryDuplicateFinder(
       ContextMemoryRepository repository,
       Supplier<VectorIndexService> vectorServiceSupplier,
       Supplier<SearchRepository> searchRepositorySupplier,
-      Optional<LLMCompletionClient> judge) {
+      LLMCompletionClient judge) {
+    this(repository, vectorServiceSupplier, searchRepositorySupplier, new ModelJudge(judge));
+  }
+
+  private SemanticMemoryDuplicateFinder(
+      ContextMemoryRepository repository,
+      Supplier<VectorIndexService> vectorServiceSupplier,
+      Supplier<SearchRepository> searchRepositorySupplier,
+      EquivalenceJudge judge) {
     this.repository = repository;
     this.vectorServiceSupplier = vectorServiceSupplier;
     this.searchRepositorySupplier = searchRepositorySupplier;
     this.judge = judge;
+  }
+
+  /** A finder without a judge links identical facts only, so a rewording is a new memory. */
+  public static SemanticMemoryDuplicateFinder exactOnly(
+      ContextMemoryRepository repository, Supplier<VectorIndexService> vectorServiceSupplier) {
+    return exactOnly(repository, vectorServiceSupplier, Entity::getSearchRepository);
+  }
+
+  static SemanticMemoryDuplicateFinder exactOnly(
+      ContextMemoryRepository repository,
+      Supplier<VectorIndexService> vectorServiceSupplier,
+      Supplier<SearchRepository> searchRepositorySupplier) {
+    return new SemanticMemoryDuplicateFinder(
+        repository, vectorServiceSupplier, searchRepositorySupplier, EquivalenceJudge.EXACT_ONLY);
+  }
+
+  /** A lookup that only answers {@link #isHeldByADecision}: it never judges equivalence. */
+  public static SemanticMemoryDuplicateFinder forDecisionChecks(
+      ContextMemoryRepository repository) {
+    return exactOnly(repository, () -> null);
   }
 
   @Override
@@ -117,10 +138,9 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             .collect(
                 Collectors.partitioningBy(
                     candidate -> MemoryReviewHolds.haveConflictingNumbers(candidate, derived)));
-    ContextMemory equivalent = findEquivalent(derived, byConflict.get(false));
-    return equivalent == null
-        ? conflictWithDecision(derived, byConflict.get(true))
-        : new DuplicateMatch.Equivalent(equivalent);
+    return findEquivalent(derived, byConflict.get(false))
+        .<DuplicateMatch>map(DuplicateMatch.Equivalent::new)
+        .orElseGet(() -> conflictWithDecision(derived, byConflict.get(true)));
   }
 
   /**
@@ -135,15 +155,15 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   /**
-   * Numbers that differ never merge, so only a candidate whose numbers agree can be the fact.
-   * Without a judge only the same text is, and a rewording becomes a new memory.
+   * Numbers that differ never merge, so only a candidate whose numbers agree can be the fact: the
+   * same text, or the candidate the judge picks.
    */
-  private ContextMemory findEquivalent(ContextMemory derived, List<ContextMemory> candidates) {
+  private Optional<ContextMemory> findEquivalent(
+      ContextMemory derived, List<ContextMemory> candidates) {
     return candidates.stream()
         .filter(candidate -> sameFactText(candidate, derived))
         .findFirst()
-        .or(() -> judge.map(client -> judgeEquivalent(client, derived, candidates)))
-        .orElse(null);
+        .or(() -> judge.choose(derived, candidates));
   }
 
   /** Another value for a fact a person decided waits for review; beside any other, a new claim. */
@@ -320,26 +340,53 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     return text == null ? "" : text.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
   }
 
-  private ContextMemory judgeEquivalent(
-      LLMCompletionClient client, ContextMemory derived, List<ContextMemory> candidates) {
-    if (candidates.isEmpty()) {
-      return null;
+  private static String comparisonPrompt(ContextMemory derived, List<ContextMemory> candidates) {
+    List<Comparison> comparisons =
+        IntStream.range(0, candidates.size())
+            .mapToObj(
+                index ->
+                    new Comparison(
+                        index,
+                        candidates.get(index).getQuestion(),
+                        candidates.get(index).getAnswer()))
+            .toList();
+    return JsonUtils.pojoToJson(
+        new ComparisonRequest(derived.getQuestion(), derived.getAnswer(), comparisons));
+  }
+
+  /** One choice naming a candidate is a match; none, several or an unknown index is none. */
+  private static Optional<ContextMemory> chosenCandidate(
+      List<MatchChoice> choices, List<ContextMemory> candidates) {
+    return choices.size() == 1
+        ? Optional.ofNullable(choices.getFirst().index())
+            .filter(index -> index >= 0 && index < candidates.size())
+            .map(candidates::get)
+        : Optional.empty();
+  }
+
+  /** Picks, among candidates whose numbers agree, the one that states the derived fact. */
+  private interface EquivalenceJudge {
+    /** No judge: only the same text is the same fact, so a rewording is a new one. */
+    EquivalenceJudge EXACT_ONLY = (derived, candidates) -> Optional.empty();
+
+    Optional<ContextMemory> choose(ContextMemory derived, List<ContextMemory> candidates);
+  }
+
+  /** Asks the model which candidate states the same fact, if any; no candidates, no call. */
+  private record ModelJudge(LLMCompletionClient client) implements EquivalenceJudge {
+    ModelJudge {
+      Objects.requireNonNull(client, "A judged duplicate check needs a model; use exactOnly");
     }
-    List<Comparison> comparisons = new ArrayList<>();
-    for (int index = 0; index < candidates.size(); index++) {
-      ContextMemory candidate = candidates.get(index);
-      comparisons.add(new Comparison(index, candidate.getQuestion(), candidate.getAnswer()));
+
+    @Override
+    public Optional<ContextMemory> choose(ContextMemory derived, List<ContextMemory> candidates) {
+      return candidates.isEmpty()
+          ? Optional.empty()
+          : chosenCandidate(
+              client.completeStructured(
+                  EQUIVALENCE_PROMPT, comparisonPrompt(derived, candidates), MatchChoice.class),
+              candidates);
     }
-    String prompt =
-        JsonUtils.pojoToJson(
-            new ComparisonRequest(derived.getQuestion(), derived.getAnswer(), comparisons));
-    List<MatchChoice> choices =
-        client.completeStructured(EQUIVALENCE_PROMPT, prompt, MatchChoice.class);
-    if (choices.size() != 1 || choices.getFirst().index() == null) {
-      return null;
-    }
-    int index = choices.getFirst().index();
-    return index >= 0 && index < candidates.size() ? candidates.get(index) : null;
   }
 
   private record ComparisonRequest(String question, String answer, List<Comparison> candidates) {}
