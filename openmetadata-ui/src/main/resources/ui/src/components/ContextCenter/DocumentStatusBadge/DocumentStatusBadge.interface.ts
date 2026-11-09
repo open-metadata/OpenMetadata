@@ -11,13 +11,11 @@
  *  limitations under the License.
  */
 
-import {
-  ExtractionStats,
-  ProcessingStatus,
-} from '../../../generated/entity/data/contextFile';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 
 export interface DocumentStatusBadgeProps {
-  error?: string;
-  stats?: ExtractionStats;
-  status?: ProcessingStatus;
+  file: Pick<
+    ContextFile,
+    'extractionStats' | 'headContentId' | 'processingError' | 'processingStatus'
+  >;
 }

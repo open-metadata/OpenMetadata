@@ -13,6 +13,7 @@
 
 import { render, screen } from '@testing-library/react';
 import { PageProcessingStatus } from '../../../generated/entity/data/page';
+import { PageType } from '../../../interface/knowledge-center.interface';
 import ArticleStatusBadge from './ArticleStatusBadge.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -37,16 +38,28 @@ jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
 }));
 
+const article = {
+  description: '<p>GDPR covers the personal data of every EU resident.</p>',
+  pageType: PageType.ARTICLE,
+};
+
 describe('ArticleStatusBadge', () => {
-  it('renders nothing when status is undefined', () => {
-    const { container } = render(<ArticleStatusBadge />);
+  it('renders nothing for an article with no body and no status', () => {
+    const { container } = render(
+      <ArticleStatusBadge page={{ pageType: PageType.ARTICLE }} />
+    );
 
     expect(container).toBeEmptyDOMElement();
   });
 
   it('renders nothing for an unknown status value', () => {
     const { container } = render(
-      <ArticleStatusBadge status={'FutureStatus' as PageProcessingStatus} />
+      <ArticleStatusBadge
+        page={{
+          ...article,
+          processingStatus: 'FutureStatus' as PageProcessingStatus,
+        }}
+      />
     );
 
     expect(container).toBeEmptyDOMElement();
@@ -55,8 +68,11 @@ describe('ArticleStatusBadge', () => {
   it('shows the processing error as a tooltip on a Failed badge', () => {
     render(
       <ArticleStatusBadge
-        error="provider exploded"
-        status={PageProcessingStatus.Failed}
+        page={{
+          ...article,
+          processingError: 'provider exploded',
+          processingStatus: PageProcessingStatus.Failed,
+        }}
       />
     );
 
@@ -67,11 +83,27 @@ describe('ArticleStatusBadge', () => {
   });
 
   it('renders no tooltip on a Queued badge', () => {
-    render(<ArticleStatusBadge status={PageProcessingStatus.Queued} />);
+    render(
+      <ArticleStatusBadge
+        page={{ ...article, processingStatus: PageProcessingStatus.Queued }}
+      />
+    );
 
     expect(screen.queryByTestId('tooltip')).not.toBeInTheDocument();
     expect(screen.getByTestId('article-status-badge')).toHaveTextContent(
       'label.queued'
+    );
+  });
+
+  it('shows Not processed for an article whose memories were never extracted', () => {
+    render(<ArticleStatusBadge page={article} />);
+
+    const badge = screen.getByTestId('article-status-badge');
+
+    expect(badge).toHaveTextContent('label.not-processed');
+    expect(badge.querySelector('[data-color]')).toHaveAttribute(
+      'data-color',
+      'gray'
     );
   });
 
@@ -81,7 +113,9 @@ describe('ArticleStatusBadge', () => {
     [PageProcessingStatus.Processed, 'label.processed', 'success'],
     [PageProcessingStatus.Failed, 'label.failed', 'error'],
   ])('renders %s with label %s and color %s', (status, label, color) => {
-    render(<ArticleStatusBadge status={status} />);
+    render(
+      <ArticleStatusBadge page={{ ...article, processingStatus: status }} />
+    );
 
     const badge = screen.getByTestId('article-status-badge');
 

@@ -79,9 +79,19 @@ jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
 );
 
 jest.mock('../DocumentStatusBadge/DocumentStatusBadge.component', () =>
-  jest.fn(({ status, error }: { status?: string; error?: string }) => (
-    <span data-error={error} data-status={status} data-testid="status-badge" />
-  ))
+  jest.fn(
+    ({
+      file,
+    }: {
+      file: { processingError?: string; processingStatus?: string };
+    }) => (
+      <span
+        data-error={file.processingError}
+        data-status={file.processingStatus}
+        data-testid="status-badge"
+      />
+    )
+  )
 );
 
 jest.mock('../ExtractedMemoriesCard/ExtractedMemoriesCard.component', () =>

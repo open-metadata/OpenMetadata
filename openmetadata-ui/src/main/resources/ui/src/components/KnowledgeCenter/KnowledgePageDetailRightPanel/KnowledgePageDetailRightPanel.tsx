@@ -26,6 +26,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
+import { isArticleNeverExtracted } from '../../../utils/ContextCenterMemoryExtractionPureUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
@@ -139,15 +140,13 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
 
         {knowledgePage?.id && (
           <div>
-            {knowledgePage.processingStatus && (
+            {(knowledgePage.processingStatus ||
+              isArticleNeverExtracted(knowledgePage)) && (
               <div className="tw:flex tw:items-center tw:justify-between tw:mb-3">
                 <Typography className="tw:text-quaternary">
                   {t('label.memory-extraction')}
                 </Typography>
-                <ArticleStatusBadge
-                  error={knowledgePage.processingError}
-                  status={knowledgePage.processingStatus}
-                />
+                <ArticleStatusBadge page={knowledgePage} />
               </div>
             )}
             <ExtractedMemoriesCard

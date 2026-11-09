@@ -2409,6 +2409,7 @@
     "not-linked-to-any-data-asset": "データアセットにリンクされていません",
     "not-mapped": "未マッピング",
     "not-null": "NULLではない",
+    "not-processed": "未処理",
     "not-ran": "未実行",
     "not-run": "実行されない",
     "not-run-yet": "未実行",

@@ -749,11 +749,7 @@ const FileRow: FC<FileRowProps> = ({
         onKeyDown={(e) => e.stopPropagation()}>
         {/* Hidden on narrow rows (preview panel open) so it can't squeeze the file details */}
         <span className="tw:hidden tw:@xl:inline-flex">
-          <DocumentStatusBadge
-            error={file.processingError}
-            stats={file.extractionStats}
-            status={file.processingStatus}
-          />
+          <DocumentStatusBadge file={file} />
         </span>
         <ButtonUtility
           className={`tw:ml-1.5${

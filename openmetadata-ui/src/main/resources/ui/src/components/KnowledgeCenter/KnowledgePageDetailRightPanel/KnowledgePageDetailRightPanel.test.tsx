@@ -102,9 +102,19 @@ jest.mock(
 );
 
 jest.mock('../ArticleStatusBadge/ArticleStatusBadge.component', () =>
-  jest.fn(({ status, error }: { status?: string; error?: string }) => (
-    <span data-error={error} data-status={status} data-testid="status-badge" />
-  ))
+  jest.fn(
+    ({
+      page,
+    }: {
+      page: { processingError?: string; processingStatus?: string };
+    }) => (
+      <span
+        data-error={page.processingError}
+        data-status={page.processingStatus}
+        data-testid="status-badge"
+      />
+    )
+  )
 );
 
 jest.mock(
@@ -363,10 +373,22 @@ describe('KnowledgePageDetailRightPanel', () => {
     );
   });
 
-  it('hides the status row until an extraction run has been recorded', () => {
+  it('hides the status row for an article with no body and no extraction run', () => {
     renderPanel(article);
 
     expect(screen.queryByTestId('status-badge')).not.toBeInTheDocument();
+  });
+
+  it('shows the status row for an article whose memories were never extracted', () => {
+    renderPanel({
+      ...article,
+      description: '<p>GDPR covers the personal data of every EU resident.</p>',
+    });
+
+    expect(screen.getByText('label.memory-extraction')).toBeInTheDocument();
+    expect(screen.getByTestId('status-badge')).not.toHaveAttribute(
+      'data-status'
+    );
   });
 
   it('renders neither the status row nor the memories card without a page', () => {

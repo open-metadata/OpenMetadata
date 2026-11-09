@@ -122,11 +122,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             <Typography className="tw:text-quaternary" size="text-sm">
               {t('label.status')}
             </Typography>
-            <DocumentStatusBadge
-              error={file.processingError}
-              stats={file.extractionStats}
-              status={file.processingStatus}
-            />
+            <DocumentStatusBadge file={file} />
           </Box>
           {folderName && (
             <MetaRow label={t('label.folder')} value={folderName} />
