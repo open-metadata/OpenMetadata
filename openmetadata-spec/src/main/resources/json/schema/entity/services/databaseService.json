@@ -59,7 +59,6 @@
         "Doris",
         "StarRocks",
         "UnityCatalog",
-        "SAS",
         "Teradata",
         "SapErp",
         "Synapse",
@@ -207,9 +206,6 @@
         },
         {
           "name": "UnityCatalog"
-        },
-        {
-          "name": "SAS"
         },
         {
           "name": "Teradata"
@@ -399,9 +395,6 @@
             },
             {
               "$ref": "./connections/database/unityCatalogConnection.json"
-            },
-            {
-              "$ref": "./connections/database/sasConnection.json"
             },
             {
               "$ref": "./connections/database/teradataConnection.json"

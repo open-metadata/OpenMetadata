@@ -25,6 +25,7 @@ from typing import TYPE_CHECKING, Any, cast
 
 from requests.exceptions import HTTPError
 
+from ingestion.src.metadata.ingestion.source.database.sas.client import DATASETS_IDX, DATAFLOWS_IDX, REPORTS_IDX
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -53,125 +54,29 @@ from metadata.generated.schema.entity.services.connections.dashboard.customDashb
     CustomDashboardConnection,
     CustomDashboardType,
 )
-from metadata.generated.schema.entity.services.connections.database.sasConnection import (
+from metadata.generated.schema.entity.services.connections.metadata.sasConnection import (
     SASConnection,
 )
-from metadata.generated.schema.entity.services.dashboardService import (
-    DashboardConnection,
-    DashboardServiceType,
-)
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseServiceMetadataPipeline,  # noqa: TC001
-)
+from metadata.generated.schema.entity.services.metadataService import MetadataService
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import EntityName, Timestamp
-from metadata.generated.schema.type.entityLineage import EntitiesEdge
-from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.common import Entity
-from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import (
-    close_on_failure,
-    create_connection,
-)
-from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.sas.client import SASClient
-from metadata.ingestion.source.database.sas.extension_attr import TABLE_CUSTOM_ATTR
-from metadata.utils import fqn
-from metadata.utils.logger import ingestion_logger
-
-if TYPE_CHECKING:
-    from metadata.ingestion.connections.connection import BaseConnection
+from metadata.ingestion.source.database.sas.metadata import SasSource as _DatabaseSasSource
 
 
-logger = ingestion_logger()
+class SasSource(_DatabaseSasSource):
+    """Metadata SAS source using the metadata connection schema."""
 
+    @classmethod
+    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+        config: WorkflowSource = WorkflowSource.model_validate(config_dict)
+        connection: SASConnection = config.serviceConnection.root.config
+        if not isinstance(connection, SASConnection):
+            raise InvalidSourceException(f"Expected SASConnection, but got {connection}")
+        return cls(config, metadata)
 
-@dataclass(frozen=True)
-class SASResourceContext:
-    """Components extracted from a SAS Information Catalog resourceId.
-
-    The SAS Data Tables REST API exposes table resources at paths of the form:
-
-        /dataTables/dataSources/{provider}~fs~{host}~fs~{library}/tables/{table}
-
-    where ``~fs~`` is the field separator (literal, not URL-encoded).
-
-    Known provider values
-    ---------------------
-    - ``cas``     — CAS (Cloud Analytic Services) table.  *host* is the CAS
-      server name (e.g. ``cas-shared-default``).
-    - ``Compute`` — SAS Compute session table.  *host* is a session UUID
-      (e.g. ``49736234-36b3-48d2-b2e2-e12aa365ce05``).
-
-    Real-world examples
-    -------------------
-    CAS table:
-        ``/dataTables/dataSources/cas~fs~cas-shared-default~fs~Samples/tables/WATER_CLUSTER``
-    Compute table:
-        ``/dataTables/dataSources/Compute~fs~49736234-…~fs~PUBLIC/tables/LAS_TRAIN``
-
-    Reference
-    ---------
-    SAS REST API — Data Tables service:
-        https://developer.sas.com/rest-apis/dataTables
-    """
-
-    provider: str
-    host: str
-    library: str
-    raw_resource_id: str
-
-    @property
-    def database_name(self) -> str:
-        return f"{self.provider}.{self.host}"
-
-
-# The field separator used inside the ``dataSources`` path segment.
-_SAS_FIELD_SEPARATOR = "~fs~"
-
-
-def parse_resource_id(resource_id: str) -> SASResourceContext | None:
-    """Parse a SAS Information Catalog resourceId into its components.
-
-    Returns ``None`` (instead of raising) when the resourceId does not
-    conform to the expected shape so that callers can cleanly fall back
-    to the relationships-based lookup.
-    """
-    segments = resource_id.split("/")
-    # Expected: ['', 'dataTables', 'dataSources', '<context>', 'tables', ...]
-    if len(segments) < 4:
-        logger.warning(
-            "resourceId %r has fewer than 4 slash-delimited segments; cannot extract provider/host/library.",
-            resource_id,
-        )
-        return None
-
-    context = segments[3]
-    parts = context.split(_SAS_FIELD_SEPARATOR)
-    if len(parts) < 3:
-        logger.warning(
-            "resourceId context segment %r has %d field(s) (expected 3: "
-            "provider, host, library); cannot derive database/schema.",
-            context,
-            len(parts),
-        )
-        return None
-
-    return SASResourceContext(
-        provider=parts[0],
-        host=parts[1],
-        library=parts[2],
-        raw_resource_id=resource_id,
-    )
-
-
-class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-attributes,too-many-public-methods
     """
     Implements the necessary methods to extract
     Database metadata from SAS Database Source
@@ -232,17 +137,17 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
         # create tables from sas dataSets
         if self.sas_client.enable_datatables:
-            for table in self.sas_client.list_assets("datasets"):
+            for table in self.sas_client.list_assets(DATASETS_IDX):
                 yield from self.create_table_entity(table)
 
         if self.sas_client.enable_reports:
             yield from self.create_dashboard_service("SAS_reports")
-            for report in self.sas_client.list_assets("reports"):
+            for report in self.sas_client.list_assets(REPORTS_IDX):
                 yield from self.process_report(report)
 
         if self.sas_client.enable_dataflows:
             yield from self.create_dashboard_service("SAS_dataFlows")
-            for data_flow in self.sas_client.list_assets("dataflows"):
+            for data_flow in self.sas_client.list_assets(DATAFLOWS_IDX):
                 yield from self.process_dataflow(data_flow)
 
     def process_report(self, report):
@@ -413,9 +318,9 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
             "query": "match (t:dataSet)-[r:dataSetDataFields]->(c:dataField) return t,r,c",
             "parameters": {"t": {"id": f"{table_id}"}},
         }
-        views_data = json.dumps(views_query)
-        views = self.sas_client.get_views(views_data)
+        views = self.sas_client.get_views(views_query)
         if not views.get("entities"):  # if the resource is not a table
+            logger.warning(f"{table_id} is not a table or no related entities found using view query.")
             return None, None
 
         col_entity_instances = views["entities"]
@@ -519,9 +424,9 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         """
         Create database + db service & Create database schema
         """
-        logger.info(f"Ingesting table: {table}")
-        global table_entity  # noqa: PLW0603
-        global table_fqn  # noqa: PLW0603
+        logger.info(f"Ingesting table: {table['name']}")
+        global table_entity
+        global table_fqn
 
         table_entity, table_fqn = None, None
         table_name = table.get("name") if isinstance(table, dict) else None
@@ -564,6 +469,7 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
                         f'Head over to <a href="{table_url}">'
                         f"SAS Information Catalog</a> to analyze the table."
                     )
+                    table_resource_resp = None
                     try:
                         # Create columns alternatively
                         table_resource = self.sas_client.get_resource(table_entity_instance["resourceId"][1:])
@@ -760,32 +666,19 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         """
         Get datasets related to the report
         """
-        report_tables = self.sas_client.get_report_relationship(report_id)
         table_instances = []
         self.report_description = []
-        # loop through each relatedResourceUri from relationships
-        for table in report_tables:
-            table_uri = table["relatedResourceUri"][1:]
-            try:
-                # load the table if it can be found
-                table_resource = self.sas_client.get_resource(table_uri)
-                table_data_resource = table_resource["tableReference"]["tableUri"]
-                param = f"filter=eq(resourceId,'{table_data_resource}')"
-                if "state" in table_resource and table_resource["state"] == "unloaded":
-                    self.sas_client.load_table(table_uri + "/state?value=loaded")
 
-            except HTTPError as exc:
-                # append http error to table description if it can't be found
-                logger.error(f"table_uri: {table_uri}")
-                self.report_description.append(str(exc))
-                name_index = table_uri.rindex("/")
-                table_name = table_uri[name_index + 1 :]
-                param = f"filter=eq(name,'{table_name}')"
+        views_query = {
+            "query": "match (x)-[r:processAssets]-(c) return c",
+            "parameters": {"x": {"id": report_id}},
+        }
+        views = self.sas_client.get_views(views_query)
+        if views.get("entities"):
+            table_instances = views["entities"]
+        else:
+            logger.warn(f"No related entities found for report id {report_id} using view query.")
 
-            get_instances_with_param = self.sas_client.get_instances_with_param(param)
-            if get_instances_with_param and len(get_instances_with_param) == 1:
-                table_instance = get_instances_with_param[0]
-                table_instances.append(table_instance)
         return table_instances
 
     def create_lineage_request(self, from_type, in_type, from_entity, to_entity):
@@ -919,7 +812,9 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def yield_tag(self, schema_name: str) -> Iterable[Either[OMetaTagAndClassification]]:
+    def yield_tag(
+        self, schema_name: str
+    ) -> Iterable[Either[OMetaTagAndClassification]]:
         """No tags to send"""
 
     def get_tables_name_and_type(self) -> Iterable[tuple[str, list]] | None:
