@@ -26,6 +26,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Announcement02 } from '@openmetadata/ui-core-components/icons';
+import { Heading } from 'react-aria-components';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
@@ -38,6 +39,7 @@ import {
 import {
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MIN_LENGTH,
+  applyAnnouncementTypeChange,
 } from './announcementFormUtils';
 import { AnnouncementFormValues } from './AnnouncementModal.interface';
 import {
@@ -83,10 +85,7 @@ const AnnouncementForm = ({
     onChange: (value: AnnouncementType) => void
   ) => {
     onChange(value);
-    // Leaving Custom drops its colour/name requirements, so their errors go too.
-    if (value !== AnnouncementType.Custom) {
-      form.clearErrors(['color', 'customTypeName']);
-    }
+    applyAnnouncementTypeChange(form, value);
   };
 
   return (
@@ -96,11 +95,11 @@ const AnnouncementForm = ({
       isOpen={open}
       onOpenChange={(isOpen) => !isOpen && onCancel()}>
       <Modal>
-        {/* Named here rather than through Dialog's `title`: that renders a
-            bare heading, and this header carries an icon and a subtitle. */}
+        {/* Titled here rather than through Dialog's `title`: that renders a
+            bare heading, and this header carries an icon and a subtitle. The
+            title-slot Heading still names the dialog. */}
         <Dialog
           showCloseButton
-          aria-label={title}
           data-testid={testId}
           width={600}
           onClose={onCancel}>
@@ -112,14 +111,15 @@ const AnnouncementForm = ({
               theme="modern"
             />
             <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
-              <Typography
-                as="h2"
-                className="tw:text-primary"
+              {/* A Heading, not Typography: Typography wraps an h2 in `.prose`,
+                  whose heading size and weight outrank the utilities. */}
+              <Heading
+                className="tw:m-0 tw:text-sm tw:font-medium tw:text-primary"
                 data-testid="announcement-form-title"
-                size="text-md"
-                weight="semibold">
+                level={2}
+                slot="title">
                 {title}
-              </Typography>
+              </Heading>
               <Typography as="p" className="tw:text-tertiary" size="text-sm">
                 {description}
               </Typography>
