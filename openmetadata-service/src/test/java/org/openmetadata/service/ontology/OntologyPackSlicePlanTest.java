@@ -96,10 +96,10 @@ class OntologyPackSlicePlanTest {
     assertEquals(
         List.of(
             "dcaeb5e00e83f93588c5a39ec85d42aba2145d80c1f084411a5b7191ce55fdfc",
-            "cc246c47dbd1ed89b138ded4010798d649d1e7a5193be07fbc7840a95dec86bc"),
+            "495a22820ff610a2d765928cf62754704770c1d789a527abf7766191b611e276"),
         plan.sliceDigests());
     assertEquals(
-        "a3640b4f14faf87dbf39ac4dbdb874f323d261ee4b62f4f61fcf0c1cce110851", plan.planDigest());
+        "c35ea6107b5e840d9be533dbd79de09be3af46d938b209f2b9e7b9f71761de3d", plan.planDigest());
   }
 
   @Test
@@ -151,6 +151,18 @@ class OntologyPackSlicePlanTest {
     final OntologyPackSlicePlan plan = OntologyPackSlicePlan.of(input, 1, PACK_DIGEST);
 
     assertEquals(List.of(List.of("w"), List.of("z"), List.of("y"), List.of("x")), names(plan));
+  }
+
+  @Test
+  void aSubpropertyFollowsItsSuperpropertiesIntoALaterSlice() {
+    final OntologyChangeOperation child = property("child");
+    child.getProperty().setSuperProperties(List.of(iri("parent"), iri("other")));
+    final List<OntologyChangeOperation> input =
+        List.of(child, property("parent"), property("other"));
+
+    assertEquals(
+        List.of(List.of("other", "parent"), List.of("child")),
+        names(OntologyPackSlicePlan.of(input, 2, PACK_DIGEST)));
   }
 
   @Test

@@ -83,7 +83,7 @@ public class OntologyPropertyRepository extends OntologyEntityRepository<Ontolog
         OntologyProperty.class,
         Entity.getCollectionDAO().ontologyPropertyDAO(),
         COLLECTION_PATH,
-        "ontology,iri,kind,domain,range,enumValues,unit,isIdentifier,inverse,characteristics,propertyChain,disjointWith,deprecated,replacedBy");
+        "ontology,iri,kind,domain,range,enumValues,unit,isIdentifier,inverse,characteristics,propertyChain,disjointWith,superProperties,deprecated,replacedBy");
   }
 
   @Override

@@ -6,11 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URI;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -35,12 +37,14 @@ import org.openmetadata.schema.api.data.OntologyPackInstallJob;
 import org.openmetadata.schema.api.data.OntologyPackInstallJobArguments;
 import org.openmetadata.schema.api.data.OntologyPackInstallJobStatus;
 import org.openmetadata.schema.entity.data.Ontology;
+import org.openmetadata.schema.entity.data.OntologyProperty;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationType;
 import org.openmetadata.schema.type.OntologyPackModuleInstallation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.BackgroundJobException;
@@ -335,6 +339,25 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
     assertEquals(axioms, count("/v1/ontologyAxioms?ontologyId=" + ontology.getId()));
     assertEquals(
         1, SdkClients.adminClient().ontologies().get(ontology.getId()).getInstalledPacks().size());
+    // Of the 92 rdfs:subPropertyOf links, 30 name schema.org properties the pack does not declare
+    // and 61 sit on the link-type properties, which the plan refuses for their xsd:anyURI range.
+    final List<OntologyProperty> installed =
+        SdkClients.adminClient()
+            .ontologyProperties()
+            .list(
+                new ListParams()
+                    .addFilter("ontology", ontology.getFullyQualifiedName())
+                    .setLimit(1000))
+            .getData();
+    assertEquals(properties, installed.size());
+    assertEquals(
+        Map.of(
+            URI.create("https://ref.gs1.org/voc/afterHoursContact"),
+            List.of(URI.create("https://ref.gs1.org/voc/contactPoint"))),
+        installed.stream()
+            .filter(property -> !property.getSuperProperties().isEmpty())
+            .collect(
+                Collectors.toMap(OntologyProperty::getIri, OntologyProperty::getSuperProperties)));
     System.out.println(
         "GS1_INSTALL slices=%d members=%d concepts=%d properties=%d axioms=%d read=%d/%d/%d millis=%d"
             .formatted(

@@ -45,6 +45,7 @@ final class OntologyWorkingModel {
           "inverse",
           "propertyChain",
           "disjointWith",
+          "superProperties",
           "characteristics",
           "enumValues",
           "replacedBy",
