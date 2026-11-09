@@ -649,8 +649,9 @@ public class PersonaContextBuilder {
     Set<ContextSection> selected = selectedSections(rule);
     boolean needsLineage = selected.contains(ContextSection.LINEAGE);
     boolean needsDataQuality = selected.contains(ContextSection.DATA_QUALITY);
+    // Product expansion keeps members lightweight; direct asset rules own heavy enrichment.
     if (!isKnowledgeEntityType(context.getEntityType())
-        && !Entity.DATA_PRODUCT.equals(context.getEntityType())
+        && !Entity.DATA_PRODUCT.equals(rule.getEntityType())
         && (needsLineage || needsDataQuality)) {
       AIContextBuilder builder =
           new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName());

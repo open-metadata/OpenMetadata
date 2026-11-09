@@ -29,6 +29,7 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -48,6 +49,9 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.entity.data.Metric;
@@ -77,6 +81,49 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
 class PersonaContextBuilderTest {
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.DATA_PRODUCT, Entity.DASHBOARD})
+  void dataProductMembersKeepTheirLightweightContext(String ruleEntityType) {
+    ContextRule rule =
+        new ContextRule()
+            .withName("Rendered assets")
+            .withEntityType(ruleEntityType)
+            .withFullyRendered(true);
+    Persona persona =
+        persona().withContextDefinition(new PersonaContextDefinition().withRules(List.of(rule)));
+    var selected =
+        new PersonaContextBuilder.SelectedEntity(
+            null,
+            Map.of(),
+            new AIContext()
+                .withEntityType(Entity.DASHBOARD)
+                .withFullyQualifiedName("service.dashboard"),
+            null,
+            null,
+            List.of());
+    PersonaContextBuilder builder =
+        new PersonaContextBuilder(persona, mock(SearchRepository.class)) {
+          @Override
+          List<RuleMaterialization> selectRules(PersonaContextDefinition definition) {
+            return List.of(new RuleMaterialization(rule, 1, List.of(selected)));
+          }
+        };
+    AIContext heavy =
+        new AIContext()
+            .withUpstream(List.of("service.source"))
+            .withObservability(
+                new Observability().withDataQuality(new DataQuality().withTotal(1).withPassed(1)));
+    try (MockedConstruction<AIContextBuilder> enrichment =
+        mockConstruction(
+            AIContextBuilder.class, (mock, context) -> when(mock.build()).thenReturn(heavy))) {
+      AIContext result = builder.build().context().getRules().getFirst().getEntities().getFirst();
+      boolean productMember = Entity.DATA_PRODUCT.equals(ruleEntityType);
+      assertEquals(productMember ? List.of() : heavy.getUpstream(), result.getUpstream());
+      assertEquals(productMember ? null : heavy.getObservability(), result.getObservability());
+      assertEquals(productMember ? 0 : 1, enrichment.constructed().size());
+    }
+  }
+
   @Test
   void memberSelectionContinuesBeyondTheSearchEnginesCappedTotal() throws IOException {
     SearchRepository repository = mock(SearchRepository.class);

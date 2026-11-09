@@ -67,6 +67,9 @@ entries and lives only for that read. Neither permission decisions nor rendered 
 enter a shared cache. Selection-dependent enrichment is keyed by typed rule/asset lists; caller
 match counts are supplied separately and cannot leak through a shared snapshot.
 
+Data-product expansion retains lightweight member contexts. It does not run per-member lineage
+or data-quality builds; direct asset rules still load those sections when requested.
+
 Apply `maxAssets` after checking candidate visibility, continuing through search pages until the
 visible selection is full or candidates are exhausted. If selection stops before every candidate
 was checked, omit the optional `matched` total, mark the document truncated and say the total is
