@@ -29,6 +29,14 @@
                 "fullyQualifiedName": {
                     "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
                 },
+                "parent": {
+                    "description": "For a metric found by find_context, the parent metric it is a variant of.",
+                    "$ref": "entityReference.json"
+                },
+                "childrenCount": {
+                    "description": "For a metric found by find_context, how many non-deleted variants (child metrics) it has.",
+                    "type": "integer"
+                },
                 "content": {
                     "description": "The definition, business rule, metric expression, or article body for this item. May be a bounded lead excerpt when contentTruncated is true, or null when omitted to stay within the context budget.",
                     "type": "string"

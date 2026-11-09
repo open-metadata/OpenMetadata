@@ -11,21 +11,23 @@
  *  limitations under the License.
  */
 
+import {
+  Archive,
+  ArchiveFilled,
+  Article,
+  ArticleFilled,
+  ContextCenter,
+  ContextCenterFilled,
+  FolderCheck,
+  FolderCheck02,
+  Grid01,
+  GridFilled,
+  Memories,
+  MemoriesFilled,
+  Persona,
+} from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { Navigate } from 'react-router-dom';
-import { ReactComponent as ArchiveActiveIcon } from '../../../assets/svg/archive-active.svg';
-import { ReactComponent as ArchiveIcon } from '../../../assets/svg/archive-default.svg';
-import { ReactComponent as ArticleActiveIcon } from '../../../assets/svg/article-active.svg';
-import { ReactComponent as ArticleIcon } from '../../../assets/svg/article-default.svg';
-import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
-import { ReactComponent as ContextCenterActiveIcon } from '../../../assets/svg/context-center-active.svg';
-import { ReactComponent as ContextCenterIcon } from '../../../assets/svg/context-center-default.svg';
-import { ReactComponent as DashboardActiveIcon } from '../../../assets/svg/dashboard-active.svg';
-import { ReactComponent as DashboardIcon } from '../../../assets/svg/dashboard-default.svg';
-import { ReactComponent as DocumentActiveIcon } from '../../../assets/svg/document-active.svg';
-import { ReactComponent as DocumentIcon } from '../../../assets/svg/document-default.svg';
-import { ReactComponent as MemoriesActiveIcon } from '../../../assets/svg/memories-active.svg';
-import { ReactComponent as MemoriesIcon } from '../../../assets/svg/memories-default.svg';
 import { ROUTES } from '../../../constants/constants';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
@@ -113,8 +115,8 @@ export const contextCenterModule: AppModule = {
   id: 'context-center',
   navOrder: 80,
   labelKey: 'label.context-center',
-  icon: ContextCenterIcon,
-  activeIcon: ContextCenterActiveIcon,
+  icon: ContextCenter,
+  activeIcon: ContextCenterFilled,
   prefix: ROUTES.CONTEXT_CENTER,
   defaultPath: ROUTES.CONTEXT_CENTER,
   routes: [
@@ -241,43 +243,43 @@ export const contextCenterModule: AppModule = {
         items: [
           {
             key: 'dashboard',
-            icon: DashboardIcon,
-            activeIcon: DashboardActiveIcon,
+            icon: Grid01,
+            activeIcon: GridFilled,
             labelKey: 'label.overview',
             path: ROUTES.CONTEXT_CENTER_OVERVIEW,
           },
           {
             key: 'ai-context',
-            icon: PersonaIcon,
-            activeIcon: PersonaIcon,
+            icon: Persona,
+            activeIcon: Persona,
             labelKey: 'label.ai-context',
             path: ROUTES.CONTEXT_CENTER_AI_CONTEXT,
           },
           {
             key: 'articles',
-            icon: ArticleIcon,
-            activeIcon: ArticleActiveIcon,
+            icon: Article,
+            activeIcon: ArticleFilled,
             labelKey: 'label.article-plural',
             path: ROUTES.CONTEXT_CENTER_ARTICLES,
           },
           {
             key: 'documents',
-            icon: DocumentIcon,
-            activeIcon: DocumentActiveIcon,
+            icon: FolderCheck02,
+            activeIcon: FolderCheck,
             labelKey: 'label.document-plural',
             path: ROUTES.CONTEXT_CENTER_DOCUMENTS,
           },
           {
             key: 'memories',
-            icon: MemoriesIcon,
-            activeIcon: MemoriesActiveIcon,
+            icon: Memories,
+            activeIcon: MemoriesFilled,
             labelKey: 'label.memory-plural',
             path: ROUTES.CONTEXT_CENTER_MEMORIES,
           },
           {
             key: 'archive',
-            icon: ArchiveIcon,
-            activeIcon: ArchiveActiveIcon,
+            icon: Archive,
+            activeIcon: ArchiveFilled,
             labelKey: 'label.archive',
             path: ROUTES.CONTEXT_CENTER_ARCHIVE,
           },

@@ -28,7 +28,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
-import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -105,7 +104,7 @@ public class SubjectCache {
   }
 
   private static final int DEFAULT_MAX_ENTRIES = 10000;
-  private static final Duration POLICIES_TTL = Duration.ofMinutes(2);
+  static final Duration POLICIES_TTL = Duration.ofMinutes(2);
   private static final Duration USER_CONTEXT_TTL = Duration.ofMinutes(15);
 
   // Bumped whenever the compiled policy caches are dropped wholesale, which is what a policy-rule
@@ -402,11 +401,8 @@ public class SubjectCache {
   private static PolicyContext loadPolicyContext(
       String entityType, String entityName, String roleName, EntityReference policyRef) {
     Policy policy = Entity.getEntity(Entity.POLICY, policyRef.getId(), "rules", NON_DELETED);
-    List<CompiledRule> rules = new ArrayList<>();
-    for (Rule r : listOrEmpty(policy.getRules())) {
-      rules.add(new CompiledRule(r));
-    }
-    return new PolicyContext(entityType, entityName, roleName, policyRef.getName(), rules);
+    return new PolicyContext(
+        entityType, entityName, roleName, policyRef.getName(), CompiledRule.enforcedRules(policy));
   }
 
   public static List<PolicyContext> getTeamPoliciesForResource(

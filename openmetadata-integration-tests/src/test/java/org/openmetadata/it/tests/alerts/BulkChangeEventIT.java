@@ -36,9 +36,12 @@ import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.entity.events.EventSubscription;
+import org.openmetadata.schema.entity.events.PrefixCondition;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -288,21 +291,21 @@ public class BulkChangeEventIT {
     ArgumentsInput fqnFilter =
         new ArgumentsInput()
             .withName("filterByFqn")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
-            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND)
+            .withEffect(Effect.INCLUDE)
+            .withPrefixCondition(PrefixCondition.AND)
             .withArguments(
                 List.of(new Argument().withName("fqnList").withInput(List.of(tableFqn))));
     ArgumentsInput schemaChangeAction =
         new ArgumentsInput()
             .withName("GetTableSchemaChanges")
-            .withEffect(ArgumentsInput.Effect.INCLUDE)
-            .withPrefixCondition(ArgumentsInput.PrefixCondition.AND)
+            .withEffect(Effect.INCLUDE)
+            .withPrefixCondition(PrefixCondition.AND)
             .withArguments(List.of());
 
     CreateEventSubscription request =
         new CreateEventSubscription()
             .withName(ns.prefix("schema_change_alert"))
-            .withAlertType(CreateEventSubscription.AlertType.OBSERVABILITY)
+            .withAlertType(AlertType.OBSERVABILITY)
             .withResources(List.of(TABLE))
             .withEnabled(true)
             .withPollInterval(1)

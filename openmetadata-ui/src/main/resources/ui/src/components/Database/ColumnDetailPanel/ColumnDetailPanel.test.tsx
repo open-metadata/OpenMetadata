@@ -18,6 +18,7 @@ import { Column, State, Table } from '../../../generated/entity/data/table';
 import { LabelType } from '../../../generated/tests/testCase';
 import { DataType } from '../../../generated/tests/testDefinition';
 import { TagSource } from '../../../generated/type/tagLabel';
+import { getTypeByFQN } from '../../../rest/metadataTypeAPI';
 import { getColumnByFQN } from '../../../rest/tableAPI';
 import { listTestCases } from '../../../rest/testAPI';
 import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
@@ -75,10 +76,6 @@ jest.mock('../../../assets/svg/down-arrow-icon.svg', () => ({
 
 jest.mock('../../../assets/svg/up-arrow-icon.svg', () => ({
   ReactComponent: () => <div data-testid="arrow-up-icon">ArrowUp</div>,
-}));
-
-jest.mock('../../../assets/svg/entity/column.svg', () => ({
-  ReactComponent: () => <div data-testid="column-icon">ColumnIcon</div>,
 }));
 
 jest.mock('../../common/DescriptionSection/DescriptionSection', () => ({
@@ -553,6 +550,33 @@ describe('ColumnDetailPanel', () => {
 
       await waitFor(() => {
         expect(mockGetColumnByFQN).not.toHaveBeenCalled();
+      });
+    });
+
+    it('should fetch the tableColumn type for TABLE entityType', async () => {
+      await act(async () => {
+        render(
+          <ColumnDetailPanel {...mockProps} entityType={EntityType.TABLE} />
+        );
+      });
+
+      await waitFor(() => {
+        expect(getTypeByFQN).toHaveBeenCalledWith('tableColumn');
+      });
+    });
+
+    it('should not fetch the tableColumn type for DASHBOARD_DATA_MODEL entityType', async () => {
+      await act(async () => {
+        render(
+          <ColumnDetailPanel
+            {...mockProps}
+            entityType={EntityType.DASHBOARD_DATA_MODEL}
+          />
+        );
+      });
+
+      await waitFor(() => {
+        expect(getTypeByFQN).not.toHaveBeenCalled();
       });
     });
 

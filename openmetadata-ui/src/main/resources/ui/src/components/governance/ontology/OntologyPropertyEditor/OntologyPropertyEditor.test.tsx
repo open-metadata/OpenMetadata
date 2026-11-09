@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { applyPatch, Operation } from 'fast-json-patch';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
@@ -85,6 +91,112 @@ describe('OntologyPropertyEditor', () => {
         iri: undefined,
       })
     );
+  });
+
+  it('picks the domain by concept label and keeps a pasted IRI as a fallback', async () => {
+    post.mockResolvedValue({ data: { ...property, kind: Kind.Object } });
+    const saved = jest.fn();
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        concepts={[
+          { iri: 'urn:sales:customer', label: 'Customer' },
+          { iri: 'urn:sales:order', label: 'Order' },
+        ]}
+        ontology={ontology}
+        onSaved={saved}
+      />
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
+      target: { value: 'purchasedBy' },
+    });
+    const domain = within(screen.getByTestId('ontology-property-domain'));
+    const input = domain.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Cust' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Customer/ }));
+    fireEvent.click(domain.getByRole('button', { name: 'label.add' }));
+
+    expect(
+      domain.getByRole('button', { name: 'label.remove Customer' })
+    ).toBeInTheDocument();
+
+    const range = within(screen.getByTestId('ontology-property-range'));
+    fireEvent.change(range.getByRole('combobox'), {
+      target: { value: 'urn:other:Thing' },
+    });
+    fireEvent.click(range.getByRole('button', { name: 'label.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+
+    expect(post).toHaveBeenCalledWith(
+      '/ontologyProperties',
+      expect.objectContaining({
+        domain: ['urn:sales:customer'],
+        range: ['urn:other:Thing'],
+      })
+    );
+  });
+
+  it('adds a domain picked by concept label when Enter is pressed', async () => {
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        concepts={[
+          { iri: 'urn:sales:customer', label: 'Customer' },
+          { iri: 'urn:sales:order', label: 'Order' },
+        ]}
+        ontology={ontology}
+        onSaved={jest.fn()}
+      />
+    );
+    const domain = within(screen.getByTestId('ontology-property-domain'));
+    const input = domain.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Cust' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+    fireEvent.click(await screen.findByRole('option', { name: /Customer/ }));
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(
+      domain.getByRole('button', { name: 'label.remove Customer' })
+    ).toBeInTheDocument();
+    expect(input).toHaveValue('');
+  });
+
+  it('rejects a pasted value that is not an IRI beside the field', () => {
+    render(
+      <OntologyPropertyEditor canEdit ontology={ontology} onSaved={jest.fn()} />
+    );
+    const domain = within(screen.getByTestId('ontology-property-domain'));
+    fireEvent.change(domain.getByRole('textbox'), {
+      target: { value: 'not an iri' },
+    });
+
+    expect(screen.getByText('message.invalid-concept-iri')).toBeInTheDocument();
+    expect(domain.getByRole('button', { name: 'label.add' })).toBeDisabled();
+  });
+
+  it('offers data types as the range of a data property', async () => {
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        property={{ ...property, domain: [], range: [] }}
+        onSaved={jest.fn()}
+      />
+    );
+    const range = within(screen.getByTestId('ontology-property-range'));
+    const input = range.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'date' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByRole('option', { name: /dateTime/ })
+    ).toBeInTheDocument();
   });
 
   it('edits a typed literal without changing identity, ownership or the datatype', async () => {
@@ -289,10 +401,16 @@ describe('OntologyPropertyEditor', () => {
         screen.getByRole('textbox', { name: 'label.display-name' })
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('textbox', { name: 'label.property-domain' })
+        within(screen.getByTestId('ontology-property-domain')).getByRole(
+          'textbox',
+          { name: /^label\.property-domain/ }
+        )
       ).toBeInTheDocument();
       expect(
-        screen.getByRole('textbox', { name: 'label.range' })
+        within(screen.getByTestId('ontology-property-range')).getByRole(
+          'textbox',
+          { name: /^label\.range/ }
+        )
       ).toBeInTheDocument();
       expect(
         screen.getByRole('textbox', { name: 'label.property-iri' })

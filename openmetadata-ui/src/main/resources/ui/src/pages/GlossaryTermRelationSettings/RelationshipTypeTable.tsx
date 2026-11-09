@@ -72,15 +72,20 @@ interface RelationshipTypeTableProps {
   variant?: TableCardVariant;
 }
 
-const getColumnLabels = (t: TFunction): string[] => [
-  t('label.name'),
-  t('label.display-name'),
-  t('label.category'),
-  t('label.characteristic-plural'),
-  t('label.cross-glossary'),
-  t('label.cardinality'),
-  t('label.color'),
-  t('label.action-plural'),
+interface RelationshipTypeColumn {
+  label: string;
+  align?: 'center';
+}
+
+const getColumns = (t: TFunction): RelationshipTypeColumn[] => [
+  { label: t('label.name') },
+  { label: t('label.display-name') },
+  { label: t('label.category') },
+  { label: t('label.characteristic-plural') },
+  { label: t('label.cross-glossary'), align: 'center' },
+  { label: t('label.cardinality') },
+  { label: t('label.color') },
+  { label: t('label.action-plural') },
 ];
 
 const getCategoryLabel = (category: Category, t: TFunction): string => {
@@ -228,11 +233,13 @@ const RelationshipTypeRow = ({
         </div>
       </Table.Cell>
       <Table.Cell>
-        {relationshipType.crossGlossaryAllowed ? (
-          <Check className="tw:size-4 tw:text-fg-success-primary" />
-        ) : (
-          <XClose className="tw:size-4 tw:text-fg-error-primary" />
-        )}
+        <div className="tw:flex tw:items-center tw:justify-center">
+          {relationshipType.crossGlossaryAllowed ? (
+            <Check className="tw:size-4 tw:text-fg-success-primary" />
+          ) : (
+            <XClose className="tw:size-4 tw:text-fg-error-primary" />
+          )}
+        </div>
       </Table.Cell>
       <Table.Cell>
         <CardinalityBadge relationshipType={relationshipType} />
@@ -247,11 +254,10 @@ const RelationshipTypeRow = ({
       <Table.Cell>
         <div className="tw:flex tw:gap-2">
           <ButtonUtility
-            color="tertiary"
             data-testid={`edit-${relationshipType.name}-btn`}
             icon={Edit01}
             isDisabled={!isAdminUser || relationshipType.systemDefined}
-            size="sm"
+            size="lg"
             tooltip={
               relationshipType.systemDefined
                 ? t('label.system-defined')
@@ -260,11 +266,10 @@ const RelationshipTypeRow = ({
             onClick={() => onEdit(relationshipType)}
           />
           <ButtonUtility
-            color="tertiary"
             data-testid={`delete-${relationshipType.name}-btn`}
             icon={Trash01}
             isDisabled={!canDelete}
-            size="sm"
+            size="lg"
             tooltip={getDeleteTooltip(usageCount, t)}
             onClick={(event: MouseEvent<HTMLElement>) =>
               onDelete(relationshipType, event.currentTarget)
@@ -292,12 +297,15 @@ const RelationshipTypeTable = ({
         aria-label={t('label.glossary-term-relation-plural')}
         data-testid="relation-types-table">
         <Table.Header>
-          {getColumnLabels(t).map((label) => (
-            <Table.Head id={label} key={label}>
-              <Typography as="span" className="tw:text-tertiary" size="text-sm">
-                {label}
-              </Typography>
-            </Table.Head>
+          {getColumns(t).map(({ label, align }) => (
+            // Relation names identify rows for React Aria's keyboard navigation.
+            <Table.Head
+              align={align}
+              id={label}
+              isRowHeader={label === t('label.name')}
+              key={label}
+              label={label}
+            />
           ))}
         </Table.Header>
         <Table.Body items={relationshipTypes}>

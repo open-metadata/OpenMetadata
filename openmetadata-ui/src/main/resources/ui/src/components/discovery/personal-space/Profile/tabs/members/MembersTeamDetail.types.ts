@@ -12,7 +12,7 @@
  */
 
 import type { SelectItemType } from '@openmetadata/ui-core-components';
-import type { RefObject } from 'react';
+import type { ReactNode, RefObject } from 'react';
 import type { DragAndDropHooks } from 'react-aria-components';
 import type { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import type { Team } from '../../../../../../generated/entity/teams/team';
@@ -61,11 +61,17 @@ export interface MembersTeamsTabProps {
   searchTerm: string;
   canCreateTeam: boolean;
   movedTeam?: MovedTeam;
+  teamsPage: number;
+  teamsPageSize: number;
+  /** Rows paged through: every sub-team, or the search matches. */
+  teamsTotal: number;
   onShowDeletedTeamChange: (value: boolean) => void;
   onSearchTermChange: (value: string) => void;
   onNavigate: (view: MembersView) => void;
   onSetMovedTeam: (value: MovedTeam | undefined) => void;
-  onMoveConfirm: () => void;
+  onMoveConfirm: () => Promise<void>;
+  onTeamsPageChange: (page: number) => void;
+  onTeamsPageSizeChange: (pageSize: number) => void;
 }
 
 export interface MembersUsersTabProps {
@@ -116,6 +122,7 @@ export interface MembersInlineEntityTabProps {
   entityPluralLabel: string;
   /** Subtitle under the tab table's title, as on the Roles / Policies pages. */
   entityDescription: string;
+  emptyIcon: ReactNode;
   tableTestId: string;
   addButtonTestId: string;
   addSelectTestId: string;
@@ -155,6 +162,7 @@ export interface UseMembersTeamHeaderParams {
   isGroupType: boolean;
   isOrgType: boolean;
   isCurrentUserMember: boolean;
+  isAdminUser: boolean;
   onEditNameValueChange: (value: string) => void;
   onStartEditName: (value: string) => void;
   onCancelEditName: () => void;

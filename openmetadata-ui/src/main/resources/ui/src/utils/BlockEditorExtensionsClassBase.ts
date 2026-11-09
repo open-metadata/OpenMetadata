@@ -14,7 +14,7 @@
 import Document from '@tiptap/extension-document';
 import Paragraph from '@tiptap/extension-paragraph';
 import Placeholder from '@tiptap/extension-placeholder';
-import Table from '@tiptap/extension-table';
+import { Table } from '@tiptap/extension-table';
 import TableCell from '@tiptap/extension-table-cell';
 import TableHeader from '@tiptap/extension-table-header';
 import TableRow from '@tiptap/extension-table-row';
@@ -46,7 +46,10 @@ import renderItems from '../components/BlockEditor/Extensions/slash-command/rend
 import slashCommand from '../components/BlockEditor/Extensions/slash-command/slashCommand';
 import TextHighlightView from '../components/BlockEditor/Extensions/text-highlight-view';
 import { TrailingNode } from '../components/BlockEditor/Extensions/trailing-node';
-import { DROP_CURSOR_COLOR } from '../constants/BlockEditor.constants';
+import {
+  DROP_CURSOR_COLOR,
+  LINK_EXTENSION_OPTIONS,
+} from '../constants/BlockEditor.constants';
 
 /**
  * Base class for BlockEditor extensions configuration
@@ -62,6 +65,13 @@ export class BlockEditorExtensionsClassBase {
     return [
       StarterKit.configure({
         codeBlock: disableCodeBlock ? false : undefined,
+        // StarterKit v3 bundles these. Link and TrailingNode are registered
+        // below with our own configuration; Underline and ListKeymap stay off so
+        // the editor's marks and list keys behave as they did on v2.
+        link: false,
+        trailingNode: false,
+        underline: false,
+        listKeymap: false,
         heading: {
           levels: [1, 2, 3, 4, 5, 6],
         },
@@ -102,19 +112,7 @@ export class BlockEditorExtensionsClassBase {
           return 'Type "/" for commands...';
         },
       }),
-      LinkExtension.configure({
-        autolink: false,
-        // Open links on click only in read-only previews. While editing, a
-        // click should surface the link popup (edit/open/unlink) instead of
-        // navigating away.
-        openOnClick: 'whenNotEditable',
-        linkOnPaste: true,
-        HTMLAttributes: {
-          rel: 'noopener noreferrer nofollow',
-          target: '_blank',
-        },
-        validate: (href) => /^https?:\/\//.test(href),
-      }),
+      LinkExtension.configure(LINK_EXTENSION_OPTIONS),
       slashCommand.configure({
         slashSuggestion: {
           items: getSuggestionItems,

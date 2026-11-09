@@ -64,7 +64,7 @@ jobs:
   checkstyle:
     needs: check-changes
     if: needs.check-changes.outputs.ui-changed == 'true'
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     outputs:
@@ -139,7 +139,7 @@ jobs:
 
       - name: Get changed src files
         id: changed-src-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
         with:
           path: ${{ env.UI_WORKING_DIRECTORY }}
           files_ignore: |
@@ -185,9 +185,12 @@ jobs:
 
       - name: Get all changed UI files
         id: changed-ui-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
         with:
           path: ${{ env.UI_WORKING_DIRECTORY }}
+          # Binary visual baselines have no licence header and exceed Linux's
+          # per-environment-variable limit when thousands change in one PR.
+          files_ignore: '**/*.png'
 
       - name: Licence Header Check
         id: license
@@ -246,7 +249,7 @@ jobs:
 
       - name: Get changed Playwright files
         id: changed-playwright-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
         with:
           path: ${{ env.UI_WORKING_DIRECTORY }}
           files_ignore: |
@@ -414,7 +417,7 @@ jobs:
 
       - name: Get changed core-components files
         id: changed-core-components-files
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
         with:
           path: ${{ env.CORE_COMPONENTS_WORKING_DIRECTORY }}
           files: |
@@ -479,7 +482,7 @@ jobs:
       # and a core-components change, neither of which touches `src/**` here.
       - name: Get changed bundle inputs
         id: changed-bundle-inputs
-        uses: tj-actions/changed-files@22103cc46bda19c2b464ffe86db46df6922fd323
+        uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96
         with:
           # Nothing ignored here, unlike the lint filter: generated types and
           # the connection schemas under src/jsons are emitted into the build,

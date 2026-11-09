@@ -158,6 +158,21 @@ describe('AnnouncementForm', () => {
     expect(screen.getByTestId('endTime')).toHaveTextContent(triggerLabel(END));
   });
 
+  it('should name the dialog by its title and draw it at the header scale', () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    // `hidden`: the modal marks its subtree inaccessible to role queries.
+    expect(
+      screen.getByRole('dialog', { hidden: true, name: 'label.add-entity' })
+    ).toBeInTheDocument();
+
+    // Not wrapped in `.prose`, whose heading rules would outrank the size.
+    const title = screen.getByTestId('announcement-form-title');
+
+    expect(title).toHaveClass('tw:text-sm', 'tw:font-medium');
+    expect(title.closest('.prose')).toBeNull();
+  });
+
   it('should reveal the colour swatches only for a Custom announcement', () => {
     render(<Harness onSubmit={jest.fn()} />);
 
@@ -226,6 +241,31 @@ describe('AnnouncementForm', () => {
         customTypeName: 'Release',
       })
     );
+  });
+
+  it('should start a Custom announcement on the default colour, still changeable', async () => {
+    render(<Harness onSubmit={jest.fn()} />);
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByTestId(`announcement-type-${AnnouncementType.Custom}`)
+      );
+    });
+
+    expect(
+      screen.getByRole('radio', { name: 'label.color-pink' })
+    ).toBeChecked();
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('radio', { name: 'label.color-blue' }));
+    });
+
+    expect(
+      screen.getByRole('radio', { name: 'label.color-blue' })
+    ).toBeChecked();
+    expect(
+      screen.getByRole('radio', { name: 'label.color-pink' })
+    ).not.toBeChecked();
   });
 
   it('should not keep a colour error after switching away from Custom', async () => {

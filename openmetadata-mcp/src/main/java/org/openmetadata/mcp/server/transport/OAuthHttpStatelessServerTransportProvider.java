@@ -31,6 +31,7 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
+import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenVal
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
+import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 
 /**
  * Extended transport provider that handles both MCP messages and OAuth routes. This class
@@ -105,9 +107,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
               AuthEnrichedMcpContextExtractor.CLIENT_NAME,
               AuthEnrichedMcpContextExtractor.ACTIVE_PERSONA_HEADER));
 
-  // After a 401 the client reads WWW-Authenticate to find this authorization server. Browsers hide
-  // response headers unless we expose them, so without this the client cannot start the OAuth flow.
-  private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate";
+  // Browsers hide response headers unless we expose them. A client reads WWW-Authenticate after a
+  // 401 to find this authorization server, and Retry-After after a 503 to know when to try again.
+  private static final String CORS_EXPOSED_HEADERS = "WWW-Authenticate, Retry-After";
 
   // Public key set for the tokens JWTTokenGenerator signs, MCP access tokens included.
   private static final String JWKS_PATH = "/api/v1/system/config/jwks";
@@ -119,6 +121,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private static final int REGISTRATION_MAX_PER_HOUR = 10;
   private static final int TOKEN_MAX_PER_MINUTE = 30;
   private static final int MAX_RATE_LIMIT_ENTRIES = 10_000;
+  // Client metadata that passes RegistrationHandler's field limits is at most about 31 KB (ten
+  // 2048-character redirect URIs alone are 20 KiB); 64 KiB leaves room for an inline jwks.
+  // ADR:2026-11-02-mcp-request-bodies-are-bounded-before-parsing
+  static final int MAX_REGISTRATION_BODY_BYTES = 64 * 1024;
   private static final java.util.regex.Pattern IP_PATTERN =
       java.util.regex.Pattern.compile("[0-9a-fA-F.:]+");
   private final java.util.concurrent.ConcurrentHashMap<
@@ -443,6 +449,9 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
       try {
         validatePrefixedTokenRequest(jwtFilter, tokenWithType);
         authenticated = true;
+      } catch (CredentialUnavailableException e) {
+        LOG.debug("Bearer token could not be confirmed", e);
+        writeUnavailable(response, e.retryAfterSeconds());
       } catch (Exception e) {
         LOG.debug("Bearer token authentication failed", e);
         sendAuthErrorWithChallenge(response, AuthFailure.INVALID_TOKEN);
@@ -591,6 +600,24 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     writer.flush();
   }
 
+  /**
+   * 503 for a bearer token whose stored credential could not be confirmed. It carries no
+   * challenge: the token is not invalid, so the client retries it rather than starting OAuth again.
+   */
+  static void writeUnavailable(HttpServletResponse response, long retryAfterSeconds)
+      throws IOException {
+    response.setHeader("Retry-After", String.valueOf(retryAfterSeconds));
+    response.setContentType("application/json");
+    response.setCharacterEncoding("UTF-8");
+    response.setStatus(HttpServletResponse.SC_SERVICE_UNAVAILABLE);
+
+    PrintWriter writer = response.getWriter();
+    writer.write(
+        JsonRpcErrorBody.of(
+            null, JsonRpcErrorBody.UNAVAILABLE, CredentialUnavailableException.CLIENT_MESSAGE));
+    writer.flush();
+  }
+
   /** Builds the WWW-Authenticate challenge per RFC 6750 and the MCP spec. */
   static String buildAuthChallenge(
       AuthFailure failure, URI resourceMetadataUrl, List<String> scopes) {
@@ -698,18 +725,32 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       String redirectUrl = authResponse.getRedirectUrl();
       if (redirectUrl != null && response.isCommitted()) {
-        // The SSO provider (active-session shortcut) already committed the response with a
-        // redirect to /mcp/callback. Any error redirect URL produced by AuthorizationHandler
-        // cannot be sent — the browser is already navigating away. Log and bail out.
+        // The SSO handler already committed the response, so a redirect URL produced by
+        // AuthorizationHandler cannot be sent: the browser is already navigating away.
         LOG.warn(
             "Cannot send MCP OAuth redirect — response already committed by SSO provider. "
                 + "Redirect target (sanitized): {}",
             sanitizeRedirectUrlForLogging(redirectUrl));
-      } else if (redirectUrl != null) {
+      } else if (redirectUrl != null && authResponse.isRedirect()) {
         response.setHeader("Location", redirectUrl);
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
         response.sendRedirect(redirectUrl);
+      } else if (redirectUrl != null) {
+        // An error for a remote web callback: the user follows it by clicking, never by itself.
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        response.setContentType("text/html; charset=UTF-8");
+        response.setHeader("Cache-Control", "no-store");
+        response
+            .getWriter()
+            .write(
+                HtmlTemplates.generateErrorReturnPage(
+                    "Authorization Failed",
+                    "The application's sign-in request could not be completed ("
+                        + authResponse.getError().getError()
+                        + ").",
+                    redirectUrl,
+                    UriUtils.describeRedirectTarget(URI.create(redirectUrl))));
       } else if (response.isCommitted()) {
         // SSO_REDIRECT_INITIATED: the provider (e.g. SAML AuthnRequest, or OIDC handleLogin)
         // already wrote the login redirect straight to the browser and committed the response.
@@ -1029,9 +1070,22 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       LOG.info("Client registration request received");
 
+      // Registration needs no credentials and RegistrationHandler only checks the parsed object,
+      // so the body is bounded before Jackson reads it.
+      byte[] body = readBody(request, MAX_REGISTRATION_BODY_BYTES);
+      if (body == null) {
+        LOG.warn("Registration request body exceeds {} bytes", MAX_REGISTRATION_BODY_BYTES);
+        sendOAuthError(
+            request,
+            response,
+            HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
+            "invalid_client_metadata",
+            "Registration request is too large");
+        return;
+      }
+
       // Parse registration request
-      OAuthClientMetadata metadata =
-          getObjectMapper().readValue(request.getInputStream(), OAuthClientMetadata.class);
+      OAuthClientMetadata metadata = getObjectMapper().readValue(body, OAuthClientMetadata.class);
 
       // Register client
       OAuthClientInformation clientInfo = registrationHandler.handle(metadata).join();

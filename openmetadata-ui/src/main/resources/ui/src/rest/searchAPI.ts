@@ -163,6 +163,7 @@ export const rawSearchQuery = <
   return APIClient.get<SearchResponse<SearchIndexValue<SI>, TIncludeFields>>(
     apiUrl,
     {
+      signal: req.signal,
       params: {
         index: getSearchIndexParam(searchIndex),
         from: (Math.max(1, pageNumber) - 1) * pageSize,

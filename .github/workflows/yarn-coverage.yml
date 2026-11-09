@@ -134,7 +134,7 @@ jobs:
         id: yarn_coverage
       - name: Jest coverage comment
         id: coverage_comment
-        uses: MishaKav/jest-coverage-comment@v1.0.34
+        uses: MishaKav/jest-coverage-comment@v1.0.38
         with:
           coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
           title: Jest test Coverage

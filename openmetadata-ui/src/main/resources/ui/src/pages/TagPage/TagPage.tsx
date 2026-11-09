@@ -14,10 +14,18 @@ import {
   Box,
   Button,
   Divider,
+  FeaturedIcon,
   PageHeader,
   Tabs,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
+import {
+  Brush01,
+  Edit01,
+  Tag01,
+  TagOff,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { AxiosError } from 'axios';
@@ -26,11 +34,6 @@ import { cloneDeep, isEmpty } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as IconTag } from '../../assets/svg/classification.svg';
-import { ReactComponent as IconDisableTag } from '../../assets/svg/disable-tag.svg';
-import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
-import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import { ReactComponent as StyleIcon } from '../../assets/svg/style.svg';
 import { ActivityFeedTab } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.component';
 import {
   ActivityFeedLayoutType,
@@ -59,7 +62,7 @@ import { GenericProvider } from '../../components/Customization/GenericProvider/
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import { AssetSelectionModal } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal';
 import DataQualityDashboard from '../../components/DataQuality/DataQualityDashboard/DataQualityDashboard.component';
-import EntityHeaderTitle from '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
+import { EntityPageTitle } from '../../components/Entity/EntityPageTitle/EntityPageTitle';
 import { EntityStatusBadge } from '../../components/Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { EntityDetailsObjectInterface } from '../../components/Explore/ExplorePage.interface';
 import AssetsTabs, {
@@ -70,9 +73,7 @@ import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameM
 import IconColorModal from '../../components/Modals/IconColorModal/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import {
-  BLACK_COLOR,
   CERTIFICATION_CATEGORY,
-  DE_ACTIVE_COLOR,
   ROUTES,
   TIER_CATEGORY,
 } from '../../constants/constants';
@@ -111,6 +112,7 @@ import {
   fetchEntityTaskCountsInto,
   getFeedCounts,
 } from '../../utils/FeedUtilsPure';
+import { revokeEditPermissions } from '../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationTagPath,
@@ -210,6 +212,7 @@ const TagPage = () => {
   const {
     permissions: tagPermissions,
     canEditAll: tagCanEditAll,
+    canEditDomains: tagCanEditDomains,
     error: tagPermissionsError,
   } = useEntityPermissions(
     ResourceEntity.TAG,
@@ -288,13 +291,20 @@ const TagPage = () => {
     if (tagItem) {
       const isEditable = !tagItem.disabled && !tagItem.deleted;
 
+      if (!isEditable) {
+        return {
+          editTagsPermission: false,
+          disabledAwarePermissions: revokeEditPermissions(tagPermissions),
+        };
+      }
+
       return {
-        editTagsPermission: isEditable && tagCanEditAll,
+        editTagsPermission: tagCanEditAll,
         disabledAwarePermissions: {
           ...tagPermissions,
-          EditOwners:
-            isEditable && (tagCanEditAll || tagPermissions.EditOwners),
-          EditAll: isEditable && tagCanEditAll,
+          EditOwners: tagCanEditAll || tagPermissions.EditOwners,
+          EditDomains: tagCanEditDomains,
+          EditAll: tagCanEditAll,
         },
       };
     }
@@ -308,7 +318,7 @@ const TagPage = () => {
     // `tagItem?.disabled`/`tagItem?.deleted` are `undefined` both before and after the load).
     // Folded in while touching this memo, per the ColumnDetailPanel/GlossaryTermTab precedent
     // (Task 8 Batches 3–4) of fixing missing deps in passing.
-  }, [tagPermissions, tagCanEditAll, tagItem]);
+  }, [tagPermissions, tagCanEditAll, tagCanEditDomains, tagItem]);
 
   const editEntitiesTagPermission = useMemo(
     () => getExcludedIndexesBasedOnEntityTypeEditTagPermission(permissions),
@@ -516,7 +526,7 @@ const TagPage = () => {
                 description={t('message.rename-entity', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={EditIcon}
+                icon={Edit01}
                 id="rename-button"
                 name={t('label.rename')}
               />
@@ -534,7 +544,7 @@ const TagPage = () => {
                 description={t('message.edit-entity-style-description', {
                   entity: t('label.tag-lowercase'),
                 })}
-                icon={StyleIcon}
+                icon={Brush01}
                 id="rename-button"
                 name={t('label.style')}
               />
@@ -558,7 +568,7 @@ const TagPage = () => {
                     ? t('message.enable-tag-description')
                     : t('message.disable-tag-description')
                 }
-                icon={IconDisableTag}
+                icon={TagOff}
                 id="enable-disable-tag"
                 name={
                   tagItem?.disabled ? t('label.enable') : t('label.disable')
@@ -585,7 +595,7 @@ const TagPage = () => {
                     entityType: t('label.tag-lowercase'),
                   }
                 )}
-                icon={IconDelete}
+                icon={Trash01}
                 id="delete-button"
                 name={t('label.delete')}
               />
@@ -758,17 +768,23 @@ const TagPage = () => {
     [tabItems]
   );
 
-  const icon = useMemo(() => {
-    if (tagItem?.style?.iconURL) {
-      return (
-        <div className="align-middle" data-testid="icon">
-          <Icon iconValue={tagItem.style.iconURL} size={36} />
-        </div>
-      );
-    }
-
-    return <IconTag className="h-9" style={{ color: DE_ACTIVE_COLOR }} />;
-  }, [tagItem]);
+  const icon = useMemo(
+    () => (
+      <FeaturedIcon
+        color="gray"
+        icon={
+          tagItem?.style?.iconURL ? (
+            <Icon iconValue={tagItem.style.iconURL} size={20} />
+          ) : (
+            Tag01
+          )
+        }
+        size="md"
+        theme="surface"
+      />
+    ),
+    [tagItem]
+  );
 
   const badge = useMemo(() => {
     if (!tagItem) {
@@ -850,9 +866,7 @@ const TagPage = () => {
     );
   }
 
-  const learningIcon = (
-    <LearningIcon className="m-t-xss" pageId={LEARNING_PAGE_IDS.TAGS} />
-  );
+  const learningIcon = <LearningIcon pageId={LEARNING_PAGE_IDS.TAGS} />;
 
   const renderAddAssetsButton = () =>
     !isCertificationClassification && !tagItem.disabled ? (
@@ -901,6 +915,7 @@ const TagPage = () => {
         secondaryActions={haveAssetEditPermission ? manageDropdown : null}
         tabs={aiHeaderTabs}
         title={getEntityName(tagItem)}
+        variant="flat"
         onTabChange={activeTabHandler}
       />
     </div>
@@ -928,15 +943,14 @@ const TagPage = () => {
       className="data-classification"
       data-testid="data-classification"
       title={
-        <EntityHeaderTitle
-          badge={badge}
-          color={tagItem.style?.color ?? BLACK_COLOR}
+        <EntityPageTitle
+          actions={learningIcon}
+          badges={badge}
           deleted={tagItem.deleted}
           displayName={tagItem.displayName}
           icon={icon}
           name={tagItem.name}
-          serviceName={tagItem.name}
-          suffix={learningIcon}
+          testId={`${tagItem.name}-${tagItem.name}`}
         />
       }
     />

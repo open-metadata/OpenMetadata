@@ -160,7 +160,7 @@ test.describe('Context Center - Dashboard', () => {
       }
     });
 
-    test('recently created unprocessed memory appears in the Memories pillar card recent list', async ({
+    test('recently created memory appears in the Memories pillar card recent list', async ({
       browser,
       page,
     }) => {
@@ -175,7 +175,6 @@ test.describe('Context Center - Dashboard', () => {
         answer: 'Dashboard recent memory fixture answer',
         shareConfig: { visibility: 'Shared' },
       });
-      expect(memory.entityStatus).toBe('Unprocessed');
       contextMemoryIdsToCleanup.add(memory.id);
       await afterAction();
 
@@ -260,6 +259,7 @@ test.describe('Context Center - Dashboard', () => {
         title: pendingTitle,
         question: 'Unprocessed most cited fixture question',
         answer: 'Unprocessed most cited fixture answer',
+        entityStatus: 'Unprocessed',
         shareConfig: { visibility: 'Shared' },
       });
       expect(pendingMemory.entityStatus).toBe('Unprocessed');
@@ -463,7 +463,6 @@ test.describe('Context Center - Dashboard', () => {
           answer: 'Dashboard navigation fixture answer',
           shareConfig: { visibility: 'Shared' },
         });
-        expect(memory.entityStatus).toBe('Unprocessed');
         contextMemoryIdsToCleanup.add(memory.id);
       } finally {
         await afterAction();

@@ -26,8 +26,16 @@ import {
 import {
   Check,
   ChevronRight,
+  Copy01,
+  Documents,
+  DotsVertical,
+  Download01,
   Eye,
+  FolderArrowRight,
+  NoSearch,
   Share07,
+  Trash01,
+  UploadCloud01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -35,14 +43,6 @@ import { compare } from 'fast-json-patch';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
-import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
-import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
-import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
-import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
-import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
-import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import {
   ShareConfig,
   ShareRole,
@@ -128,9 +128,10 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
             {() => (
               <Box align="center" className="tw:w-full" justify="between">
                 <Box align="center" gap={2}>
-                  <FolderIcon
+                  <Documents
                     aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0"
+                    className="tw:shrink-0"
+                    size={16}
                   />
                   <div className="tw:max-w-40">
                     <Typography ellipsis size="text-sm">
@@ -141,7 +142,8 @@ const FolderPickerMenu: FC<FolderPickerMenuProps> = ({
                 {isCurrent && (
                   <Check
                     aria-hidden="true"
-                    className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
+                    className="tw:shrink-0 tw:text-fg-brand-primary tw:ml-2"
+                    size={16}
                     strokeWidth={2}
                   />
                 )}
@@ -298,10 +300,9 @@ const FileActions: FC<FileActionsProps> = ({
       <span className="tw:inline-flex">
         <Dropdown.Root>
           <ButtonUtility
-            color="tertiary"
             data-testid="manage-button"
-            icon={<DotsVerticalIcon height={20} width={20} />}
-            size="sm"
+            icon={DotsVertical}
+            size="lg"
             tooltip={t('label.manage-entity', { entity: t('label.document') })}
           />
           <Dropdown.Popover className="tw:w-46">
@@ -319,11 +320,7 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <Share07
-                            className="tw:text-secondary"
-                            height={20}
-                            width={20}
-                          />
+                          <Share07 className="tw:text-secondary" size={20} />
                           <Typography
                             ellipsis
                             className="tw:grow tw:text-secondary">
@@ -332,7 +329,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          className="tw:shrink-0 tw:text-fg-quaternary"
+                          size={16}
                           strokeWidth={2}
                         />
                       </Box>
@@ -386,10 +384,9 @@ const FileActions: FC<FileActionsProps> = ({
                     {() => (
                       <Box align="center" justify="between">
                         <Box align="center" gap={2}>
-                          <MoveFolderIcon
+                          <FolderArrowRight
                             className="tw:text-secondary"
-                            height={20}
-                            width={20}
+                            size={20}
                           />
                           <Typography
                             ellipsis
@@ -399,7 +396,8 @@ const FileActions: FC<FileActionsProps> = ({
                         </Box>
                         <ChevronRight
                           aria-hidden="true"
-                          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                          className="tw:shrink-0 tw:text-fg-quaternary"
+                          size={16}
                           strokeWidth={2}
                         />
                       </Box>
@@ -424,11 +422,10 @@ const FileActions: FC<FileActionsProps> = ({
               {canDelete && (
                 <Dropdown.Item data-testid="delete-btn" id="delete">
                   <Box align="center" gap={2}>
-                    <TrashIcon
+                    <Trash01
                       aria-hidden="true"
                       className="tw:shrink-0 tw:text-error-primary"
-                      height={20}
-                      width={20}
+                      size={20}
                     />
                     <Typography
                       ellipsis
@@ -532,7 +529,7 @@ const ListHeader: FC<ListHeaderProps> = ({
           className="tw:py-1.5"
           color="tertiary"
           data-testid="bulk-download-btn"
-          iconLeading={<DownloadIcon height={18} width={18} />}
+          iconLeading={Download01}
           size="sm"
           onClick={onBulkDownload}>
           {t('label.download')}
@@ -544,9 +541,7 @@ const ListHeader: FC<ListHeaderProps> = ({
               className="tw:py-1.5"
               color="tertiary"
               data-testid="bulk-move-btn"
-              iconLeading={
-                <FolderIcon height={18} strokeWidth={2} width={18} />
-              }
+              iconLeading={Documents}
               size="sm">
               {t('label.move')}
             </Button>
@@ -567,7 +562,7 @@ const ListHeader: FC<ListHeaderProps> = ({
             className="tw:py-1.5"
             color="tertiary-destructive"
             data-testid="bulk-delete-btn"
-            iconLeading={<TrashIcon height={16} width={16} />}
+            iconLeading={Trash01}
             size="sm"
             onClick={onBulkDelete}>
             {t('label.delete')}
@@ -764,21 +759,21 @@ const FileRow: FC<FileRowProps> = ({
           className={`tw:ml-1.5${
             isPreviewSupported ? '' : ' tw:invisible tw:pointer-events-none'
           }`}
-          color="tertiary"
           data-testid="preview-btn"
-          icon={<Eye height={20} width={20} />}
+          icon={Eye}
+          size="lg"
           tooltip={t('label.preview')}
           onClick={isPreviewSupported ? () => onOpenPreview?.(file) : undefined}
         />
         <ButtonUtility
-          color="tertiary"
           data-testid="download-btn"
-          icon={<DownloadIcon height={20} width={20} />}
+          icon={Download01}
+          size="lg"
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton url={rowUrl}>
-          <CopyIcon aria-hidden="true" height={20} width={20} />
+        <CopyLinkButton size="lg" url={rowUrl}>
+          <Copy01 data-icon aria-hidden="true" />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}
@@ -824,6 +819,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onBulkDelete,
   onBulkDownload,
   onBulkMove,
+  onClearSelection,
   onDeleteFile,
   onDownload,
   onFileMoved,
@@ -839,6 +835,11 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   const selectedCount = selectedIds?.size ?? 0;
 
   const handleClear = () => {
+    if (onClearSelection) {
+      onClearSelection();
+
+      return;
+    }
     data.forEach((file) => {
       if (selectedIds?.has(file.id)) {
         onSelectFile?.(file.id);
@@ -869,7 +870,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             : []
         }
         description={t('message.context-center-folder-empty-subtitle')}
-        icon={<UploadIcon className="tw:text-fg-brand-primary" />}
+        icon={<UploadCloud01 className="tw:text-fg-brand-primary" />}
         title={t('label.folder-name-is-empty', {
           folderName: selectedFolderName,
         })}
@@ -879,7 +880,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
     <div className="tw:relative tw:flex-1">
       <NoSearchResultsPlaceholder
         description={t('message.check-spelling-or-try-different-term')}
-        icon={<NoSearchResultIcon />}
+        icon={<NoSearch />}
         title={t('label.no-matching-results')}
       />
     </div>

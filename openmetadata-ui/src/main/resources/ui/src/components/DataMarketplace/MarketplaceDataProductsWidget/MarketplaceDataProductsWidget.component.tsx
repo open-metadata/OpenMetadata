@@ -12,7 +12,10 @@
  */
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
-import { Package, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  DataProduct as DataProductIcon,
+  Plus,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -244,8 +247,9 @@ const MarketplaceDataProductsWidget = ({
               <Button
                 color="secondary"
                 data-testid="add-data-product-btn"
+                iconLeading={Plus}
                 onPress={openDrawer}>
-                + {t('label.add-entity', { entity: t('label.data-product') })}
+                {t('label.add-entity', { entity: t('label.data-product') })}
               </Button>
             )}
             {totalCount > DISPLAY_COUNT && (
@@ -279,7 +283,7 @@ const MarketplaceDataProductsWidget = ({
             }
             data-testid="marketplace-dp-empty-state"
             description={t('label.no-data-products-yet-description')}
-            icon={<Package className="tw:text-fg-brand-primary" />}
+            icon={<DataProductIcon className="tw:text-fg-brand-primary" />}
             title={t('label.no-data-products-yet')}
           />
         </div>

@@ -1,13 +1,13 @@
 # PR code never runs on pull_request_target; fork PRs run unprivileged
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-20 (the merge queue runs only approved commits)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-20 (the merge queue runs only approved commits) · v3 2026-11-09 (retain team membership for PR assignment)
 - **Deciders:** @pmbrull
 - **Guard:** `actions/checkout@v7` refuses to fetch fork code under `pull_request_target` unless the step
   sets `allow-unsafe-pr-checkout: true`, which no workflow does; CodeQL's `actions/untrusted-checkout`
   alert; reviewer. v2: `require_last_push_approval` on the `merge-rules` ruleset, which GitHub enforces
   at enqueue; nothing in the tree checks that it stays on
-- **Related:** #35420, #35426, ADR:2026-10-13-stale-merge-queue-runs-are-cancelled-by-a-central-sweep
+- **Related:** #35420, #35426, ADR:2026-10-13-stale-merge-queue-runs-are-cancelled-by-a-central-sweep, ADR:2026-11-04-a-new-pr-is-assigned-to-one-owner
 
 The v2 amendment below replaces the merge-queue consequence: the queue runs only a commit that someone
 other than its pusher approved.
@@ -29,8 +29,10 @@ branch's workflow file, so release-branch PRs were running main's copies.
 - A workflow that checks out or executes PR code triggers on `pull_request`, never on
   `pull_request_target`.
 - `pull_request_target` is only for workflows that never check out PR code: `pr-metadata-validation`,
-  `backport-labeled-prs`, `merge-queue-dequeue-report`, `prune-ephemeral-caches`. The team labeler and
-  `.github/teams.yml` are gone: they existed to apply the label, and GitHub team settings assign reviewers.
+  `backport-labeled-prs`, `merge-queue-dequeue-report`, `prune-ephemeral-caches`, `pr-auto-assign`.
+  The dequeue reporter checks out only the trusted base. The team labeler and the `safe to test`
+  allowlist are removed. `.github/teams.yml` retains team membership for PR assignment under
+  ADR:2026-11-04-a-new-pr-is-assigned-to-one-owner.
 - On `pull_request`, a step that needs a secret or a write token runs only when
   `github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]'`:
   Dependabot runs get a read-only token and no secrets even on a same-repo branch. A bot comment's content

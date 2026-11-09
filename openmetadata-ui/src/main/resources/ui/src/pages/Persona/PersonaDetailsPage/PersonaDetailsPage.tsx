@@ -18,15 +18,17 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { User03 } from '@openmetadata/ui-core-components/icons';
+import {
+  SuccessfulTests,
+  User03,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
-import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Description from '../../../components/common/EntityDescription/Description';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
@@ -322,7 +324,7 @@ export const PersonaDetailsPage = () => {
                 ? t('message.remove-default-persona-description')
                 : t('message.set-default-persona-menu-description')
             }
-            icon={isDefault ? CloseCircleOutlined : CheckCircleOutlined}
+            icon={isDefault ? XCircle : SuccessfulTests}
             id={isDefault ? 'remove-default-button' : 'set-as-default-button'}
             name={
               isDefault ? t('label.remove-default') : t('label.set-as-default')

@@ -13,10 +13,10 @@
 
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { Button } from '@openmetadata/ui-core-components';
+import { Bot } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as BotIcon } from '../../../../../../assets/svg/entity/bot.svg';
 import LimitWrapper from '../../../../../../hoc/LimitWrapper';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { safeDecodeURIComponent } from '../../../../../../utils/SettingsHashUtils';
@@ -164,7 +164,7 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
     onHeaderChange({
       breadcrumbs: crumbsByType[view.type],
       description: descByType[view.type],
-      icon: BotIcon as FC<{ className?: string }>,
+      icon: Bot as FC<{ className?: string }>,
       title: titleByType[view.type],
       titleInput: titleInputForView,
       titleSuffix: titleSuffixForView,
@@ -213,7 +213,9 @@ const BotsPanel: FC<BotsPanelProps> = ({ onHeaderChange }) => {
   }, [view, onNavigate, listRefreshKey]);
 
   return (
-    <div className="tw:flex tw:flex-1 tw:flex-col tw:min-h-0">{content}</div>
+    <div className="tw:flex tw:flex-1 tw:flex-col tw:min-h-0 tw:overflow-y-auto">
+      {content}
+    </div>
   );
 };
 

@@ -20,8 +20,8 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import {
-  Building01,
   ChevronDown,
+  IntakeForms,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -56,7 +56,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
 }) => {
   const { t } = useTranslation();
   const [forms, setForms] = useState<IntakeForm[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const {
     target: deleteTarget,
     open: openDeleteConfirm,
@@ -198,7 +198,7 @@ const GovernanceIntakeList: FC<GovernanceIntakeListProps> = ({
           <CreatePlaceholder
             data-testid="intake-forms-empty"
             description={t('message.no-intake-form-yet-description')}
-            icon={<Building01 className="tw:text-fg-brand-primary" />}
+            icon={<IntakeForms className="tw:text-fg-brand-primary" />}
             title={t('message.no-intake-form-yet')}
           />
         </div>

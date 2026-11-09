@@ -261,7 +261,9 @@ describe('Image transformation in setEditorContent', () => {
 
       setEditorContent(mockEditor as unknown as Editor, htmlString);
 
-      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(htmlString);
+      expect(mockEditor.commands.setContent).toHaveBeenCalledWith(htmlString, {
+        emitUpdate: false,
+      });
     });
 
     it('should transform simple img tag to file attachment div', () => {
@@ -392,7 +394,8 @@ describe('Image transformation in setEditorContent', () => {
       setEditorContent(mockEditor as unknown as Editor, content);
 
       expect(mockEditor.commands.setContent).toHaveBeenCalledWith(
-        '<p>Hello world</p>'
+        '<p>Hello world</p>',
+        { emitUpdate: false }
       );
       expect(mockEditor.view.updateState).toHaveBeenCalled();
     });
@@ -409,6 +412,32 @@ describe('Image transformation in setEditorContent', () => {
       const transformedHtml = mockEditor.commands.setContent.mock.calls[0][0];
 
       expect(transformedHtml).toContain('<strong>Bold text</strong>');
+    });
+
+    it('should sanitize the markup the last markdown conversion builds from escaped text', () => {
+      const description =
+        '<details>\\\\\\!\\\\\\[a\\\\\\](x"onerror="alert(1)) \\\\\\[b\\\\\\](y"onmouseover="alert(2)) <code>**c**</code></details>';
+      const previewContent = formatClientContent(
+        formatClientContent(description)
+      );
+
+      expect(previewContent).toContain('![a](x"onerror="alert(1))');
+
+      const innerHTMLSetter = jest.spyOn(Element.prototype, 'innerHTML', 'set');
+
+      setEditorContent(mockEditor as unknown as Editor, previewContent);
+
+      const transformedHtml = mockEditor.commands.setContent.mock.calls[0][0];
+
+      expect(transformedHtml).toContain('data-url="x"');
+      expect(transformedHtml).toContain('href="y"');
+      expect(transformedHtml).not.toContain('onerror');
+      expect(transformedHtml).not.toContain('onmouseover');
+      expect(innerHTMLSetter).not.toHaveBeenCalledWith(
+        expect.stringContaining('onerror')
+      );
+
+      innerHTMLSetter.mockRestore();
     });
   });
 });
@@ -727,6 +756,19 @@ describe('transformImgTagsToFileAttachment', () => {
   });
 
   describe('Security & Robustness', () => {
+    it('should parse the html outside the live document', () => {
+      const innerHTMLSetter = jest.spyOn(Element.prototype, 'innerHTML', 'set');
+
+      const result = transformImgTagsToFileAttachment(
+        '<p><img src="x" onerror="alert(1)"></p>'
+      );
+
+      expect(result).toContain('data-url="x"');
+      expect(innerHTMLSetter).not.toHaveBeenCalled();
+
+      innerHTMLSetter.mockRestore();
+    });
+
     it('should handle extremely large content without timeout', () => {
       const largeHtml =
         '<div>'.repeat(1000) +
