@@ -12,14 +12,58 @@
 Test tag_utils module
 """
 
+from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock
 
+import pytest
+
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
+from metadata.generated.schema.type.status import EntityStatus
+from metadata.ingestion.ometa.utils import model_str
 from metadata.utils.tag_utils import (
     get_ometa_tag_and_classification,
     get_tag_label,
     get_tag_labels,
 )
+
+
+def _metadata_returning(entities: dict):
+    metadata = MagicMock()
+    metadata.get_by_name.side_effect = lambda entity, fqn: entities.get(fqn)
+    return metadata
+
+
+class TestGlossaryTermStatus:
+    """Only an Approved glossary term may label an asset (#37256)."""
+
+    @pytest.mark.parametrize("status", [*EntityStatus, None], ids=lambda status: getattr(status, "value", "unset"))
+    def test_only_an_approved_term_becomes_a_label(self, status):
+        """An unset status comes from a server that predates entityStatus, so it is not read as unapproved."""
+        metadata = _metadata_returning({"Gov.Term": SimpleNamespace(entityStatus=status)})
+
+        label = get_tag_label(metadata, "Gov.Term", None, GlossaryTerm)
+
+        assert (label is not None) is (status in (EntityStatus.Approved, None))
+
+    def test_only_the_approved_term_of_a_mixed_list_is_kept(self):
+        metadata = _metadata_returning(
+            {
+                "Gov.Approved": SimpleNamespace(entityStatus=EntityStatus.Approved),
+                "Gov.Draft": SimpleNamespace(entityStatus=EntityStatus.Draft),
+            }
+        )
+
+        labels = get_tag_labels(metadata, ["Gov.Approved", "Gov.Draft", "Gov.Missing"], tag_type=GlossaryTerm)
+
+        assert [model_str(label.tagFQN) for label in labels] == ["Gov.Approved"]
+
+    def test_a_classification_tag_is_not_filtered_by_status(self):
+        metadata = _metadata_returning({"PII.Sensitive": SimpleNamespace(entityStatus=EntityStatus.Draft)})
+
+        label = get_tag_label(metadata, "Sensitive", "PII")
+
+        assert model_str(label.tagFQN) == "PII.Sensitive"
 
 
 class TestTagUtils(TestCase):
