@@ -585,6 +585,37 @@ class SemanticMemoryDuplicateFinderTest {
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
+  /** The edit modal saves a correction's text as question and answer; it holds the old figure. */
+  @Test
+  void anEditModalCorrectionHoldsAnotherDocumentsOldFigure() throws Exception {
+    ContextMemory correction =
+        memory(UUID.randomUUID(), "The refund window is 45 days", "The refund window is 45 days")
+            .withSourceType(ContextMemorySourceType.MANUAL);
+    rankedHits(List.of(correction));
+    eligible(correction);
+
+    assertEquals(
+        new DuplicateMatch.ConflictsWithDecision(correction),
+        keywordFinder()
+            .findMatch(memory(UUID.randomUUID(), "What is the refund window?", "30 days")));
+    verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /** Another year is another fact, beside a correction too: the questions' numbers conflict. */
+  @Test
+  void anEditModalCorrectionForAnotherYearHoldsNothing() throws Exception {
+    ContextMemory correction =
+        memory(UUID.randomUUID(), "The VAT rate in 2024 is 20%", "The VAT rate in 2024 is 20%")
+            .withSourceType(ContextMemorySourceType.MANUAL);
+    rankedHits(List.of(correction));
+    eligible(correction);
+
+    assertEquals(
+        new DuplicateMatch.None(),
+        keywordFinder()
+            .findMatch(memory(UUID.randomUUID(), "What was the VAT rate in 2025?", "25%")));
+  }
+
   /** A hold needs conflicting numbers, so a pending value stating none is never looked up. */
   @Test
   void aPendingValueStatingNoNumberNeedsNoLookup() {

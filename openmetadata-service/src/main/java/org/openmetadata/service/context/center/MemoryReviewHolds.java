@@ -48,12 +48,20 @@ public final class MemoryReviewHolds {
 
   /**
    * Whether a person's decision on {@code decided} holds {@code value} for review across documents:
-   * re-extraction would pair them as one question, and the value replaces a number.
+   * the value replaces a number of the same question, as re-extraction pairs them, or may be the
+   * figure a correction replaced.
    */
   public static boolean holdsAcrossDocuments(ContextMemory decided, ContextMemory value) {
     return isDecided(decided)
         && haveConflictingNumbers(decided, value)
-        && askTheSameQuestion(decided, value);
+        && (askTheSameQuestion(decided, value) || mayBeTheReplacedFigure(decided, value));
+  }
+
+  /** As beside an edit-modal correction on re-extraction; another year is still another fact. */
+  private static boolean mayBeTheReplacedFigure(ContextMemory correction, ContextMemory value) {
+    return mayHaveBeenReplaced(correction, value)
+        && !MemoryTextSimilarity.hasConflictingNumbers(
+            correction.getQuestion(), value.getQuestion());
   }
 
   /** Only a value stating a number can replace one, so only such a value can be held. */

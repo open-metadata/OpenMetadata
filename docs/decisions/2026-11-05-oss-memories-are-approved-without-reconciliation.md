@@ -49,7 +49,8 @@ ordinary user's own PATCH or PUT into Approved is refused or keeps the stored st
 
 v3 (2026-11-09): OSS also starts a memory `Unprocessed` when its file gives the same question a
 different number than a memory a person decided in another document (Rejected, Superseded,
-Invalidated, Deprecated, Archived, or corrected), as re-extraction already holds values beside a
+Invalidated, Deprecated, Archived, or corrected), or states the figure a person's correction there
+replaced, as re-extraction already holds values beside a
 decided pill (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values). A
 fact another file already states links to that memory in its stage, so a fact a person rejected
 never comes back Approved through another document, and its other value waits for an admin

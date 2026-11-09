@@ -142,11 +142,15 @@ a memory covers every document that states its fact.
   so Approved alone is no decision. A conflicting candidate a person decided holds the fact for
   review when re-extraction would pair the two as one question: the same question
   (`MemoryTextSimilarity.sameQuestion`) with the whole pair clearing the identity bar
-  (`MemoryTextSimilarity.weighted`, 0.5). The new memory then starts `Unprocessed` under every
-  provider: "billed on the 10th" waits beside a rejected "billed on the 5th", and a document's
-  original figure waits beside a person's correction of the same question. A question for another
-  year is another question, so beside it, as beside a memory no one decided, a replaced number is
-  a new memory in its derived stage.
+  (`MemoryTextSimilarity.weighted`, 0.5). Beside a correction it also holds a value that may be the
+  figure the person replaced, as re-extraction does (`MemoryReviewHolds.mayHaveBeenReplaced`): the
+  edit modal saves a correction's text as both question and answer ("The refund window is 45
+  days"), which a derived "What is the refund window?" / "30 days" matches by topic only. The new
+  memory then starts `Unprocessed` under every provider: "billed on the 10th" waits beside a
+  rejected "billed on the 5th", and a document's original figure waits beside a person's
+  correction. A question for another year is another question, a correction's included (the two
+  questions' own numbers conflict), so beside it, as beside a memory no one decided, a replaced
+  number is a new memory in its derived stage.
 - Approving from a document re-reads the memory index for decided memories that hold a pending
   value, by the same rule, and leaves that value for an admin
   (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document). Only a value

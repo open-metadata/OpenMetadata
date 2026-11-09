@@ -106,8 +106,10 @@ again. Another file's equivalent fact links to its memory in any stage and takes
 derived value whose number conflicts with a memory a person decided in another document (Rejected,
 Superseded, Invalidated, Deprecated, Archived, or corrected) starts `Unprocessed` under every
 provider when re-extraction would pair the two as one question, the same question with the pair
-clearing the identity bar: "billed on the 10th" waits beside a rejected "billed on the 5th", while a
-question for another year is another fact. No field records a human approval, so an Approved memory
+clearing the identity bar, or when it may be the figure a person's correction replaced, as above
+(an edit-modal correction matches its old figure by topic only): "billed on the 10th" waits beside
+a rejected "billed on the 5th", while a question for another year is another fact, beside a
+correction too. No field records a human approval, so an Approved memory
 is no decision here. One memory has one review: a document's listing shows a waiting memory to the
 owners of every document its source links name, read for the page and never returned, and approval from
 a document leaves for an admin both what another linked document leaves for a decision and a value
