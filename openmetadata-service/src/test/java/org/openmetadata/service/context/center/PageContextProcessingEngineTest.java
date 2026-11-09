@@ -197,6 +197,35 @@ class PageContextProcessingEngineTest {
     assertEquals("LLM exploded", stamped.getProcessingError());
   }
 
+  @Test
+  void anInterruptedArticleExtractionIsNotStampedFailed() {
+    pageReturns(page("body", "stale-hash"));
+    when(extractor.derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenAnswer(
+            ignored -> {
+              throw interruptedLlmCall();
+            });
+
+    try {
+      assertThrows(LLMCompletionException.class, () -> engine().runQueued(pageId));
+    } finally {
+      Thread.interrupted();
+    }
+
+    assertEquals(
+        List.of(PageProcessingStatus.Processing),
+        capturedUpdates().stream().map(Page::getProcessingStatus).toList());
+  }
+
+  /** Fails as the LLM clients do when a stop interrupts them: flag re-set, interrupt as cause. */
+  private static LLMCompletionException interruptedLlmCall() {
+    Thread.currentThread().interrupt();
+    return new LLMCompletionException(
+        "Knowledge pill extraction failed for 1 of 1 chunks",
+        new LLMCompletionException(
+            "OpenAI completion was interrupted", new InterruptedException()));
+  }
+
   /** Extraction bookkeeping must not make the article look last edited by admin. */
   @Test
   void extractionKeepsTheArticlesLastEditor() {

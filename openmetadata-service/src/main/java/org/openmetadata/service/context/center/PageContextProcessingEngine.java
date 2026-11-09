@@ -1,5 +1,7 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.service.context.center.Interruptions.isInterruption;
+
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
@@ -98,13 +100,26 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     } catch (ConditionalUpdateExhaustedException e) {
       schedule(pageId);
     } catch (RuntimeException e) {
-      LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
+      recordFailure(pageId, e);
+      throw e;
+    }
+  }
+
+  /**
+   * An interrupted run keeps its status, and rethrowing keeps its job from completing, so the
+   * stale-job reaper requeues the job to resume it.
+   */
+  private void recordFailure(UUID pageId, RuntimeException failure) {
+    if (isInterruption(failure)) {
+      LOG.info(
+          "Knowledge pill extraction for page {} was interrupted; recovery resumes it", pageId);
+    } else {
+      LOG.error("Knowledge pill extraction failed for page {}", pageId, failure);
       try {
-        stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+        stampStatus(pageId, PageProcessingStatus.Failed, failure.getMessage());
       } catch (ConditionalUpdateExhaustedException exhausted) {
         schedule(pageId);
       }
-      throw e;
     }
   }
 

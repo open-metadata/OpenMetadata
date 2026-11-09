@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,7 @@ import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(MockitoExtension.class)
@@ -467,6 +469,94 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
     assertEquals("provider exploded", failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+  }
+
+  @Test
+  void anInterruptedFileExtractionStaysExtractingContext() throws Exception {
+    stubTextExtraction();
+    when(fileEngine.runExtraction(fileId))
+        .thenAnswer(
+            ignored -> {
+              throw interruptedLlmCall();
+            });
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+
+    try {
+      assertThrows(
+          LLMCompletionException.class, () -> service.runMemoryExtraction(fileId, contentId));
+    } finally {
+      Thread.interrupted();
+    }
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.ExtractingContext,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+    verify(contentRepository, times(2))
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedContentCaptor.getAllValues().getLast().getProcessingStatus());
+  }
+
+  @Test
+  void aRealLlmFailureStillMarksFailed() throws Exception {
+    stubTextExtraction();
+    LLMCompletionException failure =
+        new LLMCompletionException(
+            "Knowledge pill extraction failed for 1 of 1 chunks",
+            new LLMCompletionException(
+                "OpenAI completion failed due to IO error", new IOException("Connection reset")));
+    when(fileEngine.runExtraction(fileId)).thenThrow(failure);
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+
+    assertThrows(
+        LLMCompletionException.class, () -> service.runMemoryExtraction(fileId, contentId));
+
+    verify(repository, times(3))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    ContextFile failed = updatedFileCaptor.getAllValues().getLast();
+    assertEquals(ProcessingStatus.Failed, failed.getProcessingStatus());
+    assertEquals(failure.getMessage(), failed.getProcessingError());
+  }
+
+  /** The read ran on another thread, so only the failure's cause records the interrupt. */
+  @Test
+  void anInterruptedTextExtractionStaysAnalyzing() {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.failedFuture(
+                new IllegalStateException("Asset read interrupted", new InterruptedException())));
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    verify(repository)
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(ProcessingStatus.Analyzing, updatedFileCaptor.getValue().getProcessingStatus());
+    verify(contentRepository)
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(ProcessingStatus.Analyzing, updatedContentCaptor.getValue().getProcessingStatus());
+  }
+
+  private void stubTextExtraction() throws IOException {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+  }
+
+  /** Fails as the LLM clients do when a stop interrupts them: flag re-set, interrupt as cause. */
+  private static LLMCompletionException interruptedLlmCall() {
+    Thread.currentThread().interrupt();
+    return new LLMCompletionException(
+        "Knowledge pill extraction failed for 1 of 1 chunks",
+        new LLMCompletionException(
+            "OpenAI completion was interrupted", new InterruptedException()));
   }
 
   @Test

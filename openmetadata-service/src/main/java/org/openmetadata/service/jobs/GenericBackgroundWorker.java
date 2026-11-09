@@ -197,8 +197,12 @@ public class GenericBackgroundWorker implements Managed {
     try {
       processJob(job);
     } catch (Exception e) {
-      LOG.error("Background Job {} failed with unexpected error", job.getId(), e);
-      jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
+      if (isLeftForRecovery(job)) {
+        logLeftForRecovery(job, e);
+      } else {
+        LOG.error("Background Job {} failed with unexpected error", job.getId(), e);
+        jobDao.updateJobStatus(job.getId(), BackgroundJob.Status.FAILED);
+      }
     } finally {
       inFlightJobIds.remove(job.getId());
       if (isMemoryJob(job)) {
@@ -231,9 +235,27 @@ public class GenericBackgroundWorker implements Managed {
         sendJobStatusUpdate(job);
       }
     } catch (BackgroundJobException e) {
-      markJobAsFailed(job, e);
-      sendJobStatusUpdate(job);
+      if (isLeftForRecovery(job)) {
+        logLeftForRecovery(job, e);
+      } else {
+        markJobAsFailed(job, e);
+        sendJobStatusUpdate(job);
+      }
     }
+  }
+
+  // A stop leaves a memory extraction job RUNNING, as a crash would, for the stale-job reaper to
+  // requeue (JobDAO#requeueStaleMemoryJobs). Other types still fail: nothing requeues them, and a
+  // RUNNING one can block new jobs of its type.
+  private boolean isLeftForRecovery(BackgroundJob job) {
+    return !running && job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION;
+  }
+
+  private void logLeftForRecovery(BackgroundJob job, Exception e) {
+    LOG.info(
+        "Background Job {} ended during a server stop and is left RUNNING for recovery: {}",
+        job.getId(),
+        e.getMessage());
   }
 
   private void markJobAsCompleted(BackgroundJob job) {

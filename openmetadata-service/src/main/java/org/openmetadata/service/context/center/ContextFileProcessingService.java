@@ -1,6 +1,7 @@
 package org.openmetadata.service.context.center;
 
 import static org.openmetadata.service.context.center.ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS;
+import static org.openmetadata.service.context.center.Interruptions.isInterruption;
 import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEXT_FILE_CONTENT_ENTITY;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
@@ -263,8 +264,8 @@ public class ContextFileProcessingService {
 
   /**
    * Runs the text-extraction stage and returns the resulting text status, or {@code null} when the
-   * run was abandoned (stale content, missing entities, or a conditional update that lost to a
-   * concurrent writer).
+   * run was abandoned (stale content, missing entities, a conditional update that lost to a
+   * concurrent writer, or an interruption).
    */
   private ProcessingStatus extractText(UUID fileId, UUID contentId) {
     try {
@@ -299,10 +300,21 @@ public class ContextFileProcessingService {
       if (t instanceof VirtualMachineError vmError) {
         throw vmError;
       }
-      LOG.error("Failed to extract text for file {} content {}", fileId, contentId, t);
-      applyFailure(fileId, contentId, describeFailure(t));
-      return ProcessingStatus.Failed;
+      return recordTextFailure(fileId, contentId, t);
     }
+  }
+
+  /** An interrupted run stays Analyzing, so restart recovery extracts the text again. */
+  private ProcessingStatus recordTextFailure(UUID fileId, UUID contentId, Throwable failure) {
+    ProcessingStatus result = null;
+    if (isInterruption(failure)) {
+      LOG.info("Text extraction for file {} was interrupted; recovery resumes it", fileId);
+    } else {
+      LOG.error("Failed to extract text for file {} content {}", fileId, contentId, failure);
+      applyFailure(fileId, contentId, describeFailure(failure));
+      result = ProcessingStatus.Failed;
+    }
+    return result;
   }
 
   private void submitMemoryExtraction(UUID fileId, UUID contentId) {
@@ -358,12 +370,25 @@ public class ContextFileProcessingService {
     } catch (ConditionalUpdateExhaustedException e) {
       throw e;
     } catch (Exception e) {
-      LOG.error("Knowledge pill extraction failed for file {}", fileId, e);
-      applyFailure(fileId, contentId, describeFailure(e), false);
+      recordMemoryFailure(fileId, contentId, e);
       if (e instanceof RuntimeException runtimeException) {
         throw runtimeException;
       }
       throw new IllegalStateException(e);
+    }
+  }
+
+  /**
+   * An interrupted run stays ExtractingContext, and rethrowing keeps its job from completing, so
+   * the stale-job reaper or restart recovery resumes it.
+   */
+  private void recordMemoryFailure(UUID fileId, UUID contentId, Exception failure) {
+    if (isInterruption(failure)) {
+      LOG.info(
+          "Knowledge pill extraction for file {} was interrupted; recovery resumes it", fileId);
+    } else {
+      LOG.error("Knowledge pill extraction failed for file {}", fileId, failure);
+      applyFailure(fileId, contentId, describeFailure(failure), false);
     }
   }
 
