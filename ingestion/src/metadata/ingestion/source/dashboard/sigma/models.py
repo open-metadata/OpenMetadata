@@ -12,6 +12,8 @@
 PowerBI Models
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -31,13 +33,18 @@ class Workbook(BaseModel):
 class WorkbookDetails(BaseModel):
     workbookId: str  # noqa: N815
     name: str | None = None
-    createdAt: str  # noqa: N815
+    createdAt: datetime  # noqa: N815
+    updatedAt: datetime | None = None  # noqa: N815
     url: str
     path: str | None = None
     latestVersion: int | float | None = None  # noqa: N815
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
+    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
+    elements: list["Elements"] = []
+    # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
+    lineage: list["WorkbookLineageEntry"] | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
@@ -93,13 +100,13 @@ class EdgeSource(BaseModel):
 class Dependency(BaseModel):
     nodeId: str  # noqa: N815
     type: str
-    name: str | None
-    elementId: str | None  # noqa: N815
+    name: str | None = None
+    elementId: str | None = None  # noqa: N815
 
 
 class EdgeSourceResponse(BaseModel):
     edges: list[EdgeSource] | None = []
-    dependencies: dict | None = {}
+    dependencies: dict[str, Dependency] = {}
 
 
 class NodeDetails(BaseModel):
@@ -119,6 +126,34 @@ class NodeDetails(BaseModel):
                         return part
                 return parts[-1]
         return None
+
+
+class DataModel(BaseModel):
+    dataModelId: str  # noqa: N815
+    name: str | None = None
+    url: str | None = None
+    ownerId: str | None = None  # noqa: N815
+
+
+class DataModelsResponse(BaseModel):
+    entries: list[DataModel] = []
+    nextPage: str | None = None  # noqa: N815
+
+
+class Connection(BaseModel):
+    type: str
+
+
+class WorkbookLineageEntry(BaseModel):
+    connectionId: str | None = None  # noqa: N815
+    elementId: str | None = None  # noqa: N815
+    dataSourceIds: list[str] | None = None  # noqa: N815
+    dataModelId: str | None = None  # noqa: N815
+
+
+class WorkbookLineageResponse(BaseModel):
+    entries: list[WorkbookLineageEntry] = []
+    nextPage: str | None = None  # noqa: N815
 
 
 class WorkbookQuery(BaseModel):

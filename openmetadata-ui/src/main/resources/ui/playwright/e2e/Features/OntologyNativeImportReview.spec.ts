@@ -352,25 +352,32 @@ test.describe(
       }
     });
 
-    test('fails the preview with the datatype reason', async ({
+    test('skips and reports a datatype range it cannot hold, and imports the rest', async ({
       isolatedUserPage: page,
     }) => {
       const { api, ontology } = await createOntology(`pw_review_${uuid()}`);
 
       try {
         await openImport(page, ontology);
-        await chooseFile(
+        await parseFile(
           page,
           'dates.ttl',
           DATE_RANGE_TURTLE(NS(ontology.name))
         );
-        await page.getByTestId('ontology-native-import-parse').click();
 
-        await expect(page.getByRole('alert')).toContainText('XMLSchema#date');
-        await expect(page.getByRole('alert')).toContainText('issuedOn');
+        const skipped = page.getByTestId('ontology-native-import-skipped');
+        await expect(skipped).toContainText('Skipped statements: 1');
+        await skipped.locator('summary').click();
+        await expect(skipped).toContainText('Unsupported structure');
+        await expect(skipped).toContainText('rdf-schema#range');
+        await expect(skipped).toContainText(`${NS(ontology.name)}issuedOn`);
+
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toBeDisabled();
+        ).toHaveText('Import 2 selected');
+        await applyImport(page);
+
+        expect(await conceptNames(api, ontology)).toEqual(['Invoice']);
       } finally {
         await remove(api, ontology.id);
       }

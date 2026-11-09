@@ -196,9 +196,11 @@ export const ContextRuleEditor = ({
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);
   const [filterErrorShown, setFilterErrorShown] = useState(false);
+  const [filterUnrendered, setFilterUnrendered] = useState(false);
   const clearFilterState = useCallback(() => {
     setFilterIncomplete(false);
     setFilterErrorShown(false);
+    setFilterUnrendered(false);
   }, []);
   const closeDrawerRef = useRef<() => void>(() => undefined);
   const lastResetRuleIdRef = useRef<string>();
@@ -487,6 +489,9 @@ export const ContextRuleEditor = ({
               shouldDirty: true,
             });
           }}
+          onReconstructionStatusChange={(rendered) => {
+            setFilterUnrendered(!rendered);
+          }}
           onValidityChange={(isValid) => {
             setFilterIncomplete(!isValid);
             if (isValid) {
@@ -494,6 +499,16 @@ export const ContextRuleEditor = ({
             }
           }}
         />
+        {filterUnrendered && (
+          <Alert
+            className="tw:mt-1.5"
+            data-testid="context-rule-filter-unrendered"
+            icon={AlertCircle}
+            iconSize="sm"
+            variant="warning">
+            {t('message.persona-context-rule-filter-unrendered')}
+          </Alert>
+        )}
         {shouldShowFilterError(filterErrorShown, filterIncomplete) && (
           <Typography
             className="tw:mt-1.5 tw:text-error-primary"
