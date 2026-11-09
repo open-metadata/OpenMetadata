@@ -358,7 +358,7 @@ jobs:
 
       - name: Install Playwright Browsers
         if: env.SKIP_LEG != 'true'
-        run: npx playwright@1.57.0 install chromium --with-deps
+        run: npx playwright@1.65.0 install chromium --with-deps
 
       - name: Start OpenLDAP
         if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'ldap' }}
