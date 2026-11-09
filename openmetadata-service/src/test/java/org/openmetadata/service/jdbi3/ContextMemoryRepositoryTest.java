@@ -12,20 +12,25 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
+import jakarta.ws.rs.core.Response;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -38,21 +43,31 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
+import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ComparedMemory;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.review.ExtractedMemoryApprover;
+import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 /**
  * ContextMemory is indexed whatever its {@code shareConfig.visibility}; privacy is enforced at
@@ -76,7 +91,7 @@ class ContextMemoryRepositoryTest {
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
     Entity.setCollectionDAO(daoCollection);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(daoCollection));
-    repository = new ContextMemoryRepository();
+    repository = new ContextMemoryRepository(true);
   }
 
   @AfterEach
@@ -92,6 +107,415 @@ class ContextMemoryRepositoryTest {
     assertThrows(
         AuthorizationException.class,
         () -> repository.prepare(new ContextMemory().withName("unstamped"), true));
+  }
+
+  @Test
+  void ossMemoriesAreApprovedWhenNoStageIsRequested() {
+    repository = new ContextMemoryRepository();
+    withWriters(
+        () -> {
+          ContextMemory memory = byWriter("alice", null);
+
+          repository.prepare(memory, false);
+          repository.assignInitialEntityStatus(memory);
+
+          assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"APPROVED", "DRAFT", "UNPROCESSED"})
+  void ossPreservesAnExplicitlyRequestedStage(ContextMemoryStatus stage) {
+    repository = new ContextMemoryRepository();
+    withWriters(
+        () -> {
+          ContextMemory memory = byWriter("alice", stage);
+
+          repository.prepare(memory, false);
+          repository.assignInitialEntityStatus(memory);
+
+          assertEquals(stage, memory.getEntityStatus());
+        });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = EntityRepository.Operation.class,
+      names = {"PATCH", "PUT"})
+  void ossOwnersMayApproveTheirPendingMemories(EntityRepository.Operation operation) {
+    repository = new ContextMemoryRepository();
+    withWriters(
+        () ->
+            assertEquals(
+                ContextMemoryStatus.APPROVED,
+                stageMove("alice", ContextMemoryStatus.APPROVED, null, operation)));
+  }
+
+  @Test
+  void aReviewingDistributionDefaultsToUnprocessedForEveryWriter() {
+    withWriters(
+        () -> {
+          for (String writer : List.of("alice", Entity.ADMIN_USER_NAME, "ai-bot")) {
+            ContextMemory memory = byWriter(writer, null);
+
+            repository.prepare(memory, false);
+            repository.assignInitialEntityStatus(memory);
+
+            assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus(), writer);
+            assertNull(memory.getLastReviewedAt());
+          }
+        });
+  }
+
+  /**
+   * Item 18: a create by anyone but an admin or a bot starts Unprocessed, whatever it asked for,
+   * and claims no review it never had.
+   */
+  @Test
+  void aMemoryCreatedByANonAdminStartsUnprocessedWhateverItAskedFor() {
+    User alice = new User().withId(UUID.randomUUID()).withName("alice");
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("alice"))
+          .thenReturn(new SubjectContext(alice, null));
+      entities
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
+          .thenReturn(
+              new EntityReference().withId(alice.getId()).withName("alice").withType(Entity.USER));
+      ContextMemory approved = byWriter("alice", ContextMemoryStatus.APPROVED);
+      ContextMemory draft =
+          byWriter("alice", ContextMemoryStatus.DRAFT).withStatusReason("Please review");
+
+      repository.prepare(approved, false);
+      repository.prepare(draft, false);
+
+      assertEquals(ContextMemoryStatus.UNPROCESSED, approved.getEntityStatus());
+      assertNull(approved.getLastReviewedAt(), "an unreviewed memory claims no review");
+      assertEquals(ContextMemoryStatus.UNPROCESSED, draft.getEntityStatus());
+      assertNull(draft.getStatusReason());
+    }
+  }
+
+  /** Extraction (admin), reconciliation and governance (bots) keep the stage they write. */
+  @Test
+  void anAdminOrABotCreatesAMemoryInTheStageItAskedFor() {
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("root"))
+          .thenReturn(new SubjectContext(new User().withName("root").withIsAdmin(true), null));
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("governance-bot"))
+          .thenReturn(
+              new SubjectContext(new User().withName("governance-bot").withIsBot(true), null));
+      for (String writer : List.of(Entity.ADMIN_USER_NAME, "root", "governance-bot")) {
+        ContextMemory memory = byWriter(writer, ContextMemoryStatus.APPROVED);
+
+        ContextMemoryRepository.startPendingUnlessPrivileged(memory);
+
+        assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus(), writer);
+      }
+    }
+  }
+
+  /**
+   * Review finding: a create asking for Draft with the evidence-hold text opened a review directly.
+   * The rule trusts no requested hold; the server's own hold runs after it and still lands in Draft.
+   */
+  @Test
+  void aRequestedHoldIsNotTrustedButTheServersOwnHoldLandsInDraft() {
+    withWriters(
+        () -> {
+          UUID query = UUID.randomUUID();
+          ContextMemory claimed =
+              byWriter("alice", ContextMemoryStatus.DRAFT)
+                  .withStatusReason(
+                      "Supporting query "
+                          + query
+                          + " was deleted; review whether this memory still holds without it");
+          ContextMemory citing = byWriter("alice", ContextMemoryStatus.APPROVED);
+
+          ContextMemoryRepository.startPendingUnlessPrivileged(claimed);
+          ContextMemoryRepository.startPendingUnlessPrivileged(citing);
+          MemoryEvidenceHolds.holdIfCitingRetired(
+              citing,
+              List.of(
+                  new EntityReference().withId(query).withType(Entity.QUERY).withDeleted(true)));
+
+          assertEquals(ContextMemoryStatus.UNPROCESSED, claimed.getEntityStatus());
+          assertNull(claimed.getStatusReason());
+          assertEquals(ContextMemoryStatus.DRAFT, citing.getEntityStatus());
+          assertTrue(citing.getStatusReason().contains(query.toString()));
+        });
+  }
+
+  /**
+   * Review finding: alice PATCHed her own memory to Draft with a dispute naming another of hers,
+   * which opened a review assigned only to her, and approved it there.
+   */
+  @Test
+  void aNonAdminCannotOpenAConflictReview() {
+    withWriters(
+        () -> {
+          ContextMemory original =
+              memory(MemoryVisibility.ENTITY)
+                  .withUpdatedBy("admin")
+                  .withUpdatedAt(101L)
+                  .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+          ContextMemory disputed =
+              JsonUtils.deepCopy(original, ContextMemory.class)
+                  .withUpdatedBy("alice")
+                  .withEntityStatus(ContextMemoryStatus.DRAFT)
+                  .withDisputes(List.of(dispute()));
+
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  repository
+                      .getUpdater(
+                          original, disputed, EntityRepository.Operation.PATCH, ChangeSource.MANUAL)
+                      .entitySpecificUpdate(false));
+        });
+  }
+
+  /** The create variant: a new memory carrying disputes opens a review the moment it exists. */
+  @Test
+  void aNonAdminsCreateCannotCarryDisputes() {
+    withWriters(
+        () -> {
+          ContextMemory created =
+              byWriter("alice", ContextMemoryStatus.DRAFT).withDisputes(List.of(dispute()));
+
+          assertThrows(AuthorizationException.class, () -> repository.prepare(created, false));
+        });
+  }
+
+  /**
+   * Reconciliation writes disputes as its bot, or as a restricted memory's owner with the bot
+   * impersonating them, so both stay open, as does an admin.
+   */
+  @Test
+  void aBotAnAdminOrABotWritingForAUserMayOpenAConflictReview() {
+    withWriters(
+        () -> {
+          for (String writer : List.of("ai-bot", Entity.ADMIN_USER_NAME)) {
+            ContextMemory memory =
+                byWriter(writer, ContextMemoryStatus.DRAFT).withDisputes(List.of(dispute()));
+            assertDoesNotThrow(
+                () ->
+                    ContextMemoryRepository.requireDisputesOpenedByAutomation(null, memory, null));
+          }
+          ContextMemory forAlice =
+              byWriter("alice", ContextMemoryStatus.DRAFT).withDisputes(List.of(dispute()));
+          assertDoesNotThrow(
+              () ->
+                  ContextMemoryRepository.requireDisputesOpenedByAutomation(
+                      null, forAlice, "ai-bot"));
+        });
+  }
+
+  private static MemoryDispute dispute() {
+    return new MemoryDispute()
+        .withMemory(new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_MEMORY))
+        .withReason("States a different refund window");
+  }
+
+  /**
+   * Review finding: a Data Steward's create started Unprocessed, then a PATCH of /entityStatus
+   * approved it. Only an admin, a bot or a conflict review decision moves a memory into Approved.
+   */
+  @Test
+  void aNonAdminsPatchIntoApprovedIsRefused() {
+    withWriters(
+        () ->
+            assertThrows(
+                AuthorizationException.class,
+                () ->
+                    stageMove(
+                        "alice",
+                        ContextMemoryStatus.APPROVED,
+                        null,
+                        EntityRepository.Operation.PATCH)));
+  }
+
+  /**
+   * Review refuses an owner's own approval, so a document's owner approves its extracted memories
+   * only because the approver writes as a review decision does, through governance-bot.
+   */
+  @Test
+  void aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt() {
+    String impersonatedBy = impersonatorOfAnApprovalBy("alice");
+
+    withWriters(
+        () -> {
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  "alice",
+                  ContextMemoryStatus.APPROVED,
+                  impersonatedBy,
+                  EntityRepository.Operation.PATCH));
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  stageMove(
+                      "alice",
+                      ContextMemoryStatus.APPROVED,
+                      null,
+                      EntityRepository.Operation.PATCH));
+        });
+  }
+
+  /** Who the approver's write of one extracted pill names as impersonating {@code user}. */
+  private String impersonatorOfAnApprovalBy(String user) {
+    ContextMemory pill =
+        memory(MemoryVisibility.ENTITY)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+            .withVersion(0.1)
+            .withUpdatedAt(101L);
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemoryRepository listing = mock(ContextMemoryRepository.class);
+    ContextMemoryRepository writes = mock(ContextMemoryRepository.class);
+    when(listing.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(pill));
+    when(writes.patch(any(), any(UUID.class), any(), any(), any(), any(), any()))
+        .thenReturn(new PatchResponse<>(Response.Status.OK, pill, EventType.ENTITY_UPDATED));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
+      new ExtractedMemoryApprover(listing)
+          .approve(
+              file,
+              List.of(new ComparedMemory().withId(pill.getId()).withContentUpdatedAt(101L)),
+              user,
+              false);
+    }
+    ArgumentCaptor<String> impersonatedBy = ArgumentCaptor.forClass(String.class);
+    verify(writes)
+        .patch(isNull(), eq(pill.getId()), eq(user), any(), any(), any(), impersonatedBy.capture());
+    return impersonatedBy.getValue();
+  }
+
+  /** A PUT re-sends its create request, stage included: it keeps the stored stage, as the create. */
+  @Test
+  void aNonAdminsPutKeepsTheStoredStage() {
+    withWriters(
+        () ->
+            assertEquals(
+                ContextMemoryStatus.UNPROCESSED,
+                stageMove(
+                    "alice", ContextMemoryStatus.APPROVED, null, EntityRepository.Operation.PUT)));
+  }
+
+  /** A conflict review's resolver writes as themselves through governance-bot. */
+  @Test
+  void aConflictReviewDecisionAndAnAdminOrBotMayApprove() {
+    withWriters(
+        () -> {
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  "alice",
+                  ContextMemoryStatus.APPROVED,
+                  GOVERNANCE_BOT,
+                  EntityRepository.Operation.PATCH));
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  Entity.ADMIN_USER_NAME,
+                  ContextMemoryStatus.APPROVED,
+                  null,
+                  EntityRepository.Operation.PATCH));
+          assertEquals(
+              ContextMemoryStatus.APPROVED,
+              stageMove(
+                  "ai-bot", ContextMemoryStatus.APPROVED, null, EntityRepository.Operation.PATCH));
+        });
+  }
+
+  /** Moves that ground nothing stay open: sending a memory to review or retiring it. */
+  @Test
+  void aNonAdminMayStillSendAMemoryToReviewOrRetireIt() {
+    withWriters(
+        () -> {
+          assertEquals(
+              ContextMemoryStatus.REJECTED,
+              stageMove(
+                  "alice", ContextMemoryStatus.REJECTED, null, EntityRepository.Operation.PATCH));
+          assertEquals(
+              ContextMemoryStatus.DRAFT,
+              stageMove(
+                  "alice", ContextMemoryStatus.DRAFT, null, EntityRepository.Operation.PATCH));
+        });
+  }
+
+  /** Moves an Unprocessed memory to {@code target} as {@code writer} and returns its stage. */
+  private ContextMemoryStatus stageMove(
+      String writer,
+      ContextMemoryStatus target,
+      String impersonatedBy,
+      EntityRepository.Operation operation) {
+    ContextMemory original =
+        memory(MemoryVisibility.ENTITY)
+            .withUpdatedBy("admin")
+            .withUpdatedAt(101L)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    ContextMemory updated =
+        JsonUtils.deepCopy(original, ContextMemory.class)
+            .withUpdatedBy(writer)
+            .withImpersonatedBy(impersonatedBy)
+            .withEntityStatus(target);
+    repository
+        .getUpdater(original, updated, operation, ChangeSource.MANUAL)
+        .updateEntityStatus(false);
+    return updated.getEntityStatus();
+  }
+
+  private static void withWriters(Runnable assertions) {
+    User alice = new User().withId(UUID.randomUUID()).withName("alice");
+    User bot = new User().withId(UUID.randomUUID()).withName("ai-bot").withIsBot(true);
+    try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("alice"))
+          .thenReturn(new SubjectContext(alice, null));
+      subjects
+          .when(() -> SubjectContext.getSubjectContext("ai-bot"))
+          .thenReturn(new SubjectContext(bot, null));
+      entities
+          .when(() -> Entity.findEntityByNameOrNull(Entity.USER, "alice", Include.ALL))
+          .thenReturn(alice);
+      entities
+          .when(() -> Entity.findEntityByNameOrNull(Entity.USER, "ai-bot", Include.ALL))
+          .thenReturn(bot);
+      entities
+          .when(() -> Entity.getEntityReferenceByName(Entity.USER, "alice", Include.NON_DELETED))
+          .thenReturn(
+              new EntityReference().withId(alice.getId()).withName("alice").withType(Entity.USER));
+      for (String writer : List.of(Entity.ADMIN_USER_NAME, "ai-bot")) {
+        entities
+            .when(() -> Entity.getEntityReferenceByName(Entity.USER, writer, Include.NON_DELETED))
+            .thenReturn(
+                new EntityReference()
+                    .withId(UUID.randomUUID())
+                    .withName(writer)
+                    .withType(Entity.USER));
+      }
+      assertions.run();
+    }
+  }
+
+  private static ContextMemory byWriter(String writer, ContextMemoryStatus status) {
+    return new ContextMemory()
+        .withName("memory-" + UUID.randomUUID())
+        .withQuestion("Which column holds the order total?")
+        .withAnswer("orders.amount_usd")
+        .withUpdatedBy(writer)
+        .withUpdatedAt(1_760_000_000_000L)
+        .withEntityStatus(status);
   }
 
   /** The anchor edge getPrimaryEntity reads: APPLIED_TO from anything, the older HAS but from a domain. */

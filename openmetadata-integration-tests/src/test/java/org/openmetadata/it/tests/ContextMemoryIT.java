@@ -18,16 +18,22 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.context.CreateContextMemory;
+import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Article;
+import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
@@ -131,7 +137,7 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
 
   @Override
   protected ContextMemoryStatus expectedInitialEntityStatus() {
-    return ContextMemoryStatus.UNPROCESSED;
+    return ContextMemoryStatus.APPROVED;
   }
 
   // Ordinary search returns trusted memories. Keep search fixtures explicitly approved while
@@ -569,6 +575,109 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     assertFalse(
         visibleToUser1.contains(ownedByAdmin.getId().toString()),
         "another user's PRIVATE memory must never surface");
+  }
+
+  @Test
+  void pendingListsAndTotalsAreRestrictedToTheOwnerAndAdmin(TestNamespace ns) {
+    String title = "Refund policy " + ns.uniqueShortId();
+    var anchor = ShortStackFactory.table(ns);
+    EntityReference anchorRef = new EntityReference().withId(anchor.getId()).withType(Entity.TABLE);
+    EntityReference reader =
+        new EntityReference().withId(testUser2().getId()).withType(Entity.USER);
+    List<ContextMemory> memories =
+        Stream.of(
+                ContextMemoryStatus.APPROVED,
+                ContextMemoryStatus.UNPROCESSED,
+                ContextMemoryStatus.DRAFT)
+            .map(
+                status ->
+                    createEntity(
+                        memoryWithVisibility(
+                                ns, "pending-list-" + status.value(), MemoryVisibility.SHARED)
+                            .withTitle(title + " " + status.value())
+                            .withEntityStatus(status)
+                            .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
+                            .withPrimaryEntity(anchorRef)
+                            .withOwners(List.of(testUser1Ref()))
+                            .withShareConfig(
+                                new MemoryShareConfig()
+                                    .withVisibility(MemoryVisibility.SHARED)
+                                    .withSharedWith(
+                                        List.of(
+                                            new MemorySharedPrincipal().withPrincipal(reader))))))
+            .toList();
+    Set<UUID> allIds = memories.stream().map(ContextMemory::getId).collect(Collectors.toSet());
+    Set<UUID> approvedId = Set.of(memories.getFirst().getId());
+
+    for (boolean searchBacked : List.of(false, true)) {
+      for (int limit : List.of(10, 0)) {
+        ListParams params = new ListParams();
+        params.setLimit(limit);
+        if (searchBacked) {
+          params.setOffset(0);
+          params.addQueryParam("q", "refund");
+          params.addQueryParam("assets", anchor.getId().toString());
+          params.addQueryParam("statuses", "Approved,Unprocessed,Draft");
+        } else {
+          params.addQueryParam("primaryEntityId", anchor.getId().toString());
+        }
+        if (searchBacked && limit > 0) {
+          Awaitility.await("all stages must be indexed before checking pending-list visibility")
+              .atMost(Duration.ofSeconds(30))
+              .untilAsserted(() -> assertListedMemories(SdkClients.adminClient(), params, allIds));
+        }
+        assertListedMemories(SdkClients.adminClient(), params, allIds);
+        assertListedMemories(SdkClients.user1Client(), params, allIds);
+        assertListedMemories(SdkClients.user2Client(), params, approvedId);
+      }
+    }
+  }
+
+  @Test
+  void anArticleOwnerCanListItsPendingPillsEvenWhenAnotherUserOwnsTheMemories(TestNamespace ns) {
+    Page article =
+        SdkClients.adminClient()
+            .pages()
+            .create(
+                new CreatePage()
+                    .withName(ns.prefix("pill-source"))
+                    .withPageType(PageType.ARTICLE)
+                    .withPage(new Article())
+                    .withOwners(List.of(testUser1Ref())));
+    try {
+      EntityReference source = new EntityReference().withId(article.getId()).withType(Entity.PAGE);
+      ContextMemory pill =
+          createEntity(
+              memoryWithVisibility(ns, "pending-pill", MemoryVisibility.ENTITY)
+                  .withEntityStatus(ContextMemoryStatus.UNPROCESSED)
+                  .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
+                  .withPrimaryEntity(source)
+                  .withSourceType(ContextMemorySourceType.PAGE_EXTRACTION)
+                  .withSourceEntity(source));
+
+      for (int limit : List.of(10, 0)) {
+        ListParams params =
+            new ListParams().addQueryParam("sourceEntityId", article.getId().toString());
+        params.setLimit(limit);
+        assertListedMemories(SdkClients.adminClient(), params, Set.of(pill.getId()));
+        assertListedMemories(SdkClients.user1Client(), params, Set.of(pill.getId()));
+        assertListedMemories(SdkClients.user2Client(), params, Set.of());
+      }
+    } finally {
+      SdkClients.adminClient()
+          .pages()
+          .delete(article.getId().toString(), Map.of("hardDelete", "true"));
+    }
+  }
+
+  private void assertListedMemories(
+      OpenMetadataClient client, ListParams params, Set<UUID> expected) {
+    ListResponse<ContextMemory> response =
+        new ContextMemoryService(client.getHttpClient()).list(params);
+    assertEquals(expected.size(), response.getTotal());
+    Set<UUID> ids =
+        response.getData().stream().map(ContextMemory::getId).collect(Collectors.toSet());
+    assertEquals(params.getLimit() == 0 ? Set.of() : expected, ids);
   }
 
   @Test

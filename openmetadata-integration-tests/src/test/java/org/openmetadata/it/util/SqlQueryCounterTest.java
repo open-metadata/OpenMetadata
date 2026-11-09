@@ -42,6 +42,17 @@ class SqlQueryCounterTest {
   }
 
   @Test
+  void countsAStatementWhoseOptimizerHintSplitsTheFragment() {
+    Jdbi jdbi = unconnectedJdbi();
+    try (var counter = new SqlQueryCounter(jdbi, "delete from test_case")) {
+      assertTrue(
+          counter.record(
+              null, "DELETE /*+ INDEX(test_case PRIMARY) */ FROM test_case WHERE id IN (?)"));
+      assertEquals(1, counter.count());
+    }
+  }
+
+  @Test
   void matchesTheFragmentWithoutRegardToCase() {
     Jdbi jdbi = unconnectedJdbi();
     try (var counter = new SqlQueryCounter(jdbi, "FROM Entity_Relationship")) {

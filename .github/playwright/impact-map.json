@@ -563,6 +563,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/knowledgeCenterAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/ContextCenter.constants.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/KnowledgeCenter.constant.ts",
@@ -573,6 +574,8 @@
         "openmetadata-ui/src/main/resources/ui/src/hooks/discovery/context-center/**",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/context/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/context/center/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/context/center/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/context/review/**",
         "openmetadata-service/src/test/java/org/openmetadata/service/context/review/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/context/outcome/**",
@@ -818,6 +821,8 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/**",
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useRailPager.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/criticalAnnouncementsQuery.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
@@ -1075,10 +1080,13 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/rest/announcementsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/AnnouncementsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/AnnouncementsUtils.ts"
       ],
       "projects": ["chromium"],
       "specs": [
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"

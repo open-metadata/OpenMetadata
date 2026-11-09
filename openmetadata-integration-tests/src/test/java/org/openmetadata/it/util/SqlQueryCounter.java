@@ -1,7 +1,6 @@
 package org.openmetadata.it.util;
 
 import java.sql.SQLException;
-import java.util.Locale;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Predicate;
 import org.jdbi.v3.core.Jdbi;
@@ -52,7 +51,7 @@ public final class SqlQueryCounter implements SqlLogger, AutoCloseable {
     this.jdbi = jdbi;
     this.inScope = inScope;
     this.delegate = jdbi.getConfig(SqlStatements.class).getSqlLogger();
-    this.fragment = fragment.toLowerCase(Locale.ROOT);
+    this.fragment = SqlFailureProbe.matchable(fragment);
     jdbi.setSqlLogger(this);
   }
 
@@ -65,7 +64,7 @@ public final class SqlQueryCounter implements SqlLogger, AutoCloseable {
    * the match and the scope can be exercised without a database.
    */
   boolean record(final StatementContext context, final String renderedSql) {
-    if (inScope.test(context) && renderedSql.toLowerCase(Locale.ROOT).contains(fragment)) {
+    if (inScope.test(context) && SqlFailureProbe.matchable(renderedSql).contains(fragment)) {
       count.incrementAndGet();
       return true;
     }
