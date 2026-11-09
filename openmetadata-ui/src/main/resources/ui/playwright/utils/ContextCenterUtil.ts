@@ -1300,7 +1300,11 @@ export const createMemoryViaApi = async (
   apiContext: APIRequestContext,
   overrides: Record<string, unknown>
 ) => {
-  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  // OSS defaults a new memory to Approved, Collate to Unprocessed (hidden from
+  // non-owners). Pin Approved so fixtures behave the same on both distributions.
+  const res = await apiContext.post(MEMORIES_API, {
+    data: { ...overrides, entityStatus: overrides.entityStatus ?? 'Approved' },
+  });
   expect(res.status()).toBe(201);
 
   return res.json();
