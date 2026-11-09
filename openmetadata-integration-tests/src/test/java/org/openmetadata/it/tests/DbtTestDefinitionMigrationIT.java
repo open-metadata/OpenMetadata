@@ -19,6 +19,8 @@ import org.openmetadata.schema.tests.TestCaseParameter;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
 import org.openmetadata.schema.tests.TestDefinition;
 import org.openmetadata.schema.tests.TestPlatform;
+import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ProviderType;
 import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -31,8 +33,6 @@ import org.openmetadata.service.migration.utils.v210.DbtTestDefinitionMigration;
 @Isolated
 class DbtTestDefinitionMigrationIT {
   private static final String DESCRIPTION = "dbt uniqueness check";
-  private static final String HISTORY =
-      "{\"timestamp\":1700000000000,\"testCaseStatus\":\"Failed\",\"result\":\"duplicate\"}";
 
   @Test
   void consolidatesDefinitionsWithoutChangingCasesOrHistory() {
@@ -70,7 +70,12 @@ class DbtTestDefinitionMigrationIT {
                   firstCase.getFullyQualifiedName(),
                   "testCase.testCaseResult",
                   "testCaseResult",
-                  HISTORY);
+                  JsonUtils.pojoToJson(
+                      new TestCaseResult()
+                          .withId(UUID.randomUUID())
+                          .withTimestamp(1700000000000L)
+                          .withTestCaseStatus(TestCaseStatus.Failed)
+                          .withResult("duplicate")));
           final String beforeHistory = resultJson(handle, firstCase);
           migrate(handle);
           final TestDefinition shared = readDefinition(handle, generic);
