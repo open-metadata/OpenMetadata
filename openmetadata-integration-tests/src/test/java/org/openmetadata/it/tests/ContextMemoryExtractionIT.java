@@ -214,6 +214,7 @@ class ContextMemoryExtractionIT {
     assertEquals(
         List.of(pill.getId()),
         extracted(second.getEntityReference()).stream().map(ContextMemory::getId).toList());
+    assertEquals(Set.of(first.getId(), second.getId()), sourceIds(pill));
     RestClient.admin().delete(FILES, second.getId());
     assertTrue(extracted(second.getEntityReference()).isEmpty());
     assertArchived(ns, pill);

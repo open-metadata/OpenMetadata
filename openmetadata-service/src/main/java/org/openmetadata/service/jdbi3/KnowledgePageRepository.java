@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.llm.LLMClientHolder;
@@ -942,17 +943,18 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().archiveExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    memorySourceLifecycle().archiveExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID pageId, String deletedBy) {
-    contextMemoryRepository().releaseExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
+    memorySourceLifecycle().releaseExtractedMemories(pageId, KNOWLEDGE_PAGE_ENTITY);
   }
 
-  private ContextMemoryRepository contextMemoryRepository() {
-    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  private MemorySourceLifecycle memorySourceLifecycle() {
+    return new MemorySourceLifecycle(
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY));
   }
 
   /** True when an article's markdown body changed — the only edit that warrants re-extraction. */

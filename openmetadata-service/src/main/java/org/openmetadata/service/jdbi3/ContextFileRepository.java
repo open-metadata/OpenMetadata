@@ -30,6 +30,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
+import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
@@ -212,17 +213,18 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().archiveExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    memorySourceLifecycle().archiveExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().releaseExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    memorySourceLifecycle().releaseExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
-  private ContextMemoryRepository contextMemoryRepository() {
-    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+  private MemorySourceLifecycle memorySourceLifecycle() {
+    return new MemorySourceLifecycle(
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY));
   }
 
   @Override
