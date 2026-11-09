@@ -527,6 +527,33 @@ class NativeOntologyRdfImporterTest {
   }
 
   @Test
+  void descriptionsThatAreResourcesOrMarkupAreSkippedAndTheConceptKeepsItsOtherText() {
+    final var document =
+        readDocument(
+            """
+            ex:Skill a skos:Concept; skos:prefLabel "Weld";
+              skos:definition <https://example.org/node-literal/1>; rdfs:comment "Joins metal." .
+            ex:Job a skos:Concept; skos:prefLabel "Welder"; skos:definition "Welds.";
+              rdfs:comment "<p>Welds <b>metal</b>.</p>"^^rdf:HTML .
+            ex:Note a skos:Concept; skos:prefLabel "Note"; skos:definition [ rdf:value "Blank." ] .
+            ex:Memo a skos:Concept; skos:prefLabel "Memo"; rdfs:comment "<b>Memo</b>"^^rdf:XMLLiteral .
+            """);
+
+    assertEquals(
+        "Memo=null; Note=null; Weld=Joins metal.; Welder=Welds.",
+        document.concepts().stream()
+            .map(concept -> concept.getDisplayName() + "=" + concept.getDescription())
+            .sorted()
+            .collect(Collectors.joining("; ")));
+    assertEquals(
+        "[UNSUPPORTED_STRUCTURE http://www.w3.org/2000/01/rdf-schema#comment x2"
+            + " [https://example.org/Job, https://example.org/Memo];"
+            + " UNSUPPORTED_STRUCTURE http://www.w3.org/2004/02/skos/core#definition x2"
+            + " [https://example.org/Note, https://example.org/Skill]]",
+        skippedGroups(document));
+  }
+
+  @Test
   void rdfsClassAndRdfPropertyDeclareDefinitionsAndTheRangeDecidesTheKind() {
     final var document =
         readDocument(

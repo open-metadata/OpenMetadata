@@ -45,8 +45,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
+import org.openmetadata.service.rdf.OntologyActiveGraph;
 import org.openmetadata.service.rdf.OntologyReleaseProjection;
-import org.openmetadata.service.rdf.rebuild.RdfMutation;
 
 /**
  * The two largest bundled packs, installed through the job, captured as a release and activated
@@ -169,7 +169,9 @@ public class RdfLibraryPackActivationIT extends BaseOntologyApprovalIT {
     final OntologyRelease release = dao.ontologyReleaseDAO().findEntityById(releaseId);
     final var members = new OntologyReleaseReader(dao).read(release, ignored -> {});
     final long buildStarted = System.nanoTime();
-    final Model model = new OntologyReleaseProjection().build(release, members);
+    final Model model =
+        new OntologyReleaseProjection(OntologyReleaseProjection.StatementSources.OMITTED)
+            .build(release, members);
     report.put("projectionBuildMs", millisSince(buildStarted));
     try {
       final ByteArrayOutputStream thrift = new ByteArrayOutputStream();
@@ -177,8 +179,8 @@ public class RdfLibraryPackActivationIT extends BaseOntologyApprovalIT {
       report.put("projectionTriples", model.size());
       report.put("projectionThriftBytes", thrift.size());
       assertTrue(
-          thrift.size() <= RdfMutation.GraphReplace.MAX_GRAPH_BYTES,
-          "the projection fits one journal entry");
+          thrift.size() <= OntologyActiveGraph.MAX_GRAPH_BYTES,
+          "the projection fits the active graph limit");
     } finally {
       model.close();
     }

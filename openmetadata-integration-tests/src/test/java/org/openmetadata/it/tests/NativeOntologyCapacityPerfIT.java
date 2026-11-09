@@ -60,10 +60,10 @@ import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
+import org.openmetadata.service.rdf.OntologyActiveGraph;
 import org.openmetadata.service.rdf.OntologyReleaseProjection;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.rdf.SafeRdfModelParser;
-import org.openmetadata.service.rdf.rebuild.RdfMutation;
 
 /**
  * Measures every whole-ontology path at one member count: library install per slice, the Studio
@@ -297,7 +297,9 @@ public class NativeOntologyCapacityPerfIT extends BaseOntologyApprovalIT {
     final var members = new OntologyReleaseReader(dao).read(release, ignored -> {});
     report.put("releaseReadInProcessMs", elapsedMillis(readStarted));
     final long buildStarted = System.nanoTime();
-    final Model model = new OntologyReleaseProjection().build(release, members);
+    final Model model =
+        new OntologyReleaseProjection(OntologyReleaseProjection.StatementSources.OMITTED)
+            .build(release, members);
     report.put("projectionBuildMs", elapsedMillis(buildStarted));
     try {
       final long encodeStarted = System.nanoTime();
@@ -306,9 +308,8 @@ public class NativeOntologyCapacityPerfIT extends BaseOntologyApprovalIT {
       report.put("projectionEncodeMs", elapsedMillis(encodeStarted));
       report.put("projectionTriples", model.size());
       report.put("projectionThriftBytes", thrift.size());
-      report.put("journalCapBytes", RdfMutation.GraphReplace.MAX_GRAPH_BYTES);
-      report.put(
-          "projectionFitsJournal", thrift.size() <= RdfMutation.GraphReplace.MAX_GRAPH_BYTES);
+      report.put("activeGraphCapBytes", OntologyActiveGraph.MAX_GRAPH_BYTES);
+      report.put("projectionFitsActiveGraph", thrift.size() <= OntologyActiveGraph.MAX_GRAPH_BYTES);
     } finally {
       model.close();
     }

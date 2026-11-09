@@ -200,8 +200,12 @@ public interface RdfStorageInterface extends AutoCloseable {
    */
   void loadTurtleFile(java.io.InputStream turtleStream, String graphUri);
 
-  /** Replaces a complete named graph atomically, including removal of all previous blank nodes. */
-  default void replaceGraph(final String graphUri, final Model model) {
+  /**
+   * Replaces a complete named graph atomically, including removal of all previous blank nodes.
+   * {@code model} is the projection of the sealed ontology release {@code releaseId}, or empty when
+   * it is null; the rebuild journal keeps only the id and projects the release again on replay.
+   */
+  default void replaceGraph(final String graphUri, final UUID releaseId, final Model model) {
     if (!URI.create(graphUri).isAbsolute()) {
       throw new IllegalArgumentException("A graph requires an absolute IRI");
     }

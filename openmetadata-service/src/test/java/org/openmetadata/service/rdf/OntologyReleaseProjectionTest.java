@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,7 +19,9 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.RDFList;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.OWL2;
@@ -703,6 +706,70 @@ class OntologyReleaseProjectionTest {
       assertEquals(List.of(), OwlApiProjection.dlViolations(ontology));
     } finally {
       model.close();
+    }
+  }
+
+  @Test
+  void servingProjectionStatesEachStatementOnceWithoutItsSource() {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                concept("Customer").withDescription("A buyer"), property("buys"), axiom("parent")));
+    final Model served =
+        new OntologyReleaseProjection(OntologyReleaseProjection.StatementSources.OMITTED)
+            .build(bundle.release(), bundle.members());
+    final Model expected = ModelFactory.createDefaultModel();
+    RDFDataMgr.read(
+        expected,
+        new StringReader(
+            """
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            @prefix ex: <https://example.org/model/> .
+            ex: a owl:Ontology ; rdfs:label "model" ; owl:versionIRI <%s> .
+            dct:source a owl:AnnotationProperty .
+            ex:Customer a owl:Class ; rdfs:label "Customer" ; rdfs:comment "A buyer" ;
+              rdfs:subClassOf ex:Party .
+            ex:Party a owl:Class .
+            ex:buys a owl:ObjectProperty ; rdfs:label "buys" .
+            """
+                .formatted(bundle.release().getVersionIri())),
+        null,
+        Lang.TURTLE);
+    try {
+      assertTrue(
+          served.isIsomorphicWith(expected),
+          () ->
+              "unexpected "
+                  + served.difference(expected).listStatements().toList()
+                  + " missing "
+                  + expected.difference(served).listStatements().toList());
+    } finally {
+      served.close();
+      expected.close();
+    }
+  }
+
+  @Test
+  void exportProjectionIsTheServingProjectionWithOneSourceAxiomPerStatement() {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                concept("Customer").withDescription("A buyer"), property("buys"), axiom("parent")));
+    final Model exported =
+        new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    final Model served =
+        new OntologyReleaseProjection(OntologyReleaseProjection.StatementSources.OMITTED)
+            .build(bundle.release(), bundle.members());
+    try {
+      final var sources = exported.listSubjectsWithProperty(RDF.type, OWL2.Axiom).toList();
+      assertEquals(7, sources.size());
+      sources.forEach(source -> exported.removeAll(source, null, null));
+      assertTrue(exported.isIsomorphicWith(served));
+    } finally {
+      exported.close();
+      served.close();
     }
   }
 
