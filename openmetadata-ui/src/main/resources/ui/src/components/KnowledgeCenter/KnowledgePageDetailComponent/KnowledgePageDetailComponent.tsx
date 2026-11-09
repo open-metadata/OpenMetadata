@@ -229,6 +229,28 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     }
   }, [permissionsError]);
 
+  // A body write changes whether the article reads Not processed, which its PATCH response omits.
+  // Callers start it once their write is settled: it never holds a save or a load.
+  const refreshExtractionState = useCallback(async (page: KnowledgePage) => {
+    extractionStateRequestRef.current += 1;
+    const request = extractionStateRequestRef.current;
+    try {
+      const { neverExtracted, processingError, processingStatus } =
+        await getKnowledgePageByFqn(page.fullyQualifiedName, {
+          fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
+        });
+      if (request === extractionStateRequestRef.current) {
+        setKnowledgePage((prev) =>
+          prev?.id === page.id
+            ? { ...prev, neverExtracted, processingError, processingStatus }
+            : prev
+        );
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
   // Persists a locally-stashed draft (created while offline/unsaved) back to the
   // server once the canonical page has been fetched.
   const syncDraftedKnowledgePage = async (
@@ -254,6 +276,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       if (response.id === knowledgePageIdRef.current) {
         setContentChangeState(ContentChangeState.SAVED);
       }
+      void refreshExtractionState(response);
     } catch (syncError) {
       showErrorToast(syncError as AxiosError);
       if (response.id === knowledgePageIdRef.current) {
@@ -456,27 +479,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [removeDraft]
   );
 
-  // A body write changes whether the article reads Not processed, which its PATCH response omits.
-  const refreshExtractionState = useCallback(async (page: KnowledgePage) => {
-    extractionStateRequestRef.current += 1;
-    const request = extractionStateRequestRef.current;
-    try {
-      const { neverExtracted, processingError, processingStatus } =
-        await getKnowledgePageByFqn(page.fullyQualifiedName, {
-          fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
-        });
-      if (request === extractionStateRequestRef.current) {
-        setKnowledgePage((prev) =>
-          prev?.id === page.id
-            ? { ...prev, neverExtracted, processingError, processingStatus }
-            : prev
-        );
-      }
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  }, []);
-
   const updatedPageContent = useCallback(
     async (updatedContent: string) => {
       if (isUndefined(knowledgePage) || !canEditDescription) {
@@ -519,11 +521,13 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         });
         didSucceed = true;
         onArticleSaved?.();
-        await refreshExtractionState(currentKnowledgePage);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         endTrackedSave(currentKnowledgePage.id, didSucceed);
+      }
+      if (didSucceed) {
+        void refreshExtractionState(currentKnowledgePage);
       }
     },
     [
