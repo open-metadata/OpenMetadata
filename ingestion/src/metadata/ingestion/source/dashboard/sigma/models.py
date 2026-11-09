@@ -137,7 +137,6 @@ class DataModelsResponse(BaseModel):
 
 
 class Connection(BaseModel):
-    connectionId: str  # noqa: N815
     type: str
 
 

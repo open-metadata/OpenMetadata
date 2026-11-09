@@ -225,21 +225,7 @@ class SigmaApiClient:
         """
         elements = []
         try:
-            result = ElementsResponse.model_validate(
-                self.client.get(f"/workbooks/{workbook_id}/pages/{page_id}/elements")
-            )
-            if result:
-                elements.extend(result.entries or [])
-                while result.nextPage:
-                    data = {"page": int(result.nextPage)}
-                    result = ElementsResponse.model_validate(
-                        self.client.get(
-                            f"/workbooks/{workbook_id}/pages/{page_id}/elements",
-                            data=data,
-                        )
-                    )
-                    if result:
-                        elements.extend(result.entries or [])
+            elements.extend(self._read_all(f"/workbooks/{workbook_id}/pages/{page_id}/elements", ElementsResponse))
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to fetch page elements for workbook %s: %s", workbook_id, exc)
@@ -253,7 +239,7 @@ class SigmaApiClient:
             elements_list = []
             pages = WorkBookPageResponse.model_validate(self.client.get(f"/workbooks/{workbook_id}/pages"))
             if not pages.entries:
-                return []
+                return None
             for page in pages.entries:
                 page_elements = self.get_page_elements(workbook_id, page.pageId)
                 if page_elements:

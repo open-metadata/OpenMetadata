@@ -455,11 +455,9 @@ class SigmaSource(DashboardServiceSource):
                 )
 
     def _workbook_lineage(self, dashboard_details: WorkbookDetails) -> list[WorkbookLineageEntry]:
-        lineage = dashboard_details.lineage
-        if lineage is None:
-            lineage = self.client.get_workbook_lineage(dashboard_details.workbookId)
-            dashboard_details.lineage = lineage
-        return lineage
+        if dashboard_details.lineage is None:
+            dashboard_details.lineage = self.client.get_workbook_lineage(dashboard_details.workbookId)
+        return dashboard_details.lineage or []
 
     def _workbook_dialect(self, dashboard_details: WorkbookDetails) -> Dialect | None:
         """The dialect of the warehouse Sigma runs the workbook's SQL on, when all its sources use one connection"""

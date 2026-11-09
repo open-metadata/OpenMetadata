@@ -119,7 +119,7 @@ class TestSigmaApiClient(TestCase):
         self.assertIn("el-B", element_ids)
 
     def test_get_chart_details_no_pages(self):
-        """A workbook with no pages has no elements; None is kept for a read that failed"""
+        """Test handling workbook with no pages"""
 
         def mock_get(path, data=None):
             return {"entries": [], "total": 0, "nextPage": None}
@@ -128,4 +128,4 @@ class TestSigmaApiClient(TestCase):
 
         result = self.client.get_chart_details("test-workbook-123")
 
-        self.assertEqual(result, [])
+        self.assertIsNone(result)
