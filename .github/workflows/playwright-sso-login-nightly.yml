@@ -119,7 +119,7 @@ jobs:
   # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
   # only consults it inside the pull_request/push clause.
   check-changes:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     # dorny/paths-filter calls the PR-files API on pull_request events; the
     # workflow-level `contents: read` block implicitly zeroes every other
@@ -173,7 +173,7 @@ jobs:
   #      — the filter picks a leg's own describes automatically.
   sso-login:
     needs: check-changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 45
     # Static full-9 matrix. Per-event filtering is handled by the step-level
@@ -496,7 +496,7 @@ jobs:
   notify-slack:
     if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       # actions/* pinned by SHA — same policy dorny/paths-filter uses above,
       # since these run before every notify + fetch the tree/artifacts the
@@ -548,7 +548,7 @@ jobs:
   notify-pr:
     if: ${{ always() && github.event_name == 'pull_request' }}
     needs: sso-login
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions:
       contents: read
       pull-requests: write
