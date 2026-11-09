@@ -389,7 +389,7 @@ public class ContextFileProcessingService {
         new SemanticMemoryDuplicateFinder(
             memoryRepository,
             () -> Entity.getSearchRepository().getVectorIndexService(),
-            LLMClientHolder.get());
+            AiProviderHolder.get().duplicateJudge());
     return new FileContextProcessingEngine(
         repository,
         memoryExtractorSupplier.get(),

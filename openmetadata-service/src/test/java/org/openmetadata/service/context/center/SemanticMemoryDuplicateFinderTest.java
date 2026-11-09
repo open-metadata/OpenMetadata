@@ -19,6 +19,7 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
@@ -101,7 +102,7 @@ class SemanticMemoryDuplicateFinderTest {
         .thenReturn(candidate);
     lenient().when(repository.hasOrgWideAnchor(candidate)).thenReturn(true);
     return new SemanticMemoryDuplicateFinder(
-        repository, () -> vectorService, () -> searchRepository, client);
+        repository, () -> vectorService, () -> searchRepository, Optional.of(client));
   }
 
   @Test
@@ -203,7 +204,7 @@ class SemanticMemoryDuplicateFinderTest {
 
   private SemanticMemoryDuplicateFinder keywordFinder() {
     return new SemanticMemoryDuplicateFinder(
-        repository, () -> null, () -> searchRepository, completionClient);
+        repository, () -> null, () -> searchRepository, Optional.of(completionClient));
   }
 
   /** A linked fact stays anchored to its own file, hiding it from readers of a restricted one. */
@@ -231,6 +232,29 @@ class SemanticMemoryDuplicateFinderTest {
         new DuplicateMatch.Equivalent(candidate),
         finderWithCandidate(candidate).findMatch(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /** A provider with no judge keeps the exact-match shortcut; a rewording is a new fact. */
+  @Test
+  void withoutAJudgeOnlyExactMatchesLink() throws Exception {
+    ContextMemory stated =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
+    rankedHits(List.of(stated));
+    eligible(stated);
+    SemanticMemoryDuplicateFinder finder =
+        new SemanticMemoryDuplicateFinder(
+            repository, () -> null, () -> searchRepository, Optional.empty());
+
+    assertEquals(
+        new DuplicateMatch.Equivalent(stated),
+        finder.findMatch(memory(UUID.randomUUID(), " what is churn? ", stated.getAnswer())));
+    assertEquals(
+        new DuplicateMatch.None(),
+        finder.findMatch(
+            memory(
+                UUID.randomUUID(),
+                "Define customer churn",
+                "The portion of customers who leave.")));
   }
 
   @Test
@@ -328,7 +352,10 @@ class SemanticMemoryDuplicateFinderTest {
 
     DuplicateMatch found =
         new SemanticMemoryDuplicateFinder(
-                repository, () -> vectorService, () -> searchRepository, completionClient)
+                repository,
+                () -> vectorService,
+                () -> searchRepository,
+                Optional.of(completionClient))
             .findMatch(memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer()));
 
     assertEquals(new DuplicateMatch.Equivalent(candidate), found);
@@ -482,7 +509,10 @@ class SemanticMemoryDuplicateFinderTest {
     new ContextMemoryReconciler(
             repository,
             new SemanticMemoryDuplicateFinder(
-                repository, () -> vectorService, () -> searchRepository, completionClient))
+                repository,
+                () -> vectorService,
+                () -> searchRepository,
+                Optional.of(completionClient)))
         .reconcile(
             file,
             Entity.CONTEXT_FILE,
@@ -520,7 +550,10 @@ class SemanticMemoryDuplicateFinderTest {
 
     assertTrue(
         new SemanticMemoryDuplicateFinder(
-                repository, () -> vectorService, () -> searchRepository, completionClient)
+                repository,
+                () -> vectorService,
+                () -> searchRepository,
+                Optional.of(completionClient))
             .isHeldByADecision(pending));
     verify(vectorService, never())
         .search(anyString(), any(), anyInt(), anyInt(), anyInt(), anyDouble(), any(), any());
@@ -616,6 +649,29 @@ class SemanticMemoryDuplicateFinderTest {
             .findMatch(memory(UUID.randomUUID(), "What was the VAT rate in 2025?", "25%")));
   }
 
+  /** The approval check has no judge: a rewording it meets is a new fact, never a failure. */
+  @Test
+  void theDecisionCheckFinderTreatsARewordingAsANewFact() throws Exception {
+    ContextMemory stated =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
+    rankedHits(List.of(stated));
+    eligible(stated);
+    SearchRepository previous = Entity.getSearchRepository();
+    Entity.setSearchRepository(searchRepository);
+    try {
+      assertEquals(
+          new DuplicateMatch.None(),
+          SemanticMemoryDuplicateFinder.forDecisionChecks(repository)
+              .findMatch(
+                  memory(
+                      UUID.randomUUID(),
+                      "Define customer churn",
+                      "The portion of customers who leave.")));
+    } finally {
+      Entity.setSearchRepository(previous);
+    }
+  }
+
   /** A hold needs conflicting numbers, so a pending value stating none is never looked up. */
   @Test
   void aPendingValueStatingNoNumberNeedsNoLookup() {
@@ -625,7 +681,10 @@ class SemanticMemoryDuplicateFinderTest {
 
     assertFalse(
         new SemanticMemoryDuplicateFinder(
-                repository, () -> vectorService, () -> searchRepository, completionClient)
+                repository,
+                () -> vectorService,
+                () -> searchRepository,
+                Optional.of(completionClient))
             .isHeldByADecision(pending));
     verify(searchRepository, never()).getSearchClient();
     verify(vectorService, never())
@@ -649,7 +708,7 @@ class SemanticMemoryDuplicateFinderTest {
         .thenThrow(new IOException("search index unavailable"));
     SemanticMemoryDuplicateFinder finder =
         new SemanticMemoryDuplicateFinder(
-            repository, () -> vectorService, () -> searchRepository, completionClient);
+            repository, () -> vectorService, () -> searchRepository, Optional.of(completionClient));
 
     assertThrows(
         IllegalStateException.class,

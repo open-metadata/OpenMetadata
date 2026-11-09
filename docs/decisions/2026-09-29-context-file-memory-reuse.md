@@ -2,10 +2,12 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-09-29 (initial) · v2 2026-11-03 (deduplication keeps conflicting numbers) ·
-  v3 2026-11-09 (a ranked lookup; candidates in every stage keep their decision)
+  v3 2026-11-09 (a ranked lookup; candidates in every stage keep their decision; the AI provider
+  supplies the judge)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
-  `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `ContextMemoryExtractionIT`
+  `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `AiProviderHolderTest`,
+  `ContextMemoryExtractionIT`
 - **Related:** Context Center file upload and memory extraction; PR #34154
 
 ## Context
@@ -136,6 +138,9 @@ a memory covers every document that states its fact.
   without the judge; otherwise one judge call weighs the fact against the other candidates. A
   linked memory keeps its stage, so the document takes the decision made on it: a rejected fact
   stays rejected.
+- The judge is the AI provider's, `AiProvider.duplicateJudge()`: the built-in LLM client unless
+  the provider supplies its own, so OSS judges as before. A provider without one links only
+  identical question and answer text, and a rewording becomes a new memory.
 - A person decided a memory when it is Rejected, Superseded, Invalidated, Deprecated or Archived,
   or a person corrected it (`Manual`). No field records a human approval (`lastReviewedAt` is
   stamped on every approval, ADR:2026-10-09-an-approved-memory-can-return-to-review-and-records-its-last-review),

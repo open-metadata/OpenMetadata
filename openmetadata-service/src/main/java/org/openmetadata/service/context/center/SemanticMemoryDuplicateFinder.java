@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -82,31 +83,31 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private final ContextMemoryRepository repository;
   private final Supplier<VectorIndexService> vectorServiceSupplier;
   private final Supplier<SearchRepository> searchRepositorySupplier;
-  private final LLMCompletionClient completionClient;
+  private final Optional<LLMCompletionClient> judge;
 
   public SemanticMemoryDuplicateFinder(
       ContextMemoryRepository repository,
       Supplier<VectorIndexService> vectorServiceSupplier,
-      LLMCompletionClient completionClient) {
-    this(repository, vectorServiceSupplier, Entity::getSearchRepository, completionClient);
+      Optional<LLMCompletionClient> judge) {
+    this(repository, vectorServiceSupplier, Entity::getSearchRepository, judge);
   }
 
   /** A lookup that only answers {@link #isHeldByADecision}: it never judges equivalence. */
   public static SemanticMemoryDuplicateFinder forDecisionChecks(
       ContextMemoryRepository repository) {
     return new SemanticMemoryDuplicateFinder(
-        repository, () -> null, Entity::getSearchRepository, null);
+        repository, () -> null, Entity::getSearchRepository, Optional.empty());
   }
 
   SemanticMemoryDuplicateFinder(
       ContextMemoryRepository repository,
       Supplier<VectorIndexService> vectorServiceSupplier,
       Supplier<SearchRepository> searchRepositorySupplier,
-      LLMCompletionClient completionClient) {
+      Optional<LLMCompletionClient> judge) {
     this.repository = repository;
     this.vectorServiceSupplier = vectorServiceSupplier;
     this.searchRepositorySupplier = searchRepositorySupplier;
-    this.completionClient = completionClient;
+    this.judge = judge;
   }
 
   @Override
@@ -133,12 +134,16 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             .anyMatch(decided -> MemoryReviewHolds.holdsAcrossDocuments(decided, pending));
   }
 
-  /** Numbers that differ never merge, so only a candidate whose numbers agree can be the fact. */
+  /**
+   * Numbers that differ never merge, so only a candidate whose numbers agree can be the fact.
+   * Without a judge only the same text is, and a rewording becomes a new memory.
+   */
   private ContextMemory findEquivalent(ContextMemory derived, List<ContextMemory> candidates) {
     return candidates.stream()
         .filter(candidate -> sameFactText(candidate, derived))
         .findFirst()
-        .orElseGet(() -> judgeEquivalent(derived, candidates));
+        .or(() -> judge.map(client -> judgeEquivalent(client, derived, candidates)))
+        .orElse(null);
   }
 
   /** Another value for a fact a person decided waits for review; beside any other, a new claim. */
@@ -315,7 +320,8 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     return text == null ? "" : text.strip().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
   }
 
-  private ContextMemory judgeEquivalent(ContextMemory derived, List<ContextMemory> candidates) {
+  private ContextMemory judgeEquivalent(
+      LLMCompletionClient client, ContextMemory derived, List<ContextMemory> candidates) {
     if (candidates.isEmpty()) {
       return null;
     }
@@ -328,7 +334,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         JsonUtils.pojoToJson(
             new ComparisonRequest(derived.getQuestion(), derived.getAnswer(), comparisons));
     List<MatchChoice> choices =
-        completionClient.completeStructured(EQUIVALENCE_PROMPT, prompt, MatchChoice.class);
+        client.completeStructured(EQUIVALENCE_PROMPT, prompt, MatchChoice.class);
     if (choices.size() != 1 || choices.getFirst().index() == null) {
       return null;
     }
