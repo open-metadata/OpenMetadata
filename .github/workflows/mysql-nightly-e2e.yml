@@ -36,7 +36,7 @@ concurrency:
 
 jobs:
   pw-ci-mysql-branch:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: test
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
@@ -206,7 +206,7 @@ jobs:
 
   merge-reports:
     needs: pw-ci-mysql-branch
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ always() }}
     env:
       # Recommended: pass the GitHub token lets this action correctly

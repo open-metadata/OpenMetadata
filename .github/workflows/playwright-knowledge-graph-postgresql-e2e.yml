@@ -62,7 +62,7 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     steps:
       - name: Checkout
@@ -101,7 +101,7 @@ jobs:
   playwright-rdf-postgresql:
     name: Playwright RDF (Knowledge Graph + Ontology)
     needs: [build]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: ${{ !cancelled() && needs.build.result == 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork) }}
     environment: test
     steps:
