@@ -16,6 +16,7 @@ package org.openmetadata.service.context.center;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 
@@ -44,7 +45,11 @@ public final class AiProviderHolder {
 
   /** The gate uploads and article edits share: whether the active provider can extract now. */
   public static boolean isExtractionAvailable() {
-    return Boolean.TRUE.equals(get().extractionAvailability().getAvailable());
+    return isAvailable(get().extractionAvailability());
+  }
+
+  static boolean isAvailable(final ExtractionAvailability availability) {
+    return Boolean.TRUE.equals(availability.getAvailable());
   }
 
   private static synchronized AiProvider build() {

@@ -1,13 +1,20 @@
 package org.openmetadata.service.context.center;
 
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -25,10 +32,14 @@ import org.openmetadata.service.jobs.JobDAO;
 @Slf4j
 public class PageContextProcessingEngine extends ContextProcessingEngine {
   static final long DEFAULT_QUIET_PERIOD_MILLIS = TimeUnit.MINUTES.toMillis(5);
+  private static final Set<PageProcessingStatus> IN_FLIGHT =
+      Collections.unmodifiableSet(
+          EnumSet.of(PageProcessingStatus.Queued, PageProcessingStatus.Processing));
 
   private final KnowledgePageRepository pageRepository;
   private final JobDAO jobDao;
   private final long quietPeriodMillis;
+  private final Supplier<ExtractionAvailability> availability;
 
   public PageContextProcessingEngine(
       KnowledgePageRepository pageRepository,
@@ -44,10 +55,27 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       ContextMemoryReconciler reconciler,
       JobDAO jobDao,
       long quietPeriodMillis) {
+    this(
+        pageRepository,
+        extractor,
+        reconciler,
+        jobDao,
+        quietPeriodMillis,
+        () -> AiProviderHolder.get().extractionAvailability());
+  }
+
+  PageContextProcessingEngine(
+      KnowledgePageRepository pageRepository,
+      DocumentMemoryExtractor extractor,
+      ContextMemoryReconciler reconciler,
+      JobDAO jobDao,
+      long quietPeriodMillis,
+      Supplier<ExtractionAvailability> availability) {
     super(extractor, reconciler);
     this.pageRepository = pageRepository;
     this.jobDao = jobDao;
     this.quietPeriodMillis = quietPeriodMillis;
+    this.availability = availability;
   }
 
   /**
@@ -69,6 +97,64 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
         Entity.ADMIN_USER_NAME,
         runAt,
         now);
+  }
+
+  /**
+   * Queues a failed or never-extracted article, once: Queued refuses a second request until the run
+   * settles. The run waits out the quiet period the stamp restarts, as after any article write.
+   */
+  public Page requestExtraction(UUID pageId) {
+    ExtractionRequests.requireAvailable(availability.get());
+    Page queued = stampQueued(pageId);
+    scheduleRequested(pageId);
+    return queued;
+  }
+
+  private Page stampQueued(UUID pageId) {
+    AtomicReference<Page> queued = new AtomicReference<>();
+    try {
+      updateSource(pageId, () -> queued.set(queue(requireRequestable(getPage(pageId)))));
+    } catch (ConditionalUpdateExhaustedException e) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    return queued.get();
+  }
+
+  private static Page requireRequestable(Page page) {
+    if (page == null) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    if (IN_FLIGHT.contains(page.getProcessingStatus())) {
+      throw ExtractionRequests.alreadyRequested();
+    }
+    if (!isRequestable(page)) {
+      throw ExtractionRequests.notExtractable();
+    }
+    return page;
+  }
+
+  private static boolean isRequestable(Page page) {
+    return page.getPageType() == PageType.ARTICLE
+        && (page.getProcessingStatus() == PageProcessingStatus.Failed
+            || MemoryExtractionState.neverExtracted(page));
+  }
+
+  private Page queue(Page current) {
+    Page queued = JsonUtils.deepCopy(current, Page.class);
+    queued.setProcessingStatus(PageProcessingStatus.Queued);
+    queued.setProcessingError(null);
+    pageRepository.updateIfCurrent(null, current, queued, lastEditorOf(current));
+    return queued;
+  }
+
+  /** A job the queue cannot take leaves the article Failed, not Queued for good, so it can retry. */
+  private void scheduleRequested(UUID pageId) {
+    try {
+      schedule(pageId);
+    } catch (RuntimeException e) {
+      LOG.error("Unable to queue requested memory extraction for page {}", pageId, e);
+      stampStatus(pageId, PageProcessingStatus.Failed, ExtractionRequests.QUEUE_FAILED);
+    }
   }
 
   /** Cancels work whose source has been deleted. A claimed job will skip the missing page. */

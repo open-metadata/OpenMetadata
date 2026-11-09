@@ -798,7 +798,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
      * transaction — because a later out-of-band write would race the body change and could clobber
      * it. Any other update preserves the stored values when the request omits them (so a body edit
      * through PUT never wipes them), and both fields record with updateVersion=false so machine
-     * status transitions never churn the article's version history.
+     * status transitions never churn the article's version history. A status change carries its
+     * own error, so a retried article does not keep its last failure's.
      */
     private void recordProcessingStatus(Page original, Page updated) {
       boolean bodyRequeued =
@@ -812,7 +813,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
         if (updated.getProcessingStatus() == null) {
           updated.setProcessingStatus(original.getProcessingStatus());
         }
-        if (updated.getProcessingError() == null) {
+        if (updated.getProcessingError() == null
+            && updated.getProcessingStatus() == original.getProcessingStatus()) {
           updated.setProcessingError(original.getProcessingError());
         }
       }

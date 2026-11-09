@@ -5,6 +5,8 @@ import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEX
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -18,6 +20,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
@@ -28,6 +31,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.context.center.ContextProcessingEngine.ConditionalUpdateExhaustedException;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -53,7 +57,7 @@ public class ContextFileProcessingService {
   private final ContextFileTextExtractor textExtractor;
   private final JobDAO jobDao;
   private final Supplier<DocumentMemoryExtractor> memoryExtractorSupplier;
-  private final Supplier<Boolean> llmEnabledSupplier;
+  private final Supplier<ExtractionAvailability> availabilitySupplier;
   private final Supplier<FileContextProcessingEngine> fileEngineSupplier;
   private volatile FileContextProcessingEngine fileEngine;
 
@@ -76,7 +80,7 @@ public class ContextFileProcessingService {
       ContextFileTextExtractor textExtractor,
       JobDAO jobDao,
       Supplier<DocumentMemoryExtractor> memoryExtractorSupplier,
-      Supplier<Boolean> llmEnabledSupplier,
+      Supplier<ExtractionAvailability> availabilitySupplier,
       Supplier<FileContextProcessingEngine> fileEngineSupplier) {
     this.repository = repository;
     this.assetServiceSupplier = assetServiceSupplier;
@@ -84,8 +88,10 @@ public class ContextFileProcessingService {
     this.textExtractor = textExtractor;
     this.jobDao = jobDao;
     this.memoryExtractorSupplier = memoryExtractorSupplier;
-    this.llmEnabledSupplier =
-        llmEnabledSupplier != null ? llmEnabledSupplier : AiProviderHolder::isExtractionAvailable;
+    this.availabilitySupplier =
+        availabilitySupplier != null
+            ? availabilitySupplier
+            : () -> AiProviderHolder.get().extractionAvailability();
     this.fileEngineSupplier = fileEngineSupplier;
   }
 
@@ -103,11 +109,13 @@ public class ContextFileProcessingService {
   private static final Executor DEFAULT_EXECUTOR =
       createBoundedExecutor("context-file-extraction-");
 
+  // An EnumSet: a file created without a status must read as not transient, not throw.
   private static final Set<ProcessingStatus> TRANSIENT_STATUSES =
-      Set.of(
-          ProcessingStatus.Uploaded,
-          ProcessingStatus.Analyzing,
-          ProcessingStatus.ExtractingContext);
+      Collections.unmodifiableSet(
+          EnumSet.of(
+              ProcessingStatus.Uploaded,
+              ProcessingStatus.Analyzing,
+              ProcessingStatus.ExtractingContext));
 
   private static Executor createBoundedExecutor(String threadPrefix) {
     int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
@@ -149,6 +157,75 @@ public class ContextFileProcessingService {
         LOG.warn("Unable to mark rejected text extraction failed for file {}", fileId);
       }
     }
+  }
+
+  /**
+   * Starts or retries a failed or never-extracted file's extraction at the stage its snapshot lacks:
+   * text extraction when it has no text, memory extraction otherwise. The status it stamps refuses
+   * a second request until the run settles.
+   */
+  public ContextFile requestExtraction(UUID fileId) {
+    ExtractionRequests.requireAvailable(availabilitySupplier.get());
+    ContextFile requested = stampRequested(fileId);
+    UUID contentId = UUID.fromString(requested.getHeadContentId());
+    if (requested.getProcessingStatus() == ProcessingStatus.Uploaded) {
+      submit(fileId, contentId);
+    } else {
+      // The stamp refuses duplicates; a RUNNING job may be the failed run still finishing.
+      submitMemoryExtraction(fileId, contentId, true);
+    }
+    return requested;
+  }
+
+  private ContextFile stampRequested(UUID fileId) {
+    ContextFile requested;
+    try {
+      requested = writeFile(fileId, this::requestedStage);
+    } catch (ConditionalUpdateExhaustedException e) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    if (requested == null) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    return requested;
+  }
+
+  private ContextFile requestedStage(ContextFile current) {
+    ContextFileContent snapshot = requireRequestableSnapshot(current);
+    ContextFile requested = JsonUtils.deepCopy(current, ContextFile.class);
+    requested.setProcessingStatus(
+        MemoryExtractionState.hasText(snapshot.getExtractedText())
+            ? ProcessingStatus.ExtractingContext
+            : ProcessingStatus.Uploaded);
+    requested.setProcessingError(null);
+    return requested;
+  }
+
+  private ContextFileContent requireRequestableSnapshot(ContextFile file) {
+    if (TRANSIENT_STATUSES.contains(file.getProcessingStatus())) {
+      throw ExtractionRequests.alreadyRequested();
+    }
+    ContextFileContent snapshot = isRequestable(file) ? headSnapshot(file) : null;
+    if (snapshot == null) {
+      throw ExtractionRequests.notExtractable();
+    }
+    return snapshot;
+  }
+
+  private static boolean isRequestable(ContextFile file) {
+    return file.getProcessingStatus() == ProcessingStatus.Failed
+        || MemoryExtractionState.neverExtracted(file);
+  }
+
+  /** The current content snapshot, or null for a file without one, such as a chat attachment. */
+  private ContextFileContent headSnapshot(ContextFile file) {
+    ContextFileContent snapshot = null;
+    try {
+      snapshot = repository.getContentById(file.getHeadContentId());
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Context file {} lost its content snapshot", file.getId(), e);
+    }
+    return snapshot;
   }
 
   /**
@@ -323,11 +400,7 @@ public class ContextFileProcessingService {
     } catch (RuntimeException e) {
       LOG.error("Unable to queue knowledge pill extraction for file {}", fileId, e);
       try {
-        applyFailure(
-            fileId,
-            contentId,
-            "Unable to queue knowledge pill extraction. Please retry later.",
-            false);
+        applyFailure(fileId, contentId, ExtractionRequests.QUEUE_FAILED, false);
       } catch (ConditionalUpdateExhaustedException exhausted) {
         LOG.warn("Unable to mark rejected knowledge pill extraction failed for file {}", fileId);
       }
@@ -455,12 +528,12 @@ public class ContextFileProcessingService {
 
   /**
    * Whether text extraction should be followed by LLM knowledge-pill extraction. The gate is a
-   * single injected supplier, {@link AiProviderHolder#isExtractionAvailable} when none is given, so
-   * the status machine stays unit testable without a live configuration.
+   * single injected supplier, the active provider's availability when none is given, so the status
+   * machine stays unit testable without a live configuration.
    */
   private boolean shouldExtractContext(ProcessingStatus textStatus) {
     return textStatus == ProcessingStatus.Processed
-        && Boolean.TRUE.equals(llmEnabledSupplier.get());
+        && AiProviderHolder.isAvailable(availabilitySupplier.get());
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {
@@ -522,25 +595,30 @@ public class ContextFileProcessingService {
   }
 
   private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
+    return writeFile(fileId, updater) != null;
+  }
+
+  /** The file as {@code updater} rewrote it, or null when the file is gone or nothing was written. */
+  private ContextFile writeFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
     for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
       try (var ignored = FreshReadScope.enter()) {
         ContextFile current = getFile(fileId);
         if (current == null) {
-          return false;
+          return null;
         }
         ContextFile updated = updater.apply(current);
         if (updated == null) {
-          return false;
+          return null;
         }
         repository.updateIfCurrent(
             null, current, updated, ContextProcessingEngine.lastEditorOf(current));
-        return true;
+        return updated;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
         RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, null);
         if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
             && !waitForConditionalUpdateRetry(CONTEXT_FILE_ENTITY, fileId)) {
-          return false;
+          return null;
         }
       }
     }

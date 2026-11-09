@@ -2,6 +2,7 @@ package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,12 +11,14 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.WebApplicationException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -23,16 +26,22 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.NullSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
+import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
@@ -294,10 +303,180 @@ class PageContextProcessingEngineTest {
         ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 1, capturedUpdates().size());
   }
 
+  /** A failed article is queued again as its last editor, and its error goes with the failure. */
+  @Test
+  void aFailedArticleIsQueuedAndScheduledAfterTheQuietPeriod() {
+    pageReturns(article(PageProcessingStatus.Failed, "stale-hash").withProcessingError("Boom"));
+    long requestedAt = System.currentTimeMillis();
+
+    Page queued = engine(available()).requestExtraction(pageId);
+
+    Page stamped = capturedUpdates(EDITOR).getFirst();
+    assertEquals(PageProcessingStatus.Queued, stamped.getProcessingStatus());
+    assertNull(stamped.getProcessingError());
+    assertEquals(PageProcessingStatus.Queued, queued.getProcessingStatus());
+    assertTrue(scheduledRunAt() >= requestedAt + 5_000L, "the stamp restarts the quiet period");
+  }
+
+  /** Never queued, or edited while extraction was off: no run has read the current body. */
+  @ParameterizedTest
+  @NullSource
+  @EnumSource(
+      value = PageProcessingStatus.class,
+      names = {"Processed"})
+  void anArticleWhoseBodyWasNeverExtractedIsQueued(PageProcessingStatus status) {
+    pageReturns(article(status, "hash-of-an-earlier-body"));
+
+    engine(available()).requestExtraction(pageId);
+
+    assertEquals(
+        PageProcessingStatus.Queued, capturedUpdates(EDITOR).getFirst().getProcessingStatus());
+    scheduledRunAt();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = PageProcessingStatus.class,
+      names = {"Queued", "Processing"})
+  void anArticleAlreadyQueuedOrBeingExtractedIsRefused(PageProcessingStatus status) {
+    pageReturns(article(status, "stale-hash"));
+
+    assertRefused(ExtractionRequests.ALREADY_REQUESTED);
+  }
+
+  @Test
+  void anArticleWhoseBodyWasExtractedIsRefused() {
+    pageReturns(article(PageProcessingStatus.Processed, DigestUtils.sha256Hex(BODY)));
+
+    assertRefused(ExtractionRequests.NOT_EXTRACTABLE);
+  }
+
+  @Test
+  void aQuickLinkHasNoBodyToExtract() {
+    pageReturns(page("", null).withPageType(PageType.QUICK_LINK));
+
+    assertRefused(ExtractionRequests.NOT_EXTRACTABLE);
+  }
+
+  @ParameterizedTest
+  @EnumSource(ExtractionAvailability.Reason.class)
+  void aRequestWhileExtractionIsUnavailableWritesNothingAndSaysWhy(
+      ExtractionAvailability.Reason reason) {
+    PageContextProcessingEngine engine = engine(unavailable(reason));
+
+    WebApplicationException refused =
+        assertThrows(WebApplicationException.class, () -> engine.requestExtraction(pageId));
+
+    assertEquals(409, refused.getResponse().getStatus());
+    assertEquals("Memory extraction is unavailable: " + reason.value(), refused.getMessage());
+    verifyNothingWritten();
+  }
+
+  /** Two requests read one Failed article: the stamp lets one through, and the other sees it. */
+  @Test
+  void aRequestThatLosesTheStampToAnotherIsRefused() {
+    Page failed = article(PageProcessingStatus.Failed, "stale-hash");
+    Page queuedByTheOther =
+        JsonUtils.deepCopy(failed, Page.class).withProcessingStatus(PageProcessingStatus.Queued);
+    when(pageRepository.get(isNull(), eq(pageId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(failed, queuedByTheOther);
+    when(pageRepository.updateIfCurrent(isNull(), same(failed), any(), anyString()))
+        .thenThrow(new PreconditionFailedException("Concurrent update"));
+    PageContextProcessingEngine engine = engine(available());
+
+    WebApplicationException refused =
+        assertThrows(WebApplicationException.class, () -> engine.requestExtraction(pageId));
+
+    assertEquals(ExtractionRequests.ALREADY_REQUESTED, refused.getMessage());
+    verify(jobDao, never())
+        .enqueuePageMemoryJob(
+            anyString(), anyString(), anyString(), anyString(), anyLong(), anyLong());
+  }
+
+  /** A queue that cannot take the job leaves the article Failed rather than Queued for good. */
+  @Test
+  void anArticleTheQueueCannotTakeIsLeftFailedToRetry() {
+    Page failed = article(PageProcessingStatus.Failed, "stale-hash");
+    Page queued =
+        JsonUtils.deepCopy(failed, Page.class).withProcessingStatus(PageProcessingStatus.Queued);
+    when(pageRepository.get(isNull(), eq(pageId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(failed, queued);
+    doThrow(new IllegalStateException("queue unavailable"))
+        .when(jobDao)
+        .enqueuePageMemoryJob(
+            anyString(), anyString(), anyString(), anyString(), anyLong(), anyLong());
+
+    engine(available()).requestExtraction(pageId);
+
+    List<Page> stamps = capturedUpdates(EDITOR);
+    assertEquals(
+        List.of(PageProcessingStatus.Queued, PageProcessingStatus.Failed),
+        stamps.stream().map(Page::getProcessingStatus).toList());
+    assertEquals(ExtractionRequests.QUEUE_FAILED, stamps.getLast().getProcessingError());
+  }
+
+  private static final String BODY = "Onboarding runbook body";
+  private static final String EDITOR = "tomas";
+
+  private Page article(PageProcessingStatus status, String extractedHash) {
+    return page(BODY, extractedHash)
+        .withPageType(PageType.ARTICLE)
+        .withProcessingStatus(status)
+        .withUpdatedBy(EDITOR);
+  }
+
+  private PageContextProcessingEngine engine(ExtractionAvailability availability) {
+    return new PageContextProcessingEngine(
+        pageRepository, extractor, reconciler, jobDao, 5_000L, () -> availability);
+  }
+
+  private static ExtractionAvailability available() {
+    return new ExtractionAvailability().withAvailable(true);
+  }
+
+  private static ExtractionAvailability unavailable(ExtractionAvailability.Reason reason) {
+    return new ExtractionAvailability().withAvailable(false).withReason(reason);
+  }
+
+  private long scheduledRunAt() {
+    ArgumentCaptor<Long> runAt = ArgumentCaptor.forClass(Long.class);
+    verify(jobDao)
+        .enqueuePageMemoryJob(
+            eq(pageId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            runAt.capture(),
+            anyLong());
+    return runAt.getValue();
+  }
+
+  private void assertRefused(String message) {
+    PageContextProcessingEngine engine = engine(available());
+
+    WebApplicationException refused =
+        assertThrows(WebApplicationException.class, () -> engine.requestExtraction(pageId));
+
+    assertEquals(409, refused.getResponse().getStatus());
+    assertEquals(message, refused.getMessage());
+    verifyNothingWritten();
+  }
+
+  private void verifyNothingWritten() {
+    verify(pageRepository, never()).updateIfCurrent(any(), any(), any(), anyString());
+    verify(jobDao, never())
+        .enqueuePageMemoryJob(
+            anyString(), anyString(), anyString(), anyString(), anyLong(), anyLong());
+  }
+
   private List<Page> capturedUpdates() {
+    return capturedUpdates(Entity.ADMIN_USER_NAME);
+  }
+
+  private List<Page> capturedUpdates(String editor) {
     ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
     verify(pageRepository, atLeastOnce())
-        .updateIfCurrent(isNull(), any(), captor.capture(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), any(), captor.capture(), eq(editor));
     return captor.getAllValues();
   }
 }

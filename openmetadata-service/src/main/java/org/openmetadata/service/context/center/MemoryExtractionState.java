@@ -63,7 +63,7 @@ public final class MemoryExtractionState {
         && PageContextProcessingEngine.sourceHash(body).equals(stats.getSourceHash());
   }
 
-  private static boolean hasText(String text) {
+  static boolean hasText(String text) {
     return !nullOrEmpty(text) && !text.isBlank();
   }
 }
