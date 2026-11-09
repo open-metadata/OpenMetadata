@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   act,
@@ -18,7 +19,6 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import type { TreeItemMoveEvent } from '@openmetadata/ui-core-components';
 import { createRef, type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { KnowledgePagesHierarchyRef } from '../../../interface/knowledge-center.interface';
