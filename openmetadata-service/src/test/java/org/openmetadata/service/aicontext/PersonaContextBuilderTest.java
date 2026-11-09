@@ -25,7 +25,9 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -33,6 +35,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
@@ -41,6 +44,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.Persona;
@@ -57,12 +61,32 @@ import org.openmetadata.schema.type.personaContext.SearchScope;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MetricRepository;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
 
 class PersonaContextBuilderTest {
+  @Test
+  void anInvalidLegacyScopedRuleFailsMaterializationUntilDisabled() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    SearchClient client = mock(SearchClient.class);
+    when(repository.getSearchClient()).thenReturn(client);
+    when(repository.getIndexOrAliasName(Entity.TABLE)).thenReturn("tables");
+    when(client.rawSearchRequest(anyString(), anyString(), anyString()))
+        .thenReturn(new SearchClient.RawSearchResponse(200, "{\"valid\":false}"));
+    ContextRule rule =
+        assetRule("Broken scope", "{\"regexp\":{\"name\":\"[shop\"}}").withFilteredInSearch(true);
+    PersonaContextDefinition definition = new PersonaContextDefinition().withRules(List.of(rule));
+    PersonaContextBuilder builder = new PersonaContextBuilder(persona(), repository);
+    assertThrows(ServiceUnavailableException.class, () -> builder.selectRules(definition));
+    rule.setEnabled(false);
+    assertTrue(builder.selectRules(definition).isEmpty());
+  }
 
   @Test
   void metricKnowledgeLoadsEveryAssetThroughBoundedRepositoryPages() {
@@ -320,7 +344,7 @@ class PersonaContextBuilderTest {
   }
 
   @Test
-  void searchScopeKeepsKnowledgeAndPreloadedAssetTypesSearchable() {
+  void preloadedRulesDoNotWidenTheIndependentSearchScope() {
     ContextRule scopedTable =
         assetRule("Finance tables", "{\"term\":{\"domain\":\"finance\"}}")
             .withFilteredInSearch(true);
@@ -338,13 +362,68 @@ class PersonaContextBuilderTest {
                 .withEnabled(true));
 
     assertEquals(
-        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        Set.of(Entity.TABLE, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
         scope.getEntityTypes());
     JsonNode clauses =
         JsonUtils.readTree(scope.getQueryFilter()).at("/query/bool/filter/1/bool/should");
     assertEquals(
-        Set.of(Entity.TABLE, Entity.DASHBOARD, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
+        Set.of(Entity.TABLE, Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC),
         Set.copyOf(clauses.findValuesAsText("entityType")));
+  }
+
+  @Test
+  void preloadingDomainBDoesNotChangeTheDomainASearchFilter() {
+    ContextRule scoped =
+        assetRule("Domain A", "{\"term\":{\"domain\":\"A\"}}").withFilteredInSearch(true);
+    ContextRule preload =
+        assetRule("Domain B", "{\"term\":{\"domain\":\"B\"}}").withFilteredInSearch(false);
+    String scopedOnly =
+        PersonaContextBuilder.searchScope(new PersonaContextDefinition().withRules(List.of(scoped)))
+            .getQueryFilter();
+    String combined =
+        PersonaContextBuilder.searchScope(
+                new PersonaContextDefinition().withRules(List.of(scoped, preload)))
+            .getQueryFilter();
+    assertNotNull(scopedOnly);
+    assertEquals(scopedOnly, combined);
+  }
+
+  @Test
+  void deniedAssetsReachNeitherJsonNorMarkdownOrMatchedCounts() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    Map<String, Object> document =
+        Map.of("fullyQualifiedName", "restricted.table", "description", "restricted SQL");
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), isNull()))
+        .thenReturn(new SearchResultListMapper(List.of(document), 1, null, null));
+    Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("Denied")).when(authorizer).authorize(any(), any(), any());
+    Persona memberPersona =
+        persona()
+            .withContextDefinition(
+                new PersonaContextDefinition()
+                    .withRules(List.of(assetRule("Preloaded tables", ""))));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities
+          .when(() -> Entity.getEntityRepository(anyString()))
+          .thenReturn(mock(EntityRepository.class));
+      PersonaContextBuilder.MaterializedPersonaContext result =
+          new PersonaContextBuilder(memberPersona, repository)
+              .withSecurity(authorizer, mock(SecurityContext.class))
+              .build();
+
+      assertFalse(result.markdown().contains("restricted.table"));
+      assertFalse(JsonUtils.pojoToJson(result.context()).contains("restricted SQL"));
+      assertEquals(0, result.context().getRules().getFirst().getMatched());
+      assertTrue(result.context().getRules().getFirst().getEntities().isEmpty());
+      PersonaContextBuilder.MaterializedPersonaContext allowed =
+          new PersonaContextBuilder(memberPersona, repository)
+              .withSecurity(mock(Authorizer.class), mock(SecurityContext.class))
+              .build();
+      assertTrue(allowed.markdown().contains("restricted.table"));
+      assertTrue(JsonUtils.pojoToJson(allowed.context()).contains("restricted SQL"));
+      assertEquals(1, allowed.context().getRules().getFirst().getMatched());
+    }
   }
 
   @Test

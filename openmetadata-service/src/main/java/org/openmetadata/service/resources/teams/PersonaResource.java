@@ -30,6 +30,7 @@ import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.*;
 import jakarta.ws.rs.core.*;
 import java.nio.charset.StandardCharsets;
@@ -92,6 +93,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation(FIELDS, MetadataOperation.VIEW_BASIC);
+    addViewOperation("userCount", MetadataOperation.VIEW_BASIC);
     return listOf(MetadataOperation.EDIT_ALL);
   }
 
@@ -361,7 +363,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
-      @Valid ContextRule requestedRule) {
+      @NotNull @Valid ContextRule requestedRule) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
     PersonaContextDefinition definition = storedDefinition(original);
@@ -385,7 +387,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
       @PathParam("ruleId") UUID ruleId,
-      @Valid ContextRule requestedRule) {
+      @NotNull @Valid ContextRule requestedRule) {
     authorizer.authorizeAdmin(securityContext);
     Persona original = getPersona(uriInfo, id);
     PersonaContextDefinition definition = storedDefinition(original);
@@ -438,7 +440,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @PathParam("id") UUID id,
-      @Valid ContextRule rule) {
+      @NotNull @Valid ContextRule rule) {
     authorizer.authorizeAdmin(securityContext);
     getPersona(uriInfo, id);
     return PersonaContextBuilder.preview(rule);
@@ -593,14 +595,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
 
   private Response renderPersonaContext(
       Persona persona, SecurityContext securityContext, String format, boolean refresh) {
-    PersonaContextAccess.authorize(securityContext, persona);
-    if (refresh) {
-      PersonaContextAccess.authorizeRefresh(securityContext);
-    }
     PersonaContextCache.CachedResult cached =
-        refresh
-            ? PersonaContextCache.getInstance().refresh(persona)
-            : PersonaContextCache.getInstance().get(persona, false);
+        PersonaContextAccess.materialize(authorizer, securityContext, persona, refresh);
     PersonaContextBuilder.MaterializedPersonaContext value = cached.value();
     Response.ResponseBuilder response =
         AIContextMarkdown.FORMAT_JSON.equalsIgnoreCase(format)

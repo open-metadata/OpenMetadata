@@ -32,14 +32,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.schema.api.data.CreateMetric;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.teams.CreatePersona;
+import org.openmetadata.schema.api.teams.CreateRole;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.teams.Persona;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
@@ -101,6 +108,187 @@ class PersonaAIContextIT extends McpTestBase {
             .withCacheTtlMinutes(30),
         PersonaContextDefinition.class);
     post(contextPath() + "/rules", tableRule("Baseline tables"), PersonaContextDefinition.class);
+  }
+
+  @Test
+  void preloadedRulesLeaveAnIndependentSearchRuleUnchanged() throws Exception {
+    String suffix = shortId();
+    Table preloaded = createServiceDatabaseSchemaTable("persona_preload_" + suffix);
+    Persona owned =
+        post("personas", new CreatePersona().withName("independent_" + suffix), Persona.class);
+    String rulesPath = "personas/" + owned.getId() + "/aiContext/rules";
+    try {
+      addRule(rulesPath, scopedFqnRule("Search A", table.getFullyQualifiedName()));
+      addRule(
+          rulesPath,
+          scopedFqnRule("Preload B", preloaded.getFullyQualifiedName())
+              .withFilteredInSearch(false));
+      Awaitility.await()
+          .atMost(Duration.ofMinutes(1))
+          .pollInterval(Duration.ofSeconds(2))
+          .untilAsserted(
+              () -> {
+                HttpResponse<String> context =
+                    getResponse(
+                        "personas/" + owned.getId() + "/context?format=json&refresh=true",
+                        authToken);
+                assertThat(context.statusCode()).isEqualTo(200);
+                assertThat(OBJECT_MAPPER.readTree(context.body()).path("rules").toString())
+                    .contains(preloaded.getFullyQualifiedName());
+              });
+      awaitScopeIncludes(
+          owned, Set.of(table.getFullyQualifiedName()), Set.of(preloaded.getFullyQualifiedName()));
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  @Test
+  void userCountIncludesTeamMembersOnceWithoutChangingDirectAssignments() throws Exception {
+    String suffix = shortId();
+    User direct = createUser("persona_count_direct_" + suffix);
+    User inherited = createUser("persona_count_inherited_" + suffix);
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona().withName("count_" + suffix).withUsers(List.of(direct.getId())),
+            Persona.class);
+    Team first =
+        post(
+            "teams",
+            new CreateTeam()
+                .withName("count_first_" + suffix)
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withDefaultPersona(owned.getId())
+                .withUsers(List.of(direct.getId(), inherited.getId())),
+            Team.class);
+    Team second =
+        post(
+            "teams",
+            new CreateTeam()
+                .withName("count_second_" + suffix)
+                .withTeamType(CreateTeam.TeamType.GROUP)
+                .withDefaultPersona(owned.getId())
+                .withUsers(List.of(inherited.getId())),
+            Team.class);
+    try {
+      Persona counted = get("personas/" + owned.getId() + "?fields=users,userCount", Persona.class);
+      assertThat(counted.getUserCount()).isEqualTo(2);
+      assertThat(counted.getUsers())
+          .extracting(EntityReference::getId)
+          .containsExactly(direct.getId());
+      HttpResponse<String> list = getResponse("personas?fields=userCount&limit=1000", authToken);
+      assertThat(OBJECT_MAPPER.readTree(list.body()).path("data"))
+          .anySatisfy(
+              row -> {
+                assertThat(row.path("id").asText()).isEqualTo(owned.getId().toString());
+                assertThat(row.path("userCount").asInt()).isEqualTo(2);
+              });
+      deleteResponse("users/" + inherited.getId(), authToken);
+      assertThat(
+              get("personas/" + owned.getId() + "?fields=userCount", Persona.class).getUserCount())
+          .isEqualTo(1);
+    } finally {
+      deleteResponse("teams/" + first.getId() + "?hardDelete=true&recursive=true", authToken);
+      deleteResponse("teams/" + second.getId() + "?hardDelete=true&recursive=true", authToken);
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+      deleteResponse("users/" + direct.getId() + "?hardDelete=true", authToken);
+      deleteResponse("users/" + inherited.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  @Test
+  void rejectsMissingBodiesAndInvalidFiltersBeforePersistingEitherMode() throws Exception {
+    assertThat(postResponse(contextPath() + "/rules", null, authToken).statusCode()).isEqualTo(400);
+    ContextRule storedRule =
+        get(contextPath(), PersonaContextDefinition.class).getRules().getFirst();
+    assertThat(
+            putResponse(contextPath() + "/rules/" + storedRule.getId(), null, authToken)
+                .statusCode())
+        .isEqualTo(400);
+    for (boolean scoped : List.of(true, false)) {
+      ContextRule invalid =
+          tableRule("Invalid_" + shortId())
+              .withFilteredInSearch(scoped)
+              .withQueryFilter("{\"regexp\":{\"databaseSchema.name.keyword\":\"[shop\"}}");
+      assertThat(postResponse(contextPath() + "/rules", invalid, authToken).statusCode())
+          .isEqualTo(400);
+      invalid.setQueryFilter("not JSON");
+      assertThat(postResponse(contextPath() + "/rules", invalid, authToken).statusCode())
+          .isEqualTo(400);
+      assertThat(
+              putResponse(contextPath() + "/rules/" + storedRule.getId(), invalid, authToken)
+                  .statusCode())
+          .isEqualTo(400);
+    }
+  }
+
+  @Test
+  void cachedAdminContextCannotExposeDeniedAssetsThroughRestOrMcp() throws Exception {
+    String suffix = shortId();
+    Policy policy =
+        post(
+            "policies",
+            new CreatePolicy()
+                .withName("persona_deny_" + suffix)
+                .withRules(
+                    List.of(
+                        new Rule()
+                            .withName("DenyTables")
+                            .withResources(List.of(Entity.TABLE))
+                            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                            .withEffect(Rule.Effect.DENY))),
+            Policy.class);
+    Role role =
+        post(
+            "roles",
+            new CreateRole()
+                .withName("persona_deny_" + suffix)
+                .withPolicies(List.of(policy.getFullyQualifiedName())),
+            Role.class);
+    User denied =
+        post(
+            "users",
+            new CreateUser()
+                .withName("persona_denied_" + suffix)
+                .withEmail("persona_denied_" + suffix + "@example.com")
+                .withRoles(List.of(role.getId())),
+            User.class);
+    Persona owned =
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("persona_denied_" + suffix)
+                .withUsers(List.of(denied.getId())),
+            Persona.class);
+    String path = "personas/" + owned.getId() + "/context";
+    try {
+      addRule(
+          "personas/" + owned.getId() + "/aiContext/rules",
+          scopedFqnRule("Preloaded tables", table.getFullyQualifiedName())
+              .withFilteredInSearch(false));
+      String warmed = getResponse(path + "?refresh=true", authToken).body();
+      assertThat(warmed).contains(table.getFullyQualifiedName());
+      String deniedToken = tokenFor(denied);
+      assertThat(getResponse("tables/" + table.getId(), deniedToken).statusCode()).isEqualTo(403);
+      for (String format : List.of("json", "markdown")) {
+        HttpResponse<String> response = getResponse(path + "?format=" + format, deniedToken);
+        assertThat(response.statusCode()).isEqualTo(200);
+        assertThat(response.body()).doesNotContain(table.getFullyQualifiedName());
+      }
+      JsonNode mcp =
+          executeMcp(
+              McpTestUtils.createToolCallRequest(
+                  "get_persona_context", Map.of("personaName", owned.getFullyQualifiedName())),
+              deniedToken);
+      assertThat(mcp.toString()).doesNotContain(table.getFullyQualifiedName());
+      assertThat(getResponse(path, authToken).body()).contains(table.getFullyQualifiedName());
+    } finally {
+      deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+      deleteResponse("users/" + denied.getId() + "?hardDelete=true", authToken);
+      deleteResponse("roles/" + role.getId() + "?hardDelete=true", authToken);
+      deleteResponse("policies/" + policy.getId() + "?hardDelete=true", authToken);
+    }
   }
 
   @Test

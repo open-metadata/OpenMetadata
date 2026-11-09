@@ -16,8 +16,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -44,6 +46,7 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.Relationship;
@@ -67,6 +70,7 @@ import org.openmetadata.service.jdbi3.MetricRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Materializes the dynamic entity-selection rules attached to a Persona into one AI context. */
@@ -141,6 +145,8 @@ public class PersonaContextBuilder {
 
   private final Persona persona;
   private final SearchRepository searchRepository;
+  private Authorizer authorizer;
+  private SecurityContext securityContext;
 
   public PersonaContextBuilder(Persona persona) {
     this(persona, Entity.getSearchRepository());
@@ -149,6 +155,24 @@ public class PersonaContextBuilder {
   PersonaContextBuilder(Persona persona, SearchRepository searchRepository) {
     this.persona = persona;
     this.searchRepository = searchRepository;
+  }
+
+  public PersonaContextBuilder withSecurity(
+      Authorizer authorizer, SecurityContext securityContext) {
+    this.authorizer = authorizer;
+    this.securityContext = securityContext;
+    return this;
+  }
+
+  private boolean canView(String entityType, String fqn) {
+    return AIContextBuilder.canViewKnowledge(
+        authorizer,
+        securityContext,
+        entityType,
+        fqn,
+        isKnowledgeEntityType(entityType)
+            ? MetadataOperation.VIEW_BASIC
+            : MetadataOperation.VIEW_ALL);
   }
 
   public MaterializedPersonaContext build() {
@@ -203,7 +227,11 @@ public class PersonaContextBuilder {
     orderedRules.sort(
         Comparator.comparing(rule -> !Boolean.TRUE.equals(rule.getAlwaysInContext())));
     for (ContextRule rule : orderedRules) {
-      if (!Boolean.TRUE.equals(rule.getEnabled()) || isFilteredInSearch(rule)) {
+      if (!Boolean.TRUE.equals(rule.getEnabled())) {
+        continue;
+      }
+      if (isFilteredInSearch(rule)) {
+        validateScopedRule(rule);
         continue;
       }
       RuleSearchResult matches = search(rule);
@@ -241,6 +269,19 @@ public class PersonaContextBuilder {
       results.add(new RuleMaterialization(rule, matches.matched(), selected));
     }
     return results;
+  }
+
+  private void validateScopedRule(ContextRule rule) {
+    try {
+      PersonaContextRuleValidation.validate(rule, searchRepository);
+    } catch (BadRequestException exception) {
+      throw new ServiceUnavailableException(
+          "Invalid persona context rule '"
+              + rule.getName()
+              + "'. Ask an administrator to correct the filter.",
+          Response.status(Response.Status.SERVICE_UNAVAILABLE).build(),
+          exception);
+    }
   }
 
   RuleSearchResult search(ContextRule rule) {
@@ -292,7 +333,13 @@ public class PersonaContextBuilder {
           Response.status(Response.Status.SERVICE_UNAVAILABLE).build(),
           exception);
     }
-    return new RuleSearchResult(matched, documents);
+    List<Map<String, Object>> visible =
+        documents.stream()
+            .filter(
+                document ->
+                    canView(rule.getEntityType(), stringValue(document.get("fullyQualifiedName"))))
+            .toList();
+    return new RuleSearchResult(authorizer == null ? matched : visible.size(), visible);
   }
 
   /**
@@ -323,7 +370,6 @@ public class PersonaContextBuilder {
     }
     List<Object> clauses = new ArrayList<>();
     Set<String> entityTypes = new LinkedHashSet<>();
-    Set<String> preloadedAssetTypes = new LinkedHashSet<>();
     for (ContextRule rule : listOrEmpty(definition.getRules())) {
       if (!Boolean.TRUE.equals(rule.getEnabled()) || nullOrEmpty(rule.getEntityType())) {
         continue;
@@ -338,14 +384,12 @@ public class PersonaContextBuilder {
                     .withRuleName(rule.getName())
                     .withEntityType(rule.getEntityType())
                     .withQueryFilter(rule.getQueryFilter()));
-      } else if (ASSET_ENTITY_TYPES.contains(rule.getEntityType())) {
-        preloadedAssetTypes.add(rule.getEntityType());
       }
     }
     if (clauses.isEmpty()) {
       return scope;
     }
-    addPassthroughEntityTypes(clauses, entityTypes, preloadedAssetTypes);
+    addPassthroughEntityTypes(clauses, entityTypes);
     Map<String, Object> union = Map.of("should", clauses, "minimum_should_match", 1);
     List<Object> filters = new ArrayList<>();
     filters.add(Map.of("term", Map.of("deleted", false)));
@@ -356,11 +400,8 @@ public class PersonaContextBuilder {
             JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("filter", filters)))));
   }
 
-  private static void addPassthroughEntityTypes(
-      List<Object> clauses, Set<String> entityTypes, Set<String> preloadedAssetTypes) {
-    Set<String> passthroughEntityTypes = new LinkedHashSet<>(preloadedAssetTypes);
-    passthroughEntityTypes.addAll(KNOWLEDGE_ENTITY_TYPES);
-    for (String entityType : passthroughEntityTypes) {
+  private static void addPassthroughEntityTypes(List<Object> clauses, Set<String> entityTypes) {
+    for (String entityType : KNOWLEDGE_ENTITY_TYPES) {
       clauses.add(Map.of("term", Map.of("entityType", entityType)));
       entityTypes.add(entityType);
     }
@@ -410,6 +451,7 @@ public class PersonaContextBuilder {
       throw new IllegalArgumentException(
           "Unsupported persona context entity type: " + rule.getEntityType());
     }
+    PersonaContextRuleValidation.validate(rule, Entity.getSearchRepository());
     RuleSearchResult result = new PersonaContextBuilder(null).search(rule);
     List<String> samples =
         result.documents().stream()
@@ -533,7 +575,9 @@ public class PersonaContextBuilder {
     boolean needsDataQuality = selected.contains(ContextSection.DATA_QUALITY);
     if (needsLineage || needsDataQuality) {
       AIContext heavy =
-          new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName()).build();
+          new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName())
+              .withSecurity(authorizer, securityContext)
+              .build();
       applyHeavySections(context, heavy, needsLineage, needsDataQuality);
     }
   }
@@ -663,7 +707,8 @@ public class PersonaContextBuilder {
     }
     Map<String, KnowledgeItem> glossaryTerms = new HashMap<>();
     for (String glossaryFqn : glossaryFqns) {
-      KnowledgeItem term = loadGlossaryTerm(glossaryFqn);
+      KnowledgeItem term =
+          canView(Entity.GLOSSARY_TERM, glossaryFqn) ? loadGlossaryTerm(glossaryFqn) : null;
       if (term != null) {
         glossaryTerms.put(glossaryFqn, term);
       }
@@ -684,7 +729,7 @@ public class PersonaContextBuilder {
       if (sections.contains(ContextSection.ARTICLES)) {
         for (UUID pageId : pageIdsByAsset.getOrDefault(asset.id(), List.of())) {
           Page page = pages.get(pageId);
-          if (page != null) {
+          if (page != null && canView(Entity.PAGE, page.getFullyQualifiedName())) {
             attachFullKnowledge(Entity.PAGE, page, asset.context(), accumulator::add);
           }
         }
@@ -692,7 +737,7 @@ public class PersonaContextBuilder {
       if (sections.contains(ContextSection.METRICS)) {
         for (UUID metricId : metricIdsByAsset.getOrDefault(asset.id(), List.of())) {
           Metric metric = metrics.get(metricId);
-          if (metric != null) {
+          if (metric != null && canView(Entity.METRIC, metric.getFullyQualifiedName())) {
             attachFullKnowledge(Entity.METRIC, metric, asset.context(), accumulator::add);
           }
         }

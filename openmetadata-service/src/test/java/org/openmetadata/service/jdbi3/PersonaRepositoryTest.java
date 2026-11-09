@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.personaContext.ContextRule;
@@ -29,6 +30,31 @@ import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
 
 class PersonaRepositoryTest {
+  @Test
+  void disablingPreservesRecoveryButReactivationRevalidatesTheFilter() {
+    UUID id = UUID.randomUUID();
+    ContextRule enabled =
+        new ContextRule()
+            .withId(id)
+            .withName("Tables")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter("{\"regexp\":{\"name\":\"[shop\"}}")
+            .withEnabled(true);
+    ContextRule disabled =
+        new ContextRule()
+            .withId(id)
+            .withName("Tables")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter(enabled.getQueryFilter())
+            .withEnabled(false);
+    assertFalse(PersonaRepository.requiresRuleValidation(disabled, List.of(enabled), false));
+    assertFalse(PersonaRepository.requiresRuleValidation(enabled, List.of(enabled), false));
+    assertTrue(PersonaRepository.requiresRuleValidation(enabled, List.of(disabled), false));
+    assertTrue(PersonaRepository.requiresRuleValidation(enabled, List.of(enabled), true));
+    assertFalse(PersonaRepository.requiresRuleValidation(disabled, List.of(disabled), true));
+    assertTrue(PersonaRepository.requiresRuleValidation(disabled, List.of(), false));
+  }
+
   private static final List<String> SUPPORTED_ENTITY_TYPES =
       List.of(
           Entity.TABLE,

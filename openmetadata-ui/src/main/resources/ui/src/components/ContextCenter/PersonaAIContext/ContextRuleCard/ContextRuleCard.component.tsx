@@ -283,6 +283,7 @@ export const ContextRuleCard = ({
   // Not rule.filteredInSearch: the server ignores that flag on knowledge rules, so trusting it here
   // would badge a rule as scoping search while the server preloads it.
   const isScoped = isSearchScopedRule(rule);
+  const isEnabled = rule.enabled !== false;
   const conditionCount = getRuleConditionCount(
     rule.filterJsonTree,
     rule.queryFilter
@@ -297,8 +298,9 @@ export const ContextRuleCard = ({
       'label.entity-plural'
   );
   const EntityIcon = ENTITY_TYPE_ICONS[rule.entityType] ?? Hexagon01;
-  const visibleSections = rule.sections?.slice(0, MAX_VISIBLE_SECTIONS) ?? [];
-  const extraSections = (rule.sections?.length ?? 0) - visibleSections.length;
+  const sections = rule.sections ?? [];
+  const visibleSections = sections.slice(0, MAX_VISIBLE_SECTIONS);
+  const extraSections = sections.length - visibleSections.length;
 
   const handleConfirmDelete = () => {
     setConfirmOpen(false);
@@ -317,6 +319,11 @@ export const ContextRuleCard = ({
             weight="semibold">
             {rule.name}
           </Typography>
+          {!isEnabled && (
+            <Badge color="gray" size="sm">
+              {t('label.disabled')}
+            </Badge>
+          )}
           <BadgeWithIcon color="gray" iconLeading={EntityIcon} size="sm">
             {entityLabel}
           </BadgeWithIcon>
@@ -336,13 +343,18 @@ export const ContextRuleCard = ({
           visibleSections={visibleSections}
         />
 
-        <Typography as="p" className="tw:m-0 tw:text-quaternary" size="text-xs">
-          {isScoped
-            ? t('message.persona-context-scoped-rule-summary')
-            : t('message.persona-context-max-assets', {
-                count: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
-              })}
-        </Typography>
+        {isEnabled && (
+          <Typography
+            as="p"
+            className="tw:m-0 tw:text-quaternary"
+            size="text-xs">
+            {isScoped
+              ? t('message.persona-context-scoped-rule-summary')
+              : t('message.persona-context-max-assets', {
+                  count: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
+                })}
+          </Typography>
+        )}
       </Box>
 
       <RuleCardActions

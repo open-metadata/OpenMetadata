@@ -25,7 +25,10 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 import java.time.Duration;
+import java.util.HexFormat;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -34,12 +37,56 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheProvider;
 
 class PersonaContextCacheTest {
+  @Test
+  void documentsFromBeforeScopeIsolationAreRebuilt() throws Exception {
+    CacheProvider provider = mock(CacheProvider.class);
+    CacheKeys keys = new CacheKeys("om:test");
+    Persona persona = personaFor(UUID.randomUUID());
+    String oldHash =
+        HexFormat.of()
+            .formatHex(
+                MessageDigest.getInstance("SHA-256")
+                    .digest(
+                        JsonUtils.pojoToJson(persona.getContextDefinition())
+                            .getBytes(StandardCharsets.UTF_8)),
+                0,
+                8);
+    String oldContext =
+        JsonUtils.pojoToJson(
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(System.currentTimeMillis())
+                .withRules(List.of())
+                .withFingerprint(oldHash + ':' + oldHash));
+    when(provider.available()).thenReturn(true);
+    when(provider.mget(anyList()))
+        .thenAnswer(
+            invocation -> {
+              List<String> requested = invocation.getArgument(0);
+              return requested
+                      .getFirst()
+                      .equals(keys.personaContextMarkdown(persona.getId(), oldHash))
+                  ? List.of(Optional.of("old unrestricted scope"), Optional.of(oldContext))
+                  : List.of(Optional.empty(), Optional.empty());
+            });
+    when(provider.setIfAbsent(anyString(), any(), any(Duration.class))).thenReturn(true);
+    PersonaContextCache cache =
+        new PersonaContextCache(provider, keys) {
+          @Override
+          protected PersonaContextBuilder.MaterializedPersonaContext build(Persona ignored) {
+            return new PersonaContextBuilder.MaterializedPersonaContext(
+                new PersonaContext().withGeneratedAt(1L), "independent search scope");
+          }
+        };
+    assertEquals("independent search scope", cache.get(persona, false).value().markdown());
+  }
 
   @Test
   void releasesDistributedBuildLockWhenMaterializationFails() {
