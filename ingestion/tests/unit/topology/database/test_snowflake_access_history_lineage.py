@@ -23,6 +23,7 @@ the flag is on.
 from datetime import datetime, timedelta
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlsplit
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.container import Container
@@ -30,6 +31,7 @@ from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityLineage import Source as LineageEdgeSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.snowflake.lineage import (
     DEFAULT_ACCESS_HISTORY_CHUNK_DAYS,
@@ -896,16 +898,26 @@ def test_copy_edge_emitted_for_gcs_stage_de_aliased_to_gs():
     the container and emit the edge."""
     downstream_entity = _make_table_entity("33333333-3333-3333-3333-333333333333", "DB", "SCHEMA", "STAGE_TBL")
     container_entity = _make_container_entity("44444444-4444-4444-4444-444444444444", "gs://my-bucket/path/")
-    metadata = MagicMock()
-    metadata.get_by_name = MagicMock(return_value=downstream_entity)
 
-    def _search(full_path, **kwargs):
-        # The container was indexed as gs:// — only gs:// candidates match.
-        if full_path.startswith("gs://"):
-            return [container_entity]
-        return None
+    class SearchMetadata(ESMixin):
+        def __init__(self):
+            self.client = MagicMock()
+            self.client.get.side_effect = self.search
 
-    metadata.es_search_container_by_path = MagicMock(side_effect=_search)
+        def search(self, query):
+            params = parse_qs(urlsplit(query).query)
+            if params["fieldName"] == ["fullPath"] and params["fieldValue"] == [container_entity.fullPath]:
+                return {"hits": {"hits": [{"_source": {"fullyQualifiedName": "storage.stage_bucket"}}]}}
+            return {"hits": {"hits": []}}
+
+        def get_by_name(self, entity, fqn, fields=None):
+            if entity is Table:
+                return downstream_entity
+            if entity is Container and fqn == "storage.stage_bucket":
+                return container_entity
+            return None
+
+    metadata = SearchMetadata()
 
     src = _make_lineage_source(
         metadata=metadata,
@@ -927,9 +939,7 @@ def test_copy_edge_emitted_for_gcs_stage_de_aliased_to_gs():
     request = edges[0].right
     assert request.edge.fromEntity.type == "container"
     assert str(request.edge.fromEntity.id.root) == "44444444-4444-4444-4444-444444444444"
-    # Verify the gs:// canonical form was searched, not just the raw gcs://
-    searched = [call.kwargs["full_path"] for call in metadata.es_search_container_by_path.call_args_list]
-    assert "gs://my-bucket/path" in searched
+    assert str(request.edge.toEntity.id.root) == "33333333-3333-3333-3333-333333333333"
 
 
 def test_resolve_container_by_path_tries_gs_candidates_for_gcs_location():
@@ -939,7 +949,7 @@ def test_resolve_container_by_path_tries_gs_candidates_for_gcs_location():
     metadata = MagicMock()
 
     def _search(full_path, **kwargs):
-        if full_path.startswith("gs://"):
+        if full_path == container_entity.fullPath:
             return [container_entity]
         return None
 
@@ -952,7 +962,7 @@ def test_resolve_container_by_path_tries_gs_candidates_for_gcs_location():
     searched = [call.kwargs["full_path"] for call in metadata.es_search_container_by_path.call_args_list]
     # The canonical gs:// form must be searched (proving gcs -> gs de-aliasing happened)
     assert "gs://my-bucket/path" in searched
-    # The first candidate matched, so the raw gcs:// form was never reached
+    # The canonical candidate matched, so the raw gcs:// form was never reached
     assert all(not p.startswith("gcs://") for p in searched)
 
 
@@ -972,7 +982,7 @@ def test_resolve_container_by_path_finds_container_via_raw_form():
     metadata = MagicMock()
 
     def _search(full_path, **kwargs):
-        if full_path.startswith("gcs://"):
+        if full_path == container_entity.fullPath:
             return [container_entity]
         return None
 
