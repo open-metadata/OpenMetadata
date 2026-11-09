@@ -95,19 +95,24 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
 
     // Running following 2 tests serially since they are dependent on each other
     test.describe.serial('Owner permission tests', () => {
-      test('User as Owner Add, Update and Remove', async ({ page }) => {
-        // Anyone can claim an unowned data asset; a metric is not one.
-        test.skip(
-          entity.type === 'Metric',
-          'A metric with no owner cannot be claimed'
-        );
-        test.slow(true);
+      // Anyone can claim an unowned data asset. A metric is not one, so this user
+      // cannot set its owner, which the next test checks.
+      if (entity.type !== 'Metric') {
+        test('User as Owner Add, Update and Remove', async ({ page }) => {
+          test.slow(true);
 
-        const OWNER1 = EntityDataClass.user1.getUserDisplayName();
-        const OWNER2 = EntityDataClass.user2.getUserDisplayName();
-        const OWNER3 = EntityDataClass.user3.getUserDisplayName();
-        await entity.owner(page, [OWNER1, OWNER3], [OWNER2], undefined, false);
-      });
+          const OWNER1 = EntityDataClass.user1.getUserDisplayName();
+          const OWNER2 = EntityDataClass.user2.getUserDisplayName();
+          const OWNER3 = EntityDataClass.user3.getUserDisplayName();
+          await entity.owner(
+            page,
+            [OWNER1, OWNER3],
+            [OWNER2],
+            undefined,
+            false
+          );
+        });
+      }
 
       test('No edit owner permission', async ({ page }) => {
         await page.reload({ waitUntil: 'domcontentloaded' });
