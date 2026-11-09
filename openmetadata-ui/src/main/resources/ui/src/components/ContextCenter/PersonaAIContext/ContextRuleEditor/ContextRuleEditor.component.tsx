@@ -312,7 +312,8 @@ export const ContextRuleEditor = ({
           rule &&
           data.entityType === rule.entityType &&
           data.queryFilter === (rule.queryFilter ?? '');
-        if (data.enabled !== false || !unchangedFilter) {
+        const reEnabled = rule?.enabled === false && data.enabled !== false;
+        if (data.queryFilter && (!unchangedFilter || reEnabled)) {
           await previewPersonaAIContextRule(personaId, data);
         }
         form.clearErrors('queryFilter');
