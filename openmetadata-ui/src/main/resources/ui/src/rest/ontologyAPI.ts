@@ -1246,14 +1246,14 @@ export const cancelNativeOntologyPackInstallJob = async (
   return response.data;
 };
 
-/** The pack preview with a status for every definition and any clash the install would add. */
+/** Bounded definition statuses and any clash the pack install would add to the current draft. */
 export const reviewNativeOntologyPack = async (
   ontologyId: string,
   packId: string,
   request: PreviewNativeOntologyPack
-): Promise<NativeOntologyImportPreview> => {
-  const response = await APIClient.post<NativeOntologyImportPreview>(
-    `/ontologies/${ontologyId}/library/${packId}/review`,
+): Promise<NativeOntologyImportSummary> => {
+  const response = await APIClient.post<NativeOntologyImportSummary>(
+    `/ontologies/${ontologyId}/library/${packId}/summary`,
     request
   );
 

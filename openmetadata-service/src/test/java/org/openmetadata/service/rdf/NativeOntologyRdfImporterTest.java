@@ -86,11 +86,11 @@ class NativeOntologyRdfImporterTest {
   }
 
   @Test
-  void bundledPacksPreviewAsNativeConceptsAndExactSkosRelations() {
+  void starterPacksPreviewAsNativeConceptsAndExactSkosRelations() {
     final var catalog = new OntologyPackCatalog(getClass().getClassLoader());
     final var loader = new OntologyPackContentLoader(getClass().getClassLoader());
     for (final var pack : catalog.list()) {
-      if (!Boolean.TRUE.equals(pack.getBundled())) {
+      if (!"OpenMetadata".equals(pack.getPublisher())) {
         continue;
       }
       final String rdf =

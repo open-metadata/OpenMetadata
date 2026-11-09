@@ -68,7 +68,7 @@ const OntologyNativePackReview = ({
       </Alert>
     );
   }
-  const summary = review.data?.summary;
+  const summary = review.data;
   if (
     !summary ||
     (importItemsOf(summary).length === 0 && !summary.omittedItems)

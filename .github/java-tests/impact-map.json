@@ -762,6 +762,8 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseDAOTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/OntologyReleaseCaptureTest.java",
         "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyCapacityPerfIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/NativeOntologyEveryPackInstallIT.java",
+        "openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/RdfLibraryPackActivationIT.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackModelsTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyPackInstallationsTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/ontology/OntologyChangeApplicationServiceTest.java",

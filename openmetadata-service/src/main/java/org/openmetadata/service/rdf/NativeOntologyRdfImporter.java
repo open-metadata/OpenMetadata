@@ -129,10 +129,25 @@ public final class NativeOntologyRdfImporter {
 
   public NativeOntologyImportPreview preview(
       final Source source, final OntologyWorkingSnapshot.Snapshot working) {
+    return preview(source, working, MAX_CHANGED_DEFINITIONS);
+  }
+
+  /**
+   * Previews checksum-verified bundled content, which the library install job cuts into slices, so
+   * the whole change is not held to {@link #MAX_CHANGED_DEFINITIONS}.
+   */
+  public NativeOntologyImportPreview previewUnbounded(
+      final Source source, final OntologyWorkingSnapshot.Snapshot working) {
+    return preview(source, working, Integer.MAX_VALUE);
+  }
+
+  private NativeOntologyImportPreview preview(
+      final Source source, final OntologyWorkingSnapshot.Snapshot working, final int maxChanged) {
     final Stored stored = Stored.index(working);
     requireApplicable(source.document(), stored, source.propertyRows());
     final RdfSkipLedger dropped = RdfSkipLedger.continuing(source.document().skipped());
-    final Outcomes outcomes = reject(classify(source.document(), stored), stored, dropped);
+    final Outcomes outcomes =
+        reject(classify(source.document(), stored, maxChanged), stored, dropped);
     final Plan plan = new Plan(stored, working, SourceFamily.of(source.format()));
     final CreateOntologyChangeSet changeSet = plan.of(outcomes);
     return new NativeOntologyImportPreview()
@@ -216,8 +231,12 @@ public final class NativeOntologyRdfImporter {
    */
   public CreateOntologyChangeSet reconcileUnbounded(
       final Model model, final OntologyWorkingSnapshot.Snapshot working) {
+    return reconcileUnbounded(read(model), working);
+  }
+
+  public CreateOntologyChangeSet reconcileUnbounded(
+      final NativeOntologyDocument document, final OntologyWorkingSnapshot.Snapshot working) {
     final Stored stored = Stored.index(working);
-    final NativeOntologyDocument document = read(model);
     requireApplicable(document, stored, Map.of());
     return plan(
         reject(classify(document, stored, Integer.MAX_VALUE), stored, new RdfSkipLedger()),

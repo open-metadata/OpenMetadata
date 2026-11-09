@@ -102,6 +102,7 @@ import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
 import org.openmetadata.service.ontology.OntologyPackInstallations;
+import org.openmetadata.service.ontology.OntologyPackModels;
 import org.openmetadata.service.ontology.OntologyReleaseActivation;
 import org.openmetadata.service.ontology.OntologyReleaseCapture;
 import org.openmetadata.service.ontology.OntologyReleaseComparison;
@@ -363,6 +364,22 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   }
 
   @POST
+  @Path("/{id}/library/{packId}/summary")
+  @Operation(
+      operationId = "summarizeNativeOntologyPack",
+      summary = "Review verified library modules without returning draft operations",
+      description =
+          "Returns counts, at most 5,000 definition statuses, and any disjointness clash the install would create against the current working draft. Nothing is persisted.")
+  public NativeOntologyImportSummary summarizeLibraryPack(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("packId") final String packId,
+      @NotNull @Valid final PreviewNativeOntologyPack request) {
+    return reviewLibraryPack(uriInfo, securityContext, id, packId, request).getSummary();
+  }
+
+  @POST
   @Path("/{id}/library/{packId}/review")
   @Operation(
       operationId = "reviewNativeOntologyPack",
@@ -376,18 +393,29 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @PathParam("packId") final String packId,
       @NotNull @Valid final PreviewNativeOntologyPack request) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
-    final var selected =
-        packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
+    final var selected = packContentLoader.select(packCatalog, packId, request.getModuleIds());
+    final NativeOntologyRdfImporter importer = new NativeOntologyRdfImporter();
+    final NativeOntologyRdfImporter.Source source = bundledSource(selected);
     final NativeOntologyImportPreview preview =
-        previewImport(
-            uriInfo,
-            securityContext,
-            id,
-            new PreviewNativeOntologyImport()
-                .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
-                .withData(selected.body()));
-    preview.getChangeSet().withSourcePack(OntologyPackInstallations.sourcePack(selected));
+        releaseCapture
+            .snapshot()
+            .readUnlocked(
+                id,
+                definitions ->
+                    OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+                working -> importer.previewUnbounded(source, working));
+    preview
+        .getChangeSet()
+        .withSourcePack(
+            OntologyPackInstallations.sourcePack(selected.manifest(), selected.modules()));
     return preview;
+  }
+
+  private NativeOntologyRdfImporter.Source bundledSource(
+      final OntologyPackContentLoader.Selection selected) {
+    return new NativeOntologyRdfImporter.Source(
+        NativeOntologyImportFormat.fromValue(selected.format()),
+        OntologyPackModels.bundled().document(selected));
   }
 
   @POST
