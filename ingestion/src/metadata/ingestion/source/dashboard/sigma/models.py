@@ -37,9 +37,8 @@ class WorkbookDetails(BaseModel):
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
-    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages;
-    # None when they could not all be read.
-    elements: list["Elements"] | None = None
+    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
+    elements: list["Elements"] = []
     # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
     lineage: list["WorkbookLineageEntry"] | None = None
 

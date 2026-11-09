@@ -93,11 +93,6 @@ class SigmaApiClient:
         # Successful reads only: a failed read stays retryable for the next workbook or element.
         self._owner_cache: LRUCache[str, OwnerDetails] = LRUCache(maxsize=512)
         self._file_cache: LRUCache[str, NodeDetails] = LRUCache(maxsize=512)
-        # A failed read leaves live workbooks, or a workbook's elements, out of the run, so the
-        # source must not delete what this run did not see.
-        self.workbooks_incomplete = False
-        self.elements_incomplete = False
-        self.data_models_incomplete = False
         self._connection_types: LRUCache[str, str | None] = LRUCache(maxsize=512)
 
     def get_auth_token(self) -> tuple[str, int]:
@@ -134,7 +129,6 @@ class SigmaApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching Dashboards: {exc}")
-            self.workbooks_incomplete = True
         return workbooks
 
     def get_dashboard_detail(self, workbook_id: str) -> WorkbookDetails | None:
@@ -148,7 +142,6 @@ class SigmaApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
-            self.workbooks_incomplete = True
         return None
 
     def get_connection_type(self, connection_id: str) -> str | None:
@@ -192,14 +185,13 @@ class SigmaApiClient:
             data = {"page": result.nextPage}
 
     def get_data_models(self) -> list[DataModel]:
-        """Every Sigma Data Model; a failed page marks the listing incomplete"""
+        """Every Sigma Data Model"""
         data_models = []
         try:
             data_models.extend(self._read_all("/dataModels", DataModelsResponse))
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to list Sigma data models: %s", exc)
-            self.data_models_incomplete = True
         return data_models
 
     def get_data_model_elements(self, data_model_id: str) -> list[Elements] | None:
@@ -229,28 +221,33 @@ class SigmaApiClient:
 
     def get_page_elements(self, workbook_id: str, page_id: str) -> list[Elements]:
         """
-        Every element of a workbook page; raises when a page of them cannot be read, so the workbook's
-        elements are read whole or not at all
+        method to fetch dashboards page elements from api
         """
         elements = []
-        result = ElementsResponse.model_validate(self.client.get(f"/workbooks/{workbook_id}/pages/{page_id}/elements"))
-        if result:
-            elements.extend(result.entries or [])
-            while result.nextPage:
-                data = {"page": int(result.nextPage)}
-                result = ElementsResponse.model_validate(
-                    self.client.get(
-                        f"/workbooks/{workbook_id}/pages/{page_id}/elements",
-                        data=data,
+        try:
+            result = ElementsResponse.model_validate(
+                self.client.get(f"/workbooks/{workbook_id}/pages/{page_id}/elements")
+            )
+            if result:
+                elements.extend(result.entries or [])
+                while result.nextPage:
+                    data = {"page": int(result.nextPage)}
+                    result = ElementsResponse.model_validate(
+                        self.client.get(
+                            f"/workbooks/{workbook_id}/pages/{page_id}/elements",
+                            data=data,
+                        )
                     )
-                )
-                if result:
-                    elements.extend(result.entries or [])
+                    if result:
+                        elements.extend(result.entries or [])
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch page elements for workbook %s: %s", workbook_id, exc)
         return elements
 
     def get_chart_details(self, workbook_id: str) -> list[Elements] | None:
         """
-        Every element of the workbook, or None when they could not all be read
+        method to fetch dashboards chart details from api
         """
         try:
             elements_list = []
@@ -278,7 +275,6 @@ class SigmaApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch chart details for workbook {workbook_id}: {exc}")
-            self.elements_incomplete = True
         return None
 
     def get_workbook_queries(self, workbook_id: str) -> WorkbookQueriesResponse | None:

@@ -868,82 +868,6 @@ def test_table_file_is_read_once_for_elements_sharing_it(sigma_over_http):
     assert calls["GET", "/v2/files/T1"] == 1
 
 
-def stale_passes_run(source) -> list[str]:
-    """Read every workbook as the topology does, then run the stale passes; return the entity types sent to deleteStale"""
-    reconciled = []
-
-    def delete_stale_entities(entity, **_):
-        reconciled.append(entity.__name__)
-        return {}
-
-    source.metadata.delete_stale_entities = delete_stale_entities
-    source.source_config.includeOwners = False
-    for workbook in source.get_dashboards_list():
-        details = source.get_dashboard_details(workbook)
-        for stage in (source.yield_dashboard_chart, source.yield_datamodel, source.yield_dashboard):
-            list(stage(details))
-    for stale_pass in (
-        source.mark_dashboards_as_deleted,
-        source.mark_datamodels_as_deleted,
-        source.mark_charts_as_deleted,
-    ):
-        list(stale_pass())
-    return reconciled
-
-
-def test_every_stale_pass_runs_when_every_read_succeeds(sigma_over_http):
-    source, _ = sigma_over_http
-
-    assert stale_passes_run(source) == ["Dashboard", "DashboardDataModel", "Chart"]
-
-
-def test_a_failed_workbook_listing_page_skips_every_stale_pass(sigma_over_http, routes):
-    source, _ = sigma_over_http
-    routes["GET", "/v2/workbooks"] = {"entries": SIGMA_WORKBOOKS[:1], "nextPage": "2"}
-    routes["GET", "/v2/workbooks", 2] = 500
-
-    assert stale_passes_run(source) == []
-
-
-def test_a_failed_workbook_read_skips_every_stale_pass(sigma_over_http, routes):
-    source, _ = sigma_over_http
-    routes["GET", "/v2/workbooks/wb-2"] = 500
-
-    assert stale_passes_run(source) == []
-    # Each skipped pass is a failure in the run's status, not only a log line; a pass turned off is not skipped
-    assert [either.left.name for either in source.mark_charts_as_deleted()] == ["Sigma stale charts"]
-    source.source_config.markDeletedCharts = False
-    assert list(source.mark_charts_as_deleted()) == []
-
-
-@pytest.mark.parametrize(
-    "failing_path",
-    ["/v2/workbooks/wb-2/pages", "/v2/workbooks/wb-2/pages/page-1/elements"],
-)
-def test_a_failed_element_read_keeps_charts_and_data_models(sigma_over_http, routes, failing_path):
-    source, _ = sigma_over_http
-    routes["GET", failing_path] = 500
-
-    assert stale_passes_run(source) == ["Dashboard"]
-
-
-@pytest.mark.parametrize(
-    "failing_path",
-    ["/v2/workbooks/wb-2/pages", "/v2/workbooks/wb-2/pages/page-1/elements"],
-)
-def test_a_workbook_whose_elements_cannot_be_read_keeps_its_stored_dashboard(sigma_over_http, routes, failing_path):
-    source, _ = sigma_over_http
-    source.source_config.includeOwners = False
-    routes["GET", failing_path] = 500
-    details = source.get_dashboard_details(Workbook(workbookId="wb-2"))
-
-    # Sent with no charts and data models, it would replace the ones the server holds under the workbook
-    assert list(source.yield_dashboard(details)) == []
-    assert source.dashboard_source_state == {f"{MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root}.wb-2"}
-    # Its lineage is left as stored too
-    assert list(source.yield_dashboard_lineage(details)) == []
-
-
 def warehouse_table(service: str, table: str, database: str = "ANALYTICS") -> Table:
     name = f"{service}.{database}.PUBLIC.{table}"
     return Table(id=str(uuid5(NAMESPACE_URL, name)), name=table, fullyQualifiedName=name, columns=[])
@@ -1342,16 +1266,6 @@ def test_a_failed_element_read_keeps_the_existing_data_model(sigma_over_http, si
 
     assert bulk_data_models(source) == []
     assert source.datamodel_source_state == {"mock_sigma.model.dm-1"}
-
-
-def test_a_failed_data_model_listing_skips_the_data_model_stale_pass(sigma_over_http, sigma_data_models):
-    source, _ = sigma_over_http
-    sigma_data_models["GET", "/v2/dataModels"] = {"entries": [sigma_data_model("dm-1", "Sales Model")], "nextPage": "2"}
-    sigma_data_models["GET", "/v2/dataModels", "2"] = 500
-
-    bulk_data_models(source)
-
-    assert stale_passes_run(source) == ["Dashboard", "Chart"]
 
 
 def test_data_model_filter_pattern_applies_to_sigma_data_models(sigma_over_http, sigma_data_models):

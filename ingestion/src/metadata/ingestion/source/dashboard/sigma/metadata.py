@@ -51,7 +51,6 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
@@ -143,7 +142,7 @@ class SigmaSource(DashboardServiceSource):
         """
         dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
         if dashboard_details:
-            dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId)
+            dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
         return dashboard_details
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
@@ -187,10 +186,6 @@ class SigmaSource(DashboardServiceSource):
                 sourceUrl=SourceUrl(dashboard_details.url),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
-            if dashboard_details.elements is None:
-                # Sending it would replace the charts and data models the server holds under the workbook with none
-                self.register_record(dashboard_request=dashboard_request)
-                return
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
@@ -210,7 +205,7 @@ class SigmaSource(DashboardServiceSource):
             logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541
             return
 
-        for chart in dashboard_details.elements or []:
+        for chart in dashboard_details.elements:
             try:
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name or ""):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
@@ -493,9 +488,6 @@ class SigmaSource(DashboardServiceSource):
 
     def yield_dashboard_lineage(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaLineageRequest]]:
         """Also link each Sigma Data Model to the workbook elements reading it, once per workbook"""
-        if dashboard_details and dashboard_details.elements is None:
-            # Its elements were not read: an edge sent now would replace their stored lineage under overrideLineage
-            return
         self._failed_lineage_elements = set()
         yield from super().yield_dashboard_lineage(dashboard_details)
         if not (dashboard_details and self.source_config.includeDataModels):
@@ -557,7 +549,7 @@ class SigmaSource(DashboardServiceSource):
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = dashboard_details.elements or []
+            self.data_models = dashboard_details.elements
             for data_model in self.data_models or []:
                 # Skip non-visualization elements (text boxes, dividers, buttons, controls)
                 # to avoid creating DataModel entries for elements that have no data source.
@@ -582,47 +574,6 @@ class SigmaSource(DashboardServiceSource):
                             stackTrace=traceback.format_exc(),
                         )
                     )
-
-    def mark_dashboards_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """
-        Skip when a workbook read failed: the live workbooks it hid are missing from this run
-        (ADR:2026-11-07-a-sigma-run-that-cannot-read-everything-skips-the-stale-passes-it-cannot-confirm)
-        """
-        if self.source_config.markDeletedDashboards and self.client.workbooks_incomplete:
-            yield self._skipped_stale_pass("dashboards", "some Sigma workbooks could not be read")
-            return
-        yield from super().mark_dashboards_as_deleted()
-
-    def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """Skip when a workbook, element or data model read failed: the live data models it hid are missing"""
-        if self.source_config.markDeletedDataModels and (
-            self.client.workbooks_incomplete or self.client.elements_incomplete or self.client.data_models_incomplete
-        ):
-            yield self._skipped_stale_pass(
-                "data models", "some Sigma workbooks, elements or data models could not be read"
-            )
-            return
-        yield from super().mark_datamodels_as_deleted()
-
-    def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
-        """Skip when a workbook or element read failed: the live charts it hid are missing from this run"""
-        if self.source_config.markDeletedCharts and (
-            self.client.workbooks_incomplete or self.client.elements_incomplete
-        ):
-            yield self._skipped_stale_pass("charts", "some Sigma workbooks or elements could not be read")
-            return
-        yield from super().mark_charts_as_deleted()
-
-    @staticmethod
-    def _skipped_stale_pass(entities: str, cause: str) -> Either:
-        """A failure in the run's status: the read failed, and the pass that would act on it is skipped"""
-        return Either(
-            left=StackTraceError(
-                name=f"Sigma stale {entities}",
-                error=f"Not marking {entities} as deleted: {cause}. The failed read is logged above.",
-            ),
-            right=None,
-        )
 
     def list_datamodels(self) -> Iterable[DataModel]:
         """Sigma Data Models, ingested before the workbooks that read from them"""
