@@ -431,17 +431,27 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
         self._load_string_property_type_ref()
 
     def _get_column_object(self, column: GlueColumn) -> Column:
-        if column.Type.lower().startswith("union"):
-            column.Type = column.Type.replace(" ", "")
-        parsed = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
-            column.Type.lower()
-        )
-        # A union parses to a list of its member types, which has no single dataType to report.
-        parsed_string: dict[str, Any] = (
-            {"dataTypeDisplay": str(column.Type), "dataType": "UNION"}
-            if isinstance(parsed, list)
-            else cast("dict[str, Any]", parsed)
-        )
+        try:
+            if column.Type.lower().startswith("union"):
+                column.Type = column.Type.replace(" ", "")
+            parsed = ColumnTypeParser._parse_datatype_string(  # pylint: disable=protected-access
+                column.Type.lower()
+            )
+            # A union parses to a list of its member types, which has no single dataType to report.
+            parsed_string: dict[str, Any] = (
+                {"dataTypeDisplay": str(column.Type), "dataType": "UNION"}
+                if isinstance(parsed, list)
+                else cast("dict[str, Any]", parsed)
+            )
+        except Exception as exc:
+            # A type outside the Hive grammar, such as the unnamed [...] group a DynamoDB-sourced
+            # table carries, would otherwise drop the whole table along with its other columns.
+            table_name = self.context.get().table_data.Name  # pyright: ignore[reportAttributeAccessIssue]
+            reason = f"Column [{column.Name}] has a type that could not be parsed, ingesting it as UNKNOWN: {exc}"
+            logger.debug(traceback.format_exc())
+            logger.warning("Table [%s]: %s", table_name, reason)
+            self.status.warning(table_name, reason)
+            parsed_string = {"dataTypeDisplay": str(column.Type), "dataType": "UNKNOWN"}
         parsed_string["name"] = truncate_column_name(column.Name)
         parsed_string["displayName"] = column.Name
         # A numeric carries precision and scale instead, so defaulting a length here would
