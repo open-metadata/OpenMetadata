@@ -25,7 +25,7 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
-    ConnectionsResponse,
+    Connection,
     DataModel,
     DataModelsResponse,
     EdgeSource,
@@ -98,7 +98,7 @@ class SigmaApiClient:
         self.workbooks_incomplete = False
         self.elements_incomplete = False
         self.data_models_incomplete = False
-        self._connection_types: LRUCache[str, str] | None = None
+        self._connection_types: LRUCache[str, str | None] = LRUCache(maxsize=512)
 
     def get_auth_token(self) -> tuple[str, int]:
         """
@@ -153,24 +153,19 @@ class SigmaApiClient:
 
     def get_connection_type(self, connection_id: str) -> str | None:
         """
-        The type of a Sigma connection, such as "snowflake" or "bigQuery". The connections are listed once per
-        run; after a failed listing the types not yet read stay unknown, rather than relisting per lookup.
+        The type of a Sigma connection, such as "snowflake" or "bigQuery", read once per connection. A failed
+        read is cached as unknown, so it is not retried for every workbook on that connection.
         """
-        if self._connection_types is None:
-            self._connection_types = LRUCache(maxsize=512)
+        if connection_id not in self._connection_types:
             try:
-                data = None
-                while True:
-                    result = ConnectionsResponse.model_validate(self.client.get("/connections", data=data))
-                    for connection in result.entries:
-                        self._connection_types[connection.connectionId] = connection.type
-                    if not result.nextPage:
-                        break
-                    data = {"page": result.nextPage}
+                self._connection_types[connection_id] = Connection.model_validate(
+                    self.client.get(f"/connections/{connection_id}")
+                ).type
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning("Failed to list Sigma connections: %s", exc)
-        return self._connection_types.get(connection_id)
+                logger.warning("Failed to read Sigma connection %s: %s", connection_id, exc)
+                self._connection_types[connection_id] = None
+        return self._connection_types[connection_id]
 
     def get_workbook_lineage(self, workbook_id: str) -> list[WorkbookLineageEntry]:
         """
@@ -232,42 +227,36 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch owner details for owner {owner_id}: {exc}")
         return None
 
-    def get_page_elements(self, workbook_id: str, page_id: str) -> list[Elements] | None:
+    def get_page_elements(self, workbook_id: str, page_id: str) -> list[Elements]:
         """
-        method to fetch dashboards page elements from api
+        Every element of a workbook page; raises when a page of them cannot be read, so the workbook's
+        elements are read whole or not at all
         """
         elements = []
-        try:
-            result = ElementsResponse.model_validate(
-                self.client.get(f"/workbooks/{workbook_id}/pages/{page_id}/elements")
-            )
-            if result:
-                elements.extend(result.entries)
-                while result.nextPage:
-                    data = {"page": int(result.nextPage)}
-                    result = ElementsResponse.model_validate(
-                        self.client.get(
-                            f"/workbooks/{workbook_id}/pages/{page_id}/elements",
-                            data=data,
-                        )
+        result = ElementsResponse.model_validate(self.client.get(f"/workbooks/{workbook_id}/pages/{page_id}/elements"))
+        if result:
+            elements.extend(result.entries or [])
+            while result.nextPage:
+                data = {"page": int(result.nextPage)}
+                result = ElementsResponse.model_validate(
+                    self.client.get(
+                        f"/workbooks/{workbook_id}/pages/{page_id}/elements",
+                        data=data,
                     )
-                    if result:
-                        elements.extend(result.entries)
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch page elements for workbook {workbook_id}: {exc}")
-            self.elements_incomplete = True
+                )
+                if result:
+                    elements.extend(result.entries or [])
         return elements
 
     def get_chart_details(self, workbook_id: str) -> list[Elements] | None:
         """
-        method to fetch dashboards chart details from api
+        Every element of the workbook, or None when they could not all be read
         """
         try:
             elements_list = []
             pages = WorkBookPageResponse.model_validate(self.client.get(f"/workbooks/{workbook_id}/pages"))
             if not pages.entries:
-                return None
+                return []
             for page in pages.entries:
                 page_elements = self.get_page_elements(workbook_id, page.pageId)
                 if page_elements:

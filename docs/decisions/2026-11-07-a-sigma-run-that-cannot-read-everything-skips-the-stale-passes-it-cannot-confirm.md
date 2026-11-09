@@ -6,7 +6,8 @@
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_sigma.py` (`test_every_stale_pass_runs_when_every_read_succeeds`,
   `test_a_failed_workbook_listing_page_skips_every_stale_pass`, `test_a_failed_workbook_read_skips_every_stale_pass`,
   `test_a_failed_element_read_keeps_charts_and_data_models`, `test_a_failed_data_model_listing_skips_the_data_model_stale_pass`,
-  `test_a_failed_element_read_keeps_the_existing_data_model`)
+  `test_a_failed_element_read_keeps_the_existing_data_model`,
+  `test_a_workbook_whose_elements_cannot_be_read_keeps_its_stored_dashboard`)
 - **Related:** ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing,
   ADR:2026-10-22-tableau-runs-stop-without-deleting-while-the-metadata-api-backfills, `REVIEW.md` "Failed or partial
   discovery never drives deletion"
@@ -24,18 +25,19 @@ complete, so it does not cover a seen set that is partial but not empty.
 - A failed read of a workbook-listing page, or of a workbook's details, skips all three passes (dashboards, charts,
   data models) for that run.
 - A failed read of a workbook's pages, or of a page's elements, skips the chart and data model passes. The dashboard
-  pass still runs: every workbook was read.
+  pass still runs: every workbook was read. That workbook's dashboard and lineage are not sent, so it keeps the
+  charts, data models and lineage the server holds for it.
 - A failed read of the Sigma Data Model listing skips the data model pass.
 - A Sigma Data Model whose elements cannot be read is kept as seen and left unchanged.
 - The failures are tracked by flags on the Sigma client (`workbooks_incomplete`, `elements_incomplete`,
   `data_models_incomplete`), not through `SourceListing`.
-- The run does not fail. Each skipped pass is logged as a warning, which the run's status reports, and so is the
-  failed read.
+- Each skipped pass is a failure in the run's status, which counts toward its success threshold; the run is not
+  stopped. The failed read itself is logged.
 
 ## Consequences
 
 - A transient Sigma error never deletes live workbooks, charts or data models.
 - An entity really removed in Sigma stays until a run whose reads all succeed, so a read that fails on every run
-  blocks the passes it affects for good.
-- Unlike Tableau's backfill guard, the run reports success with warnings. Revisit this if failed reads should fail the
-  run, as `REVIEW.md` asks for a failed listing.
+  blocks the passes it affects for good, and shows as a failure on every run.
+- Unlike Tableau's backfill guard, the run is not stopped. Revisit this if a failed read should fail the run
+  outright, as `REVIEW.md` asks for a failed listing.

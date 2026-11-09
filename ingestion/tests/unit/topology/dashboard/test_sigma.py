@@ -57,6 +57,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
@@ -737,7 +738,6 @@ def sigma_routes() -> dict:
     routes = {
         ("POST", "/v2/auth/token"): {"access_token": "token", "token_type": "bearer", "expires_in": 3600},
         ("GET", "/v2/workbooks"): {"entries": SIGMA_WORKBOOKS, "nextPage": None},
-        ("GET", "/v2/connections"): {"entries": [], "nextPage": None},
         ("GET", "/v2/members/member-1"): sigma_member("member-1", "ada@example.com"),
         ("GET", "/v2/members/member-2"): sigma_member("member-2", "grace@example.com"),
         ("GET", "/v2/files/T1"): {
@@ -910,6 +910,10 @@ def test_a_failed_workbook_read_skips_every_stale_pass(sigma_over_http, routes):
     routes["GET", "/v2/workbooks/wb-2"] = 500
 
     assert stale_passes_run(source) == []
+    # Each skipped pass is a failure in the run's status, not only a log line; a pass turned off is not skipped
+    assert [either.left.name for either in source.mark_charts_as_deleted()] == ["Sigma stale charts"]
+    source.source_config.markDeletedCharts = False
+    assert list(source.mark_charts_as_deleted()) == []
 
 
 @pytest.mark.parametrize(
@@ -921,6 +925,23 @@ def test_a_failed_element_read_keeps_charts_and_data_models(sigma_over_http, rou
     routes["GET", failing_path] = 500
 
     assert stale_passes_run(source) == ["Dashboard"]
+
+
+@pytest.mark.parametrize(
+    "failing_path",
+    ["/v2/workbooks/wb-2/pages", "/v2/workbooks/wb-2/pages/page-1/elements"],
+)
+def test_a_workbook_whose_elements_cannot_be_read_keeps_its_stored_dashboard(sigma_over_http, routes, failing_path):
+    source, _ = sigma_over_http
+    source.source_config.includeOwners = False
+    routes["GET", failing_path] = 500
+    details = source.get_dashboard_details(Workbook(workbookId="wb-2"))
+
+    # Sent with no charts and data models, it would replace the ones the server holds under the workbook
+    assert list(source.yield_dashboard(details)) == []
+    assert source.dashboard_source_state == {f"{MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root}.wb-2"}
+    # Its lineage is left as stored too
+    assert list(source.yield_dashboard_lineage(details)) == []
 
 
 def warehouse_table(service: str, table: str, database: str = "ANALYTICS") -> Table:
@@ -940,19 +961,25 @@ def lineage_sources(
     sql: str | None,
     service_type: DatabaseServiceType = DatabaseServiceType.Snowflake,
     searches: list[str] | None = None,
+    failing: str | None = None,
 ) -> list[str]:
     """
     FQNs of the tables wb-1's element is linked to, over every dbServicePrefixes entry as the base class
     runs it. OpenMetadata's search answers from `catalog` with its wildcard matching; `sql` None takes
-    the fallback path (no queries, element lineage then /files). Table searches are recorded in `searches`.
+    the fallback path (no queries, element lineage then /files). Table searches are recorded in `searches`,
+    and the first search for the table named `failing` raises, as a transient outage would.
     """
     services = {table.fullyQualifiedName.root.split(".")[0] for table in catalog}
+    failed: list[str] = []
 
     def es_search_from_fqn(entity_type, fqn_search_string, **_):
         if entity_type is DatabaseService:
             return [warehouse_service(fqn_search_string, service_type)] if fqn_search_string in services else []
         if searches is not None:
             searches.append(fqn_search_string)
+        if failing and not failed and fqn_search_string.lower().endswith(f".{failing.lower()}"):
+            failed.append(fqn_search_string)
+            raise requests.ConnectionError("search is down")
         return [table for table in catalog if fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())]
 
     def get_by_name(entity, fqn, **_):
@@ -963,7 +990,8 @@ def lineage_sources(
     source.metadata.es_search_from_fqn = es_search_from_fqn
     source.metadata.get_by_name = get_by_name
     source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=prefixes)
-    entries = [{"elementId": "el-wb-1", "name": "Revenue", "sql": sql}] if sql else []
+    # Sigma can leave a query's name out
+    entries = [{"elementId": "el-wb-1", "sql": sql}] if sql else []
     routes["GET", "/v2/workbooks/wb-1/queries"] = {"entries": entries, "nextPage": None}
     details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
     list(source.yield_datamodel(details))
@@ -971,6 +999,7 @@ def lineage_sources(
         either.right.edge.fromEntity.fullyQualifiedName
         for prefix in prefixes or [None]
         for either in source.yield_dashboard_lineage_details(details, prefix)
+        if either.right
     ]
 
 
@@ -1009,9 +1038,11 @@ def test_a_table_found_in_two_configured_services_is_not_linked(sigma_over_http,
 
 @pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
 def test_no_table_is_linked_without_db_service_prefixes(sigma_over_http, routes, sql):
-    source, _ = sigma_over_http
+    source, calls = sigma_over_http
 
     assert lineage_sources(source, routes, [], [warehouse_table("wh_a", "ORDERS")], sql) == []
+    # Nothing could be linked, so nothing is read
+    assert calls["GET", "/v2/workbooks/wb-1/queries"] == 0
 
 
 def test_a_table_matching_twice_in_one_service_is_not_linked(sigma_over_http, routes):
@@ -1043,7 +1074,48 @@ def test_a_failed_table_search_links_nothing(sigma_over_http, routes):
     details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
     list(source.yield_datamodel(details))
 
-    assert list(source.yield_dashboard_lineage_details(details, "wh_a")) == []
+    # Reported, and the element's lineage is left as it is
+    assert [either.right for either in source.yield_dashboard_lineage_details(details, "wh_a")] == [None]
+
+
+JOIN_SQL = "SELECT * FROM ANALYTICS.PUBLIC.ORDERS o JOIN ANALYTICS.PUBLIC.CUSTOMERS c ON o.ID = c.ID"
+
+
+def element_reading_two_tables(routes) -> None:
+    """wb-1's element reads ORDERS and CUSTOMERS on the fallback path too"""
+    routes["GET", "/v2/files/T2"] = sigma_file("T2", "CUSTOMERS", "table")
+    routes["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] = {
+        "dependencies": {},
+        "edges": [
+            {"source": f"inode-{file_id}", "target": "sheet-el-wb-1", "type": "source"} for file_id in ("T1", "T2")
+        ],
+    }
+
+
+@pytest.mark.parametrize("sql", [JOIN_SQL, None], ids=["sql", "fallback"])
+@pytest.mark.parametrize(
+    "failing, linked",
+    [
+        (None, ["wh_a.ANALYTICS.PUBLIC.CUSTOMERS", "wh_a.ANALYTICS.PUBLIC.ORDERS"]),
+        ("ORDERS", []),
+        ("CUSTOMERS", []),
+    ],
+)
+def test_a_failed_table_search_sends_none_of_the_element_edges(sigma_over_http, routes, sql, failing, linked):
+    source, _ = sigma_over_http
+    element_reading_two_tables(routes)
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_a", "CUSTOMERS")]
+
+    # Part of an element's edges would replace its whole lineage under overrideLineage
+    assert sorted(lineage_sources(source, routes, ["wh_a"], catalog, sql, failing=failing)) == linked
+
+
+def test_a_table_search_that_failed_once_fails_for_every_prefix(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "CUSTOMERS")]
+
+    # The later prefix's call would otherwise search again and send only its own table
+    assert lineage_sources(source, routes, ["wh_a", "wh_b"], catalog, JOIN_SQL, failing="CUSTOMERS") == []
 
 
 @pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
@@ -1142,23 +1214,23 @@ def sigma_connection(connection_id: str, connection_type: str) -> dict:
     }
 
 
-def test_connection_types_come_from_one_listing_of_every_page(sigma_over_http, routes):
+def test_each_connection_type_is_read_once(sigma_over_http, routes):
     source, calls = sigma_over_http
-    routes["GET", "/v2/connections"] = {"entries": [sigma_connection("conn-sf", "snowflake")], "nextPage": "2"}
-    routes["GET", "/v2/connections", "2"] = {"entries": [sigma_connection("conn-bq", "bigQuery")], "nextPage": None}
+    routes["GET", "/v2/connections/conn-sf"] = sigma_connection("conn-sf", "snowflake")
+    routes["GET", "/v2/connections/conn-bq"] = sigma_connection("conn-bq", "bigQuery")
 
-    types = [source.client.get_connection_type(connection) for connection in ("conn-sf", "conn-bq", "conn-other")]
+    types = [source.client.get_connection_type(connection) for connection in ("conn-sf", "conn-bq", "conn-sf")]
 
-    assert types == ["snowflake", "bigQuery", None]
-    assert calls["GET", "/v2/connections"] == 2
+    assert types == ["snowflake", "bigQuery", "snowflake"]
+    assert (calls["GET", "/v2/connections/conn-sf"], calls["GET", "/v2/connections/conn-bq"]) == (1, 1)
 
 
-def test_a_failed_connection_listing_leaves_types_unknown_without_relisting(sigma_over_http, routes):
+def test_a_failed_connection_read_leaves_its_type_unknown_without_rereading(sigma_over_http, routes):
     source, calls = sigma_over_http
-    routes["GET", "/v2/connections"] = 500
+    routes["GET", "/v2/connections/conn-sf"] = 500
 
     assert [source.client.get_connection_type("conn-sf") for _ in range(2)] == [None, None]
-    assert calls["GET", "/v2/connections"] == 1
+    assert calls["GET", "/v2/connections/conn-sf"] == 1
 
 
 # Parses to the table only in BigQuery's dialect; Snowflake's (the test prefix service's) finds none
@@ -1173,10 +1245,8 @@ def workbook_on_connections(routes, connection_types: dict[str, str]) -> None:
         ],
         "nextPage": None,
     }
-    routes["GET", "/v2/connections"] = {
-        "entries": [sigma_connection(connection, kind) for connection, kind in connection_types.items()],
-        "nextPage": None,
-    }
+    for connection, kind in connection_types.items():
+        routes["GET", f"/v2/connections/{connection}"] = sigma_connection(connection, kind)
 
 
 def test_sql_is_parsed_in_the_dialect_of_the_workbook_connection(sigma_over_http, routes):
@@ -1359,6 +1429,83 @@ def test_a_workbook_element_reading_a_sigma_data_model_gets_lineage_from_it(sigm
     assert data_model_edges(source) == [
         ("mock_sigma.model.d5a56ed4-16bf-4de3-be32-e0738f31be42", "mock_sigma.model.3fqWi0z9SWwxuilnuq8w34")
     ]
+
+
+def elements_reading_data_models(routes, reads: dict[str, list[str]]) -> None:
+    """wb-1's lineage, where each element reads the data models listed for it"""
+    data_model_ids = sorted({data_model_id for read in reads.values() for data_model_id in read})
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = {
+        "entries": [
+            *(
+                {"elementId": element, "dataSourceIds": read, "sourceIds": [], "type": "element"}
+                for element, read in reads.items()
+            ),
+            *(
+                {"dataModelId": data_model_id, "name": data_model_id, "type": "data-model"}
+                for data_model_id in data_model_ids
+            ),
+        ],
+        "nextPage": None,
+    }
+
+
+def linked_elements(results) -> list[str]:
+    """The data model links sent, by the element they point to"""
+    return [
+        either.right.lineage_request.edge.toEntity.fullyQualifiedName
+        for either in results
+        if getattr(either.right, "lineage_request", None)
+    ]
+
+
+def data_model_named_by_fqn(entity, fqn, **_):
+    """A data model OpenMetadata knows for any FQN, identified by it"""
+    if entity is not DashboardDataModel:
+        return None
+    return DashboardDataModel(
+        id=str(uuid5(NAMESPACE_URL, fqn)),
+        name=fqn.rsplit(".", 1)[-1],
+        fullyQualifiedName=fqn,
+        dataModelType="SigmaDataModel",
+        columns=[],
+    )
+
+
+def test_a_failed_data_model_lookup_sends_none_of_that_element_links(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    elements_reading_data_models(routes, {"el-x": ["dm-a", "dm-b"], "el-y": ["dm-b"]})
+
+    def get_by_name(entity, fqn, **kwargs):
+        if fqn.endswith(".dm-a"):
+            raise APIError({"code": 500, "message": "server error"})
+        return data_model_named_by_fqn(entity, fqn, **kwargs)
+
+    source.metadata.get_by_name = get_by_name
+    results = list(source.yield_dashboard_lineage(source.get_dashboard_details(Workbook(workbookId="wb-1"))))
+
+    # The dm-b link alone would replace el-x's whole lineage under overrideLineage; el-y is unaffected
+    assert [either.left.name for either in results if either.left] == ["Sales wb-1 Data Model Lineage"]
+    assert linked_elements(results) == ["mock_sigma.model.el-y"]
+
+
+@pytest.mark.parametrize(
+    "sql, failure",
+    [(SIGMA_SQL, "Sales wb-1 Lineage"), (None, "Sales wb-1 Element el-wb-1 File-Based Lineage")],
+    ids=["sql", "fallback"],
+)
+def test_no_data_model_link_is_sent_into_an_element_whose_lineage_failed(sigma_over_http, routes, sql, failure):
+    source, _ = sigma_over_http
+    elements_reading_data_models(routes, {"el-wb-1": ["dm-a"], "el-y": ["dm-b"]})
+    # Sets up OpenMetadata's side and the element's SQL; the ORDERS search fails
+    catalog = [warehouse_table("wh_a", "ORDERS")]
+    assert lineage_sources(source, routes, ["wh_a"], catalog, sql, failing="ORDERS") == []
+    source.metadata.get_by_name = data_model_named_by_fqn
+
+    results = list(source.yield_dashboard_lineage(source.get_dashboard_details(Workbook(workbookId="wb-1"))))
+
+    # A link into el-wb-1 would replace the table lineage this run could not look up, under overrideLineage
+    assert [either.left.name for either in results if either.left] == [failure]
+    assert linked_elements(results) == ["mock_sigma.model.el-y"]
 
 
 def test_no_data_model_lineage_is_read_when_data_models_are_off(sigma_over_http, routes):

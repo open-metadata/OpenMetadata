@@ -116,8 +116,10 @@ class SigmaSource(DashboardServiceSource):
     ):
         super().__init__(config, metadata)
         self.data_models: list[Elements] = []
+        # The elements of the workbook being linked whose lineage could not be resolved
+        self._failed_lineage_elements: set[str] = set()
         # The lineage stage runs once per dbServicePrefixes entry, and each run needs every prefix's match
-        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str] | None] = LRUCache(
+        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str] | str | None] = LRUCache(
             maxsize=MAX_RESOLVED_TABLES
         )
 
@@ -141,7 +143,7 @@ class SigmaSource(DashboardServiceSource):
         """
         dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
         if dashboard_details:
-            dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
+            dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId)
         return dashboard_details
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
@@ -185,6 +187,10 @@ class SigmaSource(DashboardServiceSource):
                 sourceUrl=SourceUrl(dashboard_details.url),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
+            if dashboard_details.elements is None:
+                # Sending it would replace the charts and data models the server holds under the workbook with none
+                self.register_record(dashboard_request=dashboard_request)
+                return
             yield Either(right=dashboard_request)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
@@ -204,7 +210,7 @@ class SigmaSource(DashboardServiceSource):
             logger.warning(f"Skipping charts - dashboard details are None (API error)")  # noqa: F541
             return
 
-        for chart in dashboard_details.elements:
+        for chart in dashboard_details.elements or []:
             try:
                 if filter_by_chart(self.source_config.chartFilterPattern, chart.name or ""):
                     self.status.filter(chart.name, "Chart Pattern not allowed")
@@ -259,15 +265,22 @@ class SigmaSource(DashboardServiceSource):
         The one table the reference names across the dbServicePrefixes, returned on the call for the
         prefix it was found under. Lineage must not guess, so a reference matching several tables, or
         with no prefix configured, resolves to none. A reference is resolved once per run, as every
-        prefix's call needs the same answer.
+        prefix's call needs the same answer; a failed search fails it for every prefix's call.
         """
         if not (schema and table):
             return None
         key = (database, schema, table)
         if key not in self._resolved_tables:
-            self._resolved_tables[key] = self._resolve_table(database, schema, table)
+            try:
+                self._resolved_tables[key] = self._resolve_table(database, schema, table)
+            except Exception as exc:
+                # Its message, cached so the reference fails for every prefix's call of the run
+                self._resolved_tables[key] = str(exc)
+                raise
         resolved = self._resolved_tables[key]
-        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+        if resolved is None or isinstance(resolved, tuple):
+            return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+        raise RuntimeError(f"The search for table {table} failed earlier in this run: {resolved}")
 
     def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str] | None:
         """The one table the reference names across the dbServicePrefixes, with the prefix it was found under"""
@@ -305,19 +318,15 @@ class SigmaSource(DashboardServiceSource):
         db_service_prefix: str | None = None,
     ) -> Table | None:
         """
-        Get the table entity for lineage
+        Get the table entity for lineage. A failed search raises: the element's lineage is then skipped, as a part
+        of it would replace the whole under overrideLineage.
         """
         if not node.node_schema:
             return None
         schema_parts = node.node_schema.split(".")
-        try:
-            return self._get_table_entity(
-                schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name, db_service_prefix
-            )
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.warning(f"Error occured while finding table fqn: {exc}")
-        return None
+        return self._get_table_entity(
+            schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name, db_service_prefix
+        )
 
     def _yield_lineage_from_files(
         self,
@@ -328,40 +337,9 @@ class SigmaSource(DashboardServiceSource):
         Yield lineage using file-based API (fallback method)
         """
         for data_model in self.data_models or []:
-            try:
-                # Skip non-visualization elements to avoid Sigma API 500 errors.
-                if not data_model.vizualizationType:
-                    continue
-
-                data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
-                if not data_model_entity:
-                    continue
-
-                nodes = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
-
-                if not nodes:
-                    continue
-
-                for node in nodes:
-                    table_entity = self._get_table_entity_from_node(node, db_service_prefix)
-                    if table_entity:
-                        column_lineage = None
-                        if data_model.columns:
-                            columns_list = data_model.columns
-                            column_lineage = self._get_column_lineage(table_entity, data_model_entity, columns_list)
-                        yield self._get_add_lineage_request(
-                            to_entity=data_model_entity,
-                            from_entity=table_entity,
-                            column_lineage=column_lineage,
-                        )
-            except Exception as exc:
-                yield Either(
-                    left=StackTraceError(
-                        name=f"{dashboard_details.name} File-Based Lineage",
-                        error=f"Error in file-based lineage: {exc}",
-                        stackTrace=traceback.format_exc(),
-                    )
-                )
+            # Skip non-visualization elements to avoid Sigma API 500 errors.
+            if data_model.vizualizationType:
+                yield from self._yield_lineage_from_files_for_element(dashboard_details, data_model, db_service_prefix)
 
     def _yield_lineage_from_files_for_element(
         self,
@@ -382,6 +360,7 @@ class SigmaSource(DashboardServiceSource):
             if not nodes:
                 return
 
+            requests = []
             for node in nodes:
                 table_entity = self._get_table_entity_from_node(node, db_service_prefix)
                 if table_entity:
@@ -389,12 +368,18 @@ class SigmaSource(DashboardServiceSource):
                     if data_model.columns:
                         columns_list = data_model.columns
                         column_lineage = self._get_column_lineage(table_entity, data_model_entity, columns_list)
-                    yield self._get_add_lineage_request(
-                        to_entity=data_model_entity,
-                        from_entity=table_entity,
-                        column_lineage=column_lineage,
+                    requests.append(
+                        self._get_add_lineage_request(
+                            to_entity=data_model_entity,
+                            from_entity=table_entity,
+                            column_lineage=column_lineage,
+                        )
                     )
+            # Sent once every table is looked up: a failed search skips the element, as a part of its lineage would
+            # replace the whole under overrideLineage
+            yield from requests
         except Exception as exc:
+            self._failed_lineage_elements.add(data_model.elementId)
             yield Either(
                 left=StackTraceError(
                     name=f"{dashboard_details.name} Element {data_model.elementId} File-Based Lineage",
@@ -414,6 +399,9 @@ class SigmaSource(DashboardServiceSource):
         if not dashboard_details:
             logger.warning(f"Skipping lineage - dashboard details are None (API error)")  # noqa: F541
             return
+        if not db_service_prefix:
+            # Tables resolve only within the dbServicePrefixes services: without one there is nothing to link
+            return
 
         queries_response = self.client.get_workbook_queries(dashboard_details.workbookId)
 
@@ -421,7 +409,7 @@ class SigmaSource(DashboardServiceSource):
             yield from self._yield_lineage_from_files(dashboard_details, db_service_prefix)
             return
 
-        db_service_entity = self._db_services.get(db_service_prefix) if db_service_prefix else None
+        db_service_entity = self._db_services.get(db_service_prefix)
         dialect = None
 
         queries_by_element = {q.elementId: q for q in queries_response.entries}
@@ -457,6 +445,7 @@ class SigmaSource(DashboardServiceSource):
                 )
                 lineage_parser = LineageParser(query_obj.sql, dialect, parser_type=self.get_query_parser_type())
 
+                tables = []
                 for source_table in lineage_parser.source_tables or []:
                     database_schema_table = fqn.split_table_name(str(source_table))
                     table_entity = self._get_table_entity(
@@ -466,12 +455,14 @@ class SigmaSource(DashboardServiceSource):
                         db_service_prefix,
                     )
                     if table_entity:
-                        yield self._get_add_lineage_request(
-                            to_entity=data_model_entity,
-                            from_entity=table_entity,
-                        )
+                        tables.append(table_entity)
+                # Sent once every table is looked up: a failed search skips the element, as a part of its lineage
+                # would replace the whole under overrideLineage
+                for table_entity in tables:
+                    yield self._get_add_lineage_request(to_entity=data_model_entity, from_entity=table_entity)
 
             except Exception as exc:
+                self._failed_lineage_elements.add(data_model.elementId)
                 yield Either(
                     left=StackTraceError(
                         name=f"{dashboard_details.name} Lineage",
@@ -502,24 +493,43 @@ class SigmaSource(DashboardServiceSource):
 
     def yield_dashboard_lineage(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaLineageRequest]]:
         """Also link each Sigma Data Model to the workbook elements reading it, once per workbook"""
+        if dashboard_details and dashboard_details.elements is None:
+            # Its elements were not read: an edge sent now would replace their stored lineage under overrideLineage
+            return
+        self._failed_lineage_elements = set()
         yield from super().yield_dashboard_lineage(dashboard_details)
         if not (dashboard_details and self.source_config.includeDataModels):
             return
         lineage = self._workbook_lineage(dashboard_details)
         data_model_ids = {entry.dataModelId for entry in lineage if entry.dataModelId}
         # An element row lists the data models it reads among its root sources (dataSourceIds)
-        links = {
-            (data_model_id, entry.elementId)
-            for entry in lineage
-            if entry.elementId
-            for data_model_id in data_model_ids.intersection(entry.dataSourceIds or [])
-        }
-        for data_model_id, element_id in sorted(links):
-            from_entity, to_entity = self._get_datamodel(data_model_id), self._get_datamodel(element_id)
-            if from_entity and to_entity:
-                yield from self.yield_lineage_request(
-                    self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+        links: dict[str, set[str]] = {}
+        for entry in lineage:
+            if entry.elementId:
+                links.setdefault(entry.elementId, set()).update(data_model_ids.intersection(entry.dataSourceIds or []))
+        for element_id, linked_ids in sorted(links.items()):
+            # Under overrideLineage a link into an element replaces its whole lineage: none is sent into an element
+            # whose lineage could not be resolved this run, nor a part of its links
+            if not linked_ids or element_id in self._failed_lineage_elements:
+                continue
+            try:
+                to_entity = self._get_datamodel(element_id)
+                from_entities = [self._get_datamodel(data_model_id) for data_model_id in sorted(linked_ids)]
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=f"{dashboard_details.name} Data Model Lineage",
+                        error=f"Error linking Sigma data models to element [{element_id}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
                 )
+                continue
+            for from_entity in from_entities:
+                if from_entity and to_entity:
+                    yield from self.yield_lineage_request(
+                        self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+                    )
 
     def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
@@ -547,7 +557,7 @@ class SigmaSource(DashboardServiceSource):
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = dashboard_details.elements
+            self.data_models = dashboard_details.elements or []
             for data_model in self.data_models or []:
                 # Skip non-visualization elements (text boxes, dividers, buttons, controls)
                 # to avoid creating DataModel entries for elements that have no data source.
@@ -578,24 +588,41 @@ class SigmaSource(DashboardServiceSource):
         Skip when a workbook read failed: the live workbooks it hid are missing from this run
         (ADR:2026-11-07-a-sigma-run-that-cannot-read-everything-skips-the-stale-passes-it-cannot-confirm)
         """
-        if self.client.workbooks_incomplete:
-            logger.warning("Not marking dashboards as deleted: some Sigma workbooks could not be read")
+        if self.source_config.markDeletedDashboards and self.client.workbooks_incomplete:
+            yield self._skipped_stale_pass("dashboards", "some Sigma workbooks could not be read")
             return
         yield from super().mark_dashboards_as_deleted()
 
     def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Skip when a workbook, element or data model read failed: the live data models it hid are missing"""
-        if self.client.workbooks_incomplete or self.client.elements_incomplete or self.client.data_models_incomplete:
-            logger.warning("Not marking data models as deleted: some Sigma workbooks or elements could not be read")
+        if self.source_config.markDeletedDataModels and (
+            self.client.workbooks_incomplete or self.client.elements_incomplete or self.client.data_models_incomplete
+        ):
+            yield self._skipped_stale_pass(
+                "data models", "some Sigma workbooks, elements or data models could not be read"
+            )
             return
         yield from super().mark_datamodels_as_deleted()
 
     def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Skip when a workbook or element read failed: the live charts it hid are missing from this run"""
-        if self.client.workbooks_incomplete or self.client.elements_incomplete:
-            logger.warning("Not marking charts as deleted: some Sigma workbooks or elements could not be read")
+        if self.source_config.markDeletedCharts and (
+            self.client.workbooks_incomplete or self.client.elements_incomplete
+        ):
+            yield self._skipped_stale_pass("charts", "some Sigma workbooks or elements could not be read")
             return
         yield from super().mark_charts_as_deleted()
+
+    @staticmethod
+    def _skipped_stale_pass(entities: str, cause: str) -> Either:
+        """A failure in the run's status: the read failed, and the pass that would act on it is skipped"""
+        return Either(
+            left=StackTraceError(
+                name=f"Sigma stale {entities}",
+                error=f"Not marking {entities} as deleted: {cause}. The failed read is logged above.",
+            ),
+            right=None,
+        )
 
     def list_datamodels(self) -> Iterable[DataModel]:
         """Sigma Data Models, ingested before the workbooks that read from them"""

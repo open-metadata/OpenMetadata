@@ -37,8 +37,9 @@ class WorkbookDetails(BaseModel):
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
-    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
-    elements: list["Elements"] = []
+    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages;
+    # None when they could not all be read.
+    elements: list["Elements"] | None = None
     # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
     lineage: list["WorkbookLineageEntry"] | None = None
 
@@ -139,11 +140,6 @@ class DataModelsResponse(BaseModel):
 class Connection(BaseModel):
     connectionId: str  # noqa: N815
     type: str
-
-
-class ConnectionsResponse(BaseModel):
-    entries: list[Connection] = []
-    nextPage: str | None = None  # noqa: N815
 
 
 class WorkbookLineageEntry(BaseModel):
