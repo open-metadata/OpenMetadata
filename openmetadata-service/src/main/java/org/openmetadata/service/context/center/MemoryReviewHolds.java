@@ -13,6 +13,8 @@
 
 package org.openmetadata.service.context.center;
 
+import java.util.EnumSet;
+import java.util.Set;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
@@ -24,7 +26,25 @@ import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
  * holds it for review, and approving a document's memories leaves it for a decision.
  */
 public final class MemoryReviewHolds {
+  /** Stages a review leaves a pill in once a person decided it; Draft still awaits a decision. */
+  private static final Set<ContextMemoryStatus> DECIDED_STAGES =
+      EnumSet.of(
+          ContextMemoryStatus.REJECTED,
+          ContextMemoryStatus.SUPERSEDED,
+          ContextMemoryStatus.INVALIDATED,
+          ContextMemoryStatus.DEPRECATED,
+          ContextMemoryStatus.ARCHIVED);
+
   private MemoryReviewHolds() {}
+
+  /**
+   * Whether a person decided {@code pill}: a review retired it, or a person corrected it (Manual).
+   * Nothing records who approved an Approved pill, so approval alone is no decision here.
+   */
+  public static boolean isDecided(ContextMemory pill) {
+    return pill.getSourceType() == ContextMemorySourceType.MANUAL
+        || DECIDED_STAGES.contains(pill.getEntityStatus());
+  }
 
   /**
    * The engine maintains the pills extraction creates, Approved or awaiting review (Unprocessed).

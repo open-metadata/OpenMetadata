@@ -347,6 +347,38 @@ class ExtractedMemoryApproverTest {
     }
   }
 
+  /**
+   * One memory, one review: a memory two documents share is approved from either, but a second
+   * value the other document gives its question leaves it for an admin in both.
+   */
+  @Test
+  void aHoldInOneDocumentBlocksApprovalFromAnother() {
+    EntityReference original =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    EntityReference copy =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemory shared =
+        extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED).withAnswer("15%");
+    ContextMemory secondValue =
+        extracted("Commission rate?", ContextMemoryStatus.UNPROCESSED).withAnswer("20%");
+    ContextMemoryRepository repository = mock(ContextMemoryRepository.class);
+    when(repository.listExtractedMemories(copy.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(shared));
+    when(repository.listExtractedMemories(original.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(shared, secondValue));
+    when(repository.listExtractedSources(shared.getId())).thenReturn(List.of(original, copy));
+    ExtractedMemoryApprover approver = new ExtractedMemoryApprover(repository);
+
+    ExtractedMemoryApproval preview = approver.preview(copy, "alice", false);
+
+    assertEquals(List.of(), preview.getApprovable());
+    assertEquals(List.of(shared.getId()), refIds(preview.getNeedsDecision()));
+    ExtractedMemoryApproval result = approver.approve(copy, asRead(shared), "alice", false);
+    assertEquals(0, result.getApproved());
+    assertEquals(1, result.getFailed());
+    assertEquals(List.of(shared.getId()), refIds(result.getNeedsDecision()));
+  }
+
   @Test
   void aPreviewCountsWhatApprovalWouldDoAndNamesWhatItLeaves() {
     EntityReference file =

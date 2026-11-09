@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.context;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.google.common.cache.Cache;
@@ -28,6 +29,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -76,9 +78,11 @@ public final class ContextMemoryVisibility {
   private static final List<String> DECISION_FIELDS =
       List.of(Entity.FIELD_OWNERS, ContextMemoryRepository.FIELD_PRIMARY_ENTITY);
 
-  /** What a listing also reads: whose document a pending extracted pill came from. */
+  /** What a listing also reads: the documents a pending extracted pill is linked to. */
   private static final List<String> LISTING_FIELDS =
-      List.of(ContextMemoryRepository.FIELD_SOURCE_ENTITY);
+      List.of(
+          ContextMemoryRepository.FIELD_SOURCE_ENTITY,
+          ContextMemoryRepository.FIELD_RELATED_ENTITIES);
 
   /** Whether a caller may read the asset an Entity memory is anchored to. */
   @FunctionalInterface
@@ -323,12 +327,29 @@ public final class ContextMemoryVisibility {
     return status != null && ContextMemorySearchVisibility.OWNER_PENDING_STATUSES.contains(status);
   }
 
+  /** One memory, one review: the owners of every document a pill is linked to may list it. */
   private static boolean ownsExtractedSource(
       ContextMemory memory, String userName, SourceOwnership ownership) {
     return ContextMemoryWriteAccess.isAutomatedSource(memory.getSourceType())
-        && memory.getSourceEntity() != null
         && userName != null
-        && ownership.owns(userName, memory.getSourceEntity());
+        && linkedDocuments(memory).anyMatch(document -> ownership.owns(userName, document));
+  }
+
+  /**
+   * Its source, its anchor and the documents reuse added to its related entities. A listing reads
+   * one source of several, the first by name, so the anchor counts as well.
+   */
+  private static Stream<EntityReference> linkedDocuments(ContextMemory memory) {
+    return Stream.concat(
+            Stream.of(memory.getSourceEntity(), memory.getPrimaryEntity()),
+            listOrEmpty(memory.getRelatedEntities()).stream())
+        .filter(ContextMemoryVisibility::isDocument);
+  }
+
+  private static boolean isDocument(EntityReference reference) {
+    return reference != null
+        && (Entity.CONTEXT_FILE.equals(reference.getType())
+            || Entity.PAGE.equals(reference.getType()));
   }
 
   /**

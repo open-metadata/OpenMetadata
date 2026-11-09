@@ -1,10 +1,11 @@
 # File extraction reuses an existing memory before it creates a duplicate
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-09-29 (initial) · v2 2026-11-03 (deduplication keeps conflicting numbers)
+- **Revisions:** v1 2026-09-29 (initial) · v2 2026-11-03 (deduplication keeps conflicting numbers) ·
+  v3 2026-11-09 (a ranked lookup; candidates in every stage keep their decision)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
-  `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`
+  `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `ContextMemoryExtractionIT`
 - **Related:** Context Center file upload and memory extraction; PR #34154
 
 ## Context
@@ -113,3 +114,30 @@ v2 (2026-11-03): extraction no longer deduplicates by question alone. It keeps e
 numbers conflict with each kept answer to the same question, and re-extraction matches exact
 question and answer before similarity, never pairing conflicting numbers. See
 ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values.
+
+v3 (2026-11-09): §3 finds reworded facts without vector search, and a person's decision on a
+memory covers every document that states its fact.
+
+- When vector search is off, fails or finds no eligible candidate, the memory index is asked for a
+  ranked `multi_match` of type `cross_fields` over question, answer, title and summary, any 30% of
+  the fact's terms (operator OR, `minimum_should_match` 30%), instead of one all-terms query that
+  no single field ever matched. It reads 20 hits and keeps, in rank order, the first five eligible
+  ones. That lookup applies no subject visibility: the stages it returns are those of the caller's
+  filter, and the duplicate check's filter names none. Vector search still admits only Approved
+  memories, so with it on a memory awaiting review or decided is a candidate only when the memory
+  index lookup runs.
+- A candidate is a memory linked to a document, in any stage, that is not soft-deleted: a
+  `FileExtraction` memory, or a `Manual` one a person corrected that is still linked to its
+  document. It must still be entity-visible, of the same memory scope and anchored org-wide. Memory
+  type is no longer compared; the judge decides.
+- A candidate whose numbers conflict with the fact never links. Identical question and answer link
+  without the judge; otherwise one judge call weighs the fact against the other candidates. A
+  linked memory keeps its stage, so the document takes the decision made on it: a rejected fact
+  stays rejected. A conflicting candidate a person decided (Rejected, Superseded, Invalidated,
+  Deprecated, Archived, or corrected) holds the fact for review when re-extraction would hold it
+  beside that memory (`MemoryReviewHolds.holds`): the new memory starts `Unprocessed` under every
+  provider. Beside any other candidate, a replaced number is a new memory in its derived stage.
+- §1's identical upload links every memory of the earlier file that is not soft-deleted, whatever
+  its stage, corrections included, provided each is entity-visible and entity-scoped.
+- Stop words count toward the 30%, so most new facts find some candidate: expect about one small
+  judge call per new fact that has candidates, and none for a verbatim fact or an identical file.

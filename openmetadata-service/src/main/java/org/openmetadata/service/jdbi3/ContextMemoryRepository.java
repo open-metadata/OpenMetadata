@@ -1156,6 +1156,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return memories;
   }
 
+  /** The live Context Center sources (files and pages) a knowledge pill is linked to. */
+  public List<EntityReference> listExtractedSources(UUID memoryId) {
+    return findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
+  }
+
   public void linkExtractedMemory(UUID memoryId, EntityReference source) {
     boolean alreadyLinked =
         findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, source.getType())

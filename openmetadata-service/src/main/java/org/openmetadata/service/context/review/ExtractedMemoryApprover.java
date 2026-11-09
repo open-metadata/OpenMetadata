@@ -16,10 +16,12 @@ package org.openmetadata.service.context.review;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import jakarta.ws.rs.BadRequestException;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -44,7 +46,8 @@ import org.openmetadata.service.security.AuthorizationException;
  * Only the pills the person was shown are approved, and only as they were read. A pill asking the
  * question of another Unprocessed, Draft or Approved pill with a different answer is a second value,
  * and one re-extraction would hold beside a decided pill may be that decision reworded: both stay
- * pending.
+ * pending. A pill several documents share has one review, so what any of them leaves pending stays
+ * pending from the others.
  */
 @Slf4j
 public final class ExtractedMemoryApprover {
@@ -106,18 +109,46 @@ public final class ExtractedMemoryApprover {
   }
 
   private Plan visiblePlan(EntityReference source, String user, boolean isAdmin) {
-    Plan plan = plan(extractedFrom(source));
+    List<ContextMemory> memories = extractedFrom(source);
+    Plan plan = plan(memories, heldInOtherDocuments(memories, source));
     return new Plan(
         ContextMemoryVisibility.filterByVisibility(plan.approvable(), user, isAdmin),
         ContextMemoryVisibility.filterByVisibility(plan.needsDecision(), user, isAdmin));
   }
 
   static Plan plan(List<ContextMemory> memories) {
+    return plan(memories, Set.of());
+  }
+
+  /** {@code heldElsewhere}: pills another document they are linked to leaves for a decision. */
+  static Plan plan(List<ContextMemory> memories, Set<UUID> heldElsewhere) {
     Map<Boolean, List<ContextMemory>> contested =
         memories.stream()
             .filter(ExtractedMemoryApprover::awaitsApproval)
-            .collect(Collectors.partitioningBy(memory -> isContested(memory, memories)));
+            .collect(
+                Collectors.partitioningBy(
+                    memory ->
+                        heldElsewhere.contains(memory.getId()) || isContested(memory, memories)));
     return new Plan(contested.get(false), contested.get(true));
+  }
+
+  /** What the other documents this document's pending pills are linked to leave for a decision. */
+  private Set<UUID> heldInOtherDocuments(List<ContextMemory> memories, EntityReference source) {
+    return otherDocuments(memories, source).stream()
+        .flatMap(document -> plan(extractedFrom(document)).needsDecision().stream())
+        .map(ContextMemory::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private Collection<EntityReference> otherDocuments(
+      List<ContextMemory> memories, EntityReference source) {
+    return memories.stream()
+        .filter(ExtractedMemoryApprover::awaitsApproval)
+        .flatMap(memory -> repository.listExtractedSources(memory.getId()).stream())
+        .filter(document -> !document.getId().equals(source.getId()))
+        .collect(
+            Collectors.toMap(EntityReference::getId, Function.identity(), (first, second) -> first))
+        .values();
   }
 
   /**

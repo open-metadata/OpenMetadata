@@ -2,7 +2,6 @@ package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -22,6 +21,8 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -56,12 +57,16 @@ class SemanticMemoryDuplicateFinderTest {
   @Mock private SearchRepository searchRepository;
   @Mock private SearchClient searchClient;
 
+  private static final EntityReference HANDBOOK =
+      new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+
   private ContextMemory memory(UUID id, String question, String answer) {
     return new ContextMemory()
         .withId(id)
         .withQuestion(question)
         .withAnswer(answer)
         .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+        .withSourceEntity(HANDBOOK)
         .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY));
   }
@@ -183,8 +188,9 @@ class SemanticMemoryDuplicateFinderTest {
     when(repository.hasOrgWideAnchor(candidate)).thenReturn(false);
     rankedHits(List.of());
 
-    assertNull(
-        finder.findEquivalent(
+    assertEquals(
+        new DuplicateMatch.None(),
+        finder.findMatch(
             memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer())));
   }
 
@@ -195,7 +201,9 @@ class SemanticMemoryDuplicateFinderTest {
     ContextMemory derived =
         memory(UUID.randomUUID(), " what is churn? ", "Churn is the share of customers lost.");
 
-    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
+    assertEquals(
+        new DuplicateMatch.Equivalent(candidate),
+        finderWithCandidate(candidate).findMatch(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
@@ -209,7 +217,9 @@ class SemanticMemoryDuplicateFinderTest {
             anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
         .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
 
-    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
+    assertEquals(
+        new DuplicateMatch.Equivalent(candidate),
+        finderWithCandidate(candidate).findMatch(derived));
   }
 
   @Test
@@ -218,9 +228,8 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is the growth rate?", "The growth rate is -15%.");
     ContextMemory derived =
         memory(UUID.randomUUID(), "What is the growth rate?", "The growth rate is +15%.");
-    rankedHits(List.of());
 
-    assertNull(finderWithCandidate(candidate).findEquivalent(derived));
+    assertEquals(new DuplicateMatch.None(), finderWithCandidate(candidate).findMatch(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
@@ -236,7 +245,9 @@ class SemanticMemoryDuplicateFinderTest {
             anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
         .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
 
-    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
+    assertEquals(
+        new DuplicateMatch.Equivalent(candidate),
+        finderWithCandidate(candidate).findMatch(derived));
   }
 
   /** A citation is no value: renumbering "(section 3)" to "(section 4)" keeps the fact reusable. */
@@ -256,7 +267,9 @@ class SemanticMemoryDuplicateFinderTest {
             anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
         .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
 
-    assertEquals(candidate, finderWithCandidate(candidate).findEquivalent(derived));
+    assertEquals(
+        new DuplicateMatch.Equivalent(candidate),
+        finderWithCandidate(candidate).findMatch(derived));
   }
 
   @Test
@@ -265,8 +278,8 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days.");
     ContextMemory derived =
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 30 days.");
-    rankedHits(List.of());
-    assertNull(finderWithCandidate(candidate).findEquivalent(derived));
+
+    assertEquals(new DuplicateMatch.None(), finderWithCandidate(candidate).findMatch(derived));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
@@ -287,13 +300,12 @@ class SemanticMemoryDuplicateFinderTest {
     rankedHits(List.of(candidate));
     eligible(candidate);
 
-    ContextMemory found =
+    DuplicateMatch found =
         new SemanticMemoryDuplicateFinder(
                 repository, () -> vectorService, () -> searchRepository, completionClient)
-            .findEquivalent(
-                memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer()));
+            .findMatch(memory(UUID.randomUUID(), candidate.getQuestion(), candidate.getAnswer()));
 
-    assertEquals(candidate, found);
+    assertEquals(new DuplicateMatch.Equivalent(candidate), found);
     ArgumentCaptor<String> text = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<String> filter = ArgumentCaptor.forClass(String.class);
     verify(searchClient).searchSimilarContextMemories(text.capture(), filter.capture(), eq(20));
@@ -317,9 +329,9 @@ class SemanticMemoryDuplicateFinderTest {
             anyString(), prompt.capture(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
         .thenReturn(List.of());
 
-    assertNull(
-        keywordFinder()
-            .findEquivalent(memory(UUID.randomUUID(), "What is omega?", "Omega rules.")));
+    assertEquals(
+        new DuplicateMatch.None(),
+        keywordFinder().findMatch(memory(UUID.randomUUID(), "What is omega?", "Omega rules.")));
 
     List<String> judged = new ArrayList<>();
     JsonUtils.readTree(prompt.getValue())
@@ -346,7 +358,97 @@ class SemanticMemoryDuplicateFinderTest {
             anyString(), anyString(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
         .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(0)));
 
-    assertEquals(candidate, keywordFinder().findEquivalent(derived));
+    assertEquals(new DuplicateMatch.Equivalent(candidate), keywordFinder().findMatch(derived));
+  }
+
+  /** A fact awaiting review or decided is a candidate too: the lookup asks for every stage. */
+  @Test
+  void theLookupAdmitsEveryStageAndCorrections() throws Exception {
+    ContextMemory waiting =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.")
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    rankedHits(List.of(waiting));
+    eligible(waiting);
+
+    assertEquals(
+        new DuplicateMatch.Equivalent(waiting),
+        keywordFinder()
+            .findMatch(memory(UUID.randomUUID(), waiting.getQuestion(), waiting.getAnswer())));
+    ArgumentCaptor<String> filter = ArgumentCaptor.forClass(String.class);
+    verify(searchClient).searchSimilarContextMemories(anyString(), filter.capture(), eq(20));
+    assertFalse(filter.getValue().contains("entityStatus"), filter.getValue());
+    assertTrue(
+        filter.getValue().contains("{\"terms\":{\"sourceType\":[\"FileExtraction\",\"Manual\"]}}"),
+        filter.getValue());
+    assertTrue(filter.getValue().contains("{\"visibility\":\"Entity\"}"), filter.getValue());
+  }
+
+  /** A correction still linked to its document is a candidate; a note citing none is not. */
+  @Test
+  void aCorrectionIsACandidateButANoteWithoutADocumentIsNot() throws Exception {
+    ContextMemory note =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.")
+            .withSourceType(ContextMemorySourceType.MANUAL)
+            .withSourceEntity(null);
+    ContextMemory correction =
+        memory(UUID.randomUUID(), note.getQuestion(), note.getAnswer())
+            .withSourceType(ContextMemorySourceType.MANUAL);
+    rankedHits(List.of(note, correction));
+    eligible(note);
+    eligible(correction);
+
+    assertEquals(
+        new DuplicateMatch.Equivalent(correction),
+        keywordFinder().findMatch(memory(UUID.randomUUID(), note.getQuestion(), note.getAnswer())));
+  }
+
+  /**
+   * As re-extraction holds values (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values),
+   * a replaced number beside a rejected value is a new claim: only a correction holds it.
+   */
+  @Test
+  void aValueReplacingARejectedFactsNumberIsANewClaim() throws Exception {
+    ContextMemory rejected =
+        memory(UUID.randomUUID(), "What is the refund window?", "Refunds within 30 days.")
+            .withEntityStatus(ContextMemoryStatus.REJECTED);
+    rankedHits(List.of(rejected));
+    eligible(rejected);
+
+    assertEquals(
+        new DuplicateMatch.None(),
+        keywordFinder()
+            .findMatch(
+                memory(UUID.randomUUID(), rejected.getQuestion(), "Refunds within 45 days.")));
+    verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /** Another year's look-alike may be the decided fact reworded; Draft awaits a decision. */
+  @ParameterizedTest
+  @CsvSource({
+    "REJECTED, true",
+    "SUPERSEDED, true",
+    "INVALIDATED, true",
+    "DEPRECATED, true",
+    "ARCHIVED, true",
+    "DRAFT, false",
+    "UNPROCESSED, false",
+    "APPROVED, false"
+  })
+  void onlyADecidedFactHoldsALookAlikeForAnotherYear(ContextMemoryStatus stage, boolean held)
+      throws Exception {
+    ContextMemory existing =
+        memory(UUID.randomUUID(), "What was the VAT rate in 2024?", "20%").withEntityStatus(stage);
+    rankedHits(List.of(existing));
+    eligible(existing);
+
+    DuplicateMatch match =
+        keywordFinder()
+            .findMatch(memory(UUID.randomUUID(), "What was the VAT rate in 2025?", "20%"));
+
+    assertEquals(
+        held ? new DuplicateMatch.ConflictsWithDecision(existing) : new DuplicateMatch.None(),
+        match);
+    verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
   }
 
   @Test
@@ -370,7 +472,6 @@ class SemanticMemoryDuplicateFinderTest {
 
     assertThrows(
         IllegalStateException.class,
-        () ->
-            finder.findEquivalent(memory(UUID.randomUUID(), "What is churn?", "Customers leave.")));
+        () -> finder.findMatch(memory(UUID.randomUUID(), "What is churn?", "Customers leave.")));
   }
 }

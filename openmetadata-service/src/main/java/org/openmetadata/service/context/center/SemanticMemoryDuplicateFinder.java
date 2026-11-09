@@ -10,10 +10,10 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
-import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
@@ -30,11 +30,18 @@ import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
-/** Finds an existing org-visible extracted fact before a new file creates another memory. */
+/**
+ * Finds the memory, in any stage, another document already states a new file's fact with, so the
+ * file takes the decision made on it (ADR:2026-09-29-context-file-memory-reuse).
+ */
 @Slf4j
 public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private static final int CANDIDATE_LIMIT = 5;
   private static final int KNN_LIMIT = 20;
+  private static final List<String> DOCUMENT_FACT_SOURCE_VALUES =
+      ContextMemoryReconciler.DOCUMENT_FACT_SOURCES.stream()
+          .map(ContextMemorySourceType::value)
+          .toList();
 
   /** Ranked hits read so that some remain after the reuse checks the index cannot apply. */
   private static final int KEYWORD_FETCH_LIMIT = 20;
@@ -83,14 +90,37 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   @Override
-  public ContextMemory findEquivalent(ContextMemory derived) {
-    List<ContextMemory> candidates = candidates(derived);
-    for (ContextMemory candidate : candidates) {
-      if (sameFactText(candidate, derived)) {
-        return candidate;
-      }
-    }
-    return judgeEquivalent(derived, candidates);
+  public DuplicateMatch findMatch(ContextMemory derived) {
+    Map<Boolean, List<ContextMemory>> byConflict =
+        candidates(derived).stream()
+            .collect(
+                Collectors.partitioningBy(candidate -> hasConflictingNumbers(candidate, derived)));
+    ContextMemory equivalent = findEquivalent(derived, byConflict.get(false));
+    return equivalent == null
+        ? conflictWithDecision(derived, byConflict.get(true))
+        : new DuplicateMatch.Equivalent(equivalent);
+  }
+
+  /** Numbers that differ never merge, so only a candidate whose numbers agree can be the fact. */
+  private ContextMemory findEquivalent(ContextMemory derived, List<ContextMemory> candidates) {
+    return candidates.stream()
+        .filter(candidate -> sameFactText(candidate, derived))
+        .findFirst()
+        .orElseGet(() -> judgeEquivalent(derived, candidates));
+  }
+
+  /**
+   * Another value for a fact a person decided waits for review, by the rule re-extraction holds a
+   * value beside a decided pill with; beside any other memory it is a new claim.
+   */
+  private static DuplicateMatch conflictWithDecision(
+      ContextMemory derived, List<ContextMemory> conflicting) {
+    return conflicting.stream()
+        .filter(MemoryReviewHolds::isDecided)
+        .filter(candidate -> MemoryReviewHolds.holds(candidate, derived))
+        .findFirst()
+        .<DuplicateMatch>map(DuplicateMatch.ConflictsWithDecision::new)
+        .orElseGet(DuplicateMatch.None::new);
   }
 
   private List<ContextMemory> candidates(ContextMemory derived) {
@@ -112,7 +142,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     Map<String, List<String>> filters =
         Map.of(
             "entityType", List.of(Entity.CONTEXT_MEMORY),
-            "sourceType", List.of(ContextMemorySourceType.FILE_EXTRACTION.value()),
+            "sourceType", DOCUMENT_FACT_SOURCE_VALUES,
             "visibility", List.of(MemoryVisibility.ENTITY.value()));
     VectorSearchResponse response =
         vectorService.search(
@@ -154,11 +184,11 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     return normalized.substring(0, Math.min(normalized.length(), 512));
   }
 
+  /** No stage: a memory awaiting review or decided is the fact too, and its decision holds. */
   private String keywordQueryFilter() {
     List<Map<String, Object>> filters =
         List.of(
-            Map.of("term", Map.of("entityStatus", ContextMemoryStatus.APPROVED.value())),
-            Map.of("term", Map.of("sourceType", ContextMemorySourceType.FILE_EXTRACTION.value())),
+            Map.of("terms", Map.of("sourceType", DOCUMENT_FACT_SOURCE_VALUES)),
             Map.of("term", Map.of("visibility", MemoryVisibility.ENTITY.value())),
             Map.of("term", Map.of(Entity.FIELD_DELETED, false)));
     return JsonUtils.pojoToJson(Map.of("bool", Map.of("filter", filters)));
@@ -182,20 +212,27 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     try {
       ContextMemory candidate =
           repository.get(
-              null, UUID.fromString(id), repository.getFields(""), Include.NON_DELETED, false);
-      return isReusable(candidate, derived) ? candidate : null;
+              null,
+              UUID.fromString(id),
+              repository.getFields(ContextMemoryRepository.FIELD_SOURCE_ENTITY),
+              Include.NON_DELETED,
+              false);
+      return isCandidate(candidate, derived) ? candidate : null;
     } catch (IllegalArgumentException | EntityNotFoundException e) {
       return null;
     }
   }
 
-  private boolean isReusable(ContextMemory candidate, ContextMemory derived) {
-    return candidate.getEntityStatus() == ContextMemoryStatus.APPROVED
-        && candidate.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
+  /**
+   * A memory a document states, in any stage, that readers of the new file can read once linked:
+   * entity-visible, of the same scope and anchored org-wide.
+   */
+  private boolean isCandidate(ContextMemory candidate, ContextMemory derived) {
+    return candidate.getSourceEntity() != null
+        && ContextMemoryReconciler.DOCUMENT_FACT_SOURCES.contains(candidate.getSourceType())
         && candidate.getShareConfig() != null
         && candidate.getShareConfig().getVisibility() == MemoryVisibility.ENTITY
         && candidate.getMemoryScope() == derived.getMemoryScope()
-        && !hasConflictingNumbers(candidate, derived)
         && repository.hasOrgWideAnchor(candidate);
   }
 

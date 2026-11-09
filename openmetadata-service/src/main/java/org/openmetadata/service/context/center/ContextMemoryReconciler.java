@@ -40,20 +40,25 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
  * conflicting number whose question alone clears the bar, however low the whole pair scores, so a
  * correction holds every such value it does not claim. Two answers the source gives to one question
  * stay two pills for review. Equivalent file-derived facts may be linked to more than one source;
- * retiring one source preserves the memory while another still references it.
+ * retiring one source preserves the memory while another still references it. A linked memory keeps
+ * the stage a person left it in, so every document stating the fact shares its review.
  */
 @Slf4j
 public class ContextMemoryReconciler {
+  /** How a memory a file states was written: extracted from it, or corrected by a person since. */
+  static final List<ContextMemorySourceType> DOCUMENT_FACT_SOURCES =
+      List.of(ContextMemorySourceType.FILE_EXTRACTION, ContextMemorySourceType.MANUAL);
+
   private final ContextMemoryRepository memoryRepository;
   private final DuplicateFinder duplicateFinder;
 
   @FunctionalInterface
   public interface DuplicateFinder {
-    ContextMemory findEquivalent(ContextMemory derived);
+    DuplicateMatch findMatch(ContextMemory derived);
   }
 
   public ContextMemoryReconciler(ContextMemoryRepository memoryRepository) {
-    this(memoryRepository, ignored -> null);
+    this(memoryRepository, ignored -> new DuplicateMatch.None());
   }
 
   public ContextMemoryReconciler(
@@ -79,9 +84,10 @@ public class ContextMemoryReconciler {
     return new ReconcileResult(0, 0, existing.size(), 0);
   }
 
+  /** An identical copy takes each memory in whatever stage it is, and so takes its decision. */
   private boolean isReusableFileMemory(ContextMemory pill) {
-    return pill.getSourceType() == ContextMemorySourceType.FILE_EXTRACTION
-        && pill.getEntityStatus() == ContextMemoryStatus.APPROVED
+    return DOCUMENT_FACT_SOURCES.contains(pill.getSourceType())
+        && !Boolean.TRUE.equals(pill.getDeleted())
         && pill.getMemoryScope() == ContextMemoryScope.ENTITY_SCOPED
         && pill.getShareConfig() != null
         && pill.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
@@ -172,14 +178,24 @@ public class ContextMemoryReconciler {
       Map<String, ContextMemory> derivedByQuestion,
       ReconciliationPlan plan) {
     for (Map.Entry<String, ContextMemory> entry : derivedByQuestion.entrySet()) {
-      ContextMemory pill = entry.getValue();
-      ContextMemory equivalent = duplicateFinder.findEquivalent(pill);
-      if (equivalent == null || plan.changingIds.contains(equivalent.getId())) {
-        planCreate(pill, plan.heldForReview.contains(entry.getKey()), plan);
-      } else {
-        plan.writes.add(() -> memoryRepository.linkExtractedMemory(equivalent.getId(), sourceRef));
-        plan.kept++;
-      }
+      planNewMemory(sourceRef, entry.getValue(), plan.heldForReview.contains(entry.getKey()), plan);
+    }
+  }
+
+  /**
+   * A fact another document states links to its memory, in whatever stage it is; another value for
+   * a fact a person decided there starts Unprocessed under every provider.
+   */
+  private void planNewMemory(
+      EntityReference sourceRef, ContextMemory pill, boolean heldAlready, ReconciliationPlan plan) {
+    DuplicateMatch match = duplicateFinder.findMatch(pill);
+    if (match instanceof DuplicateMatch.Equivalent equivalent
+        && !plan.changingIds.contains(equivalent.memory().getId())) {
+      UUID memoryId = equivalent.memory().getId();
+      plan.writes.add(() -> memoryRepository.linkExtractedMemory(memoryId, sourceRef));
+      plan.kept++;
+    } else {
+      planCreate(pill, heldAlready || match instanceof DuplicateMatch.ConflictsWithDecision, plan);
     }
   }
 

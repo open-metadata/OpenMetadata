@@ -1,7 +1,7 @@
 # A document's extracted memories are approved from the document, by admins or its owners
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial)
+- **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-09 (a hold in any linked document holds the memory)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ExtractedMemoryApproverTest`, `ContextMemoryReconcilerTest`,
   `ContextMemoryRepositoryTest#aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt`,
@@ -85,3 +85,11 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
 - The panel offers Approve and Reject to admins only, as a distribution that requires review
   refuses an owner's own approval. An owner who is not an admin grounds a memory under review only
   through the document action, when approval takes it, or through its conflict review.
+
+## Amendment
+
+v2 (2026-11-09): one memory, one review. A memory several documents share (an identical copy, or a
+fact two documents state) is approved from any of them by that document's owners, and one that a
+linked document leaves for a decision stays pending from every other, so approving from one
+document never bypasses another's hold. Rejecting stays with admins
+(ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3).

@@ -423,6 +423,42 @@ class ContextMemoryVisibilityTest {
     }
   }
 
+  /**
+   * One memory, one review: a pill another document reused lists to the owners of every document
+   * it is linked to, whichever of them the listing reads as its source.
+   */
+  @Test
+  void anOwnerOfAnyLinkedDocumentSeesAWaitingMemory() {
+    EntityReference original = ref(Entity.CONTEXT_FILE, "a-handbook", "a-handbook");
+    EntityReference copy = ref(Entity.CONTEXT_FILE, "b-handbook", "b-handbook");
+    ContextMemory waiting =
+        memoryOwnedBy("admin", MemoryVisibility.ENTITY)
+            .withPrimaryEntity(original)
+            .withSourceEntity(original)
+            .withRelatedEntities(List.of(copy))
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    ContextMemoryVisibility.SourceOwnership ownership =
+        (userName, document) ->
+            (BOB.equals(userName) && copy.getId().equals(document.getId()))
+                || (ALICE.equals(userName) && original.getId().equals(document.getId()));
+
+    assertEquals(List.of(waiting), listedTo(waiting, BOB, ownership), "the copy's owner");
+    assertTrue(listedTo(waiting, "charlie", ownership).isEmpty(), "another reader");
+    waiting.withSourceEntity(copy);
+    assertEquals(List.of(waiting), listedTo(waiting, ALICE, ownership), "the anchor's owner");
+    assertEquals(
+        "owners,primaryEntity,sourceEntity,relatedEntities",
+        ContextMemoryVisibility.listingFields(Entity.CONTEXT_MEMORY, ""),
+        "a listing reads every document a pill is linked to");
+  }
+
+  private static List<ContextMemory> listedTo(
+      ContextMemory memory, String userName, ContextMemoryVisibility.SourceOwnership ownership) {
+    return ContextMemoryVisibility.filterListed(
+        List.of(memory), userName, false, (u, anchor) -> true, ownership);
+  }
+
   private static List<ContextMemory> listed(
       List<ContextMemory> memories, String userName, boolean isAdmin) {
     return ContextMemoryVisibility.filterListed(

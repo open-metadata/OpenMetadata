@@ -27,11 +27,14 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.context.ApproveExtractedMemories;
+import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
@@ -51,16 +54,22 @@ import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.services.context.ContextMemoryService;
 import org.openmetadata.sdk.test.util.RestClient;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.context.center.AiProvider;
 import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
+import org.openmetadata.service.context.center.ContextMemoryExtractor;
 import org.openmetadata.service.context.center.ContextMemoryReconciler;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor;
+import org.openmetadata.service.context.center.DuplicateMatch;
+import org.openmetadata.service.context.center.KnowledgePill;
 import org.openmetadata.service.context.center.PageContextProcessingEngine;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
@@ -76,6 +85,7 @@ import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.llm.NoopCompletionClient;
+import org.openmetadata.service.util.RequestEntityCache;
 
 /** Persistent sources and queue rows, scripting only the document-provider boundary. */
 @Isolated("Installs the document provider and page worker for the embedded server")
@@ -83,6 +93,7 @@ import org.openmetadata.service.llm.NoopCompletionClient;
 class ContextMemoryExtractionIT {
   private static final String PAGES = "v1/contextCenter/pages";
   private static final String FILES = "v1/contextCenter/drive/files";
+  private static final String APPROVAL = "/v1/contextCenter/memories/extractedApproval";
   // Facts share too few words with one another to rank as each other's candidates.
   private static final Fact KAFKA_OWNER =
       new Fact(
@@ -288,6 +299,51 @@ class ContextMemoryExtractionIT {
     assertEquals(VACATION_REPLACED.answer(), linked.get(VACATION.question()).getAnswer());
   }
 
+  /**
+   * Under a reviewing provider, another file stating the same facts links to the memories still
+   * awaiting review, and that file's owner lists and approves them from it: one memory, one review.
+   */
+  @Test
+  void collate_style_waitingMemoriesAreReusedAcrossDocuments(TestNamespace ns) throws Exception {
+    assumeTrue(
+        Entity.getSearchRepository().getVectorIndexService() == null,
+        "covers the memory index lookup that runs without vector search");
+    String handbook = "Handbook " + ns.shortPrefix();
+    String revised = "Revised handbook " + ns.shortPrefix();
+    ContextFile first = file(ns, "a-handbook", handbook, null);
+    ContextFile second = file(ns, "b-handbook", revised, SharedEntities.get().USER1_REF);
+    List<Fact> facts = List.of(KAFKA_OWNER, PAYROLL, VACATION, RECOVERY_SITE);
+    extractor =
+        new ContextMemoryExtractor(
+            new FactsModel(Map.of(handbook, facts, revised, facts)),
+            ContextMemoryStatus.UNPROCESSED);
+    runFile(first);
+    List<ContextMemory> waiting = extracted(first.getEntityReference());
+    assertEquals(Set.of(ContextMemoryStatus.UNPROCESSED), statuses(waiting));
+    awaitSearchableAwaitingReview(first.getEntityReference(), waiting);
+    DuplicateJudge judge = new DuplicateJudge(Map.of());
+    LLMClientHolder.setForTesting(judge);
+
+    runFile(second);
+
+    assertEquals(List.of(), judge.judgedQuestions(), "the same facts link without the judge");
+    assertEquals(ids(waiting), ids(extracted(second.getEntityReference())));
+    ListParams panel =
+        new ListParams()
+            .setLimit(50)
+            .setFields("sourceEntity")
+            .addFilter("sourceEntityId", second.getId().toString());
+    assertEquals(
+        ids(waiting),
+        ids(memories(SdkClients.user1Client()).list(panel).getData()),
+        "the second file's owner lists them, though the first file reads as their source");
+    assertEquals(4, approveAsPreviewed(SdkClients.user1Client(), second).getApproved());
+    assertEquals(
+        Set.of(ContextMemoryStatus.APPROVED),
+        statuses(extracted(first.getEntityReference())),
+        "the decision covers the first file too");
+  }
+
   @Test
   void fileProcessingKeepsMetadataEditedDuringDerivation(TestNamespace ns) throws Exception {
     ContextFile file = file(ns, "edited-file", "Definition " + ns.shortPrefix());
@@ -381,7 +437,9 @@ class ContextMemoryExtractionIT {
                     "Compare the supplied facts",
                     SemanticMemoryDuplicateFinder.MatchChoice.class);
               }
-              return memory.getId().equals(reuse.getId()) ? reusable : null;
+              return memory.getId().equals(reuse.getId())
+                  ? new DuplicateMatch.Equivalent(reusable)
+                  : new DuplicateMatch.None();
             });
     List<ContextMemory> derived =
         List.of(
@@ -445,6 +503,100 @@ class ContextMemoryExtractionIT {
         .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
         .untilAsserted(() -> memories.forEach(memory -> assertTrue(isSearchable(memory))));
+  }
+
+  /** Ordinary search admits Approved memories only, so a waiting one is awaited in the listing. */
+  private static void awaitSearchableAwaitingReview(
+      EntityReference anchor, Collection<ContextMemory> memories) {
+    ListParams anchored =
+        new ListParams()
+            .setLimit(50)
+            .addFilter("assets", anchor.getId().toString())
+            .addFilter("statuses", ContextMemoryStatus.UNPROCESSED.value());
+    Awaitility.await("the first file's waiting memories are searchable")
+        .pollInterval(Duration.ofMillis(500))
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    ids(memories),
+                    ids(memories(SdkClients.adminClient()).list(anchored).getData())));
+  }
+
+  private static ContextMemoryService memories(OpenMetadataClient client) {
+    return new ContextMemoryService(client.getHttpClient());
+  }
+
+  private static Set<UUID> ids(Collection<ContextMemory> memories) {
+    return memories.stream().map(ContextMemory::getId).collect(Collectors.toSet());
+  }
+
+  /** Read as a new request reads: this thread's request cache keeps what it read before a write. */
+  private Set<ContextMemoryStatus> statuses(Collection<ContextMemory> memories) {
+    RequestEntityCache.clear();
+    return memories.stream()
+        .map(
+            memory ->
+                memoryRepository()
+                    .get(
+                        null,
+                        memory.getId(),
+                        memoryRepository().getFields(""),
+                        Include.NON_DELETED,
+                        false)
+                    .getEntityStatus())
+        .collect(Collectors.toSet());
+  }
+
+  private static ExtractedMemoryApproval approveAsPreviewed(
+      OpenMetadataClient client, ContextFile file) {
+    EntityReference source = file.getEntityReference();
+    ExtractedMemoryApproval preview =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                APPROVAL + "?sourceId=%s&sourceType=%s".formatted(source.getId(), source.getType()),
+                null,
+                ExtractedMemoryApproval.class);
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            APPROVAL,
+            new ApproveExtractedMemories()
+                .withSource(source)
+                .withApprovable(preview.getApprovable()),
+            ExtractedMemoryApproval.class);
+  }
+
+  /** Answers extraction as the model would: each document's facts, as one JSON array. */
+  private static final class FactsModel extends LLMCompletionClient {
+    private final Map<String, List<Fact>> factsByText;
+
+    FactsModel(Map<String, List<Fact>> factsByText) {
+      super(1);
+      this.factsByText = factsByText;
+    }
+
+    @Override
+    protected CompletionResult doComplete(
+        String systemPrompt, String userPrompt, CompletionOptions options) {
+      List<KnowledgePill> pills =
+          factsByText.getOrDefault(userPrompt, List.of()).stream()
+              .map(
+                  fact ->
+                      new KnowledgePill(
+                          fact.question(), fact.question(), fact.answer(), null, "Faq"))
+              .toList();
+      return new CompletionResult(JsonUtils.pojoToJson(pills), 0, 0);
+    }
+
+    @Override
+    public String getModelId() {
+      return "facts-model-test";
+    }
   }
 
   private static boolean isSearchable(ContextMemory memory) {
@@ -621,6 +773,11 @@ class ContextMemoryExtractionIT {
   }
 
   private ContextFile file(TestNamespace ns, String label, String text) throws Exception {
+    return file(ns, label, text, null);
+  }
+
+  private ContextFile file(TestNamespace ns, String label, String text, EntityReference owner)
+      throws Exception {
     UUID contentId = UUID.randomUUID();
     ContextFile file =
         ns.trackRoot(
@@ -633,6 +790,7 @@ class ContextMemoryExtractionIT {
                         .withName(ns.prefix(label))
                         .withHeadContentId(contentId.toString())
                         .withProcessingStatus(ProcessingStatus.ExtractingContext)
+                        .withOwners(owner == null ? null : List.of(owner))
                         .withUpdatedBy(Entity.ADMIN_USER_NAME)
                         .withUpdatedAt(System.currentTimeMillis())));
     ContextFileContent content =
