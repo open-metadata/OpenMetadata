@@ -44,6 +44,8 @@ test.describe('Verify RTL Layout for landing page', () => {
       'כל הדומיינים',
       { timeout: ACTION_TIMEOUT }
     );
+    await expect(page.locator('html')).toHaveAttribute('dir', 'rtl');
+    await expect(page.locator('html')).toHaveAttribute('lang', 'he-HE');
   });
 
   // Replaces a Data Assets widget check: that widget is excluded from the

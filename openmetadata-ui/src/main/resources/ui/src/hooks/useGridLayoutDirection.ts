@@ -12,6 +12,7 @@
  */
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getLanguageDirection } from '../utils/i18next/i18nextUtil';
 
 export const useGridLayoutDirection = (isLoading = false) => {
   const { i18n } = useTranslation();
@@ -26,7 +27,9 @@ export const useGridLayoutDirection = (isLoading = false) => {
         gridLayoutContainer.setAttribute('dir', 'ltr');
 
         // children should change direction based on i18n direction
-        children.forEach((child) => child.setAttribute('dir', i18n.dir()));
+        children.forEach((child) =>
+          child.setAttribute('dir', getLanguageDirection(i18n))
+        );
       }
     }
   }, [i18n, isLoading]);

@@ -14,6 +14,7 @@ import { NodeSelection, Plugin } from '@tiptap/pm/state';
 import { EditorView } from '@tiptap/pm/view';
 import { isUndefined } from 'lodash';
 import { DOMSerializer } from 'prosemirror-model';
+import { getLanguageDirection } from '../../../../utils/i18next/i18nextUtil';
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockAndDragHandleOptions } from './BlockAndDragDrop';
 import { absoluteRect, nodeDOMAtCoords, nodePosAtDOM } from './helpers';
@@ -136,7 +137,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       return;
     }
 
-    if (i18n.dir() === 'rtl') {
+    if (getLanguageDirection(i18n) === 'rtl') {
       dragHandleElement.style.right = `${rect.right - rect.width - 10}px`;
     } else {
       dragHandleElement.style.left = `${rect.left - rect.width - 10}px`;
@@ -189,7 +190,7 @@ export const BlockAndDragHandle = (options: BlockAndDragHandleOptions) => {
       return;
     }
 
-    if (i18n.dir() === 'rtl') {
+    if (getLanguageDirection(i18n) === 'rtl') {
       blockHandleElement.style.right = `${rect.right - rect.width + 6}px`;
     } else {
       blockHandleElement.style.left = `${rect.left - rect.width + 6}px`;

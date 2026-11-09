@@ -19,6 +19,7 @@ import {
   formatClientContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorPureUtils';
+import { getLanguageDirection } from '../../../utils/i18next/i18nextUtil';
 import { getTrimmedContent } from '../../../utils/StringUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import './rich-text-editor-previewerV1.less';
@@ -76,10 +77,10 @@ const RichTextEditorPreviewerV1: FC<PreviewerProp> = ({
   return (
     <div
       className={classNames('rich-text-editor-container', className, {
-        'text-right': i18n.dir() === 'rtl',
+        'text-right': getLanguageDirection(i18n) === 'rtl',
       })}
       data-testid="viewer-container"
-      dir={i18n.dir()}>
+      dir={getLanguageDirection(i18n)}>
       <div
         className={classNames(
           'markdown-parser',

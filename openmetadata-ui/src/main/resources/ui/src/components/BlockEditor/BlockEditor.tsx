@@ -27,6 +27,7 @@ import {
   formatServerContent,
   setEditorContent,
 } from '../../utils/BlockEditorUtils';
+import { getLanguageDirection } from '../../utils/i18next/i18nextUtil';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import BarMenu from './BarMenu/BarMenu';
@@ -282,8 +283,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       if (!editorWrapper) {
         return;
       }
-      editorWrapper.setAttribute('dir', i18n.dir());
-      editorWrapper.style.textAlign = i18n.dir() === 'rtl' ? 'right' : 'left';
+      editorWrapper.setAttribute('dir', getLanguageDirection(i18n));
+      editorWrapper.style.textAlign =
+        getLanguageDirection(i18n) === 'rtl' ? 'right' : 'left';
     }, [i18n]);
 
     return (

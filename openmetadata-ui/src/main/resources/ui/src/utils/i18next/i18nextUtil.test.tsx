@@ -15,7 +15,13 @@ import { render, screen } from '@testing-library/react';
 import i18next from 'i18next';
 import { I18nextProvider, Trans } from 'react-i18next';
 import esES from '../../locale/languages/es-es.json';
-import { getCurrentLocaleForConstrue, getInitOptions } from './i18nextUtil';
+import {
+  applyDocumentLanguage,
+  getCurrentLocaleForConstrue,
+  getInitOptions,
+  getLanguageDirection,
+} from './i18nextUtil';
+import { SupportedLocales } from './LocalUtil.interface';
 
 jest.unmock('react-i18next');
 
@@ -83,5 +89,48 @@ describe('i18next initialization', () => {
 
     expect(container).toHaveTextContent('2 groups');
     expect(screen.getByText('2').tagName).toBe('STRONG');
+  });
+});
+
+describe('applyDocumentLanguage', () => {
+  afterEach(() => {
+    document.documentElement.removeAttribute('dir');
+    document.documentElement.removeAttribute('lang');
+  });
+
+  it.each([
+    [SupportedLocales.العربية, 'ar-SA', 'rtl'],
+    [SupportedLocales.Hebrew, 'he-HE', 'rtl'],
+    [SupportedLocales.Persian, 'fa-IR', 'rtl'],
+    [SupportedLocales.English, 'en-US', 'ltr'],
+    [SupportedLocales.Français, 'fr-FR', 'ltr'],
+  ])(
+    'renders %s with lang %s and dir %s on the document root',
+    (language, lang, dir) => {
+      applyDocumentLanguage(language);
+
+      expect(document.documentElement).toHaveAttribute('lang', lang);
+      expect(document.documentElement).toHaveAttribute('dir', dir);
+    }
+  );
+
+  it('switches the document back to ltr when leaving an RTL locale', () => {
+    applyDocumentLanguage(SupportedLocales.العربية);
+    applyDocumentLanguage(SupportedLocales.English);
+
+    expect(document.documentElement).toHaveAttribute('dir', 'ltr');
+  });
+});
+
+describe('getLanguageDirection', () => {
+  it.each([
+    [SupportedLocales.Persian, 'rtl'],
+    [SupportedLocales.العربية, 'rtl'],
+    [SupportedLocales.English, 'ltr'],
+  ])('resolves %s as %s', async (language, dir) => {
+    const instance = i18next.createInstance();
+    await instance.init({ ...getInitOptions(), lng: language });
+
+    expect(getLanguageDirection(instance)).toBe(dir);
   });
 });

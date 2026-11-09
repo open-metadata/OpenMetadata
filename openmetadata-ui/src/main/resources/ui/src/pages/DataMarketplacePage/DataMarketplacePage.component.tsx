@@ -37,6 +37,7 @@ import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispat
 import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
 import { getPersonaPage } from '../../utils/CustomizePage/PersonaPage.utils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
+import { getLanguageDirection } from '../../utils/i18next/i18nextUtil';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';
 import './data-marketplace-page.less';
@@ -142,7 +143,7 @@ const DataMarketplacePage = ({
   // Depend on the resolved direction, not the i18n instance: the instance
   // reference survives a language change, so memoising on it would keep a stale
   // dir if the language ever changes without remounting this route.
-  const direction = i18n.dir();
+  const direction = getLanguageDirection(i18n);
 
   const widgets = useMemo(
     () =>
