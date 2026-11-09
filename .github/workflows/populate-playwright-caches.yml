@@ -91,7 +91,7 @@ jobs:
     concurrency:
       group: populate-playwright-caches-apt
       cancel-in-progress: false
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - name: Checkout
