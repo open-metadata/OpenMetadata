@@ -30,7 +30,7 @@ denied and remove a tab whose list the backend already filters for them.
 
 ## Consequences
 - One extra `GET /permissions/query` per table page load, cached for `PERMISSION_STALE_TIME` under
-  `permissionQueryKeys.resourceAllowingConditional`.
+  `permissionQueryKeys.tableQueriesTab`.
 - Hiding the tab does not stop a client from reading queries through the search API; that needs
   "Enable Roles & Policies in Search" (ADR:2026-11-03-search-applies-the-same-access-rules-as-entity-reads).
 - Flipping `resourceLevelConditionalAllow` to `'attempt'` makes this exception redundant; remove

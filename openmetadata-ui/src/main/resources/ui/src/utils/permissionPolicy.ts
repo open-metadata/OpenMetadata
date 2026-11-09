@@ -58,8 +58,8 @@ export const PERMISSION_POLICY = {
   resourceLevelConditionalAllow: 'strict' as 'strict' | 'attempt',
   /**
    * Exception to `resourceLevelConditionalAllow` for the table page's Queries tab, which is
-   * hidden without view access on the `query` resource. The backend filters the listed queries
-   * per query, so a conditionalAllow user keeps the tab
+   * hidden without view access on the `query` resource. A conditionalAllow user may see some
+   * queries, so keeps the tab; what the tab then lists is decided by the backend
    * (ADR:2026-11-09-table-queries-tab-follows-query-resource-view-access).
    */
   tableQueriesTabConditionalAllow: 'attempt' as 'strict' | 'attempt',

@@ -217,9 +217,7 @@ const TableDetailsPageV1: React.FC = () => {
     data: queryResourcePermission,
     isLoading: isQueryResourcePermissionLoading,
   } = useQuery({
-    queryKey: permissionQueryKeys.resourceAllowingConditional(
-      ResourceEntity.QUERY
-    ),
+    queryKey: permissionQueryKeys.tableQueriesTab(),
     queryFn: fetchQueryResourcePermission,
     staleTime: PERMISSION_STALE_TIME,
   });
