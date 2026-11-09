@@ -103,10 +103,12 @@ v3 (2026-11-09): a person's decision on a memory covers every document that stat
 Approved memories: the copy links every memory of the original that is not soft-deleted, each in
 its stage, so a copy uploaded before review awaits the same review instead of being extracted
 again. Another file's equivalent fact links to its memory in any stage and takes its decision. A
-derived value whose number conflicts with a memory a person decided in another document starts
-`Unprocessed` under every provider when re-extraction would hold it beside that memory
-(`MemoryReviewHolds.holds`), as a correction's replaced value is; beside a retired value a replaced
-number is still a new claim, created in its derived stage. One memory has one review: a document's
-listing shows a waiting memory to the owners of every document it is linked to, and approving from
-one document leaves pending what another linked document leaves for a decision
+derived value whose number conflicts with a memory a person decided in another document (Rejected,
+Superseded, Invalidated, Deprecated, Archived, or corrected) starts `Unprocessed` under every
+provider when the two ask look-alike questions, or when re-extraction would hold it beside that
+memory: "billed on the 10th" waits beside a rejected "billed on the 5th". No field records a human
+approval, so an Approved memory is no decision here. One memory has one review: a document's
+listing shows a waiting memory to the owners of every document it is linked to, and approval from
+a document leaves for an admin both what another linked document leaves for a decision and a value
+a decision in another document holds
 (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).

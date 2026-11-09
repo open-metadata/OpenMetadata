@@ -94,6 +94,7 @@ class ContextMemoryExtractionIT {
   private static final String PAGES = "v1/contextCenter/pages";
   private static final String FILES = "v1/contextCenter/drive/files";
   private static final String APPROVAL = "/v1/contextCenter/memories/extractedApproval";
+  private static final String MEMORIES = "v1/contextCenter/memories";
   // Facts share too few words with one another to rank as each other's candidates.
   private static final Fact KAFKA_OWNER =
       new Fact(
@@ -114,6 +115,10 @@ class ContextMemoryExtractionIT {
           "The disaster recovery site is in Lisbon.");
   private static final Fact BRAND_COLOR =
       new Fact("Which color does company branding use?", "Company branding uses teal.");
+  private static final Fact BILLING_DAY =
+      new Fact("When is the customer billed?", "Customers are billed on the 5th of each month.");
+  private static final Fact BILLING_DAY_MOVED =
+      new Fact(BILLING_DAY.question(), "Customers are billed on the 10th of each month.");
   private final AtomicInteger calls = new AtomicInteger();
   private AiProvider previousProvider;
   private boolean partial;
@@ -320,7 +325,7 @@ class ContextMemoryExtractionIT {
     runFile(first);
     List<ContextMemory> waiting = extracted(first.getEntityReference());
     assertEquals(Set.of(ContextMemoryStatus.UNPROCESSED), statuses(waiting));
-    awaitSearchableAwaitingReview(first.getEntityReference(), waiting);
+    awaitIndexedIn(first.getEntityReference(), waiting, ContextMemoryStatus.UNPROCESSED);
     DuplicateJudge judge = new DuplicateJudge(Map.of());
     LLMClientHolder.setForTesting(judge);
 
@@ -337,11 +342,47 @@ class ContextMemoryExtractionIT {
         ids(waiting),
         ids(memories(SdkClients.user1Client()).list(panel).getData()),
         "the second file's owner lists them, though the first file reads as their source");
-    assertEquals(4, approveAsPreviewed(SdkClients.user1Client(), second).getApproved());
+    assertEquals(
+        4,
+        approve(SdkClients.user1Client(), second, preview(SdkClients.user1Client(), second))
+            .getApproved());
     assertEquals(
         Set.of(ContextMemoryStatus.APPROVED),
         statuses(extracted(first.getEntityReference())),
         "the decision covers the first file too");
+  }
+
+  /**
+   * OSS: another file's new value for a fact a person rejected waits for review, and only an admin
+   * decides it: the second file's owner cannot approve it from that file.
+   */
+  @Test
+  void oss_aValueBesideAnotherDocumentsRejectedFactWaitsForAnAdmin(TestNamespace ns)
+      throws Exception {
+    assumeTrue(
+        Entity.getSearchRepository().getVectorIndexService() == null,
+        "covers the memory index lookup that runs without vector search");
+    ContextFile first = file(ns, "a-billing", "Billing " + ns.shortPrefix(), null);
+    ContextFile second =
+        file(
+            ns, "b-billing", "Revised billing " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
+    scriptFacts(
+        Map.of(first.getId(), List.of(BILLING_DAY), second.getId(), List.of(BILLING_DAY_MOVED)));
+    runFile(first);
+    ContextMemory rejected = reject(extracted(first.getEntityReference()).getFirst());
+    awaitIndexedIn(first.getEntityReference(), List.of(rejected), ContextMemoryStatus.REJECTED);
+
+    runFile(second);
+
+    ContextMemory held = extracted(second.getEntityReference()).getFirst();
+    assertNotEquals(rejected.getId(), held.getId());
+    assertEquals(BILLING_DAY_MOVED.answer(), held.getAnswer());
+    assertEquals(Set.of(ContextMemoryStatus.UNPROCESSED), statuses(List.of(held)));
+    ExtractedMemoryApproval preview = preview(SdkClients.user1Client(), second);
+    assertEquals(List.of(), preview.getApprovable(), "the second file's owner cannot approve it");
+    assertEquals(
+        List.of(held.getId()),
+        preview.getNeedsDecision().stream().map(EntityReference::getId).toList());
   }
 
   @Test
@@ -505,15 +546,15 @@ class ContextMemoryExtractionIT {
         .untilAsserted(() -> memories.forEach(memory -> assertTrue(isSearchable(memory))));
   }
 
-  /** Ordinary search admits Approved memories only, so a waiting one is awaited in the listing. */
-  private static void awaitSearchableAwaitingReview(
-      EntityReference anchor, Collection<ContextMemory> memories) {
+  /** Ordinary search admits Approved memories only, so another stage is awaited in the listing. */
+  private static void awaitIndexedIn(
+      EntityReference anchor, Collection<ContextMemory> memories, ContextMemoryStatus status) {
     ListParams anchored =
         new ListParams()
             .setLimit(50)
             .addFilter("assets", anchor.getId().toString())
-            .addFilter("statuses", ContextMemoryStatus.UNPROCESSED.value());
-    Awaitility.await("the first file's waiting memories are searchable")
+            .addFilter("statuses", status.value());
+    Awaitility.await("the first file's memories are searchable in their stage")
         .pollInterval(Duration.ofMillis(500))
         .atMost(Duration.ofSeconds(60))
         .ignoreExceptions()
@@ -549,26 +590,42 @@ class ContextMemoryExtractionIT {
         .collect(Collectors.toSet());
   }
 
-  private static ExtractedMemoryApproval approveAsPreviewed(
-      OpenMetadataClient client, ContextFile file) {
+  private static ExtractedMemoryApproval preview(OpenMetadataClient client, ContextFile file) {
     EntityReference source = file.getEntityReference();
-    ExtractedMemoryApproval preview =
-        client
-            .getHttpClient()
-            .execute(
-                HttpMethod.GET,
-                APPROVAL + "?sourceId=%s&sourceType=%s".formatted(source.getId(), source.getType()),
-                null,
-                ExtractedMemoryApproval.class);
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            APPROVAL + "?sourceId=%s&sourceType=%s".formatted(source.getId(), source.getType()),
+            null,
+            ExtractedMemoryApproval.class);
+  }
+
+  private static ExtractedMemoryApproval approve(
+      OpenMetadataClient client, ContextFile file, ExtractedMemoryApproval preview) {
     return client
         .getHttpClient()
         .execute(
             HttpMethod.PUT,
             APPROVAL,
             new ApproveExtractedMemories()
-                .withSource(source)
+                .withSource(file.getEntityReference())
                 .withApprovable(preview.getApprovable()),
             ExtractedMemoryApproval.class);
+  }
+
+  /** A person rejects the memory in its panel, as an admin. */
+  private static ContextMemory reject(ContextMemory memory) throws Exception {
+    ContextMemory current =
+        RestClient.admin().getById(MEMORIES, memory.getId(), "", ContextMemory.class);
+    return RestClient.admin()
+        .patch(
+            MEMORIES,
+            memory.getId(),
+            JsonUtils.pojoToJson(current),
+            JsonUtils.deepCopy(current, ContextMemory.class)
+                .withEntityStatus(ContextMemoryStatus.REJECTED),
+            ContextMemory.class);
   }
 
   /** Answers extraction as the model would: each document's facts, as one JSON array. */

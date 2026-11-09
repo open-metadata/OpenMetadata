@@ -4,16 +4,21 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
@@ -26,6 +31,7 @@ import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -38,13 +44,23 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private static final int CANDIDATE_LIMIT = 5;
   private static final int KNN_LIMIT = 20;
+
+  /** Ranked hits read so that some remain after the reuse checks the index cannot apply. */
+  private static final int KEYWORD_FETCH_LIMIT = 20;
+
   private static final List<String> DOCUMENT_FACT_SOURCE_VALUES =
       ContextMemoryReconciler.DOCUMENT_FACT_SOURCES.stream()
           .map(ContextMemorySourceType::value)
           .toList();
 
-  /** Ranked hits read so that some remain after the reuse checks the index cannot apply. */
-  private static final int KEYWORD_FETCH_LIMIT = 20;
+  /** Every memory a document states, in any stage. */
+  private static final CandidateQuery ANY_STAGE =
+      new CandidateQuery(DOCUMENT_FACT_SOURCE_VALUES, keywordFilter(List.of()));
+
+  /** A memory a person decided; vector search admits Approved ones, so only corrections there. */
+  private static final CandidateQuery DECIDED =
+      new CandidateQuery(
+          List.of(ContextMemorySourceType.MANUAL.value()), keywordFilter(List.of(decidedClause())));
 
   private static final String EQUIVALENCE_PROMPT =
       "The input is JSON data containing one proposed memory and candidate memories. "
@@ -78,6 +94,16 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     this(repository, vectorServiceSupplier, Entity::getSearchRepository, completionClient);
   }
 
+  /** A lookup that only answers {@link #isHeldByADecision}: it never judges equivalence. */
+  public static SemanticMemoryDuplicateFinder forDecisionChecks(
+      ContextMemoryRepository repository) {
+    return new SemanticMemoryDuplicateFinder(
+        repository,
+        () -> Entity.getSearchRepository().getVectorIndexService(),
+        Entity::getSearchRepository,
+        null);
+  }
+
   SemanticMemoryDuplicateFinder(
       ContextMemoryRepository repository,
       Supplier<VectorIndexService> vectorServiceSupplier,
@@ -92,13 +118,23 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   @Override
   public DuplicateMatch findMatch(ContextMemory derived) {
     Map<Boolean, List<ContextMemory>> byConflict =
-        candidates(derived).stream()
+        candidates(derived, ANY_STAGE).stream()
             .collect(
-                Collectors.partitioningBy(candidate -> hasConflictingNumbers(candidate, derived)));
+                Collectors.partitioningBy(
+                    candidate -> MemoryReviewHolds.haveConflictingNumbers(candidate, derived)));
     ContextMemory equivalent = findEquivalent(derived, byConflict.get(false));
     return equivalent == null
         ? conflictWithDecision(derived, byConflict.get(true))
         : new DuplicateMatch.Equivalent(equivalent);
+  }
+
+  /**
+   * Whether, read now, a memory a person decided holds {@code pending} for review: approving its
+   * document leaves it to an admin, as a hold among the document's own memories.
+   */
+  public boolean isHeldByADecision(ContextMemory pending) {
+    return candidates(pending, DECIDED).stream()
+        .anyMatch(decided -> MemoryReviewHolds.holdsAcrossDocuments(decided, pending));
   }
 
   /** Numbers that differ never merge, so only a candidate whose numbers agree can be the fact. */
@@ -109,40 +145,62 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         .orElseGet(() -> judgeEquivalent(derived, candidates));
   }
 
-  /**
-   * Another value for a fact a person decided waits for review, by the rule re-extraction holds a
-   * value beside a decided pill with; beside any other memory it is a new claim.
-   */
+  /** Another value for a fact a person decided waits for review; beside any other, a new claim. */
   private static DuplicateMatch conflictWithDecision(
       ContextMemory derived, List<ContextMemory> conflicting) {
     return conflicting.stream()
-        .filter(MemoryReviewHolds::isDecided)
-        .filter(candidate -> MemoryReviewHolds.holds(candidate, derived))
+        .filter(candidate -> MemoryReviewHolds.holdsAcrossDocuments(candidate, derived))
         .findFirst()
         .<DuplicateMatch>map(DuplicateMatch.ConflictsWithDecision::new)
         .orElseGet(DuplicateMatch.None::new);
   }
 
-  private List<ContextMemory> candidates(ContextMemory derived) {
+  /** Vector search admits Approved memories only, so the memory index is always asked too. */
+  private List<ContextMemory> candidates(ContextMemory derived, CandidateQuery query) {
+    return interleave(vectorMatches(derived, query), keywordCandidates(derived, query));
+  }
+
+  private List<ContextMemory> vectorMatches(ContextMemory derived, CandidateQuery query) {
     VectorIndexService vectorService = vectorServiceSupplier.get();
-    if (vectorService == null) {
-      return keywordCandidates(derived);
+    List<ContextMemory> matches = List.of();
+    if (vectorService != null) {
+      try {
+        matches = vectorCandidates(vectorService, derived, query);
+      } catch (RuntimeException e) {
+        LOG.warn("Vector memory lookup failed; checking the memory search index alone", e);
+      }
     }
-    try {
-      List<ContextMemory> vectorMatches = vectorCandidates(vectorService, derived);
-      return vectorMatches.isEmpty() ? keywordCandidates(derived) : vectorMatches;
-    } catch (RuntimeException e) {
-      LOG.warn("Vector memory lookup failed; checking the memory search index", e);
-      return keywordCandidates(derived);
-    }
+    return matches;
+  }
+
+  /** v1, k1, v2, k2…: the best hits of both rankings are compared, each memory once. */
+  private static List<ContextMemory> interleave(
+      List<ContextMemory> vector, List<ContextMemory> keyword) {
+    return IntStream.range(0, Math.max(vector.size(), keyword.size()))
+        .boxed()
+        .flatMap(
+            rank ->
+                Stream.of(vector, keyword)
+                    .filter(hits -> rank < hits.size())
+                    .map(hits -> hits.get(rank)))
+        .collect(
+            Collectors.toMap(
+                ContextMemory::getId,
+                Function.identity(),
+                (kept, again) -> kept,
+                LinkedHashMap::new))
+        .values()
+        .stream()
+        .limit(CANDIDATE_LIMIT)
+        .toList();
   }
 
   private List<ContextMemory> vectorCandidates(
-      VectorIndexService vectorService, ContextMemory derived) {
+      VectorIndexService vectorService, ContextMemory derived, CandidateQuery query) {
     Map<String, List<String>> filters =
         Map.of(
             "entityType", List.of(Entity.CONTEXT_MEMORY),
-            "sourceType", DOCUMENT_FACT_SOURCE_VALUES,
+            "sourceType", query.vectorSourceTypes(),
             "visibility", List.of(MemoryVisibility.ENTITY.value()));
     VectorSearchResponse response =
         vectorService.search(
@@ -158,12 +216,12 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   /** A ranked lookup: a rewording shares most of a fact's words, never all of them in one field. */
-  private List<ContextMemory> keywordCandidates(ContextMemory derived) {
+  private List<ContextMemory> keywordCandidates(ContextMemory derived, CandidateQuery query) {
     try {
       SearchResultListMapper result =
           searchClient()
               .searchSimilarContextMemories(
-                  keywordQuery(derived), keywordQueryFilter(), KEYWORD_FETCH_LIMIT);
+                  keywordQuery(derived), query.keywordFilter(), KEYWORD_FETCH_LIMIT);
       return loadCandidates(result.getResults(), derived);
     } catch (IOException e) {
       throw new IllegalStateException("Memory search index lookup failed", e);
@@ -184,14 +242,31 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     return normalized.substring(0, Math.min(normalized.length(), 512));
   }
 
-  /** No stage: a memory awaiting review or decided is the fact too, and its decision holds. */
-  private String keywordQueryFilter() {
+  /** No stage by default: a memory awaiting review or decided is the fact too. */
+  private static String keywordFilter(List<Map<String, Object>> stages) {
     List<Map<String, Object>> filters =
-        List.of(
-            Map.of("terms", Map.of("sourceType", DOCUMENT_FACT_SOURCE_VALUES)),
-            Map.of("term", Map.of("visibility", MemoryVisibility.ENTITY.value())),
-            Map.of("term", Map.of(Entity.FIELD_DELETED, false)));
+        new ArrayList<>(
+            List.of(
+                Map.of("terms", Map.of("sourceType", DOCUMENT_FACT_SOURCE_VALUES)),
+                Map.of("term", Map.of("visibility", MemoryVisibility.ENTITY.value())),
+                Map.of("term", Map.of(Entity.FIELD_DELETED, false))));
+    filters.addAll(stages);
     return JsonUtils.pojoToJson(Map.of("bool", Map.of("filter", filters)));
+  }
+
+  /** A retired stage, or a correction in any stage. */
+  private static Map<String, Object> decidedClause() {
+    List<String> decidedStages =
+        MemoryReviewHolds.DECIDED_STAGES.stream().map(ContextMemoryStatus::value).toList();
+    return Map.of(
+        "bool",
+        Map.of(
+            "should",
+            List.of(
+                Map.of("terms", Map.of(ContextMemoryIndex.FIELD_STATUS, decidedStages)),
+                Map.of("term", Map.of("sourceType", ContextMemorySourceType.MANUAL.value()))),
+            "minimum_should_match",
+            1));
   }
 
   /** Hits stay in rank order; only the first few that may be reused are compared. */
@@ -236,13 +311,6 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
         && repository.hasOrgWideAnchor(candidate);
   }
 
-  /** The rule re-extraction uses: only a replaced number, by value, makes a different fact. */
-  private boolean hasConflictingNumbers(ContextMemory candidate, ContextMemory derived) {
-    return MemoryTextSimilarity.hasConflictingNumbers(
-        candidate.getQuestion() + " " + candidate.getAnswer(),
-        derived.getQuestion() + " " + derived.getAnswer());
-  }
-
   private boolean sameFactText(ContextMemory candidate, ContextMemory derived) {
     return normalize(candidate.getQuestion()).equals(normalize(derived.getQuestion()))
         && normalize(candidate.getAnswer()).equals(normalize(derived.getAnswer()));
@@ -272,6 +340,9 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     int index = choices.getFirst().index();
     return index >= 0 && index < candidates.size() ? candidates.get(index) : null;
   }
+
+  /** What a lookup asks vector search and the memory index for. */
+  private record CandidateQuery(List<String> vectorSourceTypes, String keywordFilter) {}
 
   private record ComparisonRequest(String question, String answer, List<Comparison> candidates) {}
 

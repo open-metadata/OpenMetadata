@@ -55,9 +55,8 @@ new fact; the other source retains the old memory.
 ### 3. Check each unmatched fact against existing memories
 
 Before creating an unmatched candidate, `SemanticMemoryDuplicateFinder` searches for existing
-file-extracted memories. It uses vector search when available. If vector search fails or returns
-no eligible candidates, it queries the regular memory search index. The lookup examines up to
-five candidates; a nonempty vector result does not trigger a second keyword search.
+file-extracted memories. It uses vector search when available and, since v3, always queries the
+regular memory search index too. The lookup examines up to five candidates.
 
 Candidates are loaded from the repository and must still be active, entity-visible
 `FILE_EXTRACTION` memories with the same memory scope and memory type. Conflicting numeric values
@@ -115,17 +114,20 @@ numbers conflict with each kept answer to the same question, and re-extraction m
 question and answer before similarity, never pairing conflicting numbers. See
 ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values.
 
-v3 (2026-11-09): §3 finds reworded facts without vector search, and a person's decision on a
-memory covers every document that states its fact.
+v3 (2026-11-09): §3 finds reworded facts and memories in any stage, and a person's decision on
+a memory covers every document that states its fact.
 
-- When vector search is off, fails or finds no eligible candidate, the memory index is asked for a
-  ranked `multi_match` of type `cross_fields` over question, answer, title and summary, any 30% of
-  the fact's terms (operator OR, `minimum_should_match` 30%), instead of one all-terms query that
-  no single field ever matched. It reads 20 hits and keeps, in rank order, the first five eligible
-  ones. That lookup applies no subject visibility: the stages it returns are those of the caller's
-  filter, and the duplicate check's filter names none. Vector search still admits only Approved
-  memories, so with it on a memory awaiting review or decided is a candidate only when the memory
-  index lookup runs.
+- The memory index is asked for a ranked `multi_match` of type `cross_fields` over question,
+  answer, title and summary, any 30% of the fact's terms (operator OR, `minimum_should_match`
+  30%), instead of one all-terms query that no single field ever matched. It reads 20 hits and
+  keeps, in rank order, the first five eligible ones. That lookup applies no subject visibility:
+  the stages it returns are those of the caller's filter, and the duplicate check's filter names
+  none.
+- Vector search admits only Approved memories, so the memory index is queried on every fact, not
+  only when vector search fails or finds nothing: with vector search on, each new fact costs one
+  more index search. The eligible candidates of the two lookups alternate (v1, k1, v2, k2, …),
+  each memory once, and the first five are compared. A failed index lookup fails the check even
+  when vector search answered, so it never creates an unchecked duplicate.
 - A candidate is a memory linked to a document, in any stage, that is not soft-deleted: a
   `FileExtraction` memory, or a `Manual` one a person corrected that is still linked to its
   document. It must still be entity-visible, of the same memory scope and anchored org-wide. Memory
@@ -133,10 +135,21 @@ memory covers every document that states its fact.
 - A candidate whose numbers conflict with the fact never links. Identical question and answer link
   without the judge; otherwise one judge call weighs the fact against the other candidates. A
   linked memory keeps its stage, so the document takes the decision made on it: a rejected fact
-  stays rejected. A conflicting candidate a person decided (Rejected, Superseded, Invalidated,
-  Deprecated, Archived, or corrected) holds the fact for review when re-extraction would hold it
-  beside that memory (`MemoryReviewHolds.holds`): the new memory starts `Unprocessed` under every
-  provider. Beside any other candidate, a replaced number is a new memory in its derived stage.
+  stays rejected.
+- A person decided a memory when it is Rejected, Superseded, Invalidated, Deprecated or Archived,
+  or a person corrected it (`Manual`). No field records a human approval (`lastReviewedAt` is
+  stamped on every approval, ADR:2026-10-09-an-approved-memory-can-return-to-review-and-records-its-last-review),
+  so Approved alone is no decision. A conflicting candidate a person decided holds the fact for
+  review when the two ask look-alike questions, as re-extraction pairs them (the same words, or
+  topic words clearing the identity bar, `MemoryTextSimilarity.questionSimilarity`), or when
+  re-extraction would hold it beside that memory (`MemoryReviewHolds.holds`): the new memory
+  starts `Unprocessed` under every provider. "Billed on the 10th" waits beside a rejected "billed
+  on the 5th"; beside a memory no one decided, or one for another question, a replaced number is a
+  new memory in its derived stage.
+- Approving from a document re-reads the memory index for decided memories that hold a pending
+  value, by the same rule, and leaves that value for an admin
+  (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document): one index search
+  per pending memory, on each approval preview.
 - §1's identical upload links every memory of the earlier file that is not soft-deleted, whatever
   its stage, corrections included, provided each is entity-visible and entity-scoped.
 - Stop words count toward the 30%, so most new facts find some candidate: expect about one small

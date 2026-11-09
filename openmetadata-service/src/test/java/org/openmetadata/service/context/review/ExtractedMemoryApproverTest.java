@@ -29,6 +29,7 @@ import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
@@ -48,6 +49,8 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
 
 class ExtractedMemoryApproverTest {
+  /** No memory a person decided, in another document, holds any pending pill. */
+  private static final Predicate<ContextMemory> NO_DECISION = pending -> false;
 
   private static ContextMemory pill(
       String question, ContextMemoryStatus status, ContextMemorySourceType sourceType) {
@@ -343,7 +346,7 @@ class ExtractedMemoryApproverTest {
     when(listing.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE)).thenReturn(pills);
     try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
-      return new ExtractedMemoryApprover(listing).approve(file, shown, "alice", false);
+      return new ExtractedMemoryApprover(listing, NO_DECISION).approve(file, shown, "alice", false);
     }
   }
 
@@ -367,7 +370,7 @@ class ExtractedMemoryApproverTest {
     when(repository.listExtractedMemories(original.getId(), Entity.CONTEXT_FILE))
         .thenReturn(List.of(shared, secondValue));
     when(repository.listExtractedSources(shared.getId())).thenReturn(List.of(original, copy));
-    ExtractedMemoryApprover approver = new ExtractedMemoryApprover(repository);
+    ExtractedMemoryApprover approver = new ExtractedMemoryApprover(repository, NO_DECISION);
 
     ExtractedMemoryApproval preview = approver.preview(copy, "alice", false);
 
@@ -377,6 +380,31 @@ class ExtractedMemoryApproverTest {
     assertEquals(0, result.getApproved());
     assertEquals(1, result.getFailed());
     assertEquals(List.of(shared.getId()), refIds(result.getNeedsDecision()));
+  }
+
+  /** A value a decision in another document holds needs an admin, as a hold in its own does. */
+  @Test
+  void aValueADecisionElsewhereHoldsNeedsAnAdmin() {
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemory held =
+        extracted("When is the customer billed?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("Customers are billed on the 10th.");
+    ContextMemory free = extracted("What is the refund fee?", ContextMemoryStatus.UNPROCESSED);
+    ContextMemoryRepository repository = mock(ContextMemoryRepository.class);
+    when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(held, free));
+    ExtractedMemoryApprover approver =
+        new ExtractedMemoryApprover(repository, pending -> held.getId().equals(pending.getId()));
+
+    ExtractedMemoryApproval preview = approver.preview(file, "alice", false);
+
+    assertEquals(asRead(free), preview.getApprovable());
+    assertEquals(List.of(held.getId()), refIds(preview.getNeedsDecision()));
+    ExtractedMemoryApproval refused = approver.approve(file, asRead(held), "alice", false);
+    assertEquals(0, refused.getApproved());
+    assertEquals(1, refused.getFailed());
+    assertEquals(List.of(held.getId()), refIds(refused.getNeedsDecision()));
   }
 
   @Test
@@ -393,7 +421,7 @@ class ExtractedMemoryApproverTest {
         .thenReturn(List.of(window, fifteen, twenty));
 
     ExtractedMemoryApproval preview =
-        new ExtractedMemoryApprover(repository).preview(file, "alice", false);
+        new ExtractedMemoryApprover(repository, NO_DECISION).preview(file, "alice", false);
 
     assertEquals(1, preview.getApproved());
     assertEquals(0, preview.getFailed());
@@ -419,7 +447,7 @@ class ExtractedMemoryApproverTest {
     ContextMemoryRepository repository = mock(ContextMemoryRepository.class);
     when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
         .thenReturn(List.of(hidden, decided, visible));
-    ExtractedMemoryApprover approver = new ExtractedMemoryApprover(repository);
+    ExtractedMemoryApprover approver = new ExtractedMemoryApprover(repository, NO_DECISION);
 
     ExtractedMemoryApproval preview = approver.preview(file, "alice", false);
 

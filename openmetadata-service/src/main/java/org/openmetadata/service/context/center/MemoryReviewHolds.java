@@ -27,7 +27,7 @@ import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
  */
 public final class MemoryReviewHolds {
   /** Stages a review leaves a pill in once a person decided it; Draft still awaits a decision. */
-  private static final Set<ContextMemoryStatus> DECIDED_STAGES =
+  static final Set<ContextMemoryStatus> DECIDED_STAGES =
       EnumSet.of(
           ContextMemoryStatus.REJECTED,
           ContextMemoryStatus.SUPERSEDED,
@@ -44,6 +44,32 @@ public final class MemoryReviewHolds {
   public static boolean isDecided(ContextMemory pill) {
     return pill.getSourceType() == ContextMemorySourceType.MANUAL
         || DECIDED_STAGES.contains(pill.getEntityStatus());
+  }
+
+  /**
+   * Whether a person's decision on {@code decided} holds {@code value} for review across documents:
+   * it replaces a number for a look-alike question, or re-extraction would hold it beside the pill.
+   */
+  public static boolean holdsAcrossDocuments(ContextMemory decided, ContextMemory value) {
+    return isDecided(decided)
+        && haveConflictingNumbers(decided, value)
+        && (askAlikeQuestions(decided, value) || holds(decided, value));
+  }
+
+  /** A replaced number, by value, in the question or the answer: never the same fact. */
+  public static boolean haveConflictingNumbers(ContextMemory a, ContextMemory b) {
+    return MemoryTextSimilarity.hasConflictingNumbers(factText(a), factText(b));
+  }
+
+  /** How re-extraction pairs two questions: the same words, or topic words clearing the bar. */
+  static boolean askAlikeQuestions(ContextMemory a, ContextMemory b) {
+    return sameQuestion(a, b)
+        || MemoryTextSimilarity.questionSimilarity(a.getQuestion(), b.getQuestion())
+            >= MemoryTextSimilarity.IDENTITY_THRESHOLD;
+  }
+
+  private static String factText(ContextMemory pill) {
+    return pill.getQuestion() + " " + pill.getAnswer();
   }
 
   /**

@@ -1,11 +1,11 @@
 # A document's extracted memories are approved from the document, by admins or its owners
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-09 (a hold in any linked document holds the memory)
+- **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-09 (a hold from another document needs an admin)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ExtractedMemoryApproverTest`, `ContextMemoryReconcilerTest`,
   `ContextMemoryRepositoryTest#aDocumentOwnersApprovalPassesReviewOnlyAsTheApproverWritesIt`,
-  `ContextMemoryExtractedApprovalIT`, the Jest tests of `CreateMemoryModal`,
+  `ContextMemoryExtractedApprovalIT`, `ContextMemoryExtractionIT`, the Jest tests of `CreateMemoryModal`,
   `ContextCenterMemoriesPage` and `ExtractedMemoriesCard`, and the Playwright specs
   `ContextCenterMemoryLifecycle` and `ContextCenterDocument`
 - **Related:** ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values,
@@ -91,5 +91,9 @@ a non-admin's manual memory under review, and in OSS for the values extraction h
 v2 (2026-11-09): one memory, one review. A memory several documents share (an identical copy, or a
 fact two documents state) is approved from any of them by that document's owners, and one that a
 linked document leaves for a decision stays pending from every other, so approving from one
-document never bypasses another's hold. Rejecting stays with admins
+document never bypasses another's hold. A value held because of a decision in another document
+needs an admin exactly as a same-document hold does: preview and approval re-read the memory index
+for decided memories that hold each pending value, by the rule the duplicate check holds it with
+(ADR:2026-09-29-context-file-memory-reuse, v3), and leave it pending for the document's owners.
+Rejecting stays with admins
 (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3).

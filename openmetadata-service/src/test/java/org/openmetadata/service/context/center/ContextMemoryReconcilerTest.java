@@ -1327,6 +1327,35 @@ class ContextMemoryReconcilerTest {
     verify(judge, never()).completeStructured(anyString(), anyString(), any());
   }
 
+  /** Another file's new value for a fact a person rejected waits for review, in OSS too. */
+  @Test
+  void aDifferentValueBesideARejectedFactIsHeldForReviewInOss() throws IOException {
+    ContextMemory rejected =
+        otherFilesFact(
+            "When is the customer billed?",
+            "Customers are billed on the 5th of each month.",
+            ContextMemorySourceType.FILE_EXTRACTION,
+            ContextMemoryStatus.REJECTED);
+
+    reconcilerOverIndex(rejected)
+        .reconcile(
+            copy,
+            Entity.CONTEXT_FILE,
+            List.of(
+                fileFact(
+                    copy,
+                    "When is the customer billed?",
+                    "Customers are billed on the 10th of each month.",
+                    ContextMemorySourceType.FILE_EXTRACTION,
+                    ContextMemoryStatus.APPROVED)));
+
+    ArgumentCaptor<ContextMemory> created = ArgumentCaptor.forClass(ContextMemory.class);
+    verify(memoryRepository).create(isNull(), created.capture());
+    assertEquals(ContextMemoryStatus.UNPROCESSED, created.getValue().getEntityStatus());
+    verify(memoryRepository, never()).linkExtractedMemory(any(), any());
+    verify(judge, never()).completeStructured(anyString(), anyString(), any());
+  }
+
   /** An identical copy takes every memory of the original, with the decisions people made. */
   @Test
   void identicalReuseCarriesDecisionsAndWaitingMemories() {

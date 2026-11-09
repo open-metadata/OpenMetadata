@@ -84,24 +84,15 @@ class SemanticMemoryDuplicateFinderTest {
     assertFalse(visibility.isVisibilityEnforced(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT));
   }
 
-  private SemanticMemoryDuplicateFinder finderWithCandidate(ContextMemory candidate) {
+  private SemanticMemoryDuplicateFinder finderWithCandidate(ContextMemory candidate)
+      throws IOException {
     return finderWithCandidate(candidate, completionClient);
   }
 
   private SemanticMemoryDuplicateFinder finderWithCandidate(
-      ContextMemory candidate, LLMCompletionClient client) {
-    when(vectorService.search(
-            anyString(),
-            any(),
-            eq(5),
-            eq(0),
-            eq(20),
-            eq(0.0),
-            isNull(),
-            eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
-        .thenReturn(
-            new VectorSearchResponse(
-                1L, List.of(Map.of("parentId", candidate.getId().toString()))));
+      ContextMemory candidate, LLMCompletionClient client) throws IOException {
+    vectorHits(List.of(candidate));
+    emptyIndex();
     when(repository.get(
             isNull(), eq(candidate.getId()), isNull(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(candidate);
@@ -111,7 +102,7 @@ class SemanticMemoryDuplicateFinderTest {
   }
 
   @Test
-  void proseOnBothAttemptsFailsReconciliationWithoutLinkingEarlierMatches() {
+  void proseOnBothAttemptsFailsReconciliationWithoutLinkingEarlierMatches() throws Exception {
     AtomicInteger attempts = new AtomicInteger();
     LLMCompletionClient client =
         new LLMCompletionClient(1) {
@@ -155,6 +146,39 @@ class SemanticMemoryDuplicateFinderTest {
     verify(repository, never()).create(any(), any());
   }
 
+  private void vectorHits(List<ContextMemory> memories) {
+    List<Map<String, Object>> hits =
+        memories.stream()
+            .map(memory -> Map.<String, Object>of("parentId", memory.getId().toString()))
+            .toList();
+    when(vectorService.search(
+            anyString(),
+            any(),
+            eq(5),
+            eq(0),
+            eq(20),
+            eq(0.0),
+            isNull(),
+            eq(SemanticMemoryDuplicateFinder.SEARCH_SUBJECT)))
+        .thenReturn(new VectorSearchResponse(1L, hits));
+  }
+
+  /** The memory index ranks nothing beyond what vector search returned. */
+  private void emptyIndex() throws IOException {
+    lenient().when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.searchSimilarContextMemories(anyString(), anyString(), eq(20)))
+        .thenReturn(new SearchResultListMapper(List.of(), 0));
+  }
+
+  private static List<String> judgedQuestions(String prompt) {
+    List<String> judged = new ArrayList<>();
+    JsonUtils.readTree(prompt)
+        .path("candidates")
+        .forEach(candidate -> judged.add(candidate.path("question").asText()));
+    return judged;
+  }
+
   private void rankedHits(List<ContextMemory> memories) throws IOException {
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     List<Map<String, Object>> hits =
@@ -186,7 +210,6 @@ class SemanticMemoryDuplicateFinderTest {
         memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
     SemanticMemoryDuplicateFinder finder = finderWithCandidate(candidate);
     when(repository.hasOrgWideAnchor(candidate)).thenReturn(false);
-    rankedHits(List.of());
 
     assertEquals(
         new DuplicateMatch.None(),
@@ -195,7 +218,7 @@ class SemanticMemoryDuplicateFinderTest {
   }
 
   @Test
-  void identicalFactReusesCandidateWithoutAnotherModelCall() {
+  void identicalFactReusesCandidateWithoutAnotherModelCall() throws Exception {
     ContextMemory candidate =
         memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
     ContextMemory derived =
@@ -208,7 +231,7 @@ class SemanticMemoryDuplicateFinderTest {
   }
 
   @Test
-  void semanticCandidateIsReusedOnlyWhenFactsAreEquivalent() {
+  void semanticCandidateIsReusedOnlyWhenFactsAreEquivalent() throws Exception {
     ContextMemory candidate =
         memory(UUID.randomUUID(), "What is churn?", "Customers lost during the period.");
     ContextMemory derived =
@@ -235,7 +258,7 @@ class SemanticMemoryDuplicateFinderTest {
 
   /** An added number, a year here, rewords a value; only a replaced number changes it. */
   @Test
-  void anAddedYearDoesNotPreventReusingTheSameApprovedValue() {
+  void anAddedYearDoesNotPreventReusingTheSameApprovedValue() throws Exception {
     ContextMemory candidate =
         memory(UUID.randomUUID(), "What is the retention window?", "Data is kept for 90 days.");
     ContextMemory derived =
@@ -252,7 +275,7 @@ class SemanticMemoryDuplicateFinderTest {
 
   /** A citation is no value: renumbering "(section 3)" to "(section 4)" keeps the fact reusable. */
   @Test
-  void aRenumberedCitationDoesNotPreventReusingTheSameApprovedValue() {
+  void aRenumberedCitationDoesNotPreventReusingTheSameApprovedValue() throws Exception {
     ContextMemory candidate =
         memory(
             UUID.randomUUID(),
@@ -402,14 +425,14 @@ class SemanticMemoryDuplicateFinderTest {
         keywordFinder().findMatch(memory(UUID.randomUUID(), note.getQuestion(), note.getAnswer())));
   }
 
-  /**
-   * As re-extraction holds values (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values),
-   * a replaced number beside a rejected value is a new claim: only a correction holds it.
-   */
+  /** A replaced number beside a decision holds only a value for a look-alike question. */
   @Test
-  void aValueReplacingARejectedFactsNumberIsANewClaim() throws Exception {
+  void anUnrelatedQuestionWithDifferentNumbersIsNoConflict() throws Exception {
     ContextMemory rejected =
-        memory(UUID.randomUUID(), "What is the refund window?", "Refunds within 30 days.")
+        memory(
+                UUID.randomUUID(),
+                "How many vacation days do employees get?",
+                "Employees get 25 vacation days per year.")
             .withEntityStatus(ContextMemoryStatus.REJECTED);
     rankedHits(List.of(rejected));
     eligible(rejected);
@@ -418,8 +441,85 @@ class SemanticMemoryDuplicateFinderTest {
         new DuplicateMatch.None(),
         keywordFinder()
             .findMatch(
-                memory(UUID.randomUUID(), rejected.getQuestion(), "Refunds within 45 days.")));
+                memory(
+                    UUID.randomUUID(),
+                    "What is the refund window?",
+                    "Refunds are accepted within 30 days.")));
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /**
+   * Vector search returns Approved memories only, so the memory index is asked too: the rankings
+   * alternate, and a waiting equivalent the vector lookup cannot return is judged and linked.
+   */
+  @Test
+  void aWaitingMemoryVectorSearchCannotReturnIsJudgedAndLinked() throws Exception {
+    ContextMemory retention =
+        memory(
+            UUID.randomUUID(),
+            "What is customer retention?",
+            "Retention is the share of customers kept.");
+    ContextMemory growth =
+        memory(
+            UUID.randomUUID(), "What is customer growth?", "Growth is the share of new customers.");
+    ContextMemory waiting =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.")
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    vectorHits(List.of(retention, growth));
+    rankedHits(List.of(waiting));
+    List.of(retention, growth, waiting).forEach(this::eligible);
+    ArgumentCaptor<String> prompt = ArgumentCaptor.forClass(String.class);
+    when(completionClient.completeStructured(
+            anyString(), prompt.capture(), eq(SemanticMemoryDuplicateFinder.MatchChoice.class)))
+        .thenReturn(List.of(new SemanticMemoryDuplicateFinder.MatchChoice(1)));
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE)).thenReturn(List.of());
+
+    new ContextMemoryReconciler(
+            repository,
+            new SemanticMemoryDuplicateFinder(
+                repository, () -> vectorService, () -> searchRepository, completionClient))
+        .reconcile(
+            file,
+            Entity.CONTEXT_FILE,
+            List.of(
+                memory(
+                    UUID.randomUUID(),
+                    "Define customer churn",
+                    "The portion of customers who leave.")));
+
+    verify(repository).linkExtractedMemory(waiting.getId(), file);
+    verify(repository, never()).create(any(), any());
+    assertEquals(
+        List.of(retention.getQuestion(), waiting.getQuestion(), growth.getQuestion()),
+        judgedQuestions(prompt.getValue()),
+        "the vector and memory index rankings alternate");
+  }
+
+  /** Approval reads decided memories alone: one may hold a value its document left pending. */
+  @Test
+  void aDecisionInAnotherDocumentHoldsAPendingValue() throws Exception {
+    ContextMemory rejected =
+        memory(
+                UUID.randomUUID(),
+                "When is the customer billed?",
+                "Customers are billed on the 5th of each month.")
+            .withEntityStatus(ContextMemoryStatus.REJECTED);
+    rankedHits(List.of(rejected));
+    eligible(rejected);
+    ContextMemory pending =
+        memory(
+                UUID.randomUUID(),
+                rejected.getQuestion(),
+                "Customers are billed on the 10th of each month.")
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+
+    assertTrue(keywordFinder().isHeldByADecision(pending));
+    ArgumentCaptor<String> filter = ArgumentCaptor.forClass(String.class);
+    verify(searchClient).searchSimilarContextMemories(anyString(), filter.capture(), eq(20));
+    assertTrue(filter.getValue().contains("\"Rejected\""), filter.getValue());
+    assertTrue(filter.getValue().contains("\"minimum_should_match\":1"), filter.getValue());
   }
 
   /** Another year's look-alike may be the decided fact reworded; Draft awaits a decision. */

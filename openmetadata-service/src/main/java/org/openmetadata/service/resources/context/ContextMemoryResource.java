@@ -74,6 +74,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.MemoryDerivations;
+import org.openmetadata.service.context.center.SemanticMemoryDuplicateFinder;
 import org.openmetadata.service.context.outcome.MemoryOutcomeWriter;
 import org.openmetadata.service.context.review.ExtractedMemoryApprover;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -124,7 +125,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   public ContextMemoryResource(Authorizer authorizer, Limits limits) {
     super(Entity.CONTEXT_MEMORY, authorizer, limits);
-    extractedMemoryApprover = new ExtractedMemoryApprover(repository);
+    extractedMemoryApprover =
+        new ExtractedMemoryApprover(
+            repository,
+            SemanticMemoryDuplicateFinder.forDecisionChecks(repository)::isHeldByADecision);
   }
 
   public static class ContextMemoryList extends ResultList<ContextMemory> {
