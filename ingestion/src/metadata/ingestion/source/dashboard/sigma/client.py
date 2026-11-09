@@ -122,7 +122,7 @@ class SigmaApiClient:
             if result:
                 workbooks.extend(result.entries)
                 while result.nextPage:
-                    data = {"page": int(result.nextPage)}
+                    data = {"page": result.nextPage}
                     result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks", data=data))
                     if result:
                         workbooks.extend(result.entries)
@@ -259,7 +259,7 @@ class SigmaApiClient:
                 pages = WorkBookPageResponse.model_validate(
                     self.client.get(
                         f"/workbooks/{workbook_id}/pages",
-                        data={"page": int(pages.nextPage)},
+                        data={"page": pages.nextPage},
                     )
                 )
                 if not pages.entries:
@@ -284,7 +284,7 @@ class SigmaApiClient:
             if result:
                 queries.extend(result.entries)
                 while result.nextPage:
-                    data = {"page": int(result.nextPage)}
+                    data = {"page": result.nextPage}
                     result = WorkbookQueriesResponse.model_validate(
                         self.client.get(f"/workbooks/{workbook_id}/queries", data=data)
                     )
