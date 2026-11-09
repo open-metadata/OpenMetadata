@@ -497,6 +497,31 @@ class SigmaSource(DashboardServiceSource):
         return [str(table) for table in parser.source_tables or []], []  # pyright: ignore[reportGeneralTypeIssues]
 
     @staticmethod
+    def _expand_sql_wildcards(
+        column_paths: list[tuple[str, str, str]], resolved_tables: dict[str, Table]
+    ) -> list[tuple[str, str, str]]:
+        """Expand fully resolved wildcards, excluding ambiguous output names."""
+        wildcard_tables = {table for table, column, _ in column_paths if column == "*"}
+        if not wildcard_tables:
+            return column_paths
+        explicit_paths = [path for path in column_paths if path[1] != "*"]
+        if any(table not in resolved_tables or not resolved_tables[table].columns for table in wildcard_tables):
+            # The parser can also materialize concrete paths from an unresolved star.
+            return []
+
+        wildcard_paths = [
+            (table, model_str(column.name), model_str(column.name))
+            for table in wildcard_tables
+            for column in resolved_tables[table].columns or []
+        ]
+        wildcard_names = {normalize_column_name(output) for _, _, output in wildcard_paths}
+        sources_by_output: dict[str, set[tuple[str, str]]] = {}
+        for table, column, output in explicit_paths + wildcard_paths:
+            sources_by_output.setdefault(normalize_column_name(output), set()).add((table, column))
+        ambiguous = {name for name in wildcard_names if len(sources_by_output[name]) > 1}
+        return [path for path in explicit_paths + wildcard_paths if normalize_column_name(path[2]) not in ambiguous]
+
+    @staticmethod
     def _get_sql_column_lineage(
         column_paths: list[tuple[str, str, str]],
         source_table: str,
@@ -508,13 +533,7 @@ class SigmaSource(DashboardServiceSource):
         for path_table, source_column, output_column in column_paths:
             if path_table != source_table:
                 continue
-            pairs = (
-                [(model_str(column.name), model_str(column.name)) for column in table.columns or []]
-                if source_column == "*"
-                else [(source_column, output_column)]
-            )
-            for from_name, to_name in pairs:
-                from_names_by_target.setdefault(to_name, []).append(from_name)
+            from_names_by_target.setdefault(output_column, []).append(source_column)
 
         lineage = []
         for output_column, source_columns in from_names_by_target.items():
@@ -586,6 +605,7 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
                 source_tables, column_paths = self._parse_sql_lineage(query_obj.sql, dialect)
+                resolved_tables: dict[str, Table] = {}
                 for source_table in source_tables:
                     try:
                         database_schema_table = fqn.split_table_name(str(source_table))
@@ -606,13 +626,16 @@ class SigmaSource(DashboardServiceSource):
                         )
                         continue
                     if isinstance(table_entity, Table):
-                        yield self._get_add_lineage_request(
-                            to_entity=data_model_entity,
-                            from_entity=table_entity,
-                            column_lineage=self._get_sql_column_lineage(
-                                column_paths, source_table, table_entity, data_model_entity
-                            ),
-                        )
+                        resolved_tables[source_table] = table_entity
+                column_paths = self._expand_sql_wildcards(column_paths, resolved_tables)
+                for source_table, table_entity in resolved_tables.items():
+                    yield self._get_add_lineage_request(
+                        to_entity=data_model_entity,
+                        from_entity=table_entity,
+                        column_lineage=self._get_sql_column_lineage(
+                            column_paths, source_table, table_entity, data_model_entity
+                        ),
+                    )
 
             except Exception as exc:
                 yield Either(

@@ -1675,6 +1675,19 @@ def test_sql_lineage_uses_sql_to_disambiguate_labeled_columns(lineage_source):
             {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id"), ("CUSTOMER_NAME", "Customer Name")]},
         ),
         (
+            "SELECT * FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_NAME", "Customer Name")], "ORDERS": [("ORDER_STATUS", "Order Status")]},
+        ),
+        (
+            "SELECT c.* FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id"), ("CUSTOMER_NAME", "Customer Name")], "ORDERS": []},
+        ),
+        (
+            "SELECT c.*, o.ORDER_STATUS AS CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id")], "ORDERS": []},
+        ),
+        (
             "WITH base AS (SELECT CUSTOMER_ID FROM SALES.PUBLIC.CUSTOMERS) "
             "SELECT CUSTOMER_ID AS CUSTOMER_NAME FROM base",
             {"CUSTOMERS": [("CUSTOMER_ID", "Customer Name")]},
@@ -1688,7 +1701,19 @@ def test_sql_lineage_uses_sql_to_disambiguate_labeled_columns(lineage_source):
             {"CUSTOMERS": [], "ORDERS": []},
         ),
     ],
-    ids=["constant", "alias", "expression", "join", "wildcard", "cte", "insert", "multiple-statements"],
+    ids=[
+        "constant",
+        "alias",
+        "expression",
+        "join",
+        "wildcard",
+        "wildcard-join",
+        "qualified-wildcard",
+        "wildcard-alias-collision",
+        "cte",
+        "insert",
+        "multiple-statements",
+    ],
 )
 def test_sql_lineage_uses_query_column_provenance(lineage_source, sql, expected):
     lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
@@ -1708,6 +1733,41 @@ def test_sql_lineage_uses_query_column_provenance(lineage_source, sql, expected)
 
     assert not [result.left for result in results if result.left]
     assert observed == expected
+
+
+@pytest.mark.parametrize("projection", ["*", "c.*", "*, c.CUSTOMER_ID AS ORDER_STATUS"])
+@pytest.mark.parametrize("lookup_state", ["missing", "failed", "no-columns"])
+def test_unresolved_wildcard_sources_keep_table_lineage(lineage_source, projection, lookup_state):
+    sql = (
+        f"SELECT {projection} FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID"
+    )
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", sql=sql)]
+    )
+
+    def resolve(entity_type, fqn_search_string, **_):
+        if fqn_search_string.lower().endswith(".customers"):
+            return CUSTOMERS
+        if lookup_state == "failed":
+            raise RuntimeError("search unavailable")
+        if lookup_state == "no-columns":
+            return ORDERS.model_copy(update={"columns": []})
+        return None
+
+    lineage_source.metadata.search_in_any_service = resolve
+    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, "mock_mysql"))
+
+    expected = []
+    if projection == "c.*":
+        expected = [
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_ID", f"{AMOUNT_MODEL_FQN}.Customer Id"),
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_NAME", f"{AMOUNT_MODEL_FQN}.Customer Name"),
+        ]
+    expected_links = {CUSTOMERS.fullyQualifiedName.root: expected}
+    if lookup_state == "no-columns":
+        expected_links[ORDERS.fullyQualifiedName.root] = []
+    assert column_links(results) == expected_links
+    assert bool([result.left for result in results if result.left]) == (lookup_state == "failed")
 
 
 @pytest.mark.parametrize(
