@@ -31,6 +31,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -145,10 +146,8 @@ public class PersonaRepository extends EntityRepository<Persona> {
                 .filter(rule -> !nullOrEmpty(rule.getQueryFilter()))
                 .toList();
     if (!requestedRules.isEmpty()) {
-      PersonaContextDefinition previous =
-          update
-              ? daoCollection.personaDAO().findEntityById(persona.getId()).getContextDefinition()
-              : null;
+      Persona stored = update ? findByNameOrNull(persona.getName(), Include.ALL) : null;
+      PersonaContextDefinition previous = stored == null ? null : stored.getContextDefinition();
       List<ContextRule> storedRules =
           previous == null ? List.of() : listOrEmpty(previous.getRules());
       boolean contextActivated =

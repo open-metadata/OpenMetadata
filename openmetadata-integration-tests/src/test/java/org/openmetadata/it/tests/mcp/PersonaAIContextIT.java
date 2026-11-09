@@ -198,6 +198,33 @@ class PersonaAIContextIT extends McpTestBase {
   }
 
   @Test
+  void genericPutCreatesAndUpdatesFilteredRulesBeforeRejectingInvalidChanges() throws Exception {
+    ContextRule rule = scopedFqnRule("Search table", table.getFullyQualifiedName());
+    CreatePersona request =
+        new CreatePersona()
+            .withName("persona_filtered_put_" + shortId())
+            .withContextDefinition(
+                new PersonaContextDefinition().withEnabled(true).withRules(List.of(rule)));
+    Persona created = put("personas", request, Persona.class);
+    try {
+      assertThat(created.getContextDefinition().getRules()).hasSize(1);
+      request.setDescription("Updated through generic PUT");
+      Persona updated = put("personas", request, Persona.class);
+      assertThat(updated.getId()).isEqualTo(created.getId());
+      assertThat(updated.getDescription()).isEqualTo(request.getDescription());
+      String savedFilter = rule.getQueryFilter();
+      rule.setQueryFilter("{\"regexp\":{\"name.keyword\":\"[invalid\"}}");
+      assertThat(putResponse("personas", request, authToken).statusCode()).isEqualTo(400);
+      Persona persisted =
+          get("personas/" + created.getId() + "?fields=contextDefinition", Persona.class);
+      assertThat(persisted.getContextDefinition().getRules().getFirst().getQueryFilter())
+          .isEqualTo(savedFilter);
+    } finally {
+      deleteResponse("personas/" + created.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  @Test
   void rejectsMissingBodiesAndInvalidFiltersBeforePersistingEitherMode() throws Exception {
     assertThat(postResponse(contextPath() + "/rules", null, authToken).statusCode()).isEqualTo(400);
     ContextRule storedRule =
