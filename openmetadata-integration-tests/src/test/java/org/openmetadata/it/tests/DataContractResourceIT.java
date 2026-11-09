@@ -2449,6 +2449,103 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testSchemaLessODCSInvalidQualityHasNoSideEffects(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0")) {
+      Table table = createTestTable(ns);
+      DataContract fixture =
+          new DataContract()
+              .withId(UUID.randomUUID())
+              .withName(ns.prefix("invalid_profile"))
+              .withEntity(table.getEntityReference())
+              .withSchema(table.getColumns())
+              .withOdcsQualityRules(
+                  List.of(
+                      new ODCSQualityRule()
+                          .withName("must_not_exist")
+                          .withType(ODCSQualityRule.Type.LIBRARY)
+                          .withMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT)
+                          .withMustBeGreaterThan(0.0)));
+      ObjectNode invalid =
+          (ObjectNode)
+              new ODCSExportService(contract -> List.of()).export(fixture, version).requireValid();
+      invalid.remove("schema");
+      invalid
+          .withArray("quality")
+          .addObject()
+          .put("name", "must_not_exist")
+          .put("type", "library")
+          .put("metric", "nullValues")
+          .put("column", "id")
+          .put("mustBe", 0)
+          .put("unexpectedField", "invalid");
+      String content = new YAMLMapper().writeValueAsString(invalid);
+      ContractValidation preview =
+          client.dataContracts().validateODCSYaml(content, table.getId(), "table");
+      assertFalse(preview.getValid());
+      assertFalse(preview.getOdcsImportReport().getCanImport());
+      assertEquals(version, preview.getOdcsImportReport().getOdcsVersion());
+      assertTrue(
+          preview.getOdcsImportReport().getIssues().stream()
+              .anyMatch(issue -> issue.getMessage().contains("malformed")));
+      OpenMetadataException parseError =
+          assertThrows(
+              OpenMetadataException.class,
+              () ->
+                  client
+                      .getHttpClient()
+                      .execute(
+                          HttpMethod.POST,
+                          "/v1/dataContracts/odcs/parse/yaml",
+                          content,
+                          JsonNode.class,
+                          RequestOptions.builder()
+                              .header("Content-Type", "application/yaml")
+                              .build()));
+      assertEquals(400, parseError.getStatusCode());
+      for (boolean yaml : List.of(false, true)) {
+        for (HttpMethod method : List.of(HttpMethod.POST, HttpMethod.PUT)) {
+          OpenMetadataException error =
+              assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      client
+                          .getHttpClient()
+                          .execute(
+                              method,
+                              "/v1/dataContracts/odcs" + (yaml ? "/yaml" : ""),
+                              yaml ? content : invalid,
+                              DataContract.class,
+                              RequestOptions.builder()
+                                  .queryParam("entityId", table.getId().toString())
+                                  .queryParam("entityType", "table")
+                                  .queryParam("createTestCases", "true")
+                                  .header(
+                                      "Content-Type",
+                                      yaml ? "application/yaml" : "application/json")
+                                  .build()));
+          assertEquals(400, error.getStatusCode());
+        }
+      }
+      assertEquals(
+          404,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () -> client.dataContracts().getByEntityId(table.getId(), "table"))
+              .getStatusCode());
+      assertEquals(
+          404,
+          assertThrows(
+                  OpenMetadataException.class,
+                  () ->
+                      client
+                          .testCases()
+                          .getByName(table.getFullyQualifiedName() + ".id.odcs_must_not_exist"))
+              .getStatusCode());
+    }
+  }
+
+  @Test
   void testExportDataContractToODCS(TestNamespace ns) {
     Table table = createTestTable(ns);
 

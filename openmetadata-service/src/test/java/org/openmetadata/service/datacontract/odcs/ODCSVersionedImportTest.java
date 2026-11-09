@@ -619,6 +619,41 @@ class ODCSVersionedImportTest {
     }
   }
 
+  @Test
+  void selectedObjectDoesNotIncludeRulesFromAnObjectDifferingOnlyByCase() {
+    ObjectNode source = (ObjectNode) exporter.export(contract(), "v3.1.0").requireValid();
+    ObjectNode other = source.at("/schema/0").deepCopy();
+    other.put("name", "CUSTOMERS");
+    ((ObjectNode) other.at("/properties/0/quality/0")).put("name", "other_check");
+    ((ArrayNode) source.path("schema")).add(other);
+    DataContract imported = read(source, contract().getEntity());
+    assertEquals(
+        List.of("id_not_null"),
+        imported.getOdcsQualityRules().stream().map(ODCSQualityRule::getName).toList());
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {"arguments", "mustBeGreaterThan", "column", "dimension", "unexpectedField"})
+  void schemaLessLegacyRulesCannotHideInvalidFields(String field) {
+    ObjectNode source =
+        (ObjectNode)
+            exporter
+                .export(contract().withSchema(List.of()).withOdcsQualityRules(null), "v3.1.0")
+                .requireValid();
+    ObjectNode rule =
+        source
+            .withArray("quality")
+            .addObject()
+            .put("type", "library")
+            .put("metric", "nullValues")
+            .put("column", "id")
+            .put("mustBe", 0);
+    if (field.equals("column")) rule.put(field, 42);
+    else rule.put(field, "invalid");
+    assertThrows(IllegalArgumentException.class, () -> read(source, contract().getEntity()));
+  }
+
   private static DataContract read(JsonNode source, EntityReference target) {
     ODCSImportService.Document document = ODCSImportService.readOrReject(JSON, source);
     return ODCSConverter.fromODCS(

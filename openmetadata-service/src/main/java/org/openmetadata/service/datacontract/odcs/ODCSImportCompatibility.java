@@ -235,8 +235,12 @@ final class ODCSImportCompatibility {
           .put("logicalType", "object");
     for (JsonNode rule : rules) {
       if (schemaAbsent && rule.has("column")) {
-        if (!(rule instanceof ObjectNode object))
-          throw new IllegalArgumentException("Legacy quality rules must be objects.");
+        if (!(rule instanceof ObjectNode object) || !object.path("column").isTextual())
+          throw new IllegalArgumentException(
+              "Legacy root quality rules must be objects with textual column references.");
+        if (!validLegacyQuality(object))
+          throw new IllegalArgumentException(
+              "Legacy root quality rule `" + object.path("name").asText() + "` is malformed.");
         ObjectNode wrapper = object.objectNode().put("type", "custom").put("engine", "odcs");
         if (object.has("name")) wrapper.set("name", object.path("name"));
         wrapper.put(

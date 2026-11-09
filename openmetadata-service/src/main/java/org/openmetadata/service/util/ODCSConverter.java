@@ -555,8 +555,7 @@ public class ODCSConverter {
 
     if (odcs.getSchema() != null) {
       for (ODCSSchemaElement schemaObject : odcs.getSchema()) {
-        if (selectedObject != null && !selectedObject.equalsIgnoreCase(schemaObject.getName()))
-          continue;
+        if (selectedObject != null && !selectedObject.equals(schemaObject.getName())) continue;
         boolean table =
             schemaObject.getLogicalType() == ODCSSchemaElement.LogicalType.OBJECT
                 || !nullOrEmpty(schemaObject.getProperties());
