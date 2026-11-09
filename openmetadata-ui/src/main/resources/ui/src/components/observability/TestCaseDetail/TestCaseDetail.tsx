@@ -10,15 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Tabs } from '@openmetadata/ui-core-components';
-import { RefreshCcw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Box,
+  ButtonUtility,
+  FeaturedIcon,
+  Tabs,
+} from '@openmetadata/ui-core-components';
+import {
+  Collapse,
+  Expand,
+  RefreshCcw01,
+  TestCase as TestCaseIcon,
+} from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestCaseIcon } from '../../../assets/svg/ic-checklist.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -47,7 +56,6 @@ import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { AlignRightIconButton } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../DataAssets/DataAssetsHeader/StatItem.component';
@@ -323,9 +331,11 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
     }
 
     return (
-      <AlignRightIconButton
-        className={isTabExpanded ? 'rotate-180' : ''}
-        title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+      <ButtonUtility
+        data-testid="tab-expand-button"
+        icon={isTabExpanded ? Collapse : Expand}
+        size="lg"
+        tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
         onClick={toggleTabExpanded}
       />
     );
@@ -371,16 +381,12 @@ const TestCaseDetail = ({ isVersionPage = false }: TestCaseDetailProps) => {
                 gap={4}
                 wrap="wrap">
                 <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-                  <Box
-                    align="center"
-                    className={classNames(
-                      'tw:relative tw:size-9 tw:shrink-0',
-                      'tw:overflow-hidden tw:rounded-full',
-                      'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                    )}
-                    justify="center">
-                    <TestCaseIcon className="tw:size-5 tw:dark:[&>rect]:fill-transparent" />
-                  </Box>
+                  <FeaturedIcon
+                    color="gray"
+                    icon={TestCaseIcon}
+                    size="md"
+                    theme="surface"
+                  />
                   <TestCaseHeaderTitle
                     deleted={testCase.deleted}
                     displayName={displayName}

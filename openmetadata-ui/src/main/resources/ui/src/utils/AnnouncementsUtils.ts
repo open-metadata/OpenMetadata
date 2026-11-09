@@ -15,8 +15,8 @@ import {
   IconComponentType,
 } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   AlertCircle,
-  AlertTriangle,
   Announcement02,
   InfoCircle,
   SlashCircle01,
@@ -126,6 +126,12 @@ export const ANNOUNCEMENT_COLOR_LABEL_KEYS: Record<AnnouncementColor, string> =
     [AnnouncementColor.Orange]: 'label.color-orange',
   };
 
+/**
+ * The colour a Custom announcement takes until one is picked: the banner draws
+ * it and the form pre-selects it, so both read this one value.
+ */
+export const DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR = AnnouncementColor.Pink;
+
 export interface AnnouncementTypeConfig {
   color: BadgeColors;
   /** A Custom announcement's own name, shown in place of `labelKey`. */
@@ -150,7 +156,7 @@ export const ANNOUNCEMENT_TYPE_CONFIG: Record<
   },
   [AnnouncementType.Warning]: {
     color: 'warning',
-    icon: AlertTriangle,
+    icon: Alert,
     labelKey: 'label.warning',
   },
   [AnnouncementType.Deprecation]: {
@@ -159,7 +165,7 @@ export const ANNOUNCEMENT_TYPE_CONFIG: Record<
     labelKey: 'label.deprecation',
   },
   [AnnouncementType.Custom]: {
-    color: 'pink',
+    color: ANNOUNCEMENT_COLORS[DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR],
     icon: Announcement02,
     labelKey: 'label.custom',
   },
@@ -221,6 +227,15 @@ export const getAnnouncementTypeConfig = (
     customLabel: announcement.customTypeName?.trim() || undefined,
   };
 };
+
+/**
+ * A system announcement (no entity link) of the Critical type — the kind the
+ * Home page shows as its top banner rather than in the announcements rail.
+ */
+export const isCriticalSystemAnnouncement = (
+  announcement: Pick<AnnouncementEntity, 'entityLink' | 'type'>
+): boolean =>
+  !announcement.entityLink && announcement.type === AnnouncementType.Critical;
 
 /** The badge text: a Custom announcement's own name, else the type's label. */
 export const getAnnouncementTypeLabel = (

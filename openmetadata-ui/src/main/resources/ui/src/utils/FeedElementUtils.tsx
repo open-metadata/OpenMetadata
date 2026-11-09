@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
-import { WidgetCommentButton } from '../components/common/WidgetActionButton/WidgetActionButton';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
+import { MessageChatSquare } from '@openmetadata/ui-core-components/icons';
+import { MouseEvent } from 'react';
 import { EntityField } from '../constants/Feeds.constants';
 import { EntityType } from '../enums/entity.enum';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
@@ -32,14 +34,15 @@ export const getFieldThreadElement = (
   );
 
   return (
-    <WidgetCommentButton
-      compact
+    <ButtonUtility
       className="hover-cell-icon"
       data-testid="field-thread"
-      title={t('label.list-entity', {
+      icon={MessageChatSquare}
+      size="xs"
+      tooltip={t('label.list-entity', {
         entity: t('label.conversation'),
       })}
-      onClick={(e) => {
+      onClick={(e: MouseEvent<HTMLButtonElement>) => {
         e.preventDefault();
         e.stopPropagation();
 

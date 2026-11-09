@@ -75,11 +75,13 @@ import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.ChildFieldResolver;
+import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
@@ -158,11 +160,13 @@ public class ColumnRepository {
     String entityType = spec.entityType();
     EntityRepository<? extends EntityInterface<?>> repository =
         Entity.getEntityRepository(entityType);
+    // Authorized on this copy, so it carries every attribute a condition reads.
     EntityInterface<?> parent =
         repository.getByName(
             null,
             parentFQN,
-            repository.getFields(spec.requiredFields() + ",owners"),
+            ResourceContext.authorizationFields(
+                repository, repository.getFields(spec.requiredFields() + ",owners")),
             include,
             false);
     authorizer.authorize(
@@ -206,6 +210,25 @@ public class ColumnRepository {
   }
 
   public FieldInterface updateChildByFQN(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      String columnFQN,
+      String entityType,
+      UpdateColumn updateColumn,
+      ChangeSource changeSource) {
+    return submitChildUpdateByFQN(
+            uriInfo, securityContext, columnFQN, entityType, updateColumn, changeSource)
+        .child();
+  }
+
+  /**
+   * A child update and whether it was published: when an approval workflow holds it,
+   * {@code pendingChangeRequestId} names the change request and nothing was published.
+   */
+  public record ChildUpdate(FieldInterface child, UUID pendingChangeRequestId) {}
+
+  /** As {@link #updateChildByFQN}, also reporting whether the update was held for approval. */
+  public ChildUpdate submitChildUpdateByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String columnFQN,
@@ -262,7 +285,7 @@ public class ColumnRepository {
     }
   }
 
-  private FieldInterface updateChildByFQN(
+  private ChildUpdate updateChildByFQN(
       UriInfo uriInfo,
       SecurityContext securityContext,
       String columnFQN,
@@ -304,10 +327,20 @@ public class ColumnRepository {
     // paths called before consolidation (EntityRepository delegates both to the same method with
     // changeSource null), so an unattributed write stays byte-identical on the wire.
     RestUtil.PatchResponse<? extends EntityInterface<?>> patchResponse =
-        repository.patch(uriInfo, parentEntityRef.getId(), user, jsonPatch, changeSource);
-    triggerParentChangeEvent(patchResponse.entity(), user);
+        repository.patch(
+            uriInfo,
+            parentEntityRef.getId(),
+            user,
+            jsonPatch,
+            changeSource,
+            ImpersonationContext.getImpersonatedBy());
+    UUID pendingChangeRequestId = patchResponse.pendingChangeRequestId();
+    // A held update published nothing; approving it records its own change.
+    if (pendingChangeRequestId == null) {
+      triggerParentChangeEvent(patchResponse.entity(), user);
+    }
 
-    return child;
+    return new ChildUpdate(child, pendingChangeRequestId);
   }
 
   @SuppressWarnings("unchecked")
@@ -437,6 +470,9 @@ public class ColumnRepository {
         Entity.getEntityRepository(entityType);
     ListFilter filter =
         buildSearchFilter(entityType, serviceName, databaseName, schemaName, domainId);
+    if (domainId == null) {
+      EntityUtil.addNavbarDomainFilter(securityContext, filter, entityType, () -> null);
+    }
 
     List<? extends EntityInterface<?>> parents =
         viewableParents(

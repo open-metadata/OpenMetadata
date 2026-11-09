@@ -1006,4 +1006,20 @@ public class DashboardDataModelResourceIT
         1, column.getTags().size(), "User-applied column tag must survive a dataType change");
     assertEquals(columnTag.getFullyQualifiedName(), column.getTags().get(0).getTagFQN());
   }
+
+  @Test
+  void patch_rejectedRenameKeepsColumnFqns(TestNamespace ns) {
+    DashboardDataModel created = createEntity(createMinimalRequest(ns));
+    DashboardDataModel patch = getEntity(created.getId().toString());
+    patch.setName(created.getName() + "_renamed");
+
+    DashboardDataModel updated = patchEntity(created.getId().toString(), patch);
+
+    String fqn = created.getFullyQualifiedName();
+    List<String> columnFqns =
+        updated.getColumns().stream().map(Column::getFullyQualifiedName).toList();
+    assertEquals(fqn, updated.getFullyQualifiedName());
+    assertEquals(2, columnFqns.size());
+    assertTrue(columnFqns.stream().allMatch(f -> f.startsWith(fqn + ".")), columnFqns::toString);
+  }
 }

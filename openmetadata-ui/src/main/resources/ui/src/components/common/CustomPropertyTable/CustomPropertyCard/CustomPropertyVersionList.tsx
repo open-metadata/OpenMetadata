@@ -11,63 +11,41 @@
  *  limitations under the License.
  */
 import { Card } from '@openmetadata/ui-core-components';
-import { isString } from 'lodash';
-import { useTranslation } from 'react-i18next';
-import { CustomProperty } from '../../../../generated/type/customProperty';
-import RichTextEditorPreviewerV1 from '../../RichTextEditor/RichTextEditorPreviewerV1';
 import { CustomPropertyListItem } from '../CustomPropertiesWidget/CustomPropertyListItem';
-import { getPropertyValueSummary } from '../CustomPropertiesWidget/CustomPropertyListItem.utils';
-import { isPropertyValueEmpty } from './CustomPropertyCard.utils';
+import { hasVersionValue } from './CustomPropertyCard.utils';
 import { CustomPropertyVersionListProps } from './CustomPropertyVersionList.interface';
+import { CustomPropertyVersionValue } from './CustomPropertyVersionValue';
 
 /** Read-only Custom Properties tab of an entity version page. */
 export const CustomPropertyVersionList = ({
   properties,
   extension,
   addedKeys = [],
-}: CustomPropertyVersionListProps) => {
-  const { t, i18n } = useTranslation();
+}: CustomPropertyVersionListProps) => (
+  <Card className="tw:p-4" data-testid="custom-properties-card">
+    <ul className="tw:m-0 tw:grid tw:list-none tw:grid-cols-1 tw:gap-3 tw:p-0 tw:md:grid-cols-2 tw:xl:grid-cols-3">
+      {properties.map((property) => {
+        const value = extension?.[property.name];
 
-  const renderValue = (property: CustomProperty) => {
-    const typeName = property.propertyType.name;
-    const value = extension?.[property.name];
-    const diffClassName = addedKeys.includes(property.name)
-      ? 'diff-added'
-      : undefined;
-
-    // A changed value of any type arrives as a word-diff HTML string, so
-    // strings go through the previewer before the type-aware empty check.
-    if (isString(value) && value) {
-      return (
-        <RichTextEditorPreviewerV1 className={diffClassName} markdown={value} />
-      );
-    }
-
-    if (isPropertyValueEmpty(typeName, value)) {
-      return undefined;
-    }
-
-    return (
-      <span className={diffClassName}>
-        {getPropertyValueSummary(typeName, value, t, i18n.language)}
-      </span>
-    );
-  };
-
-  return (
-    <Card className="tw:p-4" data-testid="custom-properties-card">
-      <ul className="tw:m-0 tw:grid tw:list-none tw:grid-cols-1 tw:gap-3 tw:p-0 tw:md:grid-cols-2 tw:xl:grid-cols-3">
-        {properties.map((property) => (
+        return (
           <CustomPropertyListItem
             className="tw:rounded-xl tw:border tw:border-secondary tw:bg-primary"
             hasEditPermissions={false}
             key={property.name}
             property={property}
-            value={extension?.[property.name]}
-            valueContent={renderValue(property)}
+            value={value}
+            valueContent={
+              hasVersionValue(property.propertyType.name, value) ? (
+                <CustomPropertyVersionValue
+                  isAdded={addedKeys.includes(property.name)}
+                  property={property}
+                  value={value}
+                />
+              ) : undefined
+            }
           />
-        ))}
-      </ul>
-    </Card>
-  );
-};
+        );
+      })}
+    </ul>
+  </Card>
+);

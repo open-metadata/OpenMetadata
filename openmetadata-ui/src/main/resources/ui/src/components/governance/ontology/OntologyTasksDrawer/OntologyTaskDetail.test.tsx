@@ -15,6 +15,10 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { EntityStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import APIClient from '../../../../rest/axiosClient';
 import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../../test/unit/enUsTranslation';
+import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
@@ -144,4 +148,24 @@ it('shows the requester explanation without actions and posts repeated comments 
 
     expect(props.onComment).toHaveBeenCalledTimes(count);
   }
+});
+
+it('tells a caller who cannot publish that only an author or owner can, instead of a disabled button', () => {
+  useEnUsTranslations();
+  renderWithQueryClient(
+    <OntologyTaskDetail
+      {...props}
+      canPublish={false}
+      review={{ ...review, status: EntityStatus.Approved }}
+    />
+  );
+
+  expect(
+    screen.getByTestId('ontology-only-author-publishes')
+  ).toHaveTextContent('Only an author or owner can publish.');
+  expect(
+    screen.queryByRole('button', { name: /publish/i })
+  ).not.toBeInTheDocument();
+
+  useKeyEchoTranslations();
 });

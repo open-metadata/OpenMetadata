@@ -37,6 +37,7 @@ import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
+import jakarta.ws.rs.core.HttpHeaders;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
@@ -59,6 +60,8 @@ import org.openmetadata.schema.api.data.NativeOntologyImportDetection;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
+import org.openmetadata.schema.api.data.OntologyProfileReport;
+import org.openmetadata.schema.api.data.OntologyReleaseExportOptions;
 import org.openmetadata.schema.api.data.OntologyReleaseReview;
 import org.openmetadata.schema.api.data.OntologyWorkingDiff;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
@@ -90,6 +93,7 @@ import org.openmetadata.service.ontology.NativeOntologyDataGraphService.Query;
 import org.openmetadata.service.ontology.NativeOntologyTopologyCursorCodec;
 import org.openmetadata.service.ontology.OntologyConceptBindingService;
 import org.openmetadata.service.ontology.OntologyConceptBindingService.Access;
+import org.openmetadata.service.ontology.OntologyDraftQuery;
 import org.openmetadata.service.ontology.OntologyFormatDetector;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
@@ -100,7 +104,11 @@ import org.openmetadata.service.ontology.OntologyReleaseComparison;
 import org.openmetadata.service.ontology.OntologyReleaseHistory;
 import org.openmetadata.service.ontology.OntologyReleaseQuery;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader;
+import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
+import org.openmetadata.service.rdf.OntologyExportFormat;
+import org.openmetadata.service.rdf.OntologyReleaseExporter;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.rdf.SparqlQueryExecutionGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -153,6 +161,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     releaseActivation =
         new OntologyReleaseActivation(
             repository,
+            (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE),
             Clock.systemUTC(),
             id -> RdfUpdater.enqueueOntologyGraph(repository.getDaoCollection(), id));
     releaseCapture =
@@ -188,14 +197,26 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       operationId = "queryActiveOntologyRelease",
       summary = "Query the active ontology release",
       description =
-          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded.")
+          "Runs read-only SPARQL over the active release's verified SQL projection. Requires view access to every captured member and cannot access other graphs or external services. Working edits are excluded unless scope=draft, which queries the working draft and requires EditAll on the ontology.")
   public Response query(
       @Context final UriInfo uriInfo,
       @Context final SecurityContext context,
       @PathParam("id") final UUID id,
+      @QueryParam("scope")
+          @DefaultValue("release")
+          @Pattern(
+              regexp = "release|draft",
+              message = "Invalid scope. Allowed values: release, draft.")
+          final String scope,
       @Valid final SparqlQuery request) {
     getInternal(uriInfo, context, id, "", Include.NON_DELETED, null);
-    final var service =
+    final Consumer<List<? extends OntologyDefinition>> authorize =
+        definition -> OntologyResourceAccess.requireView(authorizer, context, definition);
+    final boolean draft = "draft".equals(scope);
+    if (draft) {
+      OntologyResourceAccess.requireDraftRead(authorizer, context, getResourceContextById(id));
+    }
+    final var release =
         new OntologyReleaseQuery(
             repository,
             (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
@@ -205,16 +226,19 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
               .execute(
                   user(context),
                   () ->
-                      service.query(
-                          id,
-                          request,
-                          definition ->
-                              OntologyResourceAccess.requireView(authorizer, context, definition)));
+                      draft
+                          ? new OntologyDraftQuery(releaseCapture.snapshot()::read)
+                              .query(id, request, authorize)
+                          : release.query(id, request, authorize));
       return Response.ok(result.body(), result.mediaType()).build();
     } catch (SparqlFederationGuard.FederationDisallowedException exception) {
       throw new ForbiddenException(exception.getMessage(), exception);
     } catch (SparqlQueryExecutionGuard.QueryCapacityException exception) {
-      throw new ClientErrorException(exception.getMessage(), Response.Status.TOO_MANY_REQUESTS);
+      throw new ClientErrorException(
+          exception.getMessage(),
+          Response.status(Response.Status.TOO_MANY_REQUESTS)
+              .header(HttpHeaders.RETRY_AFTER, 1)
+              .build());
     } catch (SparqlQueryExecutionGuard.QueryTimeoutException exception) {
       throw new ServiceUnavailableException(
           Response.status(Response.Status.SERVICE_UNAVAILABLE)
@@ -274,6 +298,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
           @Pattern(regexp = "concept", message = "Invalid groupBy. Allowed value: concept.")
           final String groupBy) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
     final var comparison =
         new OntologyReleaseComparison(
             (OntologyReleaseRepository) Entity.getEntityRepository(Entity.ONTOLOGY_RELEASE));
@@ -290,6 +316,32 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
                     : comparison.compareWorkingByConcept(working, limit, after, authorize));
   }
 
+  @GET
+  @Path("/{id}/working/validation")
+  @Operation(
+      operationId = "validateOntologyWorkingDraft",
+      summary = "Validate every definition in the working draft")
+  public OntologyProfileReport validateWorking(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
+    final Consumer<List<? extends OntologyDefinition>> authorize =
+        definitions -> OntologyResourceAccess.requireView(authorizer, securityContext, definitions);
+    return releaseCapture
+        .snapshot()
+        .read(
+            id,
+            authorize,
+            working ->
+                OntologyStructureValidator.validateDraft(
+                    working.entries().stream()
+                        .map(OntologyWorkingSnapshot.Entry::definition)
+                        .toList()));
+  }
+
   @POST
   @Path("/{id}/library/{packId}/preview")
   @Operation(
@@ -301,18 +353,35 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @PathParam("id") final UUID id,
       @PathParam("packId") final String packId,
       @NotNull @Valid final PreviewNativeOntologyPack request) {
+    return reviewLibraryPack(uriInfo, securityContext, id, packId, request).getChangeSet();
+  }
+
+  @POST
+  @Path("/{id}/library/{packId}/review")
+  @Operation(
+      operationId = "reviewNativeOntologyPack",
+      summary = "Review verified library modules item by item before they install",
+      description =
+          "The same dry run as the pack preview, with the status of every definition the modules state and any disjointness clash the install would create. Nothing is persisted.")
+  public NativeOntologyImportPreview reviewLibraryPack(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("packId") final String packId,
+      @NotNull @Valid final PreviewNativeOntologyPack request) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
     final var selected =
         packContentLoader.loadSelected(packCatalog, packId, request.getModuleIds());
-    return previewImport(
+    final NativeOntologyImportPreview preview =
+        previewImport(
             uriInfo,
             securityContext,
             id,
             new PreviewNativeOntologyImport()
                 .withFormat(NativeOntologyImportFormat.fromValue(selected.format()))
-                .withData(selected.body()))
-        .getChangeSet()
-        .withSourcePack(OntologyPackInstallations.sourcePack(selected));
+                .withData(selected.body()));
+    preview.getChangeSet().withSourcePack(OntologyPackInstallations.sourcePack(selected));
+    return preview;
   }
 
   @POST
@@ -384,6 +453,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @QueryParam("limit") @DefaultValue("50") @Min(1) @Max(1000) final int limit,
       @QueryParam("after") final String after) {
     getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
     final ResultList<OntologyReference> references =
         repository.listReferences(id, iri, limit, after);
     for (final OntologyReference reference : references.getData()) {
@@ -470,10 +541,11 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       operationId = "listOntologyReleaseReviews",
       summary = "List the open release reviews the calling user is part of",
       description =
-          "view=assigned lists open reviews with an assignee entry for the caller or one of their teams, view=created lists the open reviews the caller requested, and view=pending lists the assigned reviews the caller can still vote on. A decided review is read through its release.")
+          "view=assigned lists open reviews with an assignee entry for the caller or one of their teams, view=created lists the open reviews the caller requested, and view=pending lists the assigned reviews the caller can still vote on. ontologyId narrows any view to one ontology. A decided review is read through its release.")
   public ResultList<OntologyReleaseReview> listReviews(
       @Context final SecurityContext securityContext,
       @QueryParam("view") @DefaultValue("assigned") final String view,
+      @QueryParam("ontologyId") final UUID ontologyId,
       @QueryParam("limit") @DefaultValue("25") @Min(1) @Max(100) final int limit,
       @QueryParam("after") final String after) {
     final var releases =
@@ -481,6 +553,7 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     return releases.listReviews(
         OntologyReleaseReviewReader.View.parse(view),
         user(securityContext),
+        ontologyId,
         limit,
         after,
         release -> canViewRelease(securityContext, release));
@@ -497,6 +570,52 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
     } catch (AuthorizationException denied) {
       return false;
     }
+  }
+
+  @GET
+  @Path("/{id}/export")
+  @Produces({
+    "text/turtle",
+    "application/rdf+xml",
+    "application/n-triples",
+    "application/ld+json",
+    "text/csv",
+    MediaType.APPLICATION_JSON
+  })
+  @Operation(
+      operationId = "exportOntologyDraft",
+      summary = "Export the unpublished working content of an ontology",
+      description =
+          "Writes what the ontology holds now, including changes no release has captured, in the same formats as a release export. Nothing is captured or stored, so the release history does not change. Bound asset links and the SHACL gate apply to releases only.")
+  public Response exportDraft(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @QueryParam("format") final String format,
+      @QueryParam("includeInverses") @DefaultValue("true") final boolean includeInverses) {
+    getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED, null);
+    OntologyResourceAccess.requireDraftRead(
+        authorizer, securityContext, getResourceContextById(id));
+    final OntologyExportFormat target = OntologyExportFormat.parse(format);
+    final OntologyReleaseExportOptions options =
+        new OntologyReleaseExportOptions().withIncludeInverses(includeInverses);
+    final String content =
+        releaseCapture
+            .snapshot()
+            .read(
+                id,
+                definitions ->
+                    OntologyResourceAccess.requireView(authorizer, securityContext, definitions),
+                working -> {
+                  final var draft = releaseCapture.draftContent(working);
+                  return OntologyReleaseExporter.exportDraft(
+                      draft.release(), draft.members(), target, options);
+                });
+    return Response.ok(content, target.mediaType())
+        .header(
+            "Content-Disposition",
+            "attachment; filename=\"ontology-draft-%s.%s\"".formatted(id, target.extension()))
+        .build();
   }
 
   @GET
@@ -615,6 +734,8 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       final JsonPatch patch) {
+    OntologyResourceAccess.requireEditForContentPatch(
+        authorizer, securityContext, Entity.ONTOLOGY, id, patch);
     return patchInternal(uriInfo, securityContext, id, patch);
   }
 

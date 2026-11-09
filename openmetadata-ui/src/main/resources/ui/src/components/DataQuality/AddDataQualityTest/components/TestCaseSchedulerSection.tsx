@@ -19,6 +19,7 @@ import {
   FormItemLabel,
   FormItemLayout,
   getField,
+  HelperTextType,
 } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useWatch } from 'react-hook-form';
@@ -28,7 +29,10 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import { escapeESReservedCharacters } from '../../../../utils/StringUtils';
 import ScheduleInterval from '../../../Settings/Services/AddIngestion/Steps/ScheduleInterval';
 import { AddTestCaseList } from '../../AddTestCaseList/AddTestCaseList.component';
-import { AddTestCaseListChangePayload } from '../../AddTestCaseList/AddTestCaseList.interface';
+import {
+  isValidTestCaseSelection,
+  normalizeSelectedTestProp,
+} from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestCaseSchedulerSectionProps } from './TestCaseFormV1.interface';
 
 const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
@@ -47,10 +51,32 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
     control: form.control,
     name: 'selectAllTestCases',
   });
+  const createPipeline = useWatch({
+    control: form.control,
+    name: 'createPipeline',
+  });
 
   const isSelectAllTestCasesEnabled = Boolean(
     hasTestSuite && canCreatePipeline
   );
+
+  const createPipelineField = {
+    name: 'createPipeline',
+    label: t('label.create-entity', {
+      entity: t('label.pipeline'),
+    }),
+    type: FieldTypes.SWITCH,
+    required: false,
+    id: 'root/createPipeline',
+    helperText: t('message.pipeline-entity-description', {
+      entity: t('label.test-case'),
+    }),
+    helperTextType: HelperTextType.TOOLTIP,
+    formItemLayout: FormItemLayout.HORIZONTAL,
+    props: {
+      'data-testid': 'create-pipeline',
+    },
+  } as FieldProp;
 
   const selectAllField = {
     name: 'selectAllTestCases',
@@ -120,17 +146,22 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
   );
 
   return (
-    <div className="test-case-scheduler-section" data-testid="scheduler-card">
-      <Alert closable={false} title="" variant="gray">
-        <Transi18next
-          i18nKey="message.entity-pipeline-information"
-          renderElement={<strong />}
-          values={{
-            entity: t('label.test-case-lowercase'),
-            type: t('label.table-lowercase'),
-          }}
-        />
-      </Alert>
+    // The gap matches the 20px (@size-mlg) between the form's other sections.
+    <div
+      className="test-case-scheduler-section tw:flex tw:flex-col tw:gap-5"
+      data-testid="scheduler-card">
+      {createPipeline && (
+        <Alert closable={false} title="" variant="gray">
+          <Transi18next
+            i18nKey="message.entity-pipeline-information"
+            renderElement={<strong />}
+            values={{
+              entity: t('label.test-case-lowercase'),
+              type: t('label.table-lowercase'),
+            }}
+          />
+        </Alert>
+      )}
 
       <Card
         className="form-card-section scheduler-card"
@@ -138,20 +169,9 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
         role="presentation"
         onClick={() => onActiveFieldChange?.('root/cron')}>
         <Card.Content className="tw:flex tw:flex-col tw:gap-4">
-          <div className="card-title-container">
-            <p className="card-title-text">
-              {t('label.create-entity', {
-                entity: t('label.pipeline'),
-              })}
-            </p>
-            <p className="card-title-description">
-              {t('message.pipeline-entity-description', {
-                entity: t('label.test-case'),
-              })}
-            </p>
-          </div>
+          {getField(createPipelineField)}
 
-          {isSelectAllTestCasesEnabled && (
+          {createPipeline && isSelectAllTestCasesEnabled && (
             <>
               {getField(selectAllField)}
 
@@ -160,9 +180,11 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
                   control={form.control}
                   name="testCases"
                   rules={{
-                    required: t('label.field-required', {
-                      field: t('label.test-case'),
-                    }),
+                    validate: (value) =>
+                      isValidTestCaseSelection(value) ||
+                      t('label.field-required', {
+                        field: t('label.test-case'),
+                      }),
                   }}>
                   {({ field }) => (
                     <div data-testid="test-cases-field">
@@ -170,20 +192,10 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
                       <AddTestCaseList
                         columnFilters={columnFilters}
                         hideTableFilter={Boolean(table)}
-                        selectedTest={(field.value ?? []).map(
-                          (testCase) => testCase.name ?? ''
-                        )}
+                        selectedTest={normalizeSelectedTestProp(field.value)}
                         showButton={false}
                         testCaseParams={testCaseParams}
-                        onChange={(payload: AddTestCaseListChangePayload) =>
-                          field.onChange(
-                            payload.testCases.map((testCase) => ({
-                              id: testCase.id,
-                              name: testCase.name,
-                              type: 'testCase',
-                            }))
-                          )
-                        }
+                        onChange={field.onChange}
                       />
                     </div>
                   )}
@@ -192,23 +204,27 @@ const TestCaseSchedulerSection: FC<TestCaseSchedulerSectionProps> = ({
             </>
           )}
 
-          {getField(pipelineNameField)}
+          {createPipeline && (
+            <>
+              {getField(pipelineNameField)}
 
-          <FormField control={form.control} name="cron">
-            {({ field }) => (
-              <ScheduleInterval
-                defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
-                entity={t('label.test-case')}
-                includePeriodOptions={schedulerOptions}
-                value={field.value || undefined}
-                onChange={(cron) => field.onChange(cron ?? '')}
-              />
-            )}
-          </FormField>
+              <FormField control={form.control} name="cron">
+                {({ field }) => (
+                  <ScheduleInterval
+                    defaultSchedule={DEFAULT_SCHEDULE_CRON_DAILY}
+                    entity={t('label.test-case')}
+                    includePeriodOptions={schedulerOptions}
+                    value={field.value || undefined}
+                    onChange={(cron) => field.onChange(cron ?? '')}
+                  />
+                )}
+              </FormField>
 
-          {getField(enableDebugLogField)}
+              {getField(enableDebugLogField)}
 
-          {getField(raiseOnErrorField)}
+              {getField(raiseOnErrorField)}
+            </>
+          )}
         </Card.Content>
       </Card>
     </div>

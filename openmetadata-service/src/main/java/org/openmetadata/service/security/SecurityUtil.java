@@ -44,6 +44,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -84,9 +85,18 @@ public final class SecurityUtil {
         && first.toLowerCase(Locale.ROOT).equals(second.toLowerCase(Locale.ROOT));
   }
 
+  /**
+   * The authentication filters build the principal from the account name, so the name is used whole:
+   * a user named {@code admin/x} is not the user {@code admin}.
+   */
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
-    return principal == null ? null : principal.getName().split("[/@]")[0];
+    return principal == null ? null : principal.getName();
+  }
+
+  public static boolean isImpersonated(SecurityContext securityContext) {
+    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null;
   }
 
   public static String getImpersonatedByUser(SecurityContext securityContext) {
@@ -309,14 +319,16 @@ public final class SecurityUtil {
   }
 
   /**
-   * Mirrors the {@code email} definition in {@code openmetadata-spec .../type/basic.json}, whose
-   * pattern reduces to this: its character class lists punctuation that {@code \S} already covers.
-   * The two must agree — a stricter check here would let an account be created through the API and
-   * then refuse to authenticate it, which is what a locale-specific address (apostrophes, accented
-   * characters) would have hit.
+   * The {@code email} definition in {@code openmetadata-spec .../type/basic.json}. The two must
+   * agree — a stricter check here would let an account be created through the API and then refuse
+   * to authenticate it, which is what a locale-specific address (apostrophes, accented characters)
+   * would have hit. Each part stops at the first separator it cannot contain, so matching is linear
+   * in the input (ADR:2026-11-03-input-parsing-is-bounded).
    */
+  private static final Pattern EMAIL = Pattern.compile("^\\S[^\\s@]*@\\S[^\\s.]*\\.\\S+$");
+
   public static boolean isValidEmail(String email) {
-    return email.matches("^\\S+@\\S+\\.\\S+$");
+    return EMAIL.matcher(email).matches();
   }
 
   public static String getClaimOrObject(Object obj) {

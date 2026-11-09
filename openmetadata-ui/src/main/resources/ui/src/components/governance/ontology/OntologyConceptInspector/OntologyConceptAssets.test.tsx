@@ -31,6 +31,7 @@ import {
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import APIClient from '../../../../rest/axiosClient';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyConceptAssets from './OntologyConceptAssets';
 
@@ -42,6 +43,9 @@ jest.mock('../../../../rest/axiosClient', () => ({
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
+}));
+jest.mock('../../../../utils/governance/ontology/OntologyUndoToast', () => ({
+  showUndoToast: jest.fn(),
 }));
 const http = APIClient as jest.Mocked<typeof APIClient>;
 const asset = (id: string): AssetBinding => ({
@@ -72,6 +76,7 @@ const renderAssets = (id = 'customer') =>
       <OntologyConceptAssets
         canEdit
         conceptId={id}
+        conceptName="Customer"
         key={id}
         presentation={{ kind: 'edit' }}
       />
@@ -354,6 +359,7 @@ it('stops the unsent picker tail when the concept switches during a write', asyn
       <OntologyConceptAssets
         canEdit
         conceptId="order"
+        conceptName="Order"
         key="order"
         presentation={{ kind: 'edit' }}
       />
@@ -545,4 +551,78 @@ it('does not repeat a link that the re-read reports as already present', async (
 
   expect(screen.getByRole('link', { name: 'new-two' })).toBeVisible();
   expect(http.put).toHaveBeenCalledTimes(1);
+});
+
+describe('unlinking an asset', () => {
+  const openUnlink = async () => {
+    renderAssets();
+    const remove = await screen.findByTestId(
+      'ontology-native-asset-remove-old-table'
+    );
+    await waitFor(() => expect(remove).toBeEnabled());
+    fireEvent.click(remove);
+  };
+
+  it('names the asset, the concept and the columns that go with it before sending anything', async () => {
+    serveBindings(stored());
+    await openUnlink();
+
+    const confirm = await screen.findByTestId('ontology-unlink');
+
+    expect(confirm).toHaveTextContent('message.ontology-unlink-asset-title');
+    expect(confirm).toHaveTextContent('message.ontology-unlink-asset-columns');
+    expect(http.delete).not.toHaveBeenCalled();
+  });
+
+  it('offers Undo after the removal and puts the asset back with its bound columns', async () => {
+    const state = stored();
+    serveBindings(state);
+    http.delete.mockImplementation(async () => {
+      state.assets = [];
+      state.revision += 1;
+
+      return { data: state };
+    });
+    http.put.mockImplementation(async (_url, data) => {
+      state.assets.push({
+        ...asset('old-table'),
+        columns: retainedColumns,
+      });
+      state.revision += 1;
+
+      expect((data as UpdateOntologyConceptBinding).asset.columns).toEqual([
+        { columnPath: ['customer_id'], propertyId: 'retained' },
+      ]);
+
+      return { data: state };
+    });
+    await openUnlink();
+    fireEvent.click(await screen.findByTestId('ontology-unlink-confirm'));
+    await waitFor(() => expect(showUndoToast).toHaveBeenCalledTimes(1));
+
+    expect(showUndoToast).toHaveBeenCalledWith(
+      'message.ontology-asset-unlinked',
+      expect.any(Function)
+    );
+    expect(
+      screen.queryByTestId('ontology-native-asset-remove-old-table')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      await (showUndoToast as jest.Mock).mock.calls[0][1]();
+    });
+
+    expect(http.put).toHaveBeenCalledTimes(1);
+    expect(http.put.mock.calls[0][1]).toEqual({
+      expectedRevision: 5,
+      asset: {
+        assetId: 'old-table',
+        assetType: 'table',
+        columns: [{ columnPath: ['customer_id'], propertyId: 'retained' }],
+      },
+    });
+    expect(
+      await screen.findByTestId('ontology-native-asset-remove-old-table')
+    ).toBeVisible();
+  });
 });

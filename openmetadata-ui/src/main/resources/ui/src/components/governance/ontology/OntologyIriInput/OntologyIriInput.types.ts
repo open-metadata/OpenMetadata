@@ -15,6 +15,7 @@ import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 export interface OntologyIriOption {
   iri: string;
   label: string;
+  context?: string;
 }
 
 export interface OntologyReferenceOptions {

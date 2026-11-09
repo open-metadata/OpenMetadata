@@ -3,6 +3,8 @@ package org.openmetadata.service.security.mask;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.service.jdbi3.TopicRepository.getAllFieldTags;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import jakarta.ws.rs.core.SecurityContext;
@@ -24,16 +26,20 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -50,6 +56,7 @@ public class PIIMasker {
   public static final String MASKED_VALUE = "********";
   public static final String MASKED_NAME = "[MASKED]";
   public static final String MASKED_MAIL = "********@masked.com";
+  private static final String EMAIL_FIELD = "email";
 
   private PIIMasker() {
     /* Private constructor for Utility class */
@@ -576,5 +583,48 @@ public class PIIMasker {
     if (authorizer.authorizePII(securityContext, null)) return user;
     user.setEmail(MASKED_MAIL);
     return user;
+  }
+
+  /**
+   * A change event about a user carries the user's email, in its entity snapshot and in the change
+   * of the email field, so it is masked as a read of the user masks it.
+   */
+  public static ChangeEvent maskUserChangeEvent(ChangeEvent event) {
+    if (event == null || !Entity.USER.equals(event.getEntityType())) {
+      return event;
+    }
+    event.setEntity(maskEmail(event.getEntity()));
+    ChangeDescription change = event.getChangeDescription();
+    if (change != null) {
+      for (List<FieldChange> changes :
+          List.of(
+              listOrEmpty(change.getFieldsAdded()),
+              listOrEmpty(change.getFieldsUpdated()),
+              listOrEmpty(change.getFieldsDeleted()))) {
+        for (FieldChange fieldChange : changes) {
+          if (EMAIL_FIELD.equals(fieldChange.getName())) {
+            fieldChange.setOldValue(fieldChange.getOldValue() == null ? null : MASKED_MAIL);
+            fieldChange.setNewValue(fieldChange.getNewValue() == null ? null : MASKED_MAIL);
+          }
+        }
+      }
+    }
+    return event;
+  }
+
+  // The snapshot is stored either as a JSON string or as an already-parsed object.
+  private static Object maskEmail(Object entity) {
+    if (entity == null) {
+      return null;
+    }
+    JsonNode tree =
+        entity instanceof String json ? JsonUtils.readTree(json) : JsonUtils.valueToTree(entity);
+    if (!(tree instanceof ObjectNode object) || !object.has(EMAIL_FIELD)) {
+      return entity;
+    }
+    object.put(EMAIL_FIELD, MASKED_MAIL);
+    return entity instanceof String
+        ? JsonUtils.pojoToJson(object)
+        : JsonUtils.treeToValue(object, Object.class);
   }
 }

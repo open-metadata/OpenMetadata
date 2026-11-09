@@ -19,6 +19,10 @@ import {
   Dropdown,
   Owner,
 } from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  TrendDown01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -29,15 +33,11 @@ import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { ReactComponent as DropdownIcon } from '../../assets/svg/drop-down.svg';
-import { ReactComponent as TrendDownIcon } from '../../assets/svg/ic-trend-down.svg';
 import { getLineageDropdownItems } from '../../constants/AdvancedSearch.constants';
 import {
   FULLSCREEN_QUERY_PARAM_KEY,
+  LIST_PAGE_SIZE_OPTIONS,
   NO_DATA,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import {
   IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS,
@@ -146,7 +146,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     handlePageChange,
     handlePagingChange,
     handlePageSizeChange,
-  } = usePaging(PAGE_SIZE_LARGE);
+  } = usePaging();
 
   const paginationInfoKeyRef = useRef<string | null>(null);
 
@@ -464,18 +464,19 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         <div>{streamButtonGroup}</div>
 
         <Dropdown.Root>
-          <Button color="tertiary" data-testid="impact-on-dropdown" size="sm">
-            <div className="tw:flex tw:items-center tw:gap-1">
-              <TrendDownIcon className="tw:size-4" />
-              <Transi18next
-                i18nKey="label.impact-on-area"
-                renderElement={
-                  <span className="tw:ml-1 tw:text-brand-secondary" />
-                }
-                values={{ area: t(`label.${impactLevel}`) }}
-              />
-              <DropdownIcon className="tw:size-3" />
-            </div>
+          <Button
+            color="tertiary"
+            data-testid="impact-on-dropdown"
+            iconLeading={TrendDown01}
+            iconTrailing={ChevronDown}
+            size="sm">
+            <Transi18next
+              i18nKey="label.impact-on-area"
+              renderElement={
+                <span className="tw:ml-1 tw:text-brand-secondary" />
+              }
+              values={{ area: t(`label.${impactLevel}`) }}
+            />
           </Button>
           <Dropdown.Popover>
             <Dropdown.Menu
@@ -803,7 +804,12 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         dataIndex: 'owners',
         key: 'owners',
         render: (owners: EntityReference[]) => (
-          <Owner isCompactView={false} owners={owners} showLabel={false} />
+          <Owner
+            isCompactView={false}
+            labelVariant="cell"
+            owners={owners}
+            showLabel={false}
+          />
         ),
       },
       {
@@ -1011,7 +1017,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       isNumberBased: true,
       showPagination,
       onShowSizeChange: handlePageSizeChange,
-      pagesizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pagesizeOptions: LIST_PAGE_SIZE_OPTIONS,
       pagingHandler: (data: PagingHandlerParams) => {
         handlePageChange(data.currentPage);
       },

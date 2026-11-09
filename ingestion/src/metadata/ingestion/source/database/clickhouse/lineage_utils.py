@@ -24,9 +24,15 @@ import re
 from collections.abc import Iterable
 from typing import NamedTuple
 
+import sqlglot
+from sqlglot import expressions as exp
+
 from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import QueryParserType
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LINEAGE_PARSING_TIMEOUT, LineageParser
 from metadata.ingestion.lineage.sql_lineage import (
     _build_table_lineage,
     get_table_entities_from_query,
@@ -35,6 +41,7 @@ from metadata.ingestion.models.ometa_lineage import LineageRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.models import TableView
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.timeout import timeout
 
 logger = ingestion_logger()
 
@@ -126,6 +133,48 @@ def get_materialized_view_target_table(
         return None
 
     return MaterializedViewTarget(schema_name=schema_name, table_name=table_name)
+
+
+def _input_view_query(query: str) -> str | None:
+    statement = sqlglot.parse_one(query, read="clickhouse")
+    if not isinstance(statement, exp.Create) or statement.args.get("kind") != "VIEW":
+        return None
+    properties = statement.args.get("properties")
+    if not isinstance(properties, exp.Properties) or not isinstance(statement.expression, exp.Query):
+        return None
+    if not any(isinstance(prop, exp.MaterializedProperty) for prop in properties.expressions):
+        return None
+    if not any(isinstance(prop, exp.ToTableProperty) for prop in properties.expressions):
+        return None
+    properties.set(
+        "expressions", [prop for prop in properties.expressions if not isinstance(prop, exp.ToTableProperty)]
+    )
+    return statement.sql(dialect="clickhouse")
+
+
+def get_view_lineage_parser(
+    query: str,
+    dialect: Dialect = Dialect.CLICKHOUSE,
+    timeout_seconds: int = LINEAGE_PARSING_TIMEOUT,
+    parser_type: QueryParserType = QueryParserType.Auto,
+) -> LineageParser:
+    """Parse materialized-view inputs separately from the explicit TO output edge."""
+    original = LineageParser(query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type)
+    try:
+        input_query = timeout(timeout_seconds)(_input_view_query)(query)
+        if input_query is None:
+            return original
+        parser = LineageParser(input_query, dialect, timeout_seconds=timeout_seconds, parser_type=parser_type)
+        if parser.parser is None:
+            return original
+    except Exception:
+        logger.debug("[%s] Cannot normalize ClickHouse view DDL; retaining native parsing", original.query_hash)
+        return original
+    # The graph uses normalized DDL; lineage consumers must retain the original masked definition.
+    parser.query = original.query
+    parser.query_hash = original.query_hash
+    parser.masked_query = original.masked_query
+    return parser
 
 
 def get_mv_target_lineage(

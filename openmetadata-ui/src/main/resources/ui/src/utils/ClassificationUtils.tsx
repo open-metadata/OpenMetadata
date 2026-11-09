@@ -19,10 +19,8 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
-import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, TagOff } from '@openmetadata/ui-core-components/icons';
 import { Link } from 'react-router-dom';
-import { ReactComponent as IconDisableTag } from '../assets/svg/disable-tag.svg';
-import { ReactComponent as EditIcon } from '../assets/svg/edit-new.svg';
 import { TagUsageCount } from '../components/Classifications/TagUsageCount/TagUsageCount.component';
 import { ManageButtonItemLabel } from '../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { ColumnsType } from '../components/common/Table/Table.interface';
@@ -200,11 +198,10 @@ export const getTagsTableColumn = ({
               placement="top right"
               title={editDisabledMessage}>
               <ButtonUtility
-                color="tertiary"
                 data-testid="edit-button"
-                icon={<Edit01 data-icon data-testid="editTagDescription" />}
+                icon={Edit01}
                 isDisabled={disableEditButton}
-                size="sm"
+                size="lg"
                 onClick={() => handleEditTagClick?.(record)}
               />
             </UTTooltip>
@@ -214,7 +211,6 @@ export const getTagsTableColumn = ({
               placement="top right"
               title={disabledDeleteMessage}>
               <ButtonUtility
-                color="tertiary"
                 data-testid="delete-tag"
                 icon={getDeleteIcon({
                   deleteTagId: deleteTags?.data?.id,
@@ -222,7 +218,7 @@ export const getTagsTableColumn = ({
                   id: record.id ?? '',
                 })}
                 isDisabled={disableDeleteButton}
-                size="sm"
+                size="lg"
                 onClick={() => handleActionDeleteTag?.(record)}
               />
             </UTTooltip>
@@ -250,7 +246,7 @@ export const getClassificationExtraDropdownContent = (
               description={t('label.update-entity', {
                 entity: t('label.classification'),
               })}
-              icon={EditIcon}
+              icon={Edit01}
               id="edit-classification"
               name={t('label.edit')}
             />
@@ -270,7 +266,7 @@ export const getClassificationExtraDropdownContent = (
                   ? t('message.enable-classification-description')
                   : t('message.disable-classification-description')
               }
-              icon={IconDisableTag}
+              icon={TagOff}
               id="enable-disable"
               name={
                 isClassificationDisabled

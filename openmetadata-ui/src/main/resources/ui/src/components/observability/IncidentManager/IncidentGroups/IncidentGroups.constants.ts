@@ -19,11 +19,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { mapValues } from 'lodash';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../constants/constants';
-import {
   TestCaseFailureReasonType,
   TestCaseResolutionStatusTypes as CreateStatusTypes,
 } from '../../../../generated/api/tests/createTestCaseResolutionStatus';
@@ -71,8 +66,6 @@ export const INCIDENT_GROUP_SORT_TYPE_PARAM = 'sortType';
 /** Dimension the page opens with when the URL does not carry a valid one. */
 export const DEFAULT_INCIDENT_GROUP_BY = IncidentGroupBy.TestDefinition;
 
-export const INCIDENT_GROUPS_PAGE_SIZE = PAGE_SIZE_BASE;
-
 /**
  * The incident tables' card, as designed: the core TableCard edge with no
  * shadow. That edge stays visible along a sticky header, so no border of its
@@ -86,13 +79,6 @@ export const INCIDENT_TABLE_CARD_CLASS = 'tw:shadow-none';
  */
 export const INCIDENT_TABLE_PAGER_CLASS =
   'tw:shrink-0 tw:border-0 tw:border-t tw:border-secondary tw:shadow-none';
-
-/** The page sizes the application's paged lists offer. */
-export const INCIDENT_GROUPS_PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
 
 /** Query string params the filters live in — the filter keys themselves. */
 export const INCIDENT_GROUP_FILTER_KEYS: (keyof IncidentGroupFilters)[] = [

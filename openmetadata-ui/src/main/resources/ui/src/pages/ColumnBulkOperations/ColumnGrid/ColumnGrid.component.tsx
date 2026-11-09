@@ -68,9 +68,7 @@ import RichTextEditor from '../../../components/common/RichTextEditor/RichTextEd
 import { EditorContentRef } from '../../../components/common/RichTextEditor/RichTextEditor.interface';
 import TagsViewer from '../../../components/Tag/TagsViewer/TagsViewer';
 import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
   SOCKET_EVENTS,
 } from '../../../constants/constants';
 import { useWebSocketConnector } from '../../../context/WebSocketProvider/WebSocketProvider';
@@ -111,7 +109,7 @@ import {
 import { useColumnGridFilters } from './hooks/useColumnGridFilters';
 import { useColumnGridListingData } from './hooks/useColumnGridListingData';
 
-const ICON_TRANSITION_CLASS = 'tw:size-4 tw:transition-transform';
+const ICON_TRANSITION_CLASS = 'tw:transition-transform';
 const ROTATE_90_CLASS = 'tw:rotate-90';
 
 interface BulkAssetsSocketMessage {
@@ -608,14 +606,13 @@ const ColumnGridSelectionActions = ({
           onPress={onOpenDrawer}>
           {t('label.edit')}
         </Button>
-        <Button
-          className="tw:text-fg-secondary"
-          color="tertiary"
+        <ButtonUtility
           data-testid="cancel-selection-button"
-          size="sm"
-          onPress={onCancelSelection}>
-          <XClose height={16} width={16} />
-        </Button>
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.cancel')}
+          onClick={onCancelSelection}
+        />
       </>
     ) : (
       <Button
@@ -1404,16 +1401,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       <div className={COLUMN_NAME_CELL_GRID}>
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           <ButtonUtility
-            color="tertiary"
+            aria-label={
+              isGroupExpanded ? t('label.collapse') : t('label.expand')
+            }
             icon={
               <ChevronRight
+                data-icon
                 className={classNames(
                   ICON_TRANSITION_CLASS,
                   isGroupExpanded && ROTATE_90_CLASS
                 )}
               />
             }
-            size="sm"
+            size="xs"
             onClick={expandHandler}
           />
         </div>
@@ -1470,16 +1470,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isStructExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isStructExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}
@@ -1517,16 +1520,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
         <div className={COLUMN_NAME_CELL_CHEVRON}>
           {hasStructChildren ? (
             <ButtonUtility
-              color="tertiary"
+              aria-label={
+                isOccurrenceExpanded ? t('label.collapse') : t('label.expand')
+              }
               icon={
                 <ChevronRight
+                  data-icon
                   className={classNames(
                     ICON_TRANSITION_CLASS,
                     isOccurrenceExpanded && ROTATE_90_CLASS
                   )}
                 />
               }
-              size="sm"
+              size="xs"
               onClick={() => structExpandHandler(entity)}
             />
           ) : null}
@@ -2407,7 +2413,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
       currentPage: columnGridListing.currentPage,
       isNumberBased: true,
       isLoading: columnGridListing.loading,
-      pageSizeOptions: [PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE],
+      pageSizeOptions: LIST_PAGE_SIZE_OPTIONS,
       onShowSizeChange: columnGridListing.handlePageSizeChange,
     }),
     [
@@ -2791,6 +2797,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
               {/* Search */}
               <div className="tw:shrink-0">
                 <Input
+                  autoComplete="off"
                   className="tw:max-w-86"
                   icon={Search}
                   placeholder={t('label.search-columns')}

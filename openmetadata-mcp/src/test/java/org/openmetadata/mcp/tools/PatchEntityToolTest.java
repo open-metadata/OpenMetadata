@@ -339,6 +339,32 @@ class PatchEntityToolTest {
     verify(mockRepo).getPatchFields();
   }
 
+  @Test
+  void execute_letsMetricDescriptionEditsThrough() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> mockRepo = mock(EntityRepository.class);
+    EntityInterface<?> mockEntity = mock(EntityInterface.class);
+    when(mockRepo.patch(any(), any(String.class), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(Response.Status.OK, mockEntity, EventType.ENTITY_UPDATED));
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", "metric");
+    params.put("fqn", "revenue");
+    params.put("patch", "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"Net\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<McpChangeEventUtil> changeEventMock = mockStatic(McpChangeEventUtil.class);
+        MockedStatic<JsonUtils> jsonMock = mockStatic(JsonUtils.class)) {
+      entityMock.when(() -> Entity.getEntityRepository("metric")).thenReturn(mockRepo);
+      jsonMock.when(() -> JsonUtils.convertValue(any(), eq(Map.class))).thenReturn(Map.of());
+      jsonMock.when(() -> JsonUtils.extractPatchedFields(any())).thenCallRealMethod();
+
+      new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+
+    verify(mockRepo).patch(any(), eq("revenue"), any(), any(), any(), any(), any());
+  }
+
   @ParameterizedTest
   @ValueSource(
       strings = {
@@ -354,6 +380,7 @@ class PatchEntityToolTest {
         "testCase",
         "testSuite",
         "task",
+        "team",
         "user",
         "workflow"
       })
