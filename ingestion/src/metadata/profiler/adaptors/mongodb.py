@@ -13,8 +13,9 @@ MongoDB adaptor for the NoSQL profiler.
 """
 
 import json
+from datetime import date, datetime, time
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, Field
 
@@ -115,12 +116,26 @@ class MongoDB(NoSQLAdaptor):
             )
         )
 
+    @staticmethod
+    def _normalize_aggregate_value(
+        value: Any,
+    ) -> int | float | str | datetime | date | time | None:
+        """Convert BSON aggregate values without a ColumnProfile representation."""
+        if value is None:
+            return None
+        if hasattr(value, "to_decimal"):
+            decimal_value = value.to_decimal()
+            return float(decimal_value) if decimal_value.is_finite() else None
+        if isinstance(value, (int, float, str, datetime, date, time)):
+            return value
+        return str(value)
+
     def get_aggregates(
         self,
         table: Table,
         column: SQALikeColumn,
         aggregate_functions: list[AggregationFunction],
-    ) -> dict[str, int | float]:
+    ) -> dict[str, int | float | str | datetime | date | time | None]:
         """
         Get the aggregate functions for a column in a table
         Returns:
@@ -134,15 +149,17 @@ class MongoDB(NoSQLAdaptor):
                 "min": 25
             }
         """
-        row = self.execute(
+        rows = self.execute(
             Aggregation(
                 database=table.databaseSchema.name,
                 collection=table.name.root,
                 column=column.name,
                 aggregations=aggregate_functions,
             )
-        )[0]
-        return {k: v for k, v in row.items() if k != "_id"}
+        )
+        if not rows:
+            return {}
+        return {k: self._normalize_aggregate_value(v) for k, v in rows[0].items() if k != "_id"}
 
     def sum(self, table: Table, column: SQALikeColumn) -> AggregationFunction:
         return AggregationFunction.SUM
