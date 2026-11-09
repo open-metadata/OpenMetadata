@@ -345,7 +345,7 @@ class SigmaSource(DashboardServiceSource):
     ):
         """
         One edge per source table of an element, carrying the columns it feeds. Sigma labels warehouse
-        columns for reading (DEAL_SOURCE_NAME shows as "Deal Source Name"), so names are compared
+        columns for reading (CUSTOMER_NAME shows as "Customer Name"), so names are compared
         normalized. Lineage must not guess, so a label is linked only when every source of the element was
         found (a missing one could hold the column too) and exactly one column across its tables matches.
         """
