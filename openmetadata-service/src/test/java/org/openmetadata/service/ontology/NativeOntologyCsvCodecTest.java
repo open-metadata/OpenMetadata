@@ -65,6 +65,7 @@ class NativeOntologyCsvCodecTest {
         owl:inverseOf <https://example.org/boughtBy> ;
         owl:propertyDisjointWith <https://example.org/sells> .
       <https://example.org/grandparentOf> a owl:ObjectProperty ;
+        rdfs:subPropertyOf <https://example.org/ancestorOf> ;
         owl:propertyChainAxiom ( <https://example.org/parentOf> <https://example.org/parentOf> ) .
       <https://example.org/size> a owl:DatatypeProperty ;
         rdfs:range [ a rdfs:Datatype ; owl:oneOf ( "small" "4"^^xsd:integer "a;b\\\"c" ) ] .
@@ -129,6 +130,45 @@ class NativeOntologyCsvCodecTest {
   void writesTheCanonicalCsvForAnOntologyThatUsesEveryColumn() {
     final String expected = readResource("every-column.csv");
     assertEquals(expected, NativeOntologyCsvCodec.write(fromTurtle()));
+  }
+
+  @Test
+  void superpropertiesReadAsASetAndRefuseTheRowsOwnIri() {
+    final NativeOntologyDocument document =
+        NativeOntologyCsvCodec.read(readResource("every-column.csv"));
+    assertEquals(
+        List.of(URI.create("https://example.org/ancestorOf")),
+        document.properties().stream()
+            .filter(property -> property.getIri().toString().endsWith("grandparentOf"))
+            .findFirst()
+            .orElseThrow()
+            .getSuperProperties());
+    assertEquals(
+        "CSV row 2, column superProperties: 'urn:p' is listed twice",
+        errorOf(
+            csv(
+                row(
+                    "KIND",
+                    "PROPERTY",
+                    "IRI",
+                    "urn:x",
+                    "PROPERTY_KIND",
+                    "OBJECT",
+                    "SUPER_PROPERTIES",
+                    "urn:p;urn:p"))));
+    assertEquals(
+        "CSV row 2, column superProperties: A property cannot be its own superproperty",
+        previewErrorOf(
+            csv(
+                row(
+                    "KIND",
+                    "PROPERTY",
+                    "IRI",
+                    "urn:x",
+                    "PROPERTY_KIND",
+                    "DATA",
+                    "SUPER_PROPERTIES",
+                    "urn:x"))));
   }
 
   @Test
@@ -575,7 +615,7 @@ class NativeOntologyCsvCodecTest {
         "CSV row 3: a second ONTOLOGY row; the first is row 2",
         errorOf(csv(row("KIND", "ONTOLOGY"), row("KIND", "ONTOLOGY"))));
     assertEquals(
-        "CSV row 2: expected 27 cells but found 2",
+        "CSV row 2: expected 28 cells but found 2",
         errorOf(NativeOntologyCsvCodec.HEADER + "\r\nCONCEPT,x\r\n"));
   }
 

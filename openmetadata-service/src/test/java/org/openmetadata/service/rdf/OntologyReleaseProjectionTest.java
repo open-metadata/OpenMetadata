@@ -107,9 +107,43 @@ class OntologyReleaseProjectionTest {
                     .withReplacedBy(URI.create(EX + "related")),
                 property("related")
                     .withPropertyChain(List.of(URI.create(EX + "first"), URI.create(EX + "second")))
-                    .withInverse(URI.create(EX + "inverse")),
+                    .withInverse(URI.create(EX + "inverse"))
+                    .withSuperProperties(List.of(URI.create(EX + "linked"))),
+                property("linked"),
                 axiom("subclass")));
     assertNativeReimportIsNoOp(bundle, format);
+  }
+
+  @ParameterizedTest
+  @EnumSource(OntologyPropertyKind.class)
+  void retainsSuperpropertiesOfEveryKindAsOwl2DlSubPropertyAxioms(OntologyPropertyKind kind) {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                property("child")
+                    .withKind(kind)
+                    .withSuperProperties(List.of(URI.create(EX + "parent"))),
+                property("parent").withKind(kind)));
+    final Model model = new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    try {
+      assertTrue(
+          model.contains(
+              model.createResource(EX + "child"),
+              RDFS.subPropertyOf,
+              model.createResource(EX + "parent")));
+      final var ontology = OwlApiProjection.parse(model);
+      final AxiomType<?> expected =
+          switch (kind) {
+            case OBJECT -> AxiomType.SUB_OBJECT_PROPERTY;
+            case DATA -> AxiomType.SUB_DATA_PROPERTY;
+            case ANNOTATION -> AxiomType.SUB_ANNOTATION_PROPERTY_OF;
+          };
+      assertEquals(1, ontology.getAxiomCount(expected));
+      assertEquals(List.of(), OwlApiProjection.dlViolations(ontology));
+    } finally {
+      model.close();
+    }
+    assertNativeReimportIsNoOp(bundle, RdfSerializationFormat.TURTLE);
   }
 
   @Test
@@ -760,6 +794,10 @@ class OntologyReleaseProjectionTest {
             property("first"),
             property("second")),
         List.of(property("related").withPropertyChain(List.of(related, related))),
+        List.of(
+            property("related").withPropertyChain(List.of(first, second)),
+            property("first").withSuperProperties(List.of(related)),
+            property("second")),
         List.of(property("related").withPropertyChain(List.of(related, first)), property("first")),
         List.of(property("related").withPropertyChain(List.of(first, related)), property("first")),
         List.of(

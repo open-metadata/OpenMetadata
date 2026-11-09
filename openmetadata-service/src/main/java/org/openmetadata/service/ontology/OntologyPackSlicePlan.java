@@ -124,7 +124,10 @@ public record OntologyPackSlicePlan(List<Slice> slices, String planDigest, int m
                     : property.getPropertyChain().stream(),
                 property.getDisjointWith() == null
                     ? Stream.<URI>empty()
-                    : property.getDisjointWith().stream())
+                    : property.getDisjointWith().stream(),
+                property.getSuperProperties() == null
+                    ? Stream.<URI>empty()
+                    : property.getSuperProperties().stream())
             .flatMap(Function.identity()));
   }
 

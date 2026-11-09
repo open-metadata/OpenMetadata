@@ -205,13 +205,16 @@ export interface SkipGroup {
  * field for. UNSUPPORTED_STRUCTURE: a construct the native model cannot represent
  * faithfully, such as a union domain or a SHACL shape. INDIVIDUAL: a statement about a
  * named individual that is not a class or concept. IMPORTS: an `owl:imports` statement; the
- * importer never fetches other documents.
+ * importer never fetches other documents. UNDECLARED_REFERENCE: a link, such as
+ * `rdfs:subPropertyOf`, to a property that neither the source nor the target ontology
+ * declares; the definition is kept without the link.
  */
 export enum SkipReason {
     ExtraValue = "EXTRA_VALUE",
     Imports = "IMPORTS",
     Individual = "INDIVIDUAL",
     NonPreferredLanguage = "NON_PREFERRED_LANGUAGE",
+    UndeclaredReference = "UNDECLARED_REFERENCE",
     UnsupportedAnnotation = "UNSUPPORTED_ANNOTATION",
     UnsupportedStructure = "UNSUPPORTED_STRUCTURE",
 }
