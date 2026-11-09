@@ -87,7 +87,7 @@ const mockChartDetails: Chart = {
   fullyQualifiedName: 'sample_superset.sample_chart',
 };
 
-const mockProps: ChartDetailsTabsProps = {
+const mockProps: Omit<ChartDetailsTabsProps, 'labelMap'> = {
   chartDetails: mockChartDetails,
   editLineagePermission: true,
   editCustomAttributePermission: true,
@@ -99,7 +99,6 @@ const mockProps: ChartDetailsTabsProps = {
   deleted: false,
   getEntityFeedCount: jest.fn(),
   fetchChart: jest.fn(),
-  onExtensionUpdate: jest.fn(),
 };
 
 describe('ChartDetailsUtils', () => {
