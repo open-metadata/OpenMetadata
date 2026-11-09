@@ -473,6 +473,22 @@ describe('CuratedAssetsWidget', () => {
     });
   });
 
+  it('sorts A to Z by the visible title', async () => {
+    render(<CuratedAssetsWidget {...defaultProps} />);
+
+    fireEvent.click(await screen.findByTestId('widget-sort-by-dropdown'));
+    fireEvent.click(await screen.findByText('A to Z'));
+
+    await waitFor(() => {
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+        })
+      );
+    });
+  });
+
   it('renders sort dropdown in non-edit view', async () => {
     render(<CuratedAssetsWidget {...defaultProps} />);
     await waitFor(() => {
