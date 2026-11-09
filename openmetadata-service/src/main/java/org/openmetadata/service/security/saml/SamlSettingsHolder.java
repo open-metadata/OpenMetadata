@@ -15,8 +15,10 @@ package org.openmetadata.service.security.saml;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import com.onelogin.saml2.settings.SettingsBuilder;
-import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.KeyStoreException;
 import java.security.NoSuchAlgorithmException;
@@ -38,14 +40,9 @@ import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 public class SamlSettingsHolder {
   private static volatile Saml2Settings saml2Settings;
   private static final Object lock = new Object();
-  private Map<String, Object> samlData;
-  private SettingsBuilder builder;
   @Getter private String relayState;
 
-  private SamlSettingsHolder() {
-    samlData = new HashMap<>();
-    builder = new SettingsBuilder();
-  }
+  private SamlSettingsHolder() {}
 
   public static SamlSettingsHolder getInstance() {
     return new SamlSettingsHolder();
@@ -55,12 +52,18 @@ public class SamlSettingsHolder {
       throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
     SamlSSOClientConfig samlConfig =
         SecurityConfigurationManager.getCurrentAuthConfig().getSamlConfiguration();
-    if (samlData == null) {
-      samlData = new HashMap<>();
-    }
-    if (builder == null) {
-      builder = new SettingsBuilder();
-    }
+    relayState = samlConfig.getSp().getCallback();
+    saml2Settings = buildSettings(samlConfig);
+  }
+
+  /**
+   * Builds OneLogin settings for a SAML configuration without touching the process-wide settings.
+   * Login installs the result for the live configuration; the configuration check builds a throwaway
+   * one for a candidate, which must never replace the live settings.
+   */
+  public static Saml2Settings buildSettings(SamlSSOClientConfig samlConfig)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    Map<String, Object> samlData = new HashMap<>();
     // Lib Setting
     samlData.put(SettingsBuilder.DEBUG_PROPERTY_KEY, samlConfig.getDebugMode());
 
@@ -76,7 +79,6 @@ public class SamlSettingsHolder {
         SettingsBuilder.SP_SINGLE_LOGOUT_SERVICE_BINDING_PROPERTY_KEY,
         "urn:oasis:names:tc:SAML:2.0:bindings:HTTP-Redirect");
     samlData.put(SettingsBuilder.SP_NAMEIDFORMAT_PROPERTY_KEY, samlConfig.getIdp().getNameId());
-    relayState = samlConfig.getSp().getCallback();
 
     // Idp Info
     samlData.put(SettingsBuilder.IDP_ENTITYID_PROPERTY_KEY, samlConfig.getIdp().getEntityId());
@@ -118,10 +120,10 @@ public class SamlSettingsHolder {
       if (!CommonUtil.nullOrEmpty(securityConfig.getKeyStoreFilePath())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStorePassword())
           && !CommonUtil.nullOrEmpty(securityConfig.getKeyStoreAlias())) {
-        KeyStore keyStore = KeyStore.getInstance("JKS");
-        keyStore.load(
-            new FileInputStream(securityConfig.getKeyStoreFilePath()),
-            securityConfig.getKeyStorePassword().toCharArray());
+        KeyStore keyStore =
+            loadKeyStore(
+                securityConfig.getKeyStoreFilePath(),
+                securityConfig.getKeyStorePassword().toCharArray());
         samlData.put(SettingsBuilder.KEYSTORE_KEY, keyStore);
         samlData.put(SettingsBuilder.KEYSTORE_ALIAS, securityConfig.getKeyStoreAlias());
         samlData.put(SettingsBuilder.KEYSTORE_KEY_PASSWORD, securityConfig.getKeyStorePassword());
@@ -137,7 +139,16 @@ public class SamlSettingsHolder {
       }
     }
     samlData.put(SettingsBuilder.UNIQUE_ID_PREFIX_PROPERTY_KEY, "OPENMETADATA_");
-    saml2Settings = builder.fromValues(samlData).build();
+    return new SettingsBuilder().fromValues(samlData).build();
+  }
+
+  private static KeyStore loadKeyStore(String filePath, char[] password)
+      throws IOException, KeyStoreException, CertificateException, NoSuchAlgorithmException {
+    try (InputStream inputStream = Files.newInputStream(Path.of(filePath))) {
+      KeyStore keyStore = KeyStore.getInstance("JKS");
+      keyStore.load(inputStream, password);
+      return keyStore;
+    }
   }
 
   public static void setSaml2Settings(Saml2Settings settings) {
