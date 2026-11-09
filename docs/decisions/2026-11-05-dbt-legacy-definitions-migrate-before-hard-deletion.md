@@ -1,9 +1,9 @@
-# dbt legacy definitions are hard-deleted only after their cases are reassigned
+# dbt legacy definitions are repaired once during bootstrap
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial)
+- **Revisions:** v1 2026-11-05 (initial); v2 2026-11-09 (bootstrap migration)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `ingestion/tests/integration/dbt/test_definition_migration.py`; `ingestion/tests/unit/test_dbt_test_definition_migration.py`
+- **Guard:** `DbtTestDefinitionMigrationTest`; `DbtTestDefinitionMigrationIT`
 - **Related:** https://github.com/open-metadata/OpenMetadata/pull/28927
 
 ## Context
@@ -11,32 +11,48 @@
 Generic dbt tests now share definitions by type and table/column scope. Existing
 cases still reference per-instance definitions created by older ingestion versions.
 Recreating the cases would change their identity and disconnect their history.
+Running this repair in ingestion would repeatedly scan old records and require a
+new conditional deletion API to protect against concurrent user edits.
 
 ## Decision
 
-During ingestion, reassign an existing generic-test case only when its definition
-matches the legacy node name, dbt platform, scope, and generated parameters. Retain
-customized definitions, including custom descriptions not preserved by the case or
-manifest, owners, domains, restrictions, and execution settings. Resolve the shared
-definition from the manifest and verify its platform, scope, parameters, and enabled
-state before patching the existing case. Use the case version for a conditional
-patch and require the response to confirm the same case ID and target definition.
+Run the repair in the 2.1.0 bootstrap data migration for MySQL and PostgreSQL,
+before the test-case dimension backfill. Use `DataMigrationStep.runOnce` so a
+successful repair is recorded and skipped on subsequent bootstrap runs. Failures
+propagate without a completion marker. The repair is independently idempotent so
+partially completed work is safe to retry.
 
-After reassignment, request `DELETE /v1/dataQuality/testDefinitions/{id}/unused`
-with the legacy definition's weak-version `If-Match` header. The endpoint locks
-the definition row and checks its version in the same transaction as hard deletion,
-so a concurrently saved customization produces HTTP 412 and is retained.
-Test-definition updates do not consolidate successive same-user edits into one
-version: each saved change must invalidate the cleanup precondition.
-The server must reject deletion while any case, including a soft-deleted case,
-references the definition. The endpoint always uses non-recursive hard deletion.
-Older servers return 404 for this new route, retaining the definition safely. Failed cleanup is reported
-and retried when the already-reassigned case is encountered on a later ingestion.
+Recognize a legacy definition using its dbt-only platform, table/column scope,
+single generated parameter, and referencing cases. The parameter name identifies
+the generic dbt macro. Column definitions use that name; table definitions append
+`_table`, matching the current ingestion naming convention. Require every case to
+match the legacy name, scope, parameter and description, and at least one active
+case. Orphans cannot establish provenance and are retained.
+
+Retain customized, disabled, deleted, system, or ambiguous definitions, including
+non-case relationships and cases linked to multiple definitions. Reuse an existing
+shared definition only when its platform, scope, parameters and execution settings
+are compatible. Otherwise leave the group untouched. Create a missing shared
+definition with the generated parameters and a generic description.
+
+Reassign active cases through their stored definition relationships, removing any
+obsolete embedded definition reference. Do not recreate cases or change their
+IDs, names, parameters, versions, suites, timestamps or historical results. Retain
+soft-deleted cases and their legacy references. Hard-delete a legacy definition
+and its ancillary history only after no relationships remain. Each definition
+group is transactional; scans use bounded 500-record batches.
+
+No ingestion hook or dedicated REST endpoint is required. Bootstrap executes in
+the existing upgrade lifecycle before serving traffic. Reassignment removes the
+stored test-case mapping version in the same transaction, so the normal upgrade
+reindex detects it as untracked and refreshes cases even without mapping changes.
 
 ## Consequences
 
-Case IDs, names, parameters, and historical results remain attached to the original
-case. Deleting an unused legacy definition is permanent. Customized and ambiguous
-definitions remain available for manual review. Tests absent from the manifest are
-not migrated or globally swept. Migration requires permission to edit cases and
-delete definitions; a failed patch never leads to deletion.
+Upgrade repairs recognized legacy cases even when they are absent from a later
+dbt manifest. Hard deletion is permanent. Customized and ambiguous records remain
+for manual review, including orphaned definitions and definitions used only by
+soft-deleted cases. These intentionally skipped records are not retried on each
+ingestion. The completion marker avoids repeated scans when another 2.1.0 helper
+changes the migration fingerprint. A server build containing this migration is
+required; modern ingestion alone only prevents new duplicate definitions.

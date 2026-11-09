@@ -49,6 +49,7 @@ import org.openmetadata.service.migration.utils.v210.ConversationMigration;
 import org.openmetadata.service.migration.utils.v210.ConversationReferenceMigration;
 import org.openmetadata.service.migration.utils.v210.CreationAuditMigration;
 import org.openmetadata.service.migration.utils.v210.CustomPropertyReferenceMigration;
+import org.openmetadata.service.migration.utils.v210.DbtTestDefinitionMigration;
 import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
@@ -86,6 +87,11 @@ public class Migration extends MigrationProcessImpl {
     // packaged JSON default; existing installs only through this migration.
     exemptQueryFromMultiDomainRules();
     backfillSourceConfigTypes(collectionDAO);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        DbtTestDefinitionMigration.STEP_NAME,
+        () -> DbtTestDefinitionMigration.migrate(handle, POSTGRES));
     backfillTestCaseDimensions(handle, POSTGRES);
     // Retarget the stale `fieldsNames` topic/apiEndpoint aggregation field to the mapped keyword
     // fields, and split the apiEndpoint `fieldNames` aggregation into request/response field-name
