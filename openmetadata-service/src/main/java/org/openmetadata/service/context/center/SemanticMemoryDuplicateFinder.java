@@ -300,7 +300,10 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   private ContextMemory loadCandidate(Map<String, Object> hit, ContextMemory derived) {
-    Object parentId = hit.containsKey("parentId") ? hit.get("parentId") : hit.get("id");
+    Object parentId =
+        hit.containsKey(ContextMemoryIndex.FIELD_PARENT_ID)
+            ? hit.get(ContextMemoryIndex.FIELD_PARENT_ID)
+            : hit.get(ContextMemoryIndex.FIELD_ID);
     if (!(parentId instanceof String id)) {
       return null;
     }

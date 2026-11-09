@@ -79,6 +79,19 @@ class OpenSearchSimilarMemoryQueryTest {
         "no org-wide default hides a memory anchored to its file");
   }
 
+  /** A hit's document can carry an embedding of tens of kilobytes; the check reads its ids alone. */
+  @Test
+  void onlyTheIdsTheDuplicateCheckReadsAreFetched() throws Exception {
+    answer(false);
+
+    manager.searchSimilarContextMemories(TEXT, FILTER, 20);
+
+    JsonNode source = requestJson().path("_source");
+    assertEquals(
+        List.of("id", "parentId"), JsonUtils.convertValue(source.path("includes"), List.class));
+    assertEquals(List.of(), JsonUtils.convertValue(source.path("excludes"), List.class));
+  }
+
   /** A timed-out search read as "no similar memory" would store the fact again. */
   @Test
   void aPartialAnswerFailsInsteadOfFindingNoDuplicate() throws Exception {

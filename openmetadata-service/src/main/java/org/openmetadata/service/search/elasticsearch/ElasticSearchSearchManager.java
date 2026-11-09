@@ -1527,6 +1527,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         new ElasticSearchRequestBuilder()
             .query(sharedTermsQuery(text))
             .filter(fromJson(QueryFilterShape.requireQueryDsl(filterJson)))
+            .fetchSource(ContextMemoryIndex.SIMILARITY_RESULT_FIELDS.toArray(String[]::new), null)
             .size(size)
             .timeout("30s")
             .contextMemoryVisibilityResolved();

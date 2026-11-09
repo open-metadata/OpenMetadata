@@ -1610,6 +1610,7 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         new OpenSearchRequestBuilder()
             .query(sharedTermsQuery(text))
             .filter(wrapped(QueryFilterShape.requireQueryDsl(filterJson)))
+            .fetchSource(ContextMemoryIndex.SIMILARITY_RESULT_FIELDS.toArray(String[]::new), null)
             .size(size)
             .timeout("30s")
             .contextMemoryVisibilityResolved();
