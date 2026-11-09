@@ -21,6 +21,13 @@ export const permissionQueryKeys = {
     [...permissionQueryKeys.all, 'entityById', resource, id] as const,
   resource: (resource: ResourceEntity) =>
     [...permissionQueryKeys.all, 'resource', resource] as const,
+  /** Same request as `resource`, translated with conditionalAllow as permitted. */
+  resourceAllowingConditional: (resource: ResourceEntity) =>
+    [
+      ...permissionQueryKeys.all,
+      'resourceAllowingConditional',
+      resource,
+    ] as const,
 };
 
 /**
