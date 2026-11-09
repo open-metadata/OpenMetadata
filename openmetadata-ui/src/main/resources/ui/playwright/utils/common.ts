@@ -1245,7 +1245,14 @@ export const testPaginationNavigation = async (
   }
 
   const page2FirstItem = (await page2Response.json()).data?.[0];
-  expect(page2FirstItem?.id).not.toBe(page1FirstItem?.id);
+  // Columns (/columns) carry no id, so fall back to FQN, then name.
+  const itemKey = (item?: {
+    id?: string;
+    fullyQualifiedName?: string;
+    name?: string;
+  }) => item?.id ?? item?.fullyQualifiedName ?? item?.name;
+  expect(itemKey(page1FirstItem)).toBeDefined();
+  expect(itemKey(page2FirstItem)).not.toBe(itemKey(page1FirstItem));
 
   // Display names are not unique (fixture users can share one), so the row-text
   // check only proves the page changed when the two first-row labels differ.
