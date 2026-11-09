@@ -621,8 +621,8 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
         entityType);
   }
 
-  /** Shards are fixed at creation and every reindex creates a fresh staged index, so a
-   * configured numberOfShards goes into its creation body; unset keeps the cluster default. */
+  /** Shards are fixed at creation, so a configured numberOfShards goes into the staged index's
+   * creation body and replaces a mapping pin. ADR:2026-11-09-staged-index-shard-count-comes-from-live-index-settings */
   static String withNumberOfShards(String mappingContent, IndexSettings live) {
     if (live == null || live.getNumberOfShards() == null) {
       return mappingContent;

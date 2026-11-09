@@ -1666,8 +1666,46 @@ class DefaultRecreateHandlerTest {
     }
 
     @Test
+    @DisplayName("A configured shard count replaces the mapping's own pin")
+    void configuredShardsReplaceMappingPin() {
+      JsonNode body =
+          JsonUtils.readTree(
+              DefaultRecreateHandler.withNumberOfShards(
+                  "{\"settings\":{\"index\":{\"number_of_shards\":1}}}",
+                  new IndexSettings().withNumberOfShards(3)));
+
+      assertEquals(3, body.at("/settings/index/number_of_shards").asInt());
+    }
+
+    @Test
+    @DisplayName("A per-entity override without shards keeps the mapping, not the global value")
+    void perEntityOverrideWithoutShardsKeepsMapping() {
+      EventPublisherJob job =
+          new EventPublisherJob()
+              .withLiveIndexSettings(new IndexSettings().withNumberOfShards(3))
+              .withLiveIndexSettingsByEntity(
+                  Map.of("table", new IndexSettings().withNumberOfReplicas(0)));
+
+      assertEquals(MAPPING, createStagedIndexBody(job));
+    }
+
+    @Test
     @DisplayName("Reindex creates the staged index with the per-entity shard count")
     void stagedIndexIsCreatedWithPerEntityShards() {
+      EventPublisherJob job =
+          new EventPublisherJob()
+              .withLiveIndexSettings(new IndexSettings().withNumberOfShards(3))
+              .withLiveIndexSettingsByEntity(
+                  Map.of("table", new IndexSettings().withNumberOfShards(1)));
+
+      assertEquals(
+          1,
+          JsonUtils.readTree(createStagedIndexBody(job))
+              .at("/settings/index/number_of_shards")
+              .asInt());
+    }
+
+    private String createStagedIndexBody(EventPublisherJob job) {
       SearchRepository repo = mock(SearchRepository.class);
       SearchClient client = mock(SearchClient.class);
       IndexMapping mapping =
@@ -1676,11 +1714,6 @@ class DefaultRecreateHandlerTest {
       when(repo.getIndexMapping("table")).thenReturn(mapping);
       when(repo.readIndexMapping(mapping)).thenReturn(MAPPING);
       when(client.getIndicesByAlias(anyString())).thenReturn(Set.of());
-      EventPublisherJob job =
-          new EventPublisherJob()
-              .withLiveIndexSettings(new IndexSettings().withNumberOfShards(3))
-              .withLiveIndexSettingsByEntity(
-                  Map.of("table", new IndexSettings().withNumberOfShards(1)));
 
       try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
         entityMock.when(Entity::getSearchRepository).thenReturn(repo);
@@ -1689,8 +1722,7 @@ class DefaultRecreateHandlerTest {
 
       ArgumentCaptor<String> body = ArgumentCaptor.forClass(String.class);
       verify(client).createIndex(anyString(), body.capture());
-      assertEquals(
-          1, JsonUtils.readTree(body.getValue()).at("/settings/index/number_of_shards").asInt());
+      return body.getValue();
     }
   }
 }
