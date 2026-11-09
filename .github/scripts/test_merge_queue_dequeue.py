@@ -4,6 +4,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from http.client import IncompleteRead, RemoteDisconnected
 from pathlib import Path
 from unittest.mock import patch
 
@@ -100,7 +101,10 @@ class ReportTest(unittest.TestCase):
         self.read_jobs.append(job_id)
         if isinstance(self.jobs, Exception):
             raise self.jobs
-        return self.jobs[job_id]
+        result = self.jobs[job_id]
+        if isinstance(result, Exception):
+            raise result
+        return result
 
     def report(self, sha="a" * 40, tests=()):
         args = argparse.Namespace(
@@ -250,6 +254,71 @@ class ReportTest(unittest.TestCase):
             "Could not read the checks of merge-queue commit aaaaaaa.",
             self.report()[0].splitlines(),
         )
+
+    def test_unexpected_job_read_errors_preserve_other_runs(self) -> None:
+        self.checks.append(check(21, 2, "other", "2026-11-09T07:31:00Z"))
+        self.jobs[21] = job(21, "other-run", "other", "Unit Tests")
+        for failure in (
+            ConnectionResetError("reset"),
+            RemoteDisconnected("disconnected"),
+            IncompleteRead(b"partial"),
+            {"conclusion": "failure", "steps": []},
+            {"workflow_name": None, "conclusion": "failure", "steps": []},
+            None,
+        ):
+            with self.subTest(failure=type(failure).__name__):
+                self.jobs[11] = failure
+                for text in self.report():
+                    self.assertIn("details unavailable", text)
+                    self.assertIn("other-run", text)
+                    self.assertIn("failed at Unit Tests", text)
+
+    def test_unexpected_rules_read_errors_preserve_job_details(self) -> None:
+        for failure in (
+            ConnectionResetError("reset"),
+            IncompleteRead(b"partial"),
+            [{"type": "required_status_checks"}],
+            None,
+        ):
+            with self.subTest(failure=type(failure).__name__):
+                self.rules = failure
+                for text in self.report():
+                    self.assertIn("Required checks could not be read.", text)
+                    self.assertIn("dependency download failed with HTTP 504", text)
+
+    def test_main_writes_both_payloads_after_unexpected_check_read_errors(self) -> None:
+        for failure in (
+            ConnectionResetError("reset"),
+            IncompleteRead(b"partial"),
+            [{"conclusion": "failure"}],
+            None,
+        ):
+            with (
+                self.subTest(failure=type(failure).__name__),
+                tempfile.TemporaryDirectory() as directory,
+            ):
+                self.checks = failure
+                body, payload = (
+                    Path(directory) / "body.md",
+                    Path(directory) / "slack.json",
+                )
+                argv = [
+                    "merge_queue_dequeue.py",
+                    "--repo", "org/repo", "--pr", "8069", "--branch", "main",
+                    "--queue", "Collate merge queue", "--reason", "FAILED_CHECKS",
+                    "--sha", "a" * 40, "--created", "2026-11-09T07:30:01Z",
+                    "--channel", "C123", "--body", str(body), "--slack", str(payload),
+                ]  # fmt: skip
+                with (
+                    patch.object(sys, "argv", argv),
+                    patch.object(dequeue.mq, "env_token", return_value="token"),
+                ):
+                    dequeue.main()
+                self.assertIn("Could not read the checks", body.read_text())
+                slack = json.loads(payload.read_text())
+                self.assertEqual("C123", slack["channel"])
+                self.assertIn("PR #8069", slack["text"])
+                self.assertIn("Could not read the checks", slack["text"])
 
     def test_reports_without_a_failed_required_job(self) -> None:
         self.assertIn(

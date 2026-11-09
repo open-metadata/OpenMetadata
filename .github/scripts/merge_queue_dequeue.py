@@ -125,37 +125,49 @@ def run_line(repo: str, run_url: str, checks: list[dict], token: str) -> list:
     first = (failed or checks)[0]
     try:
         job = mq.rest(f"/repos/{repo}/actions/jobs/{first['id']}", token)
-    except mq.ApiError as exc:
-        print(f"::warning::Could not read job {first['id']}: {exc}", file=sys.stderr)
+        workflow = job["workflow_name"]
+        if not isinstance(workflow, str):
+            raise ValueError("Invalid workflow name")
+        line = [(workflow, run_url), ": "]
+        if not failed:
+            return line + [", ".join(map(label, checks)) + "."]
+        also = ", ".join(label(check) for check in checks if check is not first)
+        line += [(mq.shorten_check_name(first["name"]), first["html_url"])]
+        return line + [
+            f" {describe(repo, job)}" + (f". Also: {also}" if also else "") + "."
+        ]
+    except Exception as exc:
+        # Auxiliary API reads and payload decoding must not suppress the alert.
+        print(
+            f"::warning::Could not read job {first['id']}: {type(exc).__name__}",
+            file=sys.stderr,
+        )
         names = ", ".join(map(label, checks))
         return [
             (f"run {run_url.rsplit('/', 1)[1]}", run_url),
             f": {names} (details unavailable).",
         ]
-    line = [(job["workflow_name"], run_url), ": "]
-    if not failed:
-        return line + [", ".join(map(label, checks)) + "."]
-    also = ", ".join(label(check) for check in checks if check is not first)
-    line += [(mq.shorten_check_name(first["name"]), first["html_url"])]
-    return line + [
-        f" {describe(repo, job)}" + (f". Also: {also}" if also else "") + "."
-    ]
 
 
 def blocked(repo: str, branch: str, checks: list[dict], token: str) -> str:
     try:
         rules = mq.rest(f"/repos/{repo}/rules/branches/{branch}", token)
-    except mq.ApiError as exc:
-        print(f"::warning::Could not read required checks: {exc}", file=sys.stderr)
+        required = {
+            check["context"]
+            for rule in rules
+            if rule["type"] == "required_status_checks"
+            for check in rule["parameters"]["required_status_checks"]
+        }
+        names = dict.fromkeys(
+            label(check) for check in checks if check["name"] in required
+        )
+        return f"Blocked the queue: {', '.join(names)}" if names else NOT_REQUIRED
+    except Exception as exc:
+        print(
+            f"::warning::Could not read required checks: {type(exc).__name__}",
+            file=sys.stderr,
+        )
         return "Required checks could not be read."
-    required = {
-        check["context"]
-        for rule in rules
-        if rule["type"] == "required_status_checks"
-        for check in rule["parameters"]["required_status_checks"]
-    }
-    names = dict.fromkeys(label(check) for check in checks if check["name"] in required)
-    return f"Blocked the queue: {', '.join(names)}" if names else NOT_REQUIRED
 
 
 def details(args: argparse.Namespace, token: str) -> tuple[str, list[list]]:
@@ -168,28 +180,33 @@ def details(args: argparse.Namespace, token: str) -> tuple[str, list[list]]:
     owner, name = args.repo.split("/")
     try:
         checks = mq.commit_checks(args.sha, owner, name, token)
-    except mq.ApiError as exc:
-        print(f"::warning::Could not read check runs: {exc}", file=sys.stderr)
-        return f"Could not read the checks of merge-queue commit {args.sha[:7]}.", []
-    checks = sorted(
-        (check for check in checks if check["conclusion"] not in PASSING),
-        key=lambda check: (check["completed_at"] or "", check["id"]),
-    )
-    if not checks:
-        return (
-            f"No failing check on merge-queue commit {args.sha[:7]} — invalidated by an "
-            "entry ahead in the queue, or a required check timed out.",
-            [],
+        checks = sorted(
+            (check for check in checks if check["conclusion"] not in PASSING),
+            key=lambda check: (check["completed_at"] or "", check["id"]),
         )
-    runs, external = defaultdict(list), []
-    for check in checks:
-        # Checks API reports (e.g. "Unit Test Report") belong to no job.
-        if match := RUN_URL.match(check["html_url"]):
-            runs[match[1]].append(check)
-        else:
-            external.append([(label(check), check["html_url"])])
-    entries = [run_line(args.repo, url, group, token) for url, group in runs.items()]
-    return blocked(args.repo, args.branch, checks, token), entries + external
+        if not checks:
+            return (
+                f"No failing check on merge-queue commit {args.sha[:7]} — invalidated by an "
+                "entry ahead in the queue, or a required check timed out.",
+                [],
+            )
+        runs, external = defaultdict(list), []
+        for check in checks:
+            # Checks API reports (e.g. "Unit Test Report") belong to no job.
+            if match := RUN_URL.match(check["html_url"]):
+                runs[match[1]].append(check)
+            else:
+                external.append([(label(check), check["html_url"])])
+        entries = [
+            run_line(args.repo, url, group, token) for url, group in runs.items()
+        ]
+        return blocked(args.repo, args.branch, checks, token), entries + external
+    except Exception as exc:
+        print(
+            f"::warning::Could not read check runs: {type(exc).__name__}",
+            file=sys.stderr,
+        )
+        return f"Could not read the checks of merge-queue commit {args.sha[:7]}.", []
 
 
 def markdown_text(text: str) -> str:
