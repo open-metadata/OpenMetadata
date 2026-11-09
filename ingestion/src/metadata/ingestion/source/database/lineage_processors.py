@@ -43,6 +43,7 @@ from metadata.ingestion.lineage.sql_lineage import get_lineage_by_query
 from metadata.ingestion.lineage.tsql import TSQL_SWITCH_STATEMENT
 from metadata.ingestion.models.ometa_lineage import (
     LineageRequest,
+    OMetaDeleteLineageBySource,
     OMetaFQNLineageRequest,
     OMetaLineageRequest,
 )
@@ -463,7 +464,10 @@ def view_lineage_processor(
                 extension=extension,
                 parser_factory=parser_factory,
             ):
-                if lineage.right is not None:
+                if isinstance(lineage.right, OMetaDeleteLineageBySource):
+                    if overrideViewLineage:
+                        queue.put(lineage)
+                elif lineage.right is not None:
                     view_fqn = fqn.build(
                         metadata=metadata,
                         entity_type=Table,

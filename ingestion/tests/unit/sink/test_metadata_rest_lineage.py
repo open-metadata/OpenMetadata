@@ -25,6 +25,7 @@ from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageBySource
 from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
 
 FROM_ID = "d311bdf2-c4a9-4be3-9937-3b26309759af"
@@ -90,3 +91,18 @@ class TestWriteLineageStatusIdentifier:
         assert result.left is not None
         assert result.left.error == "boom"
         assert result.right is None
+
+
+def test_delete_lineage_by_source_clears_the_view_lineage_of_the_entity():
+    """A view that reads no table any more has no edge to carry the override delete (#37091)."""
+    sink = make_sink(None)
+
+    sink.run(
+        OMetaDeleteLineageBySource(entity=EntityReference(id=TO_ID, type="table"), source=LineageSource.ViewLineage)
+    )
+
+    sink.metadata.delete_lineage_by_source.assert_called_once_with(
+        entity_type="table", entity_id=TO_ID, source="ViewLineage"
+    )
+    # Nothing is ingested, so the run summary counts nothing
+    assert (sink.status.records, sink.status.failures) == ([], [])

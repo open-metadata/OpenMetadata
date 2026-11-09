@@ -22,6 +22,7 @@ from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
 import networkx as nx
+import pytest
 
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -29,6 +30,8 @@ from metadata.generated.schema.entity.data.storedProcedure import (
     StoredProcedure,
     StoredProcedureCode,
 )
+from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.services.databaseService import DatabaseServiceType
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -41,7 +44,7 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tableQuery import TableQuery
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.models.ometa_lineage import OMetaFQNLineageRequest
+from metadata.ingestion.models.ometa_lineage import OMetaDeleteLineageBySource, OMetaFQNLineageRequest
 from metadata.ingestion.models.topology import Queue as TopologyQueue
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.lineage_processors import (
@@ -577,6 +580,115 @@ class TestViewLineageOverrideScope(unittest.TestCase):
     def test_a_view_without_an_fqn_keeps_the_flag(self):
         """`fqn.build` is optional-typed: an unknown view FQN decides nothing"""
         self.assertTrue(self._process(to_entity_fqn="test_service.db1.schema1.target", view_fqn=None))
+
+
+VIEW_FQN = "svc.db.s.out"
+VIEW_READS_NOTHING = "CREATE VIEW s.out AS SELECT 42::integer AS id"
+
+
+def _process_view(view_definition, override=True, view_in_catalog=True, extension=None):
+    """Run the real view processor and parsers against a catalog that holds the view but none of
+    the tables it reads, and return the view entity and the records it queued."""
+    view_entity = Table(
+        id=uuid.uuid4(),
+        name="out",
+        fullyQualifiedName=VIEW_FQN,
+        serviceType=DatabaseServiceType.Postgres,
+        columns=[],
+    )
+    metadata = MagicMock()
+    metadata.get_by_name.side_effect = lambda *_, **kwargs: (
+        view_entity if view_in_catalog and kwargs.get("fqn") == VIEW_FQN else None
+    )
+    metadata.es_search_from_fqn.return_value = []
+    metadata.es_search_from_alias.return_value = None
+    queue = TopologyQueue()
+    view_lineage_processor(
+        views=[TableView(table_name="out", schema_name="s", db_name="db", view_definition=view_definition)],
+        queue=queue,
+        metadata=metadata,
+        service_name="svc",
+        connectionType="postgres",
+        processCrossDatabaseLineage=False,
+        crossDatabaseServiceNames=[],
+        parsingTimeoutLimit=10,
+        overrideViewLineage=override,
+        parser_type=QueryParserType.Auto,
+        extension=extension,
+    )
+    return view_entity, [record.right for record in queue.process()]
+
+
+def _deletes(records):
+    return [record for record in records if isinstance(record, OMetaDeleteLineageBySource)]
+
+
+class TestViewWithoutUpstream:
+    """
+    With `overrideViewLineage`, a view redefined to read no table must lose the view lineage it
+    had (#37091). Only a definition a parser really read proves that: a parse failure, a missing
+    definition or tables that are not ingested yet must keep the lineage stored so far.
+    """
+
+    @pytest.mark.parametrize(
+        "view_definition",
+        [
+            # `out` is a SqlGlot keyword, so SqlFluff reads the issue's own view
+            pytest.param(VIEW_READS_NOTHING, id="issue-repro-read-by-sqlfluff"),
+            pytest.param("SELECT 42 AS id", id="read-by-sqlglot"),
+            pytest.param("CREATE VIEW s.out AS WITH c AS (SELECT 1 AS x) SELECT x FROM c", id="cte-of-constants"),
+            pytest.param("CREATE VIEW s.out AS VALUES (1), (2)", id="values"),
+        ],
+    )
+    def test_view_reading_no_table_drops_its_view_lineage(self, view_definition):
+        view_entity, records = _process_view(view_definition)
+
+        assert records == [
+            OMetaDeleteLineageBySource(
+                entity=EntityReference(id=view_entity.id, type="table"),
+                source=LineageSource.ViewLineage,
+            )
+        ]
+
+    @pytest.mark.parametrize(
+        "view_definition",
+        [
+            pytest.param(
+                "CREATE VIEW s.out AS SELECT id FROM s.a UNION ALL SELECT id FROM s.b", id="tables-not-ingested-yet"
+            ),
+            pytest.param("CREATE VIEW s.out AS SELECT * FROM generate_series(1, 3)", id="table-function"),
+            # SqlParse, the last-resort parser, accepts SQL it cannot read and reports no tables
+            pytest.param("CREATE VIEW s.out AS SELEC broken FROM", id="unparsable"),
+            pytest.param(None, id="no-definition"),
+        ],
+    )
+    def test_view_lineage_is_kept_unless_the_view_provably_reads_nothing(self, view_definition):
+        _, records = _process_view(view_definition)
+
+        assert _deletes(records) == []
+
+    def test_view_missing_from_the_catalog_deletes_nothing(self):
+        _, records = _process_view(VIEW_READS_NOTHING, view_in_catalog=False)
+
+        assert _deletes(records) == []
+
+    def test_nothing_is_deleted_without_override(self):
+        _, records = _process_view(VIEW_READS_NOTHING, override=False)
+
+        assert records == []
+
+    def test_an_edge_from_the_connector_extension_keeps_the_view_lineage(self):
+        edge = OMetaFQNLineageRequest(
+            from_entity_fqn="svc.db.s.src",
+            from_entity_type="table",
+            to_entity_fqn=VIEW_FQN,
+            to_entity_type="table",
+        )
+
+        _, records = _process_view(VIEW_READS_NOTHING, extension=lambda **_: iter([Either(right=edge)]))
+
+        assert _deletes(records) == []
+        assert [record.lineage_request for record in records] == [edge]
 
 
 class TestProcedureLineageProcessor(unittest.TestCase):
