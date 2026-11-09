@@ -25,11 +25,17 @@ concurrency:
 
 env:
   PYTHON_VERSION: "3.10"
-  BRANCH_NAME: "main"
   PROJECT_BASE_DIR: "ingestion"
 
 jobs:
+  prepare-spacy-model:
+    cache-mode: read
+    uses: ./.github/workflows/prepare-classification-models.yml
+    with:
+      revision: ${{ github.sha }}
+
   py-unit-tests:
+    needs: prepare-spacy-model
     name: Unit Tests
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -48,12 +54,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.BRANCH_NAME }}
+          ref: ${{ github.sha }}
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          classification-models: 'true'
           install-server: 'false'
 
       - name: Run Unit Tests
@@ -71,7 +78,13 @@ jobs:
           path: ingestion/.coverage
           include-hidden-files: true
 
+      - name: Remove model payloads before general uv cache save
+        if: always()
+        run: env/bin/python scripts/prepare_classification_models.py clean --project ingestion
+        shell: bash
+
   py-integration-tests:
+    needs: prepare-spacy-model
     name: "Integration Tests (${{ matrix.shard.name }})"
     timeout-minutes: 180
     runs-on: ubuntu-latest
@@ -110,12 +123,13 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.BRANCH_NAME }}
+          ref: ${{ github.sha }}
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ env.PYTHON_VERSION }}
+          classification-models: 'true'
           args: "-m no-ui"
           ingestion_dependency: "mysql,elasticsearch,sample-data"
 
@@ -141,7 +155,12 @@ jobs:
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf ${PWD}/docker-volume
+          sudo rm -rf "${PWD}/docker-volume"
+
+      - name: Remove model payloads before general uv cache save
+        if: always()
+        run: env/bin/python scripts/prepare_classification_models.py clean --project ingestion
+        shell: bash
 
   py-combine-coverage:
     if: ${{ !cancelled() }}
@@ -152,7 +171,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ env.BRANCH_NAME }}
+          ref: ${{ github.sha }}
           # Do not add `filter: blob:none` — Sonar blames via JGit, which cannot
           # lazily fetch blobs from a promisor remote.
           fetch-depth: 0

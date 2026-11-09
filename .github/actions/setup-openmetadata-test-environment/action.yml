@@ -5,6 +5,9 @@ inputs:
   python-version:
     description: Python Version to install
     required: true
+  classification-models:
+    description: Import prepared model archives and install the locked full-test profile
+    default: 'false'
   java-version:
     description: Java Version to install
     default: '21'
@@ -116,51 +119,42 @@ runs:
       uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7
       with:
         enable-cache: ${{ github.event_name != 'merge_group' }}
-
-    # Cache the ingestion Python venv across runs. Key on the *resolved*
-    # Python patch version (setup-python may resolve "3.10" to a different
-    # tool-cache path after a runner-image bump — old venv shebangs would
-    # then dangle) plus hashFiles of the ingestion dep manifests and this
-    # action file so a package change or install-script edit invalidates
-    # cleanly. Intentionally no restore-keys: a partial restore would keep
-    # dependencies deleted from the manifest, letting tests silently
-    # import undeclared packages. Cache miss = fresh install, always.
-    # Skipped in fast-mode / lightweight-ingestion — those consumers restore
-    # a pre-seeded fixture and never touch the venv.
-    # Restore and save are separate steps so the fork guard below can gate the
-    # write without also denying forks the read.
-    - name: Compute ingestion venv cache key
-      id: venv-cache-key
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      run: echo "key=${{ runner.os }}-py${{ steps.setup-python.outputs.python-version }}-om-venv-${{ hashFiles('ingestion/setup.py', 'ingestion/pyproject.toml', '.github/actions/setup-openmetadata-test-environment/action.yml') }}" >> "$GITHUB_OUTPUT"
-      shell: bash
-
-    - name: Restore ingestion Python venv
-      id: cache-python-venv
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
-      uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-      with:
-        path: env
-        key: ${{ steps.venv-cache-key.outputs.key }}
+        version-file: ingestion/pyproject.toml
 
     - name: Generate Models
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
       run: |
-        # Belt-and-suspenders: even with the resolved-patch key above, if
-        # the restored venv's interpreter can't run, rebuild from scratch
-        # rather than fail Generate Models with an opaque shebang error.
-        if [ ! -x env/bin/python ] || ! env/bin/python --version >/dev/null 2>&1; then
-          rm -rf env
-          python3 -m venv env
-        fi
+        python3 -m venv env
         source env/bin/activate
         sudo make install_antlr_cli
         uv pip install "${{ github.workspace }}/ingestion[dev]"
         make generate
       shell: bash
 
+    - name: Download classification model archives
+      if: inputs.classification-models == 'true'
+      uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+      with:
+        pattern: classification-model-v1-*
+        path: ${{ runner.temp }}/classification-models
+
+    - name: Import classification model caches
+      if: inputs.classification-models == 'true'
+      run: |
+        for archive in "$RUNNER_TEMP"/classification-models/*/model.tar; do
+          python scripts/prepare_classification_models.py import --archive "$archive" --cache-dir "$(uv cache dir)"
+        done
+      shell: bash
+
+    - name: Install locked test dependencies
+      if: inputs.classification-models == 'true'
+      run: |
+        source env/bin/activate
+        make install_test PYTHON_TEST_PROFILE=test
+      shell: bash
+
     - name: Install Python Dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' && inputs.classification-models != 'true' }}
       run: |
         source env/bin/activate
         uv pip install --no-deps "sqlalchemy-ibmi==0.9.3"
@@ -176,32 +170,6 @@ runs:
         fi
         python -c "import airflow; from airflow.models import Connection; print(f'Airflow {airflow.__version__}: {Connection.__module__}.Connection')"
       shell: bash
-
-    # Saved here rather than at job end so a later failure (server startup,
-    # tests) still leaves the venv cached. Fork PRs under pull_request_target
-    # skip the save — actions/cache-poisoning; their restore above still runs.
-    # merge_group and pull_request are excluded: a queue ref dies after the
-    # run and a PR ref is visible only to that PR's own re-runs, but both
-    # copies (~300 MB per Python version) count against the shared 10 GB
-    # budget and evict the main-scoped fixtures every run needs. Measured
-    # 2026-09-29: four identical om-venv copies under four PR refs and none
-    # under main. populate-playwright-caches.yml's warm-venv job is the
-    # main-scoped writer; the restore above is unconditional so every event
-    # hits it.
-    - name: Save ingestion Python venv
-      if: >-
-        ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
-        steps.cache-python-venv.outputs.cache-hit != 'true' &&
-        github.event_name != 'merge_group' &&
-        github.event_name != 'pull_request' &&
-        !(github.event_name == 'pull_request_target' &&
-          github.event.pull_request.head.repo.full_name != github.repository) }}
-      continue-on-error: true
-      uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
-      with:
-        path: env
-        key: ${{ steps.venv-cache-key.outputs.key }}
-    # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
     - name: Configure Test Session Limit
@@ -252,4 +220,12 @@ runs:
         fi
         timeout --signal=TERM --kill-after=30s 5m \
           ./.github/scripts/start_playwright_fast_environment.sh "${fast_args[@]}"
+      shell: bash
+
+    - name: Install and verify classification models after server setup
+      if: inputs.classification-models == 'true'
+      run: |
+        source env/bin/activate
+        make install_test
+        python scripts/prepare_classification_models.py verify --project ingestion
       shell: bash

@@ -16,12 +16,8 @@ NOX = "$(NOX_BOOTSTRAP)/bin/nox" -f "$(INGESTION_ABS)/noxfile.py"
 PYTHON_UV_VERSION := $(shell sed -n 's/^required-version *= *"==\([^"]*\)" *$$/\1/p' "$(INGESTION_ABS)/pyproject.toml")
 export OM_VENV_DIR
 
-ifeq ($(OM_SKIP_CLASSIFICATION_MODELS),true)
-# Locked validation fetches remote model metadata even for the bootstrap group.
-UV_LOCK_MODE = --frozen
-else
 UV_LOCK_MODE = --locked
-endif
+PYTHON_TEST_PROFILE ?= test-classification
 
 .PHONY: install
 install: python_tools  ## Install the ingestion module to the current environment
@@ -46,7 +42,7 @@ install_dev: python_tools  ## Install the ingestion module with dev dependencies
 
 .PHONY: install_test
 install_test: python_tools  ## Install the ingestion module with test dependencies
-	$(NOX) -s install -- test
+	$(NOX) -s install -- $(PYTHON_TEST_PROFILE)
 
 .PHONY: install_all
 install_all: python_tools  ## Install the ingestion module with all dependencies

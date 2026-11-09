@@ -33,7 +33,9 @@ from nox.virtualenv import PassthroughEnv
 
 # TODO: Add python 3.9. PYTHON 3.9 fails in Mac os due to problem with `psycopg2-binary` package
 
-SUPPORTED_PYTHON_VERSIONS = ["3.10", "3.11", "3.12"]
+SUPPORTED_PYTHON_VERSIONS = json.loads(
+    (Path(__file__).resolve().parents[1] / ".github/python-versions.json").read_text()
+)
 
 
 def get_python_versions():
@@ -49,7 +51,7 @@ def get_python_versions():
 INGESTION_ROOT = Path(__file__).resolve().parent
 nox.options.envdir = str(INGESTION_ROOT / ".nox")
 ROOT = INGESTION_ROOT.parent
-PROFILES = ("runtime", "all", "dev", "test", "style", "generation", "coverage")
+PROFILES = ("runtime", "all", "dev", "test", "test-classification", "style", "generation", "coverage")
 
 
 # ADR:2026-10-27-local-python-environments-use-locked-profiles
@@ -65,7 +67,7 @@ def generation_lock():
 
 def default_environment(profile):
     """Select the checkout application environment or an isolated tool environment."""
-    if profile in ("runtime", "all", "dev", "test"):
+    if profile in ("runtime", "all", "dev", "test", "test-classification"):
         return Path(os.environ.get("OM_PYTHON_ENVIRONMENT") or ROOT / (os.environ.get("OM_VENV_DIR") or "env"))
     return INGESTION_ROOT / ".nox" / profile
 
@@ -102,13 +104,7 @@ def synchronize(session, profile, path, interpreter):
         "PATH": str(path / "bin") + os.pathsep + os.environ["PATH"],
     }
     uv = pinned_uv(session, python, environment)
-    skip_classification_models = os.environ.get("OM_SKIP_CLASSIFICATION_MODELS") == "true"
-    # Frozen sync avoids fetching model metadata while provisioning is paused.
-    lock_mode = "--frozen" if skip_classification_models else "--locked"
-    command = [uv, "sync", lock_mode, "--project", str(INGESTION_ROOT), "--python", str(python)]
-    if skip_classification_models:
-        for model in ("en-core-web-md", "es-core-news-md", "it-core-news-md", "pl-core-news-md"):
-            command.extend(["--no-install-package", model])
+    command = [uv, "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
     parser_check = "try:\n import tomllib\nexcept ImportError:\n import tomli"
     if subprocess.run([str(python), "-I", "-c", parser_check], capture_output=True, check=False).returncode:
         session.run(*command, "--only-group", "bootstrap", "--inexact", env=environment, external=True)
@@ -154,18 +150,6 @@ def synchronize(session, profile, path, interpreter):
         for extra in selected["extras"]:
             flags.extend(["--extra", extra])
         session.run(*command, *flags, env=environment, external=True)
-        if profile == "test" and policy.get("classification-models") and not skip_classification_models:
-            session.run(
-                str(python),
-                "-I",
-                "-m",
-                "metadata",
-                "install-classification-models",
-                "--languages",
-                ",".join(policy["classification-models"]["languages"]),
-                env=environment,
-                external=True,
-            )
     return python, environment
 
 
@@ -258,6 +242,7 @@ def lint(session):
     parser.add_argument("--fix", action="store_true")
     args = parser.parse_args(session.posargs)
     sources = [str(INGESTION_ROOT), str(ROOT / "openmetadata-airflow-apis")]
+    sources.append(str(ROOT / ".github/scripts/classification_model_revisions.py"))
     sources.extend(
         str(ROOT / "scripts" / name)
         for name in (
@@ -265,6 +250,7 @@ def lint(session):
             "check_generated_models.py",
             "datamodel_generation.py",
             "update_version.py",
+            "prepare_classification_models.py",
         )
     )
     session.run(
@@ -332,7 +318,7 @@ def unit_tests(session):
         nox -s unit-tests -- -k test_name # run specific test
         nox -s unit-tests -- tests/unit/topology/  # run specific directory
     """
-    python = prepare(session, "test")
+    python = prepare(session, "test-classification")
 
     pytest_args = [
         "-c",
@@ -377,8 +363,7 @@ def integration_tests(session):
         nox -s integration-tests                   # local, appends to .coverage
         nox -s integration-tests -- --standalone   # CI, standalone .coverage
     """
-    python = prepare(session, "test")
-
+    python = prepare(session, "test-classification")
     args = list(session.posargs)
     standalone = "--standalone" in args
     if standalone:

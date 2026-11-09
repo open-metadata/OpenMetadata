@@ -33,7 +33,14 @@ permissions:
   contents: read
 
 jobs:
+  prepare-spacy-model:
+    cache-mode: read
+    uses: ./.github/workflows/prepare-classification-models.yml
+    with:
+      revision: ${{ github.sha }}
+
   py-cli-e2e-tests-v2:
+    needs: prepare-spacy-model
     runs-on: ubuntu-latest
     timeout-minutes: 60
     strategy:
@@ -76,6 +83,7 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: '3.10'
+          classification-models: 'true'
 
       - name: Run CLI E2E v2 tests
         id: e2e-v2-test
@@ -154,3 +162,8 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf "${PWD}/docker-volume"
+
+      - name: Remove model payloads before general uv cache save
+        if: always()
+        run: env/bin/python scripts/prepare_classification_models.py clean --project ingestion
+        shell: bash

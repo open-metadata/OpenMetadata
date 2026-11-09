@@ -1,0 +1,47 @@
+name: Warm classification models
+
+on:
+  workflow_run:
+    workflows: [Classification models changed]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      revision:
+        description: Exact commit SHA; leave empty to sweep supported heads and retained revisions
+        type: string
+        default: ''
+  schedule:
+    - cron: '15 5 * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  revisions:
+    if: ${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) && (github.event_name != 'workflow_run' || (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_repository.full_name == github.repository)) }}
+    runs-on: ubuntu-24.04
+    cache-mode: read
+    outputs:
+      revisions: ${{ steps.revisions.outputs.revisions }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - id: revisions
+        env:
+          REQUESTED_REVISION: ${{ inputs.revision || github.event.workflow_run.head_sha }}
+          SUPPORTED_HEADS: '["main"]'
+          RETAINED_REVISIONS: '[]'
+        run: python3 .github/scripts/classification_model_revisions.py >> "$GITHUB_OUTPUT"
+
+  warm:
+    needs: revisions
+    cache-mode: write
+    strategy:
+      fail-fast: false
+      matrix:
+        revision: ${{ fromJSON(needs.revisions.outputs.revisions) }}
+    uses: ./.github/workflows/write-classification-models.yml
+    with:
+      revision: ${{ matrix.revision }}
