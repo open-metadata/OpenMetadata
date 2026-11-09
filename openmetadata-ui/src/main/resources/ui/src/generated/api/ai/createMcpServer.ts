@@ -114,6 +114,10 @@ export interface CreateMCPServer {
      * Transport protocol used by the MCP server
      */
     transportType?: TransportType;
+    /**
+     * Usage metrics for the MCP server
+     */
+    usageMetrics?: UsageMetrics;
 }
 
 /**
@@ -1612,4 +1616,38 @@ export enum TransportType {
     SSE = "SSE",
     Stdio = "Stdio",
     StreamableHTTP = "StreamableHTTP",
+}
+
+/**
+ * Usage metrics for the MCP server
+ */
+export interface UsageMetrics {
+    /**
+     * Average latency in milliseconds
+     */
+    averageLatencyMs?: number;
+    /**
+     * Daily active users
+     */
+    dailyActiveUsers?: number;
+    /**
+     * Timestamp of last invocation
+     */
+    lastInvokedAt?: number;
+    /**
+     * 95th percentile latency in milliseconds
+     */
+    p95LatencyMs?: number;
+    /**
+     * Success rate (0-1)
+     */
+    successRate?: number;
+    /**
+     * Total number of invocations
+     */
+    totalInvocations?: number;
+    /**
+     * Number of unique users
+     */
+    uniqueUsers?: number;
 }
