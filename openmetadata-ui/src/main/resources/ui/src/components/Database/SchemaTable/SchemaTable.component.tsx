@@ -27,9 +27,9 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { groupBy, isEmpty, isEqual, isUndefined, omit } from 'lodash';
+import { groupBy, isEmpty, isUndefined, omit } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
-import { Key, lazy, useCallback, useEffect, useMemo, useState } from 'react';
+import { Key, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -177,9 +177,6 @@ const SchemaTable = () => {
   const [tableColumns, setTableColumns] = useState<Column[]>([]);
   const [columnsLoading, setColumnsLoading] = useState(true); // Start with loading state
   const [hasInitialLoad, setHasInitialLoad] = useState(false);
-  const [prevTableColumns, setPrevTableColumns] = useState<
-    Column[] | undefined
-  >();
   const {
     entityFqn: tableFqn,
     columnFqn: columnPart,
@@ -198,6 +195,7 @@ const SchemaTable = () => {
     openColumnDetailPanel,
     setDisplayedColumns,
   } = useGenericContext<TableType>();
+  const syncedTableColumnsRef = useRef(table?.columns);
 
   useFqnDeepLink({
     data: table.columns || [],
@@ -215,6 +213,17 @@ const SchemaTable = () => {
       deleted: table?.deleted,
     }),
     [testCaseSummary, table]
+  );
+
+  const testCountsByColumnFqn = useMemo(
+    () =>
+      new Map(
+        testCaseCounts.map((count) => [
+          getEntityColumnFQN(count.entityLink ?? ''),
+          count,
+        ])
+      ),
+    [testCaseCounts]
   );
 
   useScrollToElement(
@@ -447,38 +456,32 @@ const SchemaTable = () => {
     }
   }, [tableColumns]);
 
+  // Propagates column edits made elsewhere (e.g. the column detail panel writes to the
+  // table query cache) into the loaded page. Reference equality, not a deep compare, and
+  // a single Map-based pass: wide tables made the old deep isEqual + per-column nested
+  // merge block the main thread for hundreds of ms on every navigation.
   useEffect(() => {
-    if (!hasInitialLoad || !table?.columns) {
+    if (
+      !hasInitialLoad ||
+      !table?.columns ||
+      table.columns === syncedTableColumnsRef.current
+    ) {
       return;
     }
 
-    const columnsChanged = !isEqual(prevTableColumns, table.columns);
+    syncedTableColumnsRef.current = table.columns;
 
-    if (!columnsChanged) {
-      return;
-    }
+    const updatesByFqn = new Map(
+      table.columns.map((col) => [col.fullyQualifiedName, col])
+    );
+    setTableColumns((prev) =>
+      prev.map((col) => {
+        const update = updatesByFqn.get(col.fullyQualifiedName);
 
-    setPrevTableColumns(table.columns);
-
-    const updatedColumns = table.columns;
-    setTableColumns((prev) => {
-      // Create a deep clone to avoid mutation of the previous state during updates
-      let newColumns = [...prev];
-      updatedColumns?.forEach((updatedCol) => {
-        // Recursively remove empty children from the update object
-        const [cleanUpdate] = pruneEmptyChildren([updatedCol]);
-
-        // Use the utility to recursively find and update the column in the nested structure
-        newColumns = updateColumnInNestedStructure(
-          newColumns,
-          updatedCol.fullyQualifiedName ?? '',
-          cleanUpdate
-        );
-      });
-
-      return newColumns;
-    });
-  }, [table?.columns, hasInitialLoad, prevTableColumns]);
+        return update ? { ...col, ...pruneEmptyChildren([update])[0] } : col;
+      })
+    );
+  }, [table?.columns, hasInitialLoad]);
 
   const updateDescriptionTagFromSuggestions = useCallback(
     (suggestion: Suggestion) => {
@@ -806,19 +809,14 @@ const SchemaTable = () => {
   );
 
   const renderDataQuality = useCallback(
-    (_: string, record: Column) => {
-      const testCounts = testCaseCounts.find((column) => {
-        return isEqual(
-          getEntityColumnFQN(column.entityLink ?? ''),
-          record.fullyQualifiedName
-        );
-      });
-
-      return (
-        <TestCaseStatusSummaryIndicator testCaseStatusCounts={testCounts} />
-      );
-    },
-    [testCaseCounts]
+    (_: string, record: Column) => (
+      <TestCaseStatusSummaryIndicator
+        testCaseStatusCounts={testCountsByColumnFqn.get(
+          record.fullyQualifiedName ?? ''
+        )}
+      />
+    ),
+    [testCountsByColumnFqn]
   );
 
   const customPropertyColumns: ColumnsType<Column> = useMemo(

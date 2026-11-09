@@ -29,6 +29,7 @@ import {
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import SchemaTable from './SchemaTable.component';
 
 const mockTableConstraints = [
@@ -578,6 +579,43 @@ describe('Test EntityTable Component', () => {
     );
 
     expect(emptyPlaceholder).toBeInTheDocument();
+  });
+
+  it('should apply column edits from the table context to the loaded page', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
+    const { rerender } = render(<SchemaTable />, { wrapper: MemoryRouter });
+
+    expect(await screen.findAllByTestId('column-name')).toHaveLength(3);
+    expect(screen.queryByTestId('column-display-name')).not.toBeInTheDocument();
+
+    // Built once so the reference stays stable across renders, like the React Query cache.
+    const editedContext = {
+      ...mockGenericContextProps,
+      data: {
+        ...mockGenericContextProps.data,
+        columns: mockColumns.map((col) =>
+          col.name === 'comments'
+            ? { ...col, displayName: 'Edited Comments' }
+            : col
+        ),
+      },
+    };
+    (useGenericContext as jest.Mock).mockImplementation(() => editedContext);
+
+    try {
+      rerender(<SchemaTable />);
+
+      expect(
+        await screen.findByTestId('column-display-name')
+      ).toHaveTextContent('Edited Comments');
+    } finally {
+      (useGenericContext as jest.Mock).mockImplementation(
+        () => mockGenericContextProps
+      );
+    }
   });
 
   it('should render column name only if displayName is not present', async () => {
