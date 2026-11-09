@@ -246,7 +246,7 @@ describe('BlockEditorExtensionsClassBase', () => {
       expect(link).toBeDefined();
     });
 
-    it('should configure links to open on click only in read-only previews', () => {
+    it('should not open links on click while editing', () => {
       (
         extensionsClass as unknown as {
           getCoreExtensions: () => Extensions;
@@ -254,7 +254,7 @@ describe('BlockEditorExtensionsClassBase', () => {
       ).getCoreExtensions();
 
       expect(LinkExtension.configure).toHaveBeenCalledWith(
-        expect.objectContaining({ openOnClick: 'whenNotEditable' })
+        expect.objectContaining({ openOnClick: false })
       );
     });
 

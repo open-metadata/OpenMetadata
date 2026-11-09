@@ -1380,11 +1380,30 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
+  it('states why Publish is disabled on All ontologies as visible text, and drops the reason on one ontology', async () => {
+    renderNativeStudio('?ontology=native-sales');
+    await screen.findByTestId('ontology-publication-trigger');
+
+    expect(
+      screen.queryByText('message.ontology-choose-ontology-to-publish')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('ontology-publication-trigger')
+    ).not.toHaveAttribute('aria-describedby');
+  });
+
   it('disables Publish on All ontologies and opens no dialog', async () => {
     renderNativeStudio('');
     const trigger = screen.getByTestId('ontology-publication-trigger');
 
     expect(trigger).toBeDisabled();
+
+    const reason = screen.getByText(
+      'message.ontology-choose-ontology-to-publish'
+    );
+
+    expect(reason).toBeVisible();
+    expect(trigger).toHaveAttribute('aria-describedby', reason.id);
 
     fireEvent.click(trigger);
 
@@ -2218,10 +2237,19 @@ describe('OntologyExplorerPage', () => {
     );
     expect(draftExplorerProps?.defaultConceptGlossaryId).toBeUndefined();
     expect(addConceptButton).toBeDisabled();
+    expect(screen.getByTestId('ontology-add-concept-reason')).toHaveTextContent(
+      'message.ontology-finish-open-concept-first'
+    );
+    expect(addConceptButton).toHaveAccessibleDescription(
+      'message.ontology-finish-open-concept-first'
+    );
 
     act(() => draftExplorerProps?.onConceptDraftClose?.());
 
     expect(screen.getByTestId('ontology-add-concept')).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-add-concept-reason')
+    ).not.toBeInTheDocument();
   });
 
   it('prefills the inline draft with the selected Edit graph glossary', () => {

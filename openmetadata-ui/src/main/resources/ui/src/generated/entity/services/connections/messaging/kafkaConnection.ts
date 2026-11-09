@@ -27,7 +27,7 @@ export interface KafkaConnection {
      * Confluent Kafka Consumer Config. From
      * https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
      */
-    consumerConfig?: { [key: string]: any };
+    consumerConfig?: ConsumerConfig;
     /**
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
@@ -49,7 +49,7 @@ export interface KafkaConnection {
      * Confluent Kafka Schema Registry Config. From
      * https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient
      */
-    schemaRegistryConfig?: { [key: string]: any };
+    schemaRegistryConfig?: SchemaRegistryConfig;
     /**
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
@@ -78,6 +78,50 @@ export interface KafkaConnection {
      * Service Type
      */
     type?: KafkaType;
+}
+
+/**
+ * Confluent Kafka Consumer Config. From
+ * https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+ */
+export interface ConsumerConfig {
+    /**
+     * Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.passphrase"?: string;
+    /**
+     * PEM private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.pem"?: string;
+    /**
+     * Client secret for the OAUTHBEARER (OIDC) token request.
+     */
+    "sasl.oauthbearer.client.secret"?: string;
+    /**
+     * SASL/OAUTHBEARER configuration string, which can carry a client secret.
+     */
+    "sasl.oauthbearer.config"?: string;
+    /**
+     * SASL password.
+     */
+    "sasl.password"?: string;
+    /**
+     * Passphrase of the client's private key.
+     */
+    "ssl.key.password"?: string;
+    /**
+     * Client's private key as a PEM string.
+     */
+    "ssl.key.pem"?: string;
+    /**
+     * Password of the client keystore (PKCS#12).
+     */
+    "ssl.keystore.password"?: string;
+    /**
+     * Password of the truststore.
+     */
+    "ssl.truststore.password"?: string;
+    [property: string]: any;
 }
 
 /**
@@ -117,6 +161,26 @@ export enum SaslMechanismType {
     Plain = "PLAIN",
     ScramSHA256 = "SCRAM-SHA-256",
     ScramSHA512 = "SCRAM-SHA-512",
+}
+
+/**
+ * Confluent Kafka Schema Registry Config. From
+ * https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient
+ */
+export interface SchemaRegistryConfig {
+    /**
+     * Schema Registry credentials in the form of username:password.
+     */
+    "basic.auth.user.info"?: string;
+    /**
+     * Client secret for the Schema Registry OAuth token request.
+     */
+    "bearer.auth.client.secret"?: string;
+    /**
+     * Static bearer token for the Schema Registry.
+     */
+    "bearer.auth.token"?: string;
+    [property: string]: any;
 }
 
 /**

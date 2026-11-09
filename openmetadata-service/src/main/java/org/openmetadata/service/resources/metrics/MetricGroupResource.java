@@ -21,11 +21,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.json.Json;
-import jakarta.json.JsonArrayBuilder;
-import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
-import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -67,11 +63,9 @@ import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.type.change.ChangeSource;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
@@ -81,7 +75,6 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
 @Path("/v1/metricGroups")
 @Tag(
@@ -412,7 +405,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       @Valid CreateMetricGroup create) {
     MetricGroup metricGroup =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    MetricAuthorization.authorizeGroupCreate(authorizer, securityContext, metricGroup);
     return withoutMembers(
         sanitizeMembership(securityContext, create(uriInfo, securityContext, metricGroup)));
   }
@@ -436,14 +428,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       @Valid CreateMetricGroup create) {
     MetricGroup metricGroup =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(metricGroup, true);
-    MetricGroup original =
-        repository.findByNameOrNull(metricGroup.getFullyQualifiedName(), Include.NON_DELETED);
-    if (original != null) {
-      original = repository.getWithMembers(original.getId(), Include.NON_DELETED);
-    }
-    MetricAuthorization.authorizeMembershipMutation(
-        authorizer, securityContext, original, metricGroup);
     return withoutMembers(
         sanitizeMembership(securityContext, createOrUpdate(uriInfo, securityContext, metricGroup)));
   }
@@ -459,46 +443,7 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           @PathParam("id")
           UUID id,
       @Valid JsonPatch patch) {
-    // Simulating the patch reads the stored group with its members and its errors quote them, so
-    // the caller must be allowed to patch the group first - the same check patchInternal makes.
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, patch),
-        getResourceContextById(id, ResourceContextInterface.Operation.PATCH));
-    MetricGroup original = repository.get(null, id, repository.getPatchFields());
-    MetricAuthorization.authorizeGroupPatch(authorizer, securityContext, original, patch);
-    if (!MetricAuthorization.addressesMembers(patch)) {
-      return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
-    }
-    try {
-      return withoutMembers(
-          patchInternal(uriInfo, securityContext, id, pinnedToMembers(original, patch)));
-    } catch (JsonException e) {
-      // The patch applied cleanly to the members authorized above, so failing on the repository's
-      // fresh load means they changed in between; index-based operations would hit other metrics.
-      throw new PreconditionFailedException(
-          "The members of the metric group changed while it was being patched. Please retry.");
-    }
-  }
-
-  /**
-   * Prepends a {@code test} of {@code /metrics} against the members the patch was authorized on,
-   * so the repository refuses to apply it to a member list that changed since (ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply).
-   */
-  static JsonPatch pinnedToMembers(MetricGroup authorizedOn, JsonPatch patch) {
-    JsonValue members = JsonUtils.getJsonStructure(authorizedOn).asJsonObject().get("metrics");
-    if (members == null) {
-      return patch;
-    }
-    JsonArrayBuilder operations =
-        Json.createArrayBuilder()
-            .add(
-                Json.createObjectBuilder()
-                    .add("op", "test")
-                    .add("path", "/metrics")
-                    .add("value", members));
-    patch.toJsonArray().forEach(operations::add);
-    return Json.createPatch(operations.build());
+    return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
   }
 
   // The PATCH response answers with the same membership-derived fields as a read, so it answers

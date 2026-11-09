@@ -265,4 +265,23 @@ class ContextMemoryExtractorTest {
     verify(llmClient, org.mockito.Mockito.never())
         .completeStructured(any(), any(), eq(KnowledgePill.class));
   }
+
+  /** Automatic extraction keeps the rule chat capture follows: no personal data, whatever the source. */
+  @Test
+  void asksTheModelToLeaveOutPersonalData() {
+    EntityReference source = fileRef(UUID.randomUUID(), "escalations");
+    when(llmClient.completeStructured(any(), any(), eq(KnowledgePill.class))).thenReturn(List.of());
+
+    derive("text", source);
+
+    verify(llmClient)
+        .completeStructured(
+            org.mockito.ArgumentMatchers.contains("Never extract personal data"),
+            any(),
+            eq(KnowledgePill.class));
+    assertTrue(
+        ContextMemoryExtractor.SYSTEM_PROMPT.contains(
+            "nor credentials, tokens, keys or connection strings"),
+        "secrets are kept out as well as contact details");
+  }
 }

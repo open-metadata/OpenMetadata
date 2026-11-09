@@ -86,6 +86,36 @@ class ContextMemoryResourceTest {
     }
   }
 
+  /**
+   * The total counts only what the caller may list, on every page: a count-only call and a page
+   * that hides nothing itself still recount when the database counted more rows than they show.
+   */
+  @Test
+  void aListTotalIsRecountedWheneverItCountsMoreThanThePageShows() {
+    assertEquals(
+        3, ContextMemoryResource.listedTotal(5, 0, () -> 3), "limit=0 counts no hidden row");
+    assertEquals(
+        10,
+        ContextMemoryResource.listedTotal(12, 10, () -> 10),
+        "a full page while the hidden rows sit on the next one");
+    assertEquals(
+        15_000,
+        ContextMemoryResource.listedTotal(20_000, 15_000, () -> 9_000),
+        "a bounded recount never reports fewer rows than the page returns");
+  }
+
+  @Test
+  void aPageShowingEveryCountedRowKeepsTheDatabaseTotal() {
+    assertEquals(
+        4,
+        ContextMemoryResource.listedTotal(
+            4,
+            4,
+            () -> {
+              throw new AssertionError("nothing can be hidden, so nothing is recounted");
+            }));
+  }
+
   private static MemoryOutcomes countedAt(long countedAt) {
     return new MemoryOutcomes().withAppliedCount(3).withCountedAt(countedAt);
   }

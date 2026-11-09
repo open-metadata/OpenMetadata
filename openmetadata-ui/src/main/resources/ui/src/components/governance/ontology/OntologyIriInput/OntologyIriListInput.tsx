@@ -77,6 +77,7 @@ const OntologyIriListInput = ({
           options={options}
           value={draft}
           onChange={setDraft}
+          onSubmit={add}
         />
         <Button
           color="secondary"

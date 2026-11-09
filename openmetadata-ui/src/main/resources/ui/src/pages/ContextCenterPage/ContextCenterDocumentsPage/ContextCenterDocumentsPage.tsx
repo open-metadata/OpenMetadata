@@ -401,6 +401,10 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => clearTimeout(id);
   }, [documentSearchQuery]);
 
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [selectedFolderId, debouncedSearchQuery]);
+
   const fetchDocuments = useCallback(
     async (after?: string) => {
       if (!after) {
@@ -523,9 +527,15 @@ const ContextCenterDocumentsPage: FC = () => {
     fetchPermission();
   }, [fetchPermission]);
 
+  // A link to another document (a memory's linked assets, Back) changes the URL without remounting.
   useEffect(() => {
     const documentId = searchParams.get('document');
-    if (!documentId || isDocumentsLoading || previewFile) {
+    if (!documentId) {
+      setPreviewFile(undefined);
+
+      return;
+    }
+    if (isDocumentsLoading || documentId === previewFile?.id) {
       return;
     }
     const match = allDocuments.find((d) => d.id === documentId);
@@ -561,8 +571,14 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
+  }, [
+    allDocuments,
+    isDocumentsLoading,
+    previewFile?.id,
+    searchParams,
+    t,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     const folderId = searchParams.get('folder');
@@ -602,6 +618,12 @@ const ContextCenterDocumentsPage: FC = () => {
       setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(fileToDelete.id);
+
+        return next;
+      });
       setTotalFileCount((prev) => prev - 1);
       setGlobalFileCount((prev) => prev - 1);
       fetchFolders();
@@ -970,6 +992,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     onBulkDelete={handleBulkDelete}
                     onBulkDownload={handleBulkDownload}
                     onBulkMove={handleBulkMove}
+                    onClearSelection={() => setSelectedIds(new Set())}
                     onDeleteFile={handleDeleteFile}
                     onDownload={handleAssetDownload}
                     onFileMoved={handleFileMoved}
