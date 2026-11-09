@@ -211,6 +211,7 @@ def get_view_lineage(
             # No edge is left to carry the override delete, so ask for it explicitly. Every other
             # empty outcome (no definition, unreadable SQL, upstream not ingested yet) keeps the
             # stored lineage, and the caller only applies this under `overrideViewLineage`.
+            # ADR:2026-11-09-override-view-lineage-deletes-only-for-a-provably-tableless-view
             yield Either(
                 left=None,
                 right=OMetaDeleteLineageBySource(
