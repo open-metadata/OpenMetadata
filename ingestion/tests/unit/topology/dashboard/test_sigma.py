@@ -28,6 +28,7 @@ import requests
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
@@ -778,6 +779,15 @@ def sigma_routes() -> dict:
             "dependencies": {},
             "edges": [{"source": "inode-T1", "target": f"sheet-{element_id}", "type": "source"}],
         }
+        # A workbook's /files entry has the workbook id; Sigma returns the badge only there
+        routes["GET", f"/v2/files/{workbook['workbookId']}"] = {
+            **routes["GET", "/v2/files/T1"],
+            "id": workbook["workbookId"],
+            "urlId": workbook["workbookUrlId"],
+            "name": workbook["name"],
+            "type": "workbook",
+            "path": workbook["path"],
+        }
     return routes
 
 
@@ -817,6 +827,45 @@ def sigma_over_http(routes):
     source.client.token_client._session.request = request
     source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
     return source, calls
+
+
+def badge_tags(source) -> tuple[list[tuple[str, str]], list[str] | None]:
+    """The tag definitions and the dashboard tags the run sends for wb-1"""
+    source.source_config.includeOwners = False
+    # The tag registry only checks that OpenMetadata knows the tag
+    source.metadata.get_by_name = lambda entity, **_: object() if entity is Tag else None
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    definitions = [
+        (either.right.classification_request.name.root, either.right.tag_request.name.root)
+        for either in source.yield_tags(details) or []
+    ]
+    dashboard = next(source.yield_dashboard(details)).right
+    return definitions, [label.tagFQN.root for label in dashboard.tags] if dashboard.tags else None
+
+
+def test_workbook_badge_becomes_a_sigma_badge_tag(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/files/wb-1"] = {**routes["GET", "/v2/files/wb-1"], "badge": "Endorsed"}
+
+    assert badge_tags(source) == ([("SigmaBadge", "Endorsed")], ["SigmaBadge.Endorsed"])
+
+
+@pytest.mark.parametrize("files_answer", [None, 500], ids=["no badge", "failed read"])
+def test_workbook_without_a_readable_badge_is_ingested_without_tags(sigma_over_http, routes, files_answer):
+    source, _ = sigma_over_http
+    if files_answer:
+        routes["GET", "/v2/files/wb-1"] = files_answer
+
+    assert badge_tags(source) == ([], None)
+
+
+def test_badge_is_not_read_when_tags_are_off(sigma_over_http):
+    source, calls = sigma_over_http
+    source.source_config.includeTags = False
+
+    source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    assert calls["GET", "/v2/files/wb-1"] == 0
 
 
 def ingested_projects(source) -> dict[str, str | None]:

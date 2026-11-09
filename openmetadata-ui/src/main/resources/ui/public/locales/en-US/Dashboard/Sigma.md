@@ -46,6 +46,10 @@ Version of the Sigma REST API by default `v2`.
 To get to know the Sigma REST API Version visit <a href="https://help.sigmacomputing.com/reference/get-started-sigma-api#identify-your-api-request-url" target="_blank">here</a> and look into the `Token URL` section.
 $$
 
+## Certification Badges
+
+When **Include Tags** is on, a workbook's certification badge (Endorsed, Warning or Deprecated) is added to its dashboard as a tag in the `SigmaBadge` classification.
+
 ## Projects
 
 A Sigma workbook's project is its workspace, the first part of the workbook's path in Sigma (for example `My Documents`). **Project Filter Pattern** includes or excludes workbooks by that workspace name.

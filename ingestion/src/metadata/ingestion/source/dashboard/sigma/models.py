@@ -41,6 +41,8 @@ class WorkbookDetails(BaseModel):
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
+    # Not in the workbook response: Sigma returns the badge on the workbook's /files entry.
+    badge: str | None = None
     # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
     elements: list["Elements"] = []
     # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
@@ -114,6 +116,7 @@ class NodeDetails(BaseModel):
     name: str | None
     node_type: str = Field(alias="type")
     path: str | None = ""
+    badge: str | None = None
 
     @property
     def node_schema(self):

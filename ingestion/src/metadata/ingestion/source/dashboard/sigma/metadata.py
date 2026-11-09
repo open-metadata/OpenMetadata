@@ -64,6 +64,7 @@ from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
 )
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
 from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -89,6 +90,10 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
+
+# Stable: tags already applied keep this name (ADR:2026-11-07-sigma-badges-are-tags-in-the-sigmabadge-classification)
+SIGMA_BADGE_CLASSIFICATION = "SigmaBadge"
+
 
 # Distinct table references resolved per run; past it a reference is searched again
 MAX_RESOLVED_TABLES = 1_000
@@ -172,9 +177,21 @@ class SigmaSource(DashboardServiceSource):
         get dashboard details
         """
         dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
+        if dashboard_details and self.source_config.includeTags:
+            dashboard_details.badge = self.client.get_badge(dashboard.workbookId)
         if dashboard_details:
             dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
         return dashboard_details
+
+    def yield_tags(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaTagAndClassification]]:
+        """The workbook's certification badge (Endorsed, Warning, Deprecated) as a tag"""
+        if dashboard_details and dashboard_details.badge:
+            yield from self.yield_tag_definitions(
+                tags=[dashboard_details.badge],
+                classification_name=SIGMA_BADGE_CLASSIFICATION,
+                classification_description="Certification badges of Sigma documents",
+                tag_description="Sigma certification badge",
+            )
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -215,6 +232,11 @@ class SigmaSource(DashboardServiceSource):
                 else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_details.url),
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.workbookId),
+                    tags=[dashboard_details.badge] if dashboard_details.badge else None,
+                    classification_name=SIGMA_BADGE_CLASSIFICATION,
+                ),
                 project=self.get_project_name(dashboard_details=dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
                 lifeCycle=LifeCycle(

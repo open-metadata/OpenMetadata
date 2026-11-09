@@ -144,6 +144,17 @@ class SigmaApiClient:
             logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
         return None
 
+    def get_badge(self, workbook_id: str) -> str | None:
+        """
+        The workbook's certification badge, read from its /files entry, whose inode id is the workbook id
+        """
+        try:
+            return NodeDetails.model_validate(self.client.get(f"/files/{workbook_id}")).badge
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the badge of workbook %s: %s", workbook_id, exc)
+        return None
+
     def get_connection_type(self, connection_id: str) -> str | None:
         """
         The type of a Sigma connection, such as "snowflake" or "bigQuery", read once per connection. A failed
