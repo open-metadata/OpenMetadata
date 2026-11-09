@@ -99,6 +99,7 @@ from metadata.ingestion.models.delete_entity import DeleteEntity
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import (
+    OMetaDeleteLineageBySource,
     OMetaFQNLineageRequest,
     OMetaLineageRequest,
 )
@@ -614,6 +615,12 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             f"Cannot delete lineage by source: entity reference for type '{entity_reference.type}' "
             "has neither id nor fullyQualifiedName"
         )
+
+    @_run_dispatch.register
+    def delete_lineage_by_source(self, record: OMetaDeleteLineageBySource) -> Either[str]:
+        self._delete_lineage_by_source_reference(record.entity, record.source.value)
+        # Nothing was ingested, so nothing is counted as scanned.
+        return Either(right=None)  # pyright: ignore[reportCallIssue]
 
     @_run_dispatch.register
     def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[str]:
