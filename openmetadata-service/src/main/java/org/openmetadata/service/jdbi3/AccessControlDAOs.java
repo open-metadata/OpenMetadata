@@ -130,7 +130,7 @@ public interface AccessControlDAOs {
             AND tp.toId IN (<personaIds>)
           UNION ALL
           SELECT :systemDefaultId AS personaId, member.id AS userId FROM user_entity member
-          WHERE :systemDefaultId IN (<personaIds>) AND NOT EXISTS (
+          WHERE :systemDefaultId IN (<personaIds>) AND member.isBot = FALSE AND NOT EXISTS (
             SELECT 1 FROM entity_relationship defaults
             WHERE defaults.fromEntity = 'persona' AND defaults.toEntity = 'user'
               AND defaults.toId = member.id AND defaults.relation = :defaultsTo

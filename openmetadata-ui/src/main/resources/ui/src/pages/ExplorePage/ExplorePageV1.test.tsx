@@ -144,13 +144,13 @@ describe('ExplorePageV1', () => {
     expect(await screen.findByText('ExploreV1')).toBeInTheDocument();
   });
 
-  it('keeps a table deep link scoped to tables without search text', async () => {
+  it('keeps no-text tab links searching all assets', async () => {
     mockLocation.search = '';
     render(<ExplorePageV1 {...mockProps} />);
     await screen.findByText('ExploreV1');
 
     expect(searchQuery).toHaveBeenCalledWith(
-      expect.objectContaining({ searchIndex: SearchIndex.TABLE })
+      expect.objectContaining({ searchIndex: SearchIndex.DATA_ASSET })
     );
   });
 

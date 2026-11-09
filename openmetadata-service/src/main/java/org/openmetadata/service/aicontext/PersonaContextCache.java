@@ -14,12 +14,12 @@ package org.openmetadata.service.aicontext;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import jakarta.ws.rs.core.SecurityContext;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
@@ -38,6 +38,7 @@ import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.cache.Invalidatable;
+import org.openmetadata.service.security.Authorizer;
 
 /** Two-level cache and distributed single-flight coordinator for persona context documents. */
 @Slf4j
@@ -82,7 +83,9 @@ public class PersonaContextCache implements Invalidatable {
   private final long pollMillis;
   private final String nodeId = UUID.randomUUID().toString();
   private final Cache<String, LocalEntry> local = Caffeine.newBuilder().maximumSize(50).build();
-  private final ConcurrentMap<UUID, GenerationState> generationStates = new ConcurrentHashMap<>();
+  private final PersonaContextSourceCache sources = new PersonaContextSourceCache();
+  private final ConcurrentMap<UUID, GenerationState> generationStates =
+      Caffeine.newBuilder().maximumSize(1000).<UUID, GenerationState>build().asMap();
 
   PersonaContextCache(CacheProvider provider, CacheKeys keys) {
     this(provider, keys, POLL_ATTEMPTS, POLL_MILLIS);
@@ -118,6 +121,9 @@ public class PersonaContextCache implements Invalidatable {
   }
 
   public CachedResult get(Persona persona, boolean refresh) {
+    if (refresh) {
+      sources.invalidate(persona.getId());
+    }
     PersonaContextDefinition definition = PersonaContextBuilder.definitionOf(persona);
     String definitionHash = PersonaContextHash.definitionHash(definition);
     String localKey = localKey(persona.getId(), definitionHash);
@@ -202,6 +208,7 @@ public class PersonaContextCache implements Invalidatable {
     if (original == null || original.getId() == null) {
       return;
     }
+    sources.invalidate(original.getId());
     String oldHash =
         PersonaContextHash.definitionHash(PersonaContextBuilder.definitionOf(original));
     String newHash = PersonaContextHash.definitionHash(PersonaContextBuilder.definitionOf(updated));
@@ -299,6 +306,7 @@ public class PersonaContextCache implements Invalidatable {
   }
 
   private void invalidate(UUID personaId, String definitionHash) {
+    sources.invalidate(personaId);
     provider.del(
         keys.personaContextMarkdown(personaId, definitionHash),
         keys.personaContextJson(personaId, definitionHash));
@@ -310,6 +318,7 @@ public class PersonaContextCache implements Invalidatable {
    * definition hash the entry is keyed by, so match on the {@code personaId:} prefix.
    */
   private void invalidateLocal(UUID personaId) {
+    sources.invalidate(personaId);
     String prefix = personaId + ":";
     local.asMap().keySet().removeIf(key -> key.startsWith(prefix));
     generationStates.remove(personaId);
@@ -334,7 +343,24 @@ public class PersonaContextCache implements Invalidatable {
   }
 
   protected PersonaContextBuilder.MaterializedPersonaContext build(Persona persona) {
-    return new PersonaContextBuilder(persona).build();
+    return new PersonaContextBuilder(persona).withSourceCache(sources).build();
+  }
+
+  public CachedResult getForCaller(
+      Persona persona, Authorizer authorizer, SecurityContext securityContext) {
+    try {
+      CachedResult result =
+          new CachedResult(
+              new PersonaContextBuilder(persona)
+                  .withSourceCache(sources)
+                  .withSecurity(authorizer, securityContext)
+                  .build(),
+              CacheStatus.BYPASS);
+      return result;
+    } catch (RuntimeException exception) {
+      markFailed(persona, exception);
+      throw exception;
+    }
   }
 
   private PersonaContextBuilder.MaterializedPersonaContext getLocal(String key) {

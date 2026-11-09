@@ -15,16 +15,20 @@ package org.openmetadata.service.aicontext;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.core.SecurityContext;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Duration;
@@ -34,16 +38,53 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
+import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.schema.type.personaContext.PersonaContextCacheState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheInvalidationPubSub;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheProvider;
+import org.openmetadata.service.search.SearchClient;
+import org.openmetadata.service.search.SearchRepository;
+import org.openmetadata.service.security.Authorizer;
 
 class PersonaContextCacheTest {
+  @Test
+  void aMemberCompilationFailureRecordsTheRuleForAdministratorDiagnostics() throws Exception {
+    Persona persona =
+        personaFor(UUID.randomUUID())
+            .withContextDefinition(
+                new PersonaContextDefinition()
+                    .withRules(
+                        List.of(
+                            new ContextRule()
+                                .withName("Legacy invalid filter")
+                                .withEntityType(Entity.TABLE)
+                                .withFilteredInSearch(true)
+                                .withQueryFilter("{\"regexp\":{\"name\":\"[broken\"}}"))));
+    SearchRepository repository = mock(SearchRepository.class);
+    SearchClient client = mock(SearchClient.class);
+    when(repository.getSearchClient()).thenReturn(client);
+    when(repository.getIndexOrAliasName(Entity.TABLE)).thenReturn("tables");
+    when(client.rawSearchRequest(anyString(), anyString(), anyString()))
+        .thenReturn(new SearchClient.RawSearchResponse(200, "{\"valid\":false}"));
+    PersonaContextCache cache =
+        new PersonaContextCache(mock(CacheProvider.class), new CacheKeys("test"));
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
+      entities.when(Entity::getSearchRepository).thenReturn(repository);
+      assertThrows(
+          ServiceUnavailableException.class,
+          () -> cache.getForCaller(persona, mock(Authorizer.class), mock(SecurityContext.class)));
+      assertEquals(PersonaContextCacheState.FAILED, cache.snapshot(persona).state());
+      assertTrue(cache.snapshot(persona).error().contains("Legacy invalid filter"));
+    }
+  }
+
   @Test
   void documentsFromBeforeScopeIsolationAreRebuilt() throws Exception {
     CacheProvider provider = mock(CacheProvider.class);

@@ -287,7 +287,7 @@ const ExplorePageV1: FC<unknown> = () => {
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
-    if (!searchQueryParam && isNil(tabInfo)) {
+    if (!searchQueryParam) {
       return SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex;
     }
     if (searchHitCounts && isNil(tabInfo)) {

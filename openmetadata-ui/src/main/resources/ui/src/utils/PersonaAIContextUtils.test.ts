@@ -445,6 +445,25 @@ describe('PersonaAIContextUtils', () => {
 // its custom-property keys omit the entity segment Explore expects — without
 // the rewrite the link landed on the unfiltered estate with no filter chip.
 describe('getRuleExplorePath', () => {
+  it('scopes a no-text persona link with an explicit entity-type quick filter', () => {
+    const url = new URL(
+      getRuleExplorePath(EntityType.TABLE),
+      'http://localhost'
+    );
+
+    expect(url.pathname).toBe('/explore/');
+    expect(url.searchParams.get('search')).toBe('');
+    expect(JSON.parse(url.searchParams.get('quickFilter') ?? '{}')).toEqual({
+      query: {
+        bool: {
+          must: [
+            { bool: { should: [{ term: { entityType: EntityType.TABLE } }] } },
+          ],
+        },
+      },
+    });
+  });
+
   const filterJsonTree = JSON.stringify({
     id: 'root',
     type: 'group',

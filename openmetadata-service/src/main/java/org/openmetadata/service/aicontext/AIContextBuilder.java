@@ -195,6 +195,10 @@ public class AIContextBuilder {
     return buildForEntity(entity);
   }
 
+  List<EntityReference> lineageNodes() {
+    return lineage == null ? List.of() : listOrEmpty(lineage.getNodes());
+  }
+
   AIContext buildForEntity(EntityInterface<?> entity) {
     EntityLineage lineage = fetchLineage(entity);
     List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);

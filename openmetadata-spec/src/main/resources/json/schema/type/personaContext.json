@@ -18,6 +18,7 @@
           "type": "string"
         },
         "matched": {
+          "description": "Total matches visible to the caller. Absent when selection stopped at maxAssets before all candidates were checked; the document is then truncated.",
           "type": "integer",
           "minimum": 0
         },
@@ -150,7 +151,7 @@
       "type": "string"
     },
     "truncated": {
-      "description": "Whether at least one selected entity was compacted or omitted, or required knowledge exceeded the configured budget.",
+      "description": "Whether selection stopped before all caller-visible matches were counted, at least one selected entity was compacted or omitted, or required knowledge exceeded the configured budget.",
       "type": "boolean",
       "default": false
     },

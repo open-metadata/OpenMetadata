@@ -43,11 +43,7 @@ public final class PersonaContextAccess {
               ? PersonaContextCache.getInstance().refresh(persona)
               : PersonaContextCache.getInstance().get(persona, false);
     } else {
-      // Caller-relative documents must never enter the persona-wide cache.
-      result =
-          new PersonaContextCache.CachedResult(
-              new PersonaContextBuilder(persona).withSecurity(authorizer, securityContext).build(),
-              PersonaContextCache.CacheStatus.BYPASS);
+      result = PersonaContextCache.getInstance().getForCaller(persona, authorizer, securityContext);
     }
     return result;
   }

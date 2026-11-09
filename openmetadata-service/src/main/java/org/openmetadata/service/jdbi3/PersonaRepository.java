@@ -165,16 +165,32 @@ public class PersonaRepository extends EntityRepository<Persona> {
   static boolean requiresRuleValidation(
       ContextRule rule, List<ContextRule> storedRules, boolean contextActivated) {
     boolean activated = contextActivated && Boolean.TRUE.equals(rule.getEnabled());
+    ContextRule previous = previousContextRule(rule, storedRules);
     boolean unchanged =
-        storedRules.stream()
-            .anyMatch(
-                stored ->
-                    Objects.equals(stored.getId(), rule.getId())
-                        && Objects.equals(stored.getEntityType(), rule.getEntityType())
-                        && Objects.equals(stored.getQueryFilter(), rule.getQueryFilter())
-                        && (!Boolean.TRUE.equals(rule.getEnabled())
-                            || Boolean.TRUE.equals(stored.getEnabled())));
+        previous != null
+            && Objects.equals(previous.getEntityType(), rule.getEntityType())
+            && Objects.equals(previous.getQueryFilter(), rule.getQueryFilter())
+            && (!Boolean.TRUE.equals(rule.getEnabled())
+                || Boolean.TRUE.equals(previous.getEnabled()));
     return activated || !unchanged;
+  }
+
+  private static ContextRule previousContextRule(
+      ContextRule requested, List<ContextRule> storedRules) {
+    return storedRules.stream()
+        .filter(
+            stored ->
+                requested.getId() != null && Objects.equals(stored.getId(), requested.getId()))
+        .findFirst()
+        .orElseGet(
+            () ->
+                storedRules.stream()
+                    .filter(
+                        stored ->
+                            !nullOrEmpty(requested.getName())
+                                && requested.getName().equalsIgnoreCase(stored.getName()))
+                    .findFirst()
+                    .orElse(null));
   }
 
   @Override

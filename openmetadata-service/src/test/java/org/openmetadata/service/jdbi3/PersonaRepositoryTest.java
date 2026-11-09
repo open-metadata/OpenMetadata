@@ -31,6 +31,62 @@ import org.openmetadata.service.Entity;
 
 class PersonaRepositoryTest {
   @Test
+  void anExistingRuleIdTakesPriorityOverTheNameFallbackWhenReactivating() {
+    ContextRule disabled =
+        new ContextRule()
+            .withId(UUID.randomUUID())
+            .withName("Disabled")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter("{}")
+            .withEnabled(false);
+    ContextRule other =
+        new ContextRule()
+            .withId(UUID.randomUUID())
+            .withName("Other")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter("{}")
+            .withEnabled(true);
+    ContextRule requested =
+        new ContextRule()
+            .withId(disabled.getId())
+            .withName("Other")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter("{}")
+            .withEnabled(true);
+    assertTrue(
+        PersonaRepository.requiresRuleValidation(requested, List.of(disabled, other), false));
+  }
+
+  @Test
+  void genericPutCanMatchAnUnchangedRuleByItsUniqueName() {
+    ContextRule stored =
+        new ContextRule()
+            .withId(UUID.randomUUID())
+            .withName("Tables")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter("{\"term\":{\"name\":\"orders\"}}")
+            .withEnabled(true);
+    ContextRule requested =
+        new ContextRule()
+            .withName("tables")
+            .withEntityType(Entity.TABLE)
+            .withQueryFilter(stored.getQueryFilter())
+            .withEnabled(true);
+    PersonaRepository.validateContextDefinition(
+        new PersonaContextDefinition().withRules(List.of(requested)));
+
+    assertFalse(PersonaRepository.requiresRuleValidation(requested, List.of(stored), false));
+    stored.setEnabled(false);
+    assertTrue(PersonaRepository.requiresRuleValidation(requested, List.of(stored), false));
+    stored.setEnabled(true);
+    requested.setQueryFilter("{\"regexp\":{\"name\":\"[shop\"}}");
+    assertTrue(PersonaRepository.requiresRuleValidation(requested, List.of(stored), false));
+    requested.setQueryFilter(stored.getQueryFilter());
+    requested.setName("New rule");
+    assertTrue(PersonaRepository.requiresRuleValidation(requested, List.of(stored), false));
+  }
+
+  @Test
   void disablingPreservesRecoveryButReactivationRevalidatesTheFilter() {
     UUID id = UUID.randomUUID();
     ContextRule enabled =

@@ -1,9 +1,9 @@
 # Persona context keeps access, preloading and search independent
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial)
+- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-09 (shared source caching and review corrections)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `PersonaContextBuilderTest`, `PersonaContextRuleValidationTest`, `PersonaAIContextIT`
+- **Guard:** `PersonaContextBuilderTest`, `PersonaContextSourceCacheTest`, `PersonaContextVisibilityTest`, `PersonaRepositoryTest`, `PersonaAIContextIT`
 - **Related:** [AI persona Context release feedback](https://app.notion.com/p/3d0b4572302480f182a5f2ea4ee3572b)
 
 ## Context
@@ -44,3 +44,41 @@ bots, matching `UserRepository`. `Persona.users` continues to mean direct assign
 Member requests incur materialization and authorization work rather than reusing an admin's
 document. Any future member cache must account for both identity and permission changes.
 Counting inherited users does not change assignment forms or persist inherited assignments.
+
+## Amendment: share source data and authorize every read
+
+Cache search pages, unfiltered enrichment for a selected set, explicit knowledge and data-product
+membership per pod. Keys include persona, definition hash and an invalidation generation captured
+once at the start of each build. Concurrent requests share loads. A persona edit or refresh,
+including a remote invalidation, advances the generation; an older load cannot populate its
+successor. Materialization version 3 invalidates documents produced before these corrections.
+
+The four source caches have serialized-character weight budgets of 16 million, 16 million,
+8 million and 8 million respectively, with a minimum entry weight of 32,000. This bounds source
+retention to at most 1,500 entries and keeps large enrichment payloads from crowding out the pod.
+Sources expire after 60 seconds, matching the existing cap for referenced-metadata drift.
+Successful scope validations have a separate 1,000-entry cache with the same expiration.
+
+Every read performs canonical permission checks and filters a copy, including attached knowledge,
+column definitions, related assets and lineage nodes. Its permission memo is bounded to 1,000
+entries and lives only for that read. Neither permission decisions nor rendered member documents
+enter a shared cache. Selection-dependent enrichment is keyed by typed rule/asset lists; caller
+match counts are supplied separately and cannot leak through a shared snapshot.
+
+Apply `maxAssets` after checking candidate visibility, continuing through search pages until the
+visible selection is full or candidates are exhausted. If selection stops before every candidate
+was checked, omit the optional `matched` total, mark the document truncated and say the total is
+unavailable in markdown. A selected count must never masquerade as the complete visible total.
+
+Bots count only through explicit persona assignments or explicit user defaults. Team inheritance
+and the implicit system-default branch exclude them. Generic PUT may match an unchanged rule by
+its unique case-insensitive name when IDs were omitted and regenerated; entity type, filter and
+activation comparisons still determine whether validation is required.
+
+Explore retains its existing all-assets index for links without search text. Persona links carry
+an explicit entity-type quick filter rather than changing the shared Explore default.
+
+Invalid active legacy scope filters remain explicit compilation failures. Administrators must
+preflight enabled rules before rollout and correct or disable failures, following
+[the upgrade guide](../persona-context-upgrade.md). Silently dropping a configured search default
+would change the persona's behavior without notifying its owner.
