@@ -503,7 +503,7 @@ class SigmaSource(DashboardServiceSource):
                 return None
             if dashboard_details.ownerId:
                 owner = self.client.get_owner_detail(dashboard_details.ownerId)
-                return self.metadata.get_reference_by_email(owner.email)
+                return self.metadata.get_reference_by_email(owner.email.lower()) if owner else None
             return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())
