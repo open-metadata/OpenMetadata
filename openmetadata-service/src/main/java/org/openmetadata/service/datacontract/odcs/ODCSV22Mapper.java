@@ -81,7 +81,7 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
     ObjectNode canonical = (ObjectNode) preservationView(document);
     if (!canonical.has("name")) canonical.put("name", document.path("quantumName").asText());
     ODCSImportQuality.normalizeStatus(canonical);
-    ODCSImportQuality.normalize(canonical);
+    ODCSImportQuality.normalize(canonical, false);
     return canonical;
   }
 

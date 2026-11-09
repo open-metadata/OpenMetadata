@@ -68,10 +68,7 @@ final class ODCSQualityMetadata {
       JsonNode source, JsonNode applied, JsonNode current, boolean qualityRule) {
     ObjectNode result = current.deepCopy();
     boolean transformed = qualityRule && !source.path("type").equals(applied.path("type"));
-    boolean executionUnchanged =
-        equivalent(applied.path("type"), current.path("type"))
-            && equivalent(applied.path("engine"), current.path("engine"))
-            && equivalent(applied.path("implementation"), current.path("implementation"));
+    boolean executionUnchanged = executionUnchanged(applied, current);
     if (transformed && executionUnchanged) {
       applied
           .fieldNames()
@@ -101,6 +98,15 @@ final class ODCSQualityMetadata {
             && equivalent(applied.path(operator), current.path(operator))) result.remove(operator);
     }
     return result;
+  }
+
+  private static boolean executionUnchanged(JsonNode applied, JsonNode current) {
+    Set<String> keys = new HashSet<>();
+    applied.fieldNames().forEachRemaining(keys::add);
+    current.fieldNames().forEachRemaining(keys::add);
+    return keys.stream()
+        .filter(ODCSQualityMetadata::executionField)
+        .allMatch(key -> equivalent(applied.path(key), current.path(key)));
   }
 
   private static boolean executionField(String key) {
@@ -163,6 +169,9 @@ final class ODCSQualityMetadata {
   }
 
   private static boolean sameIdentity(JsonNode left, JsonNode right) {
+    if (!left.isObject() || !right.isObject()) return left.equals(right);
+    left = ODCSImportQuality.embeddedDeclaration((ObjectNode) left);
+    right = ODCSImportQuality.embeddedDeclaration((ObjectNode) right);
     for (String key : new String[] {"id", "name"}) {
       if (left.hasNonNull(key) && right.hasNonNull(key))
         return left.get(key).equals(right.get(key));

@@ -16,7 +16,12 @@ package org.openmetadata.service.datacontract.odcs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.networknt.schema.Schema;
+import com.networknt.schema.SchemaLocation;
+import com.networknt.schema.SchemaRegistry;
+import com.networknt.schema.SpecificationVersion;
 import java.time.Instant;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -51,7 +56,8 @@ final class ODCSImportCompatibility {
       return new Normalized(source.deepCopy(), source.deepCopy());
     ObjectNode compatible = source.deepCopy();
     ODCSShapeNormalizer.normalizePreserved(compatible);
-    if (compatible.path("contractCreatedTs").isIntegralNumber())
+    if (compatible.path("contractCreatedTs").isIntegralNumber()
+        && compatible.path("contractCreatedTs").canConvertToLong())
       compatible.put(
           "contractCreatedTs",
           Instant.ofEpochMilli(compatible.path("contractCreatedTs").longValue()).toString());
@@ -72,18 +78,51 @@ final class ODCSImportCompatibility {
     return new Normalized(compatible, canonical);
   }
 
+  private static final JsonNode READER_SCHEMA =
+      ODCSExportModelWriter.requiredSchema(
+          "/json/schema/entity/datacontract/odcs/odcsDataContract.json");
+  private static final JsonNode PUBLISHED_SCHEMA =
+      ODCSExportModelWriter.schema(ODCSExportService.DEFAULT_VERSION);
   private static final Set<String> QUALITY_FIELDS =
-      ODCSExportModelWriter.fields(
-          ODCSExportModelWriter.requiredSchema(
-                  "/json/schema/entity/datacontract/odcs/odcsDataContract.json")
-              .at("/definitions/odcsQualityRule"));
+      ODCSExportModelWriter.fields(READER_SCHEMA.at("/definitions/odcsQualityRule"));
+  private static final Schema LEGACY_QUALITY_SCHEMA =
+      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
+          .getSchema(
+              SchemaLocation.of(
+                  "classpath:json/schema/entity/datacontract/odcs/odcsDataContract.json#/definitions/odcsQualityRule"));
+  private static final Set<String> OPERATORS =
+      Set.of(
+          "mustBe",
+          "mustNotBe",
+          "mustBeGreaterThan",
+          "mustBeGreaterOrEqualTo",
+          "mustBeLessThan",
+          "mustBeLessOrEqualTo",
+          "mustBeBetween",
+          "mustNotBeBetween");
   private static final Set<String> QUALITY_METADATA =
       ODCSExportModelWriter.fields(
           ODCSExportModelWriter.schema(ODCSExportService.DEFAULT_VERSION).at("/$defs/DataQuality"));
 
   static ObjectNode qualityRule(ObjectNode source) {
+    return qualityRule(source, true);
+  }
+
+  static ObjectNode qualityRule(ObjectNode source, boolean legacySqlAllowed) {
     String metric = source.path("metric").asText(source.path("rule").asText());
-    if (!LEGACY_METRICS.contains(metric) || !validLegacyQuality(source)) return source.deepCopy();
+    boolean missingComparison = OPERATORS.stream().noneMatch(source::has);
+    boolean implicitZero =
+        missingComparison
+            && Set.of("nullValues", "duplicateValues", "missingValues", "invalidValues")
+                .contains(metric);
+    boolean legacySql =
+        legacySqlAllowed
+            && missingComparison
+            && "sql".equals(source.path("type").asText())
+            && source.path("query").isTextual();
+    if ((!LEGACY_METRICS.contains(metric) && !legacySql && !implicitZero)
+        || !validLegacyQuality(source)) return source.deepCopy();
+    if (implicitZero) return source.deepCopy().put("mustBe", 0);
     ObjectNode wrapper = source.objectNode();
     source
         .fields()
@@ -98,16 +137,25 @@ final class ODCSImportCompatibility {
     return wrapper;
   }
 
+  static void finalizeQuality(ObjectNode element) {
+    if (element.path("quality") instanceof ArrayNode quality)
+      for (int index = 0; index < quality.size(); index++)
+        if (quality.get(index) instanceof ObjectNode rule) quality.set(index, qualityRule(rule));
+    for (String collection : List.of("schema", "properties"))
+      for (JsonNode child : element.path(collection))
+        if (child instanceof ObjectNode object) finalizeQuality(object);
+    if (element.path("items") instanceof ObjectNode items) finalizeQuality(items);
+  }
+
   private static boolean validLegacyQuality(ObjectNode source) {
-    if (source.has("type") && !"library".equals(source.path("type").asText())) return false;
     for (var fields = source.fieldNames(); fields.hasNext(); )
       if (!QUALITY_FIELDS.contains(fields.next())) return false;
-    for (String field :
-        List.of(
-            "mustBeGreaterThan", "mustBeGreaterOrEqualTo", "mustBeLessThan", "mustBeLessOrEqualTo"))
-      if (source.has(field) && !source.path(field).isNumber()) return false;
-    if (source.has("validValues") && !source.path("validValues").isArray()) return false;
-    return !source.has("pattern") || source.path("pattern").isTextual();
+    ObjectNode projection = source.deepCopy();
+    if (LEGACY_METRICS.contains(projection.path("metric").asText()))
+      projection.set("rule", projection.remove("metric"));
+    for (String scalar : List.of("mustBe", "mustNotBe"))
+      if (projection.has(scalar)) projection.put(scalar, 0);
+    return LEGACY_QUALITY_SCHEMA.validate(projection).isEmpty();
   }
 
   private static final Map<String, String> LEGACY_TYPES =
@@ -147,12 +195,20 @@ final class ODCSImportCompatibility {
   private static void removeLegacyTableDefaults(ObjectNode element) {
     if (!element.has("properties") && !"object".equals(element.path("logicalType").asText()))
       return;
-    for (String field : List.of("primaryKey", "required", "unique", "partitioned"))
-      if (element.path(field).isBoolean() && !element.path(field).asBoolean())
-        element.remove(field);
-    for (String field : List.of("primaryKeyPosition", "partitionKeyPosition"))
-      if (element.path(field).isIntegralNumber() && element.path(field).asInt() == 0)
-        element.remove(field);
+    Set<String> objectFields =
+        new HashSet<>(ODCSExportModelWriter.fields(PUBLISHED_SCHEMA.at("/$defs/SchemaObject")));
+    objectFields.addAll(ODCSExportModelWriter.fields(PUBLISHED_SCHEMA.at("/$defs/SchemaElement")));
+    READER_SCHEMA
+        .at("/definitions/odcsSchemaElement/properties")
+        .fields()
+        .forEachRemaining(
+            field -> {
+              JsonNode defaultValue = field.getValue().get("default");
+              if (!objectFields.contains(field.getKey())
+                  && defaultValue != null
+                  && defaultValue.equals(element.get(field.getKey())))
+                element.remove(field.getKey());
+            });
   }
 
   private static void wrapFlatSchema(ObjectNode root) {

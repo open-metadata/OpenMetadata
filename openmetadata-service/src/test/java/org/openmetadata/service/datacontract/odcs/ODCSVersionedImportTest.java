@@ -29,6 +29,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleArguments;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -123,7 +124,17 @@ class ODCSVersionedImportTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"\"42\"", "true", "null", "{\"result\":\"ok\"}", "9007199254740993"})
+  @ValueSource(
+      strings = {
+        "\"42\"",
+        "true",
+        "null",
+        "{\"result\":\"ok\"}",
+        "9007199254740993",
+        "[1,2]",
+        "[]",
+        "[true]"
+      })
   void arbitraryJsonAssertionsArePreservedWithoutNumericCoercion(String assertion)
       throws Exception {
     ObjectNode source =
@@ -309,6 +320,107 @@ class ODCSVersionedImportTest {
     assertEquals(
         source.at("/dataset/0/description"),
         exporter.export(imported, "v2.2.1").requireValid().at("/dataset/0/description"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "{\"arguments\":\"invalid\"}",
+        "{\"mustBeBetween\":[1]}",
+        "{\"engine\":42}",
+        "{\"query\":42}",
+        "{\"validValues\":[{}]}"
+      })
+  void legacyCompatibilityCannotLaunderMalformedRulePayloads(String fields) throws Exception {
+    ObjectNode source =
+        (ObjectNode)
+            exporter.export(contract().withOdcsQualityRules(null), "v3.1.0").requireValid();
+    ObjectNode rule =
+        ((ObjectNode) source.at("/schema/0"))
+            .withArray("quality")
+            .addObject()
+            .put("metric", "freshness");
+    rule.setAll((ObjectNode) JSON.readTree(fields));
+    assertThrows(IllegalArgumentException.class, () -> read(source, contract().getEntity()));
+  }
+
+  @Test
+  void oldSharedPojoDefaultsAreNormalizedOnlyWhenTheyMatchTheDeclaredDefaults() {
+    ObjectNode source = (ObjectNode) exporter.export(contract(), "v3.1.0").requireValid();
+    ObjectNode table = (ObjectNode) source.at("/schema/0");
+    table.put("primaryKeyPosition", -1).put("partitionKeyPosition", -1).put("required", false);
+    assertEquals(3, read(source, contract().getEntity()).getSchema().size());
+    table.put("primaryKeyPosition", 4294967296L);
+    assertThrows(IllegalArgumentException.class, () -> read(source, contract().getEntity()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0"})
+  void editingNativeArgumentsAndThresholdsSupersedesTheLegacyCustomWrapper(String version) {
+    DataContract fixture =
+        contract()
+            .withOdcsQualityRules(
+                List.of(
+                    new ODCSQualityRule()
+                        .withName("validate_id")
+                        .withColumn("id")
+                        .withType(ODCSQualityRule.Type.LIBRARY)
+                        .withMetric(ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES)
+                        .withArguments(new ODCSQualityRuleArguments().withPattern("^[0-9]+$"))
+                        .withMustBe(0.0)));
+    DataContract imported =
+        read(exporter.export(fixture, version).requireValid(), fixture.getEntity());
+    ODCSQualityRule rule = imported.getOdcsQualityRules().getFirst();
+    assertEquals(ODCSQualityRule.Type.LIBRARY, rule.getType());
+    rule.getArguments().setPattern("^[A-Z]+$");
+    rule.setMustBe(7.0);
+    JsonNode edited =
+        exporter.export(imported, "v3.1.0").requireValid().at("/schema/0/properties/0/quality/0");
+    assertEquals("library", edited.path("type").asText());
+    assertEquals("^[A-Z]+$", edited.at("/arguments/pattern").asText());
+    assertEquals(7, edited.path("mustBe").asInt());
+    assertTrue(edited.path("implementation").isMissingNode());
+  }
+
+  @Test
+  void v31CustomPropertiesNamedOdcsIdAreNotReinterpretedAsRuleIdentity() {
+    ObjectNode source = (ObjectNode) exporter.export(contract(), "v3.1.0").requireValid();
+    ObjectNode rule = (ObjectNode) source.at("/schema/0/properties/0/quality/0");
+    rule.remove("id");
+    rule.withArray("customProperties")
+        .addObject()
+        .put("property", "odcsId")
+        .put("value", "user-owned");
+    DataContract imported = read(source, contract().getEntity());
+    assertEquals(null, imported.getOdcsQualityRules().getFirst().getId());
+    assertEquals(
+        "user-owned",
+        exporter
+            .export(imported, "v3.1.0")
+            .requireValid()
+            .at("/schema/0/properties/0/quality/0/customProperties/0/value")
+            .asText());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0"})
+  void legacyIdentityIsDecodedOnceWithoutRemovingAnEarlierUserProperty(String version) {
+    ObjectNode source = (ObjectNode) exporter.export(contract(), version).requireValid();
+    ObjectNode rule = (ObjectNode) source.at("/schema/0/properties/0/quality/0");
+    ((ArrayNode) rule.path("customProperties"))
+        .insertObject(0)
+        .put("property", "odcsId")
+        .put("value", "user-owned");
+    DataContract imported = read(source, contract().getEntity());
+    assertEquals("external-check-id", imported.getOdcsQualityRules().getFirst().getId());
+    assertEquals(1, imported.getOdcsQualityRules().getFirst().getCustomProperties().size());
+    assertEquals(
+        "user-owned",
+        exporter
+            .export(imported, "v3.1.0")
+            .requireValid()
+            .at("/schema/0/properties/0/quality/0/customProperties/0/value")
+            .asText());
   }
 
   private static DataContract read(JsonNode source, EntityReference target) {

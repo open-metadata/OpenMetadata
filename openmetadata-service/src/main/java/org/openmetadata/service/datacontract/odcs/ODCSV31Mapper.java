@@ -93,6 +93,13 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
     return result;
   }
 
+  @Override
+  public JsonNode materialize(JsonNode view, DataContract contract) {
+    ObjectNode document = view.deepCopy();
+    ODCSImportCompatibility.finalizeQuality(document);
+    return document;
+  }
+
   private static OdcsContract document(DataContract contract) {
     OdcsContract document =
         new OdcsContract()
@@ -280,7 +287,7 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
 
   private static void placeRule(
       SchemaObject table, ODCSQualityRule source, List<RuleMetadata> metadata) {
-    ObjectNode wireRule = ODCSImportCompatibility.qualityRule(JSON.valueToTree(source));
+    ObjectNode wireRule = ODCSImportCompatibility.qualityRule(JSON.valueToTree(source), false);
     DataQuality rule = JSON.convertValue(wireRule, DataQuality.class);
     collapseEqualBounds(source, rule);
     List<String> scope =

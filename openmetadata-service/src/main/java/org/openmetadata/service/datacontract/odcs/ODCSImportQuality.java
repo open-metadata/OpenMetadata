@@ -51,21 +51,25 @@ final class ODCSImportQuality {
         });
   }
 
-  static void normalize(ObjectNode element) {
+  static void normalize(ObjectNode element, boolean legacyIds) {
     if (element.path("quality") instanceof ArrayNode quality) {
       for (int index = 0; index < quality.size(); index++) {
-        if (quality.get(index) instanceof ObjectNode rule) quality.set(index, declaration(rule));
+        if (quality.get(index) instanceof ObjectNode rule)
+          quality.set(index, declaration(rule, legacyIds));
       }
     }
     for (String collection : List.of("schema", "properties"))
       for (JsonNode child : element.path(collection))
-        if (child instanceof ObjectNode object) normalize(object);
-    if (element.path("items") instanceof ObjectNode items) normalize(items);
+        if (child instanceof ObjectNode object) normalize(object, legacyIds);
+    if (element.path("items") instanceof ObjectNode items) normalize(items, legacyIds);
   }
 
-  private static ObjectNode declaration(ObjectNode source) {
+  private static ObjectNode declaration(ObjectNode source, boolean legacyIds) {
     ObjectNode rule = source.deepCopy();
-    if (rule.path("customProperties") instanceof ArrayNode properties) {
+    if (legacyIds
+        && !source.has("id")
+        && !embeddedDeclaration(source).has("id")
+        && rule.path("customProperties") instanceof ArrayNode properties) {
       for (int index = properties.size() - 1; index >= 0; index--) {
         JsonNode property = properties.get(index);
         if ("odcsId".equals(property.path("property").asText())
@@ -100,7 +104,8 @@ final class ODCSImportQuality {
     if (element.path("quality") instanceof ArrayNode quality) {
       for (int index = 0; index < quality.size(); index++)
         if (quality.get(index) instanceof ObjectNode rule)
-          quality.set(index, protectAssertions(declaration(embeddedDeclaration(rule)), issues));
+          quality.set(
+              index, protectAssertions(declaration(embeddedDeclaration(rule), false), issues));
     }
     for (String collection : List.of("schema", "properties"))
       for (JsonNode child : element.path(collection))
@@ -120,7 +125,7 @@ final class ODCSImportQuality {
             "mustBeLessOrEqualTo",
             "mustBeBetween",
             "mustNotBeBetween")) {
-      if (rule.has(field) && !numericProjection(rule.path(field))) lossless = false;
+      if (rule.has(field) && !numericAssertion(field, rule.path(field))) lossless = false;
     }
     if (lossless) return rule;
     issues.info(
@@ -135,17 +140,22 @@ final class ODCSImportQuality {
     return preserved;
   }
 
+  private static boolean numericAssertion(String operator, JsonNode value) {
+    if (List.of("mustBeBetween", "mustNotBeBetween").contains(operator))
+      return value.isArray()
+          && value.size() == 2
+          && numericProjection(value.get(0))
+          && numericProjection(value.get(1));
+    return numericProjection(value);
+  }
+
   private static boolean numericProjection(JsonNode value) {
-    if (value.isArray()) {
-      for (JsonNode item : value) if (!numericProjection(item)) return false;
-      return true;
-    }
     return value.isNumber()
         && Double.isFinite(value.doubleValue())
         && value.decimalValue().compareTo(BigDecimal.valueOf(value.doubleValue())) == 0;
   }
 
-  private static ObjectNode embeddedDeclaration(ObjectNode rule) {
+  static ObjectNode embeddedDeclaration(ObjectNode rule) {
     String engine = rule.path("engine").asText();
     if (!List.of("openmetadata", "odcs").contains(engine)) return rule.deepCopy();
     JsonNode implementation = rule.path("implementation");
