@@ -1198,6 +1198,7 @@ def test_pymysql_loads_configured_ca_when_verification_options_are_top_level():
     [
         ({"ssl_verify_cert": False}, True, True, False),
         ({"ssl_verify_cert": True}, True, False, False),
+        ({"ssl_verify_cert": "false"}, False, False, False),
         ({"ssl_cert": "client.pem", "ssl_verify_cert": False}, False, False, False),
         ({"ssl_ca": "override.pem", "ssl_verify_cert": True, "ssl_verify_identity": True}, True, True, True),
     ],
@@ -1232,6 +1233,51 @@ def test_pymysql_preserves_explicit_ssl_options(arguments, verify, hostname, ove
         load_ca.assert_called_once_with("override.pem" if override_ca else manager.ca_file_path, None, None)
         assert client.ctx.verify_mode == (ssl.CERT_REQUIRED if verify else ssl.CERT_NONE)
         assert client.ctx.check_hostname is hostname
+    finally:
+        manager.cleanup_temp_files()
+
+
+@pytest.mark.parametrize("connection_type", ["mysql", "doris", "starrocks"])
+def test_ssl_setup_preserves_overrides_when_input_is_reused(connection_type):
+    from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+        DorisConnection,
+    )
+    from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+        MysqlConnection,
+    )
+    from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+        StarRocksConnection,
+    )
+    from metadata.utils.ssl_manager import check_ssl_and_init
+
+    connection_cls = {"mysql": MysqlConnection, "doris": DorisConnection, "starrocks": StarRocksConnection}[
+        connection_type
+    ]
+    arguments = {
+        "ssl": {"check_hostname": False},
+        "ssl_ca": "override.pem",
+        "ssl_cert": "override-cert.pem",
+        "ssl_key": "override-key.pem",
+    }
+    connection = connection_cls(
+        hostPort="localhost:3306",
+        username="user",
+        sslConfig={"caCertificate": "caCertificateData", "sslCertificate": "certData", "sslKey": "keyData"},
+        connectionArguments=arguments,
+    )
+    manager = check_ssl_and_init(connection)
+    try:
+        first = manager.setup_ssl(connection)
+        second = manager.setup_ssl(connection)
+        expected = {
+            "check_hostname": False,
+            "ca": "override.pem",
+            "cert": "override-cert.pem",
+            "key": "override-key.pem",
+        }
+        assert first.connectionArguments.root["ssl"] == expected
+        assert second.connectionArguments.root["ssl"] == expected
+        assert connection.connectionArguments.root == arguments
     finally:
         manager.cleanup_temp_files()
 

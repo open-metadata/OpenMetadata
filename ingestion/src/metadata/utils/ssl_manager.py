@@ -134,7 +134,7 @@ class SSLManager:
     @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
         # Use the temporary file paths for SSL configuration
-        connection = cast(MysqlConnection | DorisConnection | StarRocksConnection, connection)  # noqa: TC006
+        connection = cast(MysqlConnection | DorisConnection | StarRocksConnection, connection).model_copy(deep=True)  # noqa: TC006
         connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         ssl_args = connection.connectionArguments.root.get("ssl", {})
         if connection.sslConfig.root.caCertificate:
@@ -172,7 +172,7 @@ class SSLManager:
                 verify_cert = ssl_options.get("ssl_verify_cert")
                 verify_identity = ssl_options.get("ssl_verify_identity")
                 if verify_cert is not None:
-                    ssl_args["verify_mode"] = bool(verify_cert)
+                    ssl_args["verify_mode"] = verify_cert
                     if verify_identity is None:
                         ssl_args["check_hostname"] = False
                 if verify_identity is not None:
