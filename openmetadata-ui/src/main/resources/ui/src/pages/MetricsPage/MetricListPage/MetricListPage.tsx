@@ -708,16 +708,12 @@ const MetricListPage = () => {
   );
 
   // A focusable trigger so the hidden items open on hover and on keyboard focus;
-  // the guard keeps a click on "+N" from opening the metric row.
+  // the react-aria press handling keeps a click on "+N" from opening the metric row.
   const renderOverflow = (count: number, content: ReactNode) => (
     <HoverCard className="tw:p-3" content={content}>
-      <button
-        {...ROW_ACTION_GUARD}
-        className="tw:cursor-default tw:text-xs tw:text-tertiary tw:tabular-nums"
-        data-testid="metric-overflow-trigger"
-        type="button">
+      <Button color="link-gray" data-testid="metric-overflow-trigger" size="sm">
         +{count}
-      </button>
+      </Button>
     </HoverCard>
   );
 
