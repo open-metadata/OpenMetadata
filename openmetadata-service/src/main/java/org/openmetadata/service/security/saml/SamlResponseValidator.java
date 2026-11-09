@@ -14,6 +14,7 @@ package org.openmetadata.service.security.saml;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.http.HttpRequest;
 import com.onelogin.saml2.servlet.ServletUtils;
@@ -40,6 +41,27 @@ public final class SamlResponseValidator {
   private static final long ALLOWED_CLOCK_DRIFT_MILLIS = Constants.ALOWED_CLOCK_DRIFT * 1000L;
 
   private SamlResponseValidator() {}
+
+  /** java-saml's verdict on the response it processed, as the live login and Test Login read it. */
+  public static boolean isAccepted(Auth auth) {
+    return auth.isAuthenticated() && auth.getErrors().isEmpty();
+  }
+
+  /**
+   * Why java-saml did not accept the response, such as "The Message of the Response is not signed
+   * and the SP requires it", or its error codes when it gave no reason.
+   */
+  public static String rejectionReason(Auth auth) {
+    String reason = auth.getLastErrorReason();
+    return nullOrEmpty(reason) ? String.join(", ", auth.getErrors()) : reason;
+  }
+
+  /** Fails the login with java-saml's reason, so the person signing in learns what to fix. */
+  public static void requireAccepted(Auth auth) {
+    if (!isAccepted(auth)) {
+      throw rejected(rejectionReason(auth));
+    }
+  }
 
   public static void validate(Saml2Settings settings, HttpServletRequest request) {
     validate(settings, ServletUtils.makeHttpRequest(request));
