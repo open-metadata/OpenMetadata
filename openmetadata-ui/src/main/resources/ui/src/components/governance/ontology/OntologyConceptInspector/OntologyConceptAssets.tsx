@@ -26,7 +26,10 @@ import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
-import { AssetBinding } from '../../../../generated/type/ontologyConceptBindingsResponse';
+import {
+  AssetBinding,
+  AssetType,
+} from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { useOntologyAssetLinking } from '../../../../hooks/governance/ontology/useOntologyAssetLinking';
 import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/useOntologyAssetUnlink';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
@@ -45,12 +48,17 @@ import {
   InspectorEmptyText,
   InspectorSectionHeading,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
+import OntologyColumnMappingStep, {
+  ColumnMappingProperty,
+} from './OntologyColumnMappingStep';
 import { ConceptEmptyState, ConceptSection } from './OntologyConceptSection';
 
 interface OntologyConceptAssetsProps {
   conceptId: string;
   conceptName: string;
   canEdit: boolean;
+  /** The concept's bindable properties; without them no column step is offered. */
+  properties?: readonly ColumnMappingProperty[];
   presentation: { kind: 'edit' } | { kind: 'view'; onOpenData: () => void };
 }
 
@@ -90,6 +98,7 @@ const OntologyConceptAssets = ({
   conceptId,
   conceptName,
   canEdit,
+  properties = [],
   presentation,
 }: OntologyConceptAssetsProps) => {
   const { t } = useTranslation();
@@ -101,6 +110,7 @@ const OntologyConceptAssets = ({
     name: string;
   }>();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [bindAssets, setBindAssets] = useState<EntityReference[]>();
   const [page, setPage] = useState(0);
   const linking = useOntologyAssetLinking(conceptId, bindings);
   const unlinkAsset = useOntologyAssetUnlink(bindings, conceptName);
@@ -113,8 +123,20 @@ const OntologyConceptAssets = ({
   const canLink = canEdit && bindings.isSuccess;
 
   const renderPicker = () => {
-    if (!canEdit || (isAiMode && !isPickerOpen)) {
+    if (!canEdit || (isAiMode && !isPickerOpen && !bindAssets)) {
       return null;
+    }
+    if (bindAssets) {
+      return (
+        <OntologyColumnMappingStep
+          assets={bindAssets}
+          conceptId={conceptId}
+          conceptName={conceptName}
+          key={bindAssets.map(({ id }) => id).join()}
+          properties={properties}
+          onClose={() => setBindAssets(undefined)}
+        />
+      );
     }
 
     return isPickerOpen ? (
@@ -130,7 +152,15 @@ const OntologyConceptAssets = ({
           linking.cancel();
           setIsPickerOpen(false);
         }}
-        onSave={() => setIsPickerOpen(false)}
+        onSave={(linked) => {
+          setIsPickerOpen(false);
+          const tables = linked.filter(
+            (asset) => asset.type === EntityType.TABLE
+          );
+          if (tables.length > 0 && properties.length > 0) {
+            setBindAssets(tables);
+          }
+        }}
       />
     ) : (
       <Button
@@ -221,6 +251,18 @@ const OntologyConceptAssets = ({
                   })}
                 </Typography>
               </Box>
+              {canEdit &&
+              properties.length > 0 &&
+              binding.assetType === AssetType.Table ? (
+                <Button
+                  color="link-color"
+                  data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
+                  isDisabled={!bindings.editableSnapshot}
+                  size="xs"
+                  onPress={() => setBindAssets([binding.asset])}>
+                  {t('label.ontology-bind-columns')}
+                </Button>
+              ) : null}
               {canEdit ? (
                 <ButtonUtility
                   data-testid={`ontology-native-asset-remove-${binding.assetId}`}

@@ -26,7 +26,7 @@ export interface RedpandaConnection {
     /**
      * Confluent Redpanda Consumer Config
      */
-    consumerConfig?: { [key: string]: any };
+    consumerConfig?: ConsumerConfig;
     /**
      * sasl.mechanism Consumer Config property
      */
@@ -42,7 +42,7 @@ export interface RedpandaConnection {
     /**
      * Confluent Redpanda Schema Registry Config.
      */
-    schemaRegistryConfig?: { [key: string]: any };
+    schemaRegistryConfig?: SchemaRegistryConfig;
     /**
      * Schema Registry Topic Suffix Name. The suffix to be appended to the topic name to get
      * topic schema from registry.
@@ -69,6 +69,49 @@ export interface RedpandaConnection {
 }
 
 /**
+ * Confluent Redpanda Consumer Config
+ */
+export interface ConsumerConfig {
+    /**
+     * Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.passphrase"?: string;
+    /**
+     * PEM private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.pem"?: string;
+    /**
+     * Client secret for the OAUTHBEARER (OIDC) token request.
+     */
+    "sasl.oauthbearer.client.secret"?: string;
+    /**
+     * SASL/OAUTHBEARER configuration string, which can carry a client secret.
+     */
+    "sasl.oauthbearer.config"?: string;
+    /**
+     * SASL password.
+     */
+    "sasl.password"?: string;
+    /**
+     * Passphrase of the client's private key.
+     */
+    "ssl.key.password"?: string;
+    /**
+     * Client's private key as a PEM string.
+     */
+    "ssl.key.pem"?: string;
+    /**
+     * Password of the client keystore (PKCS#12).
+     */
+    "ssl.keystore.password"?: string;
+    /**
+     * Password of the truststore.
+     */
+    "ssl.truststore.password"?: string;
+    [property: string]: any;
+}
+
+/**
  * sasl.mechanism Consumer Config property
  *
  * SASL Mechanism consumer config property
@@ -79,6 +122,25 @@ export enum SaslMechanismType {
     Plain = "PLAIN",
     ScramSHA256 = "SCRAM-SHA-256",
     ScramSHA512 = "SCRAM-SHA-512",
+}
+
+/**
+ * Confluent Redpanda Schema Registry Config.
+ */
+export interface SchemaRegistryConfig {
+    /**
+     * Schema Registry credentials in the form of username:password.
+     */
+    "basic.auth.user.info"?: string;
+    /**
+     * Client secret for the Schema Registry OAuth token request.
+     */
+    "bearer.auth.client.secret"?: string;
+    /**
+     * Static bearer token for the Schema Registry.
+     */
+    "bearer.auth.token"?: string;
+    [property: string]: any;
 }
 
 /**

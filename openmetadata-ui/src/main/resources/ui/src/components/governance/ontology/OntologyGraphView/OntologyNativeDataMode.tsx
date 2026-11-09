@@ -21,6 +21,8 @@ import { Database01 } from '@openmetadata/ui-core-components/icons';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { EntityType } from '../../../../enums/entity.enum';
+import { EntityReference } from '../../../../generated/type/entityReference';
 import { useNativeOntologyDataGraph } from '../../../../hooks/governance/ontology/useNativeOntologyDataGraph';
 import { useOntologyAssetLinking } from '../../../../hooks/governance/ontology/useOntologyAssetLinking';
 import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/useOntologyAssetUnlink';
@@ -42,8 +44,16 @@ import {
 } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.utils';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
 import OntologyDataGraph from '../../../OntologyExplorer/OntologyDataGraph';
-import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import {
+  BoundColumn,
+  OntologyNode,
+} from '../../../OntologyExplorer/OntologyExplorer.interface';
+import { columnNodeKey } from '../../../OntologyExplorer/utils/dataColumnLayout';
+import OntologyColumnMappingStep, {
+  ColumnMappingProperty,
+} from '../OntologyConceptInspector/OntologyColumnMappingStep';
 import OntologyDataAssetPanel from './OntologyDataAssetPanel';
+import OntologyDataColumnPanel from './OntologyDataColumnPanel';
 import OntologyDataConceptPicker, {
   OntologyDataConceptChip,
 } from './OntologyDataConceptPicker';
@@ -67,6 +77,8 @@ interface OntologyNativeDataModeProps {
   concepts: ReadonlyArray<
     Pick<DataPickerConcept, 'id' | 'name'> & { synonyms?: string[] }
   >;
+  /** The properties a column of the concept can be bound to; without it, no column step is offered. */
+  getConceptProperties?: (conceptId: string) => ColumnMappingProperty[];
   isActive?: boolean;
   ontologyId: string;
   revision?: number;
@@ -82,6 +94,7 @@ interface OntologyNativeDataModeProps {
 const OntologyNativeDataMode = ({
   canEditBindings = false,
   concepts,
+  getConceptProperties,
   isActive,
   ontologyId,
   revision,
@@ -115,14 +128,18 @@ const OntologyNativeDataMode = ({
   );
   const [isPicking, setIsPicking] = useState(false);
   const [isLinking, setIsLinking] = useState(false);
+  const [bindAssets, setBindAssets] = useState<EntityReference[]>();
   const [panelAssetId, setPanelAssetId] = useState<string>();
+  const [panelColumnKey, setPanelColumnKey] = useState<string>();
 
   const choose = useCallback(
     (conceptId: string | undefined, announce: boolean) => {
       setPickedId(conceptId);
       setIsPicking(false);
       setIsLinking(false);
+      setBindAssets(undefined);
       setPanelAssetId(undefined);
+      setPanelColumnKey(undefined);
       rememberDataPick(ontologyId, conceptId);
       setRecentIds(readDataPick(ontologyId).recentIds);
       if (conceptId && announce) {
@@ -213,9 +230,21 @@ const OntologyNativeDataMode = ({
         return;
       }
       setPanelAssetId(node.entityRef?.id);
+      setPanelColumnKey(undefined);
     },
     [onSelectConcept]
   );
+  const selectColumn = useCallback(
+    (asset: OntologyNode, column: BoundColumn) => {
+      setPanelAssetId(asset.entityRef?.id);
+      setPanelColumnKey(columnNodeKey(asset.id, column.path));
+    },
+    []
+  );
+  const clearPanel = useCallback(() => {
+    setPanelAssetId(undefined);
+    setPanelColumnKey(undefined);
+  }, []);
 
   const summary = (() => {
     if (!pickedCluster) {
@@ -403,8 +432,50 @@ const OntologyNativeDataMode = ({
       </div>
     ) : null;
 
+  const conceptProperties = useMemo(
+    () => (pickedId ? getConceptProperties?.(pickedId) ?? [] : []),
+    [getConceptProperties, pickedId]
+  );
+
+  const renderLinkDialogContent = (conceptName: string, synonyms?: string[]) =>
+    bindAssets && pickedId ? (
+      <OntologyColumnMappingStep
+        assets={bindAssets}
+        conceptId={pickedId}
+        conceptName={conceptName}
+        properties={conceptProperties}
+        onClose={() => setBindAssets(undefined)}
+      />
+    ) : (
+      <OntologyDataAssetPicker
+        native={{
+          assetTypes: NATIVE_BINDING_ASSET_TYPES,
+          isDisabled: !bindings.editableSnapshot,
+          linkedIds: (bindings.data?.assets ?? []).map(
+            (binding) => binding.assetId
+          ),
+          saveAssets: linking.saveAssets,
+          concept: { name: conceptName, synonyms },
+        }}
+        onCancel={() => {
+          linking.cancel();
+          setIsLinking(false);
+        }}
+        onSave={(linked) => {
+          setIsLinking(false);
+          const tables = linked.filter(
+            (asset) => asset.type === EntityType.TABLE
+          );
+          if (tables.length > 0 && conceptProperties.length > 0) {
+            setBindAssets(tables);
+          }
+        }}
+      />
+    );
+
+  const isLinkDialogOpen = Boolean(isLinking || bindAssets);
   const renderLinkDialog = () =>
-    isLinking && picked && canEditBindings ? (
+    isLinkDialogOpen && picked && canEditBindings ? (
       <div
         aria-label={t('label.link-asset')}
         aria-modal="true"
@@ -412,22 +483,7 @@ const OntologyNativeDataMode = ({
         data-testid="ontology-data-link-dialog"
         role="dialog">
         <div className="tw:max-h-full tw:w-full tw:max-w-xl tw:overflow-y-auto">
-          <OntologyDataAssetPicker
-            native={{
-              assetTypes: NATIVE_BINDING_ASSET_TYPES,
-              isDisabled: !bindings.editableSnapshot,
-              linkedIds: (bindings.data?.assets ?? []).map(
-                (binding) => binding.assetId
-              ),
-              saveAssets: linking.saveAssets,
-              concept: { name: picked.name, synonyms: picked.synonyms },
-            }}
-            onCancel={() => {
-              linking.cancel();
-              setIsLinking(false);
-            }}
-            onSave={() => setIsLinking(false)}
-          />
+          {renderLinkDialogContent(picked.name, picked.synonyms)}
         </div>
       </div>
     ) : null;
@@ -436,6 +492,19 @@ const OntologyNativeDataMode = ({
     if (!panelNode || !picked) {
       return null;
     }
+    const panelColumn = panelNode.boundColumns?.find(
+      (column) => columnNodeKey(panelNode.id, column.path) === panelColumnKey
+    );
+    if (panelColumn) {
+      return (
+        <OntologyDataColumnPanel
+          asset={panelNode}
+          column={panelColumn}
+          onClose={clearPanel}
+          onOpenAsset={() => setPanelColumnKey(undefined)}
+        />
+      );
+    }
     const binding = bindings.data?.assets.find(
       (item) => item.assetId === panelAssetId
     );
@@ -443,10 +512,21 @@ const OntologyNativeDataMode = ({
     return (
       <OntologyDataAssetPanel
         binding={binding}
+        canBindColumns={
+          canEditBindings &&
+          Boolean(bindings.editableSnapshot) &&
+          conceptProperties.length > 0 &&
+          binding?.asset.type === EntityType.TABLE
+        }
         canUnlink={canEditBindings && Boolean(bindings.editableSnapshot)}
         conceptName={picked.name}
         node={panelNode}
-        onClose={() => setPanelAssetId(undefined)}
+        onBindColumns={() => {
+          if (binding) {
+            setBindAssets([binding.asset]);
+          }
+        }}
+        onClose={clearPanel}
         onOpenAsset={() => {
           const path =
             panelNode.entityRef && getOntologyAssetPath(panelNode.entityRef);
@@ -479,11 +559,14 @@ const OntologyNativeDataMode = ({
           hasMoreTerms={false}
           isLoadingMoreTerms={false}
           relationTypes={NO_RELATION_TYPES}
+          selectedAssetNodeId={panelNode?.id}
+          selectedColumnKey={panelColumnKey}
           selectedNodeId={selectedConceptId}
           variant="native"
           onLoadMore={(node) => loadMoreAssets(node.id)}
           onLoadMoreTerms={loadMoreClusters}
-          onPaneClick={() => setPanelAssetId(undefined)}
+          onPaneClick={clearPanel}
+          onSelectColumn={selectColumn}
           onSelectNode={selectNode}
         />
       ) : null}

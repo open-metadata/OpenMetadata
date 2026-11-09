@@ -128,13 +128,13 @@ class KafkaSourceSSLTest(TestCase):
             "sslCertificateData",
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.ca.location"),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.model_extra.get("ssl.ca.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.key.location"),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.model_extra.get("ssl.key.location"),
         )
         self.assertIsNotNone(
-            kafka_source_with_ssl.service_connection.schemaRegistryConfig.get("ssl.certificate.location"),
+            kafka_source_with_ssl.service_connection.schemaRegistryConfig.model_extra.get("ssl.certificate.location"),
         )
 
 
