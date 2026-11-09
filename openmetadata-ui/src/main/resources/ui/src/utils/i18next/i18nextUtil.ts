@@ -55,6 +55,17 @@ const BCP47_LOCALE_OVERRIDES: Partial<Record<string, string>> = {
 export const getBcp47Locale = (language: string) =>
   BCP47_LOCALE_OVERRIDES[language] ?? language;
 
+// React Aria takes the calendar and digits from the locale, as the app's own
+// date formatting does with the i18next code. Persian gets `fa-IR` for RTL,
+// pinned to the Gregorian calendar and Latin digits: plain `fa-IR` switches
+// core date pickers to the Persian calendar, which no other date in the app uses.
+const REACT_ARIA_LOCALE_OVERRIDES: Partial<Record<string, string>> = {
+  [SupportedLocales.Persian]: 'fa-IR-u-ca-gregory-nu-latn',
+};
+
+export const getReactAriaLocale = (language: string) =>
+  REACT_ARIA_LOCALE_OVERRIDES[language] ?? language;
+
 // Resolves from the selected language, not `resolvedLanguage`, which stays on
 // the fallback until the selected locale's catalog has loaded.
 export const getLanguageDirection = (i18n: Pick<I18n, 'dir' | 'language'>) =>

@@ -29,7 +29,7 @@ import {
   getSystemConfig,
 } from './rest/settingConfigAPI';
 import { getBasePath } from './utils/HistoryUtils';
-import { getBcp47Locale } from './utils/i18next/i18nextUtil';
+import { getReactAriaLocale } from './utils/i18next/i18nextUtil';
 import i18n from './utils/i18next/LocalUtil';
 import { isPlaywrightEnv } from './utils/PlaywrightUtils';
 import { getThemeConfig } from './utils/ThemeUtils';
@@ -95,7 +95,7 @@ const AppRoot: FC = () => {
           basename={getBasePath()}
           useTransitions={!isPlaywrightEnv()}>
           <I18nextProvider i18n={i18n}>
-            <I18nProvider locale={getBcp47Locale(i18nInstance.language)}>
+            <I18nProvider locale={getReactAriaLocale(i18nInstance.language)}>
               <HelmetProvider>
                 <DocumentTitleProvider>
                   <ErrorBoundary>
