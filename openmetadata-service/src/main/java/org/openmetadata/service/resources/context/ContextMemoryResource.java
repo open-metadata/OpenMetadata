@@ -278,7 +278,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
             listInternal(
                 uriInfo,
                 securityContext,
-                ContextMemoryVisibility.listingFields(entityType, fieldsParam),
+                ContextMemoryVisibility.guardFields(entityType, fieldsParam),
                 filter,
                 limitParam,
                 before,
@@ -322,7 +322,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
         listInternal(
                 uriInfo,
                 securityContext,
-                ContextMemoryVisibility.listingFields(entityType, null),
+                ContextMemoryVisibility.guardFields(entityType, null),
                 filter,
                 MAX_VISIBLE_COUNT_SCAN,
                 null,

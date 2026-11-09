@@ -48,12 +48,17 @@ public final class MemoryReviewHolds {
 
   /**
    * Whether a person's decision on {@code decided} holds {@code value} for review across documents:
-   * it replaces a number for a look-alike question, or re-extraction would hold it beside the pill.
+   * re-extraction would pair them as one question, and the value replaces a number.
    */
   public static boolean holdsAcrossDocuments(ContextMemory decided, ContextMemory value) {
     return isDecided(decided)
         && haveConflictingNumbers(decided, value)
-        && (askAlikeQuestions(decided, value) || holds(decided, value));
+        && askTheSameQuestion(decided, value);
+  }
+
+  /** Only a value stating a number can replace one, so only such a value can be held. */
+  public static boolean statesANumber(ContextMemory value) {
+    return MemoryTextSimilarity.hasNumbers(factText(value));
   }
 
   /** A replaced number, by value, in the question or the answer: never the same fact. */
@@ -61,10 +66,14 @@ public final class MemoryReviewHolds {
     return MemoryTextSimilarity.hasConflictingNumbers(factText(a), factText(b));
   }
 
-  /** How re-extraction pairs two questions: the same words, or topic words clearing the bar. */
-  static boolean askAlikeQuestions(ContextMemory a, ContextMemory b) {
+  /**
+   * How re-extraction pairs a value with a decided pill: the same question, the whole pair clearing
+   * the identity bar. A question for another year is another question.
+   */
+  static boolean askTheSameQuestion(ContextMemory a, ContextMemory b) {
     return sameQuestion(a, b)
-        || MemoryTextSimilarity.questionSimilarity(a.getQuestion(), b.getQuestion())
+        && MemoryTextSimilarity.weighted(
+                a.getQuestion(), a.getAnswer(), b.getQuestion(), b.getAnswer())
             >= MemoryTextSimilarity.IDENTITY_THRESHOLD;
   }
 

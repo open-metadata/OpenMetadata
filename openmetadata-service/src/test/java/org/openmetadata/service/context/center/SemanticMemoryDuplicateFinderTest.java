@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyDouble;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -23,6 +25,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -497,7 +500,7 @@ class SemanticMemoryDuplicateFinderTest {
         "the vector and memory index rankings alternate");
   }
 
-  /** Approval reads decided memories alone: one may hold a value its document left pending. */
+  /** Approval reads decided memories in the memory index alone, never vector search. */
   @Test
   void aDecisionInAnotherDocumentHoldsAPendingValue() throws Exception {
     ContextMemory rejected =
@@ -515,14 +518,37 @@ class SemanticMemoryDuplicateFinderTest {
                 "Customers are billed on the 10th of each month.")
             .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
 
-    assertTrue(keywordFinder().isHeldByADecision(pending));
+    assertTrue(
+        new SemanticMemoryDuplicateFinder(
+                repository, () -> vectorService, () -> searchRepository, completionClient)
+            .isHeldByADecision(pending));
+    verify(vectorService, never())
+        .search(anyString(), any(), anyInt(), anyInt(), anyInt(), anyDouble(), any(), any());
     ArgumentCaptor<String> filter = ArgumentCaptor.forClass(String.class);
     verify(searchClient).searchSimilarContextMemories(anyString(), filter.capture(), eq(20));
     assertTrue(filter.getValue().contains("\"Rejected\""), filter.getValue());
     assertTrue(filter.getValue().contains("\"minimum_should_match\":1"), filter.getValue());
   }
 
-  /** Another year's look-alike may be the decided fact reworded; Draft awaits a decision. */
+  /** Another year is another fact, whatever a person decided about the first one. */
+  @ParameterizedTest
+  @EnumSource(
+      value = ContextMemoryStatus.class,
+      names = {"REJECTED", "SUPERSEDED", "INVALIDATED", "DEPRECATED", "ARCHIVED"})
+  void aQuestionForAnotherYearIsAnotherFact(ContextMemoryStatus decided) throws Exception {
+    ContextMemory existing =
+        memory(UUID.randomUUID(), "What was the VAT rate in 2024?", "20%")
+            .withEntityStatus(decided);
+    rankedHits(List.of(existing));
+    eligible(existing);
+
+    assertEquals(
+        new DuplicateMatch.None(),
+        keywordFinder()
+            .findMatch(memory(UUID.randomUUID(), "What was the VAT rate in 2025?", "20%")));
+  }
+
+  /** Re-extraction's pairing: the same question with another figure waits beside a decision. */
   @ParameterizedTest
   @CsvSource({
     "REJECTED, true",
@@ -534,21 +560,45 @@ class SemanticMemoryDuplicateFinderTest {
     "UNPROCESSED, false",
     "APPROVED, false"
   })
-  void onlyADecidedFactHoldsALookAlikeForAnotherYear(ContextMemoryStatus stage, boolean held)
+  void anotherFigureIsHeldOnlyBesideADecision(ContextMemoryStatus stage, boolean held)
       throws Exception {
     ContextMemory existing =
-        memory(UUID.randomUUID(), "What was the VAT rate in 2024?", "20%").withEntityStatus(stage);
+        memory(
+                UUID.randomUUID(),
+                "When is the customer billed?",
+                "Customers are billed on the 5th of each month.")
+            .withEntityStatus(stage);
     rankedHits(List.of(existing));
     eligible(existing);
 
     DuplicateMatch match =
         keywordFinder()
-            .findMatch(memory(UUID.randomUUID(), "What was the VAT rate in 2025?", "20%"));
+            .findMatch(
+                memory(
+                    UUID.randomUUID(),
+                    existing.getQuestion(),
+                    "Customers are billed on the 10th of each month."));
 
     assertEquals(
         held ? new DuplicateMatch.ConflictsWithDecision(existing) : new DuplicateMatch.None(),
         match);
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /** A hold needs conflicting numbers, so a pending value stating none is never looked up. */
+  @Test
+  void aPendingValueStatingNoNumberNeedsNoLookup() {
+    ContextMemory pending =
+        memory(UUID.randomUUID(), "Who owns billing?", "The finance team owns billing.")
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+
+    assertFalse(
+        new SemanticMemoryDuplicateFinder(
+                repository, () -> vectorService, () -> searchRepository, completionClient)
+            .isHeldByADecision(pending));
+    verify(searchRepository, never()).getSearchClient();
+    verify(vectorService, never())
+        .search(anyString(), any(), anyInt(), anyInt(), anyInt(), anyDouble(), any(), any());
   }
 
   @Test

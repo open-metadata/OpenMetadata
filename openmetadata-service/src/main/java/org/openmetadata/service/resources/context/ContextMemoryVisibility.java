@@ -13,7 +13,6 @@
 
 package org.openmetadata.service.resources.context;
 
-import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.google.common.cache.Cache;
@@ -23,13 +22,13 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiPredicate;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
 import org.jdbi.v3.core.JdbiException;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -78,12 +77,6 @@ public final class ContextMemoryVisibility {
   private static final List<String> DECISION_FIELDS =
       List.of(Entity.FIELD_OWNERS, ContextMemoryRepository.FIELD_PRIMARY_ENTITY);
 
-  /** What a listing also reads: the documents a pending extracted pill is linked to. */
-  private static final List<String> LISTING_FIELDS =
-      List.of(
-          ContextMemoryRepository.FIELD_SOURCE_ENTITY,
-          ContextMemoryRepository.FIELD_RELATED_ENTITIES);
-
   /** Whether a caller may read the asset an Entity memory is anchored to. */
   @FunctionalInterface
   interface AnchorAccess {
@@ -94,6 +87,12 @@ public final class ContextMemoryVisibility {
   @FunctionalInterface
   interface SourceOwnership {
     boolean owns(String userName, EntityReference source);
+  }
+
+  /** The extraction sources each of some memories is linked to, read in one batch. */
+  @FunctionalInterface
+  interface LinkedDocuments {
+    Map<UUID, List<EntityReference>> of(List<UUID> memoryIds);
   }
 
   /** The entities among some ids that anchor a memory, with their type. */
@@ -256,17 +255,6 @@ public final class ContextMemoryVisibility {
     return fields;
   }
 
-  /** {@link #guardFields} plus what the listing rule reads ({@link #filterListed}). */
-  public static String listingFields(String entityType, String requestedFields) {
-    String fields = guardFields(entityType, requestedFields);
-    if (hasVisibilityRules(entityType) && !ALL_FIELDS.equals(fields)) {
-      Set<String> requested = new LinkedHashSet<>(splitFields(fields));
-      requested.addAll(LISTING_FIELDS);
-      fields = String.join(",", requested);
-    }
-    return fields;
-  }
-
   private static List<String> splitFields(String fields) {
     return nullOrEmpty(fields) ? List.of() : List.of(fields.split(","));
   }
@@ -299,7 +287,8 @@ public final class ContextMemoryVisibility {
             callerName(securityContext),
             isAdmin(securityContext),
             ContextMemoryAnchorAccess::canView,
-            ContextMemoryVisibility::ownsSource);
+            ContextMemoryVisibility::ownsSource,
+            ContextMemoryVisibility::findLinkedDocuments);
   }
 
   static List<ContextMemory> filterListed(
@@ -307,18 +296,42 @@ public final class ContextMemoryVisibility {
       String userName,
       boolean isAdmin,
       AnchorAccess anchorAccess,
-      SourceOwnership sourceOwnership) {
+      SourceOwnership sourceOwnership,
+      LinkedDocuments linkedDocuments) {
     List<ContextMemory> visible = filterByVisibility(memories, userName, isAdmin, anchorAccess);
-    SourceOwnership ownership = decidedOncePerPage(sourceOwnership::owns)::test;
     return isAdmin
         ? visible
-        : visible.stream()
-            .filter(
-                m ->
-                    !isPending(m)
-                        || isOwnedBy(m, userName)
-                        || ownsExtractedSource(m, userName, ownership))
+        : withoutOthersPending(visible, userName, sourceOwnership, linkedDocuments);
+  }
+
+  private static List<ContextMemory> withoutOthersPending(
+      List<ContextMemory> visible,
+      String userName,
+      SourceOwnership sourceOwnership,
+      LinkedDocuments linkedDocuments) {
+    Map<UUID, List<EntityReference>> documents =
+        documentsOfOthersPending(visible, userName, linkedDocuments);
+    SourceOwnership ownership = decidedOncePerPage(sourceOwnership::owns)::test;
+    return visible.stream()
+        .filter(
+            m ->
+                !isPending(m)
+                    || isOwnedBy(m, userName)
+                    || ownsAny(documents, m, userName, ownership))
+        .toList();
+  }
+
+  /** Read once for the page's pending extracted pills; an anonymous caller owns no document. */
+  private static Map<UUID, List<EntityReference>> documentsOfOthersPending(
+      List<ContextMemory> visible, String userName, LinkedDocuments linkedDocuments) {
+    List<UUID> asked =
+        visible.stream()
+            .filter(m -> userName != null && isPending(m) && isExtracted(m))
+            .filter(m -> !isOwnedBy(m, userName))
+            .map(ContextMemory::getId)
+            .distinct()
             .toList();
+    return asked.isEmpty() ? Map.of() : linkedDocuments.of(asked);
   }
 
   /** Whether {@code memory} still awaits review: Unprocessed or Draft. */
@@ -327,29 +340,34 @@ public final class ContextMemoryVisibility {
     return status != null && ContextMemorySearchVisibility.OWNER_PENDING_STATUSES.contains(status);
   }
 
-  /** One memory, one review: the owners of every document a pill is linked to may list it. */
-  private static boolean ownsExtractedSource(
-      ContextMemory memory, String userName, SourceOwnership ownership) {
-    return ContextMemoryWriteAccess.isAutomatedSource(memory.getSourceType())
-        && userName != null
-        && linkedDocuments(memory).anyMatch(document -> ownership.owns(userName, document));
+  private static boolean isExtracted(ContextMemory memory) {
+    return ContextMemoryWriteAccess.isAutomatedSource(memory.getSourceType());
   }
 
-  /**
-   * Its source, its anchor and the documents reuse added to its related entities. A listing reads
-   * one source of several, the first by name, so the anchor counts as well.
-   */
-  private static Stream<EntityReference> linkedDocuments(ContextMemory memory) {
-    return Stream.concat(
-            Stream.of(memory.getSourceEntity(), memory.getPrimaryEntity()),
-            listOrEmpty(memory.getRelatedEntities()).stream())
-        .filter(ContextMemoryVisibility::isDocument);
+  /** One memory, one review: the owners of every document it is linked to may list it. */
+  private static boolean ownsAny(
+      Map<UUID, List<EntityReference>> documents,
+      ContextMemory memory,
+      String userName,
+      SourceOwnership ownership) {
+    return isExtracted(memory)
+        && documents.getOrDefault(memory.getId(), List.of()).stream()
+            .anyMatch(document -> ownership.owns(userName, document));
   }
 
-  private static boolean isDocument(EntityReference reference) {
-    return reference != null
-        && (Entity.CONTEXT_FILE.equals(reference.getType())
-            || Entity.PAGE.equals(reference.getType()));
+  /** A lookup that cannot run lists a pending pill to its owners and admins only. */
+  private static Map<UUID, List<EntityReference>> findLinkedDocuments(List<UUID> memoryIds) {
+    Map<UUID, List<EntityReference>> documents = Map.of();
+    if (Entity.hasEntityRepository(Entity.CONTEXT_MEMORY)) {
+      try {
+        documents =
+            ((ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+                .listExtractedSources(memoryIds);
+      } catch (JdbiException e) {
+        LOG.warn("Cannot read the documents of pending memories; listing them to their owners", e);
+      }
+    }
+    return documents;
   }
 
   /**

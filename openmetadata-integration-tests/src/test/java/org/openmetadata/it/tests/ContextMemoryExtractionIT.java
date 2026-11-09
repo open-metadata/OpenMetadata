@@ -2,8 +2,10 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -383,6 +385,38 @@ class ContextMemoryExtractionIT {
     assertEquals(
         List.of(held.getId()),
         preview.getNeedsDecision().stream().map(EntityReference::getId).toList());
+  }
+
+  /**
+   * A reader of a file lists its memories without learning which restricted copy also states them:
+   * a listing returns the fields asked for, never the documents the visibility rule reads.
+   */
+  @Test
+  void aListingForTheOriginalsReaderNamesNoRestrictedCopy(TestNamespace ns) throws Exception {
+    ContextFile original = file(ns, "a-original", "Original " + ns.shortPrefix(), null);
+    EntityReference copy = privateFile(ns, "b-private-copy", SharedEntities.get().USER2_REF);
+    ContextMemory memory = persistedPill(original, KAFKA_OWNER.question(), KAFKA_OWNER.answer());
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
+    memoryRepository().linkExtractedMemory(memory.getId(), copy);
+    ListParams plain =
+        new ListParams().setLimit(50).addFilter("sourceEntityId", original.getId().toString());
+    ListParams card =
+        new ListParams()
+            .setLimit(50)
+            .setFields("owners,sourceEntity,derivedEntities")
+            .addFilter("sourceEntityId", original.getId().toString());
+
+    for (ListParams params : List.of(plain, card)) {
+      List<ContextMemory> listed = memories(SdkClients.user1Client()).list(params).getData();
+      String fields =
+          JsonUtils.pojoToJson(listed.stream().map(ContextMemoryExtractionIT::fieldsOf).toList());
+      assertEquals(Set.of(memory.getId()), ids(listed));
+      assertFalse(fields.contains(copy.getId().toString()), fields);
+      assertFalse(fields.contains(copy.getName()), fields);
+    }
+    ContextMemory unasked = memories(SdkClients.user1Client()).list(plain).getData().getFirst();
+    assertNull(unasked.getSourceEntity(), "a field the caller did not ask for");
+    assertNull(unasked.getRelatedEntities(), "a field the caller did not ask for");
   }
 
   @Test
@@ -862,6 +896,31 @@ class ContextMemoryExtractionIT {
             .withProcessingStatus(ProcessingStatus.Processed);
     fileRepository().getContentRepository().create(null, content);
     return file;
+  }
+
+  /** The memory's fields as listed, its version history aside. */
+  private static ContextMemory fieldsOf(ContextMemory memory) {
+    return JsonUtils.deepCopy(memory, ContextMemory.class)
+        .withChangeDescription(null)
+        .withIncrementalChangeDescription(null);
+  }
+
+  private EntityReference privateFile(TestNamespace ns, String label, EntityReference owner) {
+    ContextFile file =
+        fileRepository()
+            .create(
+                null,
+                new ContextFile()
+                    .withId(UUID.randomUUID())
+                    .withName(ns.prefix(label))
+                    .withHeadContentId(UUID.randomUUID().toString())
+                    .withProcessingStatus(ProcessingStatus.Processed)
+                    .withOwners(List.of(owner))
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE))
+                    .withUpdatedBy(Entity.ADMIN_USER_NAME)
+                    .withUpdatedAt(System.currentTimeMillis()));
+    return ns.trackRoot(Entity.CONTEXT_FILE, file).getEntityReference();
   }
 
   private List<ContextMemory> extracted(EntityReference source) {

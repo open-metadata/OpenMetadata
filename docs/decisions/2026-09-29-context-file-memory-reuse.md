@@ -55,16 +55,16 @@ new fact; the other source retains the old memory.
 ### 3. Check each unmatched fact against existing memories
 
 Before creating an unmatched candidate, `SemanticMemoryDuplicateFinder` searches for existing
-file-extracted memories. It uses vector search when available and, since v3, always queries the
+memories a document states. It uses vector search when available and, since v3, always queries the
 regular memory search index too. The lookup examines up to five candidates.
 
-Candidates are loaded from the repository and must still be active, entity-visible
-`FILE_EXTRACTION` memories with the same memory scope and memory type. Conflicting numeric values
-are rejected. Identical normalized question and answer text is accepted directly. Otherwise, an
+Candidates are loaded from the repository and must still be entity-visible memories of the same
+memory scope that a document states, in any stage (see v3). A candidate whose numbers conflict
+with the fact never links. Identical normalized question and answer text is accepted directly. Otherwise, an
 LLM selects a candidate only when the two question-and-answer pairs express the same factual
 claim in both directions, preserving entities, numbers, units, qualifiers, and negation. When one
 qualifies, reconciliation links its existing memory ID to the new file. Otherwise it creates a
-new memory. The search-index fallback raises an error if it is unavailable, so a failed lookup
+new memory. The memory index lookup raises an error if it is unavailable, so a failed lookup
 does not silently create an unchecked duplicate.
 
 ### 4. Keep source links and extraction results consistent
@@ -140,16 +140,20 @@ a memory covers every document that states its fact.
   or a person corrected it (`Manual`). No field records a human approval (`lastReviewedAt` is
   stamped on every approval, ADR:2026-10-09-an-approved-memory-can-return-to-review-and-records-its-last-review),
   so Approved alone is no decision. A conflicting candidate a person decided holds the fact for
-  review when the two ask look-alike questions, as re-extraction pairs them (the same words, or
-  topic words clearing the identity bar, `MemoryTextSimilarity.questionSimilarity`), or when
-  re-extraction would hold it beside that memory (`MemoryReviewHolds.holds`): the new memory
-  starts `Unprocessed` under every provider. "Billed on the 10th" waits beside a rejected "billed
-  on the 5th"; beside a memory no one decided, or one for another question, a replaced number is a
-  new memory in its derived stage.
+  review when re-extraction would pair the two as one question: the same question
+  (`MemoryTextSimilarity.sameQuestion`) with the whole pair clearing the identity bar
+  (`MemoryTextSimilarity.weighted`, 0.5). The new memory then starts `Unprocessed` under every
+  provider: "billed on the 10th" waits beside a rejected "billed on the 5th", and a document's
+  original figure waits beside a person's correction of the same question. A question for another
+  year is another question, so beside it, as beside a memory no one decided, a replaced number is
+  a new memory in its derived stage.
 - Approving from a document re-reads the memory index for decided memories that hold a pending
   value, by the same rule, and leaves that value for an admin
-  (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document): one index search
-  per pending memory, on each approval preview.
+  (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document). Only a value
+  stating a number can be held, so only such values are looked up: each approval preview, and each
+  approval, costs one memory index search per pending value stating a number, plus one batch read
+  of the document's pending memories' source links. It never asks vector search, which returns
+  Approved memories alone.
 - §1's identical upload links every memory of the earlier file that is not soft-deleted, whatever
   its stage, corrections included, provided each is entity-visible and entity-scoped.
 - Stop words count toward the 30%, so most new facts find some candidate: expect about one small

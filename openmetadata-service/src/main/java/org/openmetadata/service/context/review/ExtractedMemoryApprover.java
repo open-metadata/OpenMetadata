@@ -148,11 +148,16 @@ public final class ExtractedMemoryApprover {
         .collect(Collectors.toSet());
   }
 
+  /** One read for every pending pill of the document. */
   private Collection<EntityReference> otherDocuments(
       List<ContextMemory> memories, EntityReference source) {
-    return memories.stream()
-        .filter(ExtractedMemoryApprover::awaitsApproval)
-        .flatMap(memory -> repository.listExtractedSources(memory.getId()).stream())
+    List<UUID> pending =
+        memories.stream()
+            .filter(ExtractedMemoryApprover::awaitsApproval)
+            .map(ContextMemory::getId)
+            .toList();
+    return repository.listExtractedSources(pending).values().stream()
+        .flatMap(List::stream)
         .filter(document -> !document.getId().equals(source.getId()))
         .collect(
             Collectors.toMap(EntityReference::getId, Function.identity(), (first, second) -> first))

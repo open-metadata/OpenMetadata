@@ -93,7 +93,8 @@ fact two documents state) is approved from any of them by that document's owners
 linked document leaves for a decision stays pending from every other, so approving from one
 document never bypasses another's hold. A value held because of a decision in another document
 needs an admin exactly as a same-document hold does: preview and approval re-read the memory index
-for decided memories that hold each pending value, by the rule the duplicate check holds it with
+for decided memories that hold each pending value stating a number, by the rule the duplicate check
+holds it with
 (ADR:2026-09-29-context-file-memory-reuse, v3), and leave it pending for the document's owners.
 Rejecting stays with admins
 (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3).

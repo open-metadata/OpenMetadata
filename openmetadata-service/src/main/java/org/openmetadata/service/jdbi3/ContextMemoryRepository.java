@@ -545,6 +545,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getName()));
   }
 
+  /** The Context Center entities a knowledge pill is extracted from. */
+  private static final Set<String> EXTRACTION_SOURCE_TYPES =
+      Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
+
   private static final Set<String> ALLOWED_SHARED_PRINCIPAL_TYPES =
       Set.of(Entity.USER, Entity.TEAM, Entity.DOMAIN);
 
@@ -1156,9 +1160,37 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return memories;
   }
 
-  /** The live Context Center sources (files and pages) a knowledge pill is linked to. */
-  public List<EntityReference> listExtractedSources(UUID memoryId) {
-    return findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
+  /** The live Context Center sources (files and pages) each knowledge pill is linked to. */
+  public Map<UUID, List<EntityReference>> listExtractedSources(List<UUID> memoryIds) {
+    Map<UUID, List<EntityReference>> sources = new HashMap<>();
+    if (!nullOrEmpty(memoryIds)) {
+      List<CollectionDAO.EntityRelationshipObject> records =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(
+                  memoryIds.stream().map(UUID::toString).toList(),
+                  Relationship.MENTIONED_IN.ordinal(),
+                  Include.NON_DELETED)
+              .stream()
+              .filter(record -> EXTRACTION_SOURCE_TYPES.contains(record.getFromEntity()))
+              .toList();
+      groupByMemory(records, resolveReferencesByType(records), sources);
+    }
+    return sources;
+  }
+
+  private static void groupByMemory(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Map<String, EntityReference> live,
+      Map<UUID, List<EntityReference>> sources) {
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference source = live.get(record.getFromId());
+      if (source != null) {
+        sources
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(source);
+      }
+    }
   }
 
   public void linkExtractedMemory(UUID memoryId, EntityReference source) {

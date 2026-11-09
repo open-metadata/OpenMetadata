@@ -105,10 +105,11 @@ its stage, so a copy uploaded before review awaits the same review instead of be
 again. Another file's equivalent fact links to its memory in any stage and takes its decision. A
 derived value whose number conflicts with a memory a person decided in another document (Rejected,
 Superseded, Invalidated, Deprecated, Archived, or corrected) starts `Unprocessed` under every
-provider when the two ask look-alike questions, or when re-extraction would hold it beside that
-memory: "billed on the 10th" waits beside a rejected "billed on the 5th". No field records a human
-approval, so an Approved memory is no decision here. One memory has one review: a document's
-listing shows a waiting memory to the owners of every document it is linked to, and approval from
+provider when re-extraction would pair the two as one question, the same question with the pair
+clearing the identity bar: "billed on the 10th" waits beside a rejected "billed on the 5th", while a
+question for another year is another fact. No field records a human approval, so an Approved memory
+is no decision here. One memory has one review: a document's listing shows a waiting memory to the
+owners of every document its source links name, read for the page and never returned, and approval from
 a document leaves for an admin both what another linked document leaves for a decision and a value
 a decision in another document holds
 (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).

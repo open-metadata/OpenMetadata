@@ -28,6 +28,7 @@ import static org.openmetadata.service.governance.workflows.WorkflowEventConsume
 import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
@@ -369,7 +370,8 @@ class ExtractedMemoryApproverTest {
         .thenReturn(List.of(shared));
     when(repository.listExtractedMemories(original.getId(), Entity.CONTEXT_FILE))
         .thenReturn(List.of(shared, secondValue));
-    when(repository.listExtractedSources(shared.getId())).thenReturn(List.of(original, copy));
+    when(repository.listExtractedSources(List.of(shared.getId())))
+        .thenReturn(Map.of(shared.getId(), List.of(original, copy)));
     ExtractedMemoryApprover approver = new ExtractedMemoryApprover(repository, NO_DECISION);
 
     ExtractedMemoryApproval preview = approver.preview(copy, "alice", false);
