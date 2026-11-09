@@ -12,6 +12,8 @@
 PowerBI Models
 """
 
+from datetime import datetime
+
 from pydantic import BaseModel, Field
 
 
@@ -31,7 +33,8 @@ class Workbook(BaseModel):
 class WorkbookDetails(BaseModel):
     workbookId: str  # noqa: N815
     name: str | None = None
-    createdAt: str  # noqa: N815
+    createdAt: datetime  # noqa: N815
+    updatedAt: datetime | None = None  # noqa: N815
     url: str
     path: str | None = None
     ownerId: str | None = None  # noqa: N815
