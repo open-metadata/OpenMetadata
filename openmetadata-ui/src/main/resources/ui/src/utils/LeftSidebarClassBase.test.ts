@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
-import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
+import { Compass03, Home02 } from '@openmetadata/ui-core-components/icons';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import {
+  SIDEBAR_ENTITY_PATH_ALIASES,
   SIDEBAR_LIST,
   SIDEBAR_NESTED_KEYS,
 } from '../constants/LeftSidebar.constants';
@@ -56,6 +56,9 @@ jest.mock('../constants/LeftSidebar.constants', () => ({
   ],
   SIDEBAR_NESTED_KEYS: {
     '/observability/alerts': '/observability/alerts',
+  },
+  SIDEBAR_ENTITY_PATH_ALIASES: {
+    '/glossary-term': '/glossary',
   },
 }));
 
@@ -102,7 +105,7 @@ describe('LeftSidebarClassBase', () => {
             key: '/custom',
             title: 'label.custom',
             redirect_url: '/custom',
-            icon: HomeIcon,
+            icon: Home02,
             dataTestId: 'app-bar-item-custom',
           },
         ];
@@ -127,21 +130,21 @@ describe('LeftSidebarClassBase', () => {
           {
             key: 'parent',
             title: 'Parent Item',
-            icon: HomeIcon,
+            icon: Home02,
             dataTestId: 'parent-item',
             children: [
               {
                 key: '/child1',
                 title: 'Child 1',
                 redirect_url: '/child1',
-                icon: ExploreIcon,
+                icon: Compass03,
                 dataTestId: 'child-1',
               },
               {
                 key: '/child2',
                 title: 'Child 2',
                 redirect_url: '/child2',
-                icon: ExploreIcon,
+                icon: Compass03,
                 dataTestId: 'child-2',
               },
             ],
@@ -165,7 +168,7 @@ describe('LeftSidebarClassBase', () => {
             key: '/new-item',
             title: 'New Item',
             redirect_url: '/new-item',
-            icon: HomeIcon,
+            icon: Home02,
             dataTestId: 'new-item',
           },
         ];
@@ -175,6 +178,30 @@ describe('LeftSidebarClassBase', () => {
 
         expect(updatedItems).toHaveLength(1);
         expect(updatedItems[0].key).toBe('/new-item');
+      });
+    });
+
+    describe('getSidebarPathAliases', () => {
+      it('should return the SIDEBAR_ENTITY_PATH_ALIASES constant', () => {
+        expect(instance.getSidebarPathAliases()).toEqual(
+          SIDEBAR_ENTITY_PATH_ALIASES
+        );
+      });
+
+      it('should allow a subclass to add aliases for routes it owns', () => {
+        class ExtendedLeftSidebar extends LeftSidebarClassBase {
+          public getSidebarPathAliases() {
+            return {
+              ...super.getSidebarPathAliases(),
+              '/custom-section': '/glossary',
+            };
+          }
+        }
+
+        expect(new ExtendedLeftSidebar().getSidebarPathAliases()).toEqual({
+          '/glossary-term': '/glossary',
+          '/custom-section': '/glossary',
+        });
       });
     });
 
@@ -211,7 +238,7 @@ describe('LeftSidebarClassBase', () => {
             key: '/first',
             title: 'First',
             redirect_url: '/first',
-            icon: HomeIcon,
+            icon: Home02,
             dataTestId: 'first',
           },
         ];
@@ -221,14 +248,14 @@ describe('LeftSidebarClassBase', () => {
             key: '/second',
             title: 'Second',
             redirect_url: '/second',
-            icon: ExploreIcon,
+            icon: Compass03,
             dataTestId: 'second',
           },
           {
             key: '/third',
             title: 'Third',
             redirect_url: '/third',
-            icon: HomeIcon,
+            icon: Home02,
             dataTestId: 'third',
           },
         ];
@@ -262,7 +289,7 @@ describe('LeftSidebarClassBase', () => {
           key: '/singleton-test',
           title: 'Singleton Test',
           redirect_url: '/singleton-test',
-          icon: HomeIcon,
+          icon: Home02,
           dataTestId: 'singleton-test',
         },
       ];
@@ -307,7 +334,7 @@ describe('LeftSidebarClassBase', () => {
         {
           key: 'no-url',
           title: 'No URL Item',
-          icon: HomeIcon,
+          icon: Home02,
           dataTestId: 'no-url',
         },
       ];
@@ -339,20 +366,20 @@ describe('LeftSidebarClassBase', () => {
         {
           key: 'level1',
           title: 'Level 1',
-          icon: HomeIcon,
+          icon: Home02,
           dataTestId: 'level1',
           children: [
             {
               key: 'level2',
               title: 'Level 2',
-              icon: ExploreIcon,
+              icon: Compass03,
               dataTestId: 'level2',
               children: [
                 {
                   key: '/level3',
                   title: 'Level 3',
                   redirect_url: '/level3',
-                  icon: HomeIcon,
+                  icon: Home02,
                   dataTestId: 'level3',
                 },
               ],

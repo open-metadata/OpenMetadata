@@ -18,6 +18,9 @@ from metadata.generated.schema.entity.services.ingestionPipelines.ingestionPipel
     IngestionPipeline,
     PipelineStatus,
 )
+from metadata.generated.schema.entity.services.ingestionPipelines.pipelineServiceClientResponse import (
+    PipelineServiceClientResponse,
+)
 from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
 from metadata.ingestion.ometa.client import REST
 from metadata.ingestion.ometa.utils import quote
@@ -64,15 +67,18 @@ class OMetaIngestionPipelineMixin:
             return PipelineStatus(**resp)
         return None
 
-    def run_pipeline(self, ingestion_pipeline_id: str) -> IngestionPipeline:
+    def run_pipeline(self, ingestion_pipeline_id: str) -> PipelineServiceClientResponse:
         """Run ingestion pipeline workflow
 
         Args:
             ingestion_pipeline_id (str): ingestion pipeline uuid
+
+        Returns:
+            PipelineServiceClientResponse: the trigger response from the pipeline service client
         """
         resp = self.client.post(f"{self.get_suffix(IngestionPipeline)}/trigger/{ingestion_pipeline_id}")
 
-        return parse_ingestion_pipeline_config_gracefully(resp)
+        return PipelineServiceClientResponse.model_validate(resp)
 
     def get_pipeline_status_between_ts(
         self,

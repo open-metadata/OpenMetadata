@@ -197,6 +197,18 @@ describe('writeAppMode', () => {
     ).toBeNull();
   });
 
+  it('writes only this tab for `tabOnly` writes, not the cross-tab hint', () => {
+    writeAppMode('ai', null, { tabOnly: true });
+
+    expect(useAppModeStore.getState().currentMode).toBe('ai');
+    expect(
+      globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY)
+    ).toContain('"ai"');
+    expect(
+      globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY)
+    ).toBeNull();
+  });
+
   it('writes the cross-tab hint for `source: "resolver"` writes', () => {
     writeAppMode('ai', null, { source: 'resolver' });
 

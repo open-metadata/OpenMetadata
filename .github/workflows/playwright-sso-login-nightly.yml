@@ -115,11 +115,11 @@ jobs:
   # Detects whether the PR touches Okta-specific files so the Okta leg (a
   # ~40-min live-tenant run) can be selectively enabled on PRs that touch
   # its own code without paying the cost on every unrelated auth PR.
-  # Mirrors the `check-changes` pattern used by playwright-visual.yml et al.
+  # Mirrors the `check-changes` pattern used by playwright-e2e-reusable.yml.
   # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
   # only consults it inside the pull_request/push clause.
   check-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 5
     # dorny/paths-filter calls the PR-files API on pull_request events; the
     # workflow-level `contents: read` block implicitly zeroes every other
@@ -173,7 +173,7 @@ jobs:
   #      — the filter picks a leg's own describes automatically.
   sso-login:
     needs: check-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: test
     timeout-minutes: 45
     # Static full-9 matrix. Per-event filtering is handled by the step-level
@@ -205,7 +205,10 @@ jobs:
           - name: 'msal-mock'
             env_prefix: 'MSAL_MOCK'
             filter: '--grep @msal-mock'
-            needs_docker: ''
+            # The MSAL SDK stays mocked in-page, but the ID token it hands
+            # the SPA comes from the mock IdP (`/test/id-token`) so the
+            # server verifies it against a real JWKS.
+            needs_docker: 'mock-oidc'
           - name: 'auth0-mock'
             env_prefix: 'AUTH0_MOCK'
             filter: '--grep @auth0-mock'
@@ -340,7 +343,18 @@ jobs:
       - name: Install dependencies
         if: env.SKIP_LEG != 'true'
         working-directory: openmetadata-ui/src/main/resources/ui/
-        run: yarn --ignore-scripts --frozen-lockfile
+        run: |
+          # Retry transient registry failures (5xx on tarball fetches) —
+          # yarn v1 does not retry HTTP errors on its own.
+          for attempt in 1 2 3; do
+            yarn --ignore-scripts --frozen-lockfile --network-timeout 100000 && break
+            if [[ "$attempt" -eq 3 ]]; then
+              echo "yarn install failed after 3 attempts" >&2
+              exit 1
+            fi
+            echo "::warning::yarn install attempt $attempt failed (registry blip?); retrying in $((attempt * 15))s"
+            sleep $((attempt * 15))
+          done
 
       - name: Install Playwright Browsers
         if: env.SKIP_LEG != 'true'
@@ -482,7 +496,7 @@ jobs:
   notify-slack:
     if: ${{ always() && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       # actions/* pinned by SHA — same policy dorny/paths-filter uses above,
       # since these run before every notify + fetch the tree/artifacts the
@@ -534,7 +548,7 @@ jobs:
   notify-pr:
     if: ${{ always() && github.event_name == 'pull_request' }}
     needs: sso-login
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
       pull-requests: write

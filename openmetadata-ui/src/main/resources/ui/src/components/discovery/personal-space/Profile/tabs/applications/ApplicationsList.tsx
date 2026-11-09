@@ -14,7 +14,6 @@
 import {
   Box,
   Button,
-  EmptyPlaceholder,
   Grid,
   PaginationCardWithControls,
   Skeleton,
@@ -24,11 +23,7 @@ import {
 import { GridView } from '@openmetadata/ui-core-components/icons';
 import { FC, ReactNode, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../../../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { Include } from '../../../../../../generated/type/include';
 import LimitWrapper from '../../../../../../hoc/LimitWrapper';
 import { useAuth } from '../../../../../../hooks/authHooks';
@@ -38,18 +33,15 @@ import {
 } from '../../../../../../hooks/useCursorPagedList';
 import { getApplicationList } from '../../../../../../rest/applicationAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
+import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import { AppFooter } from './AppFooter';
 import ApplicationCard from './ApplicationCard';
 import type { ApplicationsViewProps } from './Applications.types';
 import { getRuntimeDisabledReasonKey } from './Applications.utils';
 
 /** Two cards per row: half of the 24-column core grid. */
-export const CARD_SPAN = 12;
-
-export const PAGE_SIZE_OPTIONS = [
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_MEDIUM,
-  PAGE_SIZE_LARGE,
-];
+// Three cards per row on the 24-column grid.
+export const CARD_SPAN = 8;
 
 export const ApplicationsGrid: FC<{
   isLoading: boolean;
@@ -57,7 +49,7 @@ export const ApplicationsGrid: FC<{
 }> = ({ isLoading, children }) => (
   <Grid data-testid="applications-grid" gap="5">
     {isLoading
-      ? [1, 2, 3, 4].map((key) => (
+      ? [1, 2, 3, 4, 5, 6].map((key) => (
           <Grid.Item key={key} span={CARD_SPAN}>
             <Skeleton height={88} variant="rounded" width="100%" />
           </Grid.Item>
@@ -72,16 +64,19 @@ export const ApplicationsPagination: FC<
     'page' | 'pageSize' | 'totalPages' | 'onPageChange' | 'onPageSizeChange'
   >
 > = ({ page, pageSize, totalPages, onPageChange, onPageSizeChange }) => (
-  // Minimal (prev/next only): cursor paging can only reach adjacent pages.
-  <PaginationCardWithControls
-    minimal
-    page={page}
-    pageSize={pageSize}
-    pageSizeOptions={PAGE_SIZE_OPTIONS}
-    total={totalPages}
-    onPageChange={onPageChange}
-    onPageSizeChange={onPageSizeChange}
-  />
+  // Rendered into the panel's pinned footer, so it stays put while the cards
+  // scroll; the footer draws the top border the card variant would.
+  <AppFooter testId="applications-pagination">
+    <PaginationCardWithControls
+      className="tw:rounded-none tw:border-0 tw:bg-transparent tw:p-0 tw:shadow-none"
+      page={page}
+      pageSize={pageSize}
+      pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
+      total={totalPages}
+      onPageChange={(nextPage) => void onPageChange(nextPage)}
+      onPageSizeChange={onPageSizeChange}
+    />
+  </AppFooter>
 );
 
 const ApplicationsList: FC<ApplicationsViewProps> = ({
@@ -105,7 +100,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
     isLoading,
     showPagination,
     ...pagination
-  } = useCursorPagedList(fetchPage);
+  } = useCursorPagedList(fetchPage, GRID_PAGE_SIZE_OPTIONS);
 
   useEffect(() => {
     onHeaderChange({
@@ -151,7 +146,7 @@ const ApplicationsList: FC<ApplicationsViewProps> = ({
 
       {!isLoading && apps.length === 0 ? (
         <Box className="tw:relative tw:flex-1 tw:min-h-90">
-          <EmptyPlaceholder
+          <NoDataPlaceholder
             data-testid="no-applications"
             description={
               showDisabled

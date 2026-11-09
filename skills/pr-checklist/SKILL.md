@@ -1,13 +1,20 @@
 ---
 name: pr-checklist
-description: Use when opening or finalizing a GitHub PR for OpenMetadata. Walks through the repo PR template — linked issue, high-level design (for big PRs), unit/integration/Playwright tests + coverage, UI screen recording, and manual test steps — then drafts a fully-filled PR body and (optionally) creates the PR.
+description: Use when opening or finalizing a GitHub PR for OpenMetadata. Walks through the repo PR template — self-review against REVIEW.md, linked issue, high-level design (for big PRs), unit/integration/Playwright tests + coverage, UI screen recording, and manual test steps — then drafts a fully-filled PR body and (optionally) creates the PR.
 user-invocable: true
 argument-hint: "[branch name or PR number — defaults to current branch]"
 ---
 
 # PR Checklist for OpenMetadata
 
-Walks through `.github/pull_request_template.md` section by section, gathers evidence, and produces a fully-filled PR description before creating the PR.
+Self-reviews the branch against `REVIEW.md`, walks through `.github/pull_request_template.md` section by section, gathers evidence, and produces a fully-filled PR description before creating the PR.
+
+## Completion and shared evidence
+
+PR creation uses focused verification and records broader checks as pending; it does not imply
+merge readiness or ongoing CI monitoring. Reuse the implementation's applicable evidence.
+After creation, verify the saved body and branch once, report the PR link and outstanding checks,
+and finish. Do not rerun tests merely to publish their results (`--publish-results`).
 
 ## When to Use
 
@@ -48,10 +55,39 @@ Use the diff to classify the PR:
 - **Creating a PR for a UI feature or a feature task/subtask with UI impact** → Docker run + recording + GitHub upload required. Use task/issue intent and the diff, not just paths or labels. Standalone fixes, refactors, styling, localization, docs, tests and backend-only changes may explain N/A.
 - **Touches `openmetadata-service/`** + new/changed REST endpoints → backend integration tests required.
 - **Touches Java, a JSON schema, an index mapping, `bootstrap/sql/`, seed data or a pom** → the
-  impacted Java tests must pass locally (Step 3). PR CI runs only the unit tests.
+  focused Java checks must pass or have documented blockers (Step 3); list broader checks separately.
 - **Touches `ingestion/src/metadata/ingestion/source/`** → ingestion tests required.
 - **>5 files changed, or new feature / refactor / breaking change** → high-level design required.
 - **Single-file fix with obvious scope** → small change, design section can be `N/A`.
+
+### Step 1b — Self-review against `REVIEW.md`
+
+Every PR is reviewed against `REVIEW.md`. Hold the branch to it first, before Step 3, so the tests
+run on the code you will ship. It is not optional, including for small diffs
+(ADR:2026-10-16-prs-self-review-against-shared-review-bar).
+
+Before each pass, commit all intended changes, including fixes from the previous pass, so the
+branch diff includes them. Pin the reviewed commit with `git rev-parse HEAD`; leave unrelated work
+outside the commit.
+
+1. **Review with fresh eyes.** If your harness can start a subagent, start one that has none of your
+   session's context, and give it this prompt:
+
+   > Review commit `<reviewed SHA>` in `<absolute path of this checkout>`
+   > (`git diff origin/main...<reviewed SHA>`)
+   > against `REVIEW.md` at the repository root, as the reviewer that file describes. Follow its
+   > "How to review" section. Return the test map (one line per changed source file:
+   > `file → test`, or `file → none`), then the findings in its format, 🔴 first. Do not edit files.
+
+   With no subagent, run the same pass yourself: read `REVIEW.md`, then read the diff file by file
+   as if someone else had written it.
+2. **Act on every 🔴 and every `→ none` on changed behavior.** Fix the code and add the test that
+   fails without the fix, or write one line on why the finding does not apply. Nits are optional.
+3. **Commit fixes and repeat after any change**, until the committed diff returns no unanswered 🔴.
+   Any change to the intended files requires a new commit and pass; the final recorded SHA must
+   match the content reviewed.
+4. **Record it** for Step 6: the SHA you reviewed, what you fixed, and what you answered instead and
+   why.
 
 ### Step 2 — Confirm the linked issue
 
@@ -74,12 +110,13 @@ If no issue exists, stop and ask the user to open one before continuing.
 Run the relevant commands and capture output. Don't fabricate coverage numbers — run the tools.
 
 **Backend (Java) — unit and integration tests:** PR checks run only the Java unit tests. The
-integration tests run **only in the merge queue**, and JavaUIIT/search-it run nightly. So run the
-tests the diff impacts locally with the `java-affected-tests` skill:
+integration tests run **only in the merge queue**, and JavaUIIT/search-it run nightly. Use the
+`java-affected-tests` skill to select focused checks and report broader coverage separately:
 ```bash
-make java_affected                          # impacted unit tests + ITs, by bucket, with the commands
-make java_affected_run                      # run them; writes the summary and details to target/java-tests/
-make java_affected_run ARGS="--update-pr"   # once the PR exists: summary in the PR body, details in a comment
+make java_affected ARGS="--scope focused"     # changed tests + convention tests; add relevant regressions with a reason
+make java_affected_run ARGS="--scope focused" # run once, unless valid evidence already exists
+make java_affected ARGS="--publish-results"   # publish saved evidence without executing tests
+# For a task requesting merge readiness, run --scope full instead.
 ```
 Before the PR exists, paste `target/java-tests/local-pr-results.md` between the
 `local-java-test-results` markers under "Backend integration tests"; once it exists, post the
@@ -95,7 +132,8 @@ mvn jacoco:report -pl openmetadata-service
 
 **Ingestion (Python):** PR checks run only the unit tests (`py-tests` → "Unit Tests & Static
 Checks"); `tests/integration/` runs **only in the merge queue**. So if the diff touches `ingestion/`,
-you MUST run every unit and integration test that covers a changed file locally before opening the PR.
+select focused unit/integration checks for changed behavior and list broader checks as pending;
+merge-readiness tasks require the full affected set.
 An integration break you skip here first shows up as a merge-queue ejection.
 
 List those tests: the changed test files, plus every test that imports a changed `src/metadata` module:
@@ -113,16 +151,17 @@ changed=$(git diff --name-only --diff-filter=d origin/main...HEAD -- . | sed 's|
 This finds `from metadata.x.y import z`. It misses `from metadata.x import y`, so also add the
 connector's `tests/integration/<connector>/` directory when you change a connector.
 
-Run them. Integration tests need a local server (`./docker/run_local_docker.sh -m no-ui -i false`) and Docker, for testcontainers:
+For PR creation, run the focused checks selected for changed behavior and report the remainder
+as pending. For merge readiness, run the full affected list. Integration tests need a local server (`./docker/run_local_docker.sh -m no-ui -i false`) and Docker, for testcontainers:
 ```bash
 source ../env/bin/activate
 grep '^tests/unit/' /tmp/affected-tests.txt | xargs -r python -m pytest -n auto --cov=metadata --cov-report=term-missing
 grep '^tests/integration/' /tmp/affected-tests.txt | xargs -r python -m pytest
 ```
 Put the commands you ran and their pass/fail counts in the PR body, under "Unit tests" and
-"Ingestion integration tests". If the list is very large (you changed a shared module like
-`metadata/utils/`), run the full unit suite with `nox --no-venv -s unit-tests`. Then run the
-integration directories for the connectors you touched, and say in the PR body that you ran a subset.
+"Ingestion integration tests". For merge readiness, a shared-module change may require the full unit suite with
+`nox --no-venv -s unit-tests` and affected connector integration directories. For focused work,
+select regressions with a stated reason and report the broader list as pending.
 
 **Frontend unit tests (Jest):**
 ```bash
@@ -131,10 +170,11 @@ yarn test <ChangedComponent> --coverage
 ```
 
 **Playwright (UI E2E):** PR checks no longer run Playwright (the merge queue runs the full suite),
-so run the impact-mapped specs locally and record the results in the PR body:
+so inspect the impact-mapped specs and select relevant workflow regressions for PR creation.
+Record exact commands/results and list outstanding specs; merge readiness runs all impacted specs:
 ```bash
 make playwright_affected                          # specs selected from .github/playwright/impact-map.json
-make playwright_affected_run ARGS="--update-pr"   # run them; writes the results block into the PR body
+make playwright_affected_run ARGS="--update-pr"   # full impacted run for merge readiness
 ```
 Without `gh`, paste `playwright/output/local-pr-results.md` between the
 `local-playwright-results` markers under "Playwright (UI) tests".
@@ -191,6 +231,8 @@ For a verified local recording, include its evidence and a reference on its own 
 - **Link the counterpart PR.** When the change needs an openmetadata-collate (or
   openmetadata-nightly) PR too, link each PR from the other's description; each lists the tests run
   in its own repo.
+- **Record the self-review.** Check the template's self-review box, and under it write the SHA from
+  Step 1b and each 🔴 you answered instead of fixing, one line each with the reason.
 
 ### Step 7 — Create or update the PR
 
@@ -242,6 +284,7 @@ Verify the saved description and return the PR URL when done.
 Check these before publication. Refuse to open the PR if a required item is missing, except where
 the gate explicitly allows a draft with its remaining work stated:
 
+- [ ] The Step 1b self-review ran on the current HEAD, and every 🔴 it found is fixed or answered in the body
 - [ ] Linked issue exists and is referenced as `Fixes #N`, or the PR is a test fix labelled `skip-pr-checks`
 - [ ] PR title matches `Fixes <issue-number>: <short explanation>` (a test fix gets a descriptive title instead)
 - [ ] At least one "Type of change" box is checked
@@ -259,11 +302,13 @@ the gate explicitly allows a draft with its remaining work stated:
 
 ## Common Gaps to Watch For
 
+- Self-review skipped because "the diff is small", or run before the last code change
+
 - Schema change without `make generate` → models out of sync
 - Backend API change without integration test in `openmetadata-integration-tests/`
 - Integration tests "covered by CI": PR CI no longer runs them; the merge queue is their first run
 - New UI feature without Playwright spec
 - Bug fix without a regression test that fails before the fix
 - Large refactor with `N/A` in the design section — push back and ask for the design
-- Coverage % copy-pasted from another PR — re-run the tool
+- Coverage % copied from unrelated evidence — reuse applicable evidence or run the affected check
 - A default, limit, contract or ordering explained only in the PR description — the squash-merge drops the description, so the rule belongs in a `docs/decisions/` record

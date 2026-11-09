@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dataflow03 } from '@openmetadata/ui-core-components/icons';
+import { PlatformLineage } from '@openmetadata/ui-core-components/icons';
 import { ROUTES } from '../../../constants/constants';
 import { AppModule } from '../../platform/ai-shell/AppModule.types';
 
@@ -18,12 +18,19 @@ import { AppModule } from '../../platform/ai-shell/AppModule.types';
  * Lineage module — the AI sidebar's entry to the main Lineage page. The page
  * itself is served by the shell's page-table fallback, like Explore; this
  * module only surfaces the sidebar icon and points it at `/lineage`.
+ *
+ * `navOrder` sits after Context Center (80) and before AI Studio / SQL Studio
+ * (90+). Design wants Context Center visible by default: with Collate's extra
+ * modules the default sidebar fills its `APP_MODE_SIDEBAR_VISIBLE_ITEM_COUNT`
+ * (10) slots at Context Center, so Lineage overflows into "More" instead. A new
+ * module sorting below 80 pushes Context Center back into "More".
  */
 export const lineageModule: AppModule = {
   id: 'lineage',
-  navOrder: 12,
+  navOrder: 85,
   labelKey: 'label.lineage',
-  icon: Dataflow03,
+  icon: PlatformLineage,
+  activeIcon: PlatformLineage,
   prefix: ROUTES.PLATFORM_LINEAGE,
   defaultPath: ROUTES.PLATFORM_LINEAGE,
   routes: [],

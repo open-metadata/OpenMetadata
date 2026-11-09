@@ -149,6 +149,36 @@ describe('LayoutGridField', () => {
     );
   });
 
+  it('spans a row title across the whole grid so fields start on the next line', () => {
+    render(
+      <LayoutGridField
+        {...(baseProps as unknown as FieldProps)}
+        uiSchema={
+          {
+            'ui:options': {
+              rows: [
+                {
+                  title: 'Identity',
+                  columns: [{ name: 'firstName' }, { name: 'lastName' }],
+                },
+              ],
+            },
+          } as unknown as UiSchema
+        }
+      />
+    );
+
+    const row = screen.getByTestId('field-firstName').parentElement
+      ?.parentElement as HTMLElement;
+    const titleCell = row.firstElementChild as HTMLElement;
+
+    expect(row).toHaveClass('tw:md:grid-cols-2');
+    expect(titleCell).toHaveClass('tw:col-span-full');
+    expect(titleCell).toContainElement(
+      screen.getByRole('heading', { name: 'Identity' })
+    );
+  });
+
   it('skips fields without a schema or id entry', () => {
     render(
       <LayoutGridField

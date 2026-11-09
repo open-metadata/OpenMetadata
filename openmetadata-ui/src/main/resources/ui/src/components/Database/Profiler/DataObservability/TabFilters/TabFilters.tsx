@@ -10,21 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import {
+  Button,
+  ButtonUtility,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
+import {
+  ChevronDown,
+  Settings01,
+} from '@openmetadata/ui-core-components/icons';
 import { isEmpty, isEqual, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-settings-primery.svg';
 import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
 } from '../../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
-import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
 import { EntityTabs, EntityType } from '../../../../../enums/entity.enum';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
@@ -40,9 +45,8 @@ import profilerClassBase from '../../TableProfiler/ProfilerClassBase';
 import { useTableProfiler } from '../../TableProfiler/TableProfilerProvider';
 
 const TabFilters = () => {
-  const { isTourOpen } = useTourProvider();
   const location = useCustomLocation();
-  const { subTab: activeTab = profilerClassBase.getDefaultTabKey(isTourOpen) } =
+  const { subTab: activeTab = profilerClassBase.getDefaultTabKey() } =
     useParams<{ subTab: ProfilerTabPath }>();
 
   const { formType, activeColumnFqn, dateRangeObject } = useMemo(() => {
@@ -75,7 +79,7 @@ const TabFilters = () => {
       formType: TestLevel;
       dateRangeObject: DateRangeObject;
     };
-  }, [location.search, activeTab, isTourOpen]);
+  }, [location.search, activeTab]);
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -245,7 +249,7 @@ const TabFilters = () => {
               <Button
                 color="primary"
                 data-testid="profiler-add-table-test-btn"
-                iconTrailing={<ChevronDown className="tw:size-4" />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {t('label.add')}
               </Button>
@@ -268,15 +272,13 @@ const TabFilters = () => {
           </LimitWrapper>
         )}
         {editDataProfile && (
-          <Tooltip placement="top" title={t('label.setting-plural')}>
-            <Button
-              color="secondary"
-              data-testid="profiler-setting-btn"
-              iconLeading={<SettingIcon />}
-              size="lg"
-              onClick={onSettingButtonClick}
-            />
-          </Tooltip>
+          <ButtonUtility
+            data-testid="profiler-setting-btn"
+            icon={Settings01}
+            size="lg"
+            tooltip={t('label.setting-plural')}
+            onClick={onSettingButtonClick}
+          />
         )}
       </>
     );

@@ -21,7 +21,7 @@ import {
   Typography,
   type SelectItemType,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { Database01, Search } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty, startCase } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
@@ -35,7 +35,6 @@ import {
   SERVICE_TYPE_WITH_DISPLAY_NAME,
 } from '../../../../../constants/Services.constant';
 import { ServiceCategoryParam } from '../../../../../constants/ServiceType.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../../../enums/common.enum';
 import { ServiceCategory } from '../../../../../enums/service.enum';
 import { DatabaseServiceType } from '../../../../../generated/entity/data/database';
 import { MetadataServiceType } from '../../../../../generated/entity/services/metadataService';
@@ -45,7 +44,7 @@ import { errorMsg } from '../../../../../utils/EntityDisplayPureUtils';
 import { getServiceLogo } from '../../../../../utils/EntityDisplayUtils';
 import { getServiceCategoryLabel } from '../../../../../utils/ServicePureUtils';
 import ServiceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
-import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import { SelectServiceTypeProps } from './Steps.interface';
 
 const SelectServiceType = ({
@@ -150,6 +149,7 @@ const SelectServiceType = ({
 
       <div className="tw:mt-3.5">
         <Input
+          autoComplete="off"
           icon={Search}
           placeholder={t('label.search-for-a-connector')}
           size="md"
@@ -159,13 +159,13 @@ const SelectServiceType = ({
 
         {isEmpty(filteredConnectors) && (
           <div className="flex-center">
-            <ErrorPlaceHolder
-              className="border-none"
-              type={ERROR_PLACEHOLDER_TYPE.CUSTOM}>
-              <Typography>
-                {t('message.no-connectors-available-for-service')}
-              </Typography>
-            </ErrorPlaceHolder>
+            <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+              <NoDataPlaceholder
+                data-testid="no-data-placeholder"
+                description={t('message.no-connectors-available-for-service')}
+                icon={<Database01 />}
+              />
+            </div>
           </div>
         )}
 
@@ -184,6 +184,7 @@ const SelectServiceType = ({
               // spans every category in the `all` view so the category has to be part of the key.
               key={`${connectorCategory}-${type}`}
               size="sm"
+              variant="tile"
               onClick={() => handleServiceTypeClick(type, connectorCategory)}>
               <div className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:gap-3 tw:w-full">
                 <div

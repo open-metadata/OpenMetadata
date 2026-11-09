@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ReactNode } from 'react';
 
 let mockHashState: { tab: string | null; subPath: string; params: object } = {
@@ -19,18 +19,21 @@ let mockHashState: { tab: string | null; subPath: string; params: object } = {
   subPath: '',
   params: {},
 };
+const mockSetHash = jest.fn();
 jest.mock('hooks/useSettingsHash', () => ({
   useSettingsHash: () => ({
     state: mockHashState,
-    setHash: jest.fn(),
+    setHash: mockSetHash,
     clearHash: jest.fn(),
     updateParams: jest.fn(),
   }),
 }));
 
 const mockGetUserByName = jest.fn();
+const mockGetLoggedInUser = jest.fn();
 
 jest.mock('rest/userAPI', () => ({
+  getLoggedInUser: (...a: unknown[]) => mockGetLoggedInUser(...a),
   getUserByName: (...a: unknown[]) => mockGetUserByName(...a),
   updateUserDetail: jest.fn(),
 }));
@@ -59,13 +62,22 @@ jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   default: () => <div data-testid="avatar" />,
 }));
 
-// Content leaf components mounted by the nav registry. ProfileDetailsPanel
-// echoes the resolved user's display name so tests can assert which user loaded
-// (the header title is static and never shows the name).
-jest.mock('./ProfileDetailsPanel', () => ({
+// Content leaf components mounted by the nav registry. The profile tab echoes
+// the resolved user's display name so tests can assert which user loaded.
+jest.mock('./ProfileTabPanel', () => ({
   __esModule: true,
-  default: ({ userData }: { userData?: { displayName?: string } }) => (
-    <div data-testid="content-profile">{userData?.displayName}</div>
+  default: ({
+    userData,
+    loadError,
+  }: {
+    userData?: { displayName?: string };
+    loadError?: boolean;
+  }) => (
+    <div
+      data-load-error={String(Boolean(loadError))}
+      data-testid="content-profile">
+      {userData?.displayName}
+    </div>
   ),
 }));
 jest.mock('./components/AccessTokenPanel', () => ({
@@ -76,6 +88,24 @@ jest.mock('./tabs/PermissionsTab', () => ({
   __esModule: true,
   default: () => <div data-testid="content-permissions" />,
 }));
+jest.mock('./tabs/members/MembersPanel', () => ({
+  __esModule: true,
+  default: () => <div data-testid="content-members" />,
+}));
+jest.mock('components/common/EmptyPlaceholder/PermissionPlaceholder', () => ({
+  __esModule: true,
+  default: () => <div data-testid="permission-error-placeholder" />,
+}));
+
+let mockPermissions: Record<string, unknown> = {};
+let mockIsPermissionsLoading = false;
+jest.mock('context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    permissions: mockPermissions,
+    isPermissionsLoading: mockIsPermissionsLoading,
+  }),
+}));
+
 jest.mock('./tabs/notification/NotificationPanel', () => ({
   __esModule: true,
   default: () => <div data-testid="content-notification" />,
@@ -83,13 +113,17 @@ jest.mock('./tabs/notification/NotificationPanel', () => ({
 // "My Connections" is no longer built in — a plugin contributes it through the
 // `profile.tabs` extension point, so the page is exercised with one such tab.
 const mockGetContributions = jest.fn();
+// The provider hands out a new `getContributions` each time plugins register
+// (its `contributionsVersion` bump); tests replace this to simulate that.
+let mockApplicationsProvider = {
+  getContributions: (id: string) => mockGetContributions(id),
+  contributionsReady: true,
+};
 
 jest.mock(
   '../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider',
   () => ({
-    useApplicationsProvider: () => ({
-      extensionRegistry: { getContributions: mockGetContributions },
-    }),
+    useApplicationsProvider: () => mockApplicationsProvider,
   })
 );
 
@@ -139,8 +173,15 @@ describe('ProfilePage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockHashState = { tab: null, subPath: '', params: {} };
+    mockPermissions = {};
+    mockIsPermissionsLoading = false;
     mockGetUserByName.mockResolvedValue({ id: 'u1', name: 'harsh' });
+    mockGetLoggedInUser.mockResolvedValue({ id: 'u1', name: 'harsh' });
     mockGetContributions.mockReturnValue([myConnectionsContribution]);
+    mockApplicationsProvider = {
+      getContributions: (id: string) => mockGetContributions(id),
+      contributionsReady: true,
+    };
   });
 
   it('renders the built-in and contributed nav items with the default profile content', async () => {
@@ -184,30 +225,17 @@ describe('ProfilePage', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('refreshes user data on mount', async () => {
+  it('refreshes your own data from the logged-in user endpoint, which never masks your email', async () => {
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    expect(mockGetUserByName).toHaveBeenCalledWith('harsh', expect.any(Object));
+    expect(mockGetLoggedInUser).toHaveBeenCalled();
+    expect(mockGetUserByName).not.toHaveBeenCalled();
   });
 
-  it('shows an empty placeholder (no loader) when the profile username is unknown', async () => {
-    mockHashState = { tab: 'profile', subPath: 'does-not-exist', params: {} };
-    mockGetUserByName.mockRejectedValue({ response: { status: 404 } });
-
-    await act(async () => {
-      render(<ProfilePage />);
-    });
-
-    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(screen.getByText('label.no-entity-found')).toBeInTheDocument();
-    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
-  });
-
-  it('shows a toast (not the empty placeholder) on a non-404 profile fetch error', async () => {
-    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
-    mockGetUserByName.mockRejectedValue({ response: { status: 500 } });
+  it('shows a toast on a non-404 profile fetch error', async () => {
+    mockGetLoggedInUser.mockRejectedValue({ response: { status: 500 } });
 
     await act(async () => {
       render(<ProfilePage />);
@@ -215,68 +243,63 @@ describe('ProfilePage', () => {
 
     expect(mockShowErrorToast).toHaveBeenCalled();
     expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
-  });
-
-  it('ignores a stale profile response when the target changes mid-flight', async () => {
-    let resolveBob!: (value: unknown) => void;
-    const bobPromise = new Promise((resolve) => {
-      resolveBob = resolve;
-    });
-    mockGetUserByName.mockImplementation((name: string) =>
-      name === 'bob'
-        ? bobPromise
-        : Promise.resolve({
-            id: 'u-alice',
-            name: 'alice',
-            displayName: 'Alice',
-          })
+    // The panel gets the failure, so it won't edit the partial store copy.
+    expect(screen.getByTestId('content-profile')).toHaveAttribute(
+      'data-load-error',
+      'true'
     );
-
-    mockHashState = { tab: 'profile', subPath: 'bob', params: {} };
-    const { rerender } = render(<ProfilePage />);
-
-    // Switch to alice before bob's (slower) request resolves.
-    mockHashState = { tab: 'profile', subPath: 'alice', params: {} };
-    await act(async () => {
-      rerender(<ProfilePage />);
-    });
-
-    // Now let bob resolve late — it must be discarded as stale.
-    await act(async () => {
-      resolveBob({ id: 'u-bob', name: 'bob', displayName: 'Bob' });
-      await bobPromise;
-    });
-
-    // Alice (the later target) wins; the stale Bob response is discarded.
-    const content = screen.getByTestId('content-profile');
-
-    expect(content).toHaveTextContent('Alice');
-    expect(content).not.toHaveTextContent('Bob');
   });
 
-  it('always shows the static "Profile" header, never the user name, when viewing another user', async () => {
+  it('loads the signed-in user for the nav even when the hash names another user', async () => {
     mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
-    mockGetUserByName.mockResolvedValue({
-      id: 'u2',
-      name: 'jane',
-      displayName: 'Jane Doe',
-    });
 
     await act(async () => {
       render(<ProfilePage />);
     });
 
-    const header = screen.getByTestId('profile-content-header');
+    expect(mockGetLoggedInUser).toHaveBeenCalledTimes(1);
+    expect(mockGetUserByName).not.toHaveBeenCalled();
+  });
 
-    // Header title + breadcrumb stay the static nav label; the user name never
-    // appears there.
-    expect(within(header).getAllByText('label.profile').length).toBeGreaterThan(
-      0
+  it('passes the username and logged-in flag to contributed tabs', async () => {
+    const condition = jest.fn().mockReturnValue(true);
+    mockGetContributions.mockReturnValue([
+      { ...myConnectionsContribution, condition },
+    ]);
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(condition).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isLoggedInUser: true, username: 'harsh' })
     );
-    expect(within(header).queryByText('Jane Doe')).not.toBeInTheDocument();
+  });
 
-    // ...but the other user's data still loaded into the content panel.
-    expect(screen.getByTestId('content-profile')).toHaveTextContent('Jane Doe');
+  it('returns to your own profile when Profile is clicked on another user', async () => {
+    mockHashState = { tab: 'profile', subPath: 'jane', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('profile-nav-profile'));
+    });
+
+    expect(mockSetHash).toHaveBeenCalledWith('profile');
+  });
+
+  it('ignores a click on Profile while already on your own profile', async () => {
+    mockHashState = { tab: 'profile', subPath: 'harsh', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    fireEvent.click(screen.getByTestId('profile-nav-profile'));
+
+    expect(mockSetHash).not.toHaveBeenCalled();
   });
 
   it('swaps the content panel when a nav item is clicked', async () => {
@@ -290,5 +313,154 @@ describe('ProfilePage', () => {
 
     expect(screen.getByTestId('content-permissions')).toBeInTheDocument();
     expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
+  });
+
+  // Your entry in a user detail (Members, or #profile/<you>/<tab>) saves through
+  // its own copy; coming back to Profile must show what was saved there.
+  it('re-reads your profile when you come back to it, without a reload state', async () => {
+    mockGetLoggedInUser.mockResolvedValueOnce({
+      id: 'u1',
+      name: 'harsh',
+      displayName: 'Before',
+    });
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('content-profile')).toHaveTextContent('Before');
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('profile-nav-permissions'));
+    });
+    mockGetLoggedInUser.mockResolvedValueOnce({
+      id: 'u1',
+      name: 'harsh',
+      displayName: 'After',
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('profile-nav-profile'));
+    });
+
+    expect(mockGetLoggedInUser).toHaveBeenCalledTimes(2);
+    expect(screen.getByTestId('content-profile')).toHaveTextContent('After');
+  });
+
+  // A settings link to a role opens `#access-control/roles/<fqn>`; Access
+  // Control is admin-only, so a non-admin gets no-access even with role view.
+  it('shows no-access, not the profile, for a tab the user cannot see', async () => {
+    mockPermissions = { role: { ViewAll: true } };
+    mockHashState = {
+      tab: 'access-control',
+      subPath: 'roles/DataSteward',
+      params: {},
+    };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('content-profile')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('profile-nav-access-control')
+    ).not.toBeInTheDocument();
+  });
+
+  // User links open `#members/user/<name>`; a viewer who can see teams but not
+  // users is sent on to the read-only `#profile/<name>` detail.
+  it.each([
+    [{ team: { ViewAll: true } }, true],
+    [{ user: { ViewAll: true } }, false],
+  ])(
+    'redirects a Members user link for permissions %j: %s',
+    async (permissions, redirects) => {
+      mockPermissions = permissions;
+      mockHashState = {
+        tab: 'members',
+        subPath: 'user/alice/tasks',
+        params: {},
+      };
+
+      await act(async () => {
+        render(<ProfilePage />);
+      });
+
+      if (redirects) {
+        expect(mockSetHash).toHaveBeenCalledWith('profile', 'alice/tasks');
+      } else {
+        expect(mockSetHash).not.toHaveBeenCalled();
+        expect(screen.getByTestId('content-members')).toBeInTheDocument();
+      }
+    }
+  );
+
+  it('waits on the loader while permissions are still loading', async () => {
+    mockIsPermissionsLoading = true;
+    mockHashState = { tab: 'members', subPath: '', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+  });
+
+  // PermissionProvider finishes loading even when its request fails, leaving
+  // the map empty: that is a loaded result, so a non-admin opening `#members`
+  // gets no-access instead of a loader that never finishes.
+  it('shows no-access, not the loader, once a failed permissions load leaves them empty', async () => {
+    mockHashState = { tab: 'members', subPath: '', params: {} };
+
+    await act(async () => {
+      render(<ProfilePage />);
+    });
+
+    expect(
+      screen.getByTestId('permission-error-placeholder')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+  });
+
+  // A refresh on `#my-connections` (or Collate's `#billing/...`) resolves the
+  // hash before plugins have registered their tabs.
+  it('shows the loader, not no-access, until a deep-linked contributed tab is registered', async () => {
+    mockPermissions = { table: { ViewBasic: true } };
+    mockHashState = { tab: 'my-connections', subPath: '', params: {} };
+    mockGetContributions.mockReturnValue([]);
+    mockApplicationsProvider = {
+      getContributions: (id: string) => mockGetContributions(id),
+      contributionsReady: false,
+    };
+    const { rerender } = render(<ProfilePage />);
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('permission-error-placeholder')
+    ).not.toBeInTheDocument();
+
+    // Plugins register: the provider bumps its version, so `getContributions`
+    // gets a new identity and the flag turns ready.
+    mockGetContributions.mockReturnValue([myConnectionsContribution]);
+    mockApplicationsProvider = {
+      getContributions: (id: string) => mockGetContributions(id),
+      contributionsReady: true,
+    };
+    await act(async () => {
+      rerender(<ProfilePage />);
+    });
+
+    expect(screen.getByTestId('content-my-connections')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('profile-nav-my-connections')
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
   });
 });

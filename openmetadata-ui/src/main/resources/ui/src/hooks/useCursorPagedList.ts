@@ -13,9 +13,12 @@
 
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { PAGE_SIZE_BASE } from '../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
 import { Paging } from '../generated/type/paging';
+import { walkToAfterCursor } from '../utils/CursorPaging.utils';
+import { shouldShowPager } from '../utils/PaginationUtils';
 import { showErrorToast } from '../utils/ToastUtils';
+import { usePageSizeState } from './paging/usePageSizeState';
 
 export interface CursorPageParams {
   after?: string;
@@ -23,34 +26,62 @@ export interface CursorPageParams {
   limit: number;
 }
 
+// Cursors are kept for this many pages at most; past it a jump walks again
+// (ADR:2026-10-16-cursor-paged-lists-jump-by-walking).
+const MAX_CACHED_PAGES = 100;
+
+const rememberPaging = (
+  cache: Map<number, Paging>,
+  pageNumber: number,
+  pagePaging: Paging
+) => {
+  if (cache.size < MAX_CACHED_PAGES) {
+    cache.set(pageNumber, pagePaging);
+  }
+};
+
 /**
- * Page-number pagination over a cursor-paged list endpoint. Moving forward
- * follows `after`, moving back follows `before`, so (like the other settings
- * lists) only adjacent pages are reachable by cursor. A new `fetchPage`
- * identity — e.g. a changed filter — restarts from page 1.
+ * Page-number pagination over a cursor-paged list endpoint. Each loaded page's
+ * paging is cached, so any page is reachable: forward uses page N-1's `after`
+ * (fetching unvisited pages in between first), back uses page N+1's `before`,
+ * and page 1 needs no cursor. A new `fetchPage` identity — e.g. a changed
+ * filter — clears the cache and restarts from page 1.
  */
 export const useCursorPagedList = <T>(
   fetchPage: (params: CursorPageParams) => Promise<{
     data: T[];
     paging: Paging;
-  }>
+  }>,
+  pageSizeOptions: number[] = LIST_PAGE_SIZE_OPTIONS
 ) => {
   const [items, setItems] = useState<T[]>([]);
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [pageSize, onPageSizeChange] = usePageSizeState(pageSizeOptions);
   const [isLoading, setIsLoading] = useState(true);
   // Only the latest request may write state: a slow earlier response (e.g. the
   // list before a filter flipped) must not overwrite the newer one.
   const latestRequest = useRef(0);
+  // The paging each loaded page returned, so any page can be reached later:
+  // page k's `after` opens page k+1 and its `before` opens page k-1.
+  const pagingByPage = useRef(new Map<number, Paging>());
+  // Bumped when the list restarts, so a walk or response that began against
+  // the previous list never writes its cursors into the new cache.
+  const listVersion = useRef(0);
+  // Bumped on every page change, so a slow jump never overrides a later one.
+  const latestNavigation = useRef(0);
 
   const load = useCallback(
-    async (cursor?: Pick<CursorPageParams, 'after' | 'before'>) => {
+    async (
+      cursor?: Pick<CursorPageParams, 'after' | 'before'>,
+      targetPage = 1
+    ) => {
       const requestId = ++latestRequest.current;
       setIsLoading(true);
       try {
         const response = await fetchPage({ ...cursor, limit: pageSize });
         if (requestId === latestRequest.current) {
+          rememberPaging(pagingByPage.current, targetPage, response.paging);
           setItems(response.data);
           setPaging(response.paging);
         }
@@ -68,14 +99,67 @@ export const useCursorPagedList = <T>(
   );
 
   useEffect(() => {
+    listVersion.current++;
+    pagingByPage.current.clear();
     setPage(1);
     void load();
   }, [load]);
 
-  const onPageChange = (nextPage: number) => {
-    const cursorType = nextPage > page ? 'after' : 'before';
-    setPage(nextPage);
-    void load({ [cursorType]: paging[cursorType] });
+  const onPageChange = async (nextPage: number) => {
+    // Each page change supersedes any earlier one still walking.
+    const navigation = ++latestNavigation.current;
+    if (nextPage === 1) {
+      setPage(1);
+
+      return load(undefined, 1);
+    }
+    const before =
+      nextPage < page
+        ? pagingByPage.current.get(nextPage + 1)?.before
+        : undefined;
+    if (before) {
+      setPage(nextPage);
+
+      return load({ before }, nextPage);
+    }
+    const version = listVersion.current;
+    const isStale = () =>
+      navigation !== latestNavigation.current ||
+      version !== listVersion.current;
+    setIsLoading(true);
+    try {
+      const after = await walkToAfterCursor({
+        target: nextPage,
+        pagingFor: (pageNumber) => pagingByPage.current.get(pageNumber),
+        remember: (pageNumber, pagePaging) =>
+          rememberPaging(pagingByPage.current, pageNumber, pagePaging),
+        fetchPaging: async (cursor) =>
+          (
+            await fetchPage({ after: cursor, limit: pageSize })
+          ).paging,
+        isStale,
+      });
+      if (isStale()) {
+        return undefined;
+      }
+      // No cursor: stay put rather than show the wrong rows under another
+      // page number.
+      if (!after) {
+        setIsLoading(false);
+
+        return undefined;
+      }
+      setPage(nextPage);
+
+      return load({ after }, nextPage);
+    } catch (error) {
+      if (!isStale()) {
+        setIsLoading(false);
+        showErrorToast(error as AxiosError);
+      }
+
+      return undefined;
+    }
   };
 
   return {
@@ -84,9 +168,8 @@ export const useCursorPagedList = <T>(
     page,
     pageSize,
     totalPages: Math.ceil((paging.total ?? 0) / pageSize),
-    showPagination:
-      Boolean(paging.after || paging.before) || paging.total > PAGE_SIZE_BASE,
+    showPagination: shouldShowPager(items),
     onPageChange,
-    onPageSizeChange: setPageSize,
+    onPageSizeChange,
   };
 };

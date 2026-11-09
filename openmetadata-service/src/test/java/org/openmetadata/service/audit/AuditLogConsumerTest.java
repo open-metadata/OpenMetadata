@@ -17,7 +17,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
@@ -27,6 +34,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -223,6 +231,38 @@ class AuditLogConsumerTest {
     assertEquals(
         3, contiguous, "the previously-missing offset 11 is now part of the contiguous run");
     assertEquals(13L, afterPass2.offset(), "offset 11 is consumed, not permanently skipped");
+  }
+
+  // A read cut short by its byte budget, one event at a time, is not the end of the backlog.
+  @Test
+  void oneRunKeepsReadingWhileReadsStopAtTheirByteBudget() {
+    long latest = 5;
+    String[] storedOffset = {null};
+    when(mockChangeEventDAO.getLatestOffset()).thenReturn(latest);
+    when(mockChangeEventDAO.listWithOffset(anyLong(), anyLong()))
+        .thenAnswer(
+            read -> {
+              long after = read.getArgument(1);
+              return after < latest ? recordsAtOffsets(after + 1) : List.of();
+            });
+    when(mockEventSubscriptionDAO.getSubscriberExtension(anyString(), anyString()))
+        .thenAnswer(unused -> storedOffset[0]);
+    doAnswer(
+            save -> {
+              storedOffset[0] = save.getArgument(3);
+              return null;
+            })
+        .when(mockEventSubscriptionDAO)
+        .upsertSubscriberExtension(anyString(), anyString(), anyString(), anyString());
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity.when(Entity::getCollectionDAO).thenReturn(mockCollectionDAO);
+      entity.when(Entity::getAuditLogRepository).thenReturn(mockAuditLogRepository);
+
+      new AuditLogConsumer(null).execute(null);
+    }
+
+    verify(mockAuditLogRepository, times((int) latest)).write(any(ChangeEvent.class));
   }
 
   @Test

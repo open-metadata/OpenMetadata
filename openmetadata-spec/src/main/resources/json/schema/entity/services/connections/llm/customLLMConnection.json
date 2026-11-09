@@ -42,7 +42,7 @@
       "title": "Custom Headers",
       "description": "Additional custom headers for API requests",
       "type": "object",
-      "additionalProperties": {"type": "string"}
+      "additionalProperties": {"type": "string", "format": "password"}
     },
     "timeout": {
       "title": "Timeout",

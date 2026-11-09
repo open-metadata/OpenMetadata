@@ -21,6 +21,7 @@ import {
   getAuthConfig,
   getUserManagerConfig,
   isRefreshableAuthError,
+  isServerDrivenLogin,
   validateAuthFieldsDetailed,
 } from './AuthProvider.util';
 
@@ -213,5 +214,29 @@ describe('validateAuthFieldsDetailed — providerName is required only where the
 
     expect(result.valid).toBe(false);
     expect(result.errors.map((error) => error.field)).toEqual(['providerName']);
+  });
+});
+
+describe('isServerDrivenLogin', () => {
+  it('is true for a confidential client, whatever the provider', () => {
+    expect(
+      isServerDrivenLogin(ClientType.Confidential, AuthProvider.Google)
+    ).toBe(true);
+  });
+
+  it('is true for SAML, which the server always completes', () => {
+    expect(isServerDrivenLogin(ClientType.Public, AuthProvider.Saml)).toBe(
+      true
+    );
+  });
+
+  it('is false for a public OIDC client, where the browser holds the provider claims', () => {
+    expect(isServerDrivenLogin(ClientType.Public, AuthProvider.Google)).toBe(
+      false
+    );
+  });
+
+  it('treats a missing client type as public', () => {
+    expect(isServerDrivenLogin(undefined, AuthProvider.Okta)).toBe(false);
   });
 });

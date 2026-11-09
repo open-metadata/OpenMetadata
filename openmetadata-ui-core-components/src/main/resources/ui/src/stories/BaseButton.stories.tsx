@@ -13,6 +13,7 @@
 import { ChevronDown, Edit01, Plus, Trash01, UploadCloud02 } from '../icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { Button } from '../components/base/buttons/button';
+import { ButtonUtility } from '../components/base/buttons/button-utility';
 
 const meta = {
   title: 'Components/BaseButton',
@@ -120,10 +121,15 @@ export const IconOnly: StoryObj = {
   parameters: { theme: 'both' },
   render: () => (
     <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-      <Button color="primary" iconLeading={Plus} size="xs" />
-      <Button color="primary" iconLeading={Plus} size="sm" />
-      <Button color="secondary" iconLeading={Edit01} size="md" />
-      <Button color="tertiary" iconLeading={Trash01} size="lg" />
+      <ButtonUtility icon={Plus} size="xs" tooltip="Add" />
+      <ButtonUtility icon={Plus} size="sm" tooltip="Add" />
+      <ButtonUtility icon={Edit01} size="md" tooltip="Edit" />
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Trash01}
+        size="lg"
+        tooltip="Delete"
+      />
     </div>
   ),
 };
@@ -165,6 +171,7 @@ export const LinkColors: StoryObj = {
   render: () => (
     <div style={{ display: 'flex', gap: 16 }}>
       <Button color="link-gray">Link Gray</Button>
+      <Button color="link-primary">Link Primary</Button>
       <Button color="link-color">Link Color</Button>
       <Button color="link-destructive">Link Destructive</Button>
     </div>
@@ -226,11 +233,11 @@ export const AsLink: StoryObj = {
           target="_blank">
           With Icon
         </Button>
-        <Button
-          color="primary"
+        <ButtonUtility
           href="https://open-metadata.org"
-          iconLeading={Plus}
+          icon={Plus}
           target="_blank"
+          tooltip="Open link"
         />
       </div>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

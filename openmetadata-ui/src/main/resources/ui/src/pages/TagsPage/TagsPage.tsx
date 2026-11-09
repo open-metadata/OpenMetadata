@@ -15,7 +15,6 @@ import {
   Badge,
   Box,
   Button,
-  EmptyPlaceholder,
   NavList,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -32,11 +31,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
-import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import FeaturesPlaceholder from '../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -248,6 +247,9 @@ const TagsPage = () => {
           })
         );
       }
+
+      // Rethrow so the form drawer stays open with the user's input.
+      throw error;
     }
   };
 
@@ -323,7 +325,9 @@ const TagsPage = () => {
     }
   }, [deleteTags.data?.id, handleDeleteTag]);
 
-  const handleUpdateClassification = useCallback(
+  // Rejects on failure so the edit drawer can stay open; inline edits use the
+  // non-throwing handleUpdateClassification below.
+  const updateClassification = useCallback(
     async (updatedClassification: Classification) => {
       if (!isUndefined(currentClassification)) {
         const patchData = compare(currentClassification, updatedClassification);
@@ -376,10 +380,23 @@ const TagsPage = () => {
               })
             );
           }
+
+          throw error;
         }
       }
     },
-    [currentClassification, history]
+    [currentClassification, navigate]
+  );
+
+  const handleUpdateClassification = useCallback(
+    async (updatedClassification: Classification) => {
+      try {
+        await updateClassification(updatedClassification);
+      } catch {
+        // Error toast already shown by updateClassification.
+      }
+    },
+    [updateClassification]
   );
 
   const handleCreatePrimaryTag = async (data: CreateTag) => {
@@ -424,6 +441,8 @@ const TagsPage = () => {
           })
         );
       }
+
+      throw error;
     }
   };
 
@@ -452,6 +471,8 @@ const TagsPage = () => {
             })
           );
         }
+
+        throw error;
       }
     }
   };
@@ -673,7 +694,7 @@ const TagsPage = () => {
       setIsClassificationFormLoading(true);
       try {
         if (editClassification) {
-          await handleUpdateClassification({
+          await updateClassification({
             ...editClassification,
             ...formData,
           } as Classification);
@@ -687,7 +708,7 @@ const TagsPage = () => {
     },
     [
       editClassification,
-      handleUpdateClassification,
+      updateClassification,
       handleCreateClassification,
       handleClassificationDrawerClose,
     ]
@@ -743,10 +764,10 @@ const TagsPage = () => {
             <div className="p-x-sm m-b-sm">
               {createClassificationPermission && (
                 <Button
-                  className="tw:w-full"
+                  className="tw:w-full tw:*:data-icon:text-utility-brand-600"
                   color="secondary"
                   data-testid="add-classification"
-                  iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
+                  iconLeading={Plus}
                   size="sm"
                   onClick={() => {
                     classificationForm.reset();
@@ -792,7 +813,7 @@ const TagsPage = () => {
 
   const classificationEmptyState = (
     <Box className="content-height-with-resizable-panel tw:relative tw:rounded-[10px]">
-      <EmptyPlaceholder
+      <FeaturesPlaceholder
         actions={
           createClassificationPermission
             ? [
@@ -828,7 +849,6 @@ const TagsPage = () => {
           },
         ]}
         title={t('message.classification-empty-state-title')}
-        variant="features"
       />
     </Box>
   );
@@ -838,11 +858,9 @@ const TagsPage = () => {
   }
   if (error) {
     return (
-      <ErrorPlaceHolder>
-        <Typography as="p" className="tw:text-center tw:m-auto">
-          {error}
-        </Typography>
-      </ErrorPlaceHolder>
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
+        <NoDataPlaceholder data-testid="no-data-placeholder" title={error} />
+      </div>
     );
   }
 

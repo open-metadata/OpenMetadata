@@ -223,7 +223,7 @@ describe('KnowledgeGraph', () => {
           }
     );
     await openGraph();
-    await press(screen.getByRole('radio', { name: 'label.ontology' }));
+    await press(screen.getByRole('tab', { name: 'label.ontology' }));
     await screen.findByTestId('edge-Customer-Places-Order');
 
     expect(
@@ -238,7 +238,7 @@ describe('KnowledgeGraph', () => {
       { signal: expect.any(AbortSignal) }
     );
 
-    await press(screen.getByRole('radio', { name: 'label.knowledge-graph' }));
+    await press(screen.getByRole('tab', { name: 'label.knowledge-graph' }));
     await screen.findByTestId('edge-Orders-Downstream-Customers');
   });
 

@@ -360,6 +360,6 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{buildEntityUrl }}")
-                    .withExample("{{buildEntityUrl entity}}")));
+                    .withExample("{{buildEntityUrl event.entityType entity}}")));
   }
 }

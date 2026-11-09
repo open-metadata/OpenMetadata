@@ -10,12 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import {
-  Box,
-  Card,
-  EmptyPlaceholder,
-  Typography,
-} from '@openmetadata/ui-core-components';
+  CheckCircle02,
+  ClockRewind,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import {
@@ -28,8 +27,6 @@ import {
 } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CompletedIcon } from '../../../../../assets/svg/ic-check-circle-new.svg';
-import { ReactComponent as PendingIcon } from '../../../../../assets/svg/pending-badge-1.svg';
 import {
   EntityStatus,
   GlossaryTerm,
@@ -46,6 +43,7 @@ import {
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
 import './workflow-history.less';
@@ -78,7 +76,9 @@ const WorkflowHistoryContainer = ({
       {children}
     </Card>
   ) : (
-    <div className={className} data-testid={dataTestId}>
+    <div
+      className={classNames('tw:flex tw:min-h-0 tw:flex-col', className)}
+      data-testid={dataTestId}>
       {children}
     </div>
   );
@@ -164,7 +164,7 @@ const WorkflowHistory = memo(
         case WorkflowStatus.Finished:
           return (
             <div className="completed-icon bedge-icon flex-center">
-              <CompletedIcon data-testid="completed-icon" width={10} />
+              <CheckCircle02 data-testid="completed-icon" size={10} />
             </div>
           );
         case WorkflowStatus.Running:
@@ -173,7 +173,7 @@ const WorkflowHistory = memo(
         default:
           return (
             <div className="pending-icon bedge-icon flex-center">
-              <PendingIcon data-testid="pending-icon" width={12} />
+              <ClockRewind data-testid="pending-icon" size={12} />
             </div>
           );
       }
@@ -231,17 +231,23 @@ const WorkflowHistory = memo(
       if (isEmpty(workflowHistory)) {
         return (
           <WorkflowHistoryContainer
-            className="workflow-history-widget"
+            data-testid="workflow-history-empty"
             isWidget={isWidget}>
-            <div className="tw:relative tw:min-h-24">
-              <EmptyPlaceholder
-                title={t('label.no-entity-available', {
+            <Box direction="col" gap={1}>
+              <Typography
+                as="span"
+                color="quaternary"
+                size="text-sm"
+                weight="semibold">
+                {workflowHistoryLabel}
+              </Typography>
+              <NoDataPlaceholder
+                size="sm"
+                title={t('label.no-entity-found', {
                   entity: workflowHistoryLabel,
                 })}
-                variant="blank"
-                width="100%"
               />
-            </div>
+            </Box>
           </WorkflowHistoryContainer>
         );
       }
@@ -292,7 +298,10 @@ const WorkflowHistory = memo(
             </div>
           </AriaButton>
           {!isCollapsed && (
-            <div className="workflow-timeline flex flex-col">
+            <div
+              className={classNames('workflow-timeline flex flex-col', {
+                'tw:min-h-0 tw:overflow-y-auto': !isWidget,
+              })}>
               {workflowHistory.map(renderTimelineItem)}
             </div>
           )}

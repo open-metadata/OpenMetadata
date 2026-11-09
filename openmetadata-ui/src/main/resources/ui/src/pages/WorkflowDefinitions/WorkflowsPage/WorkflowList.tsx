@@ -30,6 +30,8 @@ export type WorkflowListItem = SettingMenuItem & WorkflowDefinition;
 
 interface WorkflowListProps {
   workflows: WorkflowListItem[];
+  /** Count of workflows across all pages, shown when no tab filters the list. */
+  total: number;
   onWorkflowClick: (key: string) => void;
 }
 
@@ -81,7 +83,11 @@ const WorkflowListHeader = ({
   );
 };
 
-const WorkflowList = ({ workflows, onWorkflowClick }: WorkflowListProps) => {
+const WorkflowList = ({
+  workflows,
+  total,
+  onWorkflowClick,
+}: WorkflowListProps) => {
   const tabs = useMemo(() => workflowClassBase.getWorkflowsPageTabs(), []);
   const [activeTabId, setActiveTabId] = useState(tabs[0]?.id);
   const includes = tabs.find((tab) => tab.id === activeTabId)?.includes;
@@ -92,7 +98,8 @@ const WorkflowList = ({ workflows, onWorkflowClick }: WorkflowListProps) => {
       {tabs.length ? (
         <WorkflowListHeader
           activeTabId={activeTabId}
-          count={visibleWorkflows.length}
+          // A tab filters only the loaded page, so its count cannot use the server total.
+          count={includes ? visibleWorkflows.length : total}
           tabs={tabs}
           onTabChange={setActiveTabId}
         />

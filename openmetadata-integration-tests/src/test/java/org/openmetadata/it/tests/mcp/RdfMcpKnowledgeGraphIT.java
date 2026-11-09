@@ -47,6 +47,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
@@ -68,6 +69,7 @@ import org.openmetadata.schema.type.EntitiesEdge;
 import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.fluent.Tables;
 import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.network.HttpClient;
@@ -292,10 +294,16 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
   void queryFormsOutsideTheNonAdminProfileAreRejectedWithTheirCode() throws Exception {
     final Map<String, String> expectedFragmentByQuery =
         Map.of(
-            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o } LIMIT 1", "QUERY_FORM_NOT_ALLOWED",
-            "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 1", "GRAPH_SELECTION_NOT_ALLOWED",
+            "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o } LIMIT 1",
+            "QUERY_FORM_NOT_ALLOWED",
+            "SELECT * WHERE { GRAPH ?g { ?s ?p ?o } } LIMIT 1",
+            "GRAPH_SELECTION_NOT_ALLOWED",
             "SELECT * WHERE { SERVICE <https://x.example/sparql> { ?s ?p ?o } }",
-                "FEDERATION_NOT_ALLOWED");
+            "FEDERATION_NOT_ALLOWED",
+            "SELECT * WHERE { ?s ?p ?o EXISTS { SERVICE <"
+                + FusekiTestImage.SELF_PING_URL
+                + "> { ?a ?b ?c } } } LIMIT 1",
+            "FEDERATION_NOT_ALLOWED");
 
     for (final Map.Entry<String, String> rejected : expectedFragmentByQuery.entrySet()) {
       final ToolOutcome outcome =
@@ -696,8 +704,7 @@ public class RdfMcpKnowledgeGraphIT extends McpTestBase {
     Awaitility.await("Trigger " + APP_NAME)
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
-        .ignoreExceptionsMatching(
-            error -> error.getMessage() != null && error.getMessage().contains("already running"))
+        .ignoreException(ConflictException.class)
         .until(
             () -> {
               httpClient.execute(

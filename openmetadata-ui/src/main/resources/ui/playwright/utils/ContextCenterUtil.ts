@@ -16,6 +16,7 @@ import {
   expect,
   Locator,
   Page,
+  Request,
   Response,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
@@ -52,15 +53,6 @@ export interface BulkIdsRequest {
   ids?: string[];
 }
 
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
-
 interface CapturedDownload {
   download: string;
   href: string;
@@ -81,17 +73,14 @@ export const uploadDocument = async (
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
+  const multipart = {
     file: {
       name,
       mimeType: 'text/plain',
       buffer,
     },
+    ...(folderFqn ? { folder: folderFqn } : {}),
   };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
 
   const response = await apiContext.post(
     '/api/v1/contextCenter/drive/files/upload',
@@ -137,7 +126,7 @@ export const responseMatchesRequestPath = (
   response: Response,
   expectedPath: string
 ): boolean => {
-  let request = response.request();
+  let request: Request | null = response.request();
 
   while (request) {
     if (request.url().includes(expectedPath)) {
@@ -333,6 +322,8 @@ export const navigateToArchive = async (page: Page) => {
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
   page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    // Exact: an expanded empty folder renders a child row "<name> is empty".
+    exact: true,
     name: folderName,
   });
 
@@ -889,8 +880,13 @@ export const scrollHierarchyToNode = async (
     const countBefore = await nodes.count();
 
     // Hoist listener before the scroll so no response is missed
+    // Root pages only: `domains/hierarchy` (every navigation) and child
+    // expands (`parent=`) carry their own paging.total.
     const responsePromise = page.waitForResponse(
-      (res) => res.url().includes('/hierarchy'),
+      (res) =>
+        res.url().includes('/contextCenter/pages/search/hierarchy') &&
+        !res.url().includes('parent=') &&
+        res.request().method() === 'GET',
       { timeout: 15000 }
     );
 
@@ -1250,6 +1246,18 @@ export const patchMemory = async (
   return res.json();
 };
 
+/** A memory's stage as stored, read by id rather than from the search index the lists read. */
+export const getMemoryStatus = async (
+  apiContext: APIRequestContext,
+  id: string
+): Promise<string> => {
+  const response = await apiContext.get(`${MEMORIES_API}/${id}`);
+  const body = await response.text();
+  expect(response.status(), body).toBe(200);
+
+  return parseResponseJson<{ entityStatus: string }>(body).entityStatus;
+};
+
 /**
  * Sets a memory's outcome counters through the admin-only outcome write, the only write that
  * changes them: a PATCH keeps the stored counts.
@@ -1292,7 +1300,11 @@ export const createMemoryViaApi = async (
   apiContext: APIRequestContext,
   overrides: Record<string, unknown>
 ) => {
-  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  // OSS defaults a new memory to Approved, Collate to Unprocessed (hidden from
+  // non-owners). Pin Approved so fixtures behave the same on both distributions.
+  const res = await apiContext.post(MEMORIES_API, {
+    data: { ...overrides, entityStatus: overrides.entityStatus ?? 'Approved' },
+  });
   expect(res.status()).toBe(201);
 
   return res.json();
@@ -1360,6 +1372,52 @@ export const readDraftStore = async (
  * risks racing the autosave itself and observing the draft after it has
  * already been removed rather than confirming it landed in time.
  */
+const SETTLED_ARTICLE_STATUSES = new Set(['Approved', 'Rejected']);
+const ARTICLE_SETTLE_WINDOW_MS = 3_000;
+
+/**
+ * Waits until a freshly created article stops changing server-side.
+ *
+ * When the approval workflow is active it moves entityStatus In Review ->
+ * Approved asynchronously, bumping the version. A draft stamped with the
+ * pre-approval version is then treated as stale (draft.version !== server
+ * version) and dropped on the next load. Deployments without the workflow never
+ * reach Approved, so a settled status is not required: an unchanged version for
+ * the settle window counts as settled too.
+ */
+export const waitForArticleSettled = async (
+  apiContext: APIRequestContext,
+  articleId: string
+) => {
+  let lastVersion: number | undefined;
+  let stableSince = Date.now();
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          `/api/v1/contextCenter/pages/${articleId}`
+        );
+        if (!response.ok()) {
+          return false;
+        }
+        const { entityStatus, version } = await response.json();
+
+        if (SETTLED_ARTICLE_STATUSES.has(entityStatus)) {
+          return true;
+        }
+        if (version !== lastVersion) {
+          lastVersion = version;
+          stableSince = Date.now();
+        }
+
+        return Date.now() - stableSince >= ARTICLE_SETTLE_WINDOW_MS;
+      },
+      { timeout: 30_000, intervals: [500, 1_000] }
+    )
+    .toBe(true);
+};
+
 export const waitForDraftPersisted = async (
   page: Page,
   articleId: string,

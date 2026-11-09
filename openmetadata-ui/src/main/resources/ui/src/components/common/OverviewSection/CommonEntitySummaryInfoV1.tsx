@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import { Button, Typography } from '@openmetadata/ui-core-components';
+import { LinkExternal01 } from '@openmetadata/ui-core-components/icons';
 import { isNil } from 'lodash';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPath } from 'react-router-dom';
-import { ReactComponent as IconExternalLink } from '../../../assets/svg/external-links.svg';
-import { ICON_DIMENSION } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER_CLASS_NAME } from '../../../constants/EntitySummaryPanelUtils.constant';
+import { getSafeHttpUrl } from '../../../utils/StringUtils';
 import {
   CommonEntitySummaryInfoV1Props,
   EntityInfoItemV1,
@@ -70,7 +71,8 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
     // Rendered outside Typography: the global `.prose-typography a` rule in
     // fonts.less would otherwise force the link to 14px.
     const isExternal = info.isExternal && info.value !== '-';
-    const to = info.linkProps ?? info.url ?? '';
+    const url = info.isExternal ? getSafeHttpUrl(info.url) : info.url;
+    const to = info.linkProps ?? url ?? '';
 
     return (
       <div className="tw:flex-1" data-testid={`${info.name}-value`}>
@@ -78,12 +80,9 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
           <Button
             className="tw:whitespace-normal"
             color="link-color"
-            href={info.url}
+            href={url}
             iconTrailing={
-              <IconExternalLink
-                data-testid="external-link-icon"
-                {...ICON_DIMENSION}
-              />
+              <LinkExternal01 data-testid="external-link-icon" size={14} />
             }
             rel="noopener noreferrer"
             size="xs"
@@ -109,7 +108,7 @@ const CommonEntitySummaryInfoV1: React.FC<CommonEntitySummaryInfoV1Props> = ({
       {visibleEntityInfo.length === 0 ? (
         <div className="overview-row">
           <Typography
-            className="no-data-placeholder"
+            className={NO_DATA_PLACEHOLDER_CLASS_NAME}
             data-testid="no-data-placeholder">
             {t('label.no-overview-available')}
           </Typography>

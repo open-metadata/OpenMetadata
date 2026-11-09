@@ -73,4 +73,21 @@ describe('BucketServiceRow', () => {
 
     expect(onOpen).toHaveBeenCalledWith(SERVICE);
   });
+
+  // Power BI's logo was redrawn to read on dark, so it renders as authored.
+  it('renders the Power BI logo without the dark-mode invert', () => {
+    render(
+      <ul>
+        <BucketServiceRow
+          bucket="notRun"
+          service={{ ...SERVICE, serviceType: 'PowerBI' }}
+          onOpen={jest.fn()}
+        />
+      </ul>
+    );
+
+    expect(
+      screen.getByTestId('bucket-service-svc-1').querySelector('img')
+    ).not.toHaveClass('tw:dark:invert');
+  });
 });

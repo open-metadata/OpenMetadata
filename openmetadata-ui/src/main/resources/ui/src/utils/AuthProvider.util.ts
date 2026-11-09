@@ -25,7 +25,6 @@ import {
   REFRESHABLE_AUTH_ERRORS,
   UN_AUTHORIZED_EXCLUDED_PATHS,
 } from '../constants/Auth.constants';
-import { ROUTES } from '../constants/constants';
 import { EMAIL_REG_EX } from '../constants/regex.constants';
 import { REDIRECT_PATHNAME } from '../constants/router.constants';
 import {
@@ -247,7 +246,7 @@ export const getAuthConfig = (
 // Add here scopes for id token to be used at MS Identity Platform endpoints.
 export const msalLoginRequest = {
   scopes: ['openid', 'profile', 'email', 'offline_access'],
-} as const;
+};
 
 export const getNameFromEmail = (email: string) => {
   if (new RegExp(EMAIL_REG_EX).exec(email)) {
@@ -394,10 +393,6 @@ export const getNameFromUserData = (
   };
 };
 
-export const isTourRoute = (pathname: string) => {
-  return pathname === ROUTES.TOUR;
-};
-
 /**
  * Providers whose login flow the server drives through its own authenticator, so the login
  * configuration (failed-attempt lockout, access block time, JWT expiry) is actually enforced.
@@ -414,6 +409,18 @@ export const isLoginConfigurationApplicable = (
   provider === AuthProvider.Basic ||
   provider === AuthProvider.LDAP ||
   provider === AuthProvider.Openmetadata;
+
+/**
+ * Whether the server, rather than the browser, completes sign-in. The server then applies the
+ * identity provider's display name and picture to the user itself, and the name it hands the
+ * browser is the OpenMetadata username, not a display name.
+ * ADR:2026-10-17-the-server-applies-the-sso-profile-on-server-driven-logins
+ */
+export const isServerDrivenLogin = (
+  clientType?: ClientType,
+  provider?: AuthProvider
+): boolean =>
+  clientType === ClientType.Confidential || provider === AuthProvider.Saml;
 
 export const getUrlPathnameExpiry = () => {
   return new Date(Date.now() + 60 * 60 * 1000);
@@ -631,7 +638,7 @@ export const validateAuthFieldsDetailed = (
 ): AuthFieldValidationResult => {
   const provider = configJson?.provider as string | undefined;
   const required =
-    (provider && REQUIRED_FIELDS_BY_PROVIDER[provider]) ??
+    (provider ? REQUIRED_FIELDS_BY_PROVIDER[provider] : undefined) ??
     // Fall back to the legacy required-field list when the provider is
     // unknown — the caller (AuthProvider) also independently short-circuits
     // on an unsupported provider, but this keeps the validator's contract

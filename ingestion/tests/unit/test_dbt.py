@@ -25,7 +25,7 @@ from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
-from metadata.generated.schema.entity.data.table import Column, DataModel, Table
+from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
 from metadata.generated.schema.entity.domains.domain import Domain
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
@@ -3479,6 +3479,7 @@ class TestStorageStreamingBehavior(TestCase):
         config = MagicMock()
         config.dbtPrefixConfig.dbtBucketName = "test-bucket"
         config.dbtPrefixConfig.dbtObjectPrefix = None
+        config.dbtSecurityConfig.gcpImpersonateServiceAccount = None
 
         with patch("google.cloud.storage.Client", return_value=mock_client):
             list(gcs_handler(config))
@@ -3960,7 +3961,9 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
 
         source.metadata.add_test_case_results.assert_called_once()
         test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
-        self.assertEqual(test_case_result.result, "Got 1 result, configured to warn if != 0")
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
+        assert test_case_result.result == "Got 1 result, configured to warn if != 0"
 
     def test_nanosecond_timestamp_is_parsed(self):
         """
@@ -4098,7 +4101,8 @@ class TestAddDbtTestResultNullMessage:
     def test_warning_test_with_null_message_is_ingested(self):
         test_case_result = self._sent_call(self._ingest(status="warn", message=None))["test_results"]
 
-        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
 
 
 class TestRemoveManifestNonRequiredKeys(TestCase):
@@ -4575,9 +4579,8 @@ class TestAddDbtSourceFreshnessResults:
     def test_freshness_warn_is_ingested_with_staleness_detail(self):
         test_case_result = self._ingest("warn")
 
-        # `warn` is neither a dbt success nor a dbt failure status, so it keeps the
-        # pre-1.13.0 fall-through to Aborted.
-        assert test_case_result.testCaseStatus == TestCaseStatus.Aborted
+        assert test_case_result.testCaseStatus == TestCaseStatus.Failed
+        assert test_case_result.testResultValue[0].value == "0"
         assert "18.0 hours old" in test_case_result.result
         assert "warn_after=12 hour" in test_case_result.result
 
@@ -5489,3 +5492,99 @@ class TestCatalogMapping:
 
         assert [model_str(link.table_entity.fullyQualifiedName) for link in links] == [self.BQ_MODEL]
         assert source.extracted_domains == {self.BQ_MODEL: "Finance"}
+
+    @pytest.mark.parametrize(
+        ("compiled_sql", "lineage_sql"),
+        [
+            (
+                'select id from "bq_catalog"."raw"."customers"',
+                'select id from "my-gcp-project"."raw"."customers"',
+            ),
+            ("select id from BQ_Catalog.raw.customers", 'select id from "my-gcp-project".raw.customers'),
+            (
+                'select * from bq_catalog.raw.a join "bq_catalog" . "raw" . "b" using (id)',
+                'select * from "my-gcp-project".raw.a join "my-gcp-project" . "raw" . "b" using (id)',
+            ),
+            # a schema or column that shares the catalog's name is not a catalog
+            ("select bq_catalog.id from raw.bq_catalog", "select bq_catalog.id from raw.bq_catalog"),
+            ("select id from bq_catalog_dev.raw.customers", "select id from bq_catalog_dev.raw.customers"),
+            ('select id from "other"."bq_catalog"."t"', 'select id from "other"."bq_catalog"."t"'),
+        ],
+    )
+    def test_mapped_catalog_is_swapped_in_compiled_sql(self, compiled_sql, lineage_sql):
+        source = self._source(catalog_mapping={"bq_catalog": "my-gcp-project"})
+
+        assert source._map_catalogs_in_sql(compiled_sql) == lineage_sql
+
+    @pytest.mark.parametrize(
+        ("catalog_mapping", "column_links"),
+        [
+            (
+                {"bq_catalog": "my-gcp-project"},
+                [
+                    ("bq_svc.my-gcp-project.raw.customers.id", "bq_svc.my-gcp-project.analytics.stg_customers.id"),
+                    ("bq_svc.my-gcp-project.raw.customers.name", "bq_svc.my-gcp-project.analytics.stg_customers.name"),
+                ],
+            ),
+            (None, []),
+        ],
+    )
+    def test_query_lineage_links_the_columns_of_the_mapped_source(self, catalog_mapping, column_links):
+        def table(table_fqn):
+            return Table(
+                id=uuid.uuid4(),
+                name=table_fqn.split(".")[-1],
+                fullyQualifiedName=table_fqn,
+                columns=[
+                    Column(name=name, dataType=DataType.INT, fullyQualifiedName=f"{table_fqn}.{name}")
+                    for name in ("id", "name")
+                ],
+            )
+
+        tables = [table(self.BQ_SOURCE), table(self.BQ_MODEL)]
+        source = self._source(catalog_mapping=catalog_mapping)
+        source.metadata.es_search_from_fqn.side_effect = lambda *_args, fqn_search_string, **_kwargs: (
+            [
+                ingested
+                for ingested in tables
+                if fnmatch.fnmatchcase(ingested.fullyQualifiedName.root.lower(), fqn_search_string.lower())
+            ]
+            or None
+        )
+        source.metadata.get_by_name.return_value = None
+        source.config = SimpleNamespace(
+            serviceName="trino_svc",
+            serviceConnection=SimpleNamespace(
+                root=SimpleNamespace(config=SimpleNamespace(type=SimpleNamespace(value="Trino")))
+            ),
+        )
+        data_model_link = SimpleNamespace(
+            table_entity=tables[1],
+            datamodel=SimpleNamespace(
+                sql=SimpleNamespace(root='select id, upper(name) as name from "bq_catalog"."raw"."customers"')
+            ),
+        )
+
+        requests = [
+            either.right.lineage_request
+            for either in source.create_dbt_query_lineage(data_model_link)
+            if either.right is not None
+        ]
+
+        assert [
+            (model_str(link.fromColumns[0]), model_str(link.toColumn))
+            for request in requests
+            for link in request.lineage_details.columnsLineage
+        ] == column_links
+
+    def test_each_catalog_is_mapped_once_when_a_database_is_also_a_mapped_catalog(self):
+        source = self._source(catalog_mapping={"hive": "warehouse", "warehouse": "warehouse_prod"})
+
+        assert source._map_catalogs_in_sql("select * from hive.raw.a join warehouse.raw.b using (id)") == (
+            'select * from "warehouse".raw.a join "warehouse_prod".raw.b using (id)'
+        )
+
+    def test_without_a_mapping_compiled_sql_is_unchanged(self):
+        sql = 'select id from "bq_catalog"."raw"."customers"'
+
+        assert self._source()._map_catalogs_in_sql(sql) == sql

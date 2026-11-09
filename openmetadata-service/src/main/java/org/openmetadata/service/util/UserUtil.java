@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
@@ -62,6 +63,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
@@ -106,7 +108,7 @@ public final class UserUtil {
       throw new IllegalArgumentException("ExistsChecker predicate cannot be null");
     }
 
-    String baseUsername = email.toLowerCase().split("@")[0];
+    String baseUsername = email.toLowerCase(Locale.ROOT).split("@")[0];
 
     if (!existsChecker.test(baseUsername)) {
       return baseUsername;
@@ -237,7 +239,7 @@ public final class UserUtil {
         if (nullOrEmpty(email)) {
           continue;
         }
-        String normalizedEmail = email.toLowerCase();
+        String normalizedEmail = email.toLowerCase(Locale.ROOT);
         if (processedEmails.contains(normalizedEmail)) {
           continue;
         }
@@ -260,7 +262,7 @@ public final class UserUtil {
         if (nullOrEmpty(principal)) {
           continue;
         }
-        String email = (principal + "@" + domain).toLowerCase();
+        String email = (principal + "@" + domain).toLowerCase(Locale.ROOT);
         if (processedEmails.contains(email)) {
           LOG.debug(
               "[BootstrapUser] Skipping adminPrincipal '{}' - already processed via adminEmails",
@@ -432,40 +434,46 @@ public final class UserUtil {
   }
 
   /**
-   * Create and persist a ChangeEvent for SSO/LDAP user operations.
-   * Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
+   * Create and persist a ChangeEvent for a user written outside the REST layer, such as an SSO/LDAP
+   * sign-in or a bot token regeneration, which would otherwise reach no audit log or subscription.
+   * The actor is the name the audit log records: the user itself for a sign-in, the operator for a
+   * write made on its behalf. Profile webhook secrets are masked as the user repository's own
+   * events mask them. Pattern follows TestSuiteRepository.createTestSuiteCompletionChangeEvent()
    */
-  private static void createUserChangeEvent(User user, EventType eventType) {
+  public static void createUserChangeEvent(User user, EventType eventType, String actor) {
     try {
+      User eventUser = ProfileWebhookSecrets.masked(user);
       ChangeEvent changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
               .withEventType(eventType)
-              .withEntityId(user.getId())
+              .withEntityId(eventUser.getId())
               .withEntityType(Entity.USER)
-              .withEntityFullyQualifiedName(user.getFullyQualifiedName())
-              .withUserName(user.getName())
-              .withTimestamp(user.getUpdatedAt())
-              .withCurrentVersion(user.getVersion())
+              .withEntityFullyQualifiedName(eventUser.getFullyQualifiedName())
+              .withUserName(actor)
+              .withTimestamp(eventUser.getUpdatedAt())
+              .withCurrentVersion(eventUser.getVersion())
               .withPreviousVersion(
-                  user.getChangeDescription() != null
-                      ? user.getChangeDescription().getPreviousVersion()
-                      : (eventType == EventType.ENTITY_CREATED ? null : user.getVersion()))
-              .withEntity(user);
+                  eventUser.getChangeDescription() != null
+                      ? eventUser.getChangeDescription().getPreviousVersion()
+                      : (eventType == EventType.ENTITY_CREATED ? null : eventUser.getVersion()))
+              .withEntity(eventUser);
 
       // Include changeDescription if present (for updates)
-      if (user.getChangeDescription() != null) {
-        changeEvent.withChangeDescription(user.getChangeDescription());
+      if (eventUser.getChangeDescription() != null) {
+        changeEvent.withChangeDescription(eventUser.getChangeDescription());
       }
 
       // Populate domains if available
-      if (user.getDomains() != null && !user.getDomains().isEmpty()) {
+      if (eventUser.getDomains() != null && !eventUser.getDomains().isEmpty()) {
         changeEvent.withDomains(
-            user.getDomains().stream().map(EntityReference::getId).collect(Collectors.toList()));
+            eventUser.getDomains().stream()
+                .map(EntityReference::getId)
+                .collect(Collectors.toList()));
       }
 
-      // Insert directly into change event DAO
-      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
+      // Change events never carry a user's authentication mechanism.
+      Entity.getCollectionDAO().changeEventDAO().insert(JsonUtils.pojoToMaskedJson(changeEvent));
     } catch (Exception e) {
       // Don't fail user creation if ChangeEvent fails
       LOG.error("Failed to create ChangeEvent for user {}: {}", user.getName(), e.getMessage(), e);
@@ -489,7 +497,7 @@ public final class UserUtil {
 
       // Create ChangeEvent for EventSubscription evaluation
       EventType eventType = isCreate ? EventType.ENTITY_CREATED : EventType.ENTITY_UPDATED;
-      createUserChangeEvent(addedUser.getEntity(), eventType);
+      createUserChangeEvent(addedUser.getEntity(), eventType, addedUser.getEntity().getName());
 
       // should not log the user auth details in LOGS
       LOG.debug("Added user entry: {}", addedUser.getEntity().getName());
@@ -605,12 +613,12 @@ public final class UserUtil {
     User user =
         new User()
             .withId(UUID.randomUUID())
-            .withName(botName.toLowerCase())
-            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase()))
+            .withName(botName.toLowerCase(Locale.ROOT))
+            .withFullyQualifiedName(EntityInterfaceUtil.quoteName(botName.toLowerCase(Locale.ROOT)))
             .withEmail(botEmail)
             .withIsBot(true)
             .withIsAdmin(false)
-            .withUpdatedBy(botName.toLowerCase())
+            .withUpdatedBy(botName.toLowerCase(Locale.ROOT))
             .withUpdatedAt(System.currentTimeMillis());
 
     return addOrUpdateBotUser(user);
@@ -636,6 +644,15 @@ public final class UserUtil {
    */
   public static User addOrUpdateBotUser(User user) {
     User originalUser = retrieveWithAuthMechanism(user);
+    if (originalUser != null && !Boolean.TRUE.equals(originalUser.getIsBot())) {
+      // Turning a person's account into a bot would hand the bot's role to every credential the
+      // account already holds, such as its password and personal access tokens.
+      throw new IllegalStateException(
+          String.format(
+              "User '%s' already exists and is not a bot, so the bot of that name was not created. "
+                  + "Rename or delete that user, then restart the server.",
+              user.getName()));
+    }
     AuthenticationMechanism authMechanism =
         originalUser != null ? originalUser.getAuthenticationMechanism() : null;
     // the user did not have an auth mechanism and auth config is present
@@ -800,9 +817,10 @@ public final class UserUtil {
   public static User getUser(String updatedBy, CreateUser create) {
     return new User()
         .withId(UUID.randomUUID())
-        .withName(create.getName().toLowerCase())
-        .withFullyQualifiedName(EntityInterfaceUtil.quoteName(create.getName().toLowerCase()))
-        .withEmail(create.getEmail().toLowerCase())
+        .withName(create.getName().toLowerCase(Locale.ROOT))
+        .withFullyQualifiedName(
+            EntityInterfaceUtil.quoteName(create.getName().toLowerCase(Locale.ROOT)))
+        .withEmail(create.getEmail().toLowerCase(Locale.ROOT))
         .withDescription(create.getDescription())
         .withDisplayName(create.getDisplayName())
         .withIsBot(create.getIsBot())
@@ -812,7 +830,7 @@ public final class UserUtil {
         .withDefaultPersona(create.getDefaultPersona())
         .withTimezone(create.getTimezone())
         .withExtension(create.getExtension())
-        .withUpdatedBy(updatedBy.toLowerCase())
+        .withUpdatedBy(updatedBy.toLowerCase(Locale.ROOT))
         .withUpdatedAt(System.currentTimeMillis())
         .withTeams(EntityUtil.toEntityReferences(create.getTeams(), Entity.TEAM))
         .withRoles(EntityUtil.toEntityReferences(create.getRoles(), Entity.ROLE))
@@ -836,9 +854,8 @@ public final class UserUtil {
       return false;
     }
 
-    String normalizedEmail = email.toLowerCase();
     return adminEmails.stream()
-        .anyMatch(adminEmail -> adminEmail.equalsIgnoreCase(normalizedEmail));
+        .anyMatch(adminEmail -> SecurityUtil.sameIdentifier(adminEmail, email));
   }
 
   /**
@@ -878,7 +895,8 @@ public final class UserUtil {
     if (nullOrEmpty(botDomain)) {
       throw new IllegalArgumentException("Bot domain cannot be null or empty");
     }
-    return String.format("%s@%s", botName.toLowerCase(), botDomain.toLowerCase());
+    return String.format(
+        "%s@%s", botName.toLowerCase(Locale.ROOT), botDomain.toLowerCase(Locale.ROOT));
   }
 
   /**

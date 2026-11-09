@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { useCallback, useState } from 'react';
+import { isTourMockActive } from '../../../rest/product-tour/productTourMock';
 
 /**
  * Each Home surface keeps its own list, because each prunes against what *it*
- * shows: the rail lists asset announcements, the critical banner system ones,
- * and a shared list would let one prune the other's dismissals away.
+ * shows: the critical banner lists the system criticals, the rail and its
+ * dialog everything else, and a shared list would let one prune the other's
+ * dismissals away.
  */
 export enum DismissedAnnouncementsScope {
   Rail = 'om-home-dismissed-announcements',
@@ -120,6 +122,11 @@ export const useDismissedAnnouncements = (
 
   const prune = useCallback(
     (liveIds: string[]) => {
+      // A product tour shows recorded announcements, not the live ones, so
+      // pruning against them would forget the user's real dismissals.
+      if (isTourMockActive()) {
+        return;
+      }
       const live = new Set(liveIds);
       setState((prev) => {
         const ids = new Set([...prev.ids].filter((id) => live.has(id)));

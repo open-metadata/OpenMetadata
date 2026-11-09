@@ -119,7 +119,6 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
 }));
 
 jest.mock('../../../../utils/EntityPureUtils', () => ({
-  ...jest.requireActual('../../../../utils/EntityPureUtils'),
   getColumnNameFromEntityLink: jest.fn().mockReturnValue('column_x'),
 }));
 
@@ -271,6 +270,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
         testCaseData={{
           ...mockTestCase,
           testCaseResult: {
+            timestamp: 1709576999999,
             testCaseStatus: TestCaseStatus.Success,
             failedRows: 7,
           },
@@ -301,6 +301,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
         testCaseData={{
           ...mockTestCase,
           testCaseResult: {
+            timestamp: 1709576999999,
             testCaseStatus: TestCaseStatus.Aborted,
             failedRows: 7,
           },
@@ -322,6 +323,7 @@ describe('FailedTestCaseSampleData - fetch gating and error handling', () => {
         testCaseData={{
           ...mockTestCase,
           testCaseResult: {
+            timestamp: 1709576999999,
             testCaseStatus: TestCaseStatus.Success,
             failedRows: 7,
           },

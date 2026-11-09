@@ -10,47 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ButtonUtility, Card, Grid } from '@openmetadata/ui-core-components';
-import { Expand05, Minimize02 } from '@openmetadata/ui-core-components/icons';
+import {
+  ButtonUtility,
+  Card,
+  FeaturedIcon,
+  Grid,
+  PageLayout,
+} from '@openmetadata/ui-core-components';
+import {
+  PlatformLineage as PlatformLineageIcon,
+  Settings01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { startCase } from 'lodash';
-import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
-import { ReactComponent as SettingsOutlined } from '../../assets/svg/ic-settings-gear.svg';
+import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
 import { DataAssetOption } from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
-import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
+import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
 import LineageComponent from '../../components/Lineage/Lineage.component';
 import { Lineage } from '../../components/Lineage/Lineage/Lineage';
+import LineageExportButton from '../../components/Lineage/LineageExportButton/LineageExportButton';
+import {
+  getLensLabelKey,
+  getSceneRequestFromSearch,
+} from '../../components/Lineage/LineageMap/LineageMap.utils';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
-import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
-import {
-  ExportTypes,
-  LINEAGE_EXPORT_SELECTOR,
-} from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { EntityReference } from '../../generated/entity/type';
-import { LineagePlatformView } from '../../hooks/lineage/types';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useLineageStore } from '../../hooks/useLineageStore';
 import { LineageConfig } from '../../interface/lineage.interface';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
-import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
-import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getEncodedFqn } from '../../utils/StringUtils';
@@ -79,7 +83,6 @@ const PlatformLineage = () => {
   const lineageConfig = useLineageStore((state) => state.lineageConfig);
   const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [dialogVisible, setDialogVisible] = useState(false);
-  const { showModal } = useEntityExportModalProvider();
 
   // Fetch-owner, by fqn — `entityType` doubles as the resource here (cast, matching the old
   // code's own `entityType as unknown as ResourceEntity`). Ungated: the old raw
@@ -109,20 +112,9 @@ const PlatformLineage = () => {
   // permission-gated).
   const loading = isEntityLoading || isPermissionsLoading;
 
-  const queryParams = useMemo(() => {
-    return QueryString.parse(location.search, {
-      ignoreQueryPrefix: true,
-    });
-  }, [location.search]);
-
-  const { platformView, isFullScreen } = useMemo(() => {
-    return {
-      isFullScreen: queryParams[FULLSCREEN_QUERY_PARAM_KEY] === 'true',
-      platformView:
-        (queryParams['platformView'] as LineagePlatformView) ??
-        LineagePlatformView.Service,
-    };
-  }, [queryParams]);
+  // The header names the lens the map is drawn through, read the same way
+  // the map reads it.
+  const { lens } = getSceneRequestFromSearch(location.search, {}, true);
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
@@ -171,17 +163,6 @@ const PlatformLineage = () => {
     }
   }, [decodedFqn, entityType]);
 
-  const handleExport = useCallback(() => {
-    showModal({
-      name: `${t('label.lineage')}_${getCurrentISODate()}`,
-      exportTypes: [ExportTypes.PNG],
-      title: t('label.lineage'),
-      documentSelector: LINEAGE_EXPORT_SELECTOR,
-      viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
-      onExport: async () => '',
-    });
-  }, [showModal, t]);
-
   useEffect(() => {
     init();
   }, [init]);
@@ -198,71 +179,91 @@ const PlatformLineage = () => {
     [setLineageConfig]
   );
 
-  const header = useMemo(() => {
-    return (
-      <div className="d-flex justify-between items-center">
-        <div
-          className="tw:w-1/2 tw:max-w-[500px]"
-          data-testid="search-entity-select">
-          <DataAssetAsyncSelectList
-            // eslint-disable-next-line jsx-a11y/no-autofocus -- disables the list's default autofocus
-            autoFocus={false}
-            // The current entity is the placeholder, not a chip: a single-select
-            // chip hides the input, so the list could not open on first click.
-            placeholder={
-              selectedEntity
-                ? getEntityName(selectedEntity)
-                : t('label.search-entity-for-lineage', { entity: 'entity' })
-            }
-            queryFilter={getLineageEntityExclusionFilter()}
-            searchIndex={LINEAGE_SEARCH_INDEXES}
-            onChange={handleSearchSelect}
-          />
-        </div>
-        <div className="d-flex gap-2">
-          <ButtonUtility
-            data-testid="export-button"
-            icon={DownloadIcon}
-            tooltip={t('label.export-as-type', {
-              type: t('label.png-uppercase'),
-            })}
-            onClick={handleExport}
-          />
+  const isAiMode = useIsAiMode();
 
-          <ButtonUtility
-            data-testid="lineage-config"
-            icon={SettingsOutlined}
-            onClick={handleSettingsClick}
-          />
-
-          <ButtonUtility
-            icon={isFullScreen ? Minimize02 : Expand05}
-            tooltip={
-              isFullScreen
-                ? t('label.exit-full-screen')
-                : t('label.full-screen-view')
-            }
-            onClick={() =>
-              navigate({
-                search: QueryString.stringify({
-                  ...queryParams,
-                  [FULLSCREEN_QUERY_PARAM_KEY]: !isFullScreen,
-                }),
-              })
-            }
-          />
-        </div>
+  const searchSelect = useMemo(
+    () => (
+      <div
+        className={isAiMode ? 'tw:w-90' : 'tw:w-1/2 tw:max-w-[500px]'}
+        data-testid="search-entity-select">
+        <DataAssetAsyncSelectList
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- disables the list's default autofocus
+          autoFocus={false}
+          // The current entity is the placeholder, not a chip: a single-select
+          // chip hides the input, so the list could not open on first click.
+          placeholder={
+            selectedEntity
+              ? getEntityName(selectedEntity)
+              : t('label.search-entity-for-lineage', { entity: 'entity' })
+          }
+          queryFilter={getLineageEntityExclusionFilter()}
+          searchIndex={LINEAGE_SEARCH_INDEXES}
+          onChange={handleSearchSelect}
+        />
       </div>
-    );
-  }, [
-    t,
-    selectedEntity,
-    handleSearchSelect,
-    handleExport,
-    isFullScreen,
-    navigate,
-    queryParams,
-  ]);
+    ),
+    [isAiMode, selectedEntity, handleSearchSelect, t]
+  );
+
+  // Matches the height of the search box beside them in the AI header.
+  const buttonSize = isAiMode ? 'xl' : 'lg';
+
+  const actionButtons = useMemo(
+    () => (
+      <div className="d-flex gap-2">
+        <LineageExportButton size={buttonSize} />
+
+        <ButtonUtility
+          data-testid="lineage-config"
+          icon={Settings01}
+          size={buttonSize}
+          tooltip={t('label.lineage-config')}
+          onClick={handleSettingsClick}
+        />
+      </div>
+    ),
+    [t, buttonSize]
+  );
+
+  const title = t('label.platform-type-lineage', {
+    platformType: t(getLensLabelKey(lens)),
+  });
+
+  // AI mode moves the search and actions into the shared gradient header;
+  // classic keeps them as the toolbar above the canvas.
+  const header = useMemo(
+    () =>
+      isAiMode ? (
+        <PageLayout.PageHeader
+          actions={
+            <>
+              {searchSelect}
+              {actionButtons}
+            </>
+          }
+          badge={<LearningIcon pageId={LEARNING_PAGE_IDS.LINEAGE} />}
+          data-testid="page-header-container"
+          icon={
+            <FeaturedIcon
+              color="brand"
+              icon={PlatformLineageIcon}
+              shape="square"
+              size="md"
+              theme="dark"
+            />
+          }
+          subtitle={t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader)}
+          title={title}
+          variant="gradient"
+        />
+      ) : (
+        <div className="d-flex justify-between items-center">
+          {searchSelect}
+          {actionButtons}
+        </div>
+      ),
+    [isAiMode, searchSelect, actionButtons, title, t]
+  );
 
   const lineageElement = useMemo(() => {
     if (loading) {
@@ -280,32 +281,62 @@ const PlatformLineage = () => {
           entity={selectedEntity}
           entityType={entityType}
           hasEditAccess={canEditLineage}
-          platformHeader={header}
+          // AI mode carries search and actions in the page header instead.
+          platformHeader={isAiMode ? undefined : header}
         />
       </Lineage>
     );
-  }, [selectedEntity, loading, canEditLineage, entityType, header, decodedFqn]);
+  }, [
+    selectedEntity,
+    loading,
+    canEditLineage,
+    entityType,
+    header,
+    decodedFqn,
+    isAiMode,
+  ]);
+
+  // `/lineage` with no entity is the platform-wide view; the focused variant
+  // names the entity it is centred on.
+  const pageTitle = decodedFqn
+    ? t('label.platform-type-lineage', {
+        platformType: getEntityName(selectedEntity) || decodedFqn,
+      })
+    : t('label.lineage');
+
+  const configModal = (
+    <LineageConfigModal
+      config={lineageConfig}
+      visible={dialogVisible}
+      onCancel={() => setDialogVisible(false)}
+      onSave={handleDialogSave}
+    />
+  );
+
+  if (isAiMode) {
+    return (
+      <PageLayout data-testid="platform-lineage-page">
+        <DocumentTitle title={pageTitle} />
+        {header}
+        <PageLayout.Content className="tw:pt-4">
+          <div className="platform-lineage-container platform-lineage-container-fill">
+            {lineageElement}
+          </div>
+        </PageLayout.Content>
+        {configModal}
+      </PageLayout>
+    );
+  }
 
   return (
-    <PageLayoutV1
-      pageTitle={
-        // `/lineage` with no entity is the platform-wide view; the focused
-        // variant names the entity it is centred on.
-        decodedFqn
-          ? t('label.entity-lineage', {
-              entity: getEntityName(selectedEntity) || decodedFqn,
-            })
-          : t('label.lineage')
-      }>
+    <PageLayoutV1 pageTitle={pageTitle}>
       <Grid rowGap="2">
         <Grid.Item span={24}>
           <Card size="sm">
             <Card.Content>
               <PageHeader
                 data={{
-                  header: t('label.platform-type-lineage', {
-                    platformType: startCase(platformView),
-                  }),
+                  header: title,
                   subHeader: t(PAGE_HEADERS.PLATFORM_LINEAGE.subHeader),
                 }}
                 learningPageId={LEARNING_PAGE_IDS.LINEAGE}
@@ -320,12 +351,7 @@ const PlatformLineage = () => {
         </Grid.Item>
       </Grid>
 
-      <LineageConfigModal
-        config={lineageConfig}
-        visible={dialogVisible}
-        onCancel={() => setDialogVisible(false)}
-        onSave={handleDialogSave}
-      />
+      {configModal}
     </PageLayoutV1>
   );
 };

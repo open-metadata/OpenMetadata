@@ -81,6 +81,41 @@ public class McpPendingAuthRequestRepository {
     LOG.debug("Updated pac4j session data for pending request: {}", authRequestId);
   }
 
+  /**
+   * Records that {@code userName} signed in and is being asked to approve the client, and gives
+   * the consent page a fresh TTL. Only the first sign-in for a request is recorded, so the user a
+   * consent belongs to never changes and a decided request cannot be asked again.
+   *
+   * @return false if the request is gone, expired or already has a consent
+   */
+  public boolean storeConsent(String authRequestId, String consentToken, String userName) {
+    final long now = System.currentTimeMillis();
+    return dao.storeConsent(
+            authRequestId,
+            OAuthTokenRepository.hashToken(consentToken),
+            userName,
+            now + (AUTH_REQUEST_TTL_SECONDS * 1000L),
+            now)
+        == 1;
+  }
+
+  /**
+   * Takes the consent issued with {@code consentToken}, at most once and only before the request
+   * expires, so a second submit of the same page finds nothing.
+   *
+   * @return the user who was asked, or null if the token does not match a waiting consent
+   */
+  public String takeConsent(String authRequestId, String consentToken) {
+    final boolean claimed =
+        consentToken != null
+            && dao.claimConsent(
+                    authRequestId,
+                    OAuthTokenRepository.hashToken(consentToken),
+                    System.currentTimeMillis())
+                == 1;
+    return claimed ? dao.findConsentUserName(authRequestId) : null;
+  }
+
   public void delete(String authRequestId) {
     dao.delete(authRequestId);
     LOG.debug("Deleted pending auth request: {}", authRequestId);

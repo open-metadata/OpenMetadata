@@ -215,6 +215,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
       await page
         .getByRole('option', { name: target.responseData.displayName })
         .click();
+      await page.getByTestId('ontology-builder-toggle-sparql').click();
       await expect(page.getByTestId('ontology-generated-sparql')).toContainText(
         target.responseData.fullyQualifiedName
       );
@@ -265,7 +266,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
       await fixture.selectInStudio(page);
       await page.getByTestId('mode-tab-query').click();
       await page.getByTestId('ontology-query-new').click();
+      await expect(page.getByTestId('ontology-query-update')).toBeDisabled();
       await setSparqlEditorValue(page, query);
+      await expect(page.getByTestId('ontology-query-update')).toBeEnabled();
 
       const responsePromise = page.waitForResponse(
         (response) =>
@@ -276,7 +279,9 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
             ) && response.request().method() === 'POST'
       );
       await page.getByTestId('ontology-sparql-run').click();
-      expect((await responsePromise).ok()).toBe(true);
+      const response = await responsePromise;
+      expect(response.ok(), await response.text()).toBe(true);
+      expect(response.request().postDataJSON()).toMatchObject({ query });
       await page.getByRole('tab', { name: 'Graph' }).click();
       await expect(
         page.getByTestId('ontology-sparql-result-graph')

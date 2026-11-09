@@ -375,10 +375,11 @@ export const DIMMED_EDGE_LABEL_OPACITY = 0.16;
 
 export const NODE_FILL_DEFAULT = 'var(--tw-color-bg-primary)';
 export const NODE_BORDER_COLOR = BORDER_SECONDARY_TOKEN;
-export const NODE_SELECTED_STROKE = 'var(--tw-color-border-brand)';
+export const NODE_SELECTED_STROKE = 'var(--tw-border-color-brand)';
 export const NODE_SELECTED_LINE_WIDTH = 2.5;
 export const NODE_SELECTED_HALO_LINE_WIDTH = 4;
-export const NODE_SELECTED_HALO_FILL = 'var(--tw-color-bg-brand-primary)';
+export const NODE_SELECTED_HALO_FILL =
+  'var(--tw-background-color-brand-primary)';
 export const NODE_BORDER_RADIUS = 9;
 export const NODE_PADDING_V = 9;
 export const NODE_PADDING_H = 12;
@@ -587,3 +588,9 @@ export const LABEL_TEXT_ALIGN_LEFT = 'left';
 
 // Concept drawers open full-height over the app chrome, like the Domain and Data Product forms.
 export const ONTOLOGY_DRAWER_WIDTH = 'max(420px, 40vw)';
+
+// Past this many concepts the Studio graph draws a neighbourhood instead of the
+// whole ontology: Fit would shrink every label below legibility.
+export const STUDIO_GRAPH_NODE_LIMIT = 500;
+export const STUDIO_FOCUS_NODE_CAP = 120;
+export const STUDIO_FOCUS_DEPTH = 2;

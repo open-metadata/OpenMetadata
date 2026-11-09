@@ -15,6 +15,7 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
 import jakarta.ws.rs.BadRequestException;
 import java.util.ArrayList;
@@ -37,18 +38,19 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
 import org.openmetadata.service.context.review.MemoryEvidenceHolds;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.governance.EntityLifecycle;
-import org.openmetadata.service.ontology.OntologyAiAvailability;
-import org.openmetadata.service.ontology.OntologyMemoryDerivationQueue;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -70,6 +72,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   public static final String FIELD_PRIMARY_ENTITY = "primaryEntity";
   public static final String FIELD_RELATED_ENTITIES = "relatedEntities";
   static final String FIELD_DERIVED_ENTITIES = "derivedEntities";
+  private static final Set<String> DERIVED_ENTITY_TYPES =
+      Set.of(
+          Entity.GLOSSARY_TERM,
+          Entity.ONTOLOGY_CONCEPT,
+          Entity.ONTOLOGY_PROPERTY,
+          Entity.ONTOLOGY_AXIOM);
   public static final String FIELD_SOURCE_FILE = "sourceFile";
   public static final String FIELD_SOURCE_ENTITY = "sourceEntity";
   public static final String FIELD_ROOT_MEMORY = "rootMemory";
@@ -155,7 +163,14 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
               ContextMemoryStatus.ARCHIVED,
                   Set.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.UNPROCESSED)));
 
+  private final boolean reviewRequired;
+
   public ContextMemoryRepository() {
+    this(false);
+  }
+
+  /** A distribution with a reviewer opts into pending creation and privileged approval. */
+  protected ContextMemoryRepository(boolean reviewRequired) {
     super(
         ContextMemoryResource.COLLECTION_PATH,
         Entity.CONTEXT_MEMORY,
@@ -165,13 +180,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         UPDATE_FIELDS);
     supportsSearch = true;
     entityLifecycle = LIFECYCLE;
-    defaultEntityStatus = ContextMemoryStatus.UNPROCESSED;
+    this.reviewRequired = reviewRequired;
+    defaultEntityStatus =
+        reviewRequired ? ContextMemoryStatus.UNPROCESSED : ContextMemoryStatus.APPROVED;
   }
 
   @Override
   protected void postCreate(ContextMemory memory) {
     super.postCreate(memory);
-    ontologyQueue().enqueue(memory, memory.getUpdatedBy());
+    glossaryDerivationQueue().enqueue(memory, memory.getUpdatedBy());
     MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
@@ -181,7 +198,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     if (nullOrEmpty(memories)) {
       return;
     }
-    OntologyMemoryDerivationQueue queue = ontologyQueue();
+    MemoryGlossaryDerivationQueue queue = glossaryDerivationQueue();
     memories.forEach(memory -> queue.enqueue(memory, memory.getUpdatedBy()));
     memories.forEach(memory -> MemoryConflictReviewTasks.afterWrite(null, memory));
   }
@@ -189,10 +206,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   protected void postUpdate(ContextMemory previous, ContextMemory updated) {
     super.postUpdate(previous, updated);
-    if (OntologyMemoryDerivationQueue.hasNewPublishedContent(previous, updated)
-        && OntologyAiAvailability.isMemoryDerivationEnabled()
-        && getDerivedEntities(updated).isEmpty()) {
-      ontologyQueue().enqueue(updated, updated.getUpdatedBy());
+    if (MemoryGlossaryDerivationQueue.hasNewPublishedContent(previous, updated)
+        && MemoryGlossaryDerivationQueue.isAvailable()
+        && !MemoryGlossaryDerivationQueue.hasDerivedGlossaryTerm(getDerivedEntities(updated))) {
+      glossaryDerivationQueue().enqueue(updated, updated.getUpdatedBy());
     }
     MemoryConflictReviewTasks.afterWrite(previous, updated);
   }
@@ -215,9 +232,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return dao.exists(dao.getTableName(), memoryId);
   }
 
-  private OntologyMemoryDerivationQueue ontologyQueue() {
-    return new OntologyMemoryDerivationQueue(
-        Entity.getJobDAO(), OntologyAiAvailability::isMemoryDerivationEnabled);
+  private MemoryGlossaryDerivationQueue glossaryDerivationQueue() {
+    return new MemoryGlossaryDerivationQueue(Entity.getJobDAO());
   }
 
   @Override
@@ -425,8 +441,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   }
 
   private List<EntityReference> getDerivedEntities(ContextMemory entity) {
-    return findFrom(
-        entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, Entity.GLOSSARY_TERM);
+    return findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.DERIVED_FROM, null).stream()
+        .filter(reference -> DERIVED_ENTITY_TYPES.contains(reference.getType()))
+        .toList();
   }
 
   private void fetchAndSetDerivedEntities(List<ContextMemory> entities, Fields fields) {
@@ -443,7 +460,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     Map<String, EntityReference> refById = resolveReferencesByType(records);
     Map<UUID, List<EntityReference>> derivedById = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : records) {
-      if (!Entity.GLOSSARY_TERM.equals(record.getFromEntity())) {
+      if (!DERIVED_ENTITY_TYPES.contains(record.getFromEntity())) {
         continue;
       }
       EntityReference ref = refById.get(record.getFromId());
@@ -534,6 +551,12 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   @Override
   public void prepare(ContextMemory entity, boolean update) {
     requireWritableByWriter(entity, update);
+    if (!update) {
+      requireDisputesOpenedByAutomation(null, entity, impersonatorOf(entity));
+      if (reviewRequired) {
+        startPendingUnlessPrivileged(entity);
+      }
+    }
     if (entity.getPrimaryEntity() != null) {
       entity.setPrimaryEntity(resolvePrimaryEntity(entity, update));
     }
@@ -563,6 +586,60 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     setCreatorAsDefaultOwner(entity, update);
     prepareLifecycle(entity, update);
     inheritAnchorDomains(entity, update);
+  }
+
+  /**
+   * When review is required, a memory created by anyone but an admin or a bot starts Unprocessed,
+   * whatever stage it asked for. It runs before the server
+   * holds a memory for retired evidence, so a real hold still starts it in Draft and a requested
+   * one does not (ADR:2026-10-09-data-consumers-create-context-memories).
+   */
+  static void startPendingUnlessPrivileged(ContextMemory memory) {
+    if (memory.getEntityStatus() != ContextMemoryStatus.UNPROCESSED
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(memory.getUpdatedBy())) {
+      memory.withEntityStatus(ContextMemoryStatus.UNPROCESSED).withStatusReason(null);
+    }
+  }
+
+  /**
+   * New disputes open a conflict review, which reconciliation does: only an admin, a bot, or a bot
+   * writing for a user adds them. Anyone else could open a review assigned to themselves over their
+   * own memory and approve it through that review.
+   */
+  static void requireDisputesOpenedByAutomation(
+      ContextMemory original, ContextMemory updated, String impersonatedBy) {
+    if (!ContextMemoryLifecycle.addedDisputes(original, updated).isEmpty()
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(updated.getUpdatedBy())
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(impersonatedBy)) {
+      throw new AuthorizationException(ContextMemoryWriteAccess.DISPUTES_NEED_AUTOMATION);
+    }
+  }
+
+  /** A create learns who impersonates its writer only after prepare, from the request. */
+  private static String impersonatorOf(ContextMemory memory) {
+    return memory.getImpersonatedBy() != null
+        ? memory.getImpersonatedBy()
+        : ImpersonationContext.getImpersonatedBy();
+  }
+
+  /**
+   * When review is required, only an admin, a bot, or a conflict review decision approves a
+   * memory. OSS has no reconciliation app and permits an authorized owner to approve directly
+   * (ADR:2026-11-05-oss-memories-are-approved-without-reconciliation).
+   */
+  @Override
+  protected void checkStageDecision(
+      ContextMemory current, ContextMemory change, String from, String to) {
+    if (reviewRequired && isSelfApproval(current, change)) {
+      throw new AuthorizationException(ContextMemoryWriteAccess.APPROVAL_NEEDS_REVIEW);
+    }
+  }
+
+  static boolean isSelfApproval(ContextMemory current, ContextMemory change) {
+    return change.getEntityStatus() == ContextMemoryStatus.APPROVED
+        && current.getEntityStatus() != ContextMemoryStatus.APPROVED
+        && !GOVERNANCE_BOT.equals(change.getImpersonatedBy())
+        && !ContextMemoryWriteAccess.isPrivilegedWriter(change.getUpdatedBy());
   }
 
   private EntityReference resolvePrimaryEntity(ContextMemory memory, boolean update) {
@@ -832,6 +909,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
       if (operation == Operation.PATCH && updated.getEntityStatus() == null) {
         throw new BadRequestException("A context memory requires an entityStatus");
       }
+      // A PUT carries the stage of the create request it re-sends; a self-approval in it keeps the
+      // stored stage, as the create did, so the PUT stays repeatable. A PATCH is refused instead.
+      if (reviewRequired && operation == Operation.PUT && isSelfApproval(original, updated)) {
+        updated.setEntityStatus(original.getEntityStatus());
+      }
       super.updateEntityStatus(consolidatingChanges);
     }
 
@@ -984,6 +1066,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         updated.setSupersededBy(original.getSupersededBy());
         updated.setDisputes(original.getDisputes());
       }
+      requireDisputesOpenedByAutomation(original, updated, updated.getImpersonatedBy());
       if (!consolidatingChanges) {
         ContextMemoryLifecycle.applyUpdate(
             original,
@@ -1069,7 +1152,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     // primaryEntity and the source link on update.
     List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
     List<ContextMemory> memories = find(ids, Include.NON_DELETED);
-    setFieldsInBulk(getFields("primaryEntity,sourceEntity"), memories);
+    setFieldsInBulk(getFields("owners,primaryEntity,sourceEntity"), memories);
     return memories;
   }
 
@@ -1117,6 +1200,23 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     EntityReference anchor = getPrimaryEntity(memory);
     return anchor == null
         || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  /**
+   * Whether a memory's anchor lets its content become glossary vocabulary everyone can read: no
+   * anchor, a Context Center article, which has no sharing of its own, or a file shared with the
+   * whole organization. An asset, or a file shared with only some people, limits who may read the
+   * memory, so what it defines stays out of the glossary.
+   */
+  public boolean isAnchoredForPublication(ContextMemory memory) {
+    EntityReference anchor = getPrimaryEntity(memory);
+    return anchor == null
+        || (Entity.PAGE.equals(anchor.getType()) && isLive(anchor))
+        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
+  }
+
+  private static boolean isLive(EntityReference anchor) {
+    return Entity.getEntityOrNull(anchor, "", Include.NON_DELETED) != null;
   }
 
   private static boolean isOrgWideFile(EntityReference file) {

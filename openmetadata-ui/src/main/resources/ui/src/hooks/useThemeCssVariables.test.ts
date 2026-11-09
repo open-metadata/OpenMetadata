@@ -42,12 +42,12 @@ describe('useThemeCssVariables', () => {
 
     renderHook(() => useThemeCssVariables());
 
-    expect(cssVar('--ant-primary-color')).toBe('#123456');
-    expect(cssVar('--ant-success-color')).toBe('#00aa00');
-    expect(cssVar('--ant-warning-color')).toBe('#aa8800');
-    expect(cssVar('--ant-error-color')).toBe('#aa0000');
-    expect(cssVar('--ant-info-color')).toBe('#0088aa');
-    expect(cssVar('--ant-primary-7')).not.toBe('');
+    expect(cssVar('--theme-primary-color')).toBe('#123456');
+    expect(cssVar('--theme-success-color')).toBe('#00aa00');
+    expect(cssVar('--theme-warning-color')).toBe('#aa8800');
+    expect(cssVar('--theme-error-color')).toBe('#aa0000');
+    expect(cssVar('--theme-info-color')).toBe('#0088aa');
+    expect(cssVar('--theme-primary-7')).not.toBe('');
   });
 
   it('leaves unconfigured status colours to the stylesheet defaults', () => {
@@ -55,19 +55,19 @@ describe('useThemeCssVariables', () => {
 
     renderHook(() => useThemeCssVariables());
 
-    expect(cssVar('--ant-primary-color')).toBe('#123456');
-    expect(cssVar('--ant-success-color')).toBe('');
+    expect(cssVar('--theme-primary-color')).toBe('#123456');
+    expect(cssVar('--theme-success-color')).toBe('');
   });
 
   it('drops a colour the theme no longer sets', () => {
     mockTheme({ primaryColor: '#123456', successColor: '#00aa00' });
     const { rerender } = renderHook(() => useThemeCssVariables());
 
-    expect(cssVar('--ant-success-color')).toBe('#00aa00');
+    expect(cssVar('--theme-success-color')).toBe('#00aa00');
 
     mockTheme({ primaryColor: '#123456', successColor: '' });
     rerender();
 
-    expect(cssVar('--ant-success-color')).toBe('');
+    expect(cssVar('--theme-success-color')).toBe('');
   });
 });

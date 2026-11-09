@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { createFolder } from 'rest/assetAPI';
+import { createFolder } from '../../../rest/assetAPI';
 import CreateFolderModal from './CreateFolderModal.component';
 
 jest.mock('rest/assetAPI', () => ({

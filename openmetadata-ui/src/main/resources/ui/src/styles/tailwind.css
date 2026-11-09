@@ -43,6 +43,16 @@ app ships a single prefixed Tailwind output. */
   transition-timing-function: inherit;
 }
 
+/* Set on <html> for the moment a theme switch happens (applyThemeToRoot), so
+elements with a colour transition don't fade over from the old theme. A static
+rule rather than an injected <style>, which a strict style-src CSP would block. */
+.theme-switching,
+.theme-switching *,
+.theme-switching *::before,
+.theme-switching *::after {
+  transition: none !important;
+}
+
 /* These are global overrided by antd, so adding default values here */
 svg {
   display: inline;

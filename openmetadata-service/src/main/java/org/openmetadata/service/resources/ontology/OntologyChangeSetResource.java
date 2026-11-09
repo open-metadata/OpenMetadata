@@ -39,6 +39,9 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.ApplyOntologyChangeSet;
@@ -52,16 +55,18 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeSetState;
 import org.openmetadata.schema.type.OntologyEditLeaseToken;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
-import org.openmetadata.service.jdbi3.OntologyAxiomRepository;
 import org.openmetadata.service.jdbi3.OntologyChangeSetRepository;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.ontology.NativeOntologyChanges;
 import org.openmetadata.service.ontology.OntologyChangeApplicationService;
+import org.openmetadata.service.ontology.OntologyChangeSetValidator;
 import org.openmetadata.service.ontology.OntologyEditLeasePolicy;
 import org.openmetadata.service.ontology.OntologyEditLockService;
 import org.openmetadata.service.resources.Collection;
@@ -94,7 +99,6 @@ public class OntologyChangeSetResource
         new OntologyChangeApplicationService(
             repository,
             (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM),
-            (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM),
             clock);
     lockService =
         new OntologyEditLockService(Entity.getJdbi(), clock, new OntologyEditLeasePolicy());
@@ -108,6 +112,12 @@ public class OntologyChangeSetResource
       @Context final UriInfo uriInfo,
       @Context final SecurityContext securityContext,
       @QueryParam("fields") final String fields,
+      @Parameter(description = "Only change sets scoped to the ontology with this name")
+          @QueryParam("ontology")
+          final String ontology,
+      @Parameter(description = "Only change sets scoped to the ontology with this id")
+          @QueryParam("ontologyId")
+          final UUID ontologyId,
       @Parameter(description = "Comma-separated change set states to include") @QueryParam("state")
           final String state,
       @Parameter(description = "Return only drafts proposed from context memories")
@@ -118,14 +128,68 @@ public class OntologyChangeSetResource
       @QueryParam("before") final String before,
       @QueryParam("after") final String after,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
+    final UUID scopeId = requestedOntologyId(ontology, ontologyId);
+    OntologyResourceAccess.requireDraftListRead(authorizer, securityContext, scopeId);
     final ListFilter filter = new ListFilter(include);
+    if (scopeId != null) {
+      filter.addQueryParam("changeSetOntologyId", scopeId.toString());
+    }
     if (state != null && !state.isBlank()) {
       filter.addQueryParam("state", requireStates(state));
     }
     if (memorySourced) {
       filter.addQueryParam("memorySourced", "true");
     }
-    return listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    final ResultList<OntologyChangeSet> page =
+        listInternal(uriInfo, securityContext, fields, filter, limit, before, after);
+    if (scopeId == null) {
+      authorizeListedScopes(securityContext, page.getData());
+    }
+    return page;
+  }
+
+  private void authorizeListedScopes(
+      final SecurityContext securityContext, final List<OntologyChangeSet> rows) {
+    OntologyResourceAccess.requireDraftRowsRead(
+        authorizer,
+        securityContext,
+        null,
+        rows.stream()
+            .filter(row -> row.getOntology() != null)
+            .map(row -> row.getOntology().getId())
+            .toList());
+    glossaryScopeChecks(rows)
+        .forEach(
+            check ->
+                authorizeGlossary(
+                    securityContext,
+                    check.glossary(),
+                    check.planned(),
+                    MetadataOperation.EDIT_ALL));
+  }
+
+  /** One glossary a page of glossary-scope rows touches, and the glossary a row plans to create. */
+  record GlossaryScopeCheck(EntityReference glossary, Glossary planned) {}
+
+  /**
+   * The rows of a list already carry {@code glossaries} and {@code operations}, so the distinct
+   * glossary checks come from the page itself, not from a read per row.
+   */
+  static java.util.Collection<GlossaryScopeCheck> glossaryScopeChecks(
+      final java.util.Collection<OntologyChangeSet> rows) {
+    final Map<String, GlossaryScopeCheck> distinct = new LinkedHashMap<>();
+    for (final OntologyChangeSet row : rows) {
+      if (row.getOntology() != null) {
+        continue;
+      }
+      for (final EntityReference glossary : listOrEmpty(row.getGlossaries())) {
+        final Glossary planned = plannedGlossary(row, glossary);
+        distinct.putIfAbsent(
+            glossary.getId() + (planned == null ? ":existing" : ":planned"),
+            new GlossaryScopeCheck(glossary, planned));
+      }
+    }
+    return distinct.values();
   }
 
   @GET
@@ -137,6 +201,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @QueryParam("fields") final String fields,
       @QueryParam("include") @DefaultValue("non-deleted") final Include include) {
+    authorizeScopeRead(securityContext, readableChangeSet(id));
     return getInternal(uriInfo, securityContext, id, fields, include, null);
   }
 
@@ -147,7 +212,7 @@ public class OntologyChangeSetResource
       @Context final SecurityContext securityContext,
       @Valid final CreateOntologyChangeSet request) {
     final OntologyChangeSet entity = mapper.createToEntity(request, user(securityContext));
-    authorizeGlossaries(securityContext, entity, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, entity, MetadataOperation.EDIT_ALL);
     return create(uriInfo, securityContext, entity);
   }
 
@@ -202,7 +267,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @Valid final OntologyChangeSetCommand request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
-    authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_GLOSSARY_TERMS);
+    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_ALL);
     requireLease(id, request.getLease(), securityContext);
     return repository
         .transition(uriInfo, user(securityContext), id, OntologyChangeSetState.SUBMITTED, null)
@@ -218,7 +283,7 @@ public class OntologyChangeSetResource
       @PathParam("id") final UUID id,
       @Valid final ApplyOntologyChangeSet request) {
     final OntologyChangeSet changeSet = scopedChangeSet(id);
-    authorizeGlossaries(securityContext, changeSet, MetadataOperation.EDIT_ALL);
+    authorizeScope(securityContext, changeSet, MetadataOperation.EDIT_ALL);
     requireLease(id, request.getLease(), securityContext);
     final PutResponse<OntologyChangeSet> response =
         applicationService.apply(uriInfo, id, user(securityContext));
@@ -246,6 +311,7 @@ public class OntologyChangeSetResource
   @Operation(operationId = "listOntologyChangeSetVersions", summary = "List change-set versions")
   public EntityHistory listVersions(
       @Context final SecurityContext securityContext, @PathParam("id") final UUID id) {
+    authorizeScopeRead(securityContext, readableChangeSet(id));
     return listVersionsInternal(securityContext, id);
   }
 
@@ -256,6 +322,7 @@ public class OntologyChangeSetResource
       @Context final SecurityContext securityContext,
       @PathParam("id") final UUID id,
       @PathParam("version") final String version) {
+    authorizeScopeRead(securityContext, readableChangeSet(id));
     return getVersionInternal(securityContext, id, version);
   }
 
@@ -284,6 +351,21 @@ public class OntologyChangeSetResource
     return repository.get(null, id, repository.getFields(FIELDS), Include.NON_DELETED, false);
   }
 
+  private OntologyChangeSet readableChangeSet(final UUID id) {
+    return repository.get(null, id, repository.getFields(FIELDS), Include.ALL, false);
+  }
+
+  private static UUID requestedOntologyId(final String name, final UUID id) {
+    final UUID named =
+        name == null
+            ? null
+            : Entity.getEntityReferenceByName(Entity.ONTOLOGY, name, Include.NON_DELETED).getId();
+    if (named != null && id != null && !named.equals(id)) {
+      throw new BadRequestException("ontology and ontologyId name different ontologies");
+    }
+    return named != null ? named : id;
+  }
+
   // Normalizes a comma-separated filter such as "DRAFT,SUBMITTED" and rejects unknown states.
   private static String requireStates(final String states) {
     try {
@@ -304,29 +386,104 @@ public class OntologyChangeSetResource
         getResourceContextById(changeSetId));
   }
 
-  private void authorizeGlossaries(
+  /**
+   * Operations no release has published are read with the right that edits their scope
+   * (ADR:2026-11-03-ontology-working-draft-reads-require-edit-rights), whatever the change set's
+   * state: applying one writes the working draft, and a release is a separate publish.
+   */
+  private void authorizeScopeRead(
+      final SecurityContext securityContext, final OntologyChangeSet changeSet) {
+    if (changeSet.getOntology() != null) {
+      OntologyResourceAccess.requireDraftRead(
+          authorizer,
+          securityContext,
+          new ResourceContext<>(Entity.ONTOLOGY, changeSet.getOntology().getId(), null));
+      return;
+    }
+    authorizeGlossaryScope(securityContext, changeSet, MetadataOperation.EDIT_ALL);
+  }
+
+  private void authorizeScope(
+      final SecurityContext securityContext,
+      final OntologyChangeSet changeSet,
+      final MetadataOperation operation) {
+    OntologyChangeSetValidator.normalizeAndValidate(changeSet);
+    if (changeSet.getOntology() != null) {
+      authorizeNativeScope(securityContext, changeSet);
+      return;
+    }
+    authorizeGlossaryScope(securityContext, changeSet, operation);
+  }
+
+  private void authorizeGlossaryScope(
       final SecurityContext securityContext,
       final OntologyChangeSet changeSet,
       final MetadataOperation operation) {
     for (final EntityReference glossary : changeSet.getGlossaries()) {
-      final Glossary planned =
-          listOrEmpty(changeSet.getOperations()).stream()
-              .filter(change -> change.getGlossary() != null)
-              .map(change -> change.getGlossary())
-              .filter(candidate -> candidate.getId().equals(glossary.getId()))
-              .findFirst()
-              .orElse(null);
-      if (planned != null) {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(Entity.GLOSSARY, MetadataOperation.CREATE),
-            new CreateResourceContext<>(Entity.GLOSSARY, planned));
-        continue;
-      }
+      authorizeGlossary(securityContext, glossary, plannedGlossary(changeSet, glossary), operation);
+    }
+  }
+
+  private static Glossary plannedGlossary(
+      final OntologyChangeSet changeSet, final EntityReference glossary) {
+    return listOrEmpty(changeSet.getOperations()).stream()
+        .filter(change -> change.getGlossary() != null)
+        .map(change -> change.getGlossary())
+        .filter(candidate -> candidate.getId().equals(glossary.getId()))
+        .findFirst()
+        .orElse(null);
+  }
+
+  private void authorizeGlossary(
+      final SecurityContext securityContext,
+      final EntityReference glossary,
+      final Glossary planned,
+      final MetadataOperation operation) {
+    if (planned != null) {
       authorizer.authorize(
           securityContext,
-          new OperationContext(Entity.GLOSSARY, operation),
-          new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null));
+          new OperationContext(Entity.GLOSSARY, MetadataOperation.CREATE),
+          new CreateResourceContext<>(Entity.GLOSSARY, planned));
+      return;
+    }
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(Entity.GLOSSARY, operation),
+        new ResourceContext<>(Entity.GLOSSARY, glossary.getId(), null));
+  }
+
+  private void authorizeNativeScope(
+      final SecurityContext context, final OntologyChangeSet changeSet) {
+    authorizer.authorize(
+        context,
+        new OperationContext(Entity.ONTOLOGY, MetadataOperation.EDIT_ALL),
+        new ResourceContext<>(Entity.ONTOLOGY, changeSet.getOntology().getId(), null));
+    for (final OntologyChangeOperation change :
+        changeSet.getOperations().subList(0, changeSet.getUndoCursor())) {
+      final String type = NativeOntologyChanges.entityType(change);
+      if (change.getTargetId() == null) {
+        authorizer.authorize(
+            context,
+            new OperationContext(type, MetadataOperation.CREATE),
+            new CreateResourceContext<>(type, NativeOntologyChanges.definition(change)));
+      } else {
+        final MetadataOperation operation =
+            NativeOntologyChanges.isDelete(change)
+                ? MetadataOperation.DELETE
+                : MetadataOperation.EDIT_ALL;
+        authorizer.authorize(
+            context,
+            new OperationContext(type, operation),
+            new ResourceContext<>(type, change.getTargetId(), null));
+      }
+      if (change.getSourceMemoryIds() != null) {
+        for (final UUID memoryId : change.getSourceMemoryIds()) {
+          authorizer.authorize(
+              context,
+              new OperationContext(Entity.CONTEXT_MEMORY, MetadataOperation.VIEW_ALL),
+              new ResourceContext<>(Entity.CONTEXT_MEMORY, memoryId, null));
+        }
+      }
     }
   }
 

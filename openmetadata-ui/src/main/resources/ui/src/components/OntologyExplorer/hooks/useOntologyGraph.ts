@@ -39,6 +39,8 @@ import {
   DIMMED_EDGE_LABEL_OPACITY,
   DIMMED_EDGE_OPACITY,
   DIMMED_NODE_OPACITY,
+  EDGE_LABEL_FONT_FAMILY,
+  EDGE_LABEL_FONT_SIZE,
   EDGE_LINE_APPEND_WIDTH,
   EDGE_LINE_WIDTH_DEFAULT,
   EDGE_LINE_WIDTH_HIGHLIGHTED,
@@ -66,13 +68,17 @@ import {
 import { GraphSettings, OntologyNode } from '../OntologyExplorer.interface';
 import {
   OntologyEditNodeClickDetail,
+  OntologyEditPortDownDetail,
   ONTOLOGY_EDIT_CANCEL_EVENT,
   ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+  ONTOLOGY_EDIT_PORT_DOWN_EVENT,
+  ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
 } from '../PortOverlay.interface';
 import { METRIC_NODE_TYPE } from '../utils/graphBuilders';
 import {
   adaptiveSpacing,
   getLayoutConfig,
+  getNodeSize,
   NODE_HEIGHT,
   NODE_WIDTH,
   shouldUseComboGridLayout,
@@ -92,7 +98,23 @@ import {
   truncateHierarchyBadgeToFitWidth,
 } from '../utils/graphStyles';
 import { computeAssetRingPositions } from '../utils/layoutCalculations';
+import {
+  EdgeRoute,
+  routeRelationsGraphEdges,
+} from '../utils/relationsGraphRouting';
+import { STUDIO_EDIT_PORT_OUTER_OFFSET } from '../utils/studioEditPortStyles';
 import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
+import {
+  containerViewportSize,
+  graphFitsViewport,
+  revealHiddenNode,
+  settleStudioViewport,
+} from '../utils/studioViewport';
+import { measureTextWidth } from '../utils/textMeasure';
+
+// Matches the relation badge's [4, 8, 4, 8] padding around 10px text.
+const RELATIONS_EDGE_LABEL_PADDING_X = 16;
+const RELATIONS_EDGE_LABEL_HEIGHT = 20;
 
 /**
  * Starts a G6 layout and waits for it to actually finish.
@@ -180,6 +202,8 @@ export const findBadgeIndex = (originalTarget: unknown): number | null => {
   return null;
 };
 
+const PORT_DRAG_CLICK_GUARD_MS = 150;
+
 const hasShapeClass = (originalTarget: unknown, className: string): boolean => {
   let current: unknown = originalTarget;
   for (let depth = 0; depth < 14; depth += 1) {
@@ -264,6 +288,7 @@ interface GraphComboMeta {
 }
 
 interface UseOntologyGraphProps {
+  nodePositions?: Record<string, { x: number; y: number }>;
   containerRef: React.RefObject<HTMLDivElement>;
   graphData: GraphData;
   inputNodes: OntologyNode[];
@@ -285,6 +310,8 @@ interface UseOntologyGraphProps {
   ) => void;
   onNodeDoubleClick: (node: OntologyNode) => void;
   onPaneClick: () => void;
+  /** Canvas-space point of a double-click on empty canvas while the studio is being edited. */
+  onCanvasDoubleClick?: (point: { x: number; y: number }) => void;
   onScrollNearEdge?: () => void;
   setClickedEdgeId: (id: string | null) => void;
   neighborSet: Set<string>;
@@ -294,6 +321,7 @@ interface UseOntologyGraphProps {
   hierarchicalRelationTypes?: ReadonlySet<string>;
   isEditMode?: boolean;
   studioMode?: boolean;
+  keepCanvasOnAdd?: boolean;
 }
 
 function computeAssetCountBadgeDiameter(
@@ -482,7 +510,7 @@ function buildTermAssetBadgeInfo(d: GraphNodeMeta): {
   return { hasAssetBadge, badges };
 }
 
-function buildDataModeTermStyle(
+export function buildDataModeTermStyle(
   datum: NodeData,
   d: GraphNodeMeta
 ): Record<string, unknown> {
@@ -496,14 +524,13 @@ function buildDataModeTermStyle(
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
     badge: hasAssetBadge,
     badges,
-    labelFill: NODE_FILL_DEFAULT,
     ...(d?.isSelected && {
-      stroke: NODE_SELECTED_STROKE,
+      stroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       lineWidth: NODE_SELECTED_LINE_WIDTH,
-      haloStroke: NODE_SELECTED_STROKE,
+      haloStroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
       haloStrokeOpacity: 0.7,
-      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFill: getCanvasColor(NODE_SELECTED_HALO_FILL, 'transparent'),
       haloFillOpacity: 1,
     }),
   };
@@ -526,7 +553,7 @@ function getStudioNodeKindStyle(
   };
 }
 
-function buildStudioNodeStyle(
+export function buildStudioNodeStyle(
   datum: NodeData,
   d: GraphNodeMeta,
   ontNode: OntologyNode | undefined
@@ -545,13 +572,15 @@ function buildStudioNodeStyle(
     studioAccentColor: accentColor,
     zIndex: 2,
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: d?.isSelected ? NODE_SELECTED_STROKE : kindStyle.stroke,
+    stroke: d?.isSelected
+      ? getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK)
+      : kindStyle.stroke,
     lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : NODE_LINE_WIDTH,
     ...(d?.isSelected && {
-      haloStroke: NODE_SELECTED_STROKE,
+      haloStroke: getCanvasColor(NODE_SELECTED_STROKE, BRAND_BLUE_FALLBACK),
       haloLineWidth: NODE_SELECTED_HALO_LINE_WIDTH,
       haloStrokeOpacity: 0.7,
-      haloFill: NODE_SELECTED_HALO_FILL,
+      haloFill: getCanvasColor(NODE_SELECTED_HALO_FILL, 'transparent'),
       haloFillOpacity: 1,
     }),
   };
@@ -638,7 +667,10 @@ function buildDefaultNodeStyle(
     ...buildDefaultRectNodeStyle(getCanvasColor, label, size),
     zIndex: 2,
     opacity: d?.isDimmed ? DIMMED_NODE_OPACITY : 1,
-    stroke: d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+    stroke: getCanvasColor(
+      d?.isSelected ? NODE_SELECTED_STROKE : nodeBorderColor,
+      BRAND_BLUE_FALLBACK
+    ),
     lineWidth: d?.isSelected ? NODE_SELECTED_LINE_WIDTH : 1,
     ...(hasHierarchyBadge && {
       radius: [0, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS, NODE_BORDER_RADIUS],
@@ -854,6 +886,44 @@ function computeLayoutContext(
   return { layoutOptions, useComboGridLayout, isModelView };
 }
 
+// Reads positions from the graph's own node data, so it reflects both the
+// grid layout and any term the user has since dragged.
+function computeRelationsEdgeRoutes(graph: Graph): Map<string, EdgeRoute> {
+  const nodes = graph.getNodeData().flatMap((node) => {
+    const x = Number(node.style?.x);
+    const y = Number(node.style?.y);
+    if (!Number.isFinite(x) || !Number.isFinite(y)) {
+      return [];
+    }
+    const [width, height] = getNodeSize(node);
+
+    return [{ id: String(node.id), x, y, width, height }];
+  });
+  const edges = graph.getEdgeData().map((edge) => {
+    const style = (edge.style ?? {}) as Record<string, unknown>;
+    const labelText =
+      typeof style.labelText === 'string' ? style.labelText : '';
+
+    return {
+      id: String(edge.id),
+      source: String(edge.source),
+      target: String(edge.target),
+      labelWidth: labelText
+        ? measureTextWidth(
+            labelText,
+            `700 ${EDGE_LABEL_FONT_SIZE}px ${EDGE_LABEL_FONT_FAMILY}`,
+            7
+          ) + RELATIONS_EDGE_LABEL_PADDING_X
+        : 0,
+      labelHeight: RELATIONS_EDGE_LABEL_HEIGHT,
+      labelOffsetX: Number(style.labelOffsetX) || 0,
+      labelOffsetY: Number(style.labelOffsetY) || 0,
+    };
+  });
+
+  return routeRelationsGraphEdges(nodes, edges);
+}
+
 function attemptInPlacePatch(
   graph: Graph,
   graphData: GraphData,
@@ -985,7 +1055,7 @@ function computePrecomputedAssetPositions(
 function buildAdditiveBakedNodes(
   graphData: GraphData,
   context: AdditiveUpdateContext,
-  precomputedAssetPositions: Record<string, [number, number]>
+  pinnedPositions: Record<string, [number, number]>
 ): NodeData[] {
   const { currentPositions, centerX, maxY } = context;
   const COLS = Math.max(1, Math.ceil(Math.sqrt(context.addedNodes.length)));
@@ -994,11 +1064,11 @@ function buildAdditiveBakedNodes(
   return (graphData.nodes ?? []).map((node) => {
     const id = String(node.id);
 
-    const ringPos = precomputedAssetPositions[id];
-    if (ringPos) {
+    const pinnedPos = pinnedPositions[id];
+    if (pinnedPos) {
       return {
         ...node,
-        style: { ...node.style, x: ringPos[0], y: ringPos[1] },
+        style: { ...node.style, x: pinnedPos[0], y: pinnedPos[1] },
       };
     }
 
@@ -1025,28 +1095,38 @@ function buildAdditiveBakedNodes(
   });
 }
 
+function pinPlacedPositions(
+  addedNodes: NodeData[],
+  placedPositions: Record<string, { x: number; y: number }> | undefined
+): Record<string, [number, number]> {
+  return Object.fromEntries(
+    addedNodes.flatMap((node): Array<[string, [number, number]]> => {
+      const placed = placedPositions?.[String(node.id)];
+
+      return placed ? [[String(node.id), [placed.x, placed.y]]] : [];
+    })
+  );
+}
+
 function applyAdditiveUpdate(
   graph: Graph,
   graphData: GraphData,
   isDataMode: boolean,
   context: AdditiveUpdateContext,
-  assetToTermMap: Record<string, string[]>
+  assetToTermMap: Record<string, string[]>,
+  placedPositions?: Record<string, { x: number; y: number }>
 ): void {
-  const precomputedAssetPositions = isDataMode
+  const pinnedPositions = isDataMode
     ? computePrecomputedAssetPositions(
         context.addedNodes,
         context.currentPositions,
         assetToTermMap
       )
-    : {};
+    : pinPlacedPositions(context.addedNodes, placedPositions);
 
   const bakedData = {
     ...graphData,
-    nodes: buildAdditiveBakedNodes(
-      graphData,
-      context,
-      precomputedAssetPositions
-    ),
+    nodes: buildAdditiveBakedNodes(graphData, context, pinnedPositions),
   };
 
   const addedNodeIds = new Set(context.addedNodes.map((n) => String(n.id)));
@@ -1074,7 +1154,18 @@ function applyAdditiveUpdate(
   });
 }
 
+// Nodes that size to their label can be wider than NODE_WIDTH (up to
+// MODEL_NODE_MAX_LABEL_WIDTH), so row and ring spacing uses the widest one.
+const getMaxNodeWidth = (nodes: NodeData[]): number =>
+  nodes.reduce((m, n) => {
+    const s = n.data?.size;
+    const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
+
+    return Math.max(m, w);
+  }, NODE_WIDTH);
+
 export function useOntologyGraph({
+  nodePositions,
   containerRef,
   graphData,
   inputNodes,
@@ -1089,6 +1180,7 @@ export function useOntologyGraph({
   onNodeClick,
   onNodeDoubleClick,
   onPaneClick,
+  onCanvasDoubleClick,
   onScrollNearEdge,
   setClickedEdgeId,
   neighborSet,
@@ -1098,9 +1190,13 @@ export function useOntologyGraph({
   hierarchicalRelationTypes,
   isEditMode = false,
   studioMode = false,
+  keepCanvasOnAdd = false,
 }: UseOntologyGraphProps) {
   const graphRef = useRef<Graph | null>(null);
   const settingsRef = useRef(settings);
+  const nodePositionsRef = useRef(nodePositions);
+  nodePositionsRef.current = nodePositions;
+  const relationsEdgeRoutesRef = useRef<Map<string, EdgeRoute>>(new Map());
 
   settingsRef.current = settings;
 
@@ -1118,12 +1214,25 @@ export function useOntologyGraph({
 
   const inputNodesRef = useRef(inputNodes);
   inputNodesRef.current = inputNodes;
+  const focusNodeIdRef = useRef(focusNodeId);
+  focusNodeIdRef.current = focusNodeId;
 
   const expandedTermIdsRef = useRef(expandedTermIds);
   expandedTermIdsRef.current = expandedTermIds;
 
   const onScrollNearEdgeRef = useRef(onScrollNearEdge);
   onScrollNearEdgeRef.current = onScrollNearEdge;
+
+  const onNodeClickRef = useRef(onNodeClick);
+  onNodeClickRef.current = onNodeClick;
+  const onNodeDoubleClickRef = useRef(onNodeDoubleClick);
+  onNodeDoubleClickRef.current = onNodeDoubleClick;
+  const onPaneClickRef = useRef(onPaneClick);
+  onPaneClickRef.current = onPaneClick;
+  const onCanvasDoubleClickRef = useRef(onCanvasDoubleClick);
+  onCanvasDoubleClickRef.current = onCanvasDoubleClick;
+  const portDragEndedAtRef = useRef(0);
+  const portPressedRef = useRef(false);
 
   const isEditModeRef = useRef(isEditMode);
   isEditModeRef.current = isEditMode;
@@ -1183,21 +1292,10 @@ export function useOntologyGraph({
       return {};
     }
     const positions: Record<string, { x: number; y: number }> = {};
-    const getHalfSize = (rawSize: unknown, fallback: number) => {
-      const sizeArr = Array.isArray(rawSize) ? rawSize : null;
-      const size = sizeArr ? Number(sizeArr[0]) : Number(rawSize);
-
-      return (Number.isFinite(size) ? size : fallback) / 2;
-    };
     graph.getNodeData().forEach((node) => {
       const pos = graph.getElementPosition(node.id);
       if (pos && Array.isArray(pos)) {
-        const rawSize = node.style?.size;
-        const w = getHalfSize(rawSize, 200);
-        const h = Array.isArray(rawSize)
-          ? (Number(rawSize[1]) || 40) / 2
-          : getHalfSize(rawSize, 40);
-        positions[node.id] = { x: pos[0] - w, y: pos[1] - h };
+        positions[node.id] = { x: pos[0], y: pos[1] };
       }
     });
 
@@ -1352,12 +1450,7 @@ export function useOntologyGraph({
 
       // Use the widest node's actual rendered width so long-label nodes
       // (up to MODEL_NODE_MAX_WIDTH) don't overlap neighbours and hide edges.
-      const maxNodeW = nodes.reduce((m, n) => {
-        const s = n.data?.size;
-        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
-
-        return Math.max(m, w);
-      }, NODE_WIDTH);
+      const maxNodeW = getMaxNodeWidth(nodes);
 
       nodes.forEach((node, i) => {
         const nc = i % innerCols;
@@ -1401,6 +1494,7 @@ export function useOntologyGraph({
     if (orphanNodes.length > 0) {
       const bottomY = curY + rowMaxH;
       const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      const orphanW = getMaxNodeWidth(orphanNodes);
       orphanNodes.forEach((node, i) => {
         const col = i % orphanCols;
         const row = Math.floor(i / orphanCols);
@@ -1410,8 +1504,8 @@ export function useOntologyGraph({
             ...(node.style ?? {}),
             x:
               COMBO_INTERIOR_PADDING_SIDES +
-              col * (NODE_WIDTH + NODE_H_SEP) +
-              NODE_WIDTH / 2,
+              col * (orphanW + NODE_H_SEP) +
+              orphanW / 2,
             y:
               bottomY +
               COMBO_V_GAP +
@@ -1425,18 +1519,24 @@ export function useOntologyGraph({
     if (updates.length > 0) {
       graph.updateNodeData(updates);
     }
+    relationsEdgeRoutesRef.current = computeRelationsEdgeRoutes(graph);
   }, []);
 
   const positionStudioNodes = useCallback(
     async (graph: Graph) => {
-      const positions = await calculateStudioNodePositions(
-        graph.getNodeData(),
-        graph.getEdgeData(),
-        {
-          hierarchicalRelationTypes,
-          viewportWidth: containerRef.current?.offsetWidth,
-        }
-      );
+      const placed = nodePositionsRef.current;
+      const positions =
+        placed && graph.getNodeData().every((node) => placed[String(node.id)])
+          ? placed
+          : await calculateStudioNodePositions(
+              graph.getNodeData(),
+              graph.getEdgeData(),
+              {
+                hierarchicalRelationTypes,
+                viewportHeight: containerRef.current?.offsetHeight,
+                viewportWidth: containerRef.current?.offsetWidth,
+              }
+            );
       const updates = graph
         .getNodeData()
         .map((node) => {
@@ -1537,12 +1637,7 @@ export function useOntologyGraph({
         return;
       }
 
-      const maxNodeW = nodes.reduce((m, n) => {
-        const s = n.data?.size;
-        const w = Array.isArray(s) ? Number(s[0]) || NODE_WIDTH : NODE_WIDTH;
-
-        return Math.max(m, w);
-      }, NODE_WIDTH);
+      const maxNodeW = getMaxNodeWidth(nodes);
 
       // Ring radius large enough so node borders don't overlap, capped so
       // large groups (50-200 nodes) don't create unbounded layouts.
@@ -1591,6 +1686,7 @@ export function useOntologyGraph({
     if (orphanNodes.length > 0) {
       const bottomY = curY + rowMaxH + COMBO_V_GAP;
       const orphanCols = Math.ceil(Math.sqrt(orphanNodes.length));
+      const orphanW = getMaxNodeWidth(orphanNodes);
       orphanNodes.forEach((node, i) => {
         updates.push({
           id: node.id,
@@ -1598,8 +1694,8 @@ export function useOntologyGraph({
             ...(node.style ?? {}),
             x:
               COMBO_INTERIOR_PADDING_SIDES +
-              (i % orphanCols) * (NODE_WIDTH + NODE_H_SEP) +
-              NODE_WIDTH / 2,
+              (i % orphanCols) * (orphanW + NODE_H_SEP) +
+              orphanW / 2,
             y:
               bottomY +
               Math.floor(i / orphanCols) * (NODE_HEIGHT + 40) +
@@ -1631,6 +1727,11 @@ export function useOntologyGraph({
         : inputNodes.length,
     [explorationMode, inputNodes]
   );
+  // Only a caller that adds classes to the live graph in place skips the
+  // rebuild; other studio callers need the hierarchy layout for new nodes.
+  const graphInstanceKey = keepCanvasOnAdd
+    ? Math.min(termNodeCount, 1)
+    : termNodeCount;
 
   const hasBakedPositions = useMemo(() => {
     if (explorationMode === 'data') {
@@ -1647,7 +1748,7 @@ export function useOntologyGraph({
   }, [explorationMode, layoutType]);
 
   useEffect(() => {
-    if (!containerRef.current || termNodeCount === 0) {
+    if (!containerRef.current || graphInstanceKey === 0) {
       return;
     }
 
@@ -1700,7 +1801,7 @@ export function useOntologyGraph({
       },
       edge: {
         type: () =>
-          studioMode && !isDataMode
+          (studioMode || useComboGridLayout) && !isDataMode
             ? CARDINALITY_AWARE_QUADRATIC_EDGE_TYPE
             : CARDINALITY_AWARE_LINE_EDGE_TYPE,
         animation: {
@@ -1714,6 +1815,11 @@ export function useOntologyGraph({
             datum.style ? { ...base, ...datum.style } : { ...base }
           ) as Record<string, unknown>;
           applyEdgeLabelVisibility(merged, settingsRef.current.showEdgeLabels);
+          if (useComboGridLayout && !studioMode && !isDataMode) {
+            const route = relationsEdgeRoutesRef.current.get(String(datum.id));
+            merged.curveOffset = route?.curveOffset ?? 0;
+            merged.labelPlacement = route?.labelPlacement ?? 'center';
+          }
 
           return merged;
         },
@@ -1747,13 +1853,34 @@ export function useOntologyGraph({
       behaviors: [
         { type: 'drag-canvas' },
         { type: 'zoom-canvas' },
-        { type: 'drag-element' },
+        {
+          type: 'drag-element',
+          // Pressing the + handle starts a connection, so it must not move the node.
+          // The drag events do not carry the pressed shape, so the press is
+          // remembered from the pointer-down handler below.
+          enable: () => !portPressedRef.current,
+        },
       ],
       plugins: [],
     });
 
     graphRef.current = graph;
     justInitializedRef.current = true;
+
+    // G6 gives each of its canvases tabindex="1", which puts four unlabelled
+    // stops ahead of the app navigation; the node list is the keyboard route.
+    const dropCanvasTabStops = () =>
+      container
+        .querySelectorAll('canvas[tabindex]')
+        .forEach((canvas) => canvas.removeAttribute('tabindex'));
+    dropCanvasTabStops();
+    const tabStopObserver = new MutationObserver(dropCanvasTabStops);
+    tabStopObserver.observe(container, {
+      attributeFilter: ['tabindex'],
+      attributes: true,
+      childList: true,
+      subtree: true,
+    });
     termFingerprintRef.current = '';
     assetFingerprintRef.current = '';
 
@@ -1830,7 +1957,7 @@ export function useOntologyGraph({
         isDataMode && isDataModeAssetBadgeShape(e.originalTarget);
       const dataModeLoadMoreBadgeClick =
         isDataMode && isDataModeLoadMoreBadgeShape(e.originalTarget);
-      onNodeClick(resolveNodeForCallback(node), position, {
+      onNodeClickRef.current(resolveNodeForCallback(node), position, {
         dataModeAssetBadgeClick,
         dataModeLoadMoreBadgeClick,
       });
@@ -1841,13 +1968,27 @@ export function useOntologyGraph({
       if (id) {
         const node = findNodeById(id);
         if (node) {
-          onNodeDoubleClick(resolveNodeForCallback(node));
+          onNodeDoubleClickRef.current(resolveNodeForCallback(node));
         }
       }
     };
 
     const cancelEditGesture = () => {
       container.dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
+    };
+    // A dragged term can land on an edge routed for the old layout, so the
+    // Relations Graph re-routes from the current positions once the drag ends.
+    const rerouteRelationsEdgesAfterDrag = () => {
+      if (studioMode || isDataMode || !useComboGridLayout) {
+        return;
+      }
+      relationsEdgeRoutesRef.current = computeRelationsEdgeRoutes(graph);
+      graph.updateEdgeData(
+        graph.getEdgeData().map((edge) => ({ id: edge.id }))
+      );
+      graph.draw().catch(() => {
+        // the graph may already be destroyed if the tab changed mid-drag
+      });
     };
     const writeGraphSnapshot = () => {
       // A viewport animation started before a rebuild can finish after the
@@ -1872,20 +2013,103 @@ export function useOntologyGraph({
           }
         })
       );
+      const edgePositions = Object.fromEntries(
+        graph.getEdgeData().flatMap((edge) => {
+          try {
+            const { min, max } = graph.getElementRenderBounds(String(edge.id));
+            const clientPosition = graph.getClientByCanvas([
+              (min[0] + max[0]) / 2,
+              (min[1] + max[1]) / 2,
+            ]);
+
+            return [
+              [String(edge.id), { x: clientPosition[0], y: clientPosition[1] }],
+            ];
+          } catch {
+            return [];
+          }
+        })
+      );
+      const portPositions = isEditModeRef.current
+        ? Object.fromEntries(
+            graph.getNodeData().flatMap((node) => {
+              try {
+                const { max, min } = graph.getElementRenderBounds(
+                  String(node.id)
+                );
+                const [x, y] = graph.getClientByCanvas([
+                  max[0] - STUDIO_EDIT_PORT_OUTER_OFFSET,
+                  (min[1] + max[1]) / 2,
+                ]);
+
+                return [[String(node.id), { x, y }]];
+              } catch {
+                return [];
+              }
+            })
+          )
+        : {};
       container.dataset.graphZoom = String(zoom);
       container.dataset.nodePositions = JSON.stringify(positions);
+      container.dataset.edgePositions = JSON.stringify(edgePositions);
+      container.dataset.portPositions = JSON.stringify(portPositions);
     };
 
     graph.on(NodeEvent.CLICK, handleNodeClick);
     graph.on(NodeEvent.DBLCLICK, handleNodeDblClick);
     graph.on(NodeEvent.DRAG_START, cancelEditGesture);
+    graph.on(NodeEvent.DRAG_END, rerouteRelationsEdgesAfterDrag);
     graph.on(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
     graph.on(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
     graph.on(GraphEvent.AFTER_TRANSFORM, writeGraphSnapshot);
     graph.on(CanvasEvent.CLICK, () => {
+      // Releasing a connection drag on empty canvas is not a click on the pane.
+      if (Date.now() - portDragEndedAtRef.current < PORT_DRAG_CLICK_GUARD_MS) {
+        return;
+      }
       setClickedEdgeIdRef.current(null);
-      onPaneClick();
+      onPaneClickRef.current();
     });
+    graph.on(CanvasEvent.DBLCLICK, (e: IElementEvent) => {
+      const handler = onCanvasDoubleClickRef.current;
+      if (!handler || !studioMode) {
+        return;
+      }
+      const [x, y] = graph.getCanvasByClient([e.client.x, e.client.y]);
+      handler({ x, y });
+    });
+    graph.on(NodeEvent.POINTER_DOWN, (e: IElementEvent) => {
+      if (
+        studioMode &&
+        isEditModeRef.current &&
+        hasShapeClass(e.originalTarget, STUDIO_EDIT_PORT_CLASS_NAME) &&
+        e.target.id
+      ) {
+        portPressedRef.current = true;
+        window.addEventListener(
+          'pointerup',
+          () => {
+            portPressedRef.current = false;
+          },
+          { once: true }
+        );
+        const detail: OntologyEditPortDownDetail = {
+          clientX: e.client.x,
+          clientY: e.client.y,
+          nodeId: e.target.id,
+        };
+        container.dispatchEvent(
+          new CustomEvent(ONTOLOGY_EDIT_PORT_DOWN_EVENT, { detail })
+        );
+      }
+    });
+    const notePortDragEnd = () => {
+      portDragEndedAtRef.current = Date.now();
+    };
+    container.addEventListener(
+      ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
+      notePortDragEnd
+    );
 
     const handleEdgeClick = (e: IElementEvent) => {
       setClickedEdgeIdRef.current(e.target.id ?? null);
@@ -2011,8 +2235,8 @@ export function useOntologyGraph({
 
     const finalizeInitialViewport = async () => {
       if (studioMode) {
-        await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
-        await graph.translateTo([0, 0], { duration: 0 });
+        await settleStudioViewport(graph, container);
+        await revealHiddenNode(graph, container, focusNodeIdRef.current);
       } else {
         await fitAndClampZoom();
       }
@@ -2046,13 +2270,36 @@ export function useOntologyGraph({
 
     runRender();
 
+    let previousSize = containerViewportSize(container);
     const resizeObserver = new ResizeObserver(() => {
       if (containerRef.current && graphRef.current) {
+        // A hidden canvas reports no size; fitting to it would shrink the
+        // graph to the minimum zoom and keep that when the canvas returns.
+        if (!container.offsetWidth || !container.offsetHeight) {
+          return;
+        }
+        const wasWhole = studioMode && graphFitsViewport(graph, previousSize);
         graphRef.current.resize(
           containerRef.current.offsetWidth,
           containerRef.current.offsetHeight
         );
+        previousSize = containerViewportSize(container);
+        // Resizing moves every node on screen without a transform event, so the
+        // published client positions would go stale and clicks would miss.
+        writeGraphSnapshot();
         scheduleTransformWork();
+        if (studioMode && !renderCancelled) {
+          // Opening the concept panel narrows the canvas: a graph that was
+          // fully visible is fitted again, otherwise the selection is kept in
+          // view beside the panel.
+          const settle =
+            wasWhole && !graphFitsViewport(graph, previousSize)
+              ? fitViewWithMinZoom(graph)
+              : revealHiddenNode(graph, container, focusNodeIdRef.current);
+          settle.then(writeGraphSnapshot).catch(() => {
+            // the graph may be destroyed while the panel animates
+          });
+        }
       }
     });
     resizeObserver.observe(container);
@@ -2071,11 +2318,19 @@ export function useOntologyGraph({
         cancelPendingUpdateRef.current = null;
       }
       resizeObserver.disconnect();
+      tabStopObserver.disconnect();
       graph.off(NodeEvent.CLICK, handleNodeClick);
       graph.off(NodeEvent.DBLCLICK, handleNodeDblClick);
       graph.off(NodeEvent.DRAG_START, cancelEditGesture);
+      graph.off(NodeEvent.DRAG_END, rerouteRelationsEdgesAfterDrag);
       graph.off(GraphEvent.AFTER_DRAW, writeGraphSnapshot);
       graph.off(CanvasEvent.CLICK);
+      graph.off(CanvasEvent.DBLCLICK);
+      graph.off(NodeEvent.POINTER_DOWN);
+      container.removeEventListener(
+        ONTOLOGY_EDIT_PORT_DRAG_END_EVENT,
+        notePortDragEnd
+      );
       graph.off('edge:click', handleEdgeClick);
       graph.off(GraphEvent.AFTER_TRANSFORM, scheduleTransformWork);
       graph.off(GraphEvent.AFTER_TRANSFORM, cancelEditGesture);
@@ -2085,7 +2340,7 @@ export function useOntologyGraph({
     };
   }, [
     applyBakedPositions,
-    termNodeCount,
+    graphInstanceKey,
     explorationMode,
     hasBakedPositions,
     layoutType,
@@ -2155,7 +2410,8 @@ export function useOntologyGraph({
         graphData,
         isDataMode,
         additiveContext,
-        assetToTermMapRef.current
+        assetToTermMapRef.current,
+        nodePositionsRef.current
       );
       commitTermFingerprintIfChanged(
         termFingerprintRef,
@@ -2285,9 +2541,10 @@ export function useOntologyGraph({
     };
 
     const finalizeUpdateViewport = async () => {
-      if (studioMode && fp.termFingerprintChanged) {
-        await graph.zoomTo(DEFAULT_ZOOM, { duration: 0 });
-        await graph.translateTo([0, 0], { duration: 0 });
+      const host = containerRef.current;
+      if (studioMode && host && fp.termFingerprintChanged) {
+        await settleStudioViewport(graph, host);
+        await revealHiddenNode(graph, host, focusNodeIdRef.current);
       } else if (
         !studioMode &&
         (fp.termFingerprintChanged || fp.layoutTypeChanged)
@@ -2366,6 +2623,32 @@ export function useOntologyGraph({
     studioMode,
     recomputeGraphBounds,
   ]);
+
+  useEffect(() => {
+    const graph = graphRef.current;
+    const host = containerRef.current;
+    if (studioMode && graph && host) {
+      revealHiddenNode(graph, host, focusNodeId).catch(() => {
+        // the graph may be rebuilt before the pan finishes
+      });
+    }
+  }, [containerRef, focusNodeId, studioMode]);
+
+  useEffect(() => {
+    const graph = graphRef.current;
+    const covered =
+      graph &&
+      nodePositions &&
+      graph.getNodeData().every((node) => nodePositions[String(node.id)]);
+    if (!studioMode || !graph || !covered) {
+      return;
+    }
+    void positionStudioNodes(graph).then(async () => {
+      if (graphRef.current === graph) {
+        await graph.draw();
+      }
+    });
+  }, [nodePositions, positionStudioNodes, studioMode]);
 
   return {
     graphRef,

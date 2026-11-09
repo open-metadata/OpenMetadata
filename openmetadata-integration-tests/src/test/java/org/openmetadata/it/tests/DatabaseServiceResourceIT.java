@@ -1,17 +1,21 @@
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,6 +23,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.ResourceLock;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.EntityRulesUtil;
 import org.openmetadata.it.util.SdkClients;
@@ -27,21 +32,28 @@ import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.domains.CreateDomain;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.CreateDatabaseService;
 import org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType;
 import org.openmetadata.schema.api.services.DatabaseConnection;
 import org.openmetadata.schema.api.services.ingestionPipelines.CreateIngestionPipeline;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResult;
 import org.openmetadata.schema.entity.services.connections.TestConnectionResultStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.AirflowConfig;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
@@ -56,14 +68,20 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
+import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -190,6 +208,75 @@ public class DatabaseServiceResourceIT
   // ===================================================================
 
   @Test
+  void csvImportAuditLogOmitsConnectionSecretsForNonAdmin(TestNamespace ns)
+      throws IOException, InterruptedException {
+    String password = "csv-audit-secret-" + UUID.randomUUID();
+    DatabaseService service =
+        ns.trackRoot(
+            getEntityType(),
+            createEntity(
+                createMinimalRequest(ns)
+                    .withConnection(
+                        new DatabaseConnection()
+                            .withConfig(
+                                new PostgresConnection()
+                                    .withHostPort("localhost:5432")
+                                    .withUsername("test")
+                                    .withAuthType(new basicAuth().withPassword(password))))));
+    for (String name : List.of("first", "second")) {
+      SdkClients.adminClient()
+          .databases()
+          .create(new CreateDatabase().withName(name).withService(service.getFullyQualifiedName()));
+    }
+
+    CsvImportResult result =
+        importCsvRecursive(
+            service.getFullyQualifiedName(),
+            exportCsvRecursive(service.getFullyQualifiedName()),
+            false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    assertTrue(result.getNumberOfRowsPassed() >= 2);
+
+    await("bulk import audit entry")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertBulkImportAuditHasNoSecrets(service, password));
+    assertEquals(
+        PASSWORD_MASK,
+        JsonUtils.valueToTree(getEntity(service.getId().toString()))
+            .at("/connection/config/authType/password")
+            .asText());
+    DatabaseService reloaded =
+        SdkClients.botClient().databaseServices().get(service.getId().toString());
+    assertEquals(
+        password,
+        JsonUtils.valueToTree(reloaded).at("/connection/config/authType/password").asText());
+  }
+
+  private void assertBulkImportAuditHasNoSecrets(DatabaseService service, String password) {
+    String response =
+        SdkClients.testUserClient()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/audit/logs",
+                null,
+                RequestOptions.builder()
+                    .queryParam("entityType", getEntityType())
+                    .queryParam("entityFQN", service.getFullyQualifiedName())
+                    .queryParam("eventType", "entityUpdated")
+                    .build());
+    JsonNode entries = JsonUtils.readTree(response).path("data");
+    assertEquals(1, entries.size());
+    JsonNode changeEvent = entries.get(0).path("changeEvent");
+    assertEquals("bulkImport", changeEvent.at("/changeDescription/fieldsUpdated/0/name").asText());
+    assertEquals(service.getId().toString(), changeEvent.path("entityId").asText());
+    assertFalse(response.contains(password));
+    assertFalse(response.contains("fernet:"));
+    JsonNode payload = JsonUtils.readTree(changeEvent.path("entity").asText());
+    assertFalse(payload.path("connection").has("config"));
+  }
+
+  @Test
   void post_databaseServiceWithPostgresConnection_200_OK(TestNamespace ns) {
     PostgresConnection conn =
         new PostgresConnection()
@@ -263,6 +350,59 @@ public class DatabaseServiceResourceIT
     service.setDescription("Updated description");
     DatabaseService updated = patchEntity(service.getId().toString(), service);
     assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void put_updateWithoutConnection_preservesExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request = createMinimalRequest(ns);
+    request.setName(ns.prefix("service_unmask_null_conn"));
+
+    DatabaseService service = createEntity(request);
+    assertNotNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated via PUT without connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT omitting connection on an existing service with a connection must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    DatabaseService reFetched = getEntity(service.getId().toString());
+    assertEquals("Updated via PUT without connection", reFetched.getDescription());
+    assertNotNull(reFetched.getConnection(), "Existing connection must be preserved, not wiped");
+  }
+
+  @Test
+  void put_updateWithoutConnection_whenNoExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("service_no_conn_at_all"))
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Initial description");
+
+    DatabaseService service = createEntity(request);
+    assertNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated description, still no connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT with no connection on either side must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
   }
 
   @Test
@@ -796,6 +936,61 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
+  void test_importExportRecursive_escapesFormulaCellsOnce(TestNamespace ns)
+      throws IOException, InterruptedException {
+    DatabaseService service =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("formula_service")));
+    Database database =
+        SdkClients.adminClient()
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db"))
+                    .withService(service.getFullyQualifiedName())
+                    .withDescription("=HYPERLINK(\"http://example.com\")"));
+    DatabaseSchema schema =
+        SdkClients.adminClient()
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withDescription("- schema bullet"));
+    Table table =
+        SdkClients.adminClient()
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withDescription("'=already quoted")
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+
+    String exportedCsv = exportCsvRecursive(service.getFullyQualifiedName());
+    // Schema and table rows come from the nested database export; each cell is escaped once.
+    assertTrue(exportedCsv.contains(",'- schema bullet,"), exportedCsv);
+    assertFalse(exportedCsv.contains("''- schema bullet"), exportedCsv);
+    assertTrue(exportedCsv.contains(",''=already quoted,"), exportedCsv);
+    assertFalse(exportedCsv.contains("'''=already quoted"), exportedCsv);
+
+    CsvImportResult result =
+        importCsvRecursive(service.getFullyQualifiedName(), exportedCsv, false);
+    assertEquals(ApiStatus.SUCCESS, result.getStatus(), result.getImportResultsCsv());
+
+    OpenMetadataClient client = SdkClients.adminClient();
+    assertEquals(
+        "=HYPERLINK(\"http://example.com\")",
+        client.databases().getByName(database.getFullyQualifiedName()).getDescription());
+    assertEquals(
+        "- schema bullet",
+        client.databaseSchemas().getByName(schema.getFullyQualifiedName()).getDescription());
+    assertEquals(
+        "'=already quoted",
+        client.tables().getByName(table.getFullyQualifiedName()).getDescription());
+  }
+
+  @Test
   void test_importExportRecursive_preservesTableConstraints(TestNamespace ns)
       throws IOException, InterruptedException {
     String serviceName = ns.prefix("import_export_recursive_constraints_service");
@@ -903,6 +1098,18 @@ public class DatabaseServiceResourceIT
         List.of(refIdFqn),
         fk.getReferredColumns(),
         "FOREIGN_KEY referredColumns (referenced-table linkage) must be preserved");
+
+    // The FOREIGN_KEY also materializes a RELATED_TO relationship edge (the ER/graph link between
+    // the two tables). The recursive/bulk import path clears and rebuilds relationships, so assert
+    // the edge itself survives -- not just the tableConstraints JSON. Reading it from the DAO keeps
+    // this deterministic (the search-backed ER endpoint is eventually consistent).
+    List<CollectionDAO.EntityRelationshipRecord> fkEdges =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findTo(table.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
+    assertTrue(
+        fkEdges.stream().anyMatch(r -> refTable.getId().equals(r.getId())),
+        "FOREIGN_KEY RELATED_TO edge (table -> referenced table) must survive a recursive import");
   }
 
   @Test
@@ -1109,10 +1316,418 @@ public class DatabaseServiceResourceIT
     return response.body();
   }
 
+  @Test
+  void test_recursiveImportCannotEditEntitiesOutsideCallerPermissions(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("csvOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService ownedService =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("owned_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+
+    DatabaseService otherService =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("other_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("db"))
+                    .withService(otherService.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("schema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(new Column().withName("id").withDataType(ColumnDataType.INT)))
+                    .withDescription("Original table description"));
+
+    String foreignRows =
+        exportCsvRecursive(otherService.getFullyQualifiedName())
+            .replace("Original table description", "Rewritten by another service import");
+    CsvImportResult result =
+        importCsvRecursive(ownedService.getFullyQualifiedName(), foreignRows, false, ownerToken);
+
+    assertTrue(result.getNumberOfRowsFailed() > 0, result.getImportResultsCsv());
+    assertEquals(
+        "Original table description",
+        admin.tables().get(table.getId().toString()).getDescription());
+  }
+
+  @Test
+  void test_recursiveImportChecksEachNewRowAgainstItsOwnType(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    // Owns the service but may not create tables: creating the database must not cover them
+    Rule denyTables =
+        new Rule()
+            .withName("denyCreateTable")
+            .withEffect(Rule.Effect.DENY)
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.CREATE));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.prefix("denyTablePolicy"))
+                    .withRules(List.of(denyTables)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("denyTableRole"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = ns.shortPrefix("csvNoTables");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId())));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("notables_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+    Database newDb = createDatabaseHierarchy(admin, service, ns.prefix("new_db"), owner);
+    String exported = exportCsvRecursive(service.getFullyQualifiedName());
+    admin
+        .databases()
+        .delete(newDb.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+    String tableFqn = newDb.getFullyQualifiedName() + ".schema.table";
+
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(service.getFullyQualifiedName(), exported, dryRun, ownerToken);
+      assertTrue(result.getNumberOfRowsFailed() > 0, result.getImportResultsCsv());
+    }
+    assertNotNull(admin.databases().getByName(newDb.getFullyQualifiedName()));
+    assertThrows(OpenMetadataException.class, () -> admin.tables().getByName(tableFqn));
+  }
+
+  @Test
+  void test_recursiveImportCannotEditColumnsOfTableOutsideCallerPermissions(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("csvColOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService ownedService =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("col_owned_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+    DatabaseService otherService =
+        createEntity(createMinimalRequest(ns).withName(ns.prefix("col_other_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("col_db"))
+                    .withService(otherService.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("col_schema"))
+                    .withDatabase(database.getFullyQualifiedName()));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName(ns.prefix("col_table"))
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Original column description"))));
+
+    // Only the column rows of the foreign table, so the table-level check does not run
+    List<String> lines =
+        exportCsvRecursive(otherService.getFullyQualifiedName())
+            .replace("Original column description", "Rewritten column")
+            .lines()
+            .toList();
+    String columnRows =
+        lines.getFirst()
+            + "\n"
+            + String.join(
+                "\n",
+                lines.stream().skip(1).filter(line -> line.contains("Rewritten column")).toList());
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(ownedService.getFullyQualifiedName(), columnRows, dryRun, ownerToken);
+      assertTrue(result.getNumberOfRowsFailed() > 0, result.getImportResultsCsv());
+    }
+    assertEquals(
+        "Original column description",
+        admin
+            .tables()
+            .get(table.getId().toString(), "columns")
+            .getColumns()
+            .getFirst()
+            .getDescription());
+  }
+
+  @Test
+  void test_recursiveImportChecksChildOfNewDatabaseAgainstTheDatabaseOwners(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("csvNewDbOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("newdb_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+    // A database does not inherit its service's owners, so over REST the service owner may create
+    // it but not a schema in it
+    Database newDb = createDatabaseHierarchy(admin, service, ns.prefix("unowned_db"), null);
+    // Only the database and schema rows; table and column rows need their schema to exist
+    String exported =
+        String.join(
+            "\n",
+            exportCsvRecursive(service.getFullyQualifiedName())
+                .lines()
+                .filter(line -> !line.contains(",table,") && !line.contains(",column,"))
+                .toList());
+    admin
+        .databases()
+        .delete(newDb.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(service.getFullyQualifiedName(), exported, dryRun, ownerToken);
+      assertTrue(result.getNumberOfRowsFailed() > 0, result.getImportResultsCsv());
+    }
+    assertNotNull(admin.databases().getByName(newDb.getFullyQualifiedName()));
+    assertThrows(
+        OpenMetadataException.class,
+        () -> admin.databaseSchemas().getByName(newDb.getFullyQualifiedName() + ".schema"));
+  }
+
+  @Test
+  void test_recursiveImportChecksColumnRowsOfTableSharingStoredProcedureFqn(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Rule denyColumnEdits =
+        new Rule()
+            .withName("denyEditTableDescription")
+            .withEffect(Rule.Effect.DENY)
+            .withResources(List.of(Entity.TABLE))
+            .withOperations(List.of(MetadataOperation.EDIT_DESCRIPTION));
+    Policy policy =
+        admin
+            .policies()
+            .create(
+                new CreatePolicy()
+                    .withName(ns.prefix("denyTableDescPolicy"))
+                    .withRules(List.of(denyColumnEdits)));
+    Role role =
+        admin
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("denyTableDescRole"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String userName = ns.shortPrefix("csvSchemaOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(userName)
+                    .withEmail(userName + "@test.openmetadata.org")
+                    .withRoles(List.of(role.getId())));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService service = createEntity(createMinimalRequest(ns).withName(ns.prefix("sp_svc")));
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(ns.prefix("sp_db"))
+                    .withService(service.getFullyQualifiedName()));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName(ns.prefix("sp_schema"))
+                    .withDatabase(database.getFullyQualifiedName())
+                    .withOwners(List.of(owner.getEntityReference())));
+    Table table =
+        admin
+            .tables()
+            .create(
+                new CreateTable()
+                    .withName("orders")
+                    .withDatabaseSchema(schema.getFullyQualifiedName())
+                    .withOwners(List.of(admin.users().getByName("admin").getEntityReference()))
+                    .withColumns(
+                        List.of(
+                            new Column()
+                                .withName("id")
+                                .withDataType(ColumnDataType.INT)
+                                .withDescription("Original column description"))));
+
+    // A new stored procedure with the table's FQN, then column rows for that table
+    String csv =
+        String.join(
+            "\n",
+            "name*,displayName,description,owner,tags,glossaryTerms,tiers,certification,"
+                + "retentionPeriod,sourceUrl,domains,extension,entityType*,fullyQualifiedName,"
+                + "column.dataTypeDisplay,column.dataType,column.arrayDataType,column.dataLength,"
+                + "storedProcedure.code,storedProcedure.language",
+            "orders,,,,,,,,,,,,storedProcedure,"
+                + table.getFullyQualifiedName()
+                + ",,,,,select 1,SQL",
+            "id,,Rewritten column,,,,,,,,,,column,"
+                + table.getFullyQualifiedName()
+                + ".id,int,INT,,,,");
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(
+              "databaseSchemas", schema.getFullyQualifiedName(), csv, dryRun, ownerToken);
+      List<String> rows = result.getImportResultsCsv().lines().skip(1).toList();
+      assertTrue(
+          rows.stream()
+              .anyMatch(row -> row.startsWith("success") && row.contains("storedProcedure")),
+          result.getImportResultsCsv());
+      assertTrue(
+          rows.stream().anyMatch(row -> row.startsWith("failure") && row.contains(",column,")),
+          result.getImportResultsCsv());
+    }
+    assertEquals(
+        "Original column description",
+        admin
+            .tables()
+            .get(table.getId().toString(), "columns")
+            .getColumns()
+            .getFirst()
+            .getDescription());
+  }
+
+  @Test
+  void test_recursiveImportByServiceOwnerCreatesAndUpdatesOwnHierarchy(TestNamespace ns)
+      throws IOException, InterruptedException {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String userName = ns.shortPrefix("csvSvcOwner");
+    User owner =
+        admin
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+    String ownerToken =
+        JwtAuthProvider.tokenFor(owner.getEmail(), owner.getEmail(), new String[] {}, 3600);
+    DatabaseService service =
+        createEntity(
+            createMinimalRequest(ns)
+                .withName(ns.prefix("own_svc"))
+                .withOwners(List.of(owner.getEntityReference())));
+    // Databases do not inherit their service's owners, so the user owns them directly.
+    Database existingDb = createDatabaseHierarchy(admin, service, ns.prefix("existing_db"), owner);
+    Database newDb = createDatabaseHierarchy(admin, service, ns.prefix("new_db"), owner);
+    String exported = exportCsvRecursive(service.getFullyQualifiedName());
+    admin
+        .databases()
+        .delete(newDb.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    for (boolean dryRun : List.of(true, false)) {
+      CsvImportResult result =
+          importCsvRecursive(service.getFullyQualifiedName(), exported, dryRun, ownerToken);
+      assertEquals(0, result.getNumberOfRowsFailed(), result.getImportResultsCsv());
+    }
+    assertNotNull(admin.databases().getByName(newDb.getFullyQualifiedName()));
+    assertNotNull(admin.tables().getByName(newDb.getFullyQualifiedName() + ".schema.table"));
+    assertNotNull(admin.databases().get(existingDb.getId().toString()));
+  }
+
+  private Database createDatabaseHierarchy(
+      OpenMetadataClient admin, DatabaseService service, String databaseName, User owner) {
+    Database database =
+        admin
+            .databases()
+            .create(
+                new CreateDatabase()
+                    .withName(databaseName)
+                    .withService(service.getFullyQualifiedName())
+                    .withOwners(owner == null ? null : List.of(owner.getEntityReference())));
+    DatabaseSchema schema =
+        admin
+            .databaseSchemas()
+            .create(
+                new CreateDatabaseSchema()
+                    .withName("schema")
+                    .withDatabase(database.getFullyQualifiedName()));
+    admin
+        .tables()
+        .create(
+            new CreateTable()
+                .withName("table")
+                .withDatabaseSchema(schema.getFullyQualifiedName())
+                .withColumns(
+                    List.of(new Column().withName("id").withDataType(ColumnDataType.INT))));
+    return database;
+  }
+
   private CsvImportResult importCsvRecursive(String entityName, String csvData, boolean dryRun)
       throws IOException, InterruptedException {
+    return importCsvRecursive(entityName, csvData, dryRun, SdkClients.getAdminToken());
+  }
+
+  private CsvImportResult importCsvRecursive(
+      String entityName, String csvData, boolean dryRun, String token)
+      throws IOException, InterruptedException {
+    return importCsvRecursive("services/databaseServices", entityName, csvData, dryRun, token);
+  }
+
+  private CsvImportResult importCsvRecursive(
+      String collection, String entityName, String csvData, boolean dryRun, String token)
+      throws IOException, InterruptedException {
     String serverUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
 
     HttpClient client = HttpClient.newHttpClient();
     HttpRequest request =
@@ -1120,7 +1735,9 @@ public class DatabaseServiceResourceIT
             .uri(
                 URI.create(
                     serverUrl
-                        + "/v1/services/databaseServices/name/"
+                        + "/v1/"
+                        + collection
+                        + "/name/"
                         + entityName
                         + "/import?recursive=true&dryRun="
                         + dryRun))

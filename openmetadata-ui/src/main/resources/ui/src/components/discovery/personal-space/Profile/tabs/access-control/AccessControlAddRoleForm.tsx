@@ -35,6 +35,7 @@ import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Policy } from '../../../../../../generated/entity/policies/policy';
 import { addRole, getPolicies } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -133,7 +134,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
 
     setIsSaveLoading(true);
     try {
-      await addRole({
+      const role = await addRole({
         name: data.name.trim(),
         description,
         policies: data.policies,
@@ -141,7 +142,11 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
       showSuccessToast(
         t('server.create-entity-success', { entity: t('label.role') })
       );
-      onNavigate({ type: 'roles' });
+      onNavigate({
+        type: 'roles-detail',
+        fqn: role.fullyQualifiedName ?? role.name,
+        name: getEntityName(role),
+      });
     } catch (error) {
       showErrorToast(
         getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
@@ -166,7 +171,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
       {/* Scrollable form area */}
       <HookForm form={form}>
         <Box
-          className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full"
+          className="tw:flex-1 tw:overflow-y-auto tw:p-6 tw:pt-0 tw:max-w-[50%] tw:w-full tw:mx-auto"
           data-testid="add-role-container"
           direction="col"
           gap={5}>
@@ -205,6 +210,7 @@ const AccessControlAddRoleForm: React.FC<AccessControlAddRoleFormProps> = ({
                     contains(String(item.id), filterText)
                   }
                   items={policyItems}
+                  maxVisibleItems={5}
                   placeholder={t('label.select-a-policy')}
                   selectedItems={selectedPolicyItems}
                   onItemCleared={(key) =>

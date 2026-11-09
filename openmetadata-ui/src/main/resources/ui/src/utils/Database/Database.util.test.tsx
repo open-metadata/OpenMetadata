@@ -17,14 +17,6 @@ import { DatabaseFields, getQueryFilterForDatabase } from './Database.util';
 import { ExtraDatabaseDropdownOptions } from './DatabaseDropdownOptions';
 
 jest.mock(
-  '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component',
-  () => ({
-    useEntityExportModalProvider: jest.fn().mockReturnValue({
-      showModal: jest.fn(),
-    }),
-  })
-);
-jest.mock(
   '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component',
   () => ({
     ManageButtonItemLabel: jest
@@ -38,6 +30,8 @@ jest.mock('react-router-dom', () => ({
 }));
 
 const mockNavigate = jest.fn();
+
+const mockShowModal = jest.fn();
 
 describe('Database Util', () => {
   beforeEach(() => {
@@ -98,7 +92,8 @@ describe('Database Util', () => {
         'databaseFqn',
         permission,
         false,
-        mockNavigate
+        mockNavigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(1);
@@ -115,7 +110,8 @@ describe('Database Util', () => {
         'databaseFqn',
         permission,
         false,
-        mockNavigate
+        mockNavigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(1);
@@ -132,7 +128,8 @@ describe('Database Util', () => {
         'databaseFqn',
         permission,
         false,
-        mockNavigate
+        mockNavigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(2);
@@ -149,7 +146,8 @@ describe('Database Util', () => {
         'databaseFqn',
         permission,
         false,
-        mockNavigate
+        mockNavigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(0);
@@ -165,7 +163,8 @@ describe('Database Util', () => {
         'databaseFqn',
         permission,
         true,
-        mockNavigate
+        mockNavigate,
+        mockShowModal
       );
 
       expect(result).toHaveLength(0);

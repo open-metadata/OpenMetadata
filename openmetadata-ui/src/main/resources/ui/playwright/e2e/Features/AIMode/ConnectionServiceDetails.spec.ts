@@ -19,9 +19,8 @@
  * switch, a soft-deleted service's children, the list after a restore and after a search is
  * cleared, only the top level of nesting assets, and drive directories. It also offers classic's
  * other asset tabs (a dashboard service's data models, a drive service's files and spreadsheets),
- * each counted in its label before it is opened, and the service's data products in metadata
- * details that open expanded. A service name too long for the header ends in an ellipsis, with
- * the full name on hover.
+ * each counted in its label before it is opened, and the service's data products in its right
+ * panel. A service name too long for the header ends in an ellipsis, with the full name on hover.
  *
  * Its header carries the current version, which opens the version history as Context Center
  * articles do, and, for a database service, Follow; the service's active announcement shows under
@@ -70,6 +69,8 @@ const PERSONAL_TAG = {
   state: 'Confirmed',
 };
 
+const LIST_PAGE_SIZE = 15;
+
 test.describe(
   'AI mode service details',
   { tag: [DOMAIN_TAGS.INTEGRATION] },
@@ -78,7 +79,8 @@ test.describe(
       let service: DatabaseServiceClass;
       let owner: UserClass;
       let serviceFqn = '';
-      // Three live databases, so a two-row page has a second page, and one soft-deleted one.
+      // One more live database than a page holds, so the list has a second page, and one
+      // soft-deleted one. Zero-padded names keep the name-ordered list in creation order.
       let databases: string[] = [];
       let deletedDatabase = '';
       const announcementTitle = `pw-ai-announcement-${uuid()}`;
@@ -92,10 +94,13 @@ test.describe(
         serviceFqn = service.entityResponseData.fullyQualifiedName;
 
         const prefix = `pw-ai-db-${uuid()}`;
-        databases = [`${prefix}-1`, `${prefix}-2`, `${prefix}-3`];
-        deletedDatabase = `${prefix}-4`;
+        databases = Array.from(
+          { length: LIST_PAGE_SIZE + 1 },
+          (_, index) => `${prefix}-${String(index + 1).padStart(2, '0')}`
+        );
+        deletedDatabase = `${prefix}-deleted`;
 
-        const [, searched, , toDelete] = await Promise.all(
+        const created = await Promise.all(
           [...databases, deletedDatabase].map(async (name, index) =>
             okJson<EntityRef>(
               await apiContext.post('/api/v1/databases', {
@@ -112,6 +117,8 @@ test.describe(
             )
           )
         );
+        const searched = created[1];
+        const toDelete = created[created.length - 1];
 
         await okJson(
           await apiContext.delete(
@@ -261,16 +268,19 @@ test.describe(
       test('pages through the databases and keeps the page across a reload', async ({
         page,
       }) => {
-        await test.step('first page holds the first two databases', async () => {
+        const lastOnFirstPage = databases[LIST_PAGE_SIZE - 1];
+        const firstOnSecondPage = databases[LIST_PAGE_SIZE];
+
+        await test.step('first page holds the first page of databases', async () => {
           await visitAiModeServiceDetailsPage(page, {
             category: 'databaseServices',
             fqn: serviceFqn,
-            query: '?pageSize=2',
+            query: `?pageSize=${LIST_PAGE_SIZE}`,
           });
 
           await expect(getRowByName(page, databases[0])).toBeVisible();
-          await expect(getRowByName(page, databases[1])).toBeVisible();
-          await expect(getRowByName(page, databases[2])).toBeHidden();
+          await expect(getRowByName(page, lastOnFirstPage)).toBeVisible();
+          await expect(getRowByName(page, firstOnSecondPage)).toBeHidden();
         });
 
         await test.step('Next shows the next databases, not the same ones', async () => {
@@ -283,7 +293,7 @@ test.describe(
           await page.getByTestId('next').click();
           await nextPage;
 
-          await expect(getRowByName(page, databases[2])).toBeVisible();
+          await expect(getRowByName(page, firstOnSecondPage)).toBeVisible();
           await expect(getRowByName(page, databases[0])).toBeHidden();
         });
 
@@ -298,7 +308,7 @@ test.describe(
           await samePage;
           await waitForAllLoadersToDisappear(page);
 
-          await expect(getRowByName(page, databases[2])).toBeVisible();
+          await expect(getRowByName(page, firstOnSecondPage)).toBeVisible();
           await expect(getRowByName(page, databases[0])).toBeHidden();
         });
       });
@@ -623,11 +633,11 @@ test.describe(
 
         // Counted before the tab is opened, as its list loads only then.
         await expect(
-          page.getByRole('tab', { name: 'Data Model 1', exact: true })
+          page.getByRole('tab', { name: 'Data Models 1', exact: true })
         ).toBeVisible();
 
         await openAiModeServiceAssetTab(page, {
-          tabName: 'Data Model',
+          tabName: 'Data Models',
           listPath: 'dashboard/datamodels',
           serviceFqn,
         });
@@ -806,26 +816,24 @@ test.describe(
         await afterAction();
       });
 
-      test('assigns a data product to the service from its metadata details', async ({
+      test('assigns a data product to the service from its right panel', async ({
         page,
       }) => {
         const serviceFqn = service.entityResponseData.fullyQualifiedName;
         const dataProductFqn =
           dataProduct.responseData.fullyQualifiedName ?? '';
-        const section = page.getByTestId('service-data-products');
+        const section = page
+          .getByTestId('service-right-panel')
+          .getByTestId('data-products-container');
         expect(dataProductFqn).not.toBe('');
         await enableAiAppMode(page);
         await visitAiModeServiceDetailsPage(page, {
           category: 'databaseServices',
           fqn: serviceFqn,
         });
-        // Open from the start; clicking it here would close it.
-        await expect(
-          page.getByRole('button', { name: 'Metadata Details' })
-        ).toHaveAttribute('aria-expanded', 'true');
 
         await test.step('pick it and apply', async () => {
-          await section.getByTestId('edit-data-products').click();
+          await section.getByTestId('add-data-product').click();
           const picker = page.getByTestId('drop-down-menu');
           const option = picker.getByTestId(dataProductFqn);
           await expect(option).toBeVisible();
@@ -855,7 +863,6 @@ test.describe(
             category: 'databaseServices',
             fqn: serviceFqn,
           });
-          await page.getByRole('button', { name: 'Metadata Details' }).click();
 
           await expect(section).toContainText(
             dataProduct.responseData.displayName

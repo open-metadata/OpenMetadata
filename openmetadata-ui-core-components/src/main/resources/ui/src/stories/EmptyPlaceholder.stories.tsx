@@ -148,6 +148,13 @@ export const BlankWithoutTitle: Story = {
   },
 };
 
+export const Small: Story = {
+  args: {
+    size: 'sm',
+    title: 'No Workflow History found',
+  },
+};
+
 export const Features: Story = {
   args: {
     variant: 'features',

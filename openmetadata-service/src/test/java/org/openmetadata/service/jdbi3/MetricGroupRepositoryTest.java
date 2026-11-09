@@ -15,10 +15,15 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
@@ -28,7 +33,9 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.schema.type.MetadataOperation.VIEW_BASIC;
 
+import jakarta.json.Json;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -43,12 +50,18 @@ import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
 import org.openmetadata.service.rdf.RdfUpdater;
+import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -422,6 +435,7 @@ class MetricGroupRepositoryTest {
       restoreDispatch.verify(dispatcher).onEntitySoftDeletedOrRestored(group, false, null);
       restoreDispatch.verify(dispatcher).onEntityUpdated(member, null);
       verify(dispatcher, never()).onEntityUpdated(group.getEntityReference(), null);
+      assertNull(group.getMetrics());
       cache.verify(
           () ->
               EntityRepository.invalidateCacheForEntity(
@@ -475,8 +489,290 @@ class MetricGroupRepositoryTest {
     }
   }
 
+  @Test
+  void updatedGroupLeavesTheRepositoryWithoutItsMembers() {
+    MetricGroup original = group("tagged_group").withDeleted(false);
+    MetricGroup updated = JsonUtils.deepCopy(original, MetricGroup.class);
+    updated.setMetrics(List.of(metric("member").getEntityReference()));
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<RdfUpdater> rdf = mockStatic(RdfUpdater.class)) {
+      lifecycle
+          .when(EntityLifecycleEventDispatcher::getInstance)
+          .thenReturn(mock(EntityLifecycleEventDispatcher.class));
+
+      repository.postUpdate(original, updated);
+
+      assertNull(updated.getMetrics());
+    }
+  }
+
+  @Test
+  void sanitizeMembershipFiltersMembersChangeDescriptionsAndRecountsMetricCount() {
+    MetricGroup group = group("profitability");
+    Metric visible = metric("visible_metric");
+    Metric hidden = metric("restricted_metric");
+    group.setMetrics(
+        new ArrayList<>(List.of(visible.getEntityReference(), hidden.getEntityReference())));
+    group.setMetricCount(2);
+    group.setChangeDescription(
+        new ChangeDescription()
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange()
+                        .withName("metrics")
+                        .withNewValue(JsonUtils.pojoToJson(List.of(hidden.getEntityReference()))),
+                    new FieldChange().withName("description").withNewValue("a description"))));
+    when(groupDAO.listMemberJsons(group.getId(), Relationship.HAS.ordinal(), "%", 500, 0))
+        .thenReturn(List.of(JsonUtils.pojoToJson(visible), JsonUtils.pojoToJson(hidden)));
+
+    MetricGroup sanitized =
+        repository.sanitizeMembership(
+            group, reference -> visible.getId().equals(reference.getId()));
+
+    assertEquals(List.of(visible.getEntityReference()), sanitized.getMetrics());
+    assertEquals(1, sanitized.getMetricCount());
+    assertEquals(
+        List.of("description"),
+        sanitized.getChangeDescription().getFieldsAdded().stream()
+            .map(FieldChange::getName)
+            .toList());
+    // the source group is left untouched
+    assertEquals(2, group.getMetrics().size());
+    assertEquals(2, (int) group.getMetricCount());
+    assertEquals(
+        List.of("metrics", "description"),
+        group.getChangeDescription().getFieldsAdded().stream().map(FieldChange::getName).toList());
+  }
+
+  @Test
+  void pageSanitizationRecountsMetricCountsWithOneBatchQuery() {
+    MetricGroup first = group("first_group");
+    MetricGroup second = group("second_group");
+    Metric visible = metric("visible_member");
+    Metric hidden = metric("restricted_member");
+    Metric secondMember = metric("second_member");
+    first.setMetricCount(2);
+    second.setMetricCount(1);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(relationshipDAO.findToBatch(
+              List.of(first.getId().toString(), second.getId().toString()),
+              Relationship.HAS.ordinal(),
+              Entity.METRIC_GROUP,
+              Entity.METRIC))
+          .thenReturn(
+              List.of(
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(visible.getId().toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(first.getId().toString())
+                      .toId(hidden.getId().toString())
+                      .build(),
+                  CollectionDAO.EntityRelationshipObject.builder()
+                      .fromId(second.getId().toString())
+                      .toId(secondMember.getId().toString())
+                      .build()));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      eq(Entity.METRIC),
+                      argThat(
+                          ids ->
+                              ids.containsAll(
+                                  List.of(visible.getId(), hidden.getId(), secondMember.getId()))),
+                      eq(NON_DELETED)))
+          .thenReturn(
+              List.of(
+                  visible.getEntityReference(),
+                  hidden.getEntityReference(),
+                  secondMember.getEntityReference()));
+
+      List<MetricGroup> sanitized =
+          repository.sanitizeMembership(
+              List.of(first, second), reference -> !hidden.getId().equals(reference.getId()));
+
+      assertEquals(1, (int) sanitized.get(0).getMetricCount());
+      assertEquals(1, (int) sanitized.get(1).getMetricCount());
+      verify(relationshipDAO, times(1))
+          .findToBatch(
+              anyList(),
+              eq(Relationship.HAS.ordinal()),
+              eq(Entity.METRIC_GROUP),
+              eq(Entity.METRIC));
+    }
+  }
+
+  @Test
+  void pageSanitizationStopsAtTheScanCapPerGroup() {
+    MetricGroup group = group("oversized_group");
+    int cap = MetricGroupRepository.MAX_PERMISSION_FILTER_SCAN_SIZE;
+    group.setMetricCount(cap + 1);
+    List<CollectionDAO.EntityRelationshipObject> records = new ArrayList<>();
+    List<UUID> firstCapIds = new ArrayList<>();
+    for (int index = 0; index < cap + 1; index++) {
+      UUID memberId = UUID.randomUUID();
+      if (index < cap) {
+        firstCapIds.add(memberId);
+      }
+      records.add(
+          CollectionDAO.EntityRelationshipObject.builder()
+              .fromId(group.getId().toString())
+              .toId(memberId.toString())
+              .build());
+    }
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      when(relationshipDAO.findToBatch(
+              List.of(group.getId().toString()),
+              Relationship.HAS.ordinal(),
+              Entity.METRIC_GROUP,
+              Entity.METRIC))
+          .thenReturn(records);
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      eq(Entity.METRIC), argThat(ids -> ids.size() == cap), eq(NON_DELETED)))
+          .thenReturn(
+              firstCapIds.stream()
+                  .map(id -> new EntityReference().withId(id).withType(Entity.METRIC))
+                  .toList());
+
+      List<MetricGroup> sanitized =
+          repository.sanitizeMembership(List.of(group), reference -> true);
+
+      assertEquals(cap, (int) sanitized.getFirst().getMetricCount());
+    }
+  }
+
+  @Test
+  void aWriteChecksEditAllOnTheMetricsItAddsToOrRemovesFromTheGroup() {
+    final EntityReference kept = member("revenue");
+    final MetricGroup original = group("finance").withMetrics(List.of(kept, member("cost")));
+    final MetricGroup renamed =
+        JsonUtils.deepCopy(original, MetricGroup.class).withDisplayName("Finance");
+    final MetricGroup reassigned =
+        JsonUtils.deepCopy(original, MetricGroup.class)
+            .withMetrics(List.of(kept, member("profit")));
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    final Authorizer authorizer = mock(Authorizer.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenReturn(mock(MetricRepository.class));
+
+      repository.authorizeWrite(original, renamed, actor, Edit.patch(Set.of("displayName")));
+      verify(authorizer, never()).authorizeActor(any(), any(), any());
+
+      // The removed and the added metric are checked; the one that stays is not.
+      repository.authorizeWrite(original, reassigned, actor, Edit.patch(Set.of("metrics")));
+      verify(authorizer, times(2))
+          .authorizeActor(
+              eq(actor), any(), argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+    }
+  }
+
+  @Test
+  void patchAddressingMembersRequiresViewOnEveryMember() {
+    final MetricGroup original = group("kpis").withMetrics(List.of(member("margin")));
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    final Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("hidden metric"))
+        .when(authorizer)
+        .authorizeActor(
+            eq(actor),
+            argThat(operation -> operation.getOperations(null).contains(VIEW_BASIC)),
+            argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenReturn(mock(MetricRepository.class));
+
+      assertThrows(
+          AuthorizationException.class,
+          () ->
+              repository.authorizePatch(
+                  original,
+                  Json.createPatchBuilder().copy("/description", "/metrics/0/description").build(),
+                  actor));
+      // A patch that names no member reads none, and a system write is not a caller.
+      repository.authorizePatch(
+          original, Json.createPatchBuilder().add("/description", "x").build(), actor);
+      repository.authorizePatch(
+          original,
+          Json.createPatchBuilder().copy("/displayName", "/metrics/0/name").build(),
+          ChangeActor.system("admin", null));
+      verify(authorizer, times(1)).authorizeActor(any(), any(), any());
+    }
+    assertTrue(
+        MetricGroupRepository.addressesMembers(
+            Json.createPatchBuilder().remove("/metrics/1").build()));
+    assertTrue(
+        MetricGroupRepository.addressesMembers(
+            Json.createPatchBuilder().add("", Json.createObjectBuilder().build()).build()));
+    assertFalse(
+        MetricGroupRepository.addressesMembers(
+            Json.createPatchBuilder().replace("/metricsNote", "x").build()));
+  }
+
+  @Test
+  void unapplicablePatchErrorDoesNotQuoteTheGroup() {
+    final MetricGroup original =
+        group("kpis").withDescription("board secrets").withMetrics(List.of(member("margin")));
+
+    final IllegalArgumentException thrown =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                repository.authorizePatch(
+                    original,
+                    Json.createPatchBuilder().copy("/description", "/nope/x").build(),
+                    ChangeActor.user("alice", null)));
+
+    assertFalse(thrown.getMessage().contains("board secrets"));
+    assertFalse(thrown.getMessage().contains("margin"));
+  }
+
+  @Test
+  void aDocumentRootPatchIsRefusedBeforeAnyMemberCheck() {
+    final MetricGroup original = group("kpis").withMetrics(List.of(member("margin")));
+    final Authorizer authorizer = mock(Authorizer.class);
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC))
+          .thenReturn(mock(MetricRepository.class));
+
+      final IllegalArgumentException refused =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  repository.previewPatch(
+                      original,
+                      Json.createPatchBuilder().add("", Json.createObjectBuilder().build()).build(),
+                      ChangeActor.user("alice", null)));
+
+      // A 403 here would tell the caller the group has a member it may not view.
+      assertTrue(refused.getMessage().contains("document root"), refused.getMessage());
+      verify(authorizer, never()).authorizeActor(any(), any(), any());
+    }
+  }
+
   private MetricGroup group(String name) {
     return new MetricGroup().withId(UUID.randomUUID()).withName(name).withFullyQualifiedName(name);
+  }
+
+  private EntityReference member(String name) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.METRIC)
+        .withName(name)
+        .withFullyQualifiedName(name);
   }
 
   private Metric metric(String name) {

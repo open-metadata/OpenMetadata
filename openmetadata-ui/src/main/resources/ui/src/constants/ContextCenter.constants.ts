@@ -21,6 +21,17 @@ import {
 import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
+export const CONTEXT_FILE_ENTITY_TYPE = 'contextFile';
+
+/**
+ * The status reason the server stores when a Query a memory cites is deleted (MemoryEvidenceHolds),
+ * with the Query's id between the two parts. Only matched to recognise that hold, so it stays in
+ * English; the UI shows `message.memory-supporting-query-deleted` instead.
+ */
+export const RETIRED_QUERY_REASON = {
+  prefix: 'Supporting query ',
+  suffix: ' was deleted; review whether this memory still holds without it',
+};
 
 // Quick-filter fields shown above the Context Center Articles list. Options are
 // fetched from the `page` search-index aggregations by ExploreQuickFilters.
@@ -73,7 +84,6 @@ export const ARTICLE_SORT_OPTIONS: ArticleSortOption[] = [
 
 export const DEFAULT_ARTICLE_SORT_OPTION = ARTICLE_SORT_OPTIONS[0];
 
-export const ARCHIVE_PAGE_SIZE = 15;
 export const RECENT_DASHBOARD_ARTICLES_LIMIT = 3;
 export const RECENT_DASHBOARD_DOCUMENTS_LIMIT = 3;
 export const RECENT_DASHBOARD_MEMORIES_LIMIT = 3;
@@ -133,7 +143,6 @@ export const VISIBILITY_OPTIONS = [
   },
 ];
 
-export const MEMORIES_PER_PAGE = 10;
 export const MEMORY_FIELDS =
   'owners,tags,domains,primaryEntity,relatedEntities,derivedEntities,sourceEntity';
 
@@ -145,6 +154,12 @@ export const DEFAULT_MEMORY_STATUSES = [
 // Draft holds a memory for a person: one whose supporting query was deleted has no review task.
 export const DEFAULT_MEMORY_LIST_STATUSES = [
   ...DEFAULT_MEMORY_STATUSES,
+  ContextMemoryStatus.Draft,
+];
+
+/** The stages a person approves or rejects a memory from. */
+export const MEMORY_STATUSES_AWAITING_DECISION = [
+  ContextMemoryStatus.Unprocessed,
   ContextMemoryStatus.Draft,
 ];
 
