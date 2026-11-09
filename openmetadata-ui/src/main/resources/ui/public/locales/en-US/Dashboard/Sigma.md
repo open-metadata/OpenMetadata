@@ -50,6 +50,10 @@ $$
 
 When **Include Tags** is on, a workbook's certification badge (Endorsed, Warning or Deprecated) is added to its dashboard as a tag in the `SigmaBadge` classification.
 
+## Projects
+
+A Sigma workbook's project is its workspace, the first part of the workbook's path in Sigma (for example `My Documents`). **Project Filter Pattern** includes or excludes workbooks by that workspace name.
+
 ## Data Models
 
 When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it.

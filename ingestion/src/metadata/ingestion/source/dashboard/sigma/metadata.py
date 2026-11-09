@@ -165,6 +165,13 @@ class SigmaSource(DashboardServiceSource):
         """
         return dashboard.name
 
+    def get_project_name(self, dashboard_details: WorkbookDetails) -> str | None:
+        """
+        The workspace: Sigma's path starts with it and continues with the folders
+        (ADR:2026-11-07-a-sigma-dashboard-project-is-the-workbook-workspace)
+        """
+        return dashboard_details.path.split("/")[0] if dashboard_details.path else None
+
     def get_dashboard_details(self, dashboard: Workbook) -> WorkbookDetails | None:
         """
         get dashboard details
@@ -230,6 +237,7 @@ class SigmaSource(DashboardServiceSource):
                     tags=[dashboard_details.badge] if dashboard_details.badge else None,
                     classification_name=SIGMA_BADGE_CLASSIFICATION,
                 ),
+                project=self.get_project_name(dashboard_details=dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
                 lifeCycle=LifeCycle(
                     created=_access_details(dashboard_details.createdAt),

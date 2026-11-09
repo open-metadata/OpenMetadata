@@ -868,6 +868,39 @@ def test_badge_is_not_read_when_tags_are_off(sigma_over_http):
     assert calls["GET", "/v2/files/wb-1"] == 0
 
 
+def ingested_projects(source) -> dict[str, str | None]:
+    """The project of each dashboard the run sends, with workbooks read and filtered as the topology does"""
+    source.source_config.includeOwners = False
+    return {
+        dashboard.name.root: dashboard.project
+        for details in source.get_dashboard()
+        for dashboard in [next(source.yield_dashboard(details)).right]
+    }
+
+
+def test_dashboard_project_is_the_workbook_workspace(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-3"] = {**SIGMA_WORKBOOKS[2], "path": "My Documents"}
+
+    assert ingested_projects(source) == {"wb-1": "Shared", "wb-2": "Shared", "wb-3": "My Documents"}
+
+
+@pytest.mark.parametrize(
+    "pattern, kept",
+    [
+        (FilterPattern(includes=["^Shared$"]), {"wb-1": "Shared", "wb-2": "Shared"}),
+        (FilterPattern(excludes=["^Shared$"]), {"wb-3": "My Documents"}),
+    ],
+    ids=["include", "exclude"],
+)
+def test_project_filter_pattern_keeps_or_drops_by_workspace(sigma_over_http, routes, pattern, kept):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-3"] = {**SIGMA_WORKBOOKS[2], "path": "My Documents"}
+    source.source_config.projectFilterPattern = pattern
+
+    assert ingested_projects(source) == kept
+
+
 def test_workbook_listing_is_requested_once(sigma_over_http):
     source, calls = sigma_over_http
 
