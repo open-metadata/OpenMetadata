@@ -112,8 +112,10 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   private void recordFailure(UUID pageId, RuntimeException failure) {
     if (isStopInterruption(failure)) {
       LOG.info(
-          "Knowledge pill extraction for page {} was cut short by a server stop; recovery resumes it",
-          pageId);
+          "Knowledge pill extraction for page {} was cut short by a server stop; recovery resumes"
+              + " it: {}",
+          pageId,
+          failure.toString());
     } else {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, failure);
       try {

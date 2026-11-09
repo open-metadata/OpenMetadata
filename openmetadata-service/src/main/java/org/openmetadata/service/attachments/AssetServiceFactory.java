@@ -126,12 +126,13 @@ public class AssetServiceFactory {
     if (shutdownHookRegistered) {
       return;
     }
-    Runtime.getRuntime()
-        .addShutdownHook(
-            new Thread(
-                () -> signalStopThenClose(AssetServiceFactory::shutdown),
-                "asset-service-shutdown"));
+    Runtime.getRuntime().addShutdownHook(new Thread(shutdownHookTask(), "asset-service-shutdown"));
     shutdownHookRegistered = true;
+  }
+
+  /** What the {@code asset-service-shutdown} hook runs. */
+  static Runnable shutdownHookTask() {
+    return () -> signalStopThenClose(AssetServiceFactory::shutdown);
   }
 
   /**

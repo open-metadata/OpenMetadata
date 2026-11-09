@@ -256,7 +256,7 @@ public class GenericBackgroundWorker implements Managed {
     LOG.info(
         "Background Job {} ended during a server stop and is left RUNNING for recovery: {}",
         job.getId(),
-        e.getMessage());
+        e.toString());
   }
 
   private void markJobAsCompleted(BackgroundJob job) {

@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-09 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `GenericBackgroundWorkerTest`, `ContextFileProcessingServiceTest`, `PageContextProcessingEngineTest`, `InterruptionsTest`
+- **Guard:** `GenericBackgroundWorkerTest`, `ContextFileProcessingServiceTest` (including the text-stage sweep), `ContextFileRecoverySchedulerTest`, `PageContextProcessingEngineTest`, `InterruptionsTest`, `AssetServiceFactoryTest`
 - **Related:** ADR:2026-09-29-context-file-memory-reuse
 
 ## Context
@@ -20,12 +20,13 @@ the same work in progress, and the existing recovery resumed it:
 ## Decision
 
 - **Left as a crash leaves it.** A memory extraction run that a server stop cuts short stays in
-  progress:
-  - a file stays Analyzing or ExtractingContext;
-  - an article keeps its status;
-  - its job stays RUNNING.
-
-  The stale-job reaper and the startup scan then resume it.
+  progress, and existing recovery resumes it:
+  - **A file left Uploaded or Analyzing has no job.** The startup scan resubmits it at boot. So
+    does a periodic sweep on every live server (`ContextFileRecoveryScheduler`), once the file
+    has been idle for 30 minutes. The sweep covers a surge-first rollout, where the new server
+    scanned before the old one stopped.
+  - **A file left ExtractingContext, and an article, keep a RUNNING job.** Only the stale-job
+    reaper requeues it; the startup scan skips a file whose job is RUNNING.
 - **One rule, shared by the engines and the worker** (`Interruptions.isStopInterruption`). A run
   is cut short by a stop when any of these holds:
   - `ServerStopping` is set;
@@ -41,7 +42,16 @@ the same work in progress, and the existing recovery resumed it:
 
 ## Consequences
 
-- An interrupted run resumes within the reaper's stale window, about five to ten minutes after the
-  restart.
+- **Memory stage.** A run resumes once its RUNNING job has gone five minutes without a heartbeat,
+  on the reaper's next pass. The reaper runs every five minutes, the first time 30 seconds after
+  boot, so this is about five to ten minutes after the stop.
+- **Text stage.** A file resumes at the next startup scan. Failing that, it resumes within five
+  minutes of reaching the sweep's 30-minute idle window: about 30 to 35 minutes after its last
+  update.
+  - Text extraction has no timeout of its own, so the window sits far above any legitimate run.
+  - The sweep looks back one day and takes 50 files per pass; anything older waits for a startup
+    scan.
+  - A peer still extracting a file the sweep resubmits is unharmed: writes are conditional, both
+    runs write the same result, and the memory job is enqueued once. The cost is a second parse.
 - A failure that coincides with a stop costs one more run after the restart.
 - A job type that should survive a stop needs both the reaper's requeue and the worker's check.

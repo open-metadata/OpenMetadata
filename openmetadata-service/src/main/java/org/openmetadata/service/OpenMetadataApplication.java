@@ -116,6 +116,7 @@ import org.openmetadata.service.config.source.DeploymentConfigReconciler;
 import org.openmetadata.service.config.source.LocalSettingsRefresher;
 import org.openmetadata.service.config.source.RawConfigCapture;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
+import org.openmetadata.service.context.center.ContextFileRecoveryScheduler;
 import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
@@ -519,6 +520,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
     environment.lifecycle().manage(new ChangeRequestRecoveryScheduler());
+    environment.lifecycle().manage(new ContextFileRecoveryScheduler());
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);

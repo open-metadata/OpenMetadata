@@ -1,5 +1,6 @@
 package org.openmetadata.service.attachments;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -21,5 +22,15 @@ class AssetServiceFactoryTest {
     AssetServiceFactory.signalStopThenClose(() -> stoppingWhenClosed.set(ServerStopping.isSet()));
 
     assertTrue(stoppingWhenClosed.get());
+  }
+
+  /** The task the shutdown hook registers; with no service open, its close is a no-op here. */
+  @Test
+  void theRegisteredHookTaskSignalsTheStop() {
+    assertThrows(IllegalStateException.class, AssetServiceFactory::getService);
+
+    AssetServiceFactory.shutdownHookTask().run();
+
+    assertTrue(ServerStopping.isSet());
   }
 }

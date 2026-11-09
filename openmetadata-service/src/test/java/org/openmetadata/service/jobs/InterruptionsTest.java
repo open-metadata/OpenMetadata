@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.IOException;
+import java.net.SocketTimeoutException;
+import java.net.http.HttpTimeoutException;
 import java.nio.channels.ClosedByInterruptException;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +50,22 @@ class InterruptionsTest {
     assertTrue(
         Interruptions.isStopInterruption(
             new IllegalStateException("AssetService not initialized")));
+  }
+
+  /** Real failures, though a SocketTimeoutException is an InterruptedIOException. */
+  @Test
+  void aTimeoutIsNotAStopInterruption() {
+    LLMCompletionException readTimeout =
+        new LLMCompletionException(
+            "OpenAI completion failed due to IO error",
+            new SocketTimeoutException("Read timed out"));
+    LLMCompletionException requestTimeout =
+        new LLMCompletionException(
+            "OpenAI completion failed due to IO error",
+            new HttpTimeoutException("request timed out"));
+
+    assertFalse(Interruptions.isStopInterruption(readTimeout));
+    assertFalse(Interruptions.isStopInterruption(requestTimeout));
   }
 
   @Test
