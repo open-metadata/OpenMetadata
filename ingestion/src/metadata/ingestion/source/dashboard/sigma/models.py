@@ -37,6 +37,8 @@ class WorkbookDetails(BaseModel):
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
+    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
+    elements: list["Elements"] = []
 
 
 class WorkBookResponseDetails(BaseModel):
