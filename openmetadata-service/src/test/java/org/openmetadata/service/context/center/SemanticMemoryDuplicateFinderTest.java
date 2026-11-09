@@ -12,15 +12,19 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -30,6 +34,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
@@ -426,8 +431,10 @@ class SemanticMemoryDuplicateFinderTest {
     verify(searchClient).searchSimilarContextMemories(anyString(), filter.capture(), eq(20));
     assertFalse(filter.getValue().contains("entityStatus"), filter.getValue());
     assertTrue(
-        filter.getValue().contains("{\"terms\":{\"sourceType\":[\"FileExtraction\",\"Manual\"]}}"),
+        filter.getValue().contains("{\"term\":{\"sourceType\":\"FileExtraction\"}}"),
         filter.getValue());
+    assertTrue(
+        filter.getValue().contains("{\"term\":{\"sourceType\":\"Manual\"}}"), filter.getValue());
     assertTrue(filter.getValue().contains("{\"visibility\":\"Entity\"}"), filter.getValue());
   }
 
@@ -605,6 +612,152 @@ class SemanticMemoryDuplicateFinderTest {
         held ? new DuplicateMatch.ConflictsWithDecision(existing) : new DuplicateMatch.None(),
         match);
     verify(completionClient, never()).completeStructured(anyString(), anyString(), any());
+  }
+
+  /**
+   * A decision in the document being extracted is that document's own rule to apply: the check
+   * compares other documents' memories only, so a figure the document rejected holds nothing here.
+   */
+  @Test
+  void aDecisionInTheSameDocumentIsLeftToThatDocument() throws Exception {
+    ContextMemory rejected =
+        memory(
+                UUID.randomUUID(),
+                "When is the customer billed?",
+                "Customers are billed on the 5th of each month.")
+            .withEntityStatus(ContextMemoryStatus.REJECTED);
+    rankedHits(List.of(rejected));
+    eligible(rejected);
+    statedIn(rejected, HANDBOOK);
+
+    assertEquals(
+        new DuplicateMatch.None(),
+        keywordFinder()
+            .findMatch(
+                memory(
+                    UUID.randomUUID(),
+                    rejected.getQuestion(),
+                    "Customers are billed on the 10th of each month.")));
+  }
+
+  /** A document's own memory is never its duplicate: its re-extraction matches or keeps both. */
+  @Test
+  void aMemoryOfTheSameDocumentIsNeverItsDuplicate() throws Exception {
+    ContextMemory own =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.");
+    rankedHits(List.of(own));
+    eligible(own);
+    statedIn(own, HANDBOOK);
+
+    assertEquals(
+        new DuplicateMatch.None(),
+        keywordFinder().findMatch(memory(UUID.randomUUID(), own.getQuestion(), own.getAnswer())));
+  }
+
+  /**
+   * Approval holds a value only for a decision in a document that does not state the value: a
+   * decision in any document the value shares is that document's rule to apply.
+   */
+  @Test
+  void aDecisionInADocumentTheValueSharesHoldsNothingAtApproval() throws Exception {
+    EntityReference copy =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemory rejected =
+        memory(
+                UUID.randomUUID(),
+                "When is the customer billed?",
+                "Customers are billed on the 5th of each month.")
+            .withEntityStatus(ContextMemoryStatus.REJECTED);
+    rankedHits(List.of(rejected));
+    eligible(rejected);
+    ContextMemory pending =
+        memory(
+                UUID.randomUUID(),
+                rejected.getQuestion(),
+                "Customers are billed on the 10th of each month.")
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+    statedIn(pending, HANDBOOK, copy);
+    statedIn(rejected, copy);
+
+    assertFalse(keywordFinder().isHeldByADecision(pending));
+  }
+
+  /** A person's note is a decision on a fact only when it cites a file or an article. */
+  @ParameterizedTest
+  @CsvSource({"table, false", "contextFile, true", "page, true"})
+  void aNoteHoldsAnotherFigureOnlyWhenItCitesADocument(String citedType, boolean held)
+      throws Exception {
+    ContextMemory note =
+        memory(
+                UUID.randomUUID(),
+                "When is the customer billed?",
+                "Customers are billed on the 5th of each month.")
+            .withSourceType(ContextMemorySourceType.MANUAL)
+            .withSourceEntity(new EntityReference().withId(UUID.randomUUID()).withType(citedType));
+    rankedHits(List.of(note));
+    eligible(note);
+
+    DuplicateMatch match =
+        keywordFinder()
+            .findMatch(
+                memory(
+                    UUID.randomUUID(),
+                    note.getQuestion(),
+                    "Customers are billed on the 10th of each month."));
+
+    assertEquals(
+        held ? new DuplicateMatch.ConflictsWithDecision(note) : new DuplicateMatch.None(), match);
+  }
+
+  /**
+   * Only memories a document states, of the value's scope, take the twenty ranked places: an
+   * extracted memory always has its document, a person's note only when the index names its file.
+   */
+  @Test
+  void theLookupRanksOnlyDocumentFactsOfTheValuesScope() throws Exception {
+    rankedHits(List.of());
+
+    keywordFinder()
+        .findMatch(
+            memory(UUID.randomUUID(), "What is churn?", "Customers leave.")
+                .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED));
+    keywordFinder().findMatch(memory(UUID.randomUUID(), "What is churn?", "Customers leave."));
+
+    ArgumentCaptor<String> filters = ArgumentCaptor.forClass(String.class);
+    verify(searchClient, times(2))
+        .searchSimilarContextMemories(anyString(), filters.capture(), eq(20));
+    List<JsonNode> scoped = filterClauses(filters.getAllValues().get(0));
+    List<JsonNode> unscoped = filterClauses(filters.getAllValues().get(1));
+    assertTrue(
+        scoped.contains(
+            JsonUtils.readTree(
+                "{\"bool\":{\"minimum_should_match\":1,\"should\":["
+                    + "{\"term\":{\"sourceType\":\"FileExtraction\"}},"
+                    + "{\"bool\":{\"filter\":[{\"term\":{\"sourceType\":\"Manual\"}},"
+                    + "{\"exists\":{\"field\":\"sourceFile.id\"}}]}}]}}")),
+        scoped.toString());
+    assertTrue(
+        scoped.contains(JsonUtils.readTree("{\"term\":{\"memoryScope\":\"EntityScoped\"}}")),
+        scoped.toString());
+    assertTrue(
+        unscoped.contains(
+            JsonUtils.readTree(
+                "{\"bool\":{\"must_not\":[{\"exists\":{\"field\":\"memoryScope\"}}]}}")),
+        "a value stored without a scope matches only memories without one: " + unscoped);
+  }
+
+  private static List<JsonNode> filterClauses(String filter) {
+    List<JsonNode> clauses = new ArrayList<>();
+    JsonUtils.readTree(filter).path("bool").path("filter").forEach(clauses::add);
+    return clauses;
+  }
+
+  /** The documents a memory is linked to, as the source links name them. */
+  private void statedIn(ContextMemory memory, EntityReference... documents) {
+    lenient()
+        .when(repository.linkedSourceIds(memory.getId()))
+        .thenReturn(
+            Arrays.stream(documents).map(EntityReference::getId).collect(Collectors.toSet()));
   }
 
   /** The edit modal saves a correction's text as question and answer; it holds the old figure. */

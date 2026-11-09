@@ -104,7 +104,8 @@ Approved memories: the copy links every memory of the original that is not soft-
 its stage, so a copy uploaded before review awaits the same review instead of being extracted
 again. Another file's equivalent fact links to its memory in any stage and takes its decision. A
 derived value whose number conflicts with a memory a person decided in another document (Rejected,
-Superseded, Invalidated, Deprecated, Archived, or corrected) starts `Unprocessed` under every
+Superseded, Invalidated, Deprecated, Archived, or a person's own: a correction, or a note citing
+that document) starts `Unprocessed` under every
 provider when re-extraction would pair the two as one question, the same question with the pair
 clearing the identity bar, or when it may be the figure a person's correction replaced, as above
 (an edit-modal correction matches its old figure by topic only): "billed on the 10th" waits beside

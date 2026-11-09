@@ -37,6 +37,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.context.ApproveExtractedMemories;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.context.ExtractedMemoryApproval;
 import org.openmetadata.schema.api.data.CreatePage;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -442,6 +443,77 @@ class ContextMemoryExtractionIT {
   }
 
   /**
+   * OSS: a person's correction holds the figure it replaced when another file states that figure.
+   * The memory index finds a correction by the file it names, which a later write of the
+   * correction, here linking a copy, still indexes.
+   */
+  @Test
+  void oss_theFigureAPersonCorrectedWaitsForReviewWhenAnotherFileStatesIt(TestNamespace ns)
+      throws Exception {
+    assumeTrue(
+        Entity.getSearchRepository().getVectorIndexService() == null,
+        "covers the memory index lookup that runs without vector search");
+    ContextFile first = file(ns, "a-billing", "Billing " + ns.shortPrefix(), null);
+    ContextFile copy = file(ns, "c-billing-copy", "Billing copy " + ns.shortPrefix(), null);
+    ContextFile second =
+        file(
+            ns, "b-billing", "Revised billing " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
+    scriptFacts(Map.of(first.getId(), List.of(BILLING_DAY), second.getId(), List.of(BILLING_DAY)));
+    runFile(first);
+    ContextMemory corrected =
+        correct(
+            extracted(first.getEntityReference()).getFirst(),
+            "Customers are billed on the 15th of each month.");
+    assertEquals(ContextMemorySourceType.MANUAL, corrected.getSourceType());
+    memoryRepository().linkExtractedMemory(corrected.getId(), copy.getEntityReference());
+    awaitIndexedIn(copy.getEntityReference(), List.of(corrected), ContextMemoryStatus.APPROVED);
+
+    runFile(second);
+
+    ContextMemory held = extracted(second.getEntityReference()).getFirst();
+    assertNotEquals(corrected.getId(), held.getId());
+    assertEquals(BILLING_DAY.answer(), held.getAnswer());
+    assertEquals(Set.of(ContextMemoryStatus.UNPROCESSED), statuses(List.of(held)));
+  }
+
+  /**
+   * OSS: a note a person wrote citing a file is a decision on its fact, so another file's other
+   * figure for it waits for review. The memory index names the note's file from the source the
+   * note was created with.
+   */
+  @Test
+  void oss_aPersonsNoteCitingAFileHoldsAnotherFilesFigure(TestNamespace ns) throws Exception {
+    assumeTrue(
+        Entity.getSearchRepository().getVectorIndexService() == null,
+        "covers the memory index lookup that runs without vector search");
+    ContextFile cited = file(ns, "a-billing-policy", "Billing policy " + ns.shortPrefix(), null);
+    ContextFile second =
+        file(
+            ns, "b-billing", "Revised billing " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
+    ContextMemory note =
+        memories(SdkClients.user1Client())
+            .create(
+                new CreateContextMemory()
+                    .withName(ns.prefix("billing-note"))
+                    .withQuestion(BILLING_DAY.question())
+                    .withAnswer("Customers are billed on the 15th of each month.")
+                    .withSourceType(ContextMemorySourceType.MANUAL)
+                    .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
+                    .withSourceEntity(cited.getEntityReference()));
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, note.getId());
+    awaitSearchable(List.of(note));
+    scriptFacts(Map.of(second.getId(), List.of(BILLING_DAY)));
+
+    runFile(second);
+
+    ContextMemory held = extracted(second.getEntityReference()).getFirst();
+    assertEquals(BILLING_DAY.answer(), held.getAnswer());
+    assertEquals(Set.of(ContextMemoryStatus.UNPROCESSED), statuses(List.of(held)));
+  }
+
+  /**
    * A reader of a file never learns which restricted copy also states its memories: not from the
    * memory, a listing of it, or its history, though the copy sorts first by name. A listing returns
    * only the fields asked for.
@@ -723,6 +795,19 @@ class ContextMemoryExtractionIT {
             JsonUtils.pojoToJson(current),
             JsonUtils.deepCopy(current, ContextMemory.class)
                 .withEntityStatus(ContextMemoryStatus.REJECTED),
+            ContextMemory.class);
+  }
+
+  /** A person corrects the memory's figure in its panel, which makes the memory theirs (Manual). */
+  private static ContextMemory correct(ContextMemory memory, String answer) throws Exception {
+    ContextMemory current =
+        RestClient.admin().getById(MEMORIES, memory.getId(), "", ContextMemory.class);
+    return RestClient.admin()
+        .patch(
+            MEMORIES,
+            memory.getId(),
+            JsonUtils.pojoToJson(current),
+            JsonUtils.deepCopy(current, ContextMemory.class).withAnswer(answer),
             ContextMemory.class);
   }
 

@@ -4,12 +4,14 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.Supplier;
@@ -22,6 +24,7 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -54,11 +57,13 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
           .map(ContextMemorySourceType::value)
           .toList();
 
-  /** Every memory a document states, in any stage. */
-  private static final String ANY_STAGE = keywordFilter(List.of());
+  /** Every stage: a memory awaiting review or decided is the fact too. */
+  private static final List<Map<String, Object>> ANY_STAGE = List.of();
 
   /** A memory a person decided: a retired stage, or a correction in any stage. */
-  private static final String DECIDED = keywordFilter(List.of(decidedClause()));
+  private static final List<Map<String, Object>> DECIDED = List.of(decidedClause());
+
+  private static final String SOURCE_TYPE = "sourceType";
 
   private static final String EQUIVALENCE_PROMPT =
       "The input is JSON data containing one proposed memory and candidate memories. "
@@ -134,7 +139,7 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   @Override
   public DuplicateMatch findMatch(ContextMemory derived) {
     Map<Boolean, List<ContextMemory>> byConflict =
-        candidates(derived).stream()
+        candidates(StatedValue.derived(derived)).stream()
             .collect(
                 Collectors.partitioningBy(
                     candidate -> MemoryReviewHolds.haveConflictingNumbers(candidate, derived)));
@@ -144,13 +149,15 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   /**
-   * Whether, read now, a memory a person decided holds {@code pending} for review: approving its
-   * document leaves it to an admin, as a hold among the document's own memories. Vector search
-   * returns Approved memories only, so the memory index alone is asked.
+   * Whether, read now, a memory a person decided in another document holds {@code pending} for
+   * review: approving its document leaves it to an admin, as a hold among the document's own
+   * memories does. Vector search returns Approved memories only, so the memory index alone is asked.
    */
   public boolean isHeldByADecision(ContextMemory pending) {
     return MemoryReviewHolds.statesANumber(pending)
-        && keywordCandidates(pending, DECIDED).stream()
+        && keywordCandidates(
+                new StatedValue(pending, repository.linkedSourceIds(pending.getId())), DECIDED)
+            .stream()
             .anyMatch(decided -> MemoryReviewHolds.holdsAcrossDocuments(decided, pending));
   }
 
@@ -177,16 +184,16 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   /** Vector search admits Approved memories only, so the memory index is always asked too. */
-  private List<ContextMemory> candidates(ContextMemory derived) {
-    return interleave(vectorMatches(derived), keywordCandidates(derived, ANY_STAGE));
+  private List<ContextMemory> candidates(StatedValue value) {
+    return interleave(vectorMatches(value), keywordCandidates(value, ANY_STAGE));
   }
 
-  private List<ContextMemory> vectorMatches(ContextMemory derived) {
+  private List<ContextMemory> vectorMatches(StatedValue value) {
     VectorIndexService vectorService = vectorServiceSupplier.get();
     List<ContextMemory> matches = List.of();
     if (vectorService != null) {
       try {
-        matches = vectorCandidates(vectorService, derived);
+        matches = vectorCandidates(vectorService, value);
       } catch (RuntimeException e) {
         LOG.warn("Vector memory lookup failed; checking the memory search index alone", e);
       }
@@ -217,15 +224,18 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   }
 
   private List<ContextMemory> vectorCandidates(
-      VectorIndexService vectorService, ContextMemory derived) {
+      VectorIndexService vectorService, StatedValue value) {
     Map<String, List<String>> filters =
         Map.of(
-            "entityType", List.of(Entity.CONTEXT_MEMORY),
-            "sourceType", DOCUMENT_FACT_SOURCE_VALUES,
-            "visibility", List.of(MemoryVisibility.ENTITY.value()));
+            "entityType",
+            List.of(Entity.CONTEXT_MEMORY),
+            SOURCE_TYPE,
+            DOCUMENT_FACT_SOURCE_VALUES,
+            "visibility",
+            List.of(MemoryVisibility.ENTITY.value()));
     VectorSearchResponse response =
         vectorService.search(
-            derived.getQuestion() + " " + derived.getAnswer(),
+            value.memory().getQuestion() + " " + value.memory().getAnswer(),
             filters,
             CANDIDATE_LIMIT,
             0,
@@ -233,16 +243,20 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             0,
             null,
             SEARCH_SUBJECT);
-    return loadCandidates(response == null ? null : response.getHits(), derived);
+    return loadCandidates(response == null ? null : response.getHits(), value);
   }
 
   /** A ranked lookup: a rewording shares most of a fact's words, never all of them in one field. */
-  private List<ContextMemory> keywordCandidates(ContextMemory derived, String filter) {
+  private List<ContextMemory> keywordCandidates(
+      StatedValue value, List<Map<String, Object>> stages) {
     try {
       SearchResultListMapper result =
           searchClient()
-              .searchSimilarContextMemories(keywordQuery(derived), filter, KEYWORD_FETCH_LIMIT);
-      return loadCandidates(result.getResults(), derived);
+              .searchSimilarContextMemories(
+                  keywordQuery(value.memory()),
+                  keywordFilter(value.memory(), stages),
+                  KEYWORD_FETCH_LIMIT);
+      return loadCandidates(result.getResults(), value);
     } catch (IOException e) {
       throw new IllegalStateException("Memory search index lookup failed", e);
     }
@@ -262,44 +276,73 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
     return normalized.substring(0, Math.min(normalized.length(), 512));
   }
 
-  /** No stage by default: a memory awaiting review or decided is the fact too. */
-  private static String keywordFilter(List<Map<String, Object>> stages) {
+  /**
+   * The candidate rule's indexable part, so no other memory takes one of the ranked places: what a
+   * document states, of the value's scope, visible to the document's readers and not archived.
+   */
+  private static String keywordFilter(ContextMemory value, List<Map<String, Object>> stages) {
     List<Map<String, Object>> filters =
         new ArrayList<>(
             List.of(
-                Map.of("terms", Map.of("sourceType", DOCUMENT_FACT_SOURCE_VALUES)),
+                documentFactClause(),
                 Map.of("term", Map.of("visibility", MemoryVisibility.ENTITY.value())),
+                sameScopeClause(value),
                 Map.of("term", Map.of(Entity.FIELD_DELETED, false))));
     filters.addAll(stages);
     return JsonUtils.pojoToJson(Map.of("bool", Map.of("filter", filters)));
+  }
+
+  /** Extracted from a file, or a person's memory the index names a file source for. */
+  private static Map<String, Object> documentFactClause() {
+    Map<String, Object> citesAFile =
+        Map.of(
+            "bool",
+            Map.of(
+                "filter",
+                List.of(
+                    sourceTypeIs(ContextMemorySourceType.MANUAL),
+                    Map.of("exists", Map.of("field", ContextMemoryIndex.FIELD_SOURCE_FILE_ID)))));
+    return anyOf(List.of(sourceTypeIs(ContextMemorySourceType.FILE_EXTRACTION), citesAFile));
+  }
+
+  /** The value's scope; a memory stored without one matches only memories without one. */
+  private static Map<String, Object> sameScopeClause(ContextMemory value) {
+    String scope = ContextMemoryIndex.memoryScopeValue(value);
+    Map<String, Object> unscoped =
+        Map.of("exists", Map.of("field", ContextMemoryIndex.FIELD_MEMORY_SCOPE));
+    return scope == null
+        ? Map.of("bool", Map.of("must_not", List.of(unscoped)))
+        : Map.of("term", Map.of(ContextMemoryIndex.FIELD_MEMORY_SCOPE, scope));
   }
 
   /** A retired stage, or a correction in any stage. */
   private static Map<String, Object> decidedClause() {
     List<String> decidedStages =
         MemoryReviewHolds.DECIDED_STAGES.stream().map(ContextMemoryStatus::value).toList();
-    return Map.of(
-        "bool",
-        Map.of(
-            "should",
-            List.of(
-                Map.of("terms", Map.of(ContextMemoryIndex.FIELD_STATUS, decidedStages)),
-                Map.of("term", Map.of("sourceType", ContextMemorySourceType.MANUAL.value()))),
-            "minimum_should_match",
-            1));
+    return anyOf(
+        List.of(
+            Map.of("terms", Map.of(ContextMemoryIndex.FIELD_STATUS, decidedStages)),
+            sourceTypeIs(ContextMemorySourceType.MANUAL)));
+  }
+
+  private static Map<String, Object> anyOf(List<Map<String, Object>> clauses) {
+    return Map.of("bool", Map.of("should", clauses, "minimum_should_match", 1));
+  }
+
+  private static Map<String, Object> sourceTypeIs(ContextMemorySourceType sourceType) {
+    return Map.of("term", Map.of(SOURCE_TYPE, sourceType.value()));
   }
 
   /** Hits stay in rank order; only the first few that may be reused are compared. */
-  private List<ContextMemory> loadCandidates(
-      List<Map<String, Object>> hits, ContextMemory derived) {
+  private List<ContextMemory> loadCandidates(List<Map<String, Object>> hits, StatedValue value) {
     return listOrEmpty(hits).stream()
-        .map(hit -> loadCandidate(hit, derived))
+        .map(hit -> loadCandidate(hit, value))
         .filter(Objects::nonNull)
         .limit(CANDIDATE_LIMIT)
         .toList();
   }
 
-  private ContextMemory loadCandidate(Map<String, Object> hit, ContextMemory derived) {
+  private ContextMemory loadCandidate(Map<String, Object> hit, StatedValue value) {
     Object parentId =
         hit.containsKey(ContextMemoryIndex.FIELD_PARENT_ID)
             ? hit.get(ContextMemoryIndex.FIELD_PARENT_ID)
@@ -315,23 +358,35 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
               repository.getFields(ContextMemoryRepository.FIELD_SOURCE_ENTITY),
               Include.NON_DELETED,
               false);
-      return isCandidate(candidate, derived) ? candidate : null;
+      return isCandidate(candidate, value) ? candidate : null;
     } catch (IllegalArgumentException | EntityNotFoundException e) {
       return null;
     }
   }
 
   /**
-   * A memory a document states, in any stage, that readers of the new file can read once linked:
-   * entity-visible, of the same scope and anchored org-wide.
+   * A memory another document states, in any stage, that readers of the new file can read once
+   * linked: of the same scope and anchored org-wide.
    */
-  private boolean isCandidate(ContextMemory candidate, ContextMemory derived) {
-    return candidate.getSourceEntity() != null
+  private boolean isCandidate(ContextMemory candidate, StatedValue value) {
+    return statesADocumentFact(candidate)
+        && candidate.getMemoryScope() == value.memory().getMemoryScope()
+        && repository.hasOrgWideAnchor(candidate)
+        && isOfAnotherDocument(candidate, value);
+  }
+
+  /** Entity-visible, and from a file or page: extracted from it, or a person's memory citing it. */
+  private static boolean statesADocumentFact(ContextMemory candidate) {
+    return ContextMemoryRepository.isExtractionSource(candidate.getSourceEntity())
         && ContextMemoryReconciler.DOCUMENT_FACT_SOURCES.contains(candidate.getSourceType())
         && candidate.getShareConfig() != null
-        && candidate.getShareConfig().getVisibility() == MemoryVisibility.ENTITY
-        && candidate.getMemoryScope() == derived.getMemoryScope()
-        && repository.hasOrgWideAnchor(candidate);
+        && candidate.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
+  }
+
+  /** A memory of a document stating the value is that document's own rule to match and hold. */
+  private boolean isOfAnotherDocument(ContextMemory candidate, StatedValue value) {
+    return value.documents().isEmpty()
+        || Collections.disjoint(repository.linkedSourceIds(candidate.getId()), value.documents());
   }
 
   private boolean sameFactText(ContextMemory candidate, ContextMemory derived) {
@@ -389,6 +444,15 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
               client.completeStructured(
                   EQUIVALENCE_PROMPT, comparisonPrompt(derived, candidates), MatchChoice.class),
               candidates);
+    }
+  }
+
+  /** A value checked against other documents' memories, and the documents stating it. */
+  private record StatedValue(ContextMemory memory, Set<UUID> documents) {
+    /** A derived value is stated by the document it was extracted from. */
+    static StatedValue derived(ContextMemory derived) {
+      EntityReference source = derived.getSourceEntity();
+      return new StatedValue(derived, source == null ? Set.of() : Set.of(source.getId()));
     }
   }
 

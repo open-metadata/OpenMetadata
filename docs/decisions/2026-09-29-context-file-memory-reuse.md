@@ -7,8 +7,8 @@
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `FileContextProcessingEngineTest`, `ContextMemoryExtractorTest`,
   `ContextMemoryReconcilerTest`, `SemanticMemoryDuplicateFinderTest`, `AiProviderHolderTest`,
-  `MemorySourceDisclosureTest`, `ContextMemoryRepositoryTest`, `ContextMemoryExtractionIT`,
-  `ContextMemoryExtractedApprovalIT`
+  `MemorySourceDisclosureTest`, `ContextMemoryRepositoryTest`, `ContextMemoryIndexTest`,
+  `ContextMemoryExtractionIT`, `ContextMemoryExtractedApprovalIT`
 - **Related:** Context Center file upload and memory extraction; PR #34154
 
 ## Context
@@ -86,8 +86,9 @@ ones. The file is marked `Processed` only after the extraction and reconciliatio
 - Semantic reuse is best effort within the retrieved candidate set. Search ranking, indexing
   delay, the five-candidate limit, and equivalence judgment can miss a duplicate. This is not a
   global uniqueness constraint or an atomic check across concurrent uploads.
-- Reuse is limited to eligible file-extracted, entity-visible memories. Page-derived and manually
-  authored memories are outside this cross-file search.
+- Reuse is limited to eligible, entity-visible memories a document states: extracted from a file,
+  or a person's correction of such a memory or note citing a document (v3). Page-derived memories,
+  and manual memories citing no document, are outside this cross-file search.
 - Previously created duplicate memories are not merged retroactively by this decision.
 
 ## Implementation notes (2026-09-29)
@@ -131,10 +132,16 @@ a memory covers every document that states its fact.
   more index search. The eligible candidates of the two lookups alternate (v1, k1, v2, k2, …),
   each memory once, and the first five are compared. A failed index lookup fails the check even
   when vector search answered, so it never creates an unchecked duplicate.
-- A candidate is a memory linked to a document, in any stage, that is not soft-deleted: a
-  `FileExtraction` memory, or a `Manual` one a person corrected that is still linked to its
-  document. It must still be entity-visible, of the same memory scope and anchored org-wide. Memory
-  type is no longer compared; the judge decides.
+- A candidate is a memory another document states, in any stage, that is not soft-deleted: a
+  `FileExtraction` memory, or a `Manual` one whose source is a file or an article, which is a
+  person's correction still linked to its document or a person's own note citing one. A note
+  citing no document, or another kind of entity, is none. It must still be entity-visible, of the
+  same memory scope and anchored org-wide. A memory linked to the document being extracted is that
+  document's own, which re-extraction matches and holds (§2), so the check skips it. The memory
+  index filter carries what it can of this rule, so no other memory takes one of the 20 ranked
+  places: the scope, and for a `Manual` memory the file the index names as its source
+  (`sourceFile.id`, indexed from the source each write carries); a note citing only an article is
+  not found there. Memory type is no longer compared; the judge decides.
 - A candidate whose numbers conflict with the fact never links. Identical question and answer link
   without the judge; otherwise one judge call weighs the fact against the other candidates. A
   linked memory keeps its stage, so the document takes the decision made on it: a rejected fact
@@ -143,7 +150,8 @@ a memory covers every document that states its fact.
   the provider supplies its own, so OSS judges as before. A provider without one links only
   identical question and answer text, and a rewording becomes a new memory.
 - A person decided a memory when it is Rejected, Superseded, Invalidated, Deprecated or Archived,
-  or a person corrected it (`Manual`). No field records a human approval (`lastReviewedAt` is
+  or it is a person's own (`Manual`): a correction, or a note the person wrote citing the
+  document. No field records a human approval (`lastReviewedAt` is
   stamped on every approval, ADR:2026-10-09-an-approved-memory-can-return-to-review-and-records-its-last-review),
   so Approved alone is no decision. A conflicting candidate a person decided holds the fact for
   review when re-extraction would pair the two as one question: the same question
@@ -157,13 +165,16 @@ a memory covers every document that states its fact.
   correction. A question for another year is another question, a correction's included (the two
   questions' own numbers conflict), so beside it, as beside a memory no one decided, a replaced
   number is a new memory in its derived stage.
-- Approving from a document re-reads the memory index for decided memories that hold a pending
-  value, by the same rule, and leaves that value for an admin
-  (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document). Only a value
-  stating a number can be held, so only such values are looked up: each approval preview, and each
-  approval, costs one memory index search per pending value stating a number, plus one batch read
-  of the document's pending memories' source links. It never asks vector search, which returns
-  Approved memories alone.
+- Approving from a document re-reads the memory index for memories a person decided in a document
+  the pending value is not linked to, which hold it by the same rule, and leaves that value for an
+  admin (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document). A decision
+  in a document the value is linked to is that document's own rule to apply, so beside a figure
+  rejected in the document, its other figure stays approvable there. Only a value stating a
+  number can be held, so only such values are looked up. Each approval preview, and each
+  approval, costs one memory index search per pending value stating a number, each loading up to
+  20 candidates from the database with their source links; one batch read of the document's
+  pending memories' source links; and a listing of the memories of every other document those
+  memories are linked to. It never asks vector search, which returns Approved memories alone.
 - §1's identical upload links every memory of the earlier file that is not soft-deleted, whatever
   its stage, corrections included, provided each is entity-visible and entity-scoped.
 - A linked document joins the memory's related entities only when everyone may read it: a live

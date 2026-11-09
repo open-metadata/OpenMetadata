@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -1176,6 +1177,19 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     List<ContextMemory> memories = find(ids, Include.NON_DELETED);
     setFieldsInBulk(getFields("owners,primaryEntity,sourceEntity"), memories);
     return memories;
+  }
+
+  /** Whether {@code reference} is a document memories are extracted from: a file or a page. */
+  public static boolean isExtractionSource(EntityReference reference) {
+    return reference != null && EXTRACTION_SOURCE_TYPES.contains(reference.getType());
+  }
+
+  /** The ids of every source linked to the memory (MENTIONED_IN), read without resolving them. */
+  public Set<UUID> linkedSourceIds(UUID memoryId) {
+    return findFromRecords(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null)
+        .stream()
+        .map(CollectionDAO.EntityRelationshipRecord::getId)
+        .collect(Collectors.toSet());
   }
 
   /** The live Context Center sources (files and pages) each knowledge pill is linked to. */
