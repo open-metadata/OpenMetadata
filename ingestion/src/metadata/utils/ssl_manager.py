@@ -75,7 +75,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
     init_empty_connection_options,
 )
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr  # noqa: TC001
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
 from metadata.utils.secure_tempfile import (
@@ -143,6 +143,40 @@ class SSLManager:
             ssl_args["cert"] = self.cert_file_path
         if connection.sslConfig.root.sslKey:
             ssl_args["key"] = self.key_file_path
+
+        # PyMySQL replaces the entire ssl dict when any top-level SSL option is truthy.
+        args = connection.connectionArguments.root
+        ssl_keys = ("ssl_ca", "ssl_cert", "ssl_key", "ssl_verify_cert", "ssl_verify_identity")
+        if any(key in args for key in (*ssl_keys, "ssl_key_password")):
+            ssl_options = {
+                key: CustomSecretStr(args[key]).get_secret_value() if isinstance(args[key], str) else args[key]
+                for key in (*ssl_keys, "ssl_key_password")
+                if key in args
+            }
+            key_password = ssl_options.get("ssl_key_password")
+            args.pop("ssl_key_password", None)
+            if key_password is not None:
+                ssl_args["password"] = key_password
+            if any(ssl_options.get(key) for key in ssl_keys):
+                for top_level, nested in (
+                    ("ssl_ca", "ca"),
+                    ("ssl_cert", "cert"),
+                    ("ssl_key", "key"),
+                ):
+                    args.pop(top_level, None)
+                    value = ssl_options.get(top_level)
+                    if value is not None:
+                        ssl_args[nested] = value
+                args.pop("ssl_verify_cert", None)
+                args.pop("ssl_verify_identity", None)
+                verify_cert = ssl_options.get("ssl_verify_cert")
+                verify_identity = ssl_options.get("ssl_verify_identity")
+                if verify_cert is not None:
+                    ssl_args["verify_mode"] = bool(verify_cert)
+                    if verify_identity is None:
+                        ssl_args["check_hostname"] = False
+                if verify_identity is not None:
+                    ssl_args["check_hostname"] = bool(verify_identity)
         connection.connectionArguments.root["ssl"] = ssl_args
         return connection
 
