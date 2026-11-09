@@ -226,12 +226,14 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch queries for workbook {workbook_id}: {exc}")
         return None
 
-    def get_lineage_details(self, workbook_id: str, element_id: str) -> list[NodeDetails] | None:
+    def get_lineage_details(self, workbook_id: str, element_id: str) -> tuple[list[NodeDetails], bool] | None:
         """
-        method to fetch dashboards lineage details from api
+        Fetch an element's source tables, and whether every source was read as a table: a source that failed
+        to read, or is not a table, could hold columns the returned tables do not
         """
         try:
             source_nodes = []
+            all_sources_read = True
             edges_response = EdgeSourceResponse.model_validate(
                 self.client.get(f"/workbooks/{workbook_id}/lineage/elements/{element_id}")
             )
@@ -248,12 +250,14 @@ class SigmaApiClient:
 
                     if node_details.node_type in ["table", "dataset"]:
                         source_nodes.append(node_details)
+                    else:
+                        all_sources_read = False
                 except Exception as node_exc:
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Failed to fetch node details for {edge.node_id}: {node_exc}")
-                    continue
+                    all_sources_read = False
 
-            return source_nodes if source_nodes else None  # noqa: TRY300
+            return (source_nodes, all_sources_read) if source_nodes else None  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch lineage details for workbook {workbook_id}, element {element_id}: {exc}")

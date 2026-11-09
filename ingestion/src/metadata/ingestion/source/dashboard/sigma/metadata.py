@@ -284,16 +284,20 @@ class SigmaSource(DashboardServiceSource):
                 if not data_model_entity:
                     continue
 
-                nodes = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
+                lineage = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
 
-                if not nodes:
+                if not lineage:
                     continue
 
+                nodes, all_sources_read = lineage
                 tables = [
                     table for node in nodes if (table := self._get_table_entity_from_node(node, db_service_prefix))
                 ]
                 yield from self._yield_table_and_column_lineage(
-                    tables, data_model_entity, data_model.columns, all_sources_found=len(tables) == len(nodes)
+                    tables,
+                    data_model_entity,
+                    data_model.columns,
+                    all_sources_found=all_sources_read and len(tables) == len(nodes),
                 )
             except Exception as exc:
                 yield Either(
@@ -318,14 +322,18 @@ class SigmaSource(DashboardServiceSource):
             if not data_model_entity:
                 return
 
-            nodes = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
+            lineage = self.client.get_lineage_details(dashboard_details.workbookId, data_model.elementId)
 
-            if not nodes:
+            if not lineage:
                 return
 
+            nodes, all_sources_read = lineage
             tables = [table for node in nodes if (table := self._get_table_entity_from_node(node, db_service_prefix))]
             yield from self._yield_table_and_column_lineage(
-                tables, data_model_entity, data_model.columns, all_sources_found=len(tables) == len(nodes)
+                tables,
+                data_model_entity,
+                data_model.columns,
+                all_sources_found=all_sources_read and len(tables) == len(nodes),
             )
         except Exception as exc:
             yield Either(

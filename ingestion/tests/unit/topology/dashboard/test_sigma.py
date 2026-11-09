@@ -48,6 +48,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markd
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
@@ -382,7 +383,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
-        self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
+        self.sigma.client.get_lineage_details = lambda *_: ([MOCK_NODE_DETAILS], True)
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
@@ -739,11 +740,7 @@ def lineage_source():
         data_model if entity is DashboardDataModel else MOCK_DATABASE_SERVICE
     )
     source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **_: next(
-        (
-            table
-            for table in (CUSTOMERS, ORDERS)
-            if fqn_search_string.lower().endswith(f".{table.name.root.lower()}")
-        ),
+        (table for table in (CUSTOMERS, ORDERS) if fqn_search_string.lower().endswith(f".{table.name.root.lower()}")),
         None,
     )
     source.data_models = [AMOUNT_ELEMENT]
@@ -768,7 +765,9 @@ def test_sql_lineage_links_each_label_to_the_one_warehouse_column_it_shows(linea
         entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
     )
 
-    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
 
     assert column_links(results) == EXPECTED_COLUMN_LINKS
 
@@ -780,14 +779,46 @@ def test_sql_lineage_links_each_label_to_the_one_warehouse_column_it_shows(linea
 )
 def test_fallback_lineage_links_labels_that_differ_from_the_column_in_case_and_separators(lineage_source, queries):
     lineage_source.client.get_workbook_queries = lambda *_: queries
-    lineage_source.client.get_lineage_details = lambda *_: [
-        NodeDetails(id=table.name.root, name=table.name.root, type="table", path="Snowflake/SALES.PUBLIC")
-        for table in (CUSTOMERS, ORDERS)
-    ]
+    lineage_source.client.get_lineage_details = lambda *_: (
+        [
+            NodeDetails(id=table.name.root, name=table.name.root, type="table", path="Snowflake/SALES.PUBLIC")
+            for table in (CUSTOMERS, ORDERS)
+        ],
+        True,
+    )
 
-    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
 
     assert column_links(results) == EXPECTED_COLUMN_LINKS
+
+
+def test_fallback_lineage_links_no_column_when_a_source_could_not_be_read(lineage_source):
+    def sigma_get(path):
+        if path.endswith("/lineage/elements/amountByCustomer"):
+            return {
+                "dependencies": {},
+                "edges": [
+                    {"source": f"inode-{node}", "target": "amountByCustomer", "type": "source"}
+                    for node in ("customers", "orders")
+                ],
+            }
+        if path == "/files/customers":
+            return {"id": "customers", "name": "CUSTOMERS", "type": "table", "path": "Snowflake/SALES.PUBLIC"}
+        raise RuntimeError("403 Forbidden")
+
+    client = SigmaApiClient.__new__(SigmaApiClient)
+    client.client = SimpleNamespace(get=sigma_get)
+    client.get_workbook_queries = lambda *_: None
+    lineage_source.client = client
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    # "Customer Id" looks unique without ORDERS, which is exactly when linking it would guess
+    assert column_links(results) == {CUSTOMERS.fullyQualifiedName.root: []}
 
 
 def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_source):
@@ -803,7 +834,9 @@ def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_sou
 
     lineage_source.metadata.search_in_any_service = search_failing_for_customers
 
-    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
 
     # The other table keeps its edge; no column is linked, as the failed one could hold it too
     assert column_links(results) == {ORDERS.fullyQualifiedName.root: []}
@@ -821,7 +854,9 @@ def test_a_source_table_missing_from_openmetadata_leaves_the_columns_unlinked(li
         else search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
     )
 
-    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql"))
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
 
     # "Customer Id" looks unique without CUSTOMERS, which is exactly when linking it would guess
     assert column_links(results) == {ORDERS.fullyQualifiedName.root: []}
