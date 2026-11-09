@@ -51,6 +51,26 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       onClick={onClick}
     />
   ),
+  PaginationDot: ({
+    page,
+    total,
+    onPageChange,
+  }: {
+    page: number;
+    total: number;
+    onPageChange?: (page: number) => void;
+  }) => (
+    <span>
+      {Array.from({ length: total }, (_, index) => (
+        <button
+          aria-current={index + 1 === page ? 'page' : undefined}
+          key={index}
+          onClick={() => onPageChange?.(index + 1)}>
+          {`dot-${index + 1}`}
+        </button>
+      ))}
+    </span>
+  ),
   Skeleton: ({ 'data-testid': dataTestId }: { 'data-testid'?: string }) => (
     <span data-testid={dataTestId} />
   ),
@@ -166,6 +186,40 @@ describe('AnnouncementsWidgetV3Body', () => {
     expect(screen.getByTestId('banner-expanded')).toHaveTextContent('false');
   });
 
+  it('marks the showing announcement with a dot per announcement', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    const dots = screen.getAllByText(/^dot-/);
+
+    expect(dots).toHaveLength(mockAnnouncements.length);
+    expect(dots[0]).toHaveAttribute('aria-current', 'page');
+
+    fireEvent.click(screen.getByTestId('announcement-next-btn'));
+
+    expect(screen.getByText('dot-2')).toHaveAttribute('aria-current', 'page');
+  });
+
+  it('jumps to the announcement whose dot is picked, collapsed', () => {
+    render(
+      <AnnouncementsWidgetV3Body
+        announcements={mockAnnouncements}
+        onItemClick={jest.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('banner-toggle'));
+    fireEvent.click(screen.getByText('dot-3'));
+
+    expect(screen.getByText('Announcement 2')).toBeInTheDocument();
+    expect(screen.getByTestId('banner-expanded')).toHaveTextContent('false');
+    expect(screen.getByTestId('announcement-next-btn')).toBeDisabled();
+  });
+
   it('hides the chevrons when there is only one announcement', () => {
     render(
       <AnnouncementsWidgetV3Body
@@ -180,6 +234,7 @@ describe('AnnouncementsWidgetV3Body', () => {
     expect(
       screen.queryByTestId('announcement-next-btn')
     ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('announcement-dots')).not.toBeInTheDocument();
     expect(screen.getByText('Announcement 0')).toBeInTheDocument();
   });
 

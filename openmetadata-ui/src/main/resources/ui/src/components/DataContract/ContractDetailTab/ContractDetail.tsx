@@ -25,10 +25,13 @@ import {
 import {
   ChevronDown,
   DataContract as DataContractIcon,
+  Download01,
   Download02,
   Edit01,
+  Inherit,
   PlayCircle,
   Plus,
+  Settings,
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
@@ -37,9 +40,6 @@ import { isEmpty } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
-import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
 import {
   ContractImportFormat,
   DataContractMode,
@@ -331,7 +331,7 @@ const ContractDetail: React.FC<{
                 .inherited && (
                 <ButtonUtility
                   className="inherit-icon"
-                  icon={InheritIcon}
+                  icon={Inherit}
                   tooltip={t('label.inherited-entity', {
                     entity: t('label.contract'),
                   })}
@@ -347,7 +347,7 @@ const ContractDetail: React.FC<{
               <Dropdown.Root>
                 <ButtonUtility
                   data-testid="manage-contract-actions"
-                  icon={SettingIcon}
+                  icon={Settings}
                   size="lg"
                   tooltip={t('label.manage-entity', {
                     entity: t('label.contract'),
@@ -367,7 +367,8 @@ const ContractDetail: React.FC<{
                           <Box align="center" gap={2}>
                             <Edit01
                               aria-hidden="true"
-                              className="tw:size-4.5 tw:shrink-0 tw:text-fg-quaternary"
+                              className="tw:shrink-0 tw:text-fg-quaternary"
+                              size={18}
                             />
                             <Typography
                               ellipsis
@@ -421,7 +422,8 @@ const ContractDetail: React.FC<{
                           <Box align="center" gap={2}>
                             <Trash01
                               aria-hidden="true"
-                              className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                              className="tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                              size={16}
                             />
                             <Typography
                               ellipsis
@@ -599,9 +601,10 @@ const ContractDetail: React.FC<{
                           DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA
                         }>
                         <Box align="center" gap={2}>
-                          <ImportIconContract
+                          <Download01
                             aria-hidden="true"
-                            className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                            className="tw:shrink-0 tw:text-fg-quaternary"
+                            size={16}
                           />
                           <Typography
                             ellipsis
@@ -615,9 +618,10 @@ const ContractDetail: React.FC<{
                         data-testid="import-odcs-contract-button"
                         id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS}>
                         <Box align="center" gap={2}>
-                          <ImportIconContract
+                          <Download01
                             aria-hidden="true"
-                            className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                            className="tw:shrink-0 tw:text-fg-quaternary"
+                            size={16}
                           />
                           <Typography
                             ellipsis
@@ -762,7 +766,7 @@ const ContractDetail: React.FC<{
                 const inheritedIcon = isInherited ? (
                   <ButtonUtility
                     className="inherit-icon"
-                    icon={InheritIcon}
+                    icon={Inherit}
                     tooltip={t('label.inherited-entity', {
                       entity: t('label.terms-of-service'),
                     })}
@@ -802,7 +806,7 @@ const ContractDetail: React.FC<{
                   const inheritedIcon = contract.security?.inherited ? (
                     <ButtonUtility
                       className="inherit-icon"
-                      icon={InheritIcon}
+                      icon={Inherit}
                       tooltip={t('label.inherited-entity', {
                         entity: t('label.security'),
                       })}

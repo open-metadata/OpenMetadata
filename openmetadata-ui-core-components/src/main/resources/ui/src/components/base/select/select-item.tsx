@@ -78,7 +78,7 @@ export const SelectItem = ({
               'tw:outline-2 tw:-outline-offset-2 tw:outline-focus-ring',
 
             // Icon styles
-            'tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:text-fg-quaternary',
+            'tw:*:data-icon:size-5 tw:*:data-icon:shrink-0 tw:*:data-icon:text-utility-gray-500',
             state.isDisabled && 'tw:*:data-icon:text-fg-disabled',
 
             sizes[size]

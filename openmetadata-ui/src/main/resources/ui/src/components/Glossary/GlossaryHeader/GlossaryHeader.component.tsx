@@ -18,6 +18,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Icon as EntityStyleIcon } from '@openmetadata/ui-core-components/icon';
 import {
+  Brush01,
+  ChangeHierarchy02,
   ChevronDown,
   Download01,
   Edit01,
@@ -32,8 +34,6 @@ import { cloneDeep, isEmpty, toString } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ChangeHierarchyIcon } from '../../../assets/svg/ic-change-hierarchy.svg';
-import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -227,7 +227,7 @@ const buildManageButtonContent = ({
               description={t('message.edit-entity-style-description', {
                 entity: t('label.glossary-term'),
               })}
-              icon={StyleIcon}
+              icon={Brush01}
               id="edit-style-button"
               name={t('label.style')}
             />
@@ -245,7 +245,7 @@ const buildManageButtonContent = ({
               description={t('message.modify-hierarchy-entity-description', {
                 entity: t('label.term'),
               })}
-              icon={ChangeHierarchyIcon}
+              icon={ChangeHierarchy02}
               id="change-parent-button"
               name={t('label.change-parent-entity', {
                 entity: t('label.term'),
@@ -909,7 +909,6 @@ const GlossaryHeader = ({
             name={selectedData.name}
           />
         }
-        variant={isAiMode ? 'gradient' : 'flat'}
       />
       <GlossaryHeaderModals
         handleDelete={handleDelete}

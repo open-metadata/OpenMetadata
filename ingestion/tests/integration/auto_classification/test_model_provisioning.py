@@ -22,6 +22,10 @@ WHEEL_ENVIRONMENT_VARIABLE = "OM_MODEL_PROVISIONING_WHEEL"
 pytestmark = [
     pytest.mark.slow,
     pytest.mark.skipif(
+        os.getenv("OM_SKIP_CLASSIFICATION_MODELS") == "true",
+        reason="Classification model provisioning is temporarily disabled by OM_SKIP_CLASSIFICATION_MODELS",
+    ),
+    pytest.mark.skipif(
         not os.getenv(WHEEL_ENVIRONMENT_VARIABLE),
         reason=(
             "requires a candidate ingestion wheel and network access; set "

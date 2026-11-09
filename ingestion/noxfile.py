@@ -102,7 +102,13 @@ def synchronize(session, profile, path, interpreter):
         "PATH": str(path / "bin") + os.pathsep + os.environ["PATH"],
     }
     uv = pinned_uv(session, python, environment)
-    command = [uv, "sync", "--locked", "--project", str(INGESTION_ROOT), "--python", str(python)]
+    skip_classification_models = os.environ.get("OM_SKIP_CLASSIFICATION_MODELS") == "true"
+    # Frozen sync avoids fetching model metadata while provisioning is paused.
+    lock_mode = "--frozen" if skip_classification_models else "--locked"
+    command = [uv, "sync", lock_mode, "--project", str(INGESTION_ROOT), "--python", str(python)]
+    if skip_classification_models:
+        for model in ("en-core-web-md", "es-core-news-md", "it-core-news-md", "pl-core-news-md"):
+            command.extend(["--no-install-package", model])
     parser_check = "try:\n import tomllib\nexcept ImportError:\n import tomli"
     if subprocess.run([str(python), "-I", "-c", parser_check], capture_output=True, check=False).returncode:
         session.run(*command, "--only-group", "bootstrap", "--inexact", env=environment, external=True)
@@ -148,7 +154,7 @@ def synchronize(session, profile, path, interpreter):
         for extra in selected["extras"]:
             flags.extend(["--extra", extra])
         session.run(*command, *flags, env=environment, external=True)
-        if profile == "test" and policy.get("classification-models"):
+        if profile == "test" and policy.get("classification-models") and not skip_classification_models:
             session.run(
                 str(python),
                 "-I",

@@ -12,6 +12,7 @@
  */
 
 import { Box, ButtonUtility } from '@openmetadata/ui-core-components';
+import { ZoomIn } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   memo,
@@ -24,7 +25,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Handle, NodeProps, Position, useReactFlow } from 'reactflow';
-import { ReactComponent as ZoomInIcon } from '../../../assets/svg/ic-zoom-in.svg';
 import { NODE_WIDTH } from '../../../constants/Lineage.constants';
 import { EntityLineageNodeType } from '../../../enums/entity.enum';
 import { LineageDirection } from '../../../generated/api/lineage/lineageDirection';
@@ -172,7 +172,7 @@ const SceneDrillButton = ({
     <ButtonUtility
       // Less paints the static light brand tint (@primary-1) in every state.
       className="lineage-scene-drill-button nodrag nopan tw:dark:bg-brand-primary!"
-      icon={ZoomInIcon}
+      icon={ZoomIn}
       size="lg"
       tooltip={drillLabel}
       onClick={(event: MouseEvent<HTMLButtonElement>) => {

@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 
+import { Globe01 } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DomainsIcon } from '../../../../assets/svg/domains-default.svg';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { createListPageHeaderRenderer } from '../../../common/ListPageHeader/ListPageHeader';
 import DomainListPage from '../../../DomainListing/DomainListPage';
 
 const renderDomainsListHeader = createListPageHeaderRenderer({
   addLabelKey: 'label.add-domain',
-  icon: DomainsIcon,
+  icon: Globe01,
   subtitleKey: 'message.domain-description',
   titleKey: 'label.domain-plural',
 });
