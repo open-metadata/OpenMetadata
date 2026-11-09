@@ -166,7 +166,9 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String).label(COLUMN_NAMES)
+        col_names = literal(",".join(col.name for col in inspect(self.runner.raw_dataset).c), type_=String).label(
+            COLUMN_NAMES
+        )
         col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
@@ -493,7 +495,7 @@ class TimescaleTableMetricComputer(PostgresTableMetricComputer):
             ).first()
 
             if result and result.row_count is not None:
-                col_names_val = ",".join(inspect(self.runner.raw_dataset).c.keys())
+                col_names_val = ",".join(col.name for col in inspect(self.runner.raw_dataset).c)
                 col_count_val = len(inspect(self.runner.raw_dataset).c)
                 Row = namedtuple(
                     "Row",
@@ -871,9 +873,9 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         from metadata.profiler.metrics.static.column_count import ColumnCountFn  # noqa: PLC0415
         from metadata.profiler.metrics.static.column_names import ColunNameFn  # noqa: PLC0415
 
-        col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
-            COLUMN_NAMES
-        )
+        col_names = ColunNameFn(
+            literal(",".join(col.name for col in inspect(self.runner.raw_dataset).c), type_=String)
+        ).label(COLUMN_NAMES)
         col_count = ColumnCountFn(literal(len(inspect(self.runner.raw_dataset).c))).label(COLUMN_COUNT)
         return col_names, col_count
 
@@ -1021,12 +1023,12 @@ class _StatsBasedTableMetricComputer(BaseTableMetricComputer):
     (SHOW STATS, DESCRIBE FORMATTED, etc.) and fall back to COUNT(*)."""
 
     def _build_result(self, row_count: int):
-        col_keys = inspect(self.runner.raw_dataset).c.keys()
+        col_names = [col.name for col in inspect(self.runner.raw_dataset).c]
         Result = namedtuple("Result", [ROW_COUNT, COLUMN_COUNT, COLUMN_NAMES])
         return Result(
             rowCount=row_count,
-            columnCount=len(col_keys),
-            columnNames=",".join(col_keys),
+            columnCount=len(col_names),
+            columnNames=",".join(col_names),
         )
 
 
