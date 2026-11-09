@@ -433,8 +433,8 @@ class ContextFileProcessingServiceTest {
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
 
-    service(Runnable::run, () -> assetService, AiProviderHolder::isExtractionAvailable)
-        .process(fileId, contentId);
+    // No gate is injected, so the service's production default decides.
+    service(Runnable::run, () -> assetService, null).process(fileId, contentId);
 
     verify(repository, times(2))
         .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());

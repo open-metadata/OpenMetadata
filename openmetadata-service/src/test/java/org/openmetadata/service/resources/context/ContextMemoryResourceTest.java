@@ -31,12 +31,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.context.ExtractionAvailability;
+import org.openmetadata.schema.configuration.LLMBedrockConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMProvider;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryOutcomes;
+import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.AiProvider;
@@ -170,6 +173,22 @@ class ContextMemoryResourceTest {
         JsonUtils.pojoToJson(readExtractionAvailability()));
   }
 
+  /** An admin who turned the LLM on is told it is unavailable, not asked to turn it on. */
+  @ParameterizedTest
+  @ValueSource(booleans = {true, false})
+  void anLlmThatFailedToBuildMakesTheProviderUnavailable(boolean memoryExtractionEnabled) {
+    useBuiltInProvider(
+        new LLMConfiguration()
+            .withEnabled(true)
+            .withMemoryExtractionEnabled(memoryExtractionEnabled)
+            .withProvider(LLMProvider.BEDROCK)
+            .withBedrock(new LLMBedrockConfig().withAwsConfig(new AWSBaseConfig().withRegion(""))));
+
+    assertEquals(
+        "{\"available\":false,\"reason\":\"ProviderUnavailable\"}",
+        JsonUtils.pojoToJson(readExtractionAvailability()));
+  }
+
   @Test
   void whileExtractionIsAvailableNoReasonIsGiven() {
     useBuiltInProvider(true, true);
@@ -182,11 +201,15 @@ class ContextMemoryResourceTest {
   }
 
   private static void useBuiltInProvider(boolean llmEnabled, boolean memoryExtractionEnabled) {
-    LLMClientHolder.initialize(
+    useBuiltInProvider(
         new LLMConfiguration()
             .withEnabled(llmEnabled)
             .withMemoryExtractionEnabled(memoryExtractionEnabled)
             .withProvider(LLMProvider.NOOP));
+  }
+
+  private static void useBuiltInProvider(LLMConfiguration config) {
+    LLMClientHolder.initialize(config);
     AiProviderHolder.setForTesting(new LlmAiProvider());
   }
 

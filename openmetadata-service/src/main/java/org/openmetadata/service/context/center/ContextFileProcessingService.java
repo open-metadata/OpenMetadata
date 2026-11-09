@@ -65,7 +65,7 @@ public class ContextFileProcessingService {
         new ContextFileTextExtractor(),
         Entity.getJobDAO(),
         () -> AiProviderHolder.get().documentExtractor(),
-        AiProviderHolder::isExtractionAvailable,
+        null,
         null);
   }
 
@@ -84,7 +84,8 @@ public class ContextFileProcessingService {
     this.textExtractor = textExtractor;
     this.jobDao = jobDao;
     this.memoryExtractorSupplier = memoryExtractorSupplier;
-    this.llmEnabledSupplier = llmEnabledSupplier;
+    this.llmEnabledSupplier =
+        llmEnabledSupplier != null ? llmEnabledSupplier : AiProviderHolder::isExtractionAvailable;
     this.fileEngineSupplier = fileEngineSupplier;
   }
 
@@ -454,8 +455,8 @@ public class ContextFileProcessingService {
 
   /**
    * Whether text extraction should be followed by LLM knowledge-pill extraction. The gate is a
-   * single injected supplier (in production: {@link AiProviderHolder#isExtractionAvailable}) so the
-   * status machine stays unit testable without a live configuration.
+   * single injected supplier, {@link AiProviderHolder#isExtractionAvailable} when none is given, so
+   * the status machine stays unit testable without a live configuration.
    */
   private boolean shouldExtractContext(ProcessingStatus textStatus) {
     return textStatus == ProcessingStatus.Processed

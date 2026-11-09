@@ -41,8 +41,13 @@ public interface AiProvider {
   default ExtractionAvailability extractionAvailability() {
     return LLMClientHolder.isMemoryExtractionEnabled()
         ? new ExtractionAvailability().withAvailable(true)
-        : new ExtractionAvailability()
-            .withAvailable(false)
-            .withReason(ExtractionAvailability.Reason.ExtractionDisabled);
+        : new ExtractionAvailability().withAvailable(false).withReason(whyLlmCannotExtract());
+  }
+
+  /** An LLM that was switched on but whose client could not be built is unavailable, not off. */
+  private static ExtractionAvailability.Reason whyLlmCannotExtract() {
+    return LLMClientHolder.getUnavailableReason().isPresent()
+        ? ExtractionAvailability.Reason.ProviderUnavailable
+        : ExtractionAvailability.Reason.ExtractionDisabled;
   }
 }
