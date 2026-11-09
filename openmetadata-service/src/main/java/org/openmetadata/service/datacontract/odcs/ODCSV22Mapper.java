@@ -77,6 +77,15 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
   }
 
   @Override
+  public JsonNode read(JsonNode document) {
+    ObjectNode canonical = (ObjectNode) preservationView(document);
+    if (!canonical.has("name")) canonical.put("name", document.path("quantumName").asText());
+    ODCSImportQuality.normalizeStatus(canonical);
+    ODCSImportQuality.normalize(canonical);
+    return canonical;
+  }
+
+  @Override
   public JsonNode preservationView(JsonNode document) {
     ObjectNode view = document.deepCopy();
     rename(view, "uuid", "id");
@@ -93,6 +102,8 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
     for (JsonNode value : view.path("dataset")) {
       ObjectNode table = value.deepCopy();
       rename(table, "table", "name");
+      table.put("logicalType", "object");
+
       rename(table, "dataGranularity", "dataGranularityDescription");
       ArrayNode columns = ODCSExportModelWriter.JSON.createArrayNode();
       for (JsonNode valueColumn : table.path("columns")) {
@@ -106,6 +117,7 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
         rename(column, "encryptedColumnName", "encryptedName");
         rename(column, "transformSourceTables", "transformSourceObjects");
         rename(column, "sampleValues", "examples");
+        if (!column.has("isNullable")) column.put("isNullable", false);
         if (column.has("isNullable"))
           column.put("required", !column.remove("isNullable").asBoolean());
         insert(columns, column, List.of(FullyQualifiedName.split(path)));
@@ -134,11 +146,12 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
           for (JsonNode property : properties)
             if (name.equals(property.path("name").asText())) child = (ObjectNode) property;
           if (child == null)
-            throw new IllegalStateException("Missing exported ODCS column: " + name);
+            throw new IllegalArgumentException(
+                "Quality rule references an unknown ODCS column: " + name);
           target = child;
         }
       }
-      target.withArray("quality").add(ODCSLegacyQuality.sourceDeclaration(rule));
+      target.withArray("quality").add(ODCSImportQuality.legacyDeclaration(rule));
     }
   }
 

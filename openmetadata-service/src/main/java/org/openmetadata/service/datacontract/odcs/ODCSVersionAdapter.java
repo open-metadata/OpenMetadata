@@ -18,13 +18,18 @@ import java.util.List;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 
-/** Converts native contract information into one explicitly supported ODCS version. */
+/** Translates one published ODCS profile to and from the shared native representation. */
 public interface ODCSVersionAdapter {
   String version();
 
   String schemaLocation();
 
   JsonNode write(DataContract contract, List<ODCSQualityRule> nativeRules);
+
+  /** Adapts a schema-valid wire document without changing its declared source version. */
+  default JsonNode read(JsonNode document) {
+    return document.deepCopy();
+  }
 
   default JsonNode preservationView(JsonNode document) {
     return document;

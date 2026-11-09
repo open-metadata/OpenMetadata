@@ -269,6 +269,8 @@ public final class ODCSFieldCoverage {
         Map.of(
             LOGICAL_TYPE,
             FieldRule.mapped(),
+            "physicalType",
+            FieldRule.mapped(),
             PROPERTIES,
             FieldRule.nested(Section.PROPERTY),
             "quality",

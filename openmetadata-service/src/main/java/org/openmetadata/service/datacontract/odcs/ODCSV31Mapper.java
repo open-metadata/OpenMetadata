@@ -280,7 +280,8 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
 
   private static void placeRule(
       SchemaObject table, ODCSQualityRule source, List<RuleMetadata> metadata) {
-    DataQuality rule = JSON.convertValue(source, DataQuality.class);
+    ObjectNode wireRule = ODCSImportCompatibility.qualityRule(JSON.valueToTree(source));
+    DataQuality rule = JSON.convertValue(wireRule, DataQuality.class);
     collapseEqualBounds(source, rule);
     List<String> scope =
         nullOrEmpty(source.getColumn()) || source.getColumn().equals(table.getName())
@@ -297,7 +298,7 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
       if (property.getQuality() == null) property.setQuality(new ArrayList<>());
       target = property.getQuality();
     }
-    ObjectNode original = JSON.valueToTree(source);
+    ObjectNode original = wireRule;
     original.remove("column");
     if (equalBounds(source.getMustBeBetween())) {
       original.remove("mustBeBetween");

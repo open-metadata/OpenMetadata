@@ -72,7 +72,12 @@ public final class ODCSPreservedFields {
           captureSchema(source.path(SCHEMA), applied.path(SCHEMA), selectedObject, unapplied));
     }
     ObjectNode payload = envelope(preserved, unapplied);
-    if (source.has("apiVersion")) payload.set("sourceVersion", source.get("apiVersion").deepCopy());
+    if (source.has("apiVersion")) {
+      String version = source.path("apiVersion").asText();
+      payload.set("sourceVersion", source.get("apiVersion").deepCopy());
+      if (ODCSProfiles.supportedVersions().contains(version))
+        payload.put("sourceSchema", ODCSProfiles.adapter(version).schemaLocation());
+    }
     return payload;
   }
 

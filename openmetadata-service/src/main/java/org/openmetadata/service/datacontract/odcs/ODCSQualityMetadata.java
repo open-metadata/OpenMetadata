@@ -67,6 +67,20 @@ final class ODCSQualityMetadata {
   private static ObjectNode restoreObject(
       JsonNode source, JsonNode applied, JsonNode current, boolean qualityRule) {
     ObjectNode result = current.deepCopy();
+    boolean transformed = qualityRule && !source.path("type").equals(applied.path("type"));
+    boolean executionUnchanged =
+        equivalent(applied.path("type"), current.path("type"))
+            && equivalent(applied.path("engine"), current.path("engine"))
+            && equivalent(applied.path("implementation"), current.path("implementation"));
+    if (transformed && executionUnchanged) {
+      applied
+          .fieldNames()
+          .forEachRemaining(
+              key -> {
+                if (!source.has(key) && equivalent(applied.path(key), current.path(key)))
+                  result.remove(key);
+              });
+    }
     source
         .fields()
         .forEachRemaining(
@@ -74,6 +88,7 @@ final class ODCSQualityMetadata {
               String key = field.getKey();
               JsonNode before = applied.path(key);
               JsonNode after = current.path(key);
+              if (transformed && !executionUnchanged && executionField(key)) return;
               if (qualityRule && operatorReplaced(key, applied, current)) return;
               if (equivalent(before, after)) result.set(key, field.getValue().deepCopy());
               else if (field.getValue().isObject() && before.isObject() && after.isObject())
@@ -86,6 +101,12 @@ final class ODCSQualityMetadata {
             && equivalent(applied.path(operator), current.path(operator))) result.remove(operator);
     }
     return result;
+  }
+
+  private static boolean executionField(String key) {
+    return OPERATORS.contains(key)
+        || Set.of("type", "engine", "implementation", "query", "metric", "rule", "arguments")
+            .contains(key);
   }
 
   private static Set<String> operators() {

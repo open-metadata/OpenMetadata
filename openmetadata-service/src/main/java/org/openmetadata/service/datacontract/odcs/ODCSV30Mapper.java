@@ -83,6 +83,14 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
   }
 
   @Override
+  public JsonNode read(JsonNode document) {
+    ObjectNode canonical = (ObjectNode) preservationView(document);
+    ODCSImportQuality.normalize(canonical);
+    ODCSImportQuality.normalizeStatus(canonical);
+    return canonical;
+  }
+
+  @Override
   public JsonNode preservationView(JsonNode document) {
     ObjectNode view = document.deepCopy();
     if (view.path("team").isArray()) {
