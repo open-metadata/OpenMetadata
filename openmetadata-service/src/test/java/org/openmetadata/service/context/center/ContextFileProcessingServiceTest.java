@@ -31,6 +31,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
@@ -63,6 +65,8 @@ import org.openmetadata.service.util.RequestEntityCache;
 class ContextFileProcessingServiceTest {
 
   private static final String UPLOADER = "test.user";
+  private static final String CLOSED_ASSET_SERVICE =
+      "AssetService not initialized. Please make sure ObjectStorage is configured.";
 
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
@@ -116,6 +120,11 @@ class ContextFileProcessingServiceTest {
         .thenReturn(file);
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
+  }
+
+  @AfterEach
+  void serverIsRunningAgain() {
+    ServerStopping.set(false);
   }
 
   @Test
@@ -533,6 +542,34 @@ class ContextFileProcessingServiceTest {
 
     service(Runnable::run, () -> assetService).process(fileId, contentId);
 
+    verifyLeftAnalyzing();
+  }
+
+  /** The asset service's own shutdown hook closes object storage under running text extraction. */
+  @Test
+  void theAssetServiceClosingDuringAServerStopLeavesTheFileAnalyzing() {
+    ServerStopping.set(true);
+
+    service(Runnable::run, closedAssetService()).process(fileId, contentId);
+
+    verifyLeftAnalyzing();
+  }
+
+  @Test
+  void theAssetServiceFailingWhileTheServerRunsStillMarksTheFileFailed() {
+    service(Runnable::run, closedAssetService()).process(fileId, contentId);
+
+    verifyFailedWith(CLOSED_ASSET_SERVICE);
+  }
+
+  /** What {@code AssetServiceFactory.getService()} throws once its shutdown hook closed it. */
+  private static Supplier<AssetService> closedAssetService() {
+    return () -> {
+      throw new IllegalStateException(CLOSED_ASSET_SERVICE);
+    };
+  }
+
+  private void verifyLeftAnalyzing() {
     verify(repository)
         .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
     assertEquals(ProcessingStatus.Analyzing, updatedFileCaptor.getValue().getProcessingStatus());

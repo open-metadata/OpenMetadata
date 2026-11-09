@@ -1,6 +1,6 @@
 package org.openmetadata.service.context.center;
 
-import static org.openmetadata.service.context.center.Interruptions.isInterruption;
+import static org.openmetadata.service.jobs.Interruptions.isStopInterruption;
 
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -106,13 +106,14 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   }
 
   /**
-   * An interrupted run keeps its status, and rethrowing keeps its job from completing, so the
-   * stale-job reaper requeues the job to resume it.
+   * A run a server stop cuts short keeps its status, and rethrowing keeps its job from completing,
+   * so the stale-job reaper requeues the job to resume it.
    */
   private void recordFailure(UUID pageId, RuntimeException failure) {
-    if (isInterruption(failure)) {
+    if (isStopInterruption(failure)) {
       LOG.info(
-          "Knowledge pill extraction for page {} was interrupted; recovery resumes it", pageId);
+          "Knowledge pill extraction for page {} was cut short by a server stop; recovery resumes it",
+          pageId);
     } else {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, failure);
       try {

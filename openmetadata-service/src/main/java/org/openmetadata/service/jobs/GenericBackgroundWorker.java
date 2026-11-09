@@ -197,7 +197,7 @@ public class GenericBackgroundWorker implements Managed {
     try {
       processJob(job);
     } catch (Exception e) {
-      if (isLeftForRecovery(job)) {
+      if (isLeftForRecovery(job, e)) {
         logLeftForRecovery(job, e);
       } else {
         LOG.error("Background Job {} failed with unexpected error", job.getId(), e);
@@ -235,7 +235,7 @@ public class GenericBackgroundWorker implements Managed {
         sendJobStatusUpdate(job);
       }
     } catch (BackgroundJobException e) {
-      if (isLeftForRecovery(job)) {
+      if (isLeftForRecovery(job, e)) {
         logLeftForRecovery(job, e);
       } else {
         markJobAsFailed(job, e);
@@ -245,10 +245,11 @@ public class GenericBackgroundWorker implements Managed {
   }
 
   // A stop leaves a memory extraction job RUNNING, as a crash would, for the stale-job reaper to
-  // requeue (JobDAO#requeueStaleMemoryJobs). Other types still fail: nothing requeues them, and a
-  // RUNNING one can block new jobs of its type.
-  private boolean isLeftForRecovery(BackgroundJob job) {
-    return !running && job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION;
+  // requeue. Other types are still marked FAILED, which Collate's admin-ops jobs depend on.
+  // ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
+  static boolean isLeftForRecovery(BackgroundJob job, Throwable failure) {
+    return job.getJobType() == BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION
+        && Interruptions.isStopInterruption(failure);
   }
 
   private void logLeftForRecovery(BackgroundJob job, Exception e) {

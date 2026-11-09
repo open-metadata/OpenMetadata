@@ -17,14 +17,22 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.jobs.BackgroundJob;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.llm.LLMCompletionException;
 
 class GenericBackgroundWorkerTest {
+  @AfterEach
+  void serverIsRunningAgain() {
+    ServerStopping.set(false);
+  }
+
   @ParameterizedTest
   @EnumSource(
       value = BackgroundJob.JobType.class,
@@ -132,6 +140,27 @@ class GenericBackgroundWorkerTest {
         statusAfterStop(job, interrupt -> new IllegalStateException("Interrupted", interrupt));
 
     assertEquals(BackgroundJob.Status.FAILED, status);
+  }
+
+  @ParameterizedTest(name = "{0} interrupted={1} serverStopping={2} -> {3}")
+  @CsvSource({
+    "CONTEXT_MEMORY_EXTRACTION, true, false, true",
+    "CONTEXT_MEMORY_EXTRACTION, false, true, true",
+    "CONTEXT_MEMORY_EXTRACTION, false, false, false",
+    "CUSTOM_PROPERTY_ENUM_CLEANUP, true, false, false",
+    "CUSTOM_PROPERTY_ENUM_CLEANUP, false, true, false"
+  })
+  void onlyAMemoryJobCutShortByAStopIsLeftForRecovery(
+      BackgroundJob.JobType type, boolean interrupted, boolean serverStopping, boolean expected) {
+    ServerStopping.set(serverStopping);
+    Throwable cause =
+        interrupted
+            ? new InterruptedException()
+            : new LLMCompletionException("OpenAI API returned status 500");
+    BackgroundJobException failure =
+        new BackgroundJobException(1L, "Context memory extraction failed", cause);
+
+    assertEquals(expected, GenericBackgroundWorker.isLeftForRecovery(job(1L, type), failure));
   }
 
   /** Left RUNNING, a real failure would be requeued by the stale-job reaper and retried forever. */

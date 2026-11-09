@@ -1,9 +1,9 @@
 package org.openmetadata.service.context.center;
 
 import static org.openmetadata.service.context.center.ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS;
-import static org.openmetadata.service.context.center.Interruptions.isInterruption;
 import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEXT_FILE_CONTENT_ENTITY;
 import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
+import static org.openmetadata.service.jobs.Interruptions.isStopInterruption;
 
 import java.io.InputStream;
 import java.util.List;
@@ -304,11 +304,13 @@ public class ContextFileProcessingService {
     }
   }
 
-  /** An interrupted run stays Analyzing, so restart recovery extracts the text again. */
+  /** A run a server stop cuts short stays Analyzing, so restart recovery extracts the text again. */
   private ProcessingStatus recordTextFailure(UUID fileId, UUID contentId, Throwable failure) {
     ProcessingStatus result = null;
-    if (isInterruption(failure)) {
-      LOG.info("Text extraction for file {} was interrupted; recovery resumes it", fileId);
+    if (isStopInterruption(failure)) {
+      LOG.info(
+          "Text extraction for file {} was cut short by a server stop; recovery resumes it",
+          fileId);
     } else {
       LOG.error("Failed to extract text for file {} content {}", fileId, contentId, failure);
       applyFailure(fileId, contentId, describeFailure(failure));
@@ -379,13 +381,14 @@ public class ContextFileProcessingService {
   }
 
   /**
-   * An interrupted run stays ExtractingContext, and rethrowing keeps its job from completing, so
-   * the stale-job reaper or restart recovery resumes it.
+   * A run a server stop cuts short stays ExtractingContext, and rethrowing keeps its job from
+   * completing, so the stale-job reaper or restart recovery resumes it.
    */
   private void recordMemoryFailure(UUID fileId, UUID contentId, Exception failure) {
-    if (isInterruption(failure)) {
+    if (isStopInterruption(failure)) {
       LOG.info(
-          "Knowledge pill extraction for file {} was interrupted; recovery resumes it", fileId);
+          "Knowledge pill extraction for file {} was cut short by a server stop; recovery resumes it",
+          fileId);
     } else {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, failure);
       applyFailure(fileId, contentId, describeFailure(failure), false);
