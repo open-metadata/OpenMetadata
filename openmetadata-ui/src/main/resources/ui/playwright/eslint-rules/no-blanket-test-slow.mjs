@@ -115,13 +115,13 @@ const collectTestObjectSignal = (node, signals) => {
  *
  * Also legal, but for a different reason — `beforeAll`, `afterAll`, and
  * `afterEach` each run on their own timeout slot (verified against
- * playwright@1.57.0's worker/workerMain.js: `_runEachHooksForSuites` for
+ * playwright@1.65.0's worker/workerProcessEntry.js: `_runEachHooksForSuites` for
  * these passes its own slot), so `slow()` there extends only the hook's own
  * budget, never a test's.
  *
  * Blanket: file scope (no enclosing function at all), any `describe*`
  * callback, `beforeEach` — which, unlike the other hooks, runs on the
- * *test's own* default timeout slot (workerMain.js calls
+ * *test's own* default timeout slot (workerProcessEntry.js calls
  * `_runEachHooksForSuites(suites, 'beforeEach', testInfo)` with no slot
  * argument) before every test in scope, so `slow()` there has the same
  * blast radius as a describe-scope call — and any unknown wrapper, which we
