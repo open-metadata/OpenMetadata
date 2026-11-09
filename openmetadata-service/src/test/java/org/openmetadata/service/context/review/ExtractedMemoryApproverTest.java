@@ -14,6 +14,7 @@
 package org.openmetadata.service.context.review;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -25,6 +26,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.governance.workflows.WorkflowEventConsumer.GOVERNANCE_BOT;
 
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Response;
 import java.util.Arrays;
 import java.util.List;
@@ -407,6 +409,30 @@ class ExtractedMemoryApproverTest {
     assertEquals(0, refused.getApproved());
     assertEquals(1, refused.getFailed());
     assertEquals(List.of(held.getId()), refIds(refused.getNeedsDecision()));
+  }
+
+  /** A decision check that cannot run fails the request; it never reads as "nothing holds it". */
+  @Test
+  void anUnreadableDecisionCheckFailsTheRequestAndApprovesNothing() {
+    EntityReference file =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+    ContextMemory pending =
+        extracted("When is the customer billed?", ContextMemoryStatus.UNPROCESSED)
+            .withAnswer("Customers are billed on the 10th.");
+    ContextMemoryRepository repository = mock(ContextMemoryRepository.class);
+    when(repository.listExtractedMemories(file.getId(), Entity.CONTEXT_FILE))
+        .thenReturn(List.of(pending));
+    ExtractedMemoryApprover approver =
+        new ExtractedMemoryApprover(
+            repository,
+            unchecked -> {
+              throw new ServiceUnavailableException("Memory search index is unavailable");
+            });
+
+    assertThrows(ServiceUnavailableException.class, () -> approver.preview(file, "alice", false));
+    assertThrows(
+        ServiceUnavailableException.class,
+        () -> approver.approve(file, asRead(pending), "alice", false));
   }
 
   @Test

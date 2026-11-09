@@ -98,7 +98,9 @@ holds it with
 (ADR:2026-09-29-context-file-memory-reuse, v3), and leave it pending for the document's owners.
 Only a decision in a document the value is not linked to holds it that way; a decision in a
 document the value is linked to keeps the rule above, so beside a figure an admin rejected in the
-document, the other figure it states is its owner's to approve. Rejecting stays with admins
+document, the other figure it states is its owner's to approve. Preview and approval therefore
+depend on the memory search index: when it cannot be read they answer 503 and approve nothing,
+rather than approve without the check. Rejecting stays with admins
 (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3). Another
 user's private copy never blocks an owner's approval, which is written as that owner: a restricted
 copy is linked by its source edge alone and never named on the memory, its source included.

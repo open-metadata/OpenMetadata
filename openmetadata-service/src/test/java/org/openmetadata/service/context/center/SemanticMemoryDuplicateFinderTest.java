@@ -17,6 +17,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -849,8 +850,28 @@ class SemanticMemoryDuplicateFinderTest {
         new SemanticMemoryDuplicateFinder(
             repository, () -> vectorService, () -> searchRepository, completionClient);
 
-    assertThrows(
-        IllegalStateException.class,
-        () -> finder.findMatch(memory(UUID.randomUUID(), "What is churn?", "Customers leave.")));
+    ServiceUnavailableException unavailable =
+        assertThrows(
+            ServiceUnavailableException.class,
+            () ->
+                finder.findMatch(memory(UUID.randomUUID(), "What is churn?", "Customers leave.")));
+    assertEquals(503, unavailable.getResponse().getStatus());
+  }
+
+  /** Approval cannot check another document's decisions without the index: a 503, no guess. */
+  @Test
+  void approvalWithoutAMemoryIndexIsUnavailableRatherThanUnheld() {
+    when(searchRepository.getSearchClient()).thenReturn(null);
+    ContextMemory pending =
+        memory(
+                UUID.randomUUID(),
+                "When is the customer billed?",
+                "Customers are billed on the 10th of each month.")
+            .withEntityStatus(ContextMemoryStatus.UNPROCESSED);
+
+    ServiceUnavailableException unavailable =
+        assertThrows(
+            ServiceUnavailableException.class, () -> keywordFinder().isHeldByADecision(pending));
+    assertEquals(503, unavailable.getResponse().getStatus());
   }
 }

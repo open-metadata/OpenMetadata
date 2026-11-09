@@ -2,6 +2,8 @@ package org.openmetadata.service.context.center;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.core.Response;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -64,6 +66,10 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
   private static final List<Map<String, Object>> DECIDED = List.of(decidedClause());
 
   private static final String SOURCE_TYPE = "sourceType";
+
+  private static final String INDEX_UNAVAILABLE =
+      "The memory search index is unavailable, so other documents' memories cannot be checked;"
+          + " retry once search is reachable";
 
   private static final String EQUIVALENCE_PROMPT =
       "The input is JSON data containing one proposed memory and candidate memories. "
@@ -258,16 +264,22 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
                   KEYWORD_FETCH_LIMIT);
       return loadCandidates(result.getResults(), value);
     } catch (IOException e) {
-      throw new IllegalStateException("Memory search index lookup failed", e);
+      throw indexUnavailable(e);
     }
   }
 
   private SearchClient searchClient() {
     SearchRepository searchRepository = searchRepositorySupplier.get();
     if (searchRepository == null || searchRepository.getSearchClient() == null) {
-      throw new IllegalStateException("Memory search index is unavailable");
+      throw indexUnavailable(null);
     }
     return searchRepository.getSearchClient();
+  }
+
+  /** A 503 the caller may retry: without the index no fact is created or approved unchecked. */
+  private static ServiceUnavailableException indexUnavailable(IOException cause) {
+    return new ServiceUnavailableException(
+        INDEX_UNAVAILABLE, Response.status(Response.Status.SERVICE_UNAVAILABLE).build(), cause);
   }
 
   private String keywordQuery(ContextMemory derived) {
