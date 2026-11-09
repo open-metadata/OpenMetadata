@@ -128,7 +128,7 @@ const SelectValue = ({
           size === 'xs' ? 'tw:gap-1.5' : 'tw:gap-2',
 
           // Icon styles
-          'tw:*:data-icon:shrink-0 tw:*:data-icon:text-fg-quaternary tw:in-disabled:*:data-icon:text-fg-disabled',
+          'tw:*:data-icon:shrink-0 tw:*:data-icon:text-utility-gray-500 tw:in-disabled:*:data-icon:text-fg-disabled',
           size === 'xs' ? 'tw:*:data-icon:size-4' : 'tw:*:data-icon:size-5',
 
           sizes[size].root

@@ -54,6 +54,7 @@ public class DataContractMapper {
         .withExtension(create.getExtension())
         .withOdcsQualityRules(create.getOdcsQualityRules())
         .withOdcsElementExtensions(create.getOdcsElementExtensions())
+        .withOdcsPreservedFields(create.getOdcsPreservedFields())
         .withUpdatedBy(user)
         .withUpdatedAt(System.currentTimeMillis());
   }

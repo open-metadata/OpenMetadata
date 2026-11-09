@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 
+import {
+  CheckCircle02,
+  SlashCircle02,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { get } from 'lodash';
 import { lazy } from 'react';
-import { ReactComponent as IconFailBadge } from '../assets/svg/fail-badge.svg';
-import { ReactComponent as IconSkippedBadge } from '../assets/svg/skipped-badge.svg';
-import { ReactComponent as IconSuccessBadge } from '../assets/svg/success-badge.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback, {
   TAB_CONTENT_FALLBACK,
@@ -90,16 +92,29 @@ export const getTaskExecStatus = (taskName: string, tasks: TaskStatus[]) => {
   return tasks.find((task) => task.name === taskName)?.executionStatus;
 };
 
+export const getStatusBadgeClassName = (status?: StatusType) => {
+  switch (status) {
+    case StatusType.Successful:
+      return 'tw:text-utility-green-500';
+
+    case StatusType.Failed:
+      return 'tw:text-utility-error-600';
+
+    default:
+      return 'tw:text-utility-gray-500';
+  }
+};
+
 export const getStatusBadgeIcon = (status?: StatusType) => {
   switch (status) {
     case StatusType.Successful:
-      return IconSuccessBadge;
+      return CheckCircle02;
 
     case StatusType.Failed:
-      return IconFailBadge;
+      return XCircle;
 
     default:
-      return IconSkippedBadge;
+      return SlashCircle02;
   }
 };
 

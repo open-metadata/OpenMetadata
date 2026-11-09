@@ -14,6 +14,7 @@ import {
   Badge,
   Box,
   Button,
+  FormField,
   getField,
   HookForm,
   Typography,
@@ -30,11 +31,11 @@ import {
 } from '../../../../generated/entity/data/ontologyConcept';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
-import {
-  createOntologyConcept,
-  patchOntologyConcept,
-} from '../../../../rest/ontologyAPI';
+import { patchOntologyConcept } from '../../../../rest/ontologyAPI';
+import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
+import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
 import {
   conceptFormFields,
   conceptFormValues,
@@ -43,11 +44,13 @@ import {
   mappingFormFields,
   OntologyConceptFormValues,
 } from './OntologyConceptEditor.utils';
+import { useMappingTargetOptions } from './useReadableConceptOptions';
 
 interface OntologyConceptEditorProps {
   ontology: Ontology;
-  concept?: OntologyConcept;
+  concept: OntologyConcept;
   canEdit: boolean;
+  concepts?: ReadonlyArray<OntologyIriOption>;
   onSaved: (concept: OntologyConcept) => void;
 }
 
@@ -55,6 +58,7 @@ const OntologyConceptEditor = ({
   ontology,
   concept,
   canEdit,
+  concepts,
   onSaved,
 }: OntologyConceptEditorProps) => {
   const { t } = useTranslation();
@@ -69,7 +73,12 @@ const OntologyConceptEditor = ({
     name: 'conceptMappings',
   });
   const addMappingButton = useRef<HTMLButtonElement>(null);
+  const { options: mappingTargets, isLoading: mappingTargetsLoading } =
+    useMappingTargetOptions(concepts, canEdit && mappings.fields.length > 0);
   const disabled = !canEdit || isSaving;
+  const saveStatus = form.formState.isDirty
+    ? t('label.unsaved-changes')
+    : t('label.all-changes-saved');
 
   const save = async (values: OntologyConceptFormValues) => {
     if (!canEdit) {
@@ -78,9 +87,10 @@ const OntologyConceptEditor = ({
     setIsSaving(true);
     try {
       const request = conceptRequest(values, ontology.fullyQualifiedName);
-      const result = concept
-        ? await patchOntologyConcept(concept.id, conceptPatch(concept, request))
-        : await createOntologyConcept(request);
+      const result = await patchOntologyConcept(
+        concept.id,
+        conceptPatch(concept, request)
+      );
       form.reset(conceptFormValues(result));
       markSaved();
       onSaved(result);
@@ -105,14 +115,41 @@ const OntologyConceptEditor = ({
     });
 
   const renderFields = () =>
-    conceptFormFields(t, Boolean(concept), disabled).map((field) => (
+    conceptFormFields(t, disabled).map((field) => (
       <Fragment key={field.name}>{getField(field)}</Fragment>
     ));
 
   const renderMappingFields = (index: number) => (
     <>
       {mappingFormFields(t, index, disabled).map((field) => (
-        <Fragment key={field.name}>{getField(field)}</Fragment>
+        <Fragment key={field.name}>
+          {field.name.endsWith('.conceptIri') ? (
+            <FormField
+              control={form.control}
+              name={field.name as `conceptMappings.${number}.conceptIri`}
+              rules={{
+                validate: (value: string) =>
+                  isAbsoluteOntologyIri(value.trim()) ||
+                  t('message.invalid-concept-iri'),
+              }}>
+              {({ field: control, fieldState }) => (
+                <OntologyIriInput
+                  isRequired
+                  error={fieldState.error?.message}
+                  isDisabled={disabled}
+                  isLoading={mappingTargetsLoading}
+                  label={t('label.concept-iri')}
+                  options={mappingTargets}
+                  testId="ontology-mapping-concept"
+                  value={control.value}
+                  onChange={control.onChange}
+                />
+              )}
+            </FormField>
+          ) : (
+            getField(field)
+          )}
+        </Fragment>
       ))}
     </>
   );
@@ -183,8 +220,12 @@ const OntologyConceptEditor = ({
             align="center"
             className="tw:sticky tw:bottom-0 tw:border-t tw:border-secondary tw:bg-surface tw:py-3"
             gap={2}>
-            <Typography className="tw:flex-1 tw:text-tertiary" size="text-xs">
-              {form.formState.isDirty ? t('label.unsaved-changes') : null}
+            <Typography
+              className="tw:flex-1 tw:text-tertiary"
+              data-testid="concept-save-status"
+              role="status"
+              size="text-xs">
+              {saveStatus}
             </Typography>
             <Button
               color="primary"
@@ -233,6 +274,12 @@ const OntologyConceptEditor = ({
           onPress={appendMapping}>
           {t('label.add-mapping')}
         </Button>
+        <Typography
+          data-testid="concept-save-status"
+          role="status"
+          size="text-xs">
+          {saveStatus}
+        </Typography>
         <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
           {t('label.save')}
         </Button>

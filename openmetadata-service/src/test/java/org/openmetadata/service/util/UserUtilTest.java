@@ -22,12 +22,15 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import static org.openmetadata.service.Entity.ADMIN_ROLE;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.USER;
+import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import at.favre.lib.crypto.bcrypt.BCrypt;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
+import java.net.URI;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -54,6 +57,9 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.LandingPageSettings;
 import org.openmetadata.schema.type.Paging;
+import org.openmetadata.schema.type.Profile;
+import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.schema.type.profile.SubscriptionConfig;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.exception.UserCreationException;
@@ -286,6 +292,44 @@ class UserUtilTest {
       assertEquals(1.0, changeEvent.getPreviousVersion());
       assertEquals(List.of(domainId), changeEvent.getDomains());
       assertNotNull(changeEvent.getChangeDescription());
+    }
+  }
+
+  @Test
+  void addOrUpdateUserRecordsAChangeEventWithTheProfileWebhookSecretMasked() {
+    UserRepository userRepository = mock(UserRepository.class);
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    CollectionDAO.ChangeEventDAO changeEventDAO = mock(CollectionDAO.ChangeEventDAO.class);
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create("https://hooks.example.com/hook"))
+            .withAuthType(Map.of("type", "bearer", "secretKey", "the-webhook-secret"));
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("alice")
+            .withFullyQualifiedName("alice")
+            .withUpdatedAt(1234L)
+            .withVersion(2.0)
+            .withProfile(
+                new Profile().withSubscription(new SubscriptionConfig().withGeneric(webhook)));
+
+    when(collectionDAO.changeEventDAO()).thenReturn(changeEventDAO);
+    when(userRepository.findByNameOrNull("alice", NON_DELETED)).thenReturn(user);
+    when(userRepository.createOrUpdate(null, user, ADMIN_USER_NAME))
+        .thenReturn(new PutResponse<>(Response.Status.OK, user, EventType.ENTITY_UPDATED));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity.when(() -> Entity.getEntityRepository(Entity.USER)).thenReturn(userRepository);
+      mockedEntity.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+
+      UserUtil.addOrUpdateUser(user);
+
+      ArgumentCaptor<String> jsonCaptor = ArgumentCaptor.forClass(String.class);
+      verify(changeEventDAO).insert(jsonCaptor.capture());
+      String eventJson = jsonCaptor.getValue();
+      assertFalse(eventJson.contains("the-webhook-secret"), eventJson);
+      assertTrue(eventJson.contains(PASSWORD_MASK), eventJson);
     }
   }
 

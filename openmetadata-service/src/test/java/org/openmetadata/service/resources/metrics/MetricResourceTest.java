@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doThrow;
@@ -156,8 +157,14 @@ class MetricResourceTest {
       ArgumentCaptor<ResourceContextInterface> resources =
           ArgumentCaptor.forClass(ResourceContextInterface.class);
 
-      MetricAuthorization.authorizeHierarchyDestinations(
-          fixture.authorizer(), mock(SecurityContext.class), null, updated);
+      SecurityContext securityContext = mock(SecurityContext.class);
+      MetricRepository.hierarchyDestinations(null, updated)
+          .forEach(
+              destination ->
+                  MetricRepository.authorizeEditAll(
+                      destination,
+                      (operation, resource) ->
+                          fixture.authorizer().authorize(securityContext, operation, resource)));
 
       verify(fixture.authorizer(), times(2))
           .authorize(any(), operations.capture(), resources.capture());
@@ -183,40 +190,38 @@ class MetricResourceTest {
   }
 
   @Test
-  void metricPatchRejectsRelationshipDerivedFieldsAndDetectsHierarchyPaths() {
-    jakarta.json.JsonPatch assets =
-        Json.createPatchBuilder().add("/assets", Json.createArrayBuilder().build()).build();
-    jakarta.json.JsonPatch children =
-        Json.createPatchBuilder().add("/children", Json.createArrayBuilder().build()).build();
-    jakarta.json.JsonPatch childrenCount =
-        Json.createPatchBuilder().add("/childrenCount", 2).build();
-    jakarta.json.JsonPatch parent =
-        Json.createPatchBuilder()
-            .add(
-                "/parent",
-                Json.createObjectBuilder().add("id", UUID.randomUUID().toString()).build())
-            .build();
+  void hierarchyPatchIsAuthorizedOnTheMetricBeforeItIsSimulated() {
+    UUID metricId = UUID.randomUUID();
+    SecurityContext securityContext = securityContext("alice");
+    AuthorizationException denied = new AuthorizationException("denied");
+    // Cannot be applied to any metric: the JSON-P error would print the stored document.
+    jakarta.json.JsonPatch copyIntoParent =
+        Json.createPatchBuilder().copy("/parent", "/x/y").build();
+    try (ResourceFixture fixture = resourceFixture()) {
+      doThrow(denied)
+          .when(fixture.authorizer())
+          .authorize(eq(securityContext), any(OperationContext.class), any());
 
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(assets));
+      assertEquals(
+          denied,
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  fixture
+                      .resource()
+                      .updateMetric(null, securityContext, metricId, copyIntoParent)));
+      assertEquals(
+          denied,
+          assertThrows(
+              AuthorizationException.class,
+              () ->
+                  fixture
+                      .resource()
+                      .updateMetric(null, securityContext, "revenue", copyIntoParent)));
 
-    assertTrue(exception.getMessage().contains("assets"));
-    assertThrows(
-        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(children));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> MetricAuthorization.validateMetricPatch(childrenCount));
-    assertTrue(MetricAuthorization.patchMutatesHierarchy(parent));
-    assertFalse(MetricAuthorization.patchMutatesHierarchy(assets));
-  }
-
-  @Test
-  void wholeDocumentReplaceCountsAsAHierarchyChange() {
-    jakarta.json.JsonPatch rootReplace =
-        Json.createPatchBuilder().replace("", Json.createObjectBuilder().build()).build();
-
-    assertTrue(MetricAuthorization.patchMutatesHierarchy(rootReplace));
+      verify(fixture.repository(), never()).get(any(), any(UUID.class), any());
+      verify(fixture.repository(), never()).getByName(any(), anyString(), any());
+    }
   }
 
   @Test
@@ -405,7 +410,7 @@ class MetricResourceTest {
 
       assertEquals(missing, thrown);
       verify(fixture.repository(), never()).getAssetsWithDirection(metricId);
-      verify(fixture.repository(), never()).getObservability(eq(metricId), any(), any());
+      verify(fixture.repository(), never()).getObservability(eq(metricId), any(), any(), any());
     }
   }
 
@@ -428,7 +433,10 @@ class MetricResourceTest {
       when(fixture.repository().get(any(), eq(metricId), any()))
           .thenReturn(new Metric().withId(metricId).withName("revenue"));
       when(fixture.repository().getAssetsWithDirection(metricId)).thenReturn(linkedAssets);
-      when(fixture.repository().getObservability(metricId, linkedAssets, Set.of(table.getId())))
+      when(fixture
+              .repository()
+              .getObservability(
+                  metricId, linkedAssets, Set.of(table.getId()), Set.of(table.getId())))
           .thenReturn(expected);
 
       MetricObservability actual =
@@ -436,7 +444,44 @@ class MetricResourceTest {
 
       assertEquals(expected, actual);
       verify(fixture.repository(), times(1)).getAssetsWithDirection(metricId);
-      verify(fixture.repository()).getObservability(metricId, linkedAssets, Set.of(table.getId()));
+      verify(fixture.repository())
+          .getObservability(metricId, linkedAssets, Set.of(table.getId()), Set.of(table.getId()));
+    }
+  }
+
+  @Test
+  void observabilityWithholdsTestDetailsOfTablesWithoutViewTests() {
+    UUID metricId = UUID.randomUUID();
+    SecurityContext securityContext = securityContext("alice");
+    EntityReference table =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.TABLE)
+            .withName("orders")
+            .withFullyQualifiedName("service.database.schema.orders");
+    List<MetricAssetDirection> linkedAssets =
+        List.of(
+            new MetricAssetDirection()
+                .withAsset(table)
+                .withDirection(MetricAssetDirection.Direction.UPSTREAM));
+    try (ResourceFixture fixture = resourceFixture()) {
+      when(fixture.repository().get(any(), eq(metricId), any()))
+          .thenReturn(new Metric().withId(metricId).withName("revenue"));
+      when(fixture.repository().getAssetsWithDirection(metricId)).thenReturn(linkedAssets);
+      doThrow(new AuthorizationException("denied"))
+          .when(fixture.authorizer())
+          .authorize(
+              eq(securityContext),
+              argThat(
+                  context ->
+                      Entity.TABLE.equals(context.getResource())
+                          && context.getOperations(null).contains(MetadataOperation.VIEW_TESTS)),
+              any());
+
+      fixture.resource().getObservability(null, securityContext, metricId);
+
+      verify(fixture.repository())
+          .getObservability(metricId, linkedAssets, Set.of(table.getId()), Set.of());
     }
   }
 

@@ -17,6 +17,7 @@ import {
   ExpressionKind,
   OntologyExpression,
   Provenance,
+  RestrictionKind,
 } from '../../../../generated/api/data/createOntologyAxiom';
 
 export interface OntologyAxiomFormState {
@@ -147,14 +148,20 @@ export function formatOntologyExpression(
   }
 }
 
+/**
+ * The server requires a display name and a description, so a rule saved without
+ * them takes the sentence it reads as, which is what a person would write.
+ */
 export const buildOntologyAxiomRequest = (
   ontologyFqn: string,
-  form: OntologyAxiomFormState
+  form: OntologyAxiomFormState,
+  sentence = ''
 ): CreateOntologyAxiom => {
+  const fallback = sentence.trim() || form.name.trim();
   const request: CreateOntologyAxiom = {
     axiomType: form.axiomType,
-    description: form.description.trim(),
-    displayName: form.displayName.trim(),
+    description: form.description.trim() || fallback,
+    displayName: form.displayName.trim() || fallback,
     expressions:
       isClassExpressionAxiom(form.axiomType) && form.expressions.length
         ? form.expressions
@@ -176,10 +183,51 @@ export const buildOntologyAxiomRequest = (
   return request;
 };
 
-export const isOntologyAxiomReady = (form: OntologyAxiomFormState) =>
-  Boolean(
-    form.name.trim() &&
-      form.displayName.trim() &&
-      form.description.trim() &&
-      form.subjectIri.trim()
+const isRestrictionComplete = (
+  expression: OntologyExpression,
+  isComplete: (filler: OntologyExpression) => boolean
+): boolean => {
+  if (!expression.propertyIri?.trim()) {
+    return false;
+  }
+  if (expression.restrictionKind === RestrictionKind.Value) {
+    return Boolean(expression.individualIri?.trim() || expression.literal);
+  }
+
+  return !expression.filler || isComplete(expression.filler);
+};
+
+function isExpressionComplete(expression: OntologyExpression): boolean {
+  switch (expression.kind) {
+    case ExpressionKind.NamedClass:
+      return Boolean(expression.classIri?.trim());
+    case ExpressionKind.OneOf:
+      return Boolean(expression.individualIris?.length);
+    case ExpressionKind.Restriction:
+      return isRestrictionComplete(expression, isExpressionComplete);
+    default:
+      return (
+        Boolean(expression.operands?.length) &&
+        (expression.operands ?? []).every(isExpressionComplete)
+      );
+  }
+}
+
+const hasAxiomShape = (form: OntologyAxiomFormState) => {
+  if (isClassExpressionAxiom(form.axiomType)) {
+    return (
+      form.expressions.length > 0 &&
+      form.expressions.every(isExpressionComplete)
+    );
+  }
+  const needsTarget = form.axiomType === AxiomType.ObjectPropertyAssertion;
+
+  return (
+    Boolean(form.propertyIri.trim()) &&
+    (!needsTarget || Boolean(form.targetIri.trim()))
   );
+};
+
+/** A rule is ready to check once every field the server needs has a value, so an empty field never shows an error. */
+export const isOntologyAxiomReady = (form: OntologyAxiomFormState) =>
+  Boolean(form.name.trim() && form.subjectIri.trim()) && hasAxiomShape(form);

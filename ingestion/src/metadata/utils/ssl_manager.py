@@ -231,18 +231,20 @@ class SSLManager:
     @setup_ssl.register(KafkaConnection)
     def _(self, connection) -> KafkaConnection:
         connection = cast(KafkaConnection, connection)  # noqa: TC006
+        # Both configs are models whose undeclared keys are extras, so the file locations are
+        # set as extras under their librdkafka names.
         if connection.consumerConfigSSL:
-            connection.consumerConfig = {
-                **connection.consumerConfig,
-                "ssl.ca.location": getattr(self, "ca_consumer_config", None),
-                "ssl.key.location": getattr(self, "key_consumer_config", None),
-                "ssl.certificate.location": getattr(self, "cert_consumer_config", None),
-            }
+            setattr(connection.consumerConfig, "ssl.ca.location", getattr(self, "ca_consumer_config", None))
+            setattr(connection.consumerConfig, "ssl.key.location", getattr(self, "key_consumer_config", None))
+            setattr(connection.consumerConfig, "ssl.certificate.location", getattr(self, "cert_consumer_config", None))
         if connection.schemaRegistrySSL:
-            connection.schemaRegistryConfig["ssl.ca.location"] = getattr(self, "ca_schema_registry", None)
-
-            connection.schemaRegistryConfig["ssl.key.location"] = getattr(self, "key_schema_registry", None)
-            connection.schemaRegistryConfig["ssl.certificate.location"] = getattr(self, "cert_schema_registry", None)
+            setattr(connection.schemaRegistryConfig, "ssl.ca.location", getattr(self, "ca_schema_registry", None))
+            setattr(connection.schemaRegistryConfig, "ssl.key.location", getattr(self, "key_schema_registry", None))
+            setattr(
+                connection.schemaRegistryConfig,
+                "ssl.certificate.location",
+                getattr(self, "cert_schema_registry", None),
+            )
         return connection
 
     @setup_ssl.register(CassandraConnection)

@@ -17,8 +17,6 @@ import {
   Box,
   Button,
   ButtonUtility,
-  Checkbox,
-  Input,
   ProgressBarBase,
   Select,
   Typography,
@@ -34,12 +32,14 @@ import {
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
+import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getInverseRelationLabel } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
   DataPropertyInput,
+  getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
@@ -48,8 +48,6 @@ import {
   humanizeName,
   OntologyModelRelation,
   OntologyStudioModel,
-  StudioDatatype,
-  STUDIO_DATATYPES,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
   InspectorEmptyText,
@@ -60,15 +58,20 @@ import {
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
+import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
-import OntologyConceptLiveData from './OntologyConceptLiveData';
+import OntologyConceptLiveData, {
+  LiveDataBindingState,
+} from './OntologyConceptLiveData';
 import {
   ConceptEmptyState,
   ConceptFormCard,
   ConceptFormPreview,
   ConceptSection,
 } from './OntologyConceptSection';
+import OntologyPropertyAuthoring from './OntologyPropertyAuthoring';
 import OntologyPropertyBindings from './OntologyPropertyBindings';
 
 interface OntologyConceptInspectorProps {
@@ -84,7 +87,25 @@ interface OntologyConceptInspectorProps {
     targetId: string,
     relationType: string
   ) => Promise<boolean>;
+  readonly canEditRelations?: boolean;
+  readonly checkAddRelation?: (
+    targetId: string,
+    relationType: string
+  ) => string | undefined;
+  /** The reason the relation cannot take this type, or undefined. */
+  readonly checkRelationType?: (
+    relation: OntologyModelRelation,
+    typeId: string
+  ) => string | undefined;
+  readonly onEditRelation?: (
+    relation: OntologyModelRelation,
+    typeId: string
+  ) => Promise<boolean>;
+  readonly onDeleteRelation?: (
+    relation: OntologyModelRelation
+  ) => Promise<boolean>;
   readonly onClose: () => void;
+  readonly onDelete?: () => void;
   readonly onEdit?: () => void;
   readonly onEditMappings?: () => void;
   readonly canEditBindings?: boolean;
@@ -92,198 +113,6 @@ interface OntologyConceptInspectorProps {
   readonly onOpenData: () => void;
   readonly onSelectConcept: (concept: OntologyConcept) => void;
 }
-
-interface PropertyAuthoringProps {
-  readonly isAvailable: boolean;
-  readonly isOpen: boolean;
-  readonly onClose: () => void;
-  readonly onOpen: () => void;
-  readonly onSave: (input: DataPropertyInput) => Promise<boolean>;
-}
-
-const getEnumValues = (value: string) =>
-  value
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean);
-
-const PropertyAuthoring = ({
-  isAvailable,
-  isOpen,
-  onClose,
-  onOpen,
-  onSave,
-}: PropertyAuthoringProps) => {
-  const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
-  const [propertyName, setPropertyName] = useState('');
-  const [datatype, setDatatype] = useState<StudioDatatype>('string');
-  const [enumValues, setEnumValues] = useState('');
-  const [isIdentifier, setIsIdentifier] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const parsedEnumValues = getEnumValues(enumValues);
-  const canSubmit =
-    Boolean(propertyName.trim()) &&
-    (datatype !== 'enum' || parsedEnumValues.length > 0);
-
-  const save = async () => {
-    setIsSaving(true);
-    const saved = await onSave({
-      datatype,
-      enumValues: datatype === 'enum' ? parsedEnumValues : undefined,
-      isIdentifier,
-      name: propertyName,
-    });
-    setIsSaving(false);
-    if (saved) {
-      setPropertyName('');
-      setDatatype('string');
-      setEnumValues('');
-      setIsIdentifier(false);
-      onClose();
-    }
-  };
-
-  const nameInput = (
-    <Input
-      inputDataTestId="ontology-property-name"
-      isDisabled={isSaving}
-      label={t('label.name')}
-      size="sm"
-      value={propertyName}
-      onChange={setPropertyName}
-    />
-  );
-  const datatypeGroup = (
-    <div
-      aria-label={t('label.data-type')}
-      className="tw:flex tw:flex-wrap tw:gap-1.5"
-      role="group">
-      {STUDIO_DATATYPES.map((item) => (
-        <Button
-          aria-pressed={datatype === item}
-          color={datatype === item ? 'primary' : 'secondary'}
-          data-testid={`ontology-property-type-${item}`}
-          isDisabled={isSaving}
-          key={item}
-          size="xs"
-          onPress={() => setDatatype(item)}>
-          {item}
-        </Button>
-      ))}
-    </div>
-  );
-  const renderOptionFields = () => (
-    <>
-      {datatype === 'enum' ? (
-        <Input
-          inputDataTestId="ontology-property-enum-values"
-          isDisabled={isSaving}
-          label={t('label.enum-value-plural')}
-          size="sm"
-          value={enumValues}
-          onChange={setEnumValues}
-        />
-      ) : null}
-      <Checkbox
-        data-testid="ontology-property-identifier"
-        isDisabled={isSaving}
-        isSelected={isIdentifier}
-        label={t('label.identifier')}
-        onChange={setIsIdentifier}
-      />
-    </>
-  );
-
-  const renderAiForm = () => (
-    <ConceptFormCard testId="ontology-property-form">
-      {nameInput}
-      <Box direction="col" gap={2}>
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.data-type')}
-        </Typography>
-        {datatypeGroup}
-      </Box>
-      {renderOptionFields()}
-      {propertyName.trim() ? (
-        <ConceptFormPreview>
-          {humanizeName(propertyName)} · {datatype}
-        </ConceptFormPreview>
-      ) : null}
-      <Box gap={2} justify="end">
-        <Button
-          color="secondary"
-          isDisabled={isSaving}
-          size="sm"
-          onPress={onClose}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          color="primary"
-          data-testid="ontology-property-submit"
-          isDisabled={!canSubmit}
-          isLoading={isSaving}
-          size="sm"
-          onPress={() => void save()}>
-          {t('label.add-entity', { entity: t('label.property') })}
-        </Button>
-      </Box>
-    </ConceptFormCard>
-  );
-
-  if (!isAvailable) {
-    return null;
-  }
-  if (isAiMode) {
-    return isOpen ? renderAiForm() : null;
-  }
-  if (!isOpen) {
-    return (
-      <Button
-        color="secondary"
-        data-testid="ontology-add-property"
-        iconLeading={Plus}
-        size="xs"
-        onPress={onOpen}>
-        {t('label.add-entity', { entity: t('label.property') })}
-      </Button>
-    );
-  }
-
-  return (
-    <Box
-      className="tw:rounded-lg tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:p-3"
-      direction="col"
-      gap={3}>
-      {nameInput}
-      <Typography color="secondary" size="text-xs" weight="semibold">
-        {t('label.data-type')}
-      </Typography>
-      {datatypeGroup}
-      {renderOptionFields()}
-      <Box gap={2}>
-        <Button
-          data-testid="ontology-property-submit"
-          isDisabled={!canSubmit}
-          isLoading={isSaving}
-          size="xs"
-          onPress={() => void save()}>
-          {t('label.add')}
-        </Button>
-        <Button
-          color="secondary"
-          isDisabled={isSaving}
-          size="xs"
-          onPress={onClose}>
-          {t('label.cancel')}
-        </Button>
-      </Box>
-    </Box>
-  );
-};
 
 interface RelationAuthoringProps {
   readonly canCreateRelationType: boolean;
@@ -295,7 +124,34 @@ interface RelationAuthoringProps {
   readonly onClose: () => void;
   readonly onOpen: () => void;
   readonly onSave: (targetId: string, relationType: string) => Promise<boolean>;
+  /** The reason the relation cannot be written, or undefined; shown before any write. */
+  readonly check?: (
+    targetId: string,
+    relationType: string
+  ) => string | undefined;
 }
+
+const RelationIssue = ({ message }: { message?: string }) =>
+  message ? (
+    <Typography
+      className="tw:text-error-primary"
+      data-testid="ontology-relationship-issue"
+      role="alert"
+      size="text-xs">
+      {message}
+    </Typography>
+  ) : null;
+
+const RelationClash = ({ message }: { message?: string }) =>
+  message ? (
+    <Typography
+      className="tw:text-warning-primary"
+      data-testid="ontology-relationship-clash"
+      role="status"
+      size="text-xs">
+      {message}
+    </Typography>
+  ) : null;
 
 const RelationAuthoring = ({
   canCreateRelationType,
@@ -307,6 +163,7 @@ const RelationAuthoring = ({
   onClose,
   onOpen,
   onSave,
+  check,
 }: RelationAuthoringProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -330,6 +187,14 @@ const RelationAuthoring = ({
   };
 
   const target = targetConcepts.find(({ id }) => id === targetId);
+  const issue = check?.(targetId, relationType);
+  const clash = useRelationClash(concept.id, targetId, relationType);
+  const issueMessage = (
+    <>
+      <RelationIssue message={issue} />
+      <RelationClash message={clash} />
+    </>
+  );
   const relationLabel =
     groups
       .flatMap((group) => group.options)
@@ -391,6 +256,7 @@ const RelationAuthoring = ({
             {concept.displayName ?? concept.name} {relationLabel}{' '}
             {target ? target.displayName ?? target.name : '…'}
           </ConceptFormPreview>
+          {issueMessage}
           <Box gap={2} justify="end">
             <Button
               color="secondary"
@@ -402,7 +268,7 @@ const RelationAuthoring = ({
             <Button
               color="primary"
               data-testid="ontology-relationship-submit"
-              isDisabled={!targetId}
+              isDisabled={!targetId || Boolean(issue)}
               isLoading={isSaving}
               size="sm"
               onPress={() => void save()}>
@@ -449,10 +315,11 @@ const RelationAuthoring = ({
             {changeTypeButton}
           </Box>
           {targetSelect}
+          {issueMessage}
           <Box gap={2}>
             <Button
               data-testid="ontology-relationship-submit"
-              isDisabled={!targetId}
+              isDisabled={!targetId || Boolean(issue)}
               isLoading={isSaving}
               size="xs"
               onPress={() => void save()}>
@@ -484,7 +351,13 @@ const OntologyConceptInspector = ({
   relationTypeGroups = [],
   onAddProperty,
   onAddRelation,
+  canEditRelations = false,
+  checkAddRelation,
+  checkRelationType,
+  onEditRelation,
+  onDeleteRelation,
   onClose,
+  onDelete,
   onEdit,
   onEditMappings,
   canEditBindings = false,
@@ -496,12 +369,22 @@ const OntologyConceptInspector = ({
   const isAiMode = useIsAiMode();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
   const bindings = useOntologyConceptBindings(concept.id);
+  let liveDataBindingState: LiveDataBindingState = 'loading';
+  if (bindings.data) {
+    liveDataBindingState = bindings.data.assets.length ? 'bound' : 'unbound';
+  } else if (bindings.isError) {
+    liveDataBindingState = 'failed';
+  }
   const ancestors = useMemo(
     () => getConceptAncestors(relations, concept.id),
     [relations, concept.id]
   );
   const properties = useMemo(
     () => getConceptPropertyRows(model, relations, concept),
+    [concept, model, relations]
+  );
+  const bindableProperties = useMemo(
+    () => getBindableConceptProperties(model, relations, concept),
     [concept, model, relations]
   );
   const unavailableProperties = useMemo(() => {
@@ -556,7 +439,7 @@ const OntologyConceptInspector = ({
     ) : null;
 
   const renderBoundCount = () =>
-    bindings.data ? (
+    bindings.data && properties.length > 0 ? (
       <Typography color="secondary" size="text-xs">
         {t('label.ontology-properties-bound', {
           count: properties.filter(({ property }) =>
@@ -601,10 +484,13 @@ const OntologyConceptInspector = ({
         ) : null}
         <OntologyPropertyBindings
           bindings={bindings}
+          canAdd={property.kind !== Kind.Annotation}
           canEdit={canEditBindings}
           conceptId={concept.id}
+          isIdentifier={property.isIdentifier}
           key={concept.id}
           propertyId={property.id}
+          propertyLabel={getPropertyLabel(property)}
         />
       </Box>
       <Typography
@@ -616,12 +502,26 @@ const OntologyConceptInspector = ({
     </InspectorRow>
   );
 
+  const reusableProperties = model
+    ? model.properties
+        .filter(
+          (property) =>
+            property.kind !== Kind.Object &&
+            !(property.domain ?? []).includes(concept.iri)
+        )
+        .map((property) => ({
+          iri: property.iri,
+          label: getPropertyLabel(property),
+        }))
+    : [];
+
   const renderPropertyAuthoring = () =>
     onAddProperty ? (
-      <PropertyAuthoring
+      <OntologyPropertyAuthoring
         isAvailable={canAddProperty}
         isOpen={authoring === 'property'}
         key={concept.id}
+        reusable={reusableProperties}
         onClose={() => setAuthoring(undefined)}
         onOpen={() => setAuthoring('property')}
         onSave={onAddProperty}
@@ -638,6 +538,8 @@ const OntologyConceptInspector = ({
         ? getInverseRelationLabel(relation, model)
         : undefined;
     const readsForward = direction === 'outgoing' || !!inverseLabel;
+    const isRelationEditable = ({ axiom, kind }: OntologyModelRelation) =>
+      canEditRelations && Boolean(axiom) && kind !== 'objectProperty';
     const badge = (
       <Badge color="brand" size="sm" type="pill-color">
         {humanizeName(inverseLabel ?? getModelRelationLabel(relation))}
@@ -656,6 +558,16 @@ const OntologyConceptInspector = ({
           <span className="tw:truncate">{other.displayName ?? other.name}</span>
         </Button>
         {readsForward ? null : badge}
+        {isRelationEditable(relation) && onEditRelation && onDeleteRelation ? (
+          <OntologyRelationControls
+            canCreateRelationType={canCreateRelationType}
+            checkType={(typeId) => checkRelationType?.(relation, typeId)}
+            groups={relationTypeGroups}
+            relation={relation}
+            onDelete={() => onDeleteRelation(relation)}
+            onEdit={(typeId) => onEditRelation(relation, typeId)}
+          />
+        ) : null}
       </InspectorRow>
     );
   };
@@ -664,6 +576,7 @@ const OntologyConceptInspector = ({
     onAddRelation ? (
       <RelationAuthoring
         canCreateRelationType={canCreateRelationType}
+        check={checkAddRelation}
         concept={concept}
         groups={relationTypeGroups}
         isAvailable={canAddRelation}
@@ -782,6 +695,17 @@ const OntologyConceptInspector = ({
     </Box>
   );
 
+  const renderDeleteButton = (size: 'xs') =>
+    onDelete ? (
+      <Button
+        color="secondary-destructive"
+        data-testid="ontology-concept-delete"
+        size={size}
+        onPress={onDelete}>
+        {t('label.delete')}
+      </Button>
+    ) : null;
+
   const renderAiHeader = () => (
     <Box
       className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:pt-5 tw:pb-4"
@@ -799,6 +723,7 @@ const OntologyConceptInspector = ({
             {t('label.edit')}
           </Button>
         ) : null}
+        {renderDeleteButton('xs')}
         <ButtonUtility
           icon={XClose}
           size="lg"
@@ -860,7 +785,7 @@ const OntologyConceptInspector = ({
 
   const renderAiPanel = () => (
     <aside
-      className="tw:flex tw:h-full tw:w-105 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
+      className="tw:flex tw:h-full tw:w-75 tw:xl:w-105 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
       data-testid="ontology-concept-inspector">
       {renderAiHeader()}
       <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-auto tw:px-6">
@@ -932,10 +857,12 @@ const OntologyConceptInspector = ({
         <OntologyConceptAssets
           canEdit={canEditBindings}
           conceptId={concept.id}
+          conceptName={getEntityName(concept)}
           key={concept.id}
           presentation={
             isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
           }
+          properties={bindableProperties}
         />
       </div>
     </aside>
@@ -1036,6 +963,7 @@ const OntologyConceptInspector = ({
             {t('label.edit')}
           </Button>
         ) : null}
+        {renderDeleteButton('xs')}
       </Box>
 
       <Box
@@ -1084,16 +1012,22 @@ const OntologyConceptInspector = ({
         <OntologyConceptAssets
           canEdit={canEditBindings}
           conceptId={concept.id}
+          conceptName={getEntityName(concept)}
           key={concept.id}
           presentation={
             isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
           }
+          properties={bindableProperties}
         />
         <OntologyConceptLiveData
+          bindingState={liveDataBindingState}
           concept={concept}
           key={`live-data:${concept.id}`}
           model={model}
           relations={relations}
+          onRetryBindings={() =>
+            void bindings.retryRead().catch(() => undefined)
+          }
         />
       </Box>
     </aside>

@@ -83,6 +83,6 @@ public class FilterHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{filter }}")
                     .withExample(
-                        "{{#with (filter testResults status=\"Failed\") as |failed|}}{{length failed}} failed{{/with}}")));
+                        "{{#with (filter entity.tags source=\"Classification\") as |tags|}}{{length tags}} classification tags{{/with}}")));
   }
 }

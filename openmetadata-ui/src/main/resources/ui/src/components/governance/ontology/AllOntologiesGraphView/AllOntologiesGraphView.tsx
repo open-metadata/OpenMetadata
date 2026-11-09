@@ -21,7 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Database01, Search } from '@openmetadata/ui-core-components/icons';
-import { lazy, Suspense, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
@@ -31,6 +31,7 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
+  getBindableConceptProperties,
   getModelRelations,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
@@ -159,12 +160,31 @@ const AllOntologiesGraphView = ({
   const model = models.find((candidate) =>
     candidate.concepts.some((concept) => concept.id === selectedConceptId)
   );
+  const dataConcepts = useMemo(
+    () =>
+      (model?.concepts ?? []).map((concept) => ({
+        id: concept.id,
+        name: getEntityName(concept),
+      })),
+    [model?.concepts]
+  );
   const selected = model?.concepts.find(
     (concept) => concept.id === selectedConceptId
   );
   const relations = useMemo(
     () => (model ? getModelRelations(model) : []),
     [model]
+  );
+
+  const getConceptProperties = useCallback(
+    (conceptId: string) => {
+      const concept = model?.concepts.find((item) => item.id === conceptId);
+
+      return model && concept
+        ? getBindableConceptProperties(model, relations, concept)
+        : [];
+    },
+    [model, relations]
   );
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY_CONCEPT,
@@ -234,6 +254,8 @@ const AllOntologiesGraphView = ({
       if (model) {
         return (
           <OntologyNativeDataMode
+            concepts={dataConcepts}
+            getConceptProperties={getConceptProperties}
             key={model.ontology.id}
             ontologyId={model.ontology.id}
             selectedConceptId={selectedConceptId}

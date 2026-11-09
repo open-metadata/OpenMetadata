@@ -118,14 +118,14 @@ const DropdownItem = ({
               aria-hidden="true"
               className={cx(
                 'tw:shrink-0',
-                isLarge ? 'tw:size-6' : 'tw:size-4 tw:stroke-[2.25px]',
+                isLarge ? 'tw:size-6' : 'tw:size-5',
                 state.isDisabled
                   ? 'tw:text-fg-disabled'
                   : state.isSelected
                   ? 'tw:text-fg-brand-secondary_alt'
                   : isLarge
                   ? 'tw:text-fg-tertiary'
-                  : 'tw:text-fg-quaternary'
+                  : 'tw:text-utility-gray-500 tw:group-hover:text-utility-gray-600'
               )}
             />
           )}
@@ -198,7 +198,7 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
       // transition-none keeps the enter/exit keyframes.
       className={(state) =>
         cx(
-          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-y-auto tw:transition-none tw:rounded-lg tw:bg-overlay-surface tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-y-auto tw:transition-none tw:rounded-lg tw:bg-floating tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&

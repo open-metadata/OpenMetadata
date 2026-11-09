@@ -12,12 +12,14 @@
  */
 import APIClient from './axiosClient';
 import {
+  approveExtractedMemories,
   getContextMemoryByName,
+  getExtractedMemoryApproval,
   getMemoryDerivations,
   MAX_DERIVATION_ENTITIES,
 } from './contextMemoryAPI';
 
-jest.mock('./axiosClient', () => ({ get: jest.fn() }));
+jest.mock('./axiosClient', () => ({ get: jest.fn(), put: jest.fn() }));
 
 const mockedApiClient = APIClient as jest.Mocked<typeof APIClient>;
 
@@ -64,5 +66,37 @@ describe('contextMemoryAPI', () => {
 
     expect(await getMemoryDerivations('glossaryTerm', [])).toEqual([]);
     expect(mockedApiClient.get).not.toHaveBeenCalled();
+  });
+
+  it('previews the approval of a document’s extracted memories', async () => {
+    const approval = { approved: 2, needsDecision: [], failed: 0 };
+    mockedApiClient.get.mockResolvedValue({ data: approval });
+
+    expect(await getExtractedMemoryApproval('file-1', 'contextFile')).toEqual(
+      approval
+    );
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/contextCenter/memories/extractedApproval',
+      { params: { sourceId: 'file-1', sourceType: 'contextFile' } }
+    );
+  });
+
+  it('approves the memories a document’s preview listed', async () => {
+    const approval = {
+      approved: 1,
+      needsDecision: [{ id: 'memory-2', type: 'contextMemory' }],
+      failed: 0,
+    };
+    const request = {
+      source: { id: 'page-1', type: 'page' },
+      approvable: [{ id: 'memory-1', contentUpdatedAt: 1767225600000 }],
+    };
+    mockedApiClient.put.mockResolvedValue({ data: approval });
+
+    expect(await approveExtractedMemories(request)).toEqual(approval);
+    expect(mockedApiClient.put).toHaveBeenCalledWith(
+      '/contextCenter/memories/extractedApproval',
+      request
+    );
   });
 });

@@ -19,6 +19,7 @@ import {
   Card,
   Checkbox,
   Input,
+  Select,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -39,6 +40,11 @@ import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import Fqn from '../../utils/Fqn';
 import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryPureUtils';
+import {
+  getSuggestionReason,
+  getSuggestionTerms,
+  SuggestionReason,
+} from '../../utils/governance/ontology/OntologyAssetSuggestion.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 type AssetScope = 'all' | 'tables' | 'columns';
@@ -53,13 +59,15 @@ const SCOPE_INDEXES: Record<
   columns: SearchIndex.COLUMN,
   tables: SearchIndex.TABLE,
 };
+const ANY = 'any';
 const PAGE_SIZE = 25;
+const SUGGESTION_PAGE_SIZE = 10;
 const SEARCH_DEBOUNCE_MS = 250;
 
 type OntologyDataAssetPickerProps = {
   readonly onCancel: () => void;
-  /** Every selected asset was added. */
-  readonly onSave: () => void;
+  /** Every selected asset was added; a native picker names the ones it newly linked. */
+  readonly onSave: (linked: EntityReference[]) => void;
 } & (
   | {
       readonly term: GlossaryTerm;
@@ -73,6 +81,11 @@ type OntologyDataAssetPickerProps = {
         readonly assetTypes: string[];
         readonly linkedIds: string[];
         readonly isDisabled: boolean;
+        /** The concept being linked, to suggest assets by name. */
+        readonly concept?: {
+          readonly name: string;
+          readonly synonyms?: string[];
+        };
         readonly saveAssets: (
           assets: EntityReference[]
         ) => Promise<NativeBindingBatchOutcome>;
@@ -118,6 +131,15 @@ const OntologyDataAssetPicker = ({
   );
   const [isSaving, setIsSaving] = useState(false);
   const [nativeResult, setNativeResult] = useState<NativeBindingBatchOutcome>();
+  const [typeFilter, setTypeFilter] = useState(ANY);
+  const [serviceFilter, setServiceFilter] = useState(ANY);
+  // Services seen in any result so far, so narrowing to one keeps the others to switch to.
+  const [services, setServices] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+  const [suggestions, setSuggestions] = useState<
+    { asset: EntityReference; reason: SuggestionReason }[]
+  >([]);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -135,7 +157,7 @@ const OntologyDataAssetPicker = ({
     setLoadedPage(0);
     setResults([]);
     setTotal(0);
-  }, [query, scope, termFqn]);
+  }, [query, scope, termFqn, typeFilter, serviceFilter]);
 
   useEffect(() => {
     const { page } = request;
@@ -152,7 +174,23 @@ const OntologyDataAssetPicker = ({
             ? getQueryFilterToExcludeTerm(termFqn)
             : {
                 query: {
-                  bool: { must: [{ terms: { entityType: nativeAssetTypes } }] },
+                  bool: {
+                    must: [
+                      {
+                        terms: {
+                          entityType:
+                            typeFilter === ANY
+                              ? nativeAssetTypes
+                              : [typeFilter],
+                        },
+                      },
+                      ...(serviceFilter === ANY
+                        ? []
+                        : [
+                            { term: { 'service.name.keyword': serviceFilter } },
+                          ]),
+                    ],
+                  },
                 },
               },
           searchIndex: SCOPE_INDEXES[scope],
@@ -165,6 +203,14 @@ const OntologyDataAssetPicker = ({
               _source.entityType as EntityType
             )
           );
+          const serviceNames = response.hits.hits.flatMap(({ _source }) =>
+            typeof _source.service?.name === 'string'
+              ? [_source.service.name]
+              : []
+          );
+          if (serviceNames.length > 0) {
+            setServices((current) => new Set([...current, ...serviceNames]));
+          }
           setResults((current) => (page === 1 ? hits : [...current, ...hits]));
           setLoadedPage(page);
           setHasFailed(false);
@@ -186,7 +232,86 @@ const OntologyDataAssetPicker = ({
       isCurrent = false;
       window.clearTimeout(timer);
     };
-  }, [request, query, scope, termFqn, nativeAssetTypes]);
+  }, [
+    request,
+    query,
+    scope,
+    termFqn,
+    nativeAssetTypes,
+    typeFilter,
+    serviceFilter,
+  ]);
+
+  const conceptName = native?.concept?.name;
+  const conceptSynonyms = native?.concept?.synonyms;
+  const isFiltered =
+    Boolean(query.trim()) || typeFilter !== ANY || serviceFilter !== ANY;
+
+  useEffect(() => {
+    const terms = conceptName
+      ? getSuggestionTerms(conceptName, conceptSynonyms)
+      : [];
+    if (terms.length === 0 || isFiltered || scope === 'columns') {
+      setSuggestions([]);
+
+      return;
+    }
+    let isCurrent = true;
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await searchQuery({
+          pageNumber: 1,
+          pageSize: SUGGESTION_PAGE_SIZE,
+          includeDeleted: false,
+          query: terms.map(({ text }) => `*${text}*`).join(' OR '),
+          queryFilter: {
+            query: {
+              bool: { must: [{ terms: { entityType: nativeAssetTypes } }] },
+            },
+          },
+          searchIndex: SCOPE_INDEXES[scope],
+        });
+        if (isCurrent) {
+          // A suggested asset's service must be filterable even when the first page of the plain list omits it.
+          const serviceNames = response.hits.hits.flatMap(({ _source }) =>
+            typeof _source.service?.name === 'string'
+              ? [_source.service.name]
+              : []
+          );
+          if (serviceNames.length > 0) {
+            setServices((current) => new Set([...current, ...serviceNames]));
+          }
+          setSuggestions(
+            response.hits.hits.flatMap(({ _source }) => {
+              const reason = getSuggestionReason(_source, terms);
+
+              return reason
+                ? [
+                    {
+                      asset: getEntityReferenceFromEntity(
+                        _source as Omit<EntityReference, 'type'>,
+                        _source.entityType as EntityType
+                      ),
+                      reason,
+                    },
+                  ]
+                : [];
+            })
+          );
+        }
+      } catch {
+        // Suggestions are a shortcut; the plain list below still works.
+        if (isCurrent) {
+          setSuggestions([]);
+        }
+      }
+    }, SEARCH_DEBOUNCE_MS);
+
+    return () => {
+      isCurrent = false;
+      window.clearTimeout(timer);
+    };
+  }, [conceptName, conceptSynonyms, isFiltered, nativeAssetTypes, scope]);
 
   // The next page follows the last one that loaded, so a failed page is asked
   // for again rather than skipped.
@@ -208,9 +333,12 @@ const OntologyDataAssetPicker = ({
       return next;
     });
 
-  const selectable = results.filter(
-    (asset) => !native?.linkedIds.includes(asset.id)
-  );
+  const suggestedIds = new Set(suggestions.map(({ asset }) => asset.id));
+  const listed = results.filter((asset) => !suggestedIds.has(asset.id));
+  const selectable = [
+    ...suggestions.map(({ asset }) => asset),
+    ...listed,
+  ].filter((asset) => !native?.linkedIds.includes(asset.id));
   const isAllSelected =
     selectable.length > 0 &&
     selectable.every((asset) => selected.has(asset.id));
@@ -228,18 +356,17 @@ const OntologyDataAssetPicker = ({
   const saveNativeAssets = async (
     config: NonNullable<OntologyDataAssetPickerProps['native']>
   ) => {
-    const result = await config.saveAssets(
-      [...selected.values()].filter(
-        (asset) => !config.linkedIds.includes(asset.id)
-      )
+    const toLink = [...selected.values()].filter(
+      (asset) => !config.linkedIds.includes(asset.id)
     );
+    const result = await config.saveAssets(toLink);
     if (!mounted.current) {
       return;
     }
     setNativeResult(result);
     setSelected(new Map(result.remaining.map((asset) => [asset.id, asset])));
     if (result.stop === 'none') {
-      onSave();
+      onSave(toLink);
     }
   };
 
@@ -252,7 +379,7 @@ const OntologyDataAssetPicker = ({
     ]);
     const refused = result.failedRequest ?? [];
     if (refused.length === 0) {
-      onSave();
+      onSave([]);
 
       return;
     }
@@ -300,6 +427,79 @@ const OntologyDataAssetPicker = ({
         setIsSaving(false);
       }
     }
+  };
+
+  const renderOption = (asset: EntityReference, reason?: SuggestionReason) => {
+    const isLinked = Boolean(native?.linkedIds.includes(asset.id));
+
+    return (
+      <li
+        className={isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:px-3 tw:py-2.5'}
+        key={asset.id}>
+        <Checkbox
+          aria-label={asset.displayName ?? asset.name}
+          data-testid={`ontology-data-asset-option-${asset.id}`}
+          isDisabled={isLinked}
+          isSelected={selected.has(asset.id)}
+          label={
+            <span className="tw:flex tw:min-w-0 tw:flex-col">
+              <Typography
+                ellipsis
+                as="span"
+                className="tw:text-tertiary"
+                size="text-xs">
+                {getAssetPath(asset)}
+              </Typography>
+              <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2">
+                <Typography ellipsis as="span" size="text-sm" weight="medium">
+                  {asset.displayName ?? asset.name}
+                </Typography>
+                <Typography
+                  as="span"
+                  className="tw:shrink-0 tw:text-tertiary"
+                  size="text-xs">
+                  {entityUtilClassBase.getFormattedEntityType(asset.type)}
+                </Typography>
+              </span>
+              {isLinked ? (
+                <Typography
+                  as="span"
+                  className="tw:text-tertiary"
+                  data-testid={`ontology-data-asset-linked-${asset.id}`}
+                  size="text-xs">
+                  {t('message.ontology-asset-already-linked', {
+                    concept: native?.concept?.name,
+                  })}
+                </Typography>
+              ) : null}
+              {reason ? (
+                <Typography
+                  as="span"
+                  className="tw:text-brand-secondary"
+                  data-testid={`ontology-data-asset-reason-${asset.id}`}
+                  size="text-xs">
+                  {t(`message.ontology-suggest-${reason.kind}`, {
+                    column:
+                      reason.kind === 'column' ? reason.column : undefined,
+                    term: reason.term,
+                  })}
+                </Typography>
+              ) : null}
+              {failures.has(asset.id) ? (
+                <Typography
+                  as="span"
+                  className="tw:text-error-primary"
+                  data-testid={`ontology-data-asset-error-${asset.id}`}
+                  size="text-xs">
+                  {failures.get(asset.id)}
+                </Typography>
+              ) : null}
+            </span>
+          }
+          onChange={(isSelected) => toggle(asset, isSelected)}
+        />
+      </li>
+    );
   };
 
   const renderListFooter = () => {
@@ -354,6 +554,100 @@ const OntologyDataAssetPicker = ({
       </Alert>
     ) : null;
 
+  const renderList = () => (
+    <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
+      {suggestions.length > 0 ? (
+        <li
+          className="tw:bg-secondary tw:px-3 tw:py-1.5"
+          data-testid="ontology-data-asset-suggested-heading">
+          <Typography
+            as="span"
+            color="secondary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.suggested')}
+          </Typography>
+        </li>
+      ) : null}
+      {suggestions.map(({ asset, reason }) => renderOption(asset, reason))}
+      {suggestions.length > 0 && listed.length > 0 ? (
+        <li className="tw:bg-secondary tw:px-3 tw:py-1.5">
+          <Typography
+            as="span"
+            color="secondary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.all-other-assets')}
+          </Typography>
+        </li>
+      ) : null}
+      {listed.map((asset) => renderOption(asset))}
+    </ul>
+  );
+
+  const renderSearch = () => (
+    <Input
+      aria-label={
+        native
+          ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+          : t('message.search-tables-and-columns')
+      }
+      autoComplete="off"
+      data-testid="ontology-data-asset-search"
+      icon={SearchIcon}
+      placeholder={
+        native
+          ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+          : t('message.search-tables-and-columns')
+      }
+      value={query}
+      onChange={setQuery}
+    />
+  );
+
+  const renderFilters = () =>
+    native ? (
+      <Box gap={2}>
+        <Select
+          aria-label={t('label.type')}
+          data-testid="ontology-data-asset-type-filter"
+          items={[
+            {
+              id: ANY,
+              label: t('label.any-entity', { entity: t('label.type') }),
+            },
+            ...native.assetTypes.map((type) => ({
+              id: type,
+              label: entityUtilClassBase.getFormattedEntityType(type),
+            })),
+          ]}
+          size="sm"
+          value={typeFilter}
+          onChange={(id) => setTypeFilter(String(id))}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+        <Select
+          aria-label={t('label.service')}
+          data-testid="ontology-data-asset-service-filter"
+          items={[
+            {
+              id: ANY,
+              label: t('label.any-entity', { entity: t('label.service') }),
+            },
+            ...[...services].sort().map((name) => ({ id: name, label: name })),
+          ]}
+          size="sm"
+          value={serviceFilter}
+          onChange={(id) => setServiceFilter(String(id))}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+      </Box>
+    ) : null;
+
   return (
     <Card
       className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
@@ -370,23 +664,8 @@ const OntologyDataAssetPicker = ({
           onClick={onCancel}
         />
       </Box>
-      <Input
-        aria-label={
-          native
-            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
-            : t('message.search-tables-and-columns')
-        }
-        autoComplete="off"
-        data-testid="ontology-data-asset-search"
-        icon={SearchIcon}
-        placeholder={
-          native
-            ? t('label.search-entity', { entity: t('label.data-asset-plural') })
-            : t('message.search-tables-and-columns')
-        }
-        value={query}
-        onChange={setQuery}
-      />
+      {renderSearch()}
+      {renderFilters()}
       <Card className="tw:flex tw:flex-col tw:overflow-hidden tw:p-0">
         <Box className="tw:border-b tw:border-secondary tw:p-3">
           <Tabs
@@ -413,62 +692,13 @@ const OntologyDataAssetPicker = ({
           )}>
           <Checkbox
             data-testid="ontology-data-asset-select-all"
-            isDisabled={results.length === 0}
+            isDisabled={selectable.length === 0}
             isSelected={isAllSelected}
             label={t('label.select-all')}
             onChange={toggleAll}
           />
         </Box>
-        <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
-          {results.map((asset) => (
-            <li
-              className={isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:px-3 tw:py-2.5'}
-              key={asset.id}>
-              <Checkbox
-                aria-label={asset.displayName ?? asset.name}
-                data-testid={`ontology-data-asset-option-${asset.id}`}
-                isDisabled={native?.linkedIds.includes(asset.id)}
-                isSelected={selected.has(asset.id)}
-                label={
-                  <span className="tw:flex tw:min-w-0 tw:flex-col">
-                    <Typography
-                      ellipsis
-                      as="span"
-                      className="tw:text-tertiary"
-                      size="text-xs">
-                      {getAssetPath(asset)}
-                    </Typography>
-                    <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2">
-                      <Typography
-                        ellipsis
-                        as="span"
-                        size="text-sm"
-                        weight="medium">
-                        {asset.displayName ?? asset.name}
-                      </Typography>
-                      <Typography
-                        as="span"
-                        className="tw:shrink-0 tw:text-tertiary"
-                        size="text-xs">
-                        {entityUtilClassBase.getFormattedEntityType(asset.type)}
-                      </Typography>
-                    </span>
-                    {failures.has(asset.id) ? (
-                      <Typography
-                        as="span"
-                        className="tw:text-error-primary"
-                        data-testid={`ontology-data-asset-error-${asset.id}`}
-                        size="text-xs">
-                        {failures.get(asset.id)}
-                      </Typography>
-                    ) : null}
-                  </span>
-                }
-                onChange={(isSelected) => toggle(asset, isSelected)}
-              />
-            </li>
-          ))}
-        </ul>
+        {renderList()}
         {renderListFooter()}
       </Card>
       {renderBatchStatus()}

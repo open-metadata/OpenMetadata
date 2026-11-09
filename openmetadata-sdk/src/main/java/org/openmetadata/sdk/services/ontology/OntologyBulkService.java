@@ -13,6 +13,7 @@
 
 package org.openmetadata.sdk.services.ontology;
 
+import java.util.UUID;
 import org.openmetadata.schema.api.data.OntologyBulkJob;
 import org.openmetadata.schema.api.data.OntologyBulkJobList;
 import org.openmetadata.schema.api.data.OntologyBulkRequest;
@@ -45,9 +46,18 @@ public final class OntologyBulkService {
   }
 
   public OntologyBulkJobList listJobs(final int limit) throws OpenMetadataException {
-    final RequestOptions options =
-        RequestOptions.builder().queryParam("limit", Integer.toString(limit)).build();
-    return httpClient.execute(HttpMethod.GET, JOBS_PATH, null, OntologyBulkJobList.class, options);
+    return listJobs((UUID) null, limit);
+  }
+
+  public OntologyBulkJobList listJobs(final UUID glossaryId, final int limit)
+      throws OpenMetadataException {
+    final RequestOptions.Builder builder =
+        RequestOptions.builder().queryParam("limit", Integer.toString(limit));
+    if (glossaryId != null) {
+      builder.queryParam("glossaryId", glossaryId.toString());
+    }
+    return httpClient.execute(
+        HttpMethod.GET, JOBS_PATH, null, OntologyBulkJobList.class, builder.build());
   }
 
   public OntologyBulkJob getJob(final long id) throws OpenMetadataException {

@@ -77,8 +77,8 @@ Light mode is frozen: reach dark with tokens that adapt, never by changing light
 - **Scope:** dark mode is AI mode on core/Tailwind surfaces only. Classic mode gets no dark theme
   and antd-only surfaces (`.ant-*`) are not themed for dark — migrate them to core instead
   (ADR:2026-10-12-dark-mode-targets-ai-mode-core-surfaces-only).
-- **Surfaces:** page → `tw:bg-page`; card/panel → core `<Card>` or `tw:bg-surface`; popover, dropdown,
-  select, modal, drawer → `tw:bg-overlay-surface`. `tw:bg-primary` is the page colour in dark
+- **Surfaces:** page → `tw:bg-page`; card/panel → core `<Card>` or `tw:bg-surface`; modal, drawer →
+  `tw:bg-overlay-surface`; popover/menu/select → `tw:bg-floating` (ADR:2026-11-06-floating-overlays-sit-on-bg-floating). `tw:bg-primary` is the page colour in dark
   (invisible card); `Box` is layout only — give it no background. Wrappers/grid frames stay transparent
   so gaps between cards show the page. State tokens (`bg-active`, `bg-*_hover`) are states, never surfaces.
 - **Raw palette does not flip** (`tw:bg-blue-50`, `tw:text-gray-500`, `tw:bg-yellow-50`): use

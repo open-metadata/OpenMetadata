@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -37,14 +38,19 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
+import jakarta.json.Json;
+import jakarta.json.JsonPatch;
 import java.io.IOException;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
@@ -53,17 +59,23 @@ import org.openmetadata.schema.api.data.MetricAssetDirection;
 import org.openmetadata.schema.api.data.MetricHierarchyItem;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.MetricGroup;
+import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.approval.ApprovalGate.Edit;
+import org.openmetadata.service.governance.approval.GovernanceApprovalRegistry;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.NoopAuthorizer;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -791,6 +803,256 @@ class MetricRepositoryTest {
           () -> assertSame(transactionMetricDAO, fixture.repository().entityDAOForWrite()));
       assertSame(fixture.metricDAO(), fixture.repository().entityDAOForWrite());
     }
+  }
+
+  @Test
+  void admitRefusesMovingAMetricIntoAGroupTheAuthorCannotEdit() {
+    final Metric original =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue");
+    final EntityReference group =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withFullyQualifiedName("finance");
+    final Metric moved = JsonUtils.deepCopy(original, Metric.class).withMetricGroup(group);
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    final Authorizer authorizer = mock(Authorizer.class);
+    doThrow(new AuthorizationException("denied"))
+        .when(authorizer)
+        .authorizeActor(
+            eq(actor),
+            any(),
+            argThat(resource -> Entity.METRIC_GROUP.equals(resource.getResource())));
+    try (RepositoryFixture fixture = repositoryFixture();
+        MockedStatic<Entity> entity = mockStatic(Entity.class, Mockito.CALLS_REAL_METHODS)) {
+      entity.when(Entity::getAuthorizer).thenReturn(authorizer);
+      entity
+          .when(() -> Entity.getEntityRepository(Entity.METRIC_GROUP))
+          .thenReturn(mock(MetricGroupRepository.class));
+      entity
+          .when(
+              () ->
+                  Entity.getEntityReferencesByIds(
+                      Entity.METRIC, List.of(original.getId()), NON_DELETED))
+          .thenReturn(
+              List.of(
+                  new EntityReference()
+                      .withId(original.getId())
+                      .withType(Entity.METRIC)
+                      .withFullyQualifiedName("revenue")));
+
+      // The move is checked in the write itself: EditAll on the metric that moves passes, and on
+      // the group it lands in is refused.
+      assertThrows(
+          AuthorizationException.class,
+          () ->
+              fixture
+                  .repository()
+                  .admit(original, moved, actor, Edit.patch(Set.of("metricGroup"))));
+      verify(authorizer)
+          .authorizeActor(
+              eq(actor), any(), argThat(resource -> Entity.METRIC.equals(resource.getResource())));
+      // A PATCH stores only the fields it names, so one naming neither parent nor group is no move,
+      // even where the group the write resolves differs from the stored one.
+      assertDoesNotThrow(
+          () ->
+              fixture
+                  .repository()
+                  .authorizeWrite(original, moved, actor, Edit.patch(Set.of("description"))));
+    }
+  }
+
+  @Test
+  void aPatchMayNotSetAssetsChildrenOrChildrenCount() {
+    final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      for (final String field : List.of("assets", "children", "childrenCount")) {
+        final IllegalArgumentException error =
+            assertThrows(
+                IllegalArgumentException.class,
+                () ->
+                    fixture
+                        .repository()
+                        .authorizePatch(
+                            metric,
+                            Json.createPatchBuilder()
+                                .add("/" + field, Json.createArrayBuilder().build())
+                                .build(),
+                            actor));
+        assertTrue(error.getMessage().contains(field));
+      }
+      // Refused before the patch is applied, so whether a guess matches a linked asset is not told.
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              fixture
+                  .repository()
+                  .authorizePatch(
+                      metric,
+                      Json.createPatchBuilder().test("/assets/0/name", "guess").build(),
+                      actor));
+      assertDoesNotThrow(
+          () ->
+              fixture
+                  .repository()
+                  .authorizePatch(
+                      metric,
+                      Json.createPatchBuilder().replace("/description", "updated").build(),
+                      actor));
+    }
+  }
+
+  @Test
+  void aPatchToChildrenIsRefusedForTheAdminAccountToo() {
+    final Metric metric =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue");
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      // REST and MCP record admin as a system actor; the refusal is about the patch, not the
+      // caller.
+      final IllegalArgumentException refused =
+          assertThrows(
+              IllegalArgumentException.class,
+              () ->
+                  fixture
+                      .repository()
+                      .previewPatch(
+                          metric,
+                          Json.createPatchBuilder()
+                              .add("/children", Json.createArrayBuilder().build())
+                              .build(),
+                          ChangeActor.recorded("admin", null)));
+      assertTrue(refused.getMessage().contains("children"), refused.getMessage());
+    }
+  }
+
+  @Test
+  void metricPatchRejectsReadingARelationIntoAnotherFieldOrATest() {
+    final Metric metric = new Metric().withId(UUID.randomUUID()).withName("revenue");
+    final ChangeActor actor = ChangeActor.user("alice", null);
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      final MetricRepository repository = fixture.repository();
+      for (final String from :
+          List.of(
+              "/parent/description",
+              "/metricGroup/name",
+              "/relatedMetrics/0/description",
+              "/children/0/name",
+              "")) {
+        final JsonPatch copy = Json.createPatchBuilder().copy("/description", from).build();
+        final JsonPatch move = Json.createPatchBuilder().move("/displayName", from).build();
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, copy, actor),
+            from);
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, move, actor),
+            from);
+      }
+      for (final String path :
+          List.of("", "/parent/name", "/metricGroup", "/relatedMetrics/0/name")) {
+        final JsonPatch test =
+            Json.createPatchBuilder().test(path, "guess").add("/description", "x").build();
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> repository.authorizePatch(metric, test, actor),
+            path);
+      }
+      // JSON-P matches an op name ignoring case, so an upper-case test is still a test.
+      final JsonPatch upperCaseTest =
+          Json.createPatch(
+              Json.createArrayBuilder()
+                  .add(
+                      Json.createObjectBuilder()
+                          .add("op", "TEST")
+                          .add("path", "/parent/name")
+                          .add("value", "guess"))
+                  .build());
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> repository.authorizePatch(metric, upperCaseTest, actor));
+      // Reordering within a relation (as jsonpatch diff tools emit) and copying plain fields still
+      // pass.
+      repository.authorizePatch(
+          metric,
+          Json.createPatchBuilder().move("/relatedMetrics/0", "/relatedMetrics/1").build(),
+          actor);
+      repository.authorizePatch(
+          metric, Json.createPatchBuilder().copy("/displayName", "/description").build(), actor);
+    }
+  }
+
+  @Test
+  void asyncBulkPutRefusesACreateIntoAGroupTheImpersonatedAuthorCannotEdit() throws Exception {
+    final EntityReference group =
+        new EntityReference()
+            .withId(UUID.randomUUID())
+            .withType(Entity.METRIC_GROUP)
+            .withFullyQualifiedName("finance");
+    final Metric created =
+        new Metric()
+            .withId(UUID.randomUUID())
+            .withName("revenue")
+            .withFullyQualifiedName("revenue")
+            .withMetricGroup(group);
+    final Authorizer authorizer = mock(Authorizer.class);
+    final AtomicReference<String> checkedAs = new AtomicReference<>();
+    doAnswer(
+            invocation -> {
+              checkedAs.set(ImpersonationContext.getImpersonatedBy());
+              throw new AuthorizationException("denied");
+            })
+        .when(authorizer)
+        .authorizeActor(
+            any(), any(), argThat(resource -> Entity.METRIC_GROUP.equals(resource.getResource())));
+    try (RepositoryFixture fixture = repositoryFixture()) {
+      // Set statically, not mocked: the job runs on a pool thread a static mock does not reach.
+      Entity.setAuthorizer(authorizer);
+      Entity.registerEntity(
+          MetricGroup.class, Entity.METRIC_GROUP, mock(MetricGroupRepository.class));
+      withNoApprovalRules();
+      ImpersonationContext.setImpersonatedBy("ingestion-bot");
+
+      final BulkOperationResult result =
+          fixture
+              .repository()
+              .submitAsyncBulkOperation(
+                  null, List.of(created), "alice", new HashMap<>(), false, new ArrayList<>(), 1)
+              .get(30, TimeUnit.SECONDS);
+
+      // The refused create fails alone, before anything is stored, and isImpersonated() on the
+      // job thread still sees the request's impersonation.
+      assertEquals(0, result.getNumberOfRowsPassed());
+      assertEquals(
+          403,
+          result.getFailedRequest().getFirst().getStatus(),
+          result.getFailedRequest().getFirst().getMessage());
+      assertEquals("ingestion-bot", checkedAs.get());
+      verify(fixture.metricDAO(), never()).insertMany(anyList());
+    } finally {
+      ImpersonationContext.clear();
+      GovernanceApprovalRegistry.invalidate();
+    }
+  }
+
+  // A bulk PUT reads the approval rules even with nothing to update.
+  @SuppressWarnings("unchecked")
+  private static void withNoApprovalRules() {
+    final GovernanceDAOs.ChangeRequestDAO changeRequests =
+        mock(GovernanceDAOs.ChangeRequestDAO.class);
+    when(Entity.getCollectionDAO().changeRequestDAO()).thenReturn(changeRequests);
+    when(changeRequests.workflowDefinitionEpoch()).thenReturn("none");
+    final EntityRepository<WorkflowDefinition> workflows = mock(EntityRepository.class);
+    when(workflows.listAll(any(), any())).thenReturn(List.of());
+    Entity.registerEntity(WorkflowDefinition.class, Entity.WORKFLOW_DEFINITION, workflows);
+    GovernanceApprovalRegistry.invalidate();
   }
 
   @Test

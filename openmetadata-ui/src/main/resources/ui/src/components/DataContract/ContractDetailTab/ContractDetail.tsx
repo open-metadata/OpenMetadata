@@ -25,10 +25,13 @@ import {
 import {
   ChevronDown,
   DataContract as DataContractIcon,
+  Download01,
   Download02,
   Edit01,
+  Inherit,
   PlayCircle,
   Plus,
+  Settings,
   Trash01,
   Upload01,
 } from '@openmetadata/ui-core-components/icons';
@@ -37,9 +40,6 @@ import { isEmpty } from 'lodash';
 import React, { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import approvedIcon from '../../../assets/img/approved.png';
-import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
-import { ReactComponent as SettingIcon } from '../../../assets/svg/ic-settings-gear.svg';
-import { ReactComponent as ImportIconContract } from '../../../assets/svg/import-icon.svg';
 import {
   ContractImportFormat,
   DataContractMode,
@@ -49,14 +49,12 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
-  exportContractToODCSYaml,
   getContractResultByResultId,
   validateContractByEntityId,
   validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
-  downloadContractAsODCSYaml,
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
@@ -68,6 +66,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { ODCSExportModal } from '../../data-contract/ODCSExportModal/ODCSExportModal';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
@@ -119,6 +118,9 @@ const ContractDetail: React.FC<{
     useState<DataContractResult>();
   const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [contractToExport, setContractToExport] = useState<DataContract | null>(
+    null
+  );
   const [importFormat, setImportFormat] =
     useState<ContractImportFormat>('odcs');
 
@@ -174,23 +176,15 @@ const ContractDetail: React.FC<{
     }
   }, [contract]);
 
-  const handleExportODCSContract = useCallback(async () => {
-    if (!contract?.id) {
-      return;
-    }
-
-    try {
-      const yamlContent = await exportContractToODCSYaml(contract.id);
-      downloadContractAsODCSYaml(yamlContent, contract.name ?? 'contract');
-      showSuccessToast(
-        t('message.entity-exported-successfully', {
-          entity: t('label.odcs-contract'),
-        })
-      );
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+  const handleExportODCSContract = useCallback(() => {
+    if (contract?.id) {
+      setContractToExport(contract);
     }
   }, [contract]);
+
+  const handleExportModalClose = useCallback(() => {
+    setContractToExport(null);
+  }, []);
 
   const handleImportContract = useCallback((format: ContractImportFormat) => {
     setImportFormat(format);
@@ -337,7 +331,7 @@ const ContractDetail: React.FC<{
                 .inherited && (
                 <ButtonUtility
                   className="inherit-icon"
-                  icon={InheritIcon}
+                  icon={Inherit}
                   tooltip={t('label.inherited-entity', {
                     entity: t('label.contract'),
                   })}
@@ -353,7 +347,7 @@ const ContractDetail: React.FC<{
               <Dropdown.Root>
                 <ButtonUtility
                   data-testid="manage-contract-actions"
-                  icon={SettingIcon}
+                  icon={Settings}
                   size="lg"
                   tooltip={t('label.manage-entity', {
                     entity: t('label.contract'),
@@ -373,7 +367,8 @@ const ContractDetail: React.FC<{
                           <Box align="center" gap={2}>
                             <Edit01
                               aria-hidden="true"
-                              className="tw:size-4.5 tw:shrink-0 tw:text-fg-quaternary"
+                              className="tw:shrink-0 tw:text-fg-quaternary"
+                              size={18}
                             />
                             <Typography
                               ellipsis
@@ -427,7 +422,8 @@ const ContractDetail: React.FC<{
                           <Box align="center" gap={2}>
                             <Trash01
                               aria-hidden="true"
-                              className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                              className="tw:shrink-0 tw:stroke-[2.25px] tw:text-error-600"
+                              size={16}
                             />
                             <Typography
                               ellipsis
@@ -605,9 +601,10 @@ const ContractDetail: React.FC<{
                           DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_OPENMETADATA
                         }>
                         <Box align="center" gap={2}>
-                          <ImportIconContract
+                          <Download01
                             aria-hidden="true"
-                            className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                            className="tw:shrink-0 tw:text-fg-quaternary"
+                            size={16}
                           />
                           <Typography
                             ellipsis
@@ -621,9 +618,10 @@ const ContractDetail: React.FC<{
                         data-testid="import-odcs-contract-button"
                         id={DATA_CONTRACT_ACTION_DROPDOWN_KEY.IMPORT_ODCS}>
                         <Box align="center" gap={2}>
-                          <ImportIconContract
+                          <Download01
                             aria-hidden="true"
-                            className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+                            className="tw:shrink-0 tw:text-fg-quaternary"
+                            size={16}
                           />
                           <Typography
                             ellipsis
@@ -716,6 +714,13 @@ const ContractDetail: React.FC<{
 
   return (
     <>
+      {contractToExport && (
+        <ODCSExportModal
+          contractId={contractToExport.id}
+          contractName={contractToExport.name}
+          onClose={handleExportModalClose}
+        />
+      )}
       <ContractImportModal
         entityId={entityId}
         entityName={entityName}
@@ -761,7 +766,7 @@ const ContractDetail: React.FC<{
                 const inheritedIcon = isInherited ? (
                   <ButtonUtility
                     className="inherit-icon"
-                    icon={InheritIcon}
+                    icon={Inherit}
                     tooltip={t('label.inherited-entity', {
                       entity: t('label.terms-of-service'),
                     })}
@@ -801,7 +806,7 @@ const ContractDetail: React.FC<{
                   const inheritedIcon = contract.security?.inherited ? (
                     <ButtonUtility
                       className="inherit-icon"
-                      icon={InheritIcon}
+                      icon={Inherit}
                       tooltip={t('label.inherited-entity', {
                         entity: t('label.security'),
                       })}

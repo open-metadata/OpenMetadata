@@ -41,6 +41,9 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { ONTOLOGY_DATATYPE_OPTIONS } from '../OntologyIriInput/OntologyIriInput.constants';
+import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
+import OntologyIriListInput from '../OntologyIriInput/OntologyIriListInput';
 import {
   OntologyPropertyFormValues,
   propertyFormFields,
@@ -73,6 +76,7 @@ interface OntologyPropertyEditorProps {
   ontology: Ontology;
   property?: OntologyProperty;
   canEdit: boolean;
+  concepts?: ReadonlyArray<OntologyIriOption>;
   onSaved: (property: OntologyProperty) => void;
 }
 
@@ -80,6 +84,7 @@ const OntologyPropertyEditor = ({
   ontology,
   property,
   canEdit,
+  concepts,
   onSaved,
 }: OntologyPropertyEditorProps) => {
   const { t } = useTranslation();
@@ -124,6 +129,25 @@ const OntologyPropertyEditor = ({
       setIsSaving(false);
     }
   };
+
+  const renderIriList = (name: 'domain' | 'range') => (
+    <FormField control={form.control} name={name}>
+      {({ field }) => (
+        <OntologyIriListInput
+          isDisabled={disabled}
+          label={t(name === 'domain' ? 'label.property-domain' : 'label.range')}
+          options={
+            name === 'range' && kind === Kind.Data
+              ? ONTOLOGY_DATATYPE_OPTIONS
+              : concepts
+          }
+          testId={`ontology-property-${name}`}
+          value={field.value.split('\n').filter(Boolean)}
+          onChange={(iris) => field.onChange(iris.join('\n'))}
+        />
+      )}
+    </FormField>
+  );
 
   const renderEnumValues = () =>
     kind === Kind.Data && (
@@ -237,7 +261,9 @@ const OntologyPropertyEditor = ({
                 : t('label.new-entity', { entity: t('label.property') })}
             </Typography>
           </Box>
-          {renderFields(['name', 'displayName', 'kind', 'domain', 'range'])}
+          {renderFields(['name', 'displayName', 'kind'])}
+          {renderIriList('domain')}
+          {renderIriList('range')}
           {renderEnumValues()}
           {renderFields(['unit', 'isIdentifier', 'description'])}
           <details
@@ -283,7 +309,11 @@ const OntologyPropertyEditor = ({
       <Box direction="col" gap={4}>
         {propertyFormFields(t, kind, Boolean(property), disabled).map(
           (field) => (
-            <Fragment key={field.name}>{getField(field)}</Fragment>
+            <Fragment key={field.name}>
+              {getField(field)}
+              {field.name === 'kind' && renderIriList('domain')}
+              {field.name === 'kind' && renderIriList('range')}
+            </Fragment>
           )
         )}
         {renderEnumValues()}

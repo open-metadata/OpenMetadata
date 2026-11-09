@@ -69,6 +69,7 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
@@ -80,6 +81,7 @@ import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 /**
  * Integration tests for DatabaseService entity operations.
@@ -348,6 +350,59 @@ public class DatabaseServiceResourceIT
     service.setDescription("Updated description");
     DatabaseService updated = patchEntity(service.getId().toString(), service);
     assertEquals("Updated description", updated.getDescription());
+  }
+
+  @Test
+  void put_updateWithoutConnection_preservesExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request = createMinimalRequest(ns);
+    request.setName(ns.prefix("service_unmask_null_conn"));
+
+    DatabaseService service = createEntity(request);
+    assertNotNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated via PUT without connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT omitting connection on an existing service with a connection must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
+
+    DatabaseService reFetched = getEntity(service.getId().toString());
+    assertEquals("Updated via PUT without connection", reFetched.getDescription());
+    assertNotNull(reFetched.getConnection(), "Existing connection must be preserved, not wiped");
+  }
+
+  @Test
+  void put_updateWithoutConnection_whenNoExistingConnection_200(TestNamespace ns) {
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("service_no_conn_at_all"))
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Initial description");
+
+    DatabaseService service = createEntity(request);
+    assertNull(service.getConnection());
+
+    CreateDatabaseService updateRequest =
+        new CreateDatabaseService()
+            .withName(service.getName())
+            .withServiceType(DatabaseServiceType.Postgres)
+            .withDescription("Updated description, still no connection");
+
+    HttpResponse<String> response = putAs(updateRequest, SdkClients.getAdminToken());
+    assertTrue(
+        response.statusCode() == 200 || response.statusCode() == 201,
+        "PUT with no connection on either side must not NPE: "
+            + response.statusCode()
+            + " "
+            + response.body());
   }
 
   @Test
@@ -1043,6 +1098,18 @@ public class DatabaseServiceResourceIT
         List.of(refIdFqn),
         fk.getReferredColumns(),
         "FOREIGN_KEY referredColumns (referenced-table linkage) must be preserved");
+
+    // The FOREIGN_KEY also materializes a RELATED_TO relationship edge (the ER/graph link between
+    // the two tables). The recursive/bulk import path clears and rebuilds relationships, so assert
+    // the edge itself survives -- not just the tableConstraints JSON. Reading it from the DAO keeps
+    // this deterministic (the search-backed ER endpoint is eventually consistent).
+    List<CollectionDAO.EntityRelationshipRecord> fkEdges =
+        Entity.getCollectionDAO()
+            .relationshipDAO()
+            .findTo(table.getId(), Entity.TABLE, Relationship.RELATED_TO.ordinal());
+    assertTrue(
+        fkEdges.stream().anyMatch(r -> refTable.getId().equals(r.getId())),
+        "FOREIGN_KEY RELATED_TO edge (table -> referenced table) must survive a recursive import");
   }
 
   @Test

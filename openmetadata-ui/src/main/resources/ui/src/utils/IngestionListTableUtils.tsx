@@ -12,11 +12,10 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
+import { Check, DateTimeType } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, startCase } from 'lodash';
-import { ReactComponent as ActiveIcon } from '../assets/svg/check-colored.svg';
 import { ReactComponent as PausedIcon } from '../assets/svg/ic-pause.svg';
-import { ReactComponent as TimeDateIcon } from '../assets/svg/time-date.svg';
 import { NO_DATA_PLACEHOLDER } from '../constants/constants';
 import {
   IngestionPipeline,
@@ -59,7 +58,7 @@ export const renderTypeField =
   };
 
 export const renderStatusField = (_: string, record: IngestionPipeline) => {
-  const StatusIcon = record.enabled ? ActiveIcon : PausedIcon;
+  const StatusIcon = record.enabled ? Check : PausedIcon;
 
   return (
     <Badge
@@ -87,7 +86,7 @@ const ScheduleFieldCell = ({
 
   return (
     <Box align="start" gap={2} wrap="nowrap">
-      <TimeDateIcon className="m-t-xss tw:shrink-0" height={20} width={20} />
+      <DateTimeType className="m-t-xss tw:shrink-0" size={20} />
       <Box className="tw:min-w-0 tw:flex-auto line-height-16" direction="col">
         <Typography
           className="font-medium"

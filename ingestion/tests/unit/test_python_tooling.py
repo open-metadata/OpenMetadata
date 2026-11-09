@@ -318,6 +318,7 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
     "changed",
     [
         "scripts/generate_ingestion_models.py",
+        "openmetadata-spec/scripts/prepare_model_schemas.py",
         "ingestion/uv.lock",
         "ingestion/pyproject.toml",
         "ingestion/noxfile.py",
@@ -738,3 +739,69 @@ def test_generation_and_installation_exclude_other_writers(generation_repo: Path
                 os.close(ready_fd)
                 os.close(release_fd)
     assert process.returncode == 0, log.read_text()
+
+
+@pytest.mark.parametrize("paused", [True, False])
+def test_classification_provisioning_can_be_paused(nox_repo: Path, monkeypatch, paused: bool) -> None:
+    monkeypatch.setenv("OM_SKIP_CLASSIFICATION_MODELS", "true" if paused else "false")
+    config = nox_repo / "ingestion/pyproject.toml"
+    config.write_text(
+        config.read_text() + '\n[tool.openmetadata.python-environments.classification-models]\nlanguages = ["en"]\n'
+    )
+    marker = nox_repo / "provisioned.txt"
+    (nox_repo / "ingestion/src/metadata/__main__.py").write_text(
+        f"from pathlib import Path\nPath({str(marker)!r}).write_text('provisioned')\n"
+    )
+
+    assert_success(run(sys.executable, str(nox_repo / "scripts/check_generated_models.py"), "--write", cwd=nox_repo))
+
+    result = run("make", "install_test", "OM_VENV_DIR=env", cwd=nox_repo)
+
+    assert_success(result)
+    assert marker.exists() is not paused
+
+
+def test_paused_setup_uses_the_lock_without_fetching_model_wheels(nox_repo: Path, monkeypatch) -> None:
+    monkeypatch.setenv("OM_SKIP_CLASSIFICATION_MODELS", "true")
+    monkeypatch.setenv("UV_OFFLINE", "true")
+    models = ["en-core-web-md", "es-core-news-md", "it-core-news-md", "pl-core-news-md"]
+    config = nox_repo / "ingestion/pyproject.toml"
+    config.write_text(
+        config.read_text().replace(
+            "test = [",
+            "test = ["
+            + ", ".join(
+                f'"{model} @ https://example.com/{model.replace("-", "_")}-3.8.0-py3-none-any.whl"' for model in models
+            )
+            + ", ",
+            1,
+        )
+        + '\n[tool.openmetadata.python-environments.classification-models]\nlanguages = ["en"]\n'
+    )
+    lock = nox_repo / "ingestion/uv.lock"
+    lock.write_text(
+        lock.read_text().replace(
+            "test = [", "test = [" + ", ".join(f'{{name = "{model}"}}' for model in models) + ", ", 1
+        )
+        + "".join(
+            f'\n[[package]]\nname = "{model}"\nversion = "3.8.0"\n'
+            f'source = {{url = "https://example.com/{model.replace("-", "_")}-3.8.0-py3-none-any.whl"}}\n'
+            f'wheels = [{{url = "https://example.com/{model.replace("-", "_")}-3.8.0-py3-none-any.whl", hash = "sha256:{"0" * 64}"}}]\n'
+            for model in models
+        )
+    )
+    (nox_repo / "ingestion/src/metadata/__main__.py").write_text("raise AssertionError('unexpected provisioning')\n")
+
+    assert_success(run(sys.executable, str(nox_repo / "scripts/check_generated_models.py"), "--write", cwd=nox_repo))
+
+    result = run("make", "install_test", "OM_VENV_DIR=env", cwd=nox_repo)
+
+    assert_success(result)
+    result = run(
+        str(nox_repo / "env/bin/python"),
+        "-c",
+        "import importlib.metadata as m; names = {d.metadata['Name'] for d in m.distributions()}; "
+        + f"assert not names.intersection({models!r}), names",
+        cwd=nox_repo,
+    )
+    assert_success(result)

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button } from '@openmetadata/ui-core-components';
+import { Box, Button } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
@@ -22,6 +22,9 @@ import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePan
 interface OntologyVersionChipProps {
   readonly status?: OntologyPublicationStatus;
   readonly isDisabled?: boolean;
+  /** Which version the Studio reads. Given with `onVersionChange` only to users who can edit. */
+  readonly version?: 'draft' | 'published';
+  readonly onVersionChange?: (version: 'draft' | 'published') => void;
   readonly onPress: () => void;
 }
 
@@ -42,38 +45,85 @@ const getVersionLabel = (
   return version;
 };
 
-const OntologyVersionChip = ({
-  status,
-  isDisabled,
-  onPress,
-}: OntologyVersionChipProps) => {
-  const { t, i18n } = useTranslation();
+// Before the first release the server counts the ontology itself as an added
+// member; a user did not make that a change, so it is not part of the count.
+const getUnpublishedCount = (status: OntologyPublicationStatus | undefined) => {
+  const count = status?.unpublishedChanges ?? 0;
+
+  return status?.active ? count : Math.max(count - 1, 0);
+};
+
+const getChipParts = (
+  status: OntologyPublicationStatus | undefined,
+  t: TFunction,
+  language: string
+) => {
   const active = status?.active;
   const parts = [getVersionLabel(status, t)];
   if (active?.activatedAt !== undefined) {
     parts.push(
-      new Intl.DateTimeFormat(i18n.language, {
+      new Intl.DateTimeFormat(language, {
         month: 'short',
         day: 'numeric',
       }).format(active.activatedAt)
     );
   }
   const stage = status?.latest?.stage;
-  if (
-    (status?.unpublishedChanges ?? 0) > 0 ||
-    (stage && stage !== Stage.Published)
-  ) {
-    parts.push(t(RELEASE_STAGE_LABELS[stage ?? Stage.Draft]));
+  const unpublished = getUnpublishedCount(status);
+  if (unpublished > 0 || (stage && stage !== Stage.Published)) {
+    const stageLabel = t(RELEASE_STAGE_LABELS[stage ?? Stage.Draft]);
+    if (!parts.includes(stageLabel)) {
+      parts.push(stageLabel);
+    }
   }
-  if ((status?.unpublishedChanges ?? 0) > 0) {
-    parts.push(
-      t('label.ontology-unpublished-count', {
-        count: status?.unpublishedChanges,
-      })
-    );
+  if (unpublished > 0) {
+    parts.push(t('label.ontology-unpublished-count', { count: unpublished }));
   }
 
+  return parts;
+};
+
+const VersionSwitch = ({
+  isDisabled,
+  version,
+  onVersionChange,
+}: Required<Pick<OntologyVersionChipProps, 'version' | 'onVersionChange'>> &
+  Pick<OntologyVersionChipProps, 'isDisabled'>) => {
+  const { t } = useTranslation();
+
   return (
+    <Box
+      aria-label={t('label.ontology-version-switch')}
+      className="tw:rounded-lg tw:border tw:border-secondary tw:p-0.5"
+      data-testid="ontology-version-switch"
+      gap={1}
+      role="group">
+      {(['draft', 'published'] as const).map((option) => (
+        <Button
+          aria-pressed={version === option}
+          color={version === option ? 'primary' : 'tertiary'}
+          data-testid={`ontology-version-${option}`}
+          isDisabled={isDisabled}
+          key={option}
+          size="xs"
+          onPress={() => onVersionChange(option)}>
+          {t(`label.${option}`)}
+        </Button>
+      ))}
+    </Box>
+  );
+};
+
+const OntologyVersionChip = ({
+  status,
+  isDisabled,
+  version,
+  onVersionChange,
+  onPress,
+}: OntologyVersionChipProps) => {
+  const { t, i18n } = useTranslation();
+  const parts = getChipParts(status, t, i18n.language);
+  const releases = (
     <Button
       color="secondary"
       data-testid="ontology-release-history-trigger"
@@ -83,6 +133,20 @@ const OntologyVersionChip = ({
       onPress={onPress}>
       {parts.join(' · ')}
     </Button>
+  );
+  if (!version || !onVersionChange) {
+    return releases;
+  }
+
+  return (
+    <>
+      <VersionSwitch
+        isDisabled={isDisabled}
+        version={version}
+        onVersionChange={onVersionChange}
+      />
+      {releases}
+    </>
   );
 };
 
