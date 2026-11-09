@@ -34,6 +34,7 @@ import {
 import {
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MIN_LENGTH,
+  applyAnnouncementTypeChange,
   toAnnouncementTypeFields,
 } from '../../../../Modals/AnnouncementModal/announcementFormUtils';
 import { AnnouncementFormValues } from '../../../../Modals/AnnouncementModal/AnnouncementModal.interface';
@@ -107,10 +108,7 @@ const SystemAnnouncementForm = ({
     onChange: (value: AnnouncementType) => void
   ) => {
     onChange(value);
-    // Leaving Custom drops its colour and name requirements, so their errors go too.
-    if (value !== AnnouncementType.Custom) {
-      form.clearErrors(['color', 'customTypeName']);
-    }
+    applyAnnouncementTypeChange(form, value);
   };
 
   return (

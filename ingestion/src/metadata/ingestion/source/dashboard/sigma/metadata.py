@@ -205,16 +205,16 @@ class SigmaSource(DashboardServiceSource):
 
         for chart in dashboard_details.elements:
             try:
-                if filter_by_chart(self.source_config.chartFilterPattern, chart.name or ""):
-                    self.status.filter(chart.name, "Chart Pattern not allowed")
+                display_name = chart.name or f"Element {chart.elementId}"
+                if filter_by_chart(self.source_config.chartFilterPattern, display_name):
+                    self.status.filter(display_name, "Chart Pattern not allowed")
                     continue
                 chart_request = CreateChartRequest(
                     name=EntityName(str(chart.elementId)),
-                    displayName=chart.name or f"Element {chart.elementId}",
+                    displayName=display_name,
                     chartType=get_standard_chart_type(chart.vizualizationType or ""),
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
-                    sourceUrl=SourceUrl(dashboard_details.url),
-                    description=(Markdown(dashboard_details.description) if dashboard_details.description else None),
+                    sourceUrl=SourceUrl(f"{dashboard_details.url}?:nodeId={chart.elementId}"),
                 )
                 yield Either(right=chart_request)
                 self.register_record_chart(chart_request=chart_request)
@@ -516,16 +516,21 @@ class SigmaSource(DashboardServiceSource):
             return
 
         if self.source_config.includeDataModels:
-            self.data_models = dashboard_details.elements
-            for data_model in self.data_models or []:
+            self.data_models = []
+            for data_model in dashboard_details.elements:
                 # Skip non-visualization elements (text boxes, dividers, buttons, controls)
                 # to avoid creating DataModel entries for elements that have no data source.
                 if not data_model.vizualizationType:
                     continue
+                display_name = data_model.name or f"Element {data_model.elementId}"
+                if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
+                    self.status.filter(display_name, "Data model filtered out.")
+                    continue
+                self.data_models.append(data_model)
                 try:
                     data_model_request = CreateDashboardDataModelRequest(
                         name=EntityName(data_model.elementId),
-                        displayName=data_model.name or f"Element {data_model.elementId}",
+                        displayName=display_name,
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,
@@ -607,7 +612,7 @@ class SigmaSource(DashboardServiceSource):
                 return None
             if dashboard_details.ownerId:
                 owner = self.client.get_owner_detail(dashboard_details.ownerId)
-                return self.metadata.get_reference_by_email(owner.email)
+                return self.metadata.get_reference_by_email(owner.email.lower()) if owner else None
             return None  # noqa: TRY300
         except Exception as err:
             logger.debug(traceback.format_exc())

@@ -52,7 +52,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.filterPattern import FilterPattern
@@ -62,6 +62,7 @@ from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
+    ElementsResponse,
     NodeDetails,
     Workbook,
     WorkbookDetails,
@@ -182,25 +183,22 @@ EXPECTED_CHARTS = [
         name="1a",
         displayName="chart1",
         chartType="Table",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=1a",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="2b",
         displayName="chart2",
         chartType="BoxPlot",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=2b",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="3c",
         displayName="chart3",
         chartType="Pie",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=3c",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
 ]
 
@@ -704,6 +702,7 @@ def sigma_workbook(workbook_id: str, owner_id: str) -> dict:
         "updatedBy": owner_id,
         "createdAt": "2026-01-01T00:00:00Z",
         "updatedAt": "2026-01-02T00:00:00Z",
+        "description": "Quarterly sales by region",
     }
 
 
@@ -1304,3 +1303,112 @@ def test_no_data_model_lineage_is_read_when_data_models_are_off(sigma_over_http,
 
     assert data_model_edges(source) == []
     assert calls["GET", "/v2/workbooks/wb-1/lineage"] == 0
+
+
+def test_chart_links_to_its_element(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1?:nodeId=el-wb-1"
+
+
+def test_chart_does_not_copy_the_workbook_description(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.description is None
+
+
+def test_dashboard_keeps_the_workbook_description_and_link(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeOwners = False
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (dashboard,) = [either.right for either in source.yield_dashboard(details)]
+
+    assert dashboard.description.root == "Quarterly sales by region"
+    assert dashboard.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1"
+
+
+TITLED_AND_UNTITLED_ELEMENTS = {
+    "entries": [
+        {"elementId": "el-titled", "name": "Revenue", "vizualizationType": "bar"},
+        {"elementId": "el-untitled", "vizualizationType": "line"},
+    ],
+    "nextPage": None,
+    "total": 2,
+}
+
+
+def chart_names_under_filter(source, chart_filter: FilterPattern | None) -> list[str]:
+    source.source_config.chartFilterPattern = chart_filter
+    elements = ElementsResponse.model_validate(TITLED_AND_UNTITLED_ELEMENTS).entries
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1")).model_copy(update={"elements": elements})
+    return [either.right.displayName for either in source.yield_dashboard_chart(details)]
+
+
+@pytest.mark.parametrize(
+    "chart_filter, charts",
+    [
+        (None, ["Revenue", "Element el-untitled"]),
+        (FilterPattern(includes=["^Revenue$"]), ["Revenue"]),
+        (FilterPattern(excludes=["^Cost$"]), ["Revenue", "Element el-untitled"]),
+        (FilterPattern(excludes=["^Revenue$"]), ["Element el-untitled"]),
+        (FilterPattern(includes=["^Element "]), ["Element el-untitled"]),
+    ],
+    ids=["no-filter", "include-titled", "exclude-other", "exclude-titled", "include-untitled"],
+)
+def test_chart_filter_matches_untitled_elements_by_display_name(sigma_over_http, chart_filter, charts):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, chart_filter) == charts
+
+
+def test_filtered_untitled_element_is_reported_by_display_name(sigma_over_http):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, FilterPattern(excludes=["^Element "])) == ["Revenue"]
+    assert source.status.filtered == [{"Element el-untitled": "Chart Pattern not allowed"}]
+
+
+def data_models_and_lineage(source, routes, data_model_filter: FilterPattern) -> tuple[list, list, list]:
+    """Charts, data models and fallback lineage for wb-1, whose element lineage runs through /lineage and /files"""
+    source.source_config.dataModelFilterPattern = data_model_filter
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [either.right.name.root for either in source.yield_dashboard_chart(details)]
+    data_models = [either.right.name.root for either in source.yield_datamodel(details)]
+    lineage = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], None)
+    return charts, data_models, lineage
+
+
+@pytest.mark.parametrize(
+    "data_model_filter",
+    [FilterPattern(excludes=["^Revenue$"]), FilterPattern(includes=["^Cost$"])],
+    ids=["excluded", "not-included"],
+)
+def test_filtered_data_model_gets_no_entity_lineage_or_lineage_calls(sigma_over_http, routes, data_model_filter):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, routes, data_model_filter)
+
+    assert charts == ["el-wb-1"]
+    assert data_models == []
+    assert lineage == []
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 0
+    assert calls["GET", "/v2/files/T1"] == 0
+
+
+def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_http, routes):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, routes, FilterPattern(excludes=["^Cost$"]))
+
+    assert charts == data_models == ["el-wb-1"]
+    assert lineage == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 1
+    assert calls["GET", "/v2/files/T1"] == 1

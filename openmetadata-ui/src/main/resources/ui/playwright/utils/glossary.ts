@@ -1300,9 +1300,11 @@ export const assignTagToGlossaryTerm = async (
   await expect(page.getByTestId('update-btn')).toBeEnabled();
   await page.getByTestId('update-btn').click();
 
-  await expect(page.getByRole('heading')).toContainText(
-    'Would you like to proceed with updating the tags?'
-  );
+  await expect(
+    page.getByRole('heading', {
+      name: 'Would you like to proceed with updating the tags?',
+    })
+  ).toBeVisible();
 
   const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByRole('button', { name: 'Yes, confirm' }).click();
