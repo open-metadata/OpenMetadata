@@ -155,7 +155,7 @@ export const getSortField = (
   switch (filterKey) {
     case CURATED_ASSETS_SORT_BY_KEYS.LATEST:
       return filterValue ?? 'updatedAt';
-    // displayName is what the widget shows; the search doc falls back to name when it is unset.
+    // Sort on the title the widget shows: ADR:2026-11-09-curated-assets-sort-a-to-z-by-display-name
     case CURATED_ASSETS_SORT_BY_KEYS.A_TO_Z:
     case CURATED_ASSETS_SORT_BY_KEYS.Z_TO_A:
       return filterValue ?? 'displayName.keyword';
