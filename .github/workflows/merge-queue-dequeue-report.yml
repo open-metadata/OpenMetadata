@@ -69,9 +69,6 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Check dequeue report logic
-        run: python3 -m unittest discover -s .github/scripts -p test_merge_queue_dequeue.py
-
       - name: Resolve the dequeue event
         id: event
         shell: bash

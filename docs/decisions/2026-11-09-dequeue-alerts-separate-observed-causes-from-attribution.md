@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-09 (initial)
 - **Deciders:** Pere Miquel Brull
-- **Guard:** `.github/scripts/test_merge_queue_dequeue.py`, run inside the dequeue workflow
+- **Guard:** `.github/scripts/test_merge_queue_dequeue.py`, run by `merge-queue-dequeue-tests.yml`
 - **Related:** ADR:2026-11-06-dequeue-attribution-requires-comparable-test-evidence; ADR:openmetadata-collate/2026-11-09-dequeue-alerts-separate-observed-causes-from-attribution
 
 ## Context
@@ -14,7 +14,7 @@ happen entirely within its own workflow, using data GitHub already retains.
 
 ## Decision
 
-Remove evidence collectors, their action, schema, parsers and separate test workflow. The dequeue
+Remove evidence collectors, their action, schema, parsers and test workflow. The dequeue
 workflow reads current-attempt jobs, failed steps and completed-job logs. Summary checks point
 to other failed jobs. Download HTTP 429/5xx and network symptoms are reported without claiming
 that the PR is innocent; application test-step HTTP errors are not classified as download errors.
@@ -38,3 +38,6 @@ Unavailable logs or baseline reads preserve the failed step and the rest of the 
 One dequeue call performs the diagnosis and sends the report. Existing build/test workflows
 need no reporting instrumentation. Main context is deliberately job-level, not a claim about
 which PR or individual test introduced a failure. Manual removals remain silent.
+
+The diagnosis is tested on pull requests that change it, never inside the report:
+`pull_request_target` runs `main`'s copy, and a failing test there would suppress the alert.
