@@ -159,9 +159,14 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       // Return a source even for an empty body so a cleared article reconciles to an empty pill
       // set (archiving its stale pills); null is reserved for a page that no longer exists.
       String body = page.getDescription() == null ? "" : page.getDescription();
-      source = new Source(body, DigestUtils.sha256Hex(body), page.getEntityReference());
+      source = new Source(body, sourceHash(body), page.getEntityReference());
     }
     return source;
+  }
+
+  /** The hash a run records for an article body; the next run skips a body with the same hash. */
+  static String sourceHash(String body) {
+    return DigestUtils.sha256Hex(body == null ? "" : body);
   }
 
   @Override

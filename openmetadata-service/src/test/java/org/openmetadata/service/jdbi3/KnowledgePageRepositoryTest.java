@@ -70,14 +70,14 @@ class KnowledgePageRepositoryTest {
   @Test
   void aListComputesNeverExtractedForEachPage() {
     Page writtenWhileOff = articleWrittenWhileExtractionWasOff();
-    Page processed =
-        articleWrittenWhileExtractionWasOff().withProcessingStatus(PageProcessingStatus.Processed);
+    Page failed =
+        articleWrittenWhileExtractionWasOff().withProcessingStatus(PageProcessingStatus.Failed);
 
     repository.setFieldsInBulk(
-        repository.getFields(NEVER_EXTRACTED), List.of(writtenWhileOff, processed));
+        repository.getFields(NEVER_EXTRACTED), List.of(writtenWhileOff, failed));
 
     assertEquals(Boolean.TRUE, writtenWhileOff.getNeverExtracted());
-    assertEquals(Boolean.FALSE, processed.getNeverExtracted());
+    assertEquals(Boolean.FALSE, failed.getNeverExtracted());
   }
 
   @Test

@@ -435,6 +435,72 @@ describe('KnowledgePageDetailComponent custom properties', () => {
   });
 });
 
+describe('KnowledgePageDetailComponent body saves', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
+      ...ENTITY_PERMISSIONS,
+      ViewBasic: true,
+      EditAll: true,
+    });
+  });
+
+  afterEach(() => {
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve(MOCK_KNOWLEDGE_PAGE)
+    );
+  });
+
+  // A PATCH response omits neverExtracted, and a body edit is the write that changes it.
+  it('refreshes the extraction state once the body is saved', async () => {
+    (patchKnowledgePage as jest.Mock).mockResolvedValue({
+      ...MOCK_KNOWLEDGE_PAGE,
+      description: '<p>edited</p>',
+      version: 0.2,
+    });
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(
+      (_fqn: string, params?: { fields?: string }) =>
+        Promise.resolve(
+          params?.fields === 'neverExtracted'
+            ? {
+                ...MOCK_KNOWLEDGE_PAGE,
+                description: '<p>edited</p>',
+                neverExtracted: true,
+                processingStatus: 'Processed',
+              }
+            : MOCK_KNOWLEDGE_PAGE
+        )
+    );
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+    await screen.findByTestId('title');
+
+    const { onChange } = (BlockEditor as unknown as jest.Mock).mock.calls[
+      (BlockEditor as unknown as jest.Mock).mock.calls.length - 1
+    ][0];
+    act(() => onChange('<p>edited</p>'));
+    // The Save shortcut flushes the debounced body save instead of waiting it out.
+    await act(async () => {
+      onPageChange.mock.calls.at(-1)?.[0].handlers.onSave();
+    });
+
+    await waitFor(() =>
+      expect(getKnowledgePageByFqn).toHaveBeenLastCalledWith('test.page.fqn', {
+        fields: 'neverExtracted',
+      })
+    );
+    await waitFor(() =>
+      expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+        expect.objectContaining({
+          description: '<p>edited</p>',
+          neverExtracted: true,
+          processingStatus: 'Processed',
+        })
+      )
+    );
+  });
+});
+
 describe('KnowledgePageDetailComponent drafts', () => {
   beforeEach(() => {
     jest.clearAllMocks();

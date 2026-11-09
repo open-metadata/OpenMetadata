@@ -172,6 +172,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   const editorRef = useRef<BlockEditorRef>({} as BlockEditorRef);
   const titleRef = useRef<HTMLTextAreaElement>(null);
   const pendingSaveCountByArticleRef = useRef<Map<string, number>>(new Map());
+  const extractionStateRequestRef = useRef(0);
   const knowledgePageIdRef = useRef<string | undefined>();
   const location = useLocation();
   const navigate = useNavigate();
@@ -455,6 +456,27 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [removeDraft]
   );
 
+  // A body write changes whether the article reads Not processed, which its PATCH response omits.
+  const refreshExtractionState = useCallback(async (page: KnowledgePage) => {
+    extractionStateRequestRef.current += 1;
+    const request = extractionStateRequestRef.current;
+    try {
+      const { neverExtracted, processingError, processingStatus } =
+        await getKnowledgePageByFqn(page.fullyQualifiedName, {
+          fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
+        });
+      if (request === extractionStateRequestRef.current) {
+        setKnowledgePage((prev) =>
+          prev?.id === page.id
+            ? { ...prev, neverExtracted, processingError, processingStatus }
+            : prev
+        );
+      }
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, []);
+
   const updatedPageContent = useCallback(
     async (updatedContent: string) => {
       if (isUndefined(knowledgePage) || !canEditDescription) {
@@ -497,6 +519,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         });
         didSucceed = true;
         onArticleSaved?.();
+        await refreshExtractionState(currentKnowledgePage);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -510,6 +533,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
       beginTrackedSave,
       endTrackedSave,
       onArticleSaved,
+      refreshExtractionState,
     ]
   );
 

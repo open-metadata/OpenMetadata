@@ -644,8 +644,20 @@ const ContextCenterDocumentsPage: FC = () => {
     }
   }, [fileToDelete, t, fetchFolders]);
 
+  // A write returns stored fields only; a metadata write leaves what the list read computed as is.
   const handleFileUpdated = useCallback((file: ContextFile) => {
-    setAllDocuments((prev) => prev.map((d) => (d.id === file.id ? file : d)));
+    setAllDocuments((prev) =>
+      prev.map((d) =>
+        d.id === file.id
+          ? {
+              ...file,
+              folder: d.folder,
+              memoryCount: d.memoryCount,
+              neverExtracted: d.neverExtracted,
+            }
+          : d
+      )
+    );
   }, []);
 
   const handleFileMoved = useCallback(

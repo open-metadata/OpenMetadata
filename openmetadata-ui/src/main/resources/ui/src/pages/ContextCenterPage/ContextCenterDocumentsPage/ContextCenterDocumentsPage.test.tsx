@@ -116,15 +116,25 @@ jest.mock(
         ({
           canEdit,
           canDelete,
+          data,
           previewFileId,
           selectedIds,
           onSelectFile,
           onClearSelection,
           onDeleteFile,
+          onFileUpdated,
         }) => (
           <div
             data-can-delete={String(Boolean(canDelete))}
             data-can-edit={String(Boolean(canEdit))}
+            data-first-file-folder={data?.[0]?.folder?.name ?? ''}
+            data-first-file-memory-count={String(data?.[0]?.memoryCount ?? '')}
+            data-first-file-never-extracted={String(
+              data?.[0]?.neverExtracted ?? ''
+            )}
+            data-first-file-visibility={
+              data?.[0]?.shareConfig?.visibility ?? ''
+            }
             data-preview-file-id={previewFileId ?? ''}
             data-selected-ids={Array.from(selectedIds ?? []).join(',')}
             data-testid="documents-view">
@@ -132,6 +142,19 @@ jest.mock(
               data-testid="select-file-btn"
               onClick={() => onSelectFile?.('file-1')}>
               select
+            </button>
+            {/* What a PATCH returns: stored fields only. */}
+            <button
+              data-testid="update-file-btn"
+              onClick={() =>
+                onFileUpdated?.({
+                  id: 'file-1',
+                  name: 'file-1.pdf',
+                  processingStatus: 'Processed',
+                  shareConfig: { visibility: 'Private', sharedWith: [] },
+                })
+              }>
+              update-file
             </button>
             <button
               data-testid="clear-selection-btn"
@@ -474,5 +497,52 @@ describe('ContextCenterDocumentsPage — selection', () => {
         ''
       )
     );
+  });
+});
+
+describe('ContextCenterDocumentsPage — file writes', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({});
+  });
+
+  // A write response carries only stored fields; the row keeps what its list read computed.
+  it('keeps the read-only fields of a file when a write returns it', async () => {
+    (listContextFiles as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          id: 'file-1',
+          name: 'file-1.pdf',
+          folder: { id: 'folder-1', type: 'folder', name: 'finance' },
+          memoryCount: 3,
+          neverExtracted: true,
+          processingStatus: 'Processed',
+        },
+      ],
+      paging: { total: 1 },
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-first-file-never-extracted',
+        'true'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('update-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-first-file-visibility',
+        'Private'
+      )
+    );
+    const view = screen.getByTestId('documents-view');
+
+    expect(view).toHaveAttribute('data-first-file-never-extracted', 'true');
+    expect(view).toHaveAttribute('data-first-file-memory-count', '3');
+    expect(view).toHaveAttribute('data-first-file-folder', 'finance');
   });
 });

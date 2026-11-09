@@ -16,13 +16,15 @@ package org.openmetadata.service.context.center;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 
 /**
- * Whether a document's memories were never extracted, so it reads "Not processed". Files and pages
- * serve it as their {@value #NEVER_EXTRACTED} field, computed on read and never stored.
+ * Whether a document's current content was never extracted, so it reads "Not processed". Files and
+ * pages serve it as their {@value #NEVER_EXTRACTED} field, computed on read and never stored.
  */
 public final class MemoryExtractionState {
   public static final String NEVER_EXTRACTED = "neverExtracted";
@@ -30,8 +32,8 @@ public final class MemoryExtractionState {
   private MemoryExtractionState() {}
 
   /**
-   * Processed with text and no extraction run on record. A Collate chat attachment has no content
-   * snapshot, and the engine skips a file without text, so both stay Processed.
+   * Processed with text and no extraction run on record. A file's snapshot is fixed at upload, so
+   * stats always describe its current content. A Collate chat attachment has no snapshot.
    */
   public static boolean neverExtracted(ContextFile file) {
     return file.getProcessingStatus() == ProcessingStatus.Processed
@@ -40,11 +42,25 @@ public final class MemoryExtractionState {
         && hasText(file.getExtractedText());
   }
 
-  /** An article with a body that was never queued for extraction, since queuing sets a status. */
+  /**
+   * An article whose body no run has read: never queued, or edited while extraction was off, which
+   * keeps the earlier run's status and stats. A run waiting, in flight or failed keeps its status.
+   */
   public static boolean neverExtracted(Page page) {
     return page.getPageType() == PageType.ARTICLE
-        && page.getProcessingStatus() == null
-        && hasText(page.getDescription());
+        && hasText(page.getDescription())
+        && isSettled(page.getProcessingStatus())
+        && !wasExtractedFrom(page.getExtractionStats(), page.getDescription());
+  }
+
+  private static boolean isSettled(PageProcessingStatus status) {
+    return status == null || status == PageProcessingStatus.Processed;
+  }
+
+  /** The same comparison the engine makes before it skips an unchanged body. */
+  private static boolean wasExtractedFrom(ExtractionStats stats, String body) {
+    return stats != null
+        && PageContextProcessingEngine.sourceHash(body).equals(stats.getSourceHash());
   }
 
   private static boolean hasText(String text) {

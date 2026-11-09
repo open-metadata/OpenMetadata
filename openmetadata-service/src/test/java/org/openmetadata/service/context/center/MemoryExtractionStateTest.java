@@ -27,6 +27,7 @@ class MemoryExtractionStateTest {
 
   private static final MemoryShareConfig PRIVATE =
       new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE).withSharedWith(List.of());
+  private static final String ARTICLE_BODY = "GDPR covers the personal data of every EU resident.";
 
   @Test
   void aFileUploadedWhileExtractionWasOffWasNeverExtracted() {
@@ -88,12 +89,39 @@ class MemoryExtractionStateTest {
     assertTrue(MemoryExtractionState.neverExtracted(articleWrittenWhileExtractionWasOff()));
   }
 
+  // A run waiting or in flight reads Queued or Processing, and a failed one gets Retry instead.
   @ParameterizedTest
-  @EnumSource(PageProcessingStatus.class)
-  void anArticleOnceQueuedForExtractionKeepsItsStatus(PageProcessingStatus status) {
+  @EnumSource(
+      value = PageProcessingStatus.class,
+      names = {"Queued", "Processing", "Failed"})
+  void anArticleWithARunPendingOrFailedKeepsItsStatus(PageProcessingStatus status) {
     assertFalse(
         MemoryExtractionState.neverExtracted(
             articleWrittenWhileExtractionWasOff().withProcessingStatus(status)));
+  }
+
+  @Test
+  void anArticleExtractedFromItsCurrentBodyStaysProcessed() {
+    assertFalse(
+        MemoryExtractionState.neverExtracted(
+            extractedFrom(ARTICLE_BODY, articleWrittenWhileExtractionWasOff())));
+  }
+
+  // Extraction was off when the body changed, so the article kept the earlier run's status.
+  @Test
+  void anArticleEditedWhileExtractionWasOffWasNeverExtracted() {
+    assertTrue(
+        MemoryExtractionState.neverExtracted(
+            extractedFrom("An earlier draft.", articleWrittenWhileExtractionWasOff())));
+  }
+
+  // A run over an empty body stamps Processed with no stats; this body came afterwards.
+  @Test
+  void anArticleGivenABodyAfterAnEmptyRunWasNeverExtracted() {
+    assertTrue(
+        MemoryExtractionState.neverExtracted(
+            articleWrittenWhileExtractionWasOff()
+                .withProcessingStatus(PageProcessingStatus.Processed)));
   }
 
   @Test
@@ -132,6 +160,17 @@ class MemoryExtractionStateTest {
         .withName("gdpr")
         .withPageType(PageType.ARTICLE)
         .withPage(new Article())
-        .withDescription("GDPR covers the personal data of every EU resident.");
+        .withDescription(ARTICLE_BODY);
+  }
+
+  /** The page as a completed run over {@code body} leaves it. */
+  private static Page extractedFrom(String body, Page page) {
+    return page.withProcessingStatus(PageProcessingStatus.Processed)
+        .withExtractionStats(
+            new ExtractionStats()
+                .withChunksTotal(1)
+                .withChunksProcessed(1)
+                .withPillsCreated(1)
+                .withSourceHash(PageContextProcessingEngine.sourceHash(body)));
   }
 }
