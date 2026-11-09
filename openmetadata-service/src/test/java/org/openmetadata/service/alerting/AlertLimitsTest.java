@@ -8,15 +8,19 @@ import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.alert.type.EmailAlertConfig;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
+import org.openmetadata.service.fernet.Fernet;
 
 /** Every save is held within the bounds, and an alert stored past them stays editable. */
 class AlertLimitsTest {
@@ -27,6 +31,17 @@ class AlertLimitsTest {
   private static final String MAIN = "main";
   private static final String MOVED = "moved";
   private static final String COPY = "copy";
+  private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
+
+  @BeforeEach
+  void setUp() {
+    Fernet.getInstance().setFernetKey(TEST_FERNET_KEY);
+  }
+
+  @AfterEach
+  void tearDown() {
+    Fernet.getInstance().setFernetKey((String) null);
+  }
 
   @Test
   void anAlertMayGrowUpToEachLimit() {
@@ -50,6 +65,19 @@ class AlertLimitsTest {
         () ->
             AlertLimits.requireWithin(
                 stored, alert(destinations(1), AlertLimits.MAX_BATCH_SIZE + 1)));
+  }
+
+  @Test
+  void receiversAreCountedWhenASecretDoesNotOpen() {
+    UUID id = UUID.randomUUID();
+    EventSubscription stored = holdingACiphertextEndpoint(id, PAST_THE_LIMIT);
+    EventSubscription kept = holdingACiphertextEndpoint(id, PAST_THE_LIMIT);
+    EventSubscription grown = holdingACiphertextEndpoint(id, PAST_THE_LIMIT + 1);
+
+    assertDoesNotThrow(() -> AlertLimits.requireWithin(stored, kept));
+    BadRequestException refused =
+        assertThrows(BadRequestException.class, () -> AlertLimits.requireWithin(stored, grown));
+    assertTrue(refused.getMessage().contains("receivers"), refused.getMessage());
   }
 
   @Test
@@ -189,6 +217,18 @@ class AlertLimitsTest {
 
   private static void sendAgain(EventSubscription stored, SubscriptionDestination destination) {
     AlertLimits.requireWithin(stored, alert(List.of(destination), ORDINARY_BATCH));
+  }
+
+  private static EventSubscription holdingACiphertextEndpoint(UUID id, int receivers) {
+    SubscriptionDestination destination =
+        webhookTo(id, Set.of(), MAIN)
+            .withConfig(
+                Map.of(
+                    "endpoint",
+                    Fernet.getInstance().encrypt("https://hooks.example.com/old"),
+                    "receivers",
+                    receivers(receivers)));
+    return alert(List.of(destination), ORDINARY_BATCH);
   }
 
   private static Set<String> receivers(int count) {

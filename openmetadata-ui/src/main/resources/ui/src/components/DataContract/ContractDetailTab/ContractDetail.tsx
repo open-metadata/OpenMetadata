@@ -49,14 +49,12 @@ import { DataContract } from '../../../generated/entity/data/dataContract';
 import { DataContractResult } from '../../../generated/entity/datacontract/dataContractResult';
 import { ContractExecutionStatus } from '../../../generated/type/contractExecutionStatus';
 import {
-  exportContractToODCSYaml,
   getContractResultByResultId,
   validateContractByEntityId,
   validateContractById,
 } from '../../../rest/contractAPI';
 import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
-  downloadContractAsODCSYaml,
   downloadContractYamlFile,
   getConstraintStatus,
 } from '../../../utils/DataContract/DataContractUtils';
@@ -68,6 +66,7 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
+import { ODCSExportModal } from '../../data-contract/ODCSExportModal/ODCSExportModal';
 import ContractExecutionChart from '../ContractExecutionChart/ContractExecutionChart.component';
 import ContractQualityCard from '../ContractQualityCard/ContractQualityCard.component';
 import ContractSchemaTable from '../ContractSchemaTable/ContractSchemaTable.component';
@@ -119,6 +118,9 @@ const ContractDetail: React.FC<{
     useState<DataContractResult>();
   const [mode, setMode] = useState<DataContractMode>(DataContractMode.UI);
   const [isImportModalVisible, setIsImportModalVisible] = useState(false);
+  const [contractToExport, setContractToExport] = useState<DataContract | null>(
+    null
+  );
   const [importFormat, setImportFormat] =
     useState<ContractImportFormat>('odcs');
 
@@ -174,23 +176,15 @@ const ContractDetail: React.FC<{
     }
   }, [contract]);
 
-  const handleExportODCSContract = useCallback(async () => {
-    if (!contract?.id) {
-      return;
-    }
-
-    try {
-      const yamlContent = await exportContractToODCSYaml(contract.id);
-      downloadContractAsODCSYaml(yamlContent, contract.name ?? 'contract');
-      showSuccessToast(
-        t('message.entity-exported-successfully', {
-          entity: t('label.odcs-contract'),
-        })
-      );
-    } catch (err) {
-      showErrorToast(err as AxiosError);
+  const handleExportODCSContract = useCallback(() => {
+    if (contract?.id) {
+      setContractToExport(contract);
     }
   }, [contract]);
+
+  const handleExportModalClose = useCallback(() => {
+    setContractToExport(null);
+  }, []);
 
   const handleImportContract = useCallback((format: ContractImportFormat) => {
     setImportFormat(format);
@@ -720,6 +714,13 @@ const ContractDetail: React.FC<{
 
   return (
     <>
+      {contractToExport && (
+        <ODCSExportModal
+          contractId={contractToExport.id}
+          contractName={contractToExport.name}
+          onClose={handleExportModalClose}
+        />
+      )}
       <ContractImportModal
         entityId={entityId}
         entityName={entityName}

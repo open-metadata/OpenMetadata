@@ -100,6 +100,7 @@ install-project = {str(name in ("runtime", "dev", "test", "test-classification")
         "scripts/datamodel_generation.py",
         "scripts/prepare_classification_models.py",
         ".github/scripts/classification_model_revisions.py",
+        "openmetadata-spec/scripts/prepare_model_schemas.py",
     ]:
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)

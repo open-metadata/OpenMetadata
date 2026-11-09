@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "{{count}}個の{{entity}}を正常に削除しました",
     "entity-already-exist": "{{entity}}「{{name}}」はすでに存在します。重複する{{entityPlural}}は作成できません。",
     "entity-already-exist-message-without-name": "指定された情報で{{entity}}がすでに存在します。同じ{{entityPlural}}は作成できません。",
+    "entity-changed-refresh-and-retry": "このアセットは別の場所で変更されました。ページを更新してもう一度お試しください。",
     "entity-created-success": "{{entity}} が正常に作成されました。",
     "entity-creation-error": "{{entity}}の作成中にエラーが発生しました",
     "entity-deleted-success": "{{entity}} は正常に削除されました。",

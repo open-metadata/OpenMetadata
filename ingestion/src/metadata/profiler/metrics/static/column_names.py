@@ -92,7 +92,7 @@ class ColumnNames(StaticMetric):
         if not hasattr(self, "table"):
             raise AttributeError("Column Count requires a table to be set: add_props(table=...)(Metrics.columnCount)")
 
-        col_names = ",".join(inspect(self.table).c.keys())
+        col_names = ",".join(col.name for col in inspect(self.table).c)
         return ColunNameFn(literal(col_names, type_=sqlalchemy.types.String))
 
     def df_fn(self, dfs: Optional["PandasRunner"] = None):
