@@ -423,6 +423,121 @@ class ODCSVersionedImportTest {
             .asText());
   }
 
+  @Test
+  void legacyFlatColumnsAndTypeAliasesKeepTheirNativeTypes() {
+    DataContract fixture =
+        contract()
+            .withOdcsQualityRules(null)
+            .withSchema(
+                List.of(
+                    new Column().withName("count").withDataType(ColumnDataType.BIGINT),
+                    new Column().withName("text").withDataType(ColumnDataType.TEXT),
+                    new Column().withName("bytes").withDataType(ColumnDataType.BINARY),
+                    new Column().withName("value").withDataType(ColumnDataType.DOUBLE)));
+    ObjectNode source = (ObjectNode) exporter.export(fixture, "v3.1.0").requireValid();
+    ArrayNode columns = (ArrayNode) source.at("/schema/0/properties");
+    List<String> aliases = List.of("long", "text", "bytes", "double");
+    for (int index = 0; index < aliases.size(); index++) {
+      ObjectNode column = (ObjectNode) columns.get(index);
+      column.put("logicalType", aliases.get(index));
+      column.remove("physicalType");
+    }
+    ((ObjectNode) columns.get(1))
+        .putObject("logicalTypeOptions")
+        .put("maxLength", 20)
+        .put("defaultTimezone", "UTC");
+    source.set("schema", columns);
+    source.put("contractCreatedTs", 1700000000000L);
+    ODCSImportService.Document prepared = ODCSImportService.readOrReject(JSON, source);
+    assertEquals("2023-11-14T22:13:20Z", prepared.original().path("contractCreatedTs").asText());
+    DataContract imported = read(source, fixture.getEntity());
+    assertEquals(
+        List.of(
+            ColumnDataType.BIGINT,
+            ColumnDataType.TEXT,
+            ColumnDataType.BINARY,
+            ColumnDataType.DOUBLE),
+        imported.getSchema().stream().map(Column::getDataType).toList());
+    assertEquals(20, imported.getSchema().get(1).getDataLength());
+    assertTrue(exporter.export(imported, "v3.1.0").valid());
+  }
+
+  @Test
+  void legacyRulesWithoutSchemaRetainTheirScopeWithoutInventingNativeColumns() {
+    ObjectNode source =
+        (ObjectNode)
+            exporter
+                .export(contract().withSchema(List.of()).withOdcsQualityRules(null), "v3.1.0")
+                .requireValid();
+    source
+        .withArray("quality")
+        .addObject()
+        .put("type", "sql")
+        .put("name", "external_sql")
+        .put("query", "SELECT 1");
+    source
+        .withArray("quality")
+        .addObject()
+        .put("type", "library")
+        .put("metric", "nullValues")
+        .put("column", "id");
+    DataContract imported = read(source, contract().getEntity());
+    assertTrue(imported.getSchema() == null || imported.getSchema().isEmpty());
+    assertEquals("id", imported.getOdcsQualityRules().get(1).getColumn());
+    assertEquals(0.0, imported.getOdcsQualityRules().get(1).getMustBe());
+    var outcomes =
+        ODCSQualityRuleMapper.map(
+            imported.getOdcsQualityRules(), new ODCSTableTarget("customers", List.of("id")));
+    assertTrue(outcomes.getFirst() instanceof ODCSRuleOutcome.UnsupportedOutcome);
+    assertTrue(outcomes.getLast() instanceof ODCSRuleOutcome.TestCaseOutcome);
+    assertTrue(exporter.export(imported, "v3.1.0").valid());
+  }
+
+  @Test
+  void rootQualityCanReferenceAnExistingNestedArrayChildWithALiteralDot() {
+    DataContract fixture =
+        contract()
+            .withOdcsQualityRules(null)
+            .withSchema(
+                List.of(
+                    new Column()
+                        .withName("items")
+                        .withDataType(ColumnDataType.ARRAY)
+                        .withChildren(
+                            List.of(
+                                new Column()
+                                    .withName("sku.code")
+                                    .withDataType(ColumnDataType.VARCHAR)))));
+    ObjectNode source = (ObjectNode) exporter.export(fixture, "v3.1.0").requireValid();
+    source
+        .withArray("quality")
+        .addObject()
+        .put("name", "required_sku")
+        .put("column", "items.\"sku.code\"")
+        .put("metric", "nullValues")
+        .put("mustBe", 0);
+    DataContract imported = read(source, fixture.getEntity());
+    assertEquals("items.\"sku.code\"", imported.getOdcsQualityRules().getFirst().getColumn());
+    assertEquals("sku.code", imported.getSchema().getFirst().getChildren().getFirst().getName());
+    assertEquals(
+        1,
+        exporter
+            .export(imported, "v3.1.0")
+            .requireValid()
+            .at("/schema/0/properties/0/items/properties/0/quality")
+            .size());
+  }
+
+  @Test
+  void malformedRootQualityProducesAnActionableImportError() {
+    ObjectNode source = (ObjectNode) exporter.export(contract(), "v3.1.0").requireValid();
+    source.withArray("quality").add("not a rule");
+    String error =
+        assertThrows(IllegalArgumentException.class, () -> read(source, contract().getEntity()))
+            .getMessage();
+    assertTrue(error.contains("must be objects"));
+  }
+
   private static DataContract read(JsonNode source, EntityReference target) {
     ODCSImportService.Document document = ODCSImportService.readOrReject(JSON, source);
     return ODCSConverter.fromODCS(

@@ -35,14 +35,21 @@ declared version. This includes the existing description/team/approver/custom-pr
 root-level quality rules, and the finite set of historical library aliases. Legacy quality aliases
 that the published format cannot express use a custom declaration containing their source rule.
 Normalization is reported and never changes `apiVersion`. Invalid fields outside these compatibility
-forms still block import before test-case creation or contract persistence.
+forms still block import before test-case creation or contract persistence. Neutral table defaults
+are identified from the shared reader schema, rather than maintained as a second list of default
+values. Old SQL declarations without comparisons remain non-executable; the historical implicit-zero
+comparison on null/duplicate/missing/invalid-value checks is made explicit. Complete legacy quality
+payloads are type-checked before encapsulation so a recognized alias cannot hide malformed fields.
 
 Adapters produce a canonical JSON view with name/path identities for metadata preservation. The
 existing generic payload retains the declared version and pinned schema location. v2 qualified column
 paths preserve quoted literal dots; v2 default nullability is made explicit. Native arrays retain
 primitive item types. Only the selected schema object's quality rules enter its contract.
 
-Quality compatibility annotations recover source IDs and parameters. External v2 check metadata uses
+Quality compatibility annotations recover source IDs and parameters. Only v3.0 profiles interpret
+the final textual `odcsId` custom property as an ID annotation; preceding properties remain intact,
+and embedded source IDs take precedence. A lone user property with that reserved name is inherently
+ambiguous in that historical encoding. v3.1 properties with the same name are ordinary metadata. External v2 check metadata uses
 a custom-property annotation so its tool/template/code and vendor fields survive version conversion.
 Assertions containing arbitrary JSON or numbers that cannot be represented exactly by the native
 numeric model are preserved and reported as not executable; they never become coerced native tests.
