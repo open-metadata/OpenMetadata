@@ -24,7 +24,14 @@ import { performAdminLogin } from '../../../utils/admin';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
-const scenarioRules = {
+type ScenarioName =
+  | 'queryDenied'
+  | 'queryViewBasicDenied'
+  | 'queryViewConditional'
+  | 'tableViewQueriesDenied'
+  | 'allowed';
+
+const scenarioRules: Record<ScenarioName, PolicyRulesType[]> = {
   queryDenied: [
     ...DATA_CONSUMER_RULES,
     {
@@ -68,9 +75,7 @@ const scenarioRules = {
     },
   ],
   allowed: DATA_CONSUMER_RULES,
-} satisfies Record<string, PolicyRulesType[]>;
-
-type ScenarioName = keyof typeof scenarioRules;
+};
 
 const queryText = `select id from pw_queries_tab_${uuid()}`;
 
