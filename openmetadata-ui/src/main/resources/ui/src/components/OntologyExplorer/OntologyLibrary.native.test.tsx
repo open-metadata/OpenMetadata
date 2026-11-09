@@ -664,7 +664,7 @@ describe('OntologyLibrary native installation', () => {
         screen.getByTestId('ontology-library-native-install')
       ).toBeDisabled();
       expect(
-        post.mock.calls.filter(([url]) => !String(url).endsWith('/review'))
+        post.mock.calls.filter(([url]) => !String(url).endsWith('/summary'))
       ).toHaveLength(0);
     }
   );
@@ -679,7 +679,7 @@ describe('OntologyLibrary native installation', () => {
     expect(creates()).toHaveLength(1);
     expect(
       post.mock.calls.some(
-        ([url]) => url.includes('/library/') && !url.endsWith('/review')
+        ([url]) => url.includes('/library/') && !url.endsWith('/summary')
       )
     ).toBe(false);
     expect(screen.getByTestId('ontology-library-close')).toBeDisabled();
