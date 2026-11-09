@@ -17,10 +17,7 @@ import time as _time
 import pytest
 
 from metadata.ingestion.diagnostics.collectors.http import HttpTracker
-from metadata.ingestion.diagnostics.collectors.operation_registry import (
-    NON_LEAF_OPS,
-    OperationRegistry,
-)
+from metadata.ingestion.diagnostics.collectors.operation_registry import OperationRegistry
 from metadata.ingestion.diagnostics.collectors.stage_progress import StageProgressCollector
 from metadata.ingestion.diagnostics.config import DiagnosticsConfig
 from metadata.ingestion.diagnostics.handler import DiagnosticsHandler
@@ -88,11 +85,11 @@ def test_redump_throttle_blocks_repeat_dump_verdicts():
     assert all(v.dump_reason is None for v in second)
 
 
-# ---- wrapper-op exclusion (NON_LEAF_OPS) ----
+# ---- whole-phase exclusion ----
 
 
-@pytest.mark.parametrize("op_name", sorted(NON_LEAF_OPS))
-def test_no_verdict_for_aged_wrapper_op_alone(op_name):
+@pytest.mark.parametrize("op_name", ["workflow.execute", "source.iter", "bulksink.run"])
+def test_no_verdict_for_aged_wrapper_op_alone(op_name: str) -> None:
     """A whole-phase wrapper op whose cumulative age is past both thresholds must
     not produce any verdict — its age is the phase span, not a sign of being stuck."""
     watchdog, registry = _make_watchdog()
@@ -125,18 +122,44 @@ def test_no_verdict_for_healthy_wrapper_with_intermittent_nested_progress():
         assert watchdog.check(_time.monotonic()) == []
 
 
-def test_no_verdict_for_healthy_workflow_execute_across_redump_window():
-    """A bare workflow.execute wrapper aged past the dump threshold + redump
-    throttle must not re-fire verdicts on subsequent ticks — the exclusion
-    holds even as the cumulative age keeps growing."""
+def test_no_verdict_for_healthy_workflow_execute_across_redump_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Whole-phase operations remain silent beyond the redump throttle window."""
     watchdog, registry = _make_watchdog()
-    tid = threading.get_ident()
-    started = _time.monotonic() - 400.0
-    registry._stacks[tid] = [("workflow.execute", {}, started, 1)]
+    now = 1000.0
+    monkeypatch.setattr(_time, "monotonic", lambda: now)
+    registry.push("workflow.execute", {})
 
-    assert watchdog.check(_time.monotonic()) == []
-    # Even after the redump throttle window would have elapsed, no verdict.
-    assert watchdog.check(_time.monotonic()) == []
+    now += 400.0
+    assert watchdog.check(now) == []
+    now += watchdog._config.redump_throttle_seconds + 1.0
+    assert watchdog.check(now) == []
+
+
+@pytest.mark.parametrize("op_name", ["processor.run", "stage.run"])
+@pytest.mark.parametrize("age", [100.0, 1000.0])
+def test_stuck_per_record_operation_under_wrapper_still_fires(
+    monkeypatch: pytest.MonkeyPatch, op_name: str, age: float
+) -> None:
+    """Per-record operations emit warnings and dumps even beneath phase wrappers."""
+    watchdog, registry = _make_watchdog()
+    now = 1000.0
+    monkeypatch.setattr(_time, "monotonic", lambda: now)
+    registry.push("source.iter", {})
+    registry.push(op_name, {"entity": "my_table"})
+    now += age
+
+    verdicts = watchdog.check(now)
+    assert len(verdicts) == 1
+    verdict = verdicts[0]
+    assert verdict.severity == logging.WARNING
+    assert f"op={op_name}" in verdict.message
+    if age < 300.0:
+        assert "diag.warn.stuck" in verdict.message
+        assert verdict.dump_reason is None
+    else:
+        assert "diag.watchdog.auto_dump" in verdict.message
+        assert verdict.dump_reason is not None
+        assert f"watchdog:{op_name}@" in verdict.dump_reason
 
 
 def test_nested_stuck_op_under_wrapper_still_fires():
@@ -154,6 +177,7 @@ def test_nested_stuck_op_under_wrapper_still_fires():
     assert len(verdicts) == 1
     verdict = verdicts[0]
     assert "diag.watchdog.auto_dump" in verdict.message
+    assert verdict.dump_reason is not None
     assert "snowflake.query" in verdict.dump_reason
     # The wrapper must NOT appear in the verdict — only the stuck leaf op.
     assert "source.iter" not in verdict.dump_reason
