@@ -1,6 +1,6 @@
 # Dequeue attribution compares executed tests against the exact main base
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-09-dequeue-alerts-separate-observed-causes-from-attribution
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `.github/scripts/test_merge_queue_evidence.py`, run by `merge-queue-evidence-tests.yml`

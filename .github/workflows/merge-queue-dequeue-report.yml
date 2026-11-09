@@ -69,6 +69,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Check dequeue report logic
+        run: python3 -m unittest discover -s .github/scripts -p test_merge_queue_dequeue.py
+
       - name: Resolve the dequeue event
         id: event
         shell: bash
@@ -242,7 +245,7 @@ jobs:
             fi
 
             cp detail.txt detail.slack
-            python3 .github/scripts/merge_queue_evidence.py compare \
+            python3 .github/scripts/merge_queue_dequeue.py \
               --repo "$GH_REPO" --sha "$SHA" --branch "$BASE_REF" \
               --failures actions.tsv > attribution.json
             jq -r .markdown attribution.json >> detail.txt

@@ -54,8 +54,6 @@ jobs:
           filters: |
             java:
               - '.github/workflows/openmetadata-service-unit-tests.yml'
-              - '.github/actions/ci-test-evidence/**'
-              - '.github/scripts/merge_queue_evidence.py'
               - 'openmetadata-service/**'
               - 'openmetadata-spec/**'
               - 'openmetadata-clients/**'
@@ -66,8 +64,6 @@ jobs:
               - 'bootstrap/**'
             k8s_operator:
               - 'openmetadata-k8s-operator/**'
-              - '.github/actions/ci-test-evidence/**'
-              - '.github/scripts/merge_queue_evidence.py'
             # Everything that ends up inside the server image or decides how it
             # is launched. Not 'openmetadata-service/**': the smoke test asserts
             # image properties, not application behaviour, so a Java-only change
@@ -168,15 +164,6 @@ jobs:
             -DfailIfNoTests=false \
             -Dsonar.skip=true
 
-      - name: Record test evidence for dequeue attribution
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: ./.github/actions/ci-test-evidence
-        with:
-          check-name: openmetadata-service-unit-tests
-          suite: openmetadata-service:static-code-analysis
-          reports: '**/target/surefire-reports/TEST-*.xml'
-
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v7
@@ -225,15 +212,6 @@ jobs:
       - name: Run k8s-operator unit tests
         run: |
           mvn -B test -pl openmetadata-k8s-operator
-
-      - name: Record test evidence for dequeue attribution
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: ./.github/actions/ci-test-evidence
-        with:
-          check-name: k8s_operator-unit-tests
-          suite: openmetadata-k8s-operator
-          reports: openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
