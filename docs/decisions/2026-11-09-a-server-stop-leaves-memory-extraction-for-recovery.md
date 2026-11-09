@@ -31,6 +31,9 @@ the same work in progress, and the existing recovery resumed it:
   - `ServerStopping` is set;
   - the thread was interrupted;
   - an `InterruptedException` caused the failure.
+- **The flag is raised before object storage closes.** The asset service's shutdown hook sets
+  `ServerStopping` itself and only then closes the client. A read that the close breaks always
+  sees the stop, whichever JVM shutdown hook starts first.
 - **Other job types are still marked FAILED on a stop.** Nothing requeues them, and Collate's
   admin-ops jobs depend on it: a RUNNING one blocks new jobs of its type.
 - **A real failure still fails.** With no stop and no interrupt, it marks the document Failed and
