@@ -48,7 +48,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
-import org.apache.jena.rdf.model.Model;
 import org.openmetadata.schema.OntologyDefinition;
 import org.openmetadata.schema.api.data.ActivateOntologyRelease;
 import org.openmetadata.schema.api.data.CaptureOntologyRelease;
@@ -360,6 +359,22 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
   }
 
   @POST
+  @Path("/{id}/library/{packId}/summary")
+  @Operation(
+      operationId = "summarizeNativeOntologyPack",
+      summary = "Review verified library modules without returning draft operations",
+      description =
+          "Returns counts, at most 5,000 definition statuses, and any disjointness clash the install would create against the current working draft. Nothing is persisted.")
+  public NativeOntologyImportSummary summarizeLibraryPack(
+      @Context final UriInfo uriInfo,
+      @Context final SecurityContext securityContext,
+      @PathParam("id") final UUID id,
+      @PathParam("packId") final String packId,
+      @NotNull @Valid final PreviewNativeOntologyPack request) {
+    return reviewLibraryPack(uriInfo, securityContext, id, packId, request).getSummary();
+  }
+
+  @POST
   @Path("/{id}/library/{packId}/review")
   @Operation(
       operationId = "reviewNativeOntologyPack",
@@ -393,14 +408,9 @@ public class OntologyResource extends EntityResource<Ontology, OntologyRepositor
 
   private NativeOntologyRdfImporter.Source bundledSource(
       final OntologyPackContentLoader.Selection selected) {
-    final Model model = new OntologyPackModels(packContentLoader).load(selected.modules());
-    try {
-      return new NativeOntologyRdfImporter.Source(
-          NativeOntologyImportFormat.fromValue(selected.format()),
-          NativeOntologyRdfImporter.read(model));
-    } finally {
-      model.close();
-    }
+    return new NativeOntologyRdfImporter.Source(
+        NativeOntologyImportFormat.fromValue(selected.format()),
+        OntologyPackModels.bundled().document(selected));
   }
 
   @POST

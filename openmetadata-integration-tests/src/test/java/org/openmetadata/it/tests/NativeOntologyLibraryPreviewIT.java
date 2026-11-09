@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -25,6 +27,8 @@ import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.CreateOntologyConcept;
+import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
+import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.OntologyPackList;
 import org.openmetadata.schema.api.data.OntologyPackSample;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyPack;
@@ -42,6 +46,75 @@ import org.openmetadata.service.Entity;
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
 public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
+  @Test
+  void librarySummaryBoundsLargePacksWithoutReturningDraftOperations(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+    final JsonNode summary =
+        client
+            .getHttpClient()
+            .execute(
+                HttpMethod.POST,
+                "/v1/ontologies/" + ontology.getId() + "/library/fibo/summary",
+                new PreviewNativeOntologyPack().withModuleIds(Set.of("fibo-quickstart")),
+                JsonNode.class);
+
+    assertFalse(summary.has("changeSet"));
+    assertFalse(summary.has("operations"));
+    assertEquals(2413, summary.path("counts").path("newConcepts").asInt());
+    assertEquals(5000, summary.path("items").size());
+    assertTrue(summary.path("omittedItems").asInt() > 0);
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+  }
+
+  @Test
+  void librarySummaryReconcilesCachedContentAgainstTheCurrentDraft(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final String iri = "http://www.w3.org/ns/dcat#Catalog";
+    final NativeOntologyImportSummary before = summary(client, ontology);
+    assertTrue(
+        before.getItems().stream()
+            .anyMatch(
+                item ->
+                    iri.equals(item.getIri())
+                        && item.getStatus() == NativeOntologyImportItemStatus.NEW));
+    declareClass(ontology, "ExistingCatalog", URI.create(iri));
+
+    final NativeOntologyImportSummary after = summary(client, ontology);
+
+    assertEquals(before.getCounts().getNewConcepts() - 1, after.getCounts().getNewConcepts());
+    assertTrue(
+        after.getItems().stream()
+            .anyMatch(
+                item ->
+                    iri.equals(item.getIri())
+                        && item.getStatus() == NativeOntologyImportItemStatus.UPDATE));
+  }
+
+  @Test
+  void librarySummaryAuthorizesWorkingDefinitionsAfterTheSourceCacheIsWarm(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    declareClass(ontology, "Private", URI.create("https://example.org/private"));
+    assertFalse(summary(SdkClients.adminClient(), ontology).getItems().isEmpty());
+    try (RdfAccessFixtures fixtures = new RdfAccessFixtures("summary" + ns.shortPrefix())) {
+      final var role = fixtures.denyRole(MetadataOperation.VIEW_ALL, Entity.ONTOLOGY_CONCEPT);
+      final String token = fixtures.userToken("reader", List.of(role.getId()));
+      final var denied =
+          new OpenMetadataClient(
+              OpenMetadataConfig.builder()
+                  .serverUrl(SdkClients.baseUrl())
+                  .accessToken(token)
+                  .build());
+
+      assertEquals(
+          403,
+          assertThrows(OpenMetadataException.class, () -> summary(denied, ontology))
+              .getStatusCode());
+    }
+  }
+
   @Test
   void libraryPreviewCannotReadDeniedWorkingDefinitions(TestNamespace ns) {
     final var ontology = createOntology(ns);
@@ -256,5 +329,15 @@ public class NativeOntologyLibraryPreviewIT extends BaseOntologyApprovalIT {
             "/v1/ontologies/" + ontology.getId() + "/library/" + packId + "/preview",
             new PreviewNativeOntologyPack().withModuleIds(modules),
             CreateOntologyChangeSet.class);
+  }
+
+  private static NativeOntologyImportSummary summary(OpenMetadataClient client, Ontology ontology) {
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/ontologies/" + ontology.getId() + "/library/dcat/summary",
+            new PreviewNativeOntologyPack().withModuleIds(Set.of("dcat")),
+            NativeOntologyImportSummary.class);
   }
 }

@@ -1,7 +1,7 @@
 # Ontology library packs are verbatim pinned upstream releases
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-06 (initial); v2 2026-11-07 (GS1 EPCIS and CBV included pending confirmation); v3 2026-11-07 (verbatim triples: converted-to-Turtle sources; IOF Core and Supply Chain added); v4 2026-11-07 (IOF pack covers every Released module of the production release)
+- **Revisions:** v1 2026-11-06 (initial); v2 2026-11-07 (GS1 EPCIS and CBV included pending confirmation); v3 2026-11-07 (verbatim triples: converted-to-Turtle sources; IOF Core and Supply Chain added); v4 2026-11-07 (IOF pack covers every Released module of the production release); v5 2026-11-08 (bounded browsing caches and summary responses)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `python3 scripts/ontology-packs/generate.py --check` (`make ontology-packs-check`, also a `make harness-check` warning), OntologyPackCatalogTest, OntologyPackVerifierTest, BundledOntologyPackImportTest, NativeOntologyEveryPackInstallIT
 - **Related:** ADR:2026-10-19-native-ontology-imports-use-working-drafts
@@ -37,3 +37,15 @@ The catalogue reads `json/data/ontology/packs/index.json`, which the generator w
 Adding a pack is one entry in the source list and a run of `make ontology-packs`. An update to a pack is a reviewed re-pin, not an edit of a payload. The jar carries about 18 MB of uncompressed RDF, which the build compresses. A mapping or query written against FIBO, DCAT or PROV-O IRIs works against an installed pack. A user who installed an old starter FIBO keeps its concepts, but its recorded version no longer matches the catalogue, so a later install of the same pack id replaces the record. The import preview of a small pack now reports the statements it skipped, which is most of an upstream OWL file.
 
 Revisit when the licenses of an excluded vocabulary are confirmed, or when a third party needs a pack to be split into modules by the publisher.
+
+## Amendment v5: reuse bundled sources while reviewing the current draft
+
+Library browsing reuses checksum-verified native documents and completed samples for the same dependency-expanded module selection. The cache key includes the pack version and each selected module's identity, resource path, format and pinned checksum. Production sampling and review share the document cache. Bundled classpath resources are immutable for the lifetime of the process; a new bundle starts a new cache.
+
+Sample traversal indexes child IRIs by relation target once and preserves the sorted breadth-first selection. It does not rescan every relation for each candidate concept. The chain regression in `OntologyPackSamplerTest` checks the selected concepts and relations together with a relation-read budget.
+
+Documents have a 64 MiB retained serialized-payload budget and samples have a separate 4 MiB budget. Each entry is charged at least 16 KiB to bound the number of small entries as well. Cache misses for the same selection share one computation. Entries retain private serialized bytes and decode a fresh object for each caller, because the generated definition and sample models are mutable. These budgets do not claim to bound peak JVM heap or the transient allocation of a cold parse.
+
+The Library uses `POST /ontologies/{id}/library/{packId}/summary`, which returns `NativeOntologyImportSummary` without a change set. It retains the 5,000-item listing limit and total counts. Existing `/review` and `/preview` response contracts remain available. Summaries and change sets are never cached: every request reads and authorizes the current working draft, then computes its statuses and clash warnings. The install job continues to reconstruct its own plan from verified bundled content.
+
+`OntologyPackModelsTest`, `OntologyPackSamplerTest` and `NativeOntologyLibraryPreviewIT` guard reuse, mutation isolation, eviction, response bounds and current-draft authorization. A cold selection still parses and reconciles the whole pack; a warm summary still reconciles the current draft.

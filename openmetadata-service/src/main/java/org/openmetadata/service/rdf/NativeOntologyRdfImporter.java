@@ -231,8 +231,12 @@ public final class NativeOntologyRdfImporter {
    */
   public CreateOntologyChangeSet reconcileUnbounded(
       final Model model, final OntologyWorkingSnapshot.Snapshot working) {
+    return reconcileUnbounded(read(model), working);
+  }
+
+  public CreateOntologyChangeSet reconcileUnbounded(
+      final NativeOntologyDocument document, final OntologyWorkingSnapshot.Snapshot working) {
     final Stored stored = Stored.index(working);
-    final NativeOntologyDocument document = read(model);
     requireApplicable(document, stored, Map.of());
     return plan(
         reject(classify(document, stored, Integer.MAX_VALUE), stored, new RdfSkipLedger()),

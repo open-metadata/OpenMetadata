@@ -13,19 +13,22 @@
 
 package org.openmetadata.service.ontology;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
-import org.apache.jena.rdf.model.Model;
-import org.openmetadata.schema.api.data.CreateOntologyChangeSet;
 import org.openmetadata.schema.api.data.OntologyPackSample;
 import org.openmetadata.schema.api.data.OntologyPackSampleConcept;
 import org.openmetadata.schema.api.data.OntologyPackSampleRelation;
@@ -37,24 +40,54 @@ import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyPackModule;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 
 public final class OntologyPackSampler {
   public static final int MAX_CONCEPTS = 60;
+  private static final long MAX_CACHED_SAMPLE_BYTES = 4L * 1024 * 1024;
   private static final URI SUBCLASS_OF =
       URI.create("http://www.w3.org/2000/01/rdf-schema#subClassOf");
   private final OntologyPackCatalog catalog;
-  private final OntologyPackContentLoader loader;
+  private final OntologyPackModels models;
+  private final Cache<OntologyPackModels.SourceKey, byte[]> samples;
 
   public OntologyPackSampler(
       final OntologyPackCatalog catalog, final OntologyPackContentLoader loader) {
+    this(catalog, new OntologyPackModels(loader));
+  }
+
+  public OntologyPackSampler(final OntologyPackCatalog catalog, final OntologyPackModels models) {
+    this(catalog, models, MAX_CACHED_SAMPLE_BYTES);
+  }
+
+  OntologyPackSampler(
+      final OntologyPackCatalog catalog, final OntologyPackModels models, final long cacheBytes) {
     this.catalog = catalog;
-    this.loader = loader;
+    this.models = models;
+    samples =
+        Caffeine.newBuilder()
+            .maximumWeight(cacheBytes)
+            .<OntologyPackModels.SourceKey, byte[]>weigher(
+                (key, value) -> OntologyPackModels.cacheWeight(value))
+            .executor(Runnable::run)
+            .build();
   }
 
   public OntologyPackSample sample(final String packId, final Collection<String> moduleIds) {
-    final var selected = loader.select(catalog, packId, moduleIds);
-    final var plan = reconcile(selected.modules());
+    final var selected = models.select(catalog, packId, moduleIds);
+    final byte[] cached =
+        samples.get(
+            OntologyPackModels.key(selected),
+            ignored -> JsonUtils.pojoToJson(sample(selected)).getBytes(StandardCharsets.UTF_8));
+    return JsonUtils.readValue(
+        new String(cached, StandardCharsets.UTF_8), OntologyPackSample.class);
+  }
+
+  private OntologyPackSample sample(final OntologyPackContentLoader.Selection selected) {
+    final var plan =
+        new NativeOntologyRdfImporter()
+            .reconcileUnbounded(models.document(selected), emptySnapshot());
     final List<OntologyPackSampleConcept> concepts =
         plan.getOperations().stream()
             .filter(
@@ -81,7 +114,7 @@ public final class OntologyPackSampler {
             .toList();
     return bound(
         new OntologyPackSample()
-            .withPackId(packId)
+            .withPackId(selected.manifest().getId())
             .withVersion(selected.manifest().getVersion())
             .withModuleIds(
                 new LinkedHashSet<>(
@@ -91,15 +124,6 @@ public final class OntologyPackSampler {
             .withConcepts(concepts)
             .withRelations(relations),
         MAX_CONCEPTS);
-  }
-
-  private CreateOntologyChangeSet reconcile(final List<OntologyPackModule> modules) {
-    final Model model = new OntologyPackModels(loader).load(modules);
-    try {
-      return new NativeOntologyRdfImporter().reconcileUnbounded(model, emptySnapshot());
-    } finally {
-      model.close();
-    }
   }
 
   private static Optional<OntologyPackSampleRelation> relation(final OntologyAxiom axiom) {
@@ -132,7 +156,16 @@ public final class OntologyPackSampler {
     final List<OntologyPackSampleConcept> sorted =
         sample.getConcepts().stream().sorted(order).toList();
     final Set<URI> sources = new HashSet<>();
-    sample.getRelations().forEach(relation -> sources.add(relation.getSourceIri()));
+    final Map<URI, Set<URI>> childIrisByTarget = new HashMap<>();
+    sample
+        .getRelations()
+        .forEach(
+            relation -> {
+              sources.add(relation.getSourceIri());
+              childIrisByTarget
+                  .computeIfAbsent(relation.getTargetIri(), ignored -> new HashSet<>())
+                  .add(relation.getSourceIri());
+            });
     final ArrayDeque<OntologyPackSampleConcept> queue = new ArrayDeque<>();
     sorted.stream().filter(concept -> !sources.contains(concept.getIri())).forEach(queue::add);
     if (queue.isEmpty()) {
@@ -142,15 +175,8 @@ public final class OntologyPackSampler {
     while (!queue.isEmpty() && kept.size() < limit) {
       final OntologyPackSampleConcept concept = queue.removeFirst();
       if (kept.add(concept.getIri())) {
-        sorted.stream()
-            .filter(
-                child ->
-                    sample.getRelations().stream()
-                        .anyMatch(
-                            relation ->
-                                relation.getSourceIri().equals(child.getIri())
-                                    && relation.getTargetIri().equals(concept.getIri())))
-            .forEach(queue::add);
+        final Set<URI> children = childIrisByTarget.getOrDefault(concept.getIri(), Set.of());
+        sorted.stream().filter(child -> children.contains(child.getIri())).forEach(queue::add);
       }
     }
     if (kept.size() < limit) {
