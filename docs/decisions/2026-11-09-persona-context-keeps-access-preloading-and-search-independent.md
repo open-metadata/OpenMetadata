@@ -31,6 +31,9 @@ Rule filters are validated by the configured search engine before a new or chang
 persisted, including search-scoped rules. Re-enabling a rule or its context validates active
 filters. Unchanged filters are not revalidated when disabling a rule or changing unrelated
 settings. Invalid input returns 400; unavailable search returns 503.
+The visual editor preserves saved query DSL until the user edits the filter itself. A filter may
+use server-supported fields that the builder cannot represent; opening it or disabling its rule
+must not replace it with the builder's sanitized output.
 
 The requested `Persona.userCount` is a derived, read-only count of distinct active users with
 direct assignments, team inheritance or an effective default persona. Team inheritance excludes
