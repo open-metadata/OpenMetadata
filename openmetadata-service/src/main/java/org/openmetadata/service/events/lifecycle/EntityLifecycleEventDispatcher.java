@@ -409,6 +409,43 @@ public class EntityLifecycleEventDispatcher {
     }
   }
 
+  /**
+   * Collects every applicable handler's cleanup for {@code entities} while their rows still exist,
+   * and returns one action that runs them in handler priority order. The caller runs it once the
+   * hard delete has committed. A handler that fails to prepare or to clean up is logged and never
+   * fails the delete or another handler.
+   */
+  public Runnable prepareHardDelete(List<? extends EntityInterface<?>> entities) {
+    List<Runnable> cleanups = new ArrayList<>();
+    Map<String, List<EntityLifecycleEventHandler>> handlersByType = new HashMap<>();
+    for (EntityInterface<?> entity : entities) {
+      String entityType = entity.getEntityReference().getType();
+      for (EntityLifecycleEventHandler handler :
+          handlersByType.computeIfAbsent(entityType, this::getApplicableHandlers)) {
+        cleanups.add(prepareHardDelete(handler, entity));
+      }
+    }
+    return () -> cleanups.forEach(Runnable::run);
+  }
+
+  private Runnable prepareHardDelete(
+      EntityLifecycleEventHandler handler, EntityInterface<?> entity) {
+    Runnable cleanup = () -> {};
+    try {
+      Runnable prepared = handler.prepareHardDelete(entity);
+      if (prepared != null) {
+        cleanup = () -> runInline(prepared, handler);
+      }
+    } catch (RuntimeException e) {
+      LOG.error(
+          "Entity lifecycle handler '{}' could not prepare the hard delete of {}",
+          handler.getHandlerName(),
+          entity.getId(),
+          e);
+    }
+    return cleanup;
+  }
+
   private List<EntityLifecycleEventHandler> getApplicableHandlers(String entityType) {
     return handlers.stream()
         .filter(

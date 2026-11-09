@@ -114,6 +114,15 @@ public interface EntityLifecycleEventHandler {
   }
 
   /**
+   * Called while an entity is being hard deleted, before its relationships and extensions are
+   * removed and inside the delete's transaction. Read what the cleanup needs here and return the
+   * cleanup; it runs once the delete has committed and never when the delete rolls back.
+   */
+  default Runnable prepareHardDelete(EntityInterface<?> entity) {
+    return () -> {};
+  }
+
+  /**
    * Called after an entity is soft deleted or restored.
    */
   default void onEntitySoftDeletedOrRestored(
