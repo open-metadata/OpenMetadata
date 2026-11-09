@@ -91,3 +91,6 @@ export const getTaskDetailPath = (
     task.taskId
   }`;
 };
+
+export const getTaskStatusIconClassName = (isOpen: boolean) =>
+  isOpen ? 'tw:text-utility-success-600' : 'tw:text-utility-blue-700';

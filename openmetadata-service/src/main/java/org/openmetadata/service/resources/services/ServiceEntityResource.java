@@ -16,6 +16,7 @@ package org.openmetadata.service.resources.services;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import jakarta.json.JsonPatch;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
@@ -61,6 +62,8 @@ public abstract class ServiceEntityResource<
         S extends ServiceConnectionEntityInterface>
     extends EntityResource<T, R> {
   private static final String CONNECTION_FIELD = "connection";
+  static final String CONNECTION_COPY_REFUSED =
+      "A patch cannot copy or move a value out of the connection.";
 
   @Getter private final ServiceEntityRepository<T, S> serviceEntityRepository;
 
@@ -233,10 +236,16 @@ public abstract class ServiceEntityResource<
    */
   static boolean patchMayChangeConnection(JsonPatch patch) {
     return JsonPatchUtils.replacesWholeDocument(patch)
-        || JsonUtils.extractPatchedFields(patch).contains(CONNECTION_FIELD);
+        || JsonUtils.extractPatchedFields(patch).contains(CONNECTION_FIELD)
+        || JsonPatchUtils.readsFrom(patch, "/" + CONNECTION_FIELD);
   }
 
   private void requireSecretsReenteredOnRetarget(T original, JsonPatch patch) {
+    // The caller reads the connection's secrets masked; a copy or move out of it would place a
+    // stored one where it is served as stored.
+    if (JsonPatchUtils.readsFrom(patch, "/" + CONNECTION_FIELD)) {
+      throw new BadRequestException(CONNECTION_COPY_REFUSED);
+    }
     requireSecretsReenteredOnRetarget(original, JsonUtils.applyPatch(original, patch, entityClass));
   }
 
@@ -305,7 +314,9 @@ public abstract class ServiceEntityResource<
         repository.findByNameOrNull(service.getFullyQualifiedName(), Include.NON_DELETED);
     String connectionType = extractServiceType(service);
     try {
-      if (originalService != null && originalService.getConnection() != null) {
+      if (originalService != null
+          && originalService.getConnection() != null
+          && service.getConnection() != null) {
         Object serviceConnectionConfig =
             EntityMaskerFactory.getEntityMasker()
                 .unmaskServiceConnectionConfig(

@@ -176,6 +176,13 @@ jest.mock('react-i18next', () => ({
   }),
 }));
 
+const mockMarkInboxActivitySeen = jest.fn();
+
+jest.mock('../../../../../hooks/usePersonalSpaceStore', () => ({
+  usePersonalSpaceStore: (selector: (s: unknown) => unknown) =>
+    selector({ markInboxActivitySeen: mockMarkInboxActivitySeen }),
+}));
+
 import { User } from '../../../../../generated/entity/teams/user';
 import { ActivityFilter, getInboxDateRange } from '../inbox.utils';
 import ActivityTab from './ActivityTab';
@@ -565,5 +572,89 @@ describe('ActivityTab', () => {
 
     expect(screen.getByTestId('activity-group')).toHaveTextContent('orders');
     expect(screen.getByTestId('group-icon-table')).toBeInTheDocument();
+  });
+
+  // The seen-mark drives the sidebar's unread badge and is the only state
+  // persisted to localStorage, so stamping it at the wrong time permanently
+  // loses unread mentions. The mark must only fire once the viewer's own feed
+  // has loaded successfully — not while loading, not on error, and not for
+  // another user's feed.
+  describe('seen-mark timing', () => {
+    it('stamps the seen-mark once the feed has loaded', () => {
+      activityState = { items: [], total: 0, isLoading: false };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark while the feed is loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed errors', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it('does not stamp the seen-mark when the feed is forbidden', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 403 } },
+      };
+      render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    it("does not stamp the seen-mark for another user's feed", () => {
+      activityState = {
+        items: [{ feed: { id: 't1' } }],
+        total: 1,
+        isLoading: false,
+      };
+      render(<ActivityTab user={alice} />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+    });
+
+    // The bug: the mark fired on mount regardless of feed state. A feed that
+    // starts loading and then resolves must stamp the mark only after the
+    // transition to loaded.
+    it('stamps the seen-mark after the feed finishes loading', () => {
+      activityState = { ...activityState, isLoading: true };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
+
+    // A failed visit must leave the unread state intact; retrying successfully
+    // is what stamps the mark.
+    it('stamps the seen-mark after a failed feed succeeds on retry', () => {
+      activityState = {
+        ...activityState,
+        error: { response: { status: 500 } },
+      };
+      const { rerender } = render(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).not.toHaveBeenCalled();
+
+      activityState = { items: [], total: 0, isLoading: false };
+      rerender(<ActivityTab />);
+
+      expect(mockMarkInboxActivitySeen).toHaveBeenCalled();
+    });
   });
 });

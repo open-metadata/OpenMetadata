@@ -90,6 +90,21 @@
   ],
   "mappings": [
     {
+      "_comment": "QueryViewer renders the topic Config, search index Settings, table dbt and View Definition tabs and the incident SQL Query tab.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryViewer/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Topic/TopicDetails/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/SearchIndexUtils.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/EntityConfigTabs.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.teardown.ts"
@@ -548,6 +563,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/knowledgeCenterAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/ContextCenter.constants.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/KnowledgeCenter.constant.ts",
@@ -558,6 +574,8 @@
         "openmetadata-ui/src/main/resources/ui/src/hooks/discovery/context-center/**",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/context/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/context/center/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/context/center/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/context/review/**",
         "openmetadata-service/src/test/java/org/openmetadata/service/context/review/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/context/outcome/**",
@@ -571,6 +589,9 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycleTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/knowledge/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/drive/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/drive/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextFile*.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextFile*Test.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/KnowledgePageRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/indexes/ContextMemoryIndex.java",
@@ -608,12 +629,24 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/governance/**",
         "openmetadata-ui/src/main/resources/ui/src/generated/api/governance/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/governance/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/governance/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/governance/**",
         "openmetadata-spec/src/main/resources/json/schema/governance/workflows/**",
         "openmetadata-spec/src/main/resources/json/schema/api/governance/**"
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Features/Workflows/**/*.spec.ts"]
+    },
+    {
+      "_comment": "The query builder's JsonLogic/Elasticsearch save and load pipeline, shared by workflow conditions, advanced search, curated assets and data contract semantics.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/**"],
+      "specs": [
+        "playwright/e2e/Features/Workflows/**/*.spec.ts",
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
     },
     {
       "sources": [
@@ -788,6 +821,8 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/**",
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useRailPager.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/criticalAnnouncementsQuery.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
@@ -1045,10 +1080,13 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/rest/announcementsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/AnnouncementsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/AnnouncementsUtils.ts"
       ],
       "projects": ["chromium"],
       "specs": [
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"

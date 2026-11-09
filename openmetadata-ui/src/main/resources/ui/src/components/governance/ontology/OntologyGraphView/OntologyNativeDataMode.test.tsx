@@ -24,21 +24,33 @@ import { NativeOntologyDataGraphPage } from '../../../../generated/api/data/nati
 import { AssetType } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import {
+  deleteOntologyConceptBinding,
   getNativeOntologyDataGraphPage,
   getOntologyConceptBindings,
   putOntologyConceptBinding,
 } from '../../../../rest/ontologyAPI';
+import { searchQuery } from '../../../../rest/searchAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
   pageFixture,
   prefixFixture,
 } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import OntologyNativeDataMode from './OntologyNativeDataMode';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
+  deleteOntologyConceptBinding: jest.fn(),
   getNativeOntologyDataGraphPage: jest.fn(),
   getOntologyConceptBindings: jest.fn(),
   putOntologyConceptBinding: jest.fn(),
+}));
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
+}));
+jest.mock('../../../../rest/searchAPI', () => ({ searchQuery: jest.fn() }));
+jest.mock('../../../../utils/governance/ontology/OntologyUndoToast', () => ({
+  showUndoToast: jest.fn(),
 }));
 
 const fetchPage = getNativeOntologyDataGraphPage as jest.MockedFunction<
@@ -114,18 +126,33 @@ const BindingWriter = () => {
   );
 };
 
+const CONCEPTS = [
+  { id: 'transfer', name: 'Funds Transfer' },
+  { id: 'account', name: 'Account' },
+  { id: 'ledger', name: 'Ledger' },
+  { id: 'unused', name: 'Unused' },
+];
+
+const NO_CONCEPT = '';
+
 const SelectingMode = ({
   revision,
+  initialConceptId = 'transfer',
+  canEditBindings = false,
   onSelectConcept,
 }: {
   revision: number;
+  initialConceptId?: string;
+  canEditBindings?: boolean;
   onSelectConcept: (conceptId: string) => void;
 }) => {
-  const [selectedConceptId, setSelectedConceptId] = useState('account');
+  const [selectedConceptId, setSelectedConceptId] = useState(initialConceptId);
 
   return (
     <OntologyNativeDataMode
       isActive
+      canEditBindings={canEditBindings}
+      concepts={CONCEPTS}
       ontologyId="ontology-1"
       revision={revision}
       selectedConceptId={selectedConceptId}
@@ -137,10 +164,17 @@ const SelectingMode = ({
   );
 };
 
-const renderMode = (onSelectConcept = jest.fn()) => {
+const renderMode = (
+  onSelectConcept = jest.fn(),
+  options: { initialConceptId?: string; canEditBindings?: boolean } = {}
+) => {
   const tree = (revision: number) => (
     <MemoryRouter>
-      <SelectingMode revision={revision} onSelectConcept={onSelectConcept} />
+      <SelectingMode
+        revision={revision}
+        onSelectConcept={onSelectConcept}
+        {...options}
+      />
       <Location />
       <BindingWriter />
     </MemoryRouter>
@@ -165,6 +199,7 @@ const clusterCount = (clusterId: string) =>
   );
 
 beforeEach(() => {
+  localStorage.clear();
   fetchPage.mockReset();
   (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
     kind: 'complete',
@@ -178,7 +213,7 @@ it('shows every returned cluster with its visible total once the first page arri
   fetchPage.mockResolvedValueOnce(firstPage());
   renderMode();
 
-  expect(screen.getByText('label.loading')).toBeVisible();
+  expect(screen.getByText('message.ontology-data-loading')).toBeVisible();
 
   await screen.findByTestId('ontology-data-cluster-transfer');
 
@@ -244,30 +279,63 @@ it('reaches a visible asset that follows an empty page with a non-null cursor', 
   ).toBeVisible();
 });
 
-it('selects a concept from its header and opens an asset from its row', async () => {
+it('selects the concept from its header, opens an asset in a panel that stays in the Studio, and leaves only for Open asset', async () => {
   fetchPage.mockResolvedValueOnce(firstPage());
   const { onSelectConcept } = renderMode();
   await screen.findByTestId('ontology-data-cluster-transfer');
 
-  fireEvent.click(screen.getByText('Funds Transfer'));
+  fireEvent.click(
+    within(screen.getByTestId('ontology-data-cluster-transfer')).getByText(
+      'Funds Transfer'
+    )
+  );
   fireEvent.click(screen.getByTestId('ontology-data-asset-asset:transfer:a1'));
 
   expect(onSelectConcept).toHaveBeenCalledWith('transfer');
+
+  const panel = await screen.findByTestId('ontology-data-asset-panel');
+
+  expect(
+    within(panel).getByTestId('ontology-data-asset-panel-name')
+  ).toHaveTextContent('table_1');
+  expect(
+    within(panel).getByTestId('ontology-data-asset-panel-fqn')
+  ).toHaveTextContent('svc.db.schema.table_1');
+  expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+
+  fireEvent.click(within(panel).getByTestId('ontology-data-asset-open'));
+
   expect(screen.getByTestId('location')).toHaveTextContent(
     '/table/svc.db.schema.table_1'
   );
 });
 
-it('says the view holds its maximum and offers no more clusters when the context is full', async () => {
+it('closes the asset panel with Escape without leaving the Studio', async () => {
+  fetchPage.mockResolvedValueOnce(firstPage());
+  renderMode();
+  await screen.findByTestId('ontology-data-cluster-transfer');
+  fireEvent.click(screen.getByTestId('ontology-data-asset-asset:transfer:a2'));
+  const panel = await screen.findByTestId('ontology-data-asset-panel');
+
+  fireEvent.keyDown(panel, { key: 'Escape' });
+
+  expect(
+    screen.queryByTestId('ontology-data-asset-panel')
+  ).not.toBeInTheDocument();
+  expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
+});
+
+it('says the view holds its maximum, rather than that nothing is linked, for a concept past a full context', async () => {
   fetchPage.mockResolvedValueOnce(
     firstPage({ contextFull: true, nextClusterOffset: 12 })
   );
-  renderMode();
+  renderMode(jest.fn(), { initialConceptId: 'ledger' });
 
   expect(
     await screen.findByTestId('ontology-data-context-full')
   ).toHaveTextContent('message.ontology-data-context-full');
-  expect(screen.queryByText('label.load-more')).not.toBeInTheDocument();
+  expect(screen.queryByTestId('ontology-data-empty')).not.toBeInTheDocument();
+  expect(fetchPage).toHaveBeenCalledTimes(1);
 });
 
 it('shows the error with a retry after the topology restart also fails, and sends no third attempt', async () => {
@@ -313,13 +381,33 @@ it('names a stale context after the reload is stale too', async () => {
   expect(fetchPage).toHaveBeenCalledTimes(3);
 });
 
-it('shows the empty state for an ontology with no bound assets', async () => {
-  fetchPage.mockResolvedValueOnce(pageFixture({ clusters: [], loaded: [] }));
-  renderMode();
+it('explains that the picked concept has no data, offers Link Asset, and shows neither the graph nor a bound-property count', async () => {
+  fetchPage.mockResolvedValueOnce(firstPage());
+  renderMode(jest.fn(), { initialConceptId: 'unused', canEditBindings: true });
+
+  const empty = await screen.findByTestId('ontology-data-empty');
+
+  expect(empty).toHaveTextContent('message.ontology-data-empty-title');
+  expect(empty).toHaveTextContent('message.ontology-data-empty-hint');
+  expect(
+    within(empty).getByRole('button', { name: 'label.link-asset' })
+  ).toBeVisible();
+  expect(screen.queryByTestId('ontology-data-graph')).not.toBeInTheDocument();
+  expect(
+    screen.queryByTestId('ontology-data-edge-legend')
+  ).not.toBeInTheDocument();
+  expect(screen.queryByText(/properties-bound/)).not.toBeInTheDocument();
+});
+
+it('offers no Link Asset to a reader who cannot edit the concept', async () => {
+  fetchPage.mockResolvedValueOnce(firstPage());
+  renderMode(jest.fn(), { initialConceptId: 'unused' });
+
+  await screen.findByTestId('ontology-data-empty');
 
   expect(
-    await screen.findByTestId('ontology-data-graph-empty')
-  ).toHaveTextContent('message.no-data-available');
+    screen.queryByTestId('ontology-data-link-asset')
+  ).not.toBeInTheDocument();
 });
 
 it('shows only the error, and no empty graph, when the first load fails', async () => {
@@ -335,18 +423,19 @@ it('shows only the error, and no empty graph, when the first load fails', async 
   ).not.toBeInTheDocument();
 });
 
-it('offers more clusters instead of the empty state while the server still advertises some', async () => {
-  const emptyPage = () =>
-    pageFixture({ clusters: [], loaded: [], nextClusterOffset: 12 });
+it('keeps loading the remaining clusters, and says nothing is linked only after the last page', async () => {
+  const emptyPage = (offset?: number) =>
+    pageFixture({ clusters: [], loaded: [], nextClusterOffset: offset });
   fetchPage
-    .mockResolvedValueOnce(emptyPage())
+    .mockResolvedValueOnce(emptyPage(12))
     .mockResolvedValueOnce(emptyPage());
-  renderMode();
+  renderMode(jest.fn(), { initialConceptId: 'unused' });
 
-  expect(await screen.findByText('label.load-more')).toBeVisible();
-  expect(
-    screen.queryByTestId('ontology-data-graph-empty')
-  ).not.toBeInTheDocument();
+  expect(await screen.findByTestId('ontology-data-empty')).toBeVisible();
+  expect(fetchPage.mock.calls.map(([, request]) => request.page)).toEqual([
+    { kind: 'clusters', limit: 12, offset: 0 },
+    { kind: 'clusters', limit: 12, offset: 12 },
+  ]);
 });
 
 describe('a graph that went stale', () => {
@@ -367,7 +456,7 @@ describe('a graph that went stale', () => {
     expect(screen.getByText('label.loading')).toHaveAttribute('role', 'status');
     expect(clusterCount('transfer')).toHaveTextContent('· 6');
     expect(
-      screen.getByTestId('ontology-data-cluster-account').className
+      screen.getByTestId('ontology-data-cluster-transfer').className
     ).toMatch(/border-brand/);
 
     await act(async () =>
@@ -405,7 +494,7 @@ describe('a graph that went stale', () => {
     ]);
   });
 
-  it('keeps the clusters, rows and selection the user loaded past the first clusters page', async () => {
+  it('keeps the concept, its rows and the selection through a reload, finding it past the first clusters page', async () => {
     const ledgerClusters = () =>
       pageFixture({
         clusters: [
@@ -436,13 +525,17 @@ describe('a graph that went stale', () => {
       .mockResolvedValueOnce(firstPage({ nextClusterOffset: 12 }))
       .mockResolvedValueOnce(ledgerClusters())
       .mockResolvedValueOnce(lastLedgerRows());
-    const { changeModel } = renderMode();
-    await screen.findByTestId('ontology-data-cluster-transfer');
-    fireEvent.click(screen.getByText('label.load-more'));
+    const { changeModel } = renderMode(jest.fn(), {
+      initialConceptId: 'ledger',
+    });
     await screen.findByTestId('ontology-data-cluster-ledger');
     fireEvent.click(screen.getByTestId('ontology-load-more-assets-ledger'));
     await waitFor(() => expect(rows('ledger')).toHaveLength(6));
-    fireEvent.click(screen.getByText('Ledger'));
+    fireEvent.click(
+      within(screen.getByTestId('ontology-data-cluster-ledger')).getByText(
+        'Ledger'
+      )
+    );
 
     changeModel(1);
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(6));
@@ -456,7 +549,6 @@ describe('a graph that went stale', () => {
       'ledger_5',
       'ledger_6',
     ]);
-    expect(rows('transfer')).toHaveLength(4);
     expect(
       screen.getByTestId('ontology-data-cluster-ledger').className
     ).toMatch(/border-brand/);
@@ -491,5 +583,309 @@ describe('a graph that went stale', () => {
 
     expect(putOntologyConceptBinding).toHaveBeenCalledTimes(1);
     expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('the concept picker', () => {
+  const optionNames = () =>
+    screen
+      .getAllByRole('option')
+      .map((option) => option.textContent?.replace(/\s+/g, ' '));
+
+  it('asks which concept to show, grouping concepts with data by count before those without', async () => {
+    fetchPage.mockResolvedValueOnce(firstPage());
+    renderMode(jest.fn(), { initialConceptId: NO_CONCEPT });
+
+    expect(
+      await screen.findByText('message.ontology-data-pick-title')
+    ).toBeVisible();
+
+    await waitFor(() =>
+      expect(optionNames()).toEqual([
+        'Funds Transferlabel.count-asset',
+        'Accountlabel.count-asset',
+        'Ledgerlabel.no-data',
+        'Unusedlabel.no-data',
+      ])
+    );
+
+    expect(screen.queryByTestId('ontology-data-graph')).not.toBeInTheDocument();
+  });
+
+  it('shows the picked concept with its chip, tells the Studio, and restores it on the next visit', async () => {
+    fetchPage.mockResolvedValue(firstPage());
+    const { onSelectConcept, unmount } = renderMode(jest.fn(), {
+      initialConceptId: NO_CONCEPT,
+    });
+    fireEvent.click(
+      await screen.findByTestId('ontology-data-concept-option-account')
+    );
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-account')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-cluster-transfer')
+    ).not.toBeInTheDocument();
+    expect(onSelectConcept).toHaveBeenCalledWith('account');
+    expect(screen.getByTestId('ontology-data-concept-chip')).toHaveTextContent(
+      'Account'
+    );
+    expect(localStorage.getItem('os-dataBy')).toBe(
+      JSON.stringify({
+        'ontology-1': { recentIds: ['account'], selectedId: 'account' },
+      })
+    );
+
+    unmount();
+    renderMode(jest.fn(), { initialConceptId: NO_CONCEPT });
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-account')
+    ).toBeVisible();
+  });
+
+  it('returns to the picker when the pick is cleared', async () => {
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode();
+    await screen.findByTestId('ontology-data-cluster-transfer');
+
+    fireEvent.click(screen.getByTestId('ontology-data-concept-clear'));
+
+    expect(screen.getByText('message.ontology-data-pick-title')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-cluster-transfer')
+    ).not.toBeInTheDocument();
+  });
+
+  it('moves with the arrow keys, picks with Enter, and closes the switcher with Escape', async () => {
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode();
+    await screen.findByTestId('ontology-data-cluster-transfer');
+
+    fireEvent.click(screen.getByTestId('ontology-data-concept-change'));
+    const search = await screen.findByTestId('ontology-data-concept-search');
+    fireEvent.keyDown(search, { key: 'Escape' });
+
+    expect(screen.queryByTestId('ontology-data-concept-picker')).toBeNull();
+
+    fireEvent.click(screen.getByTestId('ontology-data-concept-change'));
+    const reopened = await screen.findByTestId('ontology-data-concept-search');
+    fireEvent.keyDown(reopened, { key: 'ArrowDown' });
+    fireEvent.keyDown(reopened, { key: 'Enter' });
+
+    expect(
+      await screen.findByTestId('ontology-data-cluster-account')
+    ).toBeVisible();
+  });
+});
+
+describe('bound columns, unlinking and linking', () => {
+  const amountColumn = {
+    columnPath: ['amount'],
+    propertyId: 'p-amount',
+    property: {
+      id: 'p-amount',
+      name: 'amountProperty',
+      type: 'ontologyProperty',
+    },
+    column: {
+      name: 'amount',
+      dataType: 'DECIMAL',
+      dataTypeDisplay: 'decimal(10,2)',
+    },
+    state: 'resolved',
+  };
+  const boundAsset = {
+    assetId: 'a1',
+    assetType: 'table',
+    asset: {
+      id: 'a1',
+      name: 'table_1',
+      type: 'table',
+      fullyQualifiedName: 'svc.db.schema.table_1',
+    },
+    columns: [amountColumn],
+  };
+
+  it('draws the bound columns of an asset as nodes beside its row, counts them in the chip and names them in the legend', async () => {
+    (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
+      kind: 'complete',
+      revision: 2,
+      assets: [boundAsset],
+    });
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode();
+
+    const toggle = await screen.findByTestId(
+      'ontology-data-asset-columns-toggle-asset:transfer:a1'
+    );
+
+    expect(
+      screen.queryByTestId('ontology-data-column')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(toggle);
+    const node = screen.getByTestId('ontology-data-column');
+
+    expect(node).toHaveTextContent('amount');
+    expect(node).toHaveTextContent('decimal(10,2)');
+    expect(screen.getAllByTestId('ontology-data-column-edge')).toHaveLength(1);
+    expect(
+      screen.getByTestId('ontology-data-concept-summary')
+    ).toHaveTextContent('label.bound-column-count');
+    expect(
+      screen.getByTestId('ontology-data-legend-column-binding')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId(
+        'ontology-data-asset-columns-toggle-asset:transfer:a2'
+      )
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the binding of a selected column node, and returns to the asset when the asset is selected', async () => {
+    (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
+      kind: 'complete',
+      revision: 2,
+      assets: [boundAsset],
+    });
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode();
+    fireEvent.click(
+      await screen.findByTestId(
+        'ontology-data-asset-columns-toggle-asset:transfer:a1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-data-column'));
+    const panel = await screen.findByTestId('ontology-data-column-panel');
+
+    expect(
+      within(panel).getByTestId('ontology-data-column-panel-column')
+    ).toHaveTextContent('amount');
+    expect(
+      within(panel).getByTestId('ontology-data-column-panel-property')
+    ).toHaveTextContent('amountProperty');
+    expect(
+      within(panel).getByTestId('ontology-data-column-panel-asset')
+    ).toHaveTextContent('table_1');
+    expect(screen.getByTestId('ontology-data-column')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(
+      screen.queryByTestId('ontology-data-asset-panel')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-asset:transfer:a1')
+    );
+
+    expect(
+      await screen.findByTestId('ontology-data-asset-panel')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-column-panel')
+    ).not.toBeInTheDocument();
+  });
+
+  it('unlinks from the panel after naming the asset, the concept and the columns, and Undo puts the columns back', async () => {
+    let isRemoved = false;
+    (getOntologyConceptBindings as jest.Mock).mockImplementation(async () =>
+      isRemoved
+        ? { kind: 'complete', revision: 3, assets: [] }
+        : { kind: 'complete', revision: 2, assets: [boundAsset] }
+    );
+    (deleteOntologyConceptBinding as jest.Mock).mockImplementation(async () => {
+      isRemoved = true;
+    });
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode(jest.fn(), { canEditBindings: true });
+    await screen.findByTestId('ontology-data-cluster-transfer');
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-asset:transfer:a1')
+    );
+    const panel = await screen.findByTestId('ontology-data-asset-panel');
+    const unlink = within(panel).getByTestId('ontology-data-asset-unlink');
+    await waitFor(() => expect(unlink).toBeEnabled());
+
+    expect(
+      within(panel).getByTestId('ontology-data-asset-panel-columns')
+    ).toHaveTextContent('amount');
+
+    fireEvent.click(unlink);
+    const confirm = await screen.findByTestId('ontology-unlink');
+
+    expect(confirm).toHaveTextContent('message.ontology-unlink-asset-title');
+    expect(confirm).toHaveTextContent('message.ontology-unlink-asset-columns');
+    expect(deleteOntologyConceptBinding).not.toHaveBeenCalled();
+
+    fireEvent.click(await screen.findByTestId('ontology-unlink-confirm'));
+    await waitFor(() =>
+      expect(deleteOntologyConceptBinding).toHaveBeenCalledWith('transfer', {
+        assetId: 'a1',
+        assetType: 'table',
+        expectedRevision: 2,
+      })
+    );
+    await waitFor(() => expect(showUndoToast).toHaveBeenCalledTimes(1));
+
+    await act(async () => {
+      await (showUndoToast as jest.Mock).mock.calls[0][1]();
+    });
+
+    expect(putOntologyConceptBinding).toHaveBeenCalledWith('transfer', {
+      expectedRevision: 3,
+      asset: {
+        assetId: 'a1',
+        assetType: 'table',
+        columns: [{ columnPath: ['amount'], propertyId: 'p-amount' }],
+      },
+    });
+  });
+
+  it('links a table from the empty state through Link Asset', async () => {
+    fetchPage.mockResolvedValue(firstPage());
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        total: { value: 1 },
+        hits: [
+          {
+            _source: {
+              id: 'new-table',
+              name: 'new_table',
+              entityType: 'table',
+              fullyQualifiedName: 'svc.db.schema.new_table',
+            },
+          },
+        ],
+      },
+    });
+    renderMode(jest.fn(), {
+      initialConceptId: 'unused',
+      canEditBindings: true,
+    });
+    const link = await screen.findByTestId('ontology-data-link-asset');
+    await waitFor(() => expect(link).toBeEnabled());
+
+    fireEvent.click(link);
+    const dialog = await screen.findByTestId('ontology-data-link-dialog');
+    fireEvent.click(
+      await within(dialog).findByRole('checkbox', { name: 'new_table' })
+    );
+    fireEvent.click(within(dialog).getByTestId('ontology-data-asset-save'));
+
+    await waitFor(() =>
+      expect(putOntologyConceptBinding).toHaveBeenCalledWith('unused', {
+        expectedRevision: 0,
+        asset: { assetId: 'new-table', assetType: 'table', columns: [] },
+      })
+    );
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-data-link-dialog')
+      ).not.toBeInTheDocument()
+    );
   });
 });

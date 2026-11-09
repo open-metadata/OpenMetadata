@@ -111,6 +111,21 @@ public class RdfIndexApp extends AbstractNativeApplication {
     this.admissionGuard = RdfReindexAdmissionGuard.forProduction(collectionDAO);
   }
 
+  /**
+   * Resolves the repository without throwing. Returns null when RDF was never initialized, which
+   * is the case on servers that start with RDF disabled.
+   */
+  private RdfRepository rdfOrNull() {
+    if (rdfRepository == null) {
+      RdfRepository repository = RdfRepository.getInstanceOrNull();
+      if (repository != null) {
+        rdfRepository = repository;
+        batchProcessor = new RdfBatchProcessor(collectionDAO, repository);
+      }
+    }
+    return rdfRepository;
+  }
+
   private RdfRepository rdf() {
     if (rdfRepository == null) {
       rdfRepository = RdfRepository.getInstance();
@@ -155,13 +170,12 @@ public class RdfIndexApp extends AbstractNativeApplication {
       }
     }
 
-    if (!rdf().isEnabled()) {
-      LOG.error("RDF Repository is not enabled. Please enable RDF in configuration.");
-      updateJobStatus(EventPublisherJob.Status.FAILED);
-      jobData.setFailure(
-          new IndexingError()
-              .withErrorSource(IndexingError.ErrorSource.JOB)
-              .withMessage("RDF Repository is not enabled"));
+    RdfRepository repository = rdfOrNull();
+    if (repository == null || !repository.isEnabled()) {
+      // RDF is optional, so a server without it completes the run with nothing indexed, as
+      // RdfInferenceApp does. Set directly: no rebuild ran, so no rebuild metrics are recorded.
+      LOG.info("RDF is not configured on this server, skipping RDF indexing");
+      jobData.setStatus(EventPublisherJob.Status.COMPLETED);
       sendUpdates(jobExecutionContext, true);
       return;
     }

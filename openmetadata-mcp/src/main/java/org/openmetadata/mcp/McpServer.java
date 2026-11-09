@@ -8,8 +8,10 @@ import io.modelcontextprotocol.server.McpStatelessSyncServer;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.eclipse.jetty.ee10.servlet.ServletHolder;
 import org.openmetadata.mcp.prompts.DefaultPromptsContext;
@@ -21,6 +23,7 @@ import org.openmetadata.mcp.server.transport.JsonRpcErrorBody;
 import org.openmetadata.mcp.server.transport.OAuthHttpStatelessServerTransportProvider;
 import org.openmetadata.mcp.tools.DefaultToolContext;
 import org.openmetadata.mcp.usage.McpUsageRecorder;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -29,6 +32,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
+import org.openmetadata.service.apps.bundles.mcp.McpToolRegistry;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
@@ -82,7 +86,10 @@ public class McpServer implements McpServerProvider {
     this.limits = limits;
     this.environment = environment;
     MutableServletContextHandler contextHandler = environment.getApplicationContext();
-    List<McpSchema.Tool> tools = getTools();
+    List<McpSchema.Tool> registered = getTools();
+    McpToolRegistry.setToolNames(registered.stream().map(McpSchema.Tool::name).toList());
+    List<McpSchema.Tool> tools =
+        exposedTools(registered, SecurityConfigurationManager.getCurrentMcpConfig());
     List<McpSchema.Prompt> prompts = getPrompts();
     addStatelessTransport(contextHandler, tools, prompts);
   }
@@ -108,6 +115,8 @@ public class McpServer implements McpServerProvider {
    */
   private static final Set<String> RDF_DEPENDENT_TOOLS =
       Set.of("sparql_query", "entity_neighborhood", "find_by_tag", "shacl_validate");
+
+  private static final Set<String> WRITE_HELPER_TOOLS = Set.of("describe_entity_type");
 
   /**
    * Advertises the knowledge-graph tools only where they can actually run.
@@ -136,6 +145,76 @@ public class McpServer implements McpServerProvider {
   private static boolean rdfEnabled() {
     RdfRepository repository = RdfRepository.getInstanceOrNull();
     return repository != null && repository.isEnabled();
+  }
+
+  /**
+   * Read-only mode, for every caller including admins, whom no policy can deny. It filters here,
+   * after a subclass has added its own tools in {@link #getTools()}, so those are covered too.
+   * Tools are registered once at startup, so {@link #executeTool} checks again on every call:
+   * turning the mode on blocks writes before the restart that drops them from tools/list. See
+   * ADR:2026-11-04-mcp-read-only-mode-hides-write-tools. Disabled tools follow the same two steps,
+   * see ADR:2026-11-05-mcp-admins-can-disable-single-tools.
+   */
+  static List<McpSchema.Tool> exposedTools(List<McpSchema.Tool> tools, MCPConfiguration config) {
+    List<McpSchema.Tool> exposed = tools;
+    if (isReadOnlyMode(config)) {
+      exposed = tools.stream().filter(McpServer::isAvailableInReadOnlyMode).toList();
+      LOG.info(
+          "[MCP] Read-only mode; withholding {} write tool(s) from tools/list",
+          tools.size() - exposed.size());
+    }
+    return withoutDisabledTools(exposed, tools, config);
+  }
+
+  private static List<McpSchema.Tool> withoutDisabledTools(
+      List<McpSchema.Tool> exposed, List<McpSchema.Tool> registered, MCPConfiguration config) {
+    Set<String> disabled = disabledTools(config);
+    warnAboutUnknownTools(registered, disabled);
+    List<McpSchema.Tool> enabled =
+        exposed.stream().filter(tool -> !disabled.contains(tool.name())).toList();
+    if (enabled.size() < exposed.size()) {
+      LOG.info(
+          "[MCP] Withholding {} disabled tool(s) from tools/list", exposed.size() - enabled.size());
+    }
+    return enabled;
+  }
+
+  // Not an error: the name may be a tool of another distribution or one renamed on upgrade.
+  private static void warnAboutUnknownTools(List<McpSchema.Tool> registered, Set<String> disabled) {
+    Set<String> names = registered.stream().map(McpSchema.Tool::name).collect(Collectors.toSet());
+    List<String> unknown = disabled.stream().filter(name -> !names.contains(name)).toList();
+    if (!unknown.isEmpty()) {
+      LOG.warn("[MCP] Ignoring disabled tool name(s) that match no registered tool: {}", unknown);
+    }
+  }
+
+  private static boolean isReadOnlyMode(MCPConfiguration config) {
+    return config != null && Boolean.TRUE.equals(config.getReadOnly());
+  }
+
+  private static Set<String> disabledTools(MCPConfiguration config) {
+    return config == null || config.getDisabledTools() == null
+        ? Set.of()
+        : config.getDisabledTools();
+  }
+
+  // The MCP spec defaults readOnlyHint to false, so a tool without it counts as a write tool.
+  // describe_entity_type only reads, but it exists to prepare a create_entity call.
+  private static boolean isAvailableInReadOnlyMode(McpSchema.Tool tool) {
+    boolean readOnlyHint =
+        tool.annotations() != null && Boolean.TRUE.equals(tool.annotations().readOnlyHint());
+    return readOnlyHint && !WRITE_HELPER_TOOLS.contains(tool.name());
+  }
+
+  private static Optional<String> refusalReason(McpSchema.Tool tool, MCPConfiguration config) {
+    Optional<String> reason = Optional.empty();
+    if (isReadOnlyMode(config) && !isAvailableInReadOnlyMode(tool)) {
+      reason =
+          Optional.of("The MCP server is in read-only mode, so " + tool.name() + " is unavailable");
+    } else if (disabledTools(config).contains(tool.name())) {
+      reason = Optional.of(tool.name() + " is disabled on this MCP server");
+    }
+    return reason;
   }
 
   protected List<McpSchema.Prompt> getPrompts() {
@@ -323,7 +402,12 @@ public class McpServer implements McpServerProvider {
     try {
       ImpersonationContext.setImpersonatedBy(getMcpBotName());
       outcome =
-          toolContext.callToolWithMetadata(authorizer, limits, tool.name(), securityContext, req);
+          refusalReason(tool, SecurityConfigurationManager.getCurrentMcpConfig())
+              .map(DefaultToolContext::forbidden)
+              .orElseGet(
+                  () ->
+                      toolContext.callToolWithMetadata(
+                          authorizer, limits, tool.name(), securityContext, req));
       return outcome.result();
     } finally {
       recordUsage(tool.name(), userName, clientName, outcome);

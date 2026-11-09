@@ -27,6 +27,7 @@ import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.NativeOntologyImportCounts;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -470,33 +471,54 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void unsupportedOrMalformedRdfDoesNotMutateTheWorkingOntology(TestNamespace ns) {
+  void importsAreSkippedAndReportedWithoutFetching(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
     final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
-    final String unsupported =
+    final String withImports =
         """
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         <%s> a owl:Ontology ; owl:imports <https://example.org/remote.ttl> .
         """
             .formatted(ontology.getIri());
-    for (final String data : new String[] {unsupported, "@prefix owl: <broken"}) {
-      assertEquals(
-          400,
-          assertThrows(
-                  OpenMetadataException.class,
-                  () ->
-                      client
-                          .ontologies()
-                          .previewImport(
-                              ontology.getId(),
-                              new PreviewNativeOntologyImport()
-                                  .withFormat(NativeOntologyImportFormat.TURTLE)
-                                  .withData(data)))
-              .getStatusCode());
-      assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
-      assertNull(client.ontologies().state(ontology.getId()).getActiveReleaseId());
-    }
+
+    final NativeOntologyImportPreview preview =
+        client
+            .ontologies()
+            .previewImport(
+                ontology.getId(),
+                new PreviewNativeOntologyImport()
+                    .withFormat(NativeOntologyImportFormat.TURTLE)
+                    .withData(withImports));
+
+    final var groups = preview.getSummary().getSkippedStatements().getGroups();
+    assertEquals(1, groups.size(), groups.toString());
+    assertEquals(NativeOntologyImportSkipReason.IMPORTS, groups.getFirst().getReason());
+    assertEquals(1, groups.getFirst().getCount());
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+  }
+
+  @Test
+  void malformedRdfDoesNotMutateTheWorkingOntology(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    client
+                        .ontologies()
+                        .previewImport(
+                            ontology.getId(),
+                            new PreviewNativeOntologyImport()
+                                .withFormat(NativeOntologyImportFormat.TURTLE)
+                                .withData("@prefix owl: <broken")))
+            .getStatusCode());
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertNull(client.ontologies().state(ontology.getId()).getActiveReleaseId());
     assertEquals(
         1, client.ontologies().workingDiff(ontology.getId(), 10, null).getPaging().getTotal());
   }

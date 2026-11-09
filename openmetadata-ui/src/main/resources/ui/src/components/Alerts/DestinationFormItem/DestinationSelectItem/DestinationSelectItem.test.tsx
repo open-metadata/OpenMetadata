@@ -31,7 +31,7 @@ import {
   AlertSelection,
   AlertSelectionProvider,
 } from '../../../../hooks/useAlertSelection';
-import type { ModifiedDestination } from '../../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import type { ModifiedDestination } from '../../../../utils/AlertsClassBase.interface';
 import DestinationSelectItem from './DestinationSelectItem';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 
@@ -147,6 +147,24 @@ jest.mock('@openmetadata/ui-core-components', () => {
         {children}
       </button>
     ),
+    ButtonUtility: ({
+      'data-testid': dataTestId,
+      isDisabled,
+      onClick,
+      tooltip,
+    }: {
+      'data-testid'?: string;
+      isDisabled?: boolean;
+      onClick?: () => void;
+      tooltip?: string;
+    }) => (
+      <button
+        aria-label={tooltip}
+        data-testid={dataTestId}
+        disabled={isDisabled}
+        onClick={onClick}
+      />
+    ),
     Grid,
     Input: forwardRef<
       HTMLInputElement,
@@ -215,6 +233,11 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('@openmetadata/ui-core-components/icons', () => ({
   XClose: () => <span>XClose</span>,
+}));
+
+jest.mock('react-i18next', () => ({
+  ...jest.requireActual('react-i18next'),
+  Trans: ({ i18nKey }: { i18nKey: string }) => <>{i18nKey}</>,
 }));
 
 jest.mock('../../../../utils/ObservabilityUtils', () => ({

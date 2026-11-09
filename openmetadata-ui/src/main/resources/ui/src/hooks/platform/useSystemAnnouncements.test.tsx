@@ -22,6 +22,7 @@ import {
   deleteAnnouncement,
   listAnnouncements,
 } from '../../rest/announcementsAPI';
+import { HOME_ANNOUNCEMENTS_QUERY_KEY } from '../../rest/queries/criticalAnnouncementsQuery';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   useDeleteSystemAnnouncement,
@@ -172,18 +173,18 @@ describe('useSystemAnnouncementsList', () => {
 
   it('pages locally, newest start first, and starts over when the filters change', async () => {
     mockList.mockResolvedValue({
-      data: Array.from({ length: 25 }, (_, i) =>
+      data: Array.from({ length: 35 }, (_, i) =>
         announcement(`a${i}`, `Announcement ${i}`, i)
       ),
-      paging: { total: 25 },
+      paging: { total: 35 },
     });
     const { result } = renderHook(() => useSystemAnnouncementsList(), {
       wrapper,
     });
-    await waitFor(() => expect(result.current.total).toBe(25));
+    await waitFor(() => expect(result.current.total).toBe(35));
 
     expect(result.current.pageCount).toBe(3);
-    expect(result.current.announcements[0].id).toBe('a24');
+    expect(result.current.announcements[0].id).toBe('a34');
 
     act(() => result.current.goToPage(3));
 
@@ -223,6 +224,49 @@ describe('system announcement mutations', () => {
 
     expect(onSaved).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ['saving', 'save'],
+    ['deleting', 'delete'],
+  ] as const)(
+    'marks the Home announcement queries stale after %s',
+    async (_, action) => {
+      const client = new QueryClient();
+      const homeKey = [...HOME_ANNOUNCEMENTS_QUERY_KEY, 'active'];
+      client.setQueryData(homeKey, []);
+      if (action === 'save') {
+        (createAnnouncement as jest.Mock).mockResolvedValueOnce({ id: 'a1' });
+      } else {
+        (deleteAnnouncement as jest.Mock).mockResolvedValueOnce({});
+      }
+      const done = jest.fn();
+      const { result } = renderHook(
+        () => ({
+          save: useSaveSystemAnnouncement(done),
+          remove: useDeleteSystemAnnouncement(done),
+        }),
+        {
+          wrapper: ({ children }: { children: ReactNode }) => (
+            <QueryClientProvider client={client}>
+              {children}
+            </QueryClientProvider>
+          ),
+        }
+      );
+
+      act(() =>
+        action === 'save'
+          ? result.current.save.mutate({
+              request: { description: 'Body', startTime: 1, endTime: 2 },
+            })
+          : result.current.remove.mutate('a1')
+      );
+
+      await waitFor(() => expect(done).toHaveBeenCalled());
+
+      expect(client.getQueryState(homeKey)?.isInvalidated).toBe(true);
+    }
+  );
 
   it('hard-deletes, and reports a failed delete without closing', async () => {
     const onDeleted = jest.fn();

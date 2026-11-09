@@ -86,6 +86,18 @@ test.describe('Entity header announcements (data asset)', () => {
       await prevButton.click();
 
       await expect(banner).toContainText('Carousel Announcement Two');
+
+      const dots = widget.getByTestId('announcement-dots');
+
+      await expect(dots.getByLabel('Page 2', { exact: true })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
+
+      await dots.getByLabel('Page 3', { exact: true }).click();
+
+      await expect(banner).toContainText('Carousel Announcement Three');
+      await expect(nextButton).toBeDisabled();
     } finally {
       await table.delete(apiContext);
       await afterAction();
@@ -116,6 +128,7 @@ test.describe('Entity header announcements (data asset)', () => {
       await expect(widget).toContainText('Single Header Announcement');
       await expect(page.getByTestId('announcement-prev-btn')).toHaveCount(0);
       await expect(page.getByTestId('announcement-next-btn')).toHaveCount(0);
+      await expect(widget.getByTestId('announcement-dots')).toHaveCount(0);
     } finally {
       await table.delete(apiContext);
       await afterAction();

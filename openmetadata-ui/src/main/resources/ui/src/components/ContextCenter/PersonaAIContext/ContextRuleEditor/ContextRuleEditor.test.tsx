@@ -18,7 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { ReactNode } from 'react';
+import { ReactNode, useEffect } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ContextRule } from '../../../../generated/type/personaContextDefinition';
 import { ContextRuleEditor } from './ContextRuleEditor.component';
@@ -44,7 +44,17 @@ jest.mock('../../../common/atoms/drawer/useFormDrawer', () => ({
 }));
 
 jest.mock('./RuleQueryBuilderField.component', () => ({
-  RuleQueryBuilderField: () => <div data-testid="rule-query-builder" />,
+  RuleQueryBuilderField: (props: {
+    onReconstructionStatusChange?: (rendered: boolean) => void;
+  }) => {
+    // Simulate the reconstruction-status callback so the editor's warning
+    // guardrail can be tested without rendering a real query builder.
+    useEffect(() => {
+      props.onReconstructionStatusChange?.(false);
+    });
+
+    return <div data-testid="rule-query-builder" />;
+  },
 }));
 
 describe('ContextRuleEditor', () => {
@@ -255,5 +265,23 @@ describe('ContextRuleEditor', () => {
 
       cleanup();
     }
+  });
+
+  it('shows a warning when the saved filter cannot be rendered', () => {
+    render(
+      <ContextRuleEditor
+        {...defaultProps}
+        rule={{
+          ...rule,
+          queryFilter: JSON.stringify({
+            query: { match: { unknown: 'x' } },
+          }),
+        }}
+      />
+    );
+
+    expect(
+      screen.getByTestId('context-rule-filter-unrendered')
+    ).toBeInTheDocument();
   });
 });

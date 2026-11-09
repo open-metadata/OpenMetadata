@@ -26,6 +26,10 @@ import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import {
+  findOntologyInQueryPicker,
+  selectOntologyOption,
+} from '../../utils/ontologyStudio';
 
 const armQueryLibraryResponses = (page: Page) => [
   page.waitForResponse(
@@ -96,7 +100,11 @@ const createOwner = async (api: APIRequestContext) => {
 
   return okJson<Ontology>(
     await api.post('/api/v1/ontologies', {
-      data: { name, iri: 'urn:' + name, namespace: 'urn:' + name + ':' },
+      data: {
+        name,
+        iri: 'https://example.org/' + name,
+        namespace: 'https://example.org/' + name + '#',
+      },
     }),
     'Create native shell ontology'
   );
@@ -151,6 +159,8 @@ test.describe(
       isolatedUser,
       isolatedUserPage: page,
     }) => {
+      // Two scopes times three modes, each opening its dialogs, is more than the default budget.
+      test.slow();
       const api = await getWorkerAdminAPIContext();
       const owner = await createOwner(api);
       const preferencePath =
@@ -248,7 +258,7 @@ test.describe(
               if (mode === 'edit' && scope === 'owner') {
                 await expect(
                   subbar.getByTestId('submode-tab-definitions')
-                ).toHaveText('Term');
+                ).toHaveText('Ontology');
               }
               if (mode === 'query' && scope === 'owner') {
                 await expect(
@@ -269,7 +279,9 @@ test.describe(
                   shell.getByTestId('ontology-studio-query-console')
                 ).toHaveCount(0);
                 await expect(
-                  shell.getByRole('button', { name: /Select Ontology/ })
+                  shell
+                    .getByTestId('ontology-query-picker')
+                    .getByTestId('ontology-query-picker-title')
                 ).toBeVisible();
               }
               await expect(
@@ -293,27 +305,31 @@ test.describe(
               await expectNativeStudioCopy(shell);
               await shell.getByTestId('ontology-scope-menu-trigger').click();
               await expect(
-                page.getByTestId('ontology-scope-all-ontologies')
+                page.getByTestId('ontology-scope-all-ontologies-label')
               ).toHaveText('All ontologies');
               await expectNativeStudioCopy(page.getByRole('menu'));
               await page.keyboard.press('Escape');
 
-              await shell.getByTestId('ontology-publication-trigger').click();
-              await expect(
-                page.locator('#ontology-publication-title')
-              ).toHaveText('Review & publish');
-              if (scope === 'owner') {
+              if (scope === 'aggregate') {
+                await expect(
+                  shell.getByTestId('ontology-publication-trigger')
+                ).toBeDisabled();
+              } else {
+                await shell.getByTestId('ontology-publication-trigger').click();
+                await expect(
+                  page.locator('#ontology-publication-title')
+                ).toHaveText('Review & publish');
                 await expect(
                   page.getByTestId('ontology-publication-tab-changes')
                 ).toHaveText('Changes');
                 await expect(
                   page.getByTestId('ontology-publication-tab-releases')
                 ).toHaveText('Releases');
+                await expectNativeStudioCopy(
+                  page.getByTestId('ontology-publication-modal')
+                );
+                await page.keyboard.press('Escape');
               }
-              await expectNativeStudioCopy(
-                page.getByTestId('ontology-publication-modal')
-              );
-              await page.keyboard.press('Escape');
             }
             await shell.getByTestId('ontology-library-trigger').click();
             await expect(page.locator('#ontology-library-title')).toHaveText(
@@ -330,10 +346,12 @@ test.describe(
               const target = page.getByTestId('ontology-import-target-picker');
               await expect(target).toContainText('Select Ontology');
               await expectNativeStudioCopy(page.getByRole('dialog'));
-              await target.getByRole('button').click();
-              await page
-                .getByRole('option', { name: owner.name, exact: true })
-                .click();
+              await selectOntologyOption(
+                page,
+                target.getByRole('button'),
+                owner.name,
+                { replacedOnPick: true }
+              );
             }
             const transfer = page.getByRole('dialog');
             await expect(transfer).toHaveCount(1);
@@ -344,15 +362,18 @@ test.describe(
             await expect(
               transfer.getByTestId('ontology-native-import-tab')
             ).toHaveText('Import');
-            await expect(transfer).toContainText(
-              'There is no active release to export. Capture, approve, and activate a release first.'
-            );
+            await expect(
+              transfer.getByTestId('ontology-export-scope')
+            ).toContainText('Current draft');
+            await expect(
+              transfer.getByTestId('ontology-release-export-preview')
+            ).toContainText('owl:Ontology');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
             ).toHaveText('Export');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
-            ).toBeDisabled();
+            ).toBeEnabled();
             await expectNativeStudioCopy(transfer);
             await transfer.getByTestId('ontology-native-import-tab').click();
             await expect(
@@ -373,10 +394,7 @@ test.describe(
               .click();
             if (scope === 'aggregate') {
               const libraryResponses = armQueryLibraryResponses(page);
-              await shell
-                .getByRole('button', { name: /Select Ontology/ })
-                .click();
-              await page.getByRole('option', { name: owner.name }).click();
+              await (await findOntologyInQueryPicker(page, owner)).click();
               await expectLoadedNativeLibrary(
                 page,
                 await Promise.all(libraryResponses)
@@ -439,14 +457,9 @@ test.describe(
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText(shared.iri);
-          await page.getByTestId('ontology-publication-trigger').click();
           await expect(
-            page.getByTestId('ontology-publication-picker')
-          ).toBeVisible();
-          await expect(
-            page.getByTestId('ontology-publication-tab-changes')
-          ).toHaveCount(0);
-          await page.keyboard.press('Escape');
+            page.getByTestId('ontology-publication-trigger')
+          ).toBeDisabled();
           await page.getByTestId('ontology-import-export-trigger').click();
           await expect(
             page.getByTestId('ontology-import-target-picker')

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import BlockEditor from './BlockEditor';
 import { BlockEditorRef } from './BlockEditor.interface';
@@ -56,5 +56,18 @@ describe('BlockEditor', () => {
     });
 
     expect(ref.current?.editor?.isEditable).toBe(true);
+  });
+
+  it('exposes the textbox role only while editable', async () => {
+    const { rerender } = render(<BlockEditor editable={false} />);
+    const editorElement = () => document.querySelector('.om-block-editor');
+
+    expect(editorElement()).toHaveAttribute('role', 'presentation');
+
+    rerender(<BlockEditor editable />);
+
+    await waitFor(() =>
+      expect(editorElement()).toHaveAttribute('role', 'textbox')
+    );
   });
 });

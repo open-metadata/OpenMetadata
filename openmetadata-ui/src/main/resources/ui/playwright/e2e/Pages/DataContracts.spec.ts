@@ -1829,7 +1829,7 @@ test.describe('Data Contracts', () => {
     // Edit semantic
     await page
       .getByTestId('contract-semantics-card-0')
-      .locator('.edit-expand-button')
+      .getByTestId('edit-semantic-0')
       .click();
     await page.fill('#semantics_0_name', 'Edited Semantic Name');
     await page.getByTestId('save-semantic-button').click();

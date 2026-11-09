@@ -37,7 +37,10 @@ import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface
 import { getTreeConfig } from './AdvancedSearchUtils';
 import type { TreeNode } from './queryBuilder/url';
 import { withExploreFieldKeys } from './queryBuilder/url';
-import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
+import {
+  getJsonTreeFromQueryFilter,
+  isQueryFilterFullyRepresentable,
+} from './QueryBuilderPureUtils';
 import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
 
@@ -122,6 +125,29 @@ export const getRuleFilterTree = (
       : undefined;
   } catch {
     return undefined;
+  }
+};
+
+// False when the editor can show only part of the saved filter (or none of it): a
+// persisted tree is exact, a reconstructed one may have dropped conditions.
+export const isRuleFilterFullyRendered = (
+  filterJsonTree?: string,
+  queryFilter?: string
+): boolean => {
+  if (!queryFilter || parseRuleFilterTree(filterJsonTree)) {
+    return true;
+  }
+  try {
+    const parsedFilter: unknown = JSON.parse(queryFilter);
+
+    return (
+      Boolean(parsedFilter) &&
+      typeof parsedFilter === 'object' &&
+      !Array.isArray(parsedFilter) &&
+      isQueryFilterFullyRepresentable(parsedFilter as QueryFilterInterface)
+    );
+  } catch {
+    return false;
   }
 };
 

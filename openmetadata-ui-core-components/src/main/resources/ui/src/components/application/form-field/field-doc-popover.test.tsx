@@ -41,16 +41,16 @@ const renderPopover = async (variant?: FieldDocPopoverVariant) => {
 };
 
 describe('FieldDocPopover variant', () => {
-  it('uses the overlay surface by default', async () => {
+  it('uses the raised overlay surface by default', async () => {
     const card = await renderPopover();
 
-    expect(card).toHaveClass('tw:bg-overlay-surface');
+    expect(card).toHaveClass('tw:bg-floating', 'tw:shadow-raised');
   });
 
   it('muted variant sits on primary_alt like a muted Card', async () => {
     const card = await renderPopover('muted');
 
     expect(card).toHaveClass('tw:bg-primary_alt');
-    expect(card).not.toHaveClass('tw:bg-overlay-surface');
+    expect(card).not.toHaveClass('tw:bg-floating');
   });
 });
