@@ -814,7 +814,10 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
         @ApiResponse(
             responseCode = "409",
             description =
-                "Already queued or being extracted, nothing to extract, or extraction unavailable")
+                "Already queued or being extracted, nothing to extract, or extraction unavailable"),
+        @ApiResponse(
+            responseCode = "503",
+            description = "The queue could not take the run; the file is left Failed to retry")
       })
   public ContextFile requestExtraction(
       @Context UriInfo uriInfo,

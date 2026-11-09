@@ -841,7 +841,10 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
         @ApiResponse(
             responseCode = "409",
             description =
-                "Already queued or being extracted, nothing to extract, or extraction unavailable")
+                "Already queued or being extracted, nothing to extract, or extraction unavailable"),
+        @ApiResponse(
+            responseCode = "503",
+            description = "The queue could not take the run; the article is left Failed to retry")
       })
   public Page requestExtraction(
       @Context UriInfo uriInfo,

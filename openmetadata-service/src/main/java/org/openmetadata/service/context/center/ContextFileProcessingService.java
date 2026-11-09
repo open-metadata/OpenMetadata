@@ -51,6 +51,10 @@ import org.openmetadata.service.util.RequestEntityCache;
 @Slf4j
 public class ContextFileProcessingService {
   private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
+  private static final String TEXT_QUEUE_FULL =
+      "Text extraction queue is full. Please retry later.";
+  private static final String CONTENDED_TEXT =
+      "Concurrent updates prevented text extraction. Please retry later.";
   private final ContextFileRepository repository;
   private final Supplier<AssetService> assetServiceSupplier;
   private final Executor executor;
@@ -146,17 +150,23 @@ public class ContextFileProcessingService {
   }
 
   public void submit(UUID fileId, UUID contentId) {
+    if (!queueText(fileId, contentId)) {
+      ExtractionRequests.recordFailure(
+          CONTEXT_FILE_ENTITY, fileId, () -> applyFailure(fileId, contentId, TEXT_QUEUE_FULL));
+    }
+  }
+
+  /** Whether the text-extraction executor took the file: a full one rejects it. */
+  private boolean queueText(UUID fileId, UUID contentId) {
+    boolean queued = true;
     try {
       executor.execute(() -> process(fileId, contentId));
     } catch (RejectedExecutionException e) {
       LOG.warn(
           "Skipping text extraction for file {} because the async executor rejected it", fileId, e);
-      try {
-        applyFailure(fileId, contentId, "Text extraction queue is full. Please retry later.");
-      } catch (ConditionalUpdateExhaustedException exhausted) {
-        LOG.warn("Unable to mark rejected text extraction failed for file {}", fileId);
-      }
+      queued = false;
     }
+    return queued;
   }
 
   /**
@@ -169,12 +179,32 @@ public class ContextFileProcessingService {
     ContextFile requested = stampRequested(fileId);
     UUID contentId = UUID.fromString(requested.getHeadContentId());
     if (requested.getProcessingStatus() == ProcessingStatus.Uploaded) {
-      submit(fileId, contentId);
+      requireQueuedText(fileId, contentId);
     } else {
-      // The stamp refuses duplicates; a RUNNING job may be the failed run still finishing.
-      submitMemoryExtraction(fileId, contentId, true);
+      requireQueuedMemories(fileId, contentId);
     }
     return requested;
+  }
+
+  private void requireQueuedText(UUID fileId, UUID contentId) {
+    if (!queueText(fileId, contentId)) {
+      throw ExtractionRequests.queueRefused(
+          CONTEXT_FILE_ENTITY,
+          fileId,
+          TEXT_QUEUE_FULL,
+          () -> applyFailure(fileId, contentId, TEXT_QUEUE_FULL));
+    }
+  }
+
+  /** The stamp refuses duplicates; a RUNNING job may be the failed run still finishing. */
+  private void requireQueuedMemories(UUID fileId, UUID contentId) {
+    if (!queueMemoryJob(fileId, contentId, false)) {
+      throw ExtractionRequests.queueRefused(
+          CONTEXT_FILE_ENTITY,
+          fileId,
+          ExtractionRequests.QUEUE_FAILED,
+          () -> applyFailure(fileId, contentId, ExtractionRequests.QUEUE_FAILED, false));
+    }
   }
 
   private ContextFile stampRequested(UUID fileId) {
@@ -284,12 +314,8 @@ public class ContextFileProcessingService {
       LOG.debug("Requeued text extraction for file {} after concurrent updates", fileId);
     } catch (RejectedExecutionException e) {
       LOG.warn("Unable to requeue text extraction for file {} after concurrent updates", fileId, e);
-      try {
-        applyFailure(
-            fileId, contentId, "Concurrent updates prevented text extraction. Please retry later.");
-      } catch (ConditionalUpdateExhaustedException exhausted) {
-        LOG.warn("Unable to mark contended text extraction failed for file {}", fileId);
-      }
+      ExtractionRequests.recordFailure(
+          CONTEXT_FILE_ENTITY, fileId, () -> applyFailure(fileId, contentId, CONTENDED_TEXT));
     }
   }
 
@@ -388,6 +414,17 @@ public class ContextFileProcessingService {
   }
 
   private void submitMemoryExtraction(UUID fileId, UUID contentId, boolean retry) {
+    if (!queueMemoryJob(fileId, contentId, !retry)) {
+      ExtractionRequests.recordFailure(
+          CONTEXT_FILE_ENTITY,
+          fileId,
+          () -> applyFailure(fileId, contentId, ExtractionRequests.QUEUE_FAILED, false));
+    }
+  }
+
+  /** Whether the persistent queue took the file's memory job, or already holds one for it. */
+  private boolean queueMemoryJob(UUID fileId, UUID contentId, boolean includeRunning) {
+    boolean queued = true;
     try {
       ContextMemoryExtractionJobHandler.Args args =
           ContextMemoryExtractionJobHandler.Args.file(fileId, contentId);
@@ -396,15 +433,12 @@ public class ContextFileProcessingService {
           args.jobKey(),
           JsonUtils.pojoToJson(args),
           Entity.ADMIN_USER_NAME,
-          !retry);
+          includeRunning);
     } catch (RuntimeException e) {
       LOG.error("Unable to queue knowledge pill extraction for file {}", fileId, e);
-      try {
-        applyFailure(fileId, contentId, ExtractionRequests.QUEUE_FAILED, false);
-      } catch (ConditionalUpdateExhaustedException exhausted) {
-        LOG.warn("Unable to mark rejected knowledge pill extraction failed for file {}", fileId);
-      }
+      queued = false;
     }
+    return queued;
   }
 
   void runMemoryExtraction(UUID fileId, UUID contentId) {

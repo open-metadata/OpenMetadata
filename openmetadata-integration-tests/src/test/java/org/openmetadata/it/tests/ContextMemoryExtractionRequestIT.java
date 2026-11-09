@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
+import java.lang.reflect.Proxy;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
@@ -118,6 +119,8 @@ class ContextMemoryExtractionRequestIT {
       "Only a document that failed or whose memories were never extracted can be extracted.";
   private static final String PARTIAL_RUN =
       "Knowledge pill extraction did not process every source chunk";
+  private static final String QUEUE_FAILED =
+      "Unable to queue knowledge pill extraction. Please retry later.";
   private static final Duration SEARCH_TIMEOUT = Duration.ofSeconds(60);
   private static final ExtractionAvailability AVAILABLE =
       new ExtractionAvailability().withAvailable(true);
@@ -128,6 +131,7 @@ class ContextMemoryExtractionRequestIT {
   private final Set<UUID> trackedMemories = new HashSet<>();
   private final List<UUID> folders = new ArrayList<>();
   private AiProvider previousProvider;
+  private DocumentMemoryExtractor extractor;
   private GenericBackgroundWorker worker;
   private TestNamespace namespace;
   private SearchClient search;
@@ -157,14 +161,19 @@ class ContextMemoryExtractionRequestIT {
           }
         });
     LLMClientHolder.setForTesting(new NoopCompletionClient());
+    this.extractor = extractor;
+    installPageWorker(jobs());
+    search = new SearchClient(OssTestServer.defaultHandle());
+  }
+
+  private void installPageWorker(JobDAO queue) {
     PageContextProcessingEngineHolder.setForTesting(
         new PageContextProcessingEngine(
             (KnowledgePageRepository) Entity.getEntityRepository(Entity.PAGE),
             extractor,
             new ContextMemoryReconciler(memoryRepository()),
-            jobs(),
+            queue,
             0L));
-    search = new SearchClient(OssTestServer.defaultHandle());
   }
 
   @AfterEach
@@ -406,6 +415,26 @@ class ContextMemoryExtractionRequestIT {
     assertRefused(extract(asOwner(), PAGES, link.getId()), 409, NOT_EXTRACTABLE);
   }
 
+  /** A queue that refuses the job answers 503 and leaves the article Failed, never Queued. */
+  @Test
+  void aQueueThatRefusesAnArticleAnswers503AndLeavesItFailedToRetry(TestNamespace ns)
+      throws Exception {
+    Page page = articleWrittenWhileOff(ns, "queue-refused");
+    installPageWorker(refusingPageJobs());
+
+    assertRefused(extract(asOwner(), PAGES, page.getId()), 503, QUEUE_FAILED);
+
+    Page failed = read(page);
+    assertEquals(PageProcessingStatus.Failed, failed.getProcessingStatus());
+    assertEquals(QUEUE_FAILED, failed.getProcessingError());
+    assertEquals(0, jobs().countInFlightMemoryJobs(pageJob(page), true));
+    installPageWorker(jobs());
+    Page retried = accepted(extract(asOwner(), PAGES, page.getId()), Page.class);
+    assertEquals(PageProcessingStatus.Queued, retried.getProcessingStatus());
+    assertNull(retried.getProcessingError());
+    assertEquals(1, jobs().countInFlightMemoryJobs(pageJob(page), true));
+  }
+
   @Test
   void extractingAnArticleWhileUnavailableGets409WithReason(TestNamespace ns) throws Exception {
     Page page = articleWrittenWhileOff(ns, "unavailable");
@@ -566,6 +595,21 @@ class ContextMemoryExtractionRequestIT {
             Entity.ADMIN_USER_NAME,
             true);
     return args.jobKey();
+  }
+
+  /** The job queue as a database outage leaves it for page jobs: every enqueue fails. */
+  private static JobDAO refusingPageJobs() {
+    JobDAO queue = jobs();
+    return (JobDAO)
+        Proxy.newProxyInstance(
+            JobDAO.class.getClassLoader(),
+            new Class<?>[] {JobDAO.class},
+            (proxy, method, args) -> {
+              if ("enqueuePageMemoryJob".equals(method.getName())) {
+                throw new IllegalStateException("The job queue is unavailable");
+              }
+              return method.invoke(queue, args);
+            });
   }
 
   private static String fileJob(ContextFile file) {

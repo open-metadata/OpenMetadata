@@ -11,6 +11,8 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -18,6 +20,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.WebApplicationException;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
@@ -709,6 +712,131 @@ class ContextFileProcessingServiceTest {
     assertEquals(ExtractionRequests.ALREADY_REQUESTED, refused.getMessage());
     verify(jobDao, never())
         .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
+  }
+
+  /** A queue that cannot take the memory job leaves the file Failed, its text kept, and 503s. */
+  @Test
+  void aFileTheQueueCannotTakeIsLeftFailedToRetry() {
+    failedWith("provider exploded", "Quarterly");
+    memoryQueueRefuses();
+
+    assertQueueRefused(service(Runnable::run, () -> assetService, true), QUEUE_FAILED);
+
+    List<ContextFile> stamps = fileStamps();
+    assertEquals(
+        List.of(ProcessingStatus.ExtractingContext, ProcessingStatus.Failed),
+        stamps.stream().map(ContextFile::getProcessingStatus).toList());
+    assertEquals(QUEUE_FAILED, stamps.getLast().getProcessingError());
+    assertEquals("indexed text", stamps.getLast().getExtractedText());
+  }
+
+  /** A full text-extraction executor leaves the file Failed too, and 503s. */
+  @Test
+  void aFileTheTextQueueCannotTakeIsLeftFailedToRetry() {
+    failedWith("Unable to read file content from object storage", null);
+    Executor full =
+        task -> {
+          throw new RejectedExecutionException("queue full");
+        };
+
+    assertQueueRefused(service(full, () -> assetService, true), TEXT_QUEUE_FULL);
+
+    List<ContextFile> stamps = fileStamps();
+    assertEquals(
+        List.of(ProcessingStatus.Uploaded, ProcessingStatus.Failed),
+        stamps.stream().map(ContextFile::getProcessingStatus).toList());
+    assertEquals(TEXT_QUEUE_FULL, stamps.getLast().getProcessingError());
+  }
+
+  /** Recording the refusal gets more than one write budget: no job is left to record it later. */
+  @Test
+  void aFileWhoseFailureLosesToContentionIsStillLeftFailed() {
+    failedWith("provider exploded", "Quarterly");
+    memoryQueueRefuses();
+    AtomicInteger writes =
+        fileWritesThatLoseRaces(2, ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 1);
+
+    assertQueueRefused(service(Runnable::run, () -> assetService, true), QUEUE_FAILED);
+
+    assertEquals(ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 2, writes.get());
+    ContextFile recorded = fileStamps().getLast();
+    assertEquals(ProcessingStatus.Failed, recorded.getProcessingStatus());
+    assertEquals(QUEUE_FAILED, recorded.getProcessingError());
+  }
+
+  /** A failure no budget can record is still answered 503, never 500. */
+  @Test
+  void aFileWhoseFailureCannotBeRecordedStillAnswers503() {
+    failedWith("provider exploded", "Quarterly");
+    memoryQueueRefuses();
+    AtomicInteger writes = fileWritesThatLoseRaces(2, Integer.MAX_VALUE);
+
+    assertQueueRefused(service(Runnable::run, () -> assetService, true), QUEUE_FAILED);
+
+    assertEquals(
+        1
+            + ExtractionRequests.FAILURE_RECORD_ROUNDS
+                * ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS,
+        writes.get());
+  }
+
+  /** Contention that outlasts a text run, then a full executor, still leave the file Failed. */
+  @Test
+  void aContendedTextRunTheExecutorCannotRequeueIsStillLeftFailed() {
+    int budget = ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS;
+    AtomicInteger writes = fileWritesThatLoseRaces(1, 2 * budget);
+    Executor full =
+        task -> {
+          throw new RejectedExecutionException("queue full");
+        };
+
+    service(full, () -> assetService).process(fileId, contentId);
+
+    assertEquals(2 * budget + 1, writes.get(), "the failure is recorded after one more budget");
+    ContextFile recorded = fileStamps().getLast();
+    assertEquals(ProcessingStatus.Failed, recorded.getProcessingStatus());
+    assertEquals(
+        "Concurrent updates prevented text extraction. Please retry later.",
+        recorded.getProcessingError());
+  }
+
+  private static final String QUEUE_FAILED = ExtractionRequests.QUEUE_FAILED;
+  private static final String TEXT_QUEUE_FULL =
+      "Text extraction queue is full. Please retry later.";
+
+  private void memoryQueueRefuses() {
+    doThrow(new IllegalStateException("queue unavailable"))
+        .when(jobDao)
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), eq(false));
+  }
+
+  /** Counts file writes; those numbered {@code first} to {@code last} lose to a concurrent edit. */
+  private AtomicInteger fileWritesThatLoseRaces(int first, int last) {
+    AtomicInteger writes = new AtomicInteger();
+    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
+        .thenAnswer(
+            invocation -> {
+              int write = writes.incrementAndGet();
+              if (write >= first && write <= last) {
+                throw new PreconditionFailedException("Concurrent file update");
+              }
+              return null;
+            });
+    return writes;
+  }
+
+  private List<ContextFile> fileStamps() {
+    verify(repository, atLeastOnce())
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(UPLOADER));
+    return updatedFileCaptor.getAllValues();
+  }
+
+  private void assertQueueRefused(ContextFileProcessingService service, String message) {
+    ServiceUnavailableException refused =
+        assertThrows(ServiceUnavailableException.class, () -> service.requestExtraction(fileId));
+
+    assertEquals(503, refused.getResponse().getStatus());
+    assertEquals(message, refused.getMessage());
   }
 
   private void failedWith(String error, String snapshotText) {

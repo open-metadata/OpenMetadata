@@ -106,7 +106,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
   public Page requestExtraction(UUID pageId) {
     ExtractionRequests.requireAvailable(availability.get());
     Page queued = stampQueued(pageId);
-    scheduleRequested(pageId);
+    requireScheduled(pageId);
     return queued;
   }
 
@@ -147,13 +147,17 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     return queued;
   }
 
-  /** A job the queue cannot take leaves the article Failed, not Queued for good, so it can retry. */
-  private void scheduleRequested(UUID pageId) {
+  /** A job the queue cannot take leaves the article Failed, not Queued for good, and is a 503. */
+  private void requireScheduled(UUID pageId) {
     try {
       schedule(pageId);
     } catch (RuntimeException e) {
       LOG.error("Unable to queue requested memory extraction for page {}", pageId, e);
-      stampStatus(pageId, PageProcessingStatus.Failed, ExtractionRequests.QUEUE_FAILED);
+      throw ExtractionRequests.queueRefused(
+          Entity.PAGE,
+          pageId,
+          ExtractionRequests.QUEUE_FAILED,
+          () -> stampStatus(pageId, PageProcessingStatus.Failed, ExtractionRequests.QUEUE_FAILED));
     }
   }
 

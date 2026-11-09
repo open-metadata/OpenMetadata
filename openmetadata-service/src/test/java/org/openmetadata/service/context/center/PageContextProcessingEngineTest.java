@@ -18,10 +18,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.WebApplicationException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -393,10 +395,52 @@ class PageContextProcessingEngineTest {
             anyString(), anyString(), anyString(), anyString(), anyLong(), anyLong());
   }
 
-  /** A queue that cannot take the job leaves the article Failed rather than Queued for good. */
+  /** A queue that cannot take the job leaves the article Failed rather than Queued, and 503s. */
   @Test
   void anArticleTheQueueCannotTakeIsLeftFailedToRetry() {
-    Page failed = article(PageProcessingStatus.Failed, "stale-hash");
+    queueRefusesTheJobOf(article(PageProcessingStatus.Failed, "stale-hash"));
+
+    assertQueueRefused();
+
+    List<Page> stamps = capturedUpdates(EDITOR);
+    assertEquals(
+        List.of(PageProcessingStatus.Queued, PageProcessingStatus.Failed),
+        stamps.stream().map(Page::getProcessingStatus).toList());
+    assertEquals(ExtractionRequests.QUEUE_FAILED, stamps.getLast().getProcessingError());
+  }
+
+  /** Recording the refusal gets more than one write budget: no job is left to record it later. */
+  @Test
+  void anArticleWhoseFailureLosesToContentionIsStillLeftFailed() {
+    queueRefusesTheJobOf(article(PageProcessingStatus.Failed, "stale-hash"));
+    AtomicInteger writes =
+        writesThatLoseRaces(2, ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 1);
+
+    assertQueueRefused();
+
+    assertEquals(ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 2, writes.get());
+    Page recorded = capturedUpdates(EDITOR).getLast();
+    assertEquals(PageProcessingStatus.Failed, recorded.getProcessingStatus());
+    assertEquals(ExtractionRequests.QUEUE_FAILED, recorded.getProcessingError());
+  }
+
+  /** A failure no budget can record is still answered 503, never 500. */
+  @Test
+  void anArticleWhoseFailureCannotBeRecordedStillAnswers503() {
+    queueRefusesTheJobOf(article(PageProcessingStatus.Failed, "stale-hash"));
+    AtomicInteger writes = writesThatLoseRaces(2, Integer.MAX_VALUE);
+
+    assertQueueRefused();
+
+    assertEquals(
+        1
+            + ExtractionRequests.FAILURE_RECORD_ROUNDS
+                * ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS,
+        writes.get());
+  }
+
+  /** The page reads Failed first, then as the request stamped it Queued. */
+  private void queueRefusesTheJobOf(Page failed) {
     Page queued =
         JsonUtils.deepCopy(failed, Page.class).withProcessingStatus(PageProcessingStatus.Queued);
     when(pageRepository.get(isNull(), eq(pageId), any(), eq(Include.NON_DELETED), eq(false)))
@@ -405,14 +449,31 @@ class PageContextProcessingEngineTest {
         .when(jobDao)
         .enqueuePageMemoryJob(
             anyString(), anyString(), anyString(), anyString(), anyLong(), anyLong());
+  }
 
-    engine(available()).requestExtraction(pageId);
+  /** Counts page writes; those numbered {@code first} to {@code last} lose to a concurrent edit. */
+  private AtomicInteger writesThatLoseRaces(int first, int last) {
+    AtomicInteger writes = new AtomicInteger();
+    when(pageRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              int write = writes.incrementAndGet();
+              if (write >= first && write <= last) {
+                throw new PreconditionFailedException("Concurrent edit");
+              }
+              return null;
+            });
+    return writes;
+  }
 
-    List<Page> stamps = capturedUpdates(EDITOR);
-    assertEquals(
-        List.of(PageProcessingStatus.Queued, PageProcessingStatus.Failed),
-        stamps.stream().map(Page::getProcessingStatus).toList());
-    assertEquals(ExtractionRequests.QUEUE_FAILED, stamps.getLast().getProcessingError());
+  private void assertQueueRefused() {
+    PageContextProcessingEngine engine = engine(available());
+
+    ServiceUnavailableException refused =
+        assertThrows(ServiceUnavailableException.class, () -> engine.requestExtraction(pageId));
+
+    assertEquals(503, refused.getResponse().getStatus());
+    assertEquals(ExtractionRequests.QUEUE_FAILED, refused.getMessage());
   }
 
   private static final String BODY = "Onboarding runbook body";
