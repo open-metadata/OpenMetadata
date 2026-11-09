@@ -7,9 +7,7 @@
   (`test_the_workbook_version_is_patched_onto_its_dashboard`,
   `test_a_latest_version_property_of_another_type_is_left_alone`,
   `test_no_workbook_version_is_set_without_custom_properties`,
-  `test_a_failed_registration_sets_no_version_and_is_not_retried`, `test_a_registered_latest_version_property_is_reused`,
-  `test_a_property_a_user_sets_after_the_dashboard_read_is_kept`,
-  `test_a_latest_version_property_an_administrator_adds_after_the_read_is_left_as_it_is`)
+  `test_a_failed_registration_sets_no_version_and_is_not_retried`, `test_a_registered_latest_version_property_is_reused`)
 - **Related:** ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard, PR #37300
 
 ## Context
@@ -29,14 +27,6 @@ connector.
 - An existing `latestVersion` property of type `number` is reused. One of another type is left alone: Sigma sets no
   value, and the run logs a warning.
 - A failed registration sets no value for the rest of the run and is not retried in that run.
-- The value and the definition are written with the entity's version as `If-Match` (`W/"<version>"`), so nothing
-  written after Sigma's read is overwritten: a property a user sets on the dashboard is kept, and a `latestVersion`
-  an administrator registers is left as it is. On a 412 Sigma reads again and retries, up to
-  `MAX_OPTIMISTIC_LOCK_RETRIES` times; after that the run reports an error for the workbook, or logs a warning for
-  the definition.
-- So Sigma patches the value itself instead of sending a `PatchRequest`, which carries no `If-Match`
-  (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard). It adds the definition
-  with a PATCH of the dashboard type, not the create-or-update PUT, which replaces a property of the same name.
 
 ## Consequences
 

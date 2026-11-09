@@ -13,7 +13,6 @@
 Test sigma Dashboard using the topology
 """
 
-import copy
 import json
 from collections import Counter
 from fnmatch import fnmatch
@@ -23,7 +22,6 @@ from unittest.mock import MagicMock, patch
 from urllib.parse import urlparse
 from uuid import NAMESPACE_URL, uuid5
 
-import jsonpatch
 import pytest
 import requests
 
@@ -54,7 +52,7 @@ from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipelin
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName
+from metadata.generated.schema.type.basic import EntityExtension, FullyQualifiedEntityName
 from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -64,8 +62,8 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.models.patch_request import (
     ALLOWED_COMMON_PATCH_FIELDS,
     RESTRICT_UPDATE_LIST,
+    build_patch,
 )
-from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
@@ -1642,123 +1640,52 @@ def test_dashboard_records_when_the_workbook_was_created_and_updated(sigma_over_
     )
 
 
-class FakeOpenMetadata:
-    """
-    OpenMetadata's dashboard custom properties and the Sigma dashboard, as the server holds them, answering the
-    client's reads and writes. A write whose If-Match is not the current version is refused with 412, as the server
-    refuses it. `after_type_read` and `after_dashboard_read` run once after the next read, as an edit another user
-    makes between that read and the write.
-    """
+class FakeDashboardProperties:
+    """OpenMetadata's dashboard custom properties and the Sigma dashboard, as the server holds them"""
 
     def __init__(self, properties=(), extension=None):
-        self.dashboard_type = {
-            "id": str(uuid5(NAMESPACE_URL, "dashboard")),
-            "version": 0.1,
-            "customProperties": [{"name": name, "propertyType": {"name": data_type}} for name, data_type in properties],
-        }
-        self.dashboard = {
-            "id": str(uuid5(NAMESPACE_URL, "wb-1")),
-            "name": "wb-1",
-            "fullyQualifiedName": "mock_sigma.wb-1",
-            "service": {"id": str(MOCK_DASHBOARD_SERVICE.id.root), "type": "dashboardService"},
-            "version": 0.1,
-            **({"extension": extension} if extension else {}),
-        }
-        self.after_type_read = None
-        self.after_dashboard_read = None
-        self.type_write_error = None
+        self.properties = [{"name": name, "propertyType": {"name": data_type}} for name, data_type in properties]
         self.registered = []
-        self.type_writes = 0
-        self.dashboard_writes = 0
-        self.refused = 0
+        self.dashboard = LineageDashboard(
+            id=uuid5(NAMESPACE_URL, "wb-1"),
+            name="wb-1",
+            fullyQualifiedName="mock_sigma.wb-1",
+            service=EntityReference(id=MOCK_DASHBOARD_SERVICE.id, type="dashboardService"),
+            extension=EntityExtension(extension) if extension else None,
+        )
 
     def serve(self, source):
+        source.metadata.get_entity_custom_properties = lambda entity_type: self.properties
         source.metadata.get_property_type_ref = lambda data_type: PropertyType(
-            EntityReference(id=uuid5(NAMESPACE_URL, data_type.value), type="type")
+            EntityReference(id=uuid5(NAMESPACE_URL, data_type.value), type="type", name=data_type.value)
         )
-        source.metadata.get_by_name = self.get_dashboard
-        source.metadata.client = SimpleNamespace(get=self.get_type, put=self.put_property, patch=self.patch)
-
-    @property
-    def extension(self):
-        return self.dashboard.get("extension")
-
-    def get_type(self, path):
-        assert path.startswith("/metadata/types/name/dashboard")
-        read = copy.deepcopy(self.dashboard_type)
-        self.after_type_read, edit = None, self.after_type_read
-        if edit:
-            edit()
-        return read
-
-    def get_dashboard(self, entity, fqn, fields=None):
-        read = LineageDashboard.model_validate(self.dashboard) if fqn == self.dashboard["fullyQualifiedName"] else None
-        self.after_dashboard_read, edit = None, self.after_dashboard_read
-        if edit:
-            edit()
-        return read
-
-    def edit(self, target, **changes):
-        """Another user's change: the server bumps the version"""
-        target.update(changes, version=round(target["version"] + 0.1, 1))
-
-    def put_property(self, path, data):
-        """The custom property create-or-update: one already named so is replaced"""
-        self.type_writes += 1
-        if self.type_write_error:
-            raise self.type_write_error
-        request = json.loads(data)
-        data_type = next(
-            name for name in ("number", "string") if str(uuid5(NAMESPACE_URL, name)) == request["propertyType"]["id"]
+        source.metadata.create_or_update_custom_property = self.register
+        source.metadata.get_by_name = lambda entity, fqn, fields=None: (
+            self.dashboard if fqn == self.dashboard.fullyQualifiedName.root else None
         )
-        self.registered.append((request["name"], data_type))
-        kept = [prop for prop in self.dashboard_type["customProperties"] if prop["name"] != request["name"]]
-        self.edit(self.dashboard_type, customProperties=[*kept, {**request, "propertyType": {"name": data_type}}])
 
-    def patch(self, path, data=None, headers=None):
-        is_type = path.startswith("/metadata/types/")
-        target = self.dashboard_type if is_type else self.dashboard
-        if is_type:
-            self.type_writes += 1
-            if self.type_write_error:
-                raise self.type_write_error
-        if_match = (headers or {}).get("If-Match")
-        if if_match and if_match != f'W/"{target["version"]}"':
-            self.refused += 1
-            raise APIError({"code": 412, "message": "Precondition Failed"})
-        operations = json.loads(data)
-        if is_type:
-            self.registered += [
-                (op["value"]["name"], op["value"]["propertyType"]["name"])
-                for op in operations
-                if op["path"] == "/customProperties/-"
-            ]
-        else:
-            assert all(op["path"].startswith("/extension") and op["op"] != "remove" for op in operations)
-            self.dashboard_writes += 1
-        patched = jsonpatch.apply_patch(target, operations)
-        patched["version"] = round(target["version"] + 0.1, 1)
-        if is_type:
-            self.dashboard_type = patched
-        else:
-            self.dashboard = patched
-        return copy.deepcopy(patched)
+    def register(self, record):
+        request = record.createCustomPropertyRequest
+        self.registered.append((request.name.root, request.propertyType.root.name))
+        self.properties.append({"name": request.name.root, "propertyType": {"name": request.propertyType.root.name}})
 
 
-def stored_extension(source, server, workbook_id="wb-1"):
-    """The dashboard's custom properties once the workbook's custom property stage ran, the sink applying any patch"""
+def patched_extension(source, workbook_id="wb-1"):
+    """The extension the dashboard holds once the sink applies the workbook's patch"""
     details = source.get_dashboard_details(Workbook(workbookId=workbook_id))
-    for either in source.yield_dashboard_extension(details):
-        if either.right:
-            source.metadata.patch(
-                entity=type(either.right.original_entity),
-                source=either.right.original_entity,
-                destination=either.right.new_entity,
-                allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
-                restrict_update_fields=RESTRICT_UPDATE_LIST,
-                override_metadata=either.right.override_metadata,
-            )
-    return server.extension
+    requests_sent = [either.right for either in source.yield_dashboard_extension(details)]
+    if not requests_sent:
+        return None
+    (request,) = requests_sent
+    dashboard_patch = build_patch(
+        source=request.original_entity,
+        destination=request.new_entity,
+        allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+        restrict_update_fields=RESTRICT_UPDATE_LIST,
+        override_metadata=request.override_metadata,
+    )
+    assert all(op["path"].startswith("/extension") and op["op"] != "remove" for op in dashboard_patch.patch)
+    return dashboard_patch.apply(request.original_entity.model_dump(mode="json", exclude_none=True))["extension"]
 
 
 @pytest.mark.parametrize("version", [3, 1.1])
@@ -1766,90 +1693,65 @@ def test_the_workbook_version_is_patched_onto_its_dashboard(sigma_over_http, rou
     source, _ = sigma_over_http
     source.source_config.includeCustomProperties = True
     routes["GET", "/v2/workbooks/wb-1"] = {**routes["GET", "/v2/workbooks/wb-1"], "latestVersion": version}
-    server = FakeOpenMetadata(extension={"team": "finance", "latestVersion": 2})
+    server = FakeDashboardProperties(extension={"team": "finance", "latestVersion": 2})
     server.serve(source)
 
-    assert stored_extension(source, server) == {"team": "finance", "latestVersion": version}
-    # wb-2 has no dashboard: nothing is written, and the property is not registered again
-    stored_extension(source, server, "wb-2")
-    assert server.dashboard_writes == 1
+    assert patched_extension(source) == {"team": "finance", "latestVersion": version}
+    assert patched_extension(source, "wb-2") is None
     assert server.registered == [("latestVersion", "number")]
 
 
 def test_a_latest_version_property_of_another_type_is_left_alone(sigma_over_http):
     source, _ = sigma_over_http
     source.source_config.includeCustomProperties = True
-    server = FakeOpenMetadata(properties=[("latestVersion", "string")])
+    server = FakeDashboardProperties(properties=[("latestVersion", "string")])
     server.serve(source)
 
-    assert stored_extension(source, server) is None
+    assert patched_extension(source) is None
     assert server.registered == []
 
 
 def test_no_workbook_version_is_set_without_custom_properties(sigma_over_http):
     source, _ = sigma_over_http
-    server = FakeOpenMetadata()
+    server = FakeDashboardProperties()
     server.serve(source)
 
-    assert stored_extension(source, server) is None
+    assert patched_extension(source) is None
     assert server.registered == []
 
 
 def test_a_failed_registration_sets_no_version_and_is_not_retried(sigma_over_http):
     source, _ = sigma_over_http
     source.source_config.includeCustomProperties = True
-    server = FakeOpenMetadata()
-    server.type_write_error = APIError({"code": 403, "message": "Forbidden"})
+    server = FakeDashboardProperties()
     server.serve(source)
+    attempts = []
 
-    assert stored_extension(source, server) is None
-    assert stored_extension(source, server, "wb-2") is None
-    assert server.type_writes == 1
+    def refuse(record):
+        attempts.append(record.createCustomPropertyRequest.name.root)
+        raise requests.HTTPError("403 Forbidden")
+
+    source.metadata.create_or_update_custom_property = refuse
+
+    assert patched_extension(source) is None
+    assert patched_extension(source, "wb-2") is None
+    assert attempts == ["latestVersion"]
 
 
 def test_a_registered_latest_version_property_is_reused(sigma_over_http):
     source, _ = sigma_over_http
     source.source_config.includeCustomProperties = True
-    server = FakeOpenMetadata(properties=[("latestVersion", "number")])
+    server = FakeDashboardProperties(properties=[("latestVersion", "number")])
     server.serve(source)
 
-    assert stored_extension(source, server) == {"latestVersion": 3}
-    assert server.registered == []
-
-
-def test_a_property_a_user_sets_after_the_dashboard_read_is_kept(sigma_over_http):
-    source, _ = sigma_over_http
-    source.source_config.includeCustomProperties = True
-    server = FakeOpenMetadata(properties=[("latestVersion", "number")])
-    server.after_dashboard_read = lambda: server.edit(server.dashboard, extension={"team": "finance"})
-    server.serve(source)
-
-    assert stored_extension(source, server) == {"team": "finance", "latestVersion": 3}
-    assert server.refused == 1
-
-
-def test_a_latest_version_property_an_administrator_adds_after_the_read_is_left_as_it_is(sigma_over_http):
-    source, _ = sigma_over_http
-    source.source_config.includeCustomProperties = True
-    administrators = {
-        "name": "latestVersion",
-        "displayName": "Workbook version",
-        "description": "Set by an administrator",
-        "propertyType": {"name": "number"},
-    }
-    server = FakeOpenMetadata()
-    server.after_type_read = lambda: server.edit(server.dashboard_type, customProperties=[administrators])
-    server.serve(source)
-
-    assert stored_extension(source, server) == {"latestVersion": 3}
-    assert server.dashboard_type["customProperties"] == [administrators]
+    assert patched_extension(source) == {"latestVersion": 3}
     assert server.registered == []
 
 
 def test_a_failed_dashboard_read_is_reported_for_the_workbook(sigma_over_http):
     source, _ = sigma_over_http
     source.source_config.includeCustomProperties = True
-    FakeOpenMetadata(properties=[("latestVersion", "number")]).serve(source)
+    FakeDashboardProperties().serve(source)
 
     def unreachable(entity, fqn, fields=None):
         raise requests.ConnectionError("OpenMetadata unreachable")

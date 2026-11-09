@@ -10,12 +10,10 @@
 #  limitations under the License.
 """Sigma source module"""
 
-import json
 import traceback
 from collections.abc import Iterable
 from datetime import datetime
 from functools import cached_property
-from typing import cast
 
 from cachetools import LRUCache
 
@@ -23,6 +21,9 @@ from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup, UnsupportedTableReferenceError
 from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createCustomProperty import (
+    CreateCustomPropertyRequest,
+)
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
@@ -59,19 +60,12 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.models.custom_properties import CustomPropertyDataTypes
+from metadata.ingestion.models.custom_properties import (
+    CustomPropertyDataTypes,
+    OMetaCustomProperties,
+)
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
-from metadata.ingestion.models.patch_request import (
-    ALLOWED_COMMON_PATCH_FIELDS,
-    RESTRICT_UPDATE_LIST,
-    PatchRequest,
-)
-from metadata.ingestion.ometa.client import APIError
-from metadata.ingestion.ometa.mixins.patch_mixin import (
-    MAX_OPTIMISTIC_LOCK_RETRIES,
-    _entity_etag,
-    _is_precondition_failed,
-)
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -572,11 +566,7 @@ class SigmaSource(DashboardServiceSource):
                 )
 
     def yield_dashboard_extension(self, dashboard_details: WorkbookDetails) -> Iterable[Either[PatchRequest]]:
-        """
-        The workbook's latest published version, which changes each time the workbook is published. It is written
-        with the dashboard's version as If-Match: a patch built from a dashboard read with no properties replaces
-        them all, so one a user sets after the read would be lost. On a conflict the dashboard is read again.
-        """
+        """The workbook's latest published version, which changes each time the workbook is published"""
         if not (
             dashboard_details
             and self.source_config.includeCustomProperties
@@ -586,43 +576,26 @@ class SigmaSource(DashboardServiceSource):
         try:
             if not self._latest_version_defined:
                 return
-            dashboard_fqn = fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.workbookId)
-            for _ in range(MAX_OPTIMISTIC_LOCK_RETRIES):
-                dashboard = self.metadata.get_by_name(entity=Dashboard, fqn=dashboard_fqn, fields=["extension"])
-                if not dashboard:
-                    return
-                stored = dashboard.extension.root if dashboard.extension else {}
-                try:
-                    # The properties a user set are sent back as they are, so the patch only touches this one
-                    self.metadata.patch(
-                        entity=Dashboard,
-                        source=dashboard,
-                        destination=dashboard.model_copy(
-                            update={
-                                "extension": EntityExtension(
-                                    {**stored, LATEST_VERSION: dashboard_details.latestVersion}
-                                )
-                            }
-                        ),
-                        allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
-                        restrict_update_fields=RESTRICT_UPDATE_LIST,
-                        override_metadata=True,
-                        if_match=_entity_etag(dashboard),
-                    )
-                except APIError as exc:
-                    if not _is_precondition_failed(exc):
-                        raise
-                else:
-                    return
+            dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.workbookId),
+                fields=["extension"],
+            )
+            if not dashboard:
+                return
+            stored = dashboard.extension.root if dashboard.extension else {}
+            # The properties a user set on the dashboard are sent back as they are, so the patch only touches this one
             yield Either(
-                left=StackTraceError(
-                    name=f"{dashboard_details.name} Custom Properties",
-                    error=(
-                        f"Error setting the latest version of Sigma workbook {dashboard_details.workbookId}: "
-                        f"the dashboard changed before each of {MAX_OPTIMISTIC_LOCK_RETRIES} writes"
+                left=None,
+                right=PatchRequest(
+                    original_entity=dashboard,
+                    new_entity=dashboard.model_copy(
+                        update={
+                            "extension": EntityExtension({**stored, LATEST_VERSION: dashboard_details.latestVersion})
+                        }
                     ),
+                    override_metadata=True,
                 ),
-                right=None,
             )
         except Exception as exc:
             yield Either(
@@ -639,59 +612,37 @@ class SigmaSource(DashboardServiceSource):
         """
         Whether dashboards hold LATEST_VERSION as a number, registering it once per run. A property of that name
         with another type is left alone: changing its type would invalidate the value every dashboard holds.
-        It is added with the dashboard type's version as If-Match, as a create-or-update would overwrite the
-        description and display name of one an administrator adds after the read. On a conflict the type is
-        read again.
         """
-        for _ in range(MAX_OPTIMISTIC_LOCK_RETRIES):
-            # The type's JSON, with the version a conditional write needs
-            dashboard_type = cast(
-                "dict", self.metadata.client.get("/metadata/types/name/dashboard?fields=customProperties")
-            )
-            defined = {
-                prop.get("name"): (prop.get("propertyType") or {}).get("name")
-                for prop in dashboard_type.get("customProperties") or []
-            }
-            if LATEST_VERSION in defined:
-                if defined[LATEST_VERSION] == CustomPropertyDataTypes.NUMBER.value:
-                    return True
-                logger.warning(
-                    "Dashboard custom property %s exists as %s, not %s; Sigma won't set it",
-                    LATEST_VERSION,
-                    defined[LATEST_VERSION],
-                    CustomPropertyDataTypes.NUMBER.value,
-                )
-                return False
-            new_property = {
-                "name": LATEST_VERSION,
-                "description": "The most recently published version of the Sigma workbook",
-                # The server looks the property type up by name
-                "propertyType": {
-                    "id": model_str(self.metadata.get_property_type_ref(CustomPropertyDataTypes.NUMBER).root.id),
-                    "type": "type",
-                    "name": CustomPropertyDataTypes.NUMBER.value,
-                },
-            }
-            try:
-                self.metadata.client.patch(
-                    path=f"/metadata/types/{dashboard_type['id']}",
-                    data=json.dumps([{"op": "add", "path": "/customProperties/-", "value": new_property}]),
-                    headers={"If-Match": f'W/"{dashboard_type["version"]}"'},
-                )
-            except Exception as exc:
-                if _is_precondition_failed(exc):
-                    continue
-                logger.debug(traceback.format_exc())
-                logger.warning("Could not register dashboard custom property %s: %s", LATEST_VERSION, exc)
-                return False
-            else:
+        defined = {
+            prop.get("name"): (prop.get("propertyType") or {}).get("name")
+            for prop in self.metadata.get_entity_custom_properties(entity_type=Dashboard) or []
+        }
+        if LATEST_VERSION in defined:
+            if defined[LATEST_VERSION] == CustomPropertyDataTypes.NUMBER.value:
                 return True
-        logger.warning(
-            "Could not register dashboard custom property %s: the dashboard type changed before each of %d writes",
-            LATEST_VERSION,
-            MAX_OPTIMISTIC_LOCK_RETRIES,
-        )
-        return False
+            logger.warning(
+                "Dashboard custom property %s exists as %s, not %s; Sigma won't set it",
+                LATEST_VERSION,
+                defined[LATEST_VERSION],
+                CustomPropertyDataTypes.NUMBER.value,
+            )
+            return False
+        try:
+            self.metadata.create_or_update_custom_property(
+                OMetaCustomProperties(
+                    entity_type=Dashboard,
+                    createCustomPropertyRequest=CreateCustomPropertyRequest(
+                        name=EntityName(LATEST_VERSION),
+                        description=Markdown("The most recently published version of the Sigma workbook"),
+                        propertyType=self.metadata.get_property_type_ref(CustomPropertyDataTypes.NUMBER),
+                    ),
+                )
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not register dashboard custom property %s: %s", LATEST_VERSION, exc)
+            return False
+        return True
 
     def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
