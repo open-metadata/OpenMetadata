@@ -93,6 +93,19 @@ class ContextFileIT {
     }
   }
 
+  /** Soft-deleted: an ordinary read no longer finds the memory, an {@code include=all} one does. */
+  private void assertArchived(RestClient rest, UUID memoryId) {
+    try (Response plain = rest.rawGet(MEMORY_PATH + "/" + memoryId)) {
+      assertEquals(404, plain.getStatus());
+    }
+    try (Response archived = rest.rawGet(MEMORY_PATH + "/" + memoryId + "?include=all")) {
+      assertEquals(200, archived.getStatus());
+      assertTrue(
+          JsonUtils.readTree(archived.readEntity(String.class)).get("deleted").asBoolean(),
+          "the memory is archived, not deleted");
+    }
+  }
+
   private List<String> listFileIds(RestClient rest, String path) {
     try (Response response = rest.rawGet(path)) {
       assertEquals(200, response.getStatus());
@@ -359,7 +372,7 @@ class ContextFileIT {
   // --- Knowledge-pill cascade ---
 
   @Test
-  void testSoftDeleteFileRemovesItsExtractedMemories(TestNamespace ns)
+  void testArchivingAFileSoftDeletesItsExtractedMemories(TestNamespace ns)
       throws HttpResponseException {
     RestClient rest = RestClient.admin();
 
@@ -367,7 +380,7 @@ class ContextFileIT {
         createFile(
             rest,
             new CreateContextFile()
-                .withName(ns.prefix("soft-delete-pills"))
+                .withName(ns.prefix("archived-pills"))
                 .withProcessingStatus(ProcessingStatus.Uploaded));
     ContextMemory first = createExtractedMemory(rest, ns.prefix("pill-one"), file);
     ContextMemory second = createExtractedMemory(rest, ns.prefix("pill-two"), file);
@@ -375,10 +388,34 @@ class ContextFileIT {
 
     rest.delete(FILE_PATH, file.getId());
 
-    // Hard-gone, not tombstoned: a pill is regenerable from its source, so a soft-deleted source
-    // must not leave an invisible row holding its FQN and its search entry.
-    assertEquals(404, memoryStatusIncludingDeleted(rest, first.getId()));
-    assertEquals(404, memoryStatusIncludingDeleted(rest, second.getId()));
+    // Archived with the file rather than deleted, so restoring the file can bring them back.
+    assertArchived(rest, first.getId());
+    assertArchived(rest, second.getId());
+  }
+
+  @Test
+  void testPermanentlyDeletingAnArchivedFileDeletesItsMemories(TestNamespace ns)
+      throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            rest,
+            new CreateContextFile()
+                .withName(ns.prefix("archived-then-deleted"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    ContextMemory pill = createExtractedMemory(rest, ns.prefix("pill-six"), file);
+    rest.delete(FILE_PATH, file.getId());
+    assertArchived(rest, pill.getId());
+
+    try (Response deleteResponse =
+        rest.rawDelete(FILE_PATH + "/" + file.getId() + "?hardDelete=true")) {
+      assertEquals(202, deleteResponse.getStatus());
+    }
+
+    await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(() -> assertEquals(404, memoryStatusIncludingDeleted(rest, pill.getId())));
   }
 
   @Test
@@ -408,28 +445,6 @@ class ContextFileIT {
               assertEquals(404, memoryStatusIncludingDeleted(rest, first.getId()));
               assertEquals(404, memoryStatusIncludingDeleted(rest, second.getId()));
             });
-  }
-
-  @Test
-  void testRestoredFileDoesNotResurrectItsMemories(TestNamespace ns) throws HttpResponseException {
-    RestClient rest = RestClient.admin();
-
-    ContextFile file =
-        createFile(
-            rest,
-            new CreateContextFile()
-                .withName(ns.prefix("restore-pills"))
-                .withProcessingStatus(ProcessingStatus.Uploaded));
-    ContextMemory pill = createExtractedMemory(rest, ns.prefix("pill-five"), file);
-
-    rest.delete(FILE_PATH, file.getId());
-    ContextFile restored = rest.restore(FILE_PATH, file.getId(), ContextFile.class);
-
-    // The pill is gone for good; the source is expected to re-derive it, not to un-delete a
-    // tombstone. Pinning this so a future restore hook is a deliberate change, not a surprise.
-    assertFalse(Boolean.TRUE.equals(restored.getDeleted()));
-    assertEquals(404, memoryStatusIncludingDeleted(rest, pill.getId()));
-    assertEquals(0, getFile(rest, file.getId(), "memoryCount").getMemoryCount());
   }
 
   // --- File in Folder ---

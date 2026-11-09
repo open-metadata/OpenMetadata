@@ -1,12 +1,16 @@
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.core.Response;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.List;
@@ -15,6 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -44,6 +49,7 @@ import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -210,11 +216,87 @@ class ContextMemoryExtractionIT {
         extracted(second.getEntityReference()).stream().map(ContextMemory::getId).toList());
     RestClient.admin().delete(FILES, second.getId());
     assertTrue(extracted(second.getEntityReference()).isEmpty());
-    assertGone("v1/contextCenter/memories/" + pill.getId());
+    assertArchived(ns, pill);
     NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
     assertGone(FILES + "/" + first.getId());
     assertGone(FILES + "/" + second.getId());
     assertGone("v1/contextCenter/memories/" + pill.getId());
+  }
+
+  @Test
+  void archivedDocumentNoLongerShowsAsASource(TestNamespace ns) throws Exception {
+    String text = "Shared source " + ns.shortPrefix();
+    ContextFile original = file(ns, "kept-original", text);
+    runFile(original);
+    ContextFile copy = file(ns, "archived-copy", text);
+    runFile(copy);
+    ContextMemory shared = extracted(copy.getEntityReference()).getFirst();
+    awaitChips(ns, shared, original, Set.of(copy.getId()));
+
+    RestClient.admin().delete(FILES, copy.getId());
+
+    awaitChips(ns, shared, original, Set.of());
+    assertEquals(
+        Set.of(original.getId(), copy.getId()),
+        sourceIds(shared),
+        "the archived copy keeps its link so restoring it can bring the memory back");
+    permanentlyDelete(copy);
+    awaitChips(ns, shared, original, Set.of());
+    assertEquals(Set.of(original.getId()), sourceIds(shared));
+  }
+
+  @Test
+  void permanentlyDeletingTheAnchorMovesItsSharedMemoryToTheCopy(TestNamespace ns)
+      throws Exception {
+    String text = "Moved anchor " + ns.shortPrefix();
+    ContextFile original = file(ns, "deleted-original", text);
+    runFile(original);
+    ContextFile copy = file(ns, "surviving-copy", text);
+    runFile(copy);
+    ContextMemory shared = extracted(original.getEntityReference()).getFirst();
+    awaitChips(ns, shared, original, Set.of(copy.getId()));
+
+    permanentlyDelete(original);
+
+    awaitChips(ns, shared, copy, Set.of());
+    assertEquals(Set.of(copy.getId()), sourceIds(shared));
+  }
+
+  /** The run's own memories are never created; the ones the file had go to the Archive with it. */
+  @Test
+  void archivingDuringExtractionLeavesNoLiveOrphans(TestNamespace ns) throws Exception {
+    ContextFile file = file(ns, "archived-mid-run", "Mid-run definition " + ns.shortPrefix());
+    ContextMemory earlier =
+        persistedPill(file, "What did the earlier content define?", "Earlier " + ns.shortPrefix());
+    ns.trackRoot(Entity.CONTEXT_MEMORY, earlier.getId());
+    duringDerivation =
+        () -> assertDoesNotThrow(() -> RestClient.admin().delete(FILES, file.getId()));
+
+    runFileJobToItsEnd(file);
+
+    assertTrue(extracted(file.getEntityReference()).isEmpty(), "no live memory is left behind");
+    assertEquals(List.of(earlier.getId()), memoriesLinkedTo(file));
+    assertArchived(ns, earlier);
+  }
+
+  @Test
+  void uploadIdenticalToAnArchivedDocumentDoesNotReuseItsMemories(TestNamespace ns)
+      throws Exception {
+    String text = "Archived original " + ns.shortPrefix();
+    ContextFile original = file(ns, "archived-original", text);
+    runFile(original);
+    ContextMemory archived = extracted(original.getEntityReference()).getFirst();
+    RestClient.admin().delete(FILES, original.getId());
+
+    ContextFile copy = file(ns, "later-copy", text);
+    runFile(copy);
+
+    ContextMemory fresh = extracted(copy.getEntityReference()).getFirst();
+    assertNotEquals(archived.getId(), fresh.getId());
+    assertEquals(2, calls.get(), "the copy is extracted rather than served from the Archive");
+    assertSource(fresh, copy.getEntityReference(), ContextMemorySourceType.FILE_EXTRACTION);
+    assertEquals(Set.of(original.getId()), sourceIds(archived));
+    assertArchived(ns, archived);
   }
 
   @Test
@@ -422,6 +504,32 @@ class ContextMemoryExtractionIT {
 
   private void runFile(ContextFile file) {
     JobDAO jobs = Entity.getJobDAO();
+    long id = claimFileJob(file);
+    new ContextMemoryExtractionJobHandler().runJob(jobs.fetchJobById(id).orElseThrow());
+    assertEquals(
+        ProcessingStatus.Processed,
+        fileRepository()
+            .get(null, file.getId(), fileRepository().getFields(""), Include.NON_DELETED, false)
+            .getProcessingStatus());
+    long now = System.currentTimeMillis();
+    jobs.completeJob(id, BackgroundJob.Status.COMPLETED.name(), "{}", "extracted", 1, 1, now, now);
+  }
+
+  /** Runs the file's job as the worker would, whether it completes or fails. */
+  private void runFileJobToItsEnd(ContextFile file) {
+    JobDAO jobs = Entity.getJobDAO();
+    long id = claimFileJob(file);
+    BackgroundJob.Status outcome = BackgroundJob.Status.COMPLETED;
+    try {
+      new ContextMemoryExtractionJobHandler().runJob(jobs.fetchJobById(id).orElseThrow());
+    } catch (BackgroundJobException failed) {
+      outcome = BackgroundJob.Status.FAILED;
+    }
+    jobs.updateJobStatus(id, outcome);
+  }
+
+  private long claimFileJob(ContextFile file) {
+    JobDAO jobs = Entity.getJobDAO();
     ContextMemoryExtractionJobHandler.Args args =
         ContextMemoryExtractionJobHandler.Args.file(
             file.getId(), UUID.fromString(file.getHeadContentId()));
@@ -433,14 +541,100 @@ class ContextMemoryExtractionIT {
             Entity.ADMIN_USER_NAME,
             System.currentTimeMillis() + Duration.ofHours(1).toMillis());
     assertEquals(1, jobs.claimPendingJob(id));
-    new ContextMemoryExtractionJobHandler().runJob(jobs.fetchJobById(id).orElseThrow());
-    assertEquals(
-        ProcessingStatus.Processed,
-        fileRepository()
-            .get(null, file.getId(), fileRepository().getFields(""), Include.NON_DELETED, false)
-            .getProcessingStatus());
-    long now = System.currentTimeMillis();
-    jobs.completeJob(id, BackgroundJob.Status.COMPLETED.name(), "{}", "extracted", 1, 1, now, now);
+    return id;
+  }
+
+  /** The Archive's permanent delete, which runs asynchronously. */
+  private void permanentlyDelete(ContextFile file) {
+    try (Response response =
+        RestClient.admin().rawDelete(FILES + "/" + file.getId() + "?hardDelete=true")) {
+      assertEquals(202, response.getStatus());
+    }
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .untilAsserted(() -> assertGone(FILES + "/" + file.getId()));
+  }
+
+  /** Every file linked to the memory as a source, archived ones included. */
+  private Set<UUID> sourceIds(ContextMemory memory) {
+    return memoryRepository()
+        .findFrom(
+            memory.getId(),
+            Entity.CONTEXT_MEMORY,
+            Relationship.MENTIONED_IN,
+            Entity.CONTEXT_FILE,
+            Include.ALL)
+        .stream()
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
+  }
+
+  /** Every memory linked to the file, archived ones included. */
+  private List<UUID> memoriesLinkedTo(ContextFile file) {
+    return memoryRepository()
+        .findTo(
+            file.getId(),
+            Entity.CONTEXT_FILE,
+            Relationship.MENTIONED_IN,
+            Entity.CONTEXT_MEMORY,
+            Include.ALL)
+        .stream()
+        .map(EntityReference::getId)
+        .toList();
+  }
+
+  /** Archived: only an include=all read finds it, and search lists it among deleted memories. */
+  private void assertArchived(TestNamespace ns, ContextMemory memory) {
+    String path = "v1/contextCenter/memories/" + memory.getId();
+    assertNotFound(path);
+    try (Response archived = RestClient.admin().rawGet(path + "?include=all")) {
+      assertEquals(200, archived.getStatus());
+      assertTrue(JsonUtils.readTree(archived.readEntity(String.class)).get("deleted").asBoolean());
+    }
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertNotNull(listedMemory(ns, memory, Include.DELETED)));
+    assertNull(listedMemory(ns, memory, Include.NON_DELETED));
+  }
+
+  /** Waits until the search-backed Memories page shows the memory's anchor and related sources. */
+  private void awaitChips(
+      TestNamespace ns, ContextMemory memory, ContextFile anchor, Set<UUID> related) {
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              JsonNode listed = listedMemory(ns, memory, Include.NON_DELETED);
+              assertNotNull(listed, "the memory is listed");
+              assertEquals(
+                  anchor.getId().toString(), listed.path("primaryEntity").path("id").asText());
+              assertEquals(related, relatedIds(listed));
+            });
+  }
+
+  /** The memory as the search-backed listing shows it, or null; an offset selects that listing. */
+  private JsonNode listedMemory(TestNamespace ns, ContextMemory memory, Include include) {
+    String path =
+        "v1/contextCenter/memories?offset=0&limit=25&q="
+            + ns.shortPrefix()
+            + "&include="
+            + include.value();
+    try (Response response = RestClient.admin().rawGet(path)) {
+      assertEquals(200, response.getStatus());
+      JsonNode data = JsonUtils.readTree(response.readEntity(String.class)).path("data");
+      return StreamSupport.stream(data.spliterator(), false)
+          .filter(listed -> memory.getId().toString().equals(listed.path("id").asText()))
+          .findFirst()
+          .orElse(null);
+    }
+  }
+
+  private static Set<UUID> relatedIds(JsonNode listed) {
+    return StreamSupport.stream(listed.path("relatedEntities").spliterator(), false)
+        .map(related -> UUID.fromString(related.path("id").asText()))
+        .collect(Collectors.toSet());
   }
 
   private Page page(TestNamespace ns, String body) throws Exception {
@@ -510,13 +704,17 @@ class ContextMemoryExtractionIT {
   }
 
   private void assertGone(String path) {
+    assertNotFound(path + "?include=all");
+  }
+
+  private void assertNotFound(String path) {
     OpenMetadataException failure =
         assertThrows(
             OpenMetadataException.class,
             () ->
                 SdkClients.adminClient()
                     .getHttpClient()
-                    .execute(HttpMethod.GET, "/" + path + "?include=all", null, Object.class));
+                    .execute(HttpMethod.GET, "/" + path, null, Object.class));
     assertEquals(404, failure.getStatusCode());
   }
 

@@ -206,21 +206,19 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     }
   }
 
-  // Knowledge-pill cleanup runs in the *AdditionalChildren hooks rather than postDelete because
-  // those fire while the file -> memory MENTIONED_IN edges still exist. postDelete runs after
-  // cleanup() has already deleted those edges on a hard delete, so a findTo there would match
-  // nothing and orphan the pills. Both hooks hard-delete: a pill is regenerable from its source,
-  // so a deleted file must leave none behind in either form. Mirrors KnowledgePageRepository.
+  // Memory cleanup runs in these hooks while the file -> memory MENTIONED_IN edges still exist; a
+  // hard delete's cleanup() removes them before postDelete. Archiving keeps the memories for a
+  // restore, a permanent delete releases them. Mirrors KnowledgePageRepository.
   @Override
   @Transaction
   protected void softDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    contextMemoryRepository().archiveExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   @Override
   @Transaction
   protected void hardDeleteAdditionalChildren(UUID fileId, String deletedBy) {
-    contextMemoryRepository().deleteExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
+    contextMemoryRepository().releaseExtractedMemories(fileId, CONTEXT_FILE_ENTITY);
   }
 
   private ContextMemoryRepository contextMemoryRepository() {
