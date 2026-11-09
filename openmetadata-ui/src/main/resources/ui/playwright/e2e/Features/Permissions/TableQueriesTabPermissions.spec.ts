@@ -24,20 +24,8 @@ import { performAdminLogin } from '../../../utils/admin';
 import { getWorkerAdminAPIContext, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
-type AccessScenario = {
-  policy: PolicyClass;
-  role: RolesClass;
-  rules: PolicyRulesType[];
-};
-
-const createScenario = (rules: PolicyRulesType[]): AccessScenario => ({
-  policy: new PolicyClass(),
-  role: new RolesClass(),
-  rules,
-});
-
-const buildScenarios = () => ({
-  queryDenied: createScenario([
+const scenarioRules = {
+  queryDenied: [
     ...DATA_CONSUMER_RULES,
     {
       name: `pw-deny-query-view-${uuid()}`,
@@ -45,8 +33,8 @@ const buildScenarios = () => ({
       operations: ['ViewAll', 'ViewBasic'],
       effect: 'deny',
     },
-  ]),
-  queryViewBasicDenied: createScenario([
+  ],
+  queryViewBasicDenied: [
     ...DATA_CONSUMER_RULES,
     {
       name: `pw-deny-query-view-basic-${uuid()}`,
@@ -54,8 +42,8 @@ const buildScenarios = () => ({
       operations: ['ViewBasic'],
       effect: 'deny',
     },
-  ]),
-  queryViewConditional: createScenario([
+  ],
+  queryViewConditional: [
     {
       name: `pw-allow-table-view-${uuid()}`,
       resources: ['table'],
@@ -69,8 +57,8 @@ const buildScenarios = () => ({
       effect: 'allow',
       condition: 'isOwner()',
     },
-  ]),
-  tableViewQueriesDenied: createScenario([
+  ],
+  tableViewQueriesDenied: [
     ...DATA_CONSUMER_RULES,
     {
       name: `pw-deny-table-view-queries-${uuid()}`,
@@ -78,14 +66,17 @@ const buildScenarios = () => ({
       operations: ['ViewQueries'],
       effect: 'deny',
     },
-  ]),
-  allowed: createScenario(DATA_CONSUMER_RULES),
-});
+  ],
+  allowed: DATA_CONSUMER_RULES,
+} satisfies Record<string, PolicyRulesType[]>;
 
-// Rebuilt in beforeAll: under fullyParallel the hook can run more than once per worker.
+type ScenarioName = keyof typeof scenarioRules;
+
+const queryText = `select id from pw_queries_tab_${uuid()}`;
+
+// Created in beforeAll: under fullyParallel the hook can run more than once per worker.
 let table: TableClass;
-let queryText: string;
-let scenarios: ReturnType<typeof buildScenarios>;
+let scenarios: Record<ScenarioName, { policy: PolicyClass; role: RolesClass }>;
 
 const isTableQueryCountRequest = (url: string) => {
   const { pathname, searchParams } = new URL(url);
@@ -162,16 +153,18 @@ test.describe(
   () => {
     test.beforeAll('Create table, query and roles', async ({ browser }) => {
       table = new TableClass();
-      queryText = `select id from pw_queries_tab_${uuid()}`;
-      scenarios = buildScenarios();
+      scenarios = {} as typeof scenarios;
 
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await table.create(apiContext);
       await table.createQuery(apiContext, queryText);
 
-      for (const { policy, role, rules } of Object.values(scenarios)) {
+      for (const [name, rules] of Object.entries(scenarioRules)) {
+        const policy = new PolicyClass();
+        const role = new RolesClass();
         await policy.create(apiContext, rules);
         await role.create(apiContext, [policy.responseData.name]);
+        scenarios[name as ScenarioName] = { policy, role };
       }
 
       await afterAction();
