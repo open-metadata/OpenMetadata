@@ -15,6 +15,7 @@ from collections.abc import Iterable
 from datetime import datetime
 from functools import cached_property
 
+import sqlparse
 from cachetools import LRUCache
 
 from metadata.domain.table_reference import TableReference
@@ -60,6 +61,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
@@ -97,6 +99,9 @@ SIGMA_BADGE_CLASSIFICATION = "SigmaBadge"
 
 # Distinct table references resolved per run; past it a reference is searched again
 MAX_RESOLVED_TABLES = 1_000
+
+# A SELECT needs an output table for the parser to expose its column mappings.
+COLUMN_LINEAGE_TARGET = "sigma_query_output"
 
 # Sigma connection types, lower-cased, as the spec names them for the warehouses OpenMetadata parses
 SIGMA_CONNECTION_DIALECTS = {
@@ -264,6 +269,8 @@ class SigmaSource(DashboardServiceSource):
             return
 
         for chart in dashboard_details.elements:
+            if not chart.is_data_element:
+                continue
             try:
                 display_name = chart.name or f"Element {chart.elementId}"
                 if filter_by_chart(self.source_config.chartFilterPattern, display_name):
@@ -387,8 +394,7 @@ class SigmaSource(DashboardServiceSource):
         Yield lineage using file-based API (fallback method)
         """
         for data_model in self.data_models or []:
-            # Skip non-visualization elements to avoid Sigma API 500 errors.
-            if data_model.vizualizationType:
+            if data_model.is_data_element:
                 yield from self._yield_lineage_from_files_for_element(dashboard_details, data_model, db_service_prefix)
 
     def _yield_lineage_from_files_for_element(
@@ -462,6 +468,71 @@ class SigmaSource(DashboardServiceSource):
                 column_lineage=column_lineage.get(str(table.id.root), []),
             )
 
+    def _parse_sql_lineage(self, query: str, dialect: Dialect) -> tuple[list[str], list[tuple[str, str, str]]]:
+        """Source tables and output-column paths for a single SELECT."""
+        try:
+            statements = [statement for statement in sqlparse.parse(query) if str(statement).strip()]
+            single_select = len(statements) == 1 and statements[0].get_type() == "SELECT"
+        except Exception:
+            single_select = False
+
+        parser_type = self.get_query_parser_type()
+        if single_select:
+            parser = LineageParser(f"INSERT INTO {COLUMN_LINEAGE_TARGET} {query}", dialect, parser_type=parser_type)
+            # LineageParser's third-party cached properties lack iterable type annotations.
+            source_tables = [str(table) for table in parser.source_tables or []]  # pyright: ignore[reportGeneralTypeIssues]
+            if source_tables:
+                try:
+                    column_paths = [
+                        (str(path[0].parent), path[0].raw_name, path[-1].raw_name)
+                        for path in parser.column_lineage or []  # pyright: ignore[reportGeneralTypeIssues]
+                        if str(path[-1].parent).rsplit(".", 1)[-1] == COLUMN_LINEAGE_TARGET
+                    ]
+                except Exception as exc:
+                    logger.debug("Could not read Sigma SQL column lineage: %s", exc)
+                    column_paths = []
+                return source_tables, column_paths
+
+        parser = LineageParser(query, dialect, parser_type=parser_type)
+        return [str(table) for table in parser.source_tables or []], []  # pyright: ignore[reportGeneralTypeIssues]
+
+    @staticmethod
+    def _get_sql_column_lineage(
+        column_paths: list[tuple[str, str, str]],
+        source_table: str,
+        table: Table,
+        data_model: DashboardDataModel,
+    ) -> list[ColumnLineage]:
+        """Map parsed SQL output columns to the element's display columns."""
+        from_names_by_target: dict[str, list[str]] = {}
+        for path_table, source_column, output_column in column_paths:
+            if path_table != source_table:
+                continue
+            pairs = (
+                [(model_str(column.name), model_str(column.name)) for column in table.columns or []]
+                if source_column == "*"
+                else [(source_column, output_column)]
+            )
+            for from_name, to_name in pairs:
+                from_names_by_target.setdefault(to_name, []).append(from_name)
+
+        lineage = []
+        for output_column, source_columns in from_names_by_target.items():
+            targets = [
+                column
+                for column in data_model.columns or []
+                if normalize_column_name(column.displayName or model_str(column.name))
+                == normalize_column_name(output_column)
+            ]
+            from_columns = [
+                FullyQualifiedEntityName(column_fqn)
+                for source_column in dict.fromkeys(source_columns)
+                if (column_fqn := get_column_fqn(table_entity=table, column=source_column))
+            ]
+            if len(targets) == 1 and targets[0].fullyQualifiedName and from_columns:
+                lineage.append(ColumnLineage(fromColumns=from_columns, toColumn=targets[0].fullyQualifiedName))
+        return lineage
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: WorkbookDetails,
@@ -490,10 +561,7 @@ class SigmaSource(DashboardServiceSource):
 
         for data_model in self.data_models or []:
             try:
-                # Skip non-visualization elements (text boxes, dividers,
-                # buttons, controls) to avoid Sigma API 500 errors on elements
-                # that carry no upstream lineage.
-                if not data_model.vizualizationType:
+                if not data_model.is_data_element:
                     continue
 
                 data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
@@ -517,11 +585,7 @@ class SigmaSource(DashboardServiceSource):
                         else Dialect.ANSI
                     )
                 )
-                lineage_parser = LineageParser(query_obj.sql, dialect, parser_type=self.get_query_parser_type())
-
-                tables: list[Table] = []
-                # LineageParser's third-party cached_property carries no type
-                source_tables: list = lineage_parser.source_tables or []  # pyright: ignore[reportAssignmentType]
+                source_tables, column_paths = self._parse_sql_lineage(query_obj.sql, dialect)
                 for source_table in source_tables:
                     try:
                         database_schema_table = fqn.split_table_name(str(source_table))
@@ -542,10 +606,13 @@ class SigmaSource(DashboardServiceSource):
                         )
                         continue
                     if isinstance(table_entity, Table):
-                        tables.append(table_entity)
-                yield from self._yield_table_and_column_lineage(
-                    tables, data_model_entity, data_model.columns, all_sources_found=len(tables) == len(source_tables)
-                )
+                        yield self._get_add_lineage_request(
+                            to_entity=data_model_entity,
+                            from_entity=table_entity,
+                            column_lineage=self._get_sql_column_lineage(
+                                column_paths, source_table, table_entity, data_model_entity
+                            ),
+                        )
 
             except Exception as exc:
                 yield Either(
@@ -702,9 +769,7 @@ class SigmaSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             self.data_models = []
             for data_model in dashboard_details.elements:
-                # Skip non-visualization elements (text boxes, dividers, buttons, controls)
-                # to avoid creating DataModel entries for elements that have no data source.
-                if not data_model.vizualizationType:
+                if not data_model.is_data_element:
                     continue
                 display_name = data_model.name or f"Element {data_model.elementId}"
                 if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):

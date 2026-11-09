@@ -1505,6 +1505,37 @@ def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_h
     assert calls["GET", "/v2/files/T1"] == 1
 
 
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "files"])
+@pytest.mark.parametrize(
+    "element_fields, eligible",
+    [
+        ({"type": "table"}, True),
+        ({"type": "visualization"}, True),
+        ({"vizualizationType": "bar"}, True),
+        ({"type": None, "vizualizationType": "table"}, True),
+        ({"type": "control"}, False),
+        ({"type": "text"}, False),
+        ({"type": "control", "vizualizationType": "bar"}, False),
+        ({}, False),
+    ],
+    ids=["table", "visualization", "legacy", "null-type", "control", "text", "control-with-viz", "unknown"],
+)
+def test_data_element_types_create_charts_models_and_lineage(sigma_over_http, routes, element_fields, eligible, sql):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/pages/page-1/elements"] = {
+        "entries": [{"elementId": "el-wb-1", "name": "Revenue", "columns": ["Amount"], **element_fields}],
+        "nextPage": None,
+    }
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [result.right.name.root for result in source.yield_dashboard_chart(details) if result.right]
+    models = [result.right.name.root for result in source.yield_datamodel(details) if result.right]
+    lineage = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], sql)
+
+    assert charts == models == (["el-wb-1"] if eligible else [])
+    assert lineage == (["wh_a.ANALYTICS.PUBLIC.ORDERS"] if eligible else [])
+
+
 def sales_table(name: str, columns: list[str]) -> Table:
     table_fqn = f"warehouse.SALES.PUBLIC.{name}"
     return Table(
@@ -1602,7 +1633,7 @@ def column_links(results) -> dict[str, list[tuple[str, str]]]:
     }
 
 
-def test_sql_lineage_links_each_label_to_the_one_warehouse_column_it_shows(lineage_source):
+def test_sql_lineage_uses_sql_to_disambiguate_labeled_columns(lineage_source):
     lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
         entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
     )
@@ -1611,7 +1642,72 @@ def test_sql_lineage_links_each_label_to_the_one_warehouse_column_it_shows(linea
         lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
     )
 
-    assert column_links(results) == EXPECTED_COLUMN_LINKS
+    assert column_links(results) == {
+        CUSTOMERS.fullyQualifiedName.root: [
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_ID", f"{AMOUNT_MODEL_FQN}.Customer Id"),
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_NAME", f"{AMOUNT_MODEL_FQN}.Customer Name"),
+        ],
+        ORDERS.fullyQualifiedName.root: [
+            (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "sql, expected",
+    [
+        ("SELECT 0 AS CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS", {"CUSTOMERS": []}),
+        (
+            "SELECT CUSTOMER_ID AS CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Name")]},
+        ),
+        (
+            "SELECT CONCAT(CUSTOMER_NAME, CUSTOMER_ID) AS ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Order Status"), ("CUSTOMER_NAME", "Order Status")]},
+        ),
+        (
+            "SELECT c.CUSTOMER_ID FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id")], "ORDERS": []},
+        ),
+        (
+            "SELECT * FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id"), ("CUSTOMER_NAME", "Customer Name")]},
+        ),
+        (
+            "WITH base AS (SELECT CUSTOMER_ID FROM SALES.PUBLIC.CUSTOMERS) "
+            "SELECT CUSTOMER_ID AS CUSTOMER_NAME FROM base",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Name")]},
+        ),
+        (
+            "INSERT INTO SALES.PUBLIC.RESULT SELECT CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": []},
+        ),
+        (
+            "SELECT CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS; SELECT ORDER_STATUS FROM SALES.PUBLIC.ORDERS",
+            {"CUSTOMERS": [], "ORDERS": []},
+        ),
+    ],
+    ids=["constant", "alias", "expression", "join", "wildcard", "cte", "insert", "multiple-statements"],
+)
+def test_sql_lineage_uses_query_column_provenance(lineage_source, sql, expected):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", sql=sql)]
+    )
+
+    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, "mock_mysql"))
+    observed = {
+        result.right.edge.fromEntity.fullyQualifiedName.rsplit(".", 1)[-1]: sorted(
+            (source.root.rsplit(".", 1)[-1], column.toColumn.root.rsplit(".", 1)[-1])
+            for column in result.right.edge.lineageDetails.columnsLineage or []
+            for source in column.fromColumns
+        )
+        for result in results
+        if result.right
+    }
+
+    assert not [result.left for result in results if result.left]
+    assert observed == expected
 
 
 @pytest.mark.parametrize(
@@ -1682,12 +1778,15 @@ def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_sou
         lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
     )
 
-    # The other table keeps its edge; no column is linked, as the failed one could hold it too
-    assert column_links(results) == {ORDERS.fullyQualifiedName.root: []}
+    assert column_links(results) == {
+        ORDERS.fullyQualifiedName.root: [
+            (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+        ]
+    }
     assert ["search unavailable" in either.left.error for either in results if either.left] == [True]
 
 
-def test_a_source_table_missing_from_openmetadata_leaves_the_columns_unlinked(lineage_source):
+def test_a_source_table_missing_from_openmetadata_keeps_proven_column_lineage(lineage_source):
     lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
         entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
     )
@@ -1702,8 +1801,11 @@ def test_a_source_table_missing_from_openmetadata_leaves_the_columns_unlinked(li
         lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
     )
 
-    # "Customer Id" looks unique without CUSTOMERS, which is exactly when linking it would guess
-    assert column_links(results) == {ORDERS.fullyQualifiedName.root: []}
+    assert column_links(results) == {
+        ORDERS.fullyQualifiedName.root: [
+            (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+        ]
+    }
 
 
 def test_dashboard_records_when_the_workbook_was_created_and_updated(sigma_over_http, routes):
