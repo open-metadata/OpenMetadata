@@ -42,6 +42,11 @@ public final class AiProviderHolder {
     return current;
   }
 
+  /** The gate uploads and article edits share: whether the active provider can extract now. */
+  public static boolean isExtractionAvailable() {
+    return Boolean.TRUE.equals(get().extractionAvailability().getAvailable());
+  }
+
   private static synchronized AiProvider build() {
     if (instance == null) {
       instance = resolve(configuredProviderClass());

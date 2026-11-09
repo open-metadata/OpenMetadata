@@ -14,6 +14,8 @@
 package org.openmetadata.service.context.center;
 
 import java.util.Optional;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
+import org.openmetadata.service.llm.LLMClientHolder;
 
 /**
  * Single seam for the platform's AI-backed Context Center steps. OSS ships {@link LlmAiProvider}
@@ -30,5 +32,17 @@ public interface AiProvider {
    */
   default Optional<MemoryGlossaryDeriver> memoryGlossaryDeriver() {
     return Optional.empty();
+  }
+
+  /**
+   * Whether memories can be extracted now, and why not: uploads and article edits extract only
+   * while it is. By default that takes the LLM layer and {@code memoryExtractionEnabled}.
+   */
+  default ExtractionAvailability extractionAvailability() {
+    return LLMClientHolder.isMemoryExtractionEnabled()
+        ? new ExtractionAvailability().withAvailable(true)
+        : new ExtractionAvailability()
+            .withAvailable(false)
+            .withReason(ExtractionAvailability.Reason.ExtractionDisabled);
   }
 }

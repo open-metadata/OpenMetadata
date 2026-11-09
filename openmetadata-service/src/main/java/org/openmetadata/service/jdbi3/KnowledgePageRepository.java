@@ -47,6 +47,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.PageContextProcessingEngineHolder;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.llm.LLMClientHolder;
@@ -966,7 +967,7 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   /**
    * Enqueues a delayed job, coalescing autosaves in the persistent background job table. A no-op
-   * when the LLM is disabled, mirroring the file pipeline.
+   * when extraction is unavailable, mirroring the file pipeline.
    */
   private void schedulePillExtraction(UUID pageId) {
     if (isExtractionEnabled()) {
@@ -978,8 +979,8 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     }
   }
 
-  /** True when the LLM is configured and article (page) memory extraction is toggled on. */
+  /** The file pipeline's gate; the Queued stamps and the scheduler both ask it, so they agree. */
   private boolean isExtractionEnabled() {
-    return LLMClientHolder.isMemoryExtractionEnabled();
+    return AiProviderHolder.isExtractionAvailable();
   }
 }

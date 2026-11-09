@@ -6,11 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -30,6 +32,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -39,6 +42,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -55,6 +59,8 @@ import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.NoopCompletionClient;
 import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(MockitoExtension.class)
@@ -114,6 +120,12 @@ class ContextFileProcessingServiceTest {
         .thenReturn(file);
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
+  }
+
+  @AfterEach
+  void resetAiHolders() {
+    AiProviderHolder.reset();
+    LLMClientHolder.setForTesting(null);
   }
 
   @Test
@@ -401,6 +413,36 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
+  }
+
+  @Test
+  void providerUnavailableSkipsExtraction() throws Exception {
+    // The LLM and memory extraction are on, so only the provider's answer can stop the stage.
+    LLMClientHolder.setForTesting(new NoopCompletionClient());
+    AiProvider provider = mock(AiProvider.class);
+    when(provider.extractionAvailability())
+        .thenReturn(
+            new ExtractionAvailability()
+                .withAvailable(false)
+                .withReason(ExtractionAvailability.Reason.ProviderUnavailable));
+    AiProviderHolder.setForTesting(provider);
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(Runnable::run, () -> assetService, AiProviderHolder::isExtractionAvailable)
+        .process(fileId, contentId);
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+    verify(jobDao, never())
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
   }
 
   @Test
@@ -747,6 +789,13 @@ class ContextFileProcessingServiceTest {
 
   private ContextFileProcessingService service(
       Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
+    return service(executor, assetServiceSupplier, () -> llmEnabled);
+  }
+
+  private ContextFileProcessingService service(
+      Executor executor,
+      Supplier<AssetService> assetServiceSupplier,
+      Supplier<Boolean> extractionGate) {
     return new ContextFileProcessingService(
         repository,
         assetServiceSupplier,
@@ -754,7 +803,7 @@ class ContextFileProcessingServiceTest {
         textExtractor,
         jobDao,
         () -> memoryExtractor,
-        () -> llmEnabled,
+        extractionGate,
         () -> fileEngine);
   }
 }
