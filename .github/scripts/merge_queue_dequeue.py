@@ -63,8 +63,9 @@ def failed_logs(repo: str, job: dict) -> str:
 
 def network_failure(logs: str) -> str:
     # Never copy raw logs, credentials or download URLs into a notification.
+    # curl -f names no protocol: "The requested URL returned error: 504".
     status = re.search(
-        r"(?:HTTP[^\n]{0,70}?\b|status(?:\s+code)?[\s:=(]*)(429|5\d\d)\b",
+        r"(?:HTTP[^\n]{0,70}?\b|status(?:\s+code)?[\s:=(]*|returned error:\s*)(429|5\d\d)\b",
         logs,
         re.IGNORECASE,
     )

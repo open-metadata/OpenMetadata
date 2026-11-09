@@ -136,6 +136,22 @@ class ReportTest(unittest.TestCase):
             all(call.args[0].endswith("/101") for call in self.rest.call_args_list)
         )
 
+    def test_curl_status_without_a_protocol_name_is_a_download_failure(
+        self,
+    ) -> None:
+        # Install Compose in the #8399 dequeue: curl -f prints the bare status.
+        self.job["steps"] = [{"name": "Install Compose", "conclusion": "failure"}]
+        self.logs.return_value = (
+            "Download Compose v2.29.7 for linux-aarch64 from https://github.com/"
+            "docker/compose/releases/download/v2.29.7/docker-compose-linux-aarch64\n"
+            "curl: (22) The requested URL returned error: 504\n"
+            "##[error]Process completed with exit code 22."
+        )
+        self.assertIn("HTTP 504", self.diagnose())
+        self.assertTrue(
+            all(call.args[0].endswith("/101") for call in self.rest.call_args_list)
+        )
+
     def test_java_and_browser_application_errors_are_not_download_failures(
         self,
     ) -> None:
