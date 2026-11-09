@@ -102,7 +102,7 @@ jobs:
     concurrency:
       group: populate-playwright-caches-apt
       cancel-in-progress: false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -255,7 +255,7 @@ jobs:
     concurrency:
       group: populate-playwright-caches-venv-${{ matrix.py-version }}
       cancel-in-progress: false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     strategy:
       fail-fast: false
