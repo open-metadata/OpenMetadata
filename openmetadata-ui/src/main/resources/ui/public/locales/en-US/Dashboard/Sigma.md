@@ -50,6 +50,10 @@ $$
 
 When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it.
 
+## Custom Properties
+
+When **Include Custom Properties** is on, each workbook's dashboard gets a `latestVersion` custom property: the most recently published version of the workbook in Sigma. The property is added to every dashboard in OpenMetadata, and is left alone when a property of that name already exists with another type.
+
 ## Lineage
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.
