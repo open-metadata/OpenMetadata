@@ -1,0 +1,935 @@
+@prefix epcis:  <https://ref.gs1.org/epcis/> .
+@prefix cbv:    <https://ref.gs1.org/cbv/> .
+@prefix gs1:    <https://ref.gs1.org/voc/> .
+
+@prefix dct:    <http://purl.org/dc/terms/> .
+@prefix owl:    <http://www.w3.org/2002/07/owl#> .
+@prefix rdf:    <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs:   <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix schema: <http://schema.org/> .
+@prefix skos:   <http://www.w3.org/2004/02/skos/core#> .
+@prefix sw:     <http://www.w3.org/2003/06/sw-vocab-status/ns#> .
+@prefix vann:   <http://purl.org/vocab/vann/> .
+@prefix xsd:    <http://www.w3.org/2001/XMLSchema#> .
+
+#################### Ontology
+
+epcis: a owl:Ontology;
+  rdfs:label "EPCIS Ontology";
+  rdfs:comment """The Electronic Product Code Information System (EPCIS) is a specification for capturing and exchanging event visibility data across the global logistics chain.
+Version 2.0 is a major release that adds JSON, JSONLD and RDF payload formats, sensor reports, and other major features.""";
+  dct:creator <https://gs1.org/>;
+  dct:publisher <https://gs1.org/>;
+  dct:created  "2021-06-01"^^xsd:date;
+  dct:modified "2021-09-30"^^xsd:date;
+  # dct:issued   "2021-06-30"^^xsd:date; # after release
+  rdfs:seeAlso cbv:, gs1: ;
+  owl:versionInfo "2.0";
+  vann:preferredNamespaceUri "https://ref.gs1.org/epcis/";
+  vann:preferredNamespacePrefix "epcis".
+
+<https://gs1.org/> a schema:Organization;
+  schema:name "GS1";
+  schema:description "GS1 is an international organization that sets the global standards in transport and logistics".
+
+#################### Meta-properties
+
+epcis:jsonldLabel a owl:DatatypeProperty , rdf:Property ;
+      rdfs:comment      """JSONLD term (alias) used for this property.
+The default is the property local name, which is captured in rdfs:label."""@en ;
+      rdfs:domain       rdf:Property;
+      schema:domainIncludes rdf:Property ;
+      rdfs:isDefinedBy  epcis: ;
+      rdfs:label        "jsonldLabel" ;
+      rdfs:range        xsd:string ;
+      schema:rangeIncludes xsd:string ;
+      sw:term_status    "stable" .
+
+rdf:type epcis:jsonldLabel "type".
+
+epcis:jsonldUriLabel a owl:DatatypeProperty , rdf:Property ;
+      rdfs:comment      """JSONLD term (alias) used for the URI of nodes of this class.
+There is no default: many EPCIS classes use blank nodes instead of the standard @id JSONLD term."""@en ;
+      rdfs:domain       rdfs:Class;
+      schema:domainIncludes rdfs:Class ;
+      rdfs:isDefinedBy  epcis: ;
+      rdfs:label        "jsonldUriLabel" ;
+      rdfs:range        xsd:string ;
+      schema:rangeIncludes xsd:string ;
+      sw:term_status    "stable" .
+
+#################### Event classes
+
+epcis:EPCISEvent  a       owl:Class , rdfs:Class ;
+        rdfs:comment      "A logistics event. This is a common superclass (base type) for all EPCIS events. All of the more specific event types are subclasses of EPCISEvent."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "EPCISEvent" ;
+        sw:term_status    "stable" .
+
+epcis:AggregationEvent   a owl:Class , rdfs:Class ;
+        rdfs:comment      "The event type AggregationEvent describes events that apply to objects that have been aggregated to one another. In such an event, there is a set of 'contained' objects that have been aggregated within a 'containing' entity that's meant to identify the aggregation itself.  This event type is intended to be used for 'aggregations', meaning an association where there is a strong physical relationship between the containing and the contained objects such that they will all occupy the same location at the same time, until such time as they are disaggregated."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "AggregationEvent" ;
+        rdfs:subClassOf   epcis:EPCISEvent ;
+        epcis:jsonldUriLabel "eventID";
+        sw:term_status    "stable" .
+
+epcis:AssociationEvent   a owl:Class , rdfs:Class ;
+        rdfs:comment      "The event type AssociationEvent describes the association or disassociation of one or several physical objects with a parent object or a specific physical location.  Like the AggregationEvent, the AssociationEvent is also used to capture associations where there is a strong physical relationship between the containing and the contained objects such that they will all occupy the same location at the same time, until such time as they are disaggregated. However, the AggregationEvent does not allow for associations of objects with physical locations;  if action is DELETE while omitting the childEPC and childQuantityList field, all contained children are disaggregated from the containing parent. Because there are situations in which associations are more permanent, i.e. beyond the physical flow of goods (e.g. packing/unpacking and loading/unloading), an AssociationEvent SHOULD be used: (a) when objects need to be associated with a physical location or (b) when the parent object could also be subject to other, more temporary associations (i.e. captured using AggregationEvent)."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "AssociationEvent" ;
+        rdfs:subClassOf   epcis:EPCISEvent ;
+        epcis:jsonldUriLabel "eventID";
+        sw:term_status    "stable" .
+
+epcis:ObjectEvent  a      owl:Class , rdfs:Class ;
+        rdfs:comment      "An ObjectEvent captures information about an event pertaining to one or more physical or digital objects identified by instance-level (EPC) or class-level (EPC Class) identifiers. In most situations, an ObjectEvent is envisioned to represent an actual observations of objects, but strictly speaking it can be used for any event a Capturing Application wants to assert about objects, including for example capturing the fact that an expected observation failed to occur."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "ObjectEvent" ;
+        rdfs:subClassOf   epcis:EPCISEvent ;
+        epcis:jsonldUriLabel "eventID";
+        sw:term_status    "stable" .
+
+epcis:TransactionEvent   a owl:Class , rdfs:Class ;
+        rdfs:comment      "The event type TransactionEvent describes the association or disassociation of physical or digital objects to one or more business transactions. While other event types have an optional bizTransactionList field that may be used to provide context for an event, the TransactionEvent is used to declare in an unequivocal way that certain objects have been associated or disassociated with one or more business transactions as part of the event."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "TransactionEvent" ;
+        rdfs:subClassOf   epcis:EPCISEvent ;
+        epcis:jsonldUriLabel "eventID";
+        sw:term_status    "stable" .
+
+epcis:Transformation a owl:Class , rdfs:Class ;
+        rdfs:comment      """A transformation business processes that takes a longer period of time than a single TransformationEvent, so is associated with a series of such events.
+When events share the same Transformation, the meaning is that the inputs to any of those events may have contributed in some way to each of the outputs in any of those same events."""@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "Transformation" ;
+        sw:term_status    "stable" .
+
+epcis:TransformationEvent        a owl:Class , rdfs:Class ;
+        rdfs:comment      "A TransformationEvent captures information about an event in which one or more physical or digital objects identified by instance-level (EPC) or class-level (EPC Class) identifiers are fully or partially consumed as inputs and one or more objects identified by instance-level (EPC) or class-level (EPC Class) identifiers are produced as outputs. The TransformationEvent captures the relationship between the inputs and the outputs, such that any of the inputs may have contributed in some way to each of the outputs."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "TransformationEvent" ;
+        rdfs:subClassOf   epcis:EPCISEvent ;
+        epcis:jsonldUriLabel "eventID";
+        sw:term_status    "stable" .
+
+#################### Other classes
+
+epcis:BizTransaction  a   owl:Class , rdfs:Class ;
+        rdfs:comment      "Document that describes a particular business transaction. An example is a specific Purchase Order or Despatch Advice. Business Transaction information may be included in EPCIS events to record an event's participation in particular business transactions."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "BizTransaction" ;
+        epcis:jsonldUriLabel "bizTransaction";
+        sw:term_status    "stable" .
+
+epcis:EPCISDocument a      owl:Class , rdfs:Class ;
+        rdfs:comment      "An EPCISDocument is a means to transport a collection of EPCIS events, optionally accompanied by relevant master data, as a single electronic document.  It is used by the concrete bindings of the EPCIS Capture Interface.  In addition, trading partners may by mutual agreement use it as a single electronic document."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "EPCISDocument" ;
+        epcis:jsonldUriLabel "id";
+        sw:term_status    "stable" .
+
+epcis:EPCISDocumentBody a      owl:Class , rdfs:Class ;
+        rdfs:comment      "Intermediate node that is connected to EPCISDocument using epcisBody, and includes a list of events using eventList"@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "EPCISDocumentBody" ;
+        sw:term_status    "stable" .
+
+epcis:EPCISDocumentHeader a      owl:Class , rdfs:Class ;
+        rdfs:comment      "Intermediate node that is connected to EPCISDocument using epcisHeader, and may include master data using masterData"@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "EPCISDocumentHeader" ;
+        sw:term_status    "stable" .
+
+epcis:ErrorDeclaration   a owl:Class , rdfs:Class ;
+        rdfs:comment      "When an event contains an ErrorDeclaration element, it indicates that this event has special semantics: instead of the normal semantics which assert that various things happened and that various things are true following the event, the semantics of this event assert that those prior assertions are in error. An event containing an ErrorDeclaration element SHALL be otherwise identical to a prior event, 'otherwise identical' meaning that all fields of the event other than the ErrorDeclaration element and the value of recordTime are exactly equal to the prior event. (Note that includes the eventID field: the eventID of the error declaration will be equal to the eventID of the prior event or null if the eventID of the prior event is null. This is the sole case where the same non-null eventID may appear in two events.) The semantics of an event containing the ErrorDeclaration element are that all assertions implied by the prior event are considered to be erroneous, as of the specified declarationTime. The prior event is not modified in any way, and subsequent queries will return both the prior event and the error declaration."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "ErrorDeclaration" ;
+        sw:term_status    "stable" .
+
+epcis:ILMD  a             owl:Class , rdfs:Class ;
+        rdfs:comment      "Instance/Lot master data (ILMD) is data that describes a specific instance of a physical or digital object, or a specific batch/lot of objects that are produced in batches/lots. ILMD consists of a set of descriptive attributes that provide information about one or more specific objects or lots. It is similar to ordinary master data, which also consists of a set of descriptive attributes that provide information about objects. But whereas master data attributes have the same values for a large class of objects, (e.g., for all objects having a given GTIN), the values of ILMD attributes may be different for much smaller groupings of objects (e.g., a single batch or lot), and may be different for each object (i.e., different for each instance)."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "ILMD" ;
+        sw:term_status    "stable" .
+
+epcis:MasterData a      owl:Class , rdfs:Class ;
+        rdfs:comment      "Intermediate node that is connected to EPCISDocumentHeader using masterData, and may include vocabulary elements using vocabularyList"@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "MasterData" ;
+        sw:term_status    "stable" .
+
+epcis:PersistentDisposition      a owl:Class , rdfs:Class ;
+        rdfs:comment      "The persistentDisposition field of an event specifies one or more business conditions of the event's objects, subsequent to the event. One or more persistentDisposition values can be set or unset, independently of each other. Values that are set are considered to remain valid until explicitly unset. Like disposition, persistentDisposition leverages the DispositionID Standard Vocabulary."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "PersistentDisposition" ;
+        sw:term_status    "stable" .
+
+epcis:QuantityElement    a owl:Class , rdfs:Class ;
+        rdfs:comment      "A QuantityElement is a structure that identifies objects identified by a specific class-level identifier, either a specific quantity or an unspecified quantity."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "QuantityElement" ;
+        sw:term_status    "stable" .
+
+epcis:SensorElement  a    owl:Class , rdfs:Class ;
+        rdfs:comment      "A SensorElement is a structure that contains an optional sensorMetadata structure and one or several sensorReport structures"@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "SensorElement" ;
+        sw:term_status    "stable" .
+
+epcis:SensorMetadata  a   owl:Class , rdfs:Class ;
+        rdfs:comment      "A class containing one or several metadata attributes, which are applicable to all sensorReport structures that are part of the same sensorElement"@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "SensorMetadata" ;
+        sw:term_status    "stable" .
+
+epcis:SensorReport  a     owl:Class , rdfs:Class ;
+        rdfs:comment      "A class containing one or several attributes that pertain to a specific sensor observation."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "SensorReport" ;
+        sw:term_status    "stable" .
+
+epcis:SourceOrDestination a owl:Class , rdfs:Class ;
+        rdfs:comment      "Provides additional business context when an EPCIS event is part of a business transfer; that is, a process in which there is a change of location, or transfer of ownership, or transfer of possession (responsibility and/or custody) of physical or digital objects.  Within a specified type of transfer (indicated by sourceOrDestinationType), the business transfer is from the Source to the Destination."@en ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "Source or Destination" ;
+        epcis:jsonldUriLabel "id";
+        sw:term_status    "stable" .
+
+#################### Properties
+
+epcis:action  a           owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "How this event relates to the lifecycle of the EPCs named in this event."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:ObjectEvent epcis:AggregationEvent epcis:AssociationEvent epcis:TransactionEvent)] ;
+        schema:domainIncludes epcis:ObjectEvent, epcis:AggregationEvent, epcis:AssociationEvent, epcis:TransactionEvent;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "action" ;
+        rdfs:range        xsd:string ;
+        schema:rangeIncludes xsd:string ;
+        sw:term_status    "stable" .
+
+epcis:bizLocation  a      owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The business location where the objects associated with the EPCs may be found, until contradicted by a subsequent event."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "bizLocation" ;
+        rdfs:range        gs1:Place ;
+        schema:rangeIncludes gs1:Place ;
+        sw:term_status    "stable" .
+
+epcis:bizRules  a         owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Storage location of an electronic document accommodating product- or application-specific business rules on which basis the EPCIS event was triggered.  For instance, an EPCIS capturing application might only trigger an event if the 'what' dimension contains a certain product class (e.g. GTIN of a cold-storage pharmaceutical product) AND a certain temperature threshold was exceeded.  Note: In contrast to a business transaction, a business rules file is not a standard-defined, interoperably communicated business document such as an invoice. In addition, the set of rules typically will only change in an infrequent manner."@en ;
+        rdfs:domain       epcis:SensorMetadata ;
+        schema:domainIncludes epcis:SensorMetadata ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "bizRules" ;
+        sw:term_status    "stable" .
+
+epcis:bizStep  a          owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The business step of which this event was a part."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "bizStep" ;
+        rdfs:range        cbv:BizStep ;
+        schema:rangeIncludes cbv:BizStep ;
+        sw:term_status    "stable" .
+
+epcis:bizTransactionList a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of business transactions that define the context of this event."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "bizTransactionList" ;
+        rdfs:range        epcis:BizTransaction ;
+        schema:rangeIncludes epcis:BizTransaction ;
+        sw:term_status    "stable" .
+
+epcis:bizTransactionType a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "An identifier that indicates the type of BizTransaction document (e.g. Purchase Order, Despatch Advice)."@en ;
+        rdfs:domain        epcis:BizTransaction;
+        schema:domainIncludes epcis:BizTransaction;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "bizTransactionType" ;
+        rdfs:range        cbv:BTT;
+        schema:rangeIncludes cbv:BTT;
+        epcis:jsonldLabel "type";
+        sw:term_status    "stable" .
+
+epcis:booleanValue  a     owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Similar to stringValue, for Boolean value."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "booleanValue" ;
+        rdfs:range        xsd:boolean ;
+        schema:rangeIncludes xsd:boolean ;
+        sw:term_status    "stable" .
+
+epcis:certificationInfo a   owl:ObjectProperty , rdf:Property ;
+      rdfs:comment      "CertificationDetails relevant for Objects, Places and/or Organizations mentioned in this Event"@en ;
+      rdfs:domain       epcis:EPCISEvent ;
+      schema:domainIncludes epcis:EPCISEvent ;
+      rdfs:isDefinedBy  epcis: ;
+      rdfs:label        "certification" ;
+      rdfs:range        gs1:CertificationDetails ;
+      schema:rangeIncludes gs1:CertificationDetails ;
+      sw:term_status    "stable" .
+
+epcis:chemicalSubstance  a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Identifies a specific chemical substance.  If chemicalSubstance is present, a sensorReport element SHALL NOT include microorganism."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "chemicalSubstance" ;
+        sw:term_status    "stable" .
+
+epcis:childEPCs  a        owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of the EPCs of contained objects identified by instance-level identifiers. An AggregationEvent SHALL contain either a nonempty childEPCs, a non-empty childQuantityList, or both, except that both childEPCs and childQuantityList MAY be empty if action is DELETE, indicating that all children are disaggregated from the parent.  An AssociationEvent SHALL contain either a non-empty childEPCs, a non-empty childQuantityList, or both, except that both childEPCs and childQuantityList MAY be empty if action is DELETE, indicating that all children are disassociated from the parent."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:AggregationEvent epcis:AssociationEvent)] ;
+        schema:domainIncludes epcis:AggregationEvent, epcis:AssociationEvent;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "childEPCs" ;
+        rdfs:range        gs1:IndividualObject ;
+        schema:rangeIncludes gs1:IndividualObject ;
+        sw:term_status    "stable" .
+
+epcis:childQuantityList  a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of one or more QuantityElements identifying (at the class level) contained objects. An AggregationEvent SHALL contain either a nonempty childEPCs, a non-empty childQuantityList, or both, except that both childEPCs and childQuantityList MAY be empty if action is DELETE, indicating that all children are disaggregated from the parent.  An AssociationEvent SHALL contain either a non-empty childEPCs, a non-empty childQuantityList, or both, except that both childEPCs and childQuantityList MAY be empty if action is DELETE, indicating that all children are disaggregated from the parent."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:AggregationEvent epcis:AssociationEvent)] ;
+        schema:domainIncludes epcis:AggregationEvent, epcis:AssociationEvent;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "childQuantityList" ;
+        rdfs:range        epcis:QuantityElement ;
+        schema:rangeIncludes epcis:QuantityElement ;
+        sw:term_status    "stable" .
+
+epcis:component  a        owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Some measurement types (e.g. force, pressure) are vectors (having magnitude and direction in space), whereas others (e.g. temperature, absolute humidity) are scalars.  The components of a vector in a coordinate system can be specified by setting the value of component to indicate which vector component has magnitude indicated by the value parameter.  The SensorReport element is then repeated as two or three instances to express each component of the vector in two or three dimensions, the pair or trio of SensorReport elements sharing the same values for all fields except value, component and uom (which may differ for each vector component). If present, the SensorReport element MUST also include the value and uom fields."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "component" ;
+        rdfs:range        cbv:Comp ;
+        schema:rangeIncludes cbv:Comp ;
+        sw:term_status    "stable" .
+
+epcis:coordinateReferenceSystem  a        owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) A URI identifying the Coordinate Reference System. If omitted, the World Geodetic System 1984 (WGS-84) is assumed to apply."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "coordinate reference system" ;
+        sw:term_status    "stable" .
+
+epcis:correctiveEventIDs         a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) If present, indicates that the events having the specified URIs as the value of their eventID fields are to be considered as 'corrections' to the event declared erroneous by this event. This provides a means to link an error declaration event to one or more events that are intended to replace the erroneous event."@en ;
+        rdfs:domain       epcis:ErrorDeclaration ;
+        schema:domainIncludes epcis:ErrorDeclaration ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "correctiveEventIDs" ;
+        rdfs:range        epcis:EPCISEvent ;
+        schema:rangeIncludes epcis:EPCISEvent ;
+        sw:term_status    "stable" .
+
+epcis:dataProcessingMethod       a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Storage location of an electronic document accommodating the data processing method of the contained sensor data, if applicable.  For instance, before sensor data is captured in an EPCIS event, the latter might be redacted or refined by means of specific algorithms."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:SensorMetadata epcis:SensorReport)] ;
+        schema:domainIncludes epcis:SensorMetadata, epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "dataProcessingMethod" ;
+        sw:term_status    "stable" .
+
+epcis:declarationTime    a owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "The date and time at which the declaration of error is made. (Note that the eventTime of this event must match the eventTime of the prior event being declared erroneous, so the declarationTime field is required to indicate the time at which this event is asserted.)"@en ;
+        rdfs:domain       epcis:ErrorDeclaration ;
+        schema:domainIncludes epcis:ErrorDeclaration ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "declarationTime" ;
+        rdfs:range        xsd:dateTimeStamp ;
+        schema:rangeIncludes xsd:dateTimeStamp ;
+        sw:term_status    "stable" .
+
+epcis:destinationList    a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of Destination elements that provide context about the terminating endpoint of a business transfer of which this event is a part."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "destinationList" ;
+        rdfs:range        epcis:SourceOrDestination ;
+        schema:rangeIncludes epcis:SourceOrDestination ;
+        sw:term_status    "stable" .
+
+epcis:deviceID  a         owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Device from which the sensor data originates."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:SensorMetadata epcis:SensorReport)] ;
+        schema:domainIncludes epcis:SensorMetadata, epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "deviceID" ;
+        rdfs:range        gs1:SensorDevice ;
+        schema:rangeIncludes gs1:SensorDevice ;
+        sw:term_status    "stable" .
+
+epcis:deviceMetadata  a   owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Storage location of an electronic document accommodating metadata of the device from which the sensor data originates."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:SensorMetadata epcis:SensorReport)] ;
+        schema:domainIncludes epcis:SensorMetadata, epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "deviceMetadata" ;
+        sw:term_status    "stable" .
+
+epcis:disposition  a      owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The business condition of the objects associated with the EPCs, presumed to hold true until contradicted by a subsequent event."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "disposition" ;
+        rdfs:range        cbv:Disp ;
+        schema:rangeIncludes cbv:Disp ;
+        sw:term_status    "stable" .
+
+epcis:endTime  a          owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The highest (most recent) value of a given observation period, as transmitted by a sensor device. If present, the endTime SHALL be less (earlier) than or equal to the eventTime value."@en ;
+        rdfs:domain       epcis:SensorMetadata ;
+        schema:domainIncludes epcis:SensorMetadata ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "endTime" ;
+        rdfs:range        xsd:dateTimeStamp ;
+        schema:rangeIncludes xsd:dateTimeStamp ;
+        sw:term_status    "stable" .
+
+epcis:epcClass  a           owl:ObjectProperty , rdf:Property ;
+     rdfs:comment      "A class-level identifier for the class to which the specified quantity of objects belongs."@en ;
+     rdfs:domain       epcis:QuantityElement ;
+     schema:domainIncludes epcis:QuantityElement ;
+     rdfs:isDefinedBy  epcis: ;
+     rdfs:label        "epcClass" ;
+     rdfs:range        [a owl:Class ;
+                        owl:unionOf (gs1:Product gs1:ProductBatch)] ;
+     schema:rangeIncludes gs1:Product, gs1:ProductBatch ;
+     sw:term_status    "stable" .
+
+
+epcis:epcList  a          owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of one or more EPCs naming specific objects to which the event pertained."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:ObjectEvent epcis:TransactionEvent)] ;
+        schema:domainIncludes epcis:ObjectEvent, epcis:TransactionEvent;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "epcList" ;
+        rdfs:range        gs1:IndividualObject ;
+        schema:rangeIncludes gs1:IndividualObject ;
+        sw:term_status    "stable" .
+
+epcis:epcisBody  a        owl:ObjectProperty , rdf:Property ;
+       rdfs:comment      "Body (EPCISDocumentBody) of an EPCISDocument"@en ;
+       rdfs:domain       epcis:EPCISDocument ;
+       schema:domainIncludes epcis:EPCISDocument ;
+       rdfs:isDefinedBy  epcis: ;
+       rdfs:label        "epcisBody" ;
+       rdfs:range        epcis:EPCISDocumentBody ;
+       schema:rangeIncludes epcis:EPCISDocumentBody ;
+       sw:term_status    "stable" .
+
+epcis:epcisHeader  a        owl:ObjectProperty , rdf:Property ;
+       rdfs:comment      "Header (EPCISDocumentHeader) of an EPCISDocument"@en ;
+       rdfs:domain       epcis:EPCISDocument ;
+       schema:domainIncludes epcis:EPCISDocument ;
+       rdfs:isDefinedBy  epcis: ;
+       rdfs:label        "epcisHeader" ;
+       rdfs:range        epcis:EPCISDocumentHeader ;
+       schema:rangeIncludes epcis:EPCISDocumentHeader ;
+       sw:term_status    "stable" .
+
+epcis:errorDeclaration   a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) If present, indicates that this event serves to assert that the assertions made by a prior event are in error."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "errorDeclaration" ;
+        rdfs:range        epcis:ErrorDeclaration ;
+        schema:rangeIncludes epcis:ErrorDeclaration ;
+        sw:term_status    "stable" .
+
+epcis:eventList  a        owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "List of EPCIS events included in a document: connects EPCISDocumentBody to EPCISEvent"@en ;
+        rdfs:domain       epcis:EPCISDocumentBody ;
+        schema:domainIncludes epcis:EPCISDocumentBody ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "eventList" ;
+        rdfs:range        epcis:EPCISEvent ;
+        schema:rangeIncludes epcis:EPCISEvent ;
+        sw:term_status    "stable" .
+
+epcis:eventTime  a        owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "The date and time at which the EPCIS Capturing Applications asserts the event occurred."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "eventTime" ;
+        rdfs:range        xsd:dateTimeStamp ;
+        schema:rangeIncludes xsd:dateTimeStamp ;
+        sw:term_status    "stable" .
+
+epcis:eventTimeZoneOffset        a owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "The time zone offset in effect at the time and place the event occurred, expressed as an offset from UTC. The value of this field SHALL be a string consisting of the character '+' or the character '-', followed by two digits whose value is within the range 00 through 14 (inclusive), followed by a colon character ':', followed by two digits whose value is within the range 00 through 59 (inclusive), except that if the value of the first two digits is 14, the value of the second two digits must be 00. For example, the value +05:30 specifies that where the event occurred, local time was five hours and 30 minutes later than UTC (that is, midnight UTC was 5:30am local time)."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "eventTimeZoneOffset" ;
+        rdfs:range        xsd:string ;
+        schema:rangeIncludes xsd:string ;
+        sw:term_status    "stable" .
+
+epcis:exception a        owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) A sensor alert, including an alarm condition or an error condition. When this field is used, extra details can be specified via `booleanValue` or `uriValue`."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "exception" ;
+        rdfs:range        gs1:SensorAlertType ;
+        schema:rangeIncludes gs1:SensorAlertType ;
+        sw:term_status    "stable" .
+
+epcis:hexBinaryValue  a   owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Similar to stringValue, for HexBinary value."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "hexBinaryValue" ;
+        rdfs:range        xsd:hexBinary ;
+        schema:rangeIncludes xsd:hexBinary ;
+        sw:term_status    "stable" .
+
+epcis:transformationID  a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Associates several TransformationEvents with a longer-running Transformation process, therefore linking them together."@en ;
+        rdfs:domain       epcis:TransformationEvent ;
+        schema:domainIncludes epcis:TransformationEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "transformationID" ;
+        rdfs:range        epcis:Transformation ;
+        schema:rangeIncludes epcis:Transformation ;
+        sw:term_status    "stable" .
+
+epcis:ilmd  a             owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Instance/Lot master data that describes the objects created during this event."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:ObjectEvent epcis:TransformationEvent)] ;
+        schema:domainIncludes epcis:ObjectEvent, epcis:TransformationEvent;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "ilmd" ;
+        rdfs:range        epcis:ILMD ;
+        schema:rangeIncludes epcis:ILMD ;
+        sw:term_status    "stable" .
+
+epcis:inputEPCList  a     owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of one or more EPCs identifying (at the instance level) objects that were inputs to the transformation."@en ;
+        rdfs:domain       epcis:TransformationEvent ;
+        schema:domainIncludes epcis:TransformationEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "inputEPCList" ;
+        rdfs:range        gs1:IndividualObject ;
+        schema:rangeIncludes gs1:IndividualObject ;
+        sw:term_status    "stable" .
+
+epcis:inputQuantityList  a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of one or more QuantityElements identifying (at the class level) objects that were inputs to the transformation. See below for constraints on when inputQuantityList may be omitted."@en ;
+        rdfs:domain       epcis:TransformationEvent ;
+        schema:domainIncludes epcis:TransformationEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "inputQuantityList" ;
+        rdfs:range        epcis:QuantityElement ;
+        schema:rangeIncludes epcis:QuantityElement ;
+        sw:term_status    "stable" .
+
+epcis:instanceIdentifier  a        owl:DatatypeProperty , rdf:Property ;
+       rdfs:comment      "(Optional) the instance identifier of an EPCISDocument."@en ;
+       rdfs:domain       epcis:EPCISDocument ;
+       schema:domainIncludes epcis:EPCISDocument ;
+       rdfs:isDefinedBy  epcis: ;
+       rdfs:label        "instanceIdentifier" ;
+       rdfs:range        xsd:string ;
+       schema:rangeIncludes xsd:string ;
+       sw:term_status    "stable" .
+
+epcis:masterData  a        owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "Master data included in a document: connects EPCISDocumentHeader to MasterData"@en ;
+        rdfs:domain       epcis:EPCISDocumentHeader ;
+        schema:domainIncludes epcis:EPCISDocumentHeader ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "masterData" ;
+        rdfs:range        epcis:MasterData ;
+        schema:rangeIncludes epcis:MasterData ;
+        sw:term_status    "stable" .
+
+epcis:maxValue  a         owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Similar to minValue, for the maximum quantitative value."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "maxValue" ;
+        rdfs:range        xsd:double ;
+        schema:rangeIncludes xsd:double ;
+        sw:term_status    "stable" .
+
+epcis:meanValue  a        owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The arithmetic mean of the values of the property specified by the type as part of the sensorReport element.  If a startTime and endTime field is present, the meanValue SHALL pertain to the resulting period. Otherwise, it SHALL pertain to the business process step the EPCIS event captures."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "meanValue" ;
+        rdfs:range        xsd:double ;
+        schema:rangeIncludes xsd:double ;
+        sw:term_status    "stable" .
+
+epcis:measurementType a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "An identifier that indicates what kind of measurement the SensorReport pertains to (e.g. Length, Mass, Temperature)."@en ;
+        rdfs:domain       epcis:SensorReport;
+        schema:domainIncludes epcis:SensorReport;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "measurementType" ;
+        rdfs:range        gs1:MeasurementType;
+        schema:rangeIncludes gs1:MeasurementType;
+        epcis:jsonldLabel "type";
+        sw:term_status    "stable" .
+
+epcis:microorganism  a    owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Identifies a specific microorganism species.  If microorganism is present, a sensorReport element SHALL NOT include chemicalSubstance."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "microorganism" ;
+        sw:term_status    "stable" .
+
+epcis:minValue  a         owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Minimum quantitative value of the property specified by type , as part of the sensorReport element.  If a startTime and endTime field is present, the minValue SHALL pertain to the resulting period. Otherwise, minValue SHALL pertain to the business process step the EPCIS event captures."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "minValue" ;
+        rdfs:range        xsd:double ;
+        schema:rangeIncludes xsd:double ;
+        sw:term_status    "stable" .
+
+epcis:outputEPCList  a    owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of one or more EPCs naming (at the instance level) objects that were outputs from the transformation."@en ;
+        rdfs:domain       epcis:TransformationEvent ;
+        schema:domainIncludes epcis:TransformationEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "outputEPCList" ;
+        rdfs:range        gs1:IndividualObject ;
+        schema:rangeIncludes gs1:IndividualObject ;
+        sw:term_status    "stable" .
+
+epcis:outputQuantityList         a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of one or more QuantityElements identifying (at the class level) objects that were outputs from the transformation. See below for constraints on when outputQuantityList may be omitted."@en ;
+        rdfs:domain       epcis:TransformationEvent ;
+        schema:domainIncludes epcis:TransformationEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "outputQuantityList" ;
+        rdfs:range        epcis:QuantityElement ;
+        schema:rangeIncludes epcis:QuantityElement ;
+        sw:term_status    "stable" .
+
+epcis:parentID  a         owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional when action is OBSERVE, required otherwise) The identifier of the parent of the aggregation or association. When the parent identifier is an EPC, this field SHALL contain the 'pure identity' URI for the EPC as specified in the GS1 Tag Data Standard"@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:AggregationEvent epcis:AssociationEvent epcis:TransactionEvent)] ;
+        schema:domainIncludes epcis:AggregationEvent, epcis:AssociationEvent, epcis:TransactionEvent;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "parentID" ;
+        rdfs:range        [a owl:Class ;
+                           owl:unionOf (gs1:IndividualObject gs1:Place)];
+        schema:rangeIncludes gs1:IndividualObject, gs1:Place ;
+        sw:term_status    "stable" .
+
+epcis:percRank  a         owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Percentile rank, signifying the percentage of observations in a frequency distribution that are equal to or lower than it.  percRank SHALL only be used in conjunction with the field percValue."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "percRank" ;
+        rdfs:range        xsd:double ;
+        schema:rangeIncludes xsd:double ;
+        sw:term_status    "stable" .
+
+epcis:percValue  a        owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The percentile value, at or below which a given percentage of observations (as specified by percRank) may be found.  percValue SHALL only be used in conjunction with the field percRank."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "percValue" ;
+        rdfs:range        xsd:double ;
+        schema:rangeIncludes xsd:double ;
+        sw:term_status    "stable" .
+
+epcis:persistentDisposition a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) One or more business conditions of the objects associated with the EPCs.  Each persistentDisposition is explicitly set and unset independently of other persistentDisposition values."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "persistentDisposition" ;
+        rdfs:range        epcis:PersistentDisposition ;
+        schema:rangeIncludes epcis:PersistentDisposition ;
+        sw:term_status    "stable" .
+
+epcis:quantity  a           owl:DatatypeProperty , rdf:Property ;
+      rdfs:comment      "A number that specifies how many or how much of the specified EPCClass is denoted by this QuantityElement."@en ;
+      rdfs:domain       epcis:QuantityElement ;
+      schema:domainIncludes epcis:QuantityElement ;
+      rdfs:isDefinedBy  epcis: ;
+      rdfs:label        "quantity" ;
+      rdfs:range        xsd:double ;
+      schema:rangeIncludes xsd:double ;
+      sw:term_status    "stable" .
+
+epcis:quantityList  a     owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of one or more QuantityElements identifying (at the class level) objects to which the event pertained."@en ;
+        rdfs:domain       [a owl:Class ;
+                          owl:unionOf  (epcis:ObjectEvent epcis:TransactionEvent)] ;
+        schema:domainIncludes epcis:ObjectEvent, epcis:TransactionEvent;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "quantityList" ;
+        rdfs:range        epcis:QuantityElement ;
+        schema:rangeIncludes epcis:QuantityElement ;
+        sw:term_status    "stable" .
+
+epcis:rawData  a          owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Storage/service location of the raw sensor data on which the aggregated/business-oriented data contained in the sensorElement is based."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:SensorMetadata epcis:SensorReport)] ;
+        schema:domainIncludes epcis:SensorMetadata, epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "rawData" ;
+        sw:term_status    "stable" .
+
+epcis:readPoint  a        owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The read point at which the event took place."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "readPoint" ;
+        rdfs:range        gs1:Place ;
+        schema:rangeIncludes gs1:Place ;
+        sw:term_status    "stable" .
+
+epcis:reason  a           owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An element from a standard vocabulary that specifies the reason the prior event is considered erroneous."@en ;
+        rdfs:domain       epcis:ErrorDeclaration ;
+        schema:domainIncludes epcis:ErrorDeclaration ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "reason" ;
+        rdfs:range        cbv:ER ;
+        schema:rangeIncludes cbv:ER ;
+        sw:term_status    "stable" .
+
+epcis:receiver  a        owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The intended receiver of an EPCISDocument."@en ;
+        rdfs:domain       epcis:EPCISDocument ;
+        schema:domainIncludes epcis:EPCISDocument ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "receiver" ;
+        rdfs:range        xsd:string ;
+        schema:rangeIncludes xsd:string ;
+        sw:term_status    "stable" .
+
+epcis:recordTime  a       owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The date and time at which this event was recorded by an EPCIS Repository. This field SHALL be ignored when an event is presented to the EPCIS Capture Interface, and SHALL be present when an event is retrieved through the EPCIS Query Interfaces. The recordTime does not describe anything about the real-world event, but is rather a bookkeeping mechanism that plays a role in the interpretation of standing queries"@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "recordTime" ;
+        rdfs:range        xsd:dateTimeStamp ;
+        schema:rangeIncludes xsd:dateTimeStamp ;
+        sw:term_status    "stable" .
+
+epcis:sDev  a             owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Standard deviation of the values of the property specified by type , as part of the sensorReport element.  sDev SHALL only be used in conjunction with the field meanValue."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "sDev" ;
+        rdfs:range        xsd:double ;
+        schema:rangeIncludes xsd:double ;
+        sw:term_status    "stable" .
+
+epcis:sender  a        owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The sender of an EPCISDocument."@en ;
+        rdfs:domain       epcis:EPCISDocument ;
+        schema:domainIncludes epcis:EPCISDocument ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "sender" ;
+        rdfs:range        xsd:string ;
+        schema:rangeIncludes xsd:string ;
+        sw:term_status    "stable" .
+
+epcis:sensorElementList  a           owl:ObjectProperty , rdf:Property ;
+      rdfs:comment      "Connects event to one or more SensorElements"@en ;
+      rdfs:domain       epcis:EPCISEvent ;
+      schema:domainIncludes epcis:EPCISEvent ;
+      rdfs:isDefinedBy  epcis: ;
+      rdfs:label        "sensorElementList" ;
+      rdfs:range        epcis:SensorElement ;
+      schema:rangeIncludes epcis:SensorElement ;
+      sw:term_status    "stable" .
+
+epcis:sensorMetadata  a   owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An element containing one or several metadata attributes, which are applicable to all sensorReport elements that are part of the same sensorElement."@en ;
+        rdfs:domain       epcis:SensorElement ;
+        schema:domainIncludes epcis:SensorElement ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "sensorMetadata" ;
+        rdfs:range        epcis:SensorMetadata ;
+        schema:rangeIncludes epcis:SensorMetadata ;
+        sw:term_status    "stable" .
+
+epcis:sensorReport  a     owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "An element containing one or several attributes that pertain to a specific sensor observation."@en ;
+        rdfs:domain       epcis:SensorElement ;
+        schema:domainIncludes epcis:SensorElement ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "sensorReport" ;
+        rdfs:range        epcis:SensorReport ;
+        schema:rangeIncludes epcis:SensorReport ;
+        sw:term_status    "stable" .
+
+epcis:set  a              owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "The set field within persistentDisposition may specify a list of persistentDisposition URI values to be set."@en ;
+        rdfs:domain       epcis:PersistentDisposition ;
+        schema:domainIncludes epcis:PersistentDisposition ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "set" ;
+        rdfs:range        cbv:Disp ;
+        schema:rangeIncludes cbv:Disp ;
+        sw:term_status    "stable" .
+
+epcis:sourceList  a       owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) An unordered list of Source elements that provide context about the originating endpoint of a business transfer of which this event is a part."@en ;
+        rdfs:domain       epcis:EPCISEvent ;
+        schema:domainIncludes epcis:EPCISEvent ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "sourceList" ;
+        rdfs:range        epcis:SourceOrDestination ;
+        schema:rangeIncludes epcis:SourceOrDestination ;
+        sw:term_status    "stable" .
+
+epcis:sourceOrDestination  a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      """An identifier that denotes the specific source or destination of a business transfer."@en ;
+Its type (gs1:Organization or gs1:Place) must correlate with sourceOrDestinationType."""@en ;
+        rdfs:domain       epcis:SourceOrDestination ;
+        schema:domainIncludes epcis:SourceOrDestination ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "sourceOrDestination" ;
+        rdfs:range        [a owl:Class ;
+                           owl:unionOf (gs1:Organization gs1:Place)] ;
+        schema:rangeIncludes gs1:Organization, gs1:Place ;
+        epcis:jsonldLabel "source", "destination";
+        sw:term_status    "stable" .
+
+epcis:sourceOrDestinationType a owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      """An identifier that indicates the role of SourceOrDestination in a transfer (Owning Party, Possessing Party; or Location).
+Must correlate with the type of sourceOrDestination: gs1:Organization for the first two; gs1:Place for the last one."""@en ;
+        rdfs:domain       epcis:SourceOrDestination;
+        schema:domainIncludes epcis:SourceOrDestination;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "sourceOrDestinationType" ;
+        rdfs:range        cbv:SDT;
+        schema:rangeIncludes cbv:SDT;
+        epcis:jsonldLabel "type";
+        sw:term_status    "stable" .
+
+epcis:startTime  a        owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The lowest (earliest) value of a given observation period as transmitted by a sensor device.  If present, the startTime SHALL be less (earlier) than the eventTime value and the endTime value."@en ;
+        rdfs:domain       epcis:SensorMetadata ;
+        schema:domainIncludes epcis:SensorMetadata ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "startTime" ;
+        rdfs:range        xsd:dateTimeStamp ;
+        schema:rangeIncludes xsd:dateTimeStamp ;
+        sw:term_status    "stable" .
+
+epcis:stringValue  a      owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The String value of the property specified by the type as part of the sensorReport element.  If a time field is present, the stringValue SHALL pertain to this point in time. Otherwise, it SHALL refer to the eventTime."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "stringValue" ;
+        rdfs:range        xsd:string ;
+        schema:rangeIncludes xsd:string ;
+        sw:term_status    "stable" .
+
+epcis:time  a             owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) The actual point in time of an observation as transmitted by a sensor device.  If present, the time value SHALL be less (earlier) than or equal to the eventTime value.  It SHALL also contain a time zone offset value.  The coordination and integrity of distributed computing requires time synchronisation of EPCIS events conveying sensor data. Therefore, when populating the time, startTime, and endTime field, EPCIS capture applications SHOULD apply established time synchronisation protocols such as IEEE 1588-2008, which provides a standard method to synchronise device clocks in a network.  Note: The eventTime applies to the completion of a business step, not a sensor observation. For instance, for a receiving event accommodating a sensor element, the eventTime indicates when goods were received ' it gives no information when certain conditions (e.g. a specific temperature value) held true. In some circumstances, event and sensor observation times may correspond though (e.g. if a quality inspector checks certain properties of goods). In such cases, indicating the eventTime may be sufficient."@en ;
+        rdfs:domain       [a owl:Class ;
+                           owl:unionOf (epcis:SensorMetadata epcis:SensorReport)] ;
+        schema:domainIncludes epcis:SensorMetadata, epcis:SensorReport;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "time" ;
+        rdfs:range        xsd:dateTimeStamp ;
+        schema:rangeIncludes xsd:dateTimeStamp ;
+        sw:term_status    "stable" .
+
+epcis:transformationID  a    owl:ObjectProperty , rdf:Property ;
+      rdfs:comment      "A unique identifier that links this event to other TransformationEvents having an identical value of transformationID. When specified, all inputs to all events sharing the same value of the transformationID may contribute to all outputs of all events sharing that value of transformationID. If transformationID is omitted, then the inputs of this event may contribute to the outputs of this event, but the inputs and outputs of other events are not connected to this one."@en ;
+      rdfs:domain       epcis:TransformationEvent ;
+      schema:domainIncludes epcis:TransformationEvent ;
+      rdfs:isDefinedBy  epcis: ;
+      rdfs:label        "transformationID" ;
+      sw:term_status    "stable" .
+
+epcis:unset  a            owl:ObjectProperty , rdf:Property ;
+          rdfs:comment      "The unset field within persistentDisposition may specify a list of persistentDisposition URI values to be unset (revoked)."@en ;
+        rdfs:domain       epcis:PersistentDisposition ;
+        schema:domainIncludes epcis:PersistentDisposition ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "unset" ;
+        rdfs:range        cbv:Disp ;
+        schema:rangeIncludes cbv:Disp ;
+        sw:term_status    "stable" .
+
+epcis:uom  a              owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Unit of measure by which the specified value(s) of the property specified by type should be interpreted.  If there is no value, minValue, maxValue, averageValue or percValue field present, uom SHALL be omitted.  When a uom field is present, its value SHALL be the 2- or 3-character code for a physical unit specified in the 'Common Code' column of UN/CEFACT Recommendation'20 [CEFACT20].   Note: GS1 provides a tool containing a machine-readable file which enables the automatic conversion between quantitative values expressed using UN/CEFACT common codes. [https://ref.gs1.org/tools/UnitConverterUNECERec20]"@en ;
+        rdfs:domain       [a owl:Class;
+                           owl:unionOf (epcis:SensorReport epcis:QuantityElement)] ;
+        schema:domainIncludes epcis:SensorReport, epcis:QuantityElement ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "uom" ;
+        rdfs:range        xsd:string ;
+        schema:rangeIncludes xsd:string ;
+        sw:term_status    "stable" .
+
+epcis:uriValue  a         owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Similar to stringValue, for a URI value."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "uriValue" ;
+        sw:term_status    "stable" .
+
+epcis:value  a            owl:DatatypeProperty , rdf:Property ;
+        rdfs:comment      "(Optional) Value of the property specified by the type as part of the sensorReport element.  If a chemicalSubstance or microorganism field is present, the value indicates the detected measurement (e.g., of molar mass or concentration) of a chemical substance or microorganism in the physical objects specified in the 'What' dimension.  If a time field is present, the value SHALL pertain to this point in time. Otherwise, value SHALL refer to the eventTime."@en ;
+        rdfs:domain       epcis:SensorReport ;
+        schema:domainIncludes epcis:SensorReport ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "value" ;
+        rdfs:range        xsd:double ;
+        schema:rangeIncludes xsd:double ;
+        sw:term_status    "stable" .
+
+epcis:vocabularyList  a   owl:ObjectProperty , rdf:Property ;
+        rdfs:comment      "List of vocabulary elements included in master data: connects MasterData to VocabularyElement"@en ;
+        rdfs:domain       epcis:MasterData ;
+        schema:domainIncludes epcis:MasterData ;
+        rdfs:isDefinedBy  epcis: ;
+        rdfs:label        "vocabularyList" ;
+        rdfs:range        owl:Thing ;
+        schema:rangeIncludes owl:Thing ;
+        sw:term_status    "stable" .
+

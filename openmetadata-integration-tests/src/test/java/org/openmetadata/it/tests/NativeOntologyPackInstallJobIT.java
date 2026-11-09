@@ -89,28 +89,28 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
   void theWorkerInstallsABundledPackAndInstallingAgainChangesNothing(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
 
-    final OntologyPackInstallJob first = start(ontology, "fhir", Set.of("workflow"));
+    final OntologyPackInstallJob first = start(ontology, "sosa-ssn", Set.of("ssn"));
     assertEquals(OntologyPackInstallJobStatus.QUEUED, first.getStatus());
     final OntologyPackInstallJob done = awaitTerminal(ontology, first.getId());
 
     assertEquals(OntologyPackInstallJobStatus.COMPLETED, done.getStatus());
     assertEquals(done.getTotal(), done.getProgress());
-    assertEquals(14, done.getMemberCount());
-    assertEquals(14, done.getMembersApplied());
-    assertEquals(8, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
-    assertEquals(6, count("/v1/ontologyAxioms?ontologyId=" + ontology.getId()));
+    assertEquals(144, done.getMemberCount());
+    assertEquals(144, done.getMembersApplied());
+    assertEquals(22, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
+    assertEquals(73, count("/v1/ontologyAxioms?ontologyId=" + ontology.getId()));
     final var installed =
         SdkClients.adminClient().ontologies().get(ontology.getId()).getInstalledPacks();
     assertEquals(1, installed.size());
-    assertEquals("fhir", installed.getFirst().getPackId());
-    assertEquals(List.of("core", "workflow"), moduleIds(installed.getFirst().getModules()));
+    assertEquals("sosa-ssn", installed.getFirst().getPackId());
+    assertEquals(List.of("sosa", "ssn"), moduleIds(installed.getFirst().getModules()));
 
     final OntologyPackInstallJob again =
-        awaitTerminal(ontology, start(ontology, "fhir", Set.of("workflow")).getId());
+        awaitTerminal(ontology, start(ontology, "sosa-ssn", Set.of("ssn")).getId());
     assertEquals(OntologyPackInstallJobStatus.COMPLETED, again.getStatus());
     assertEquals(0, again.getTotal());
     assertEquals(0, again.getMemberCount());
-    assertEquals(8, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
+    assertEquals(22, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
     assertEquals(
         installed.getFirst().getInstalledAt(),
         SdkClients.adminClient()
@@ -125,7 +125,7 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
   void aJobIsReadableOnlyThroughItsOwnOntology(TestNamespace ns) {
     final Ontology ontology = createOntology(ns, "jobOwner");
     final Ontology other = createOntology(ns, "jobStranger");
-    final OntologyPackInstallJob job = start(ontology, "gs1", Set.of("core-vocabulary"));
+    final OntologyPackInstallJob job = start(ontology, "sosa-ssn", Set.of("sosa"));
 
     assertThrows(OpenMetadataException.class, () -> get(other, job.getId()));
     assertEquals(job.getId(), get(ontology, job.getId()).getId());
@@ -135,11 +135,10 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
   @Test
   void startingTheSameInstallWhileOneIsActiveJoinsItAndADifferentOneIsRefused(TestNamespace ns) {
     final Ontology ontology = createOntology(ns, "joinOwner");
-    final long held = queuedJob(ontology, "fhir", Set.of("workflow"));
+    final long held = queuedJob(ontology, "sosa-ssn", Set.of("ssn"));
 
-    assertEquals(held, start(ontology, "fhir", Set.of("workflow")).getId());
-    assertThrows(
-        OpenMetadataException.class, () -> start(ontology, "gs1", Set.of("core-vocabulary")));
+    assertEquals(held, start(ontology, "sosa-ssn", Set.of("ssn")).getId());
+    assertThrows(OpenMetadataException.class, () -> start(ontology, "sosa-ssn", Set.of("sosa")));
   }
 
   @Test
@@ -149,7 +148,7 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
     final var failingHandler =
         OntologyPackInstallJobHandler.create(
             realModels(),
-            5,
+            50,
             real ->
                 request -> {
                   if (applied.get() == 2) {
@@ -159,31 +158,31 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
                   applied.incrementAndGet();
                 });
 
-    final long lost = queuedJob(ontology, "fhir", Set.of("workflow"));
+    final long lost = queuedJob(ontology, "sosa-ssn", Set.of("ssn"));
     assertThrows(BackgroundJobException.class, () -> failingHandler.runJob(job(lost)));
 
     assertEquals(
         BackgroundJob.Status.FAILED,
         Entity.getJobDAO().fetchJobById(lost).orElseThrow().getStatus());
     assertEquals(2, applied.get());
-    assertEquals(8, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
-    assertEquals(2, count("/v1/ontologyAxioms?ontologyId=" + ontology.getId()));
+    assertEquals(22, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
+    assertEquals(29, count("/v1/ontologyAxioms?ontologyId=" + ontology.getId()));
     assertEquals(
         0, SdkClients.adminClient().ontologies().get(ontology.getId()).getInstalledPacks().size());
 
-    final long resumed = queuedJob(ontology, "fhir", Set.of("workflow"));
-    OntologyPackInstallJobHandler.create(realModels(), 5, real -> real).runJob(job(resumed));
+    final long resumed = queuedJob(ontology, "sosa-ssn", Set.of("ssn"));
+    OntologyPackInstallJobHandler.create(realModels(), 50, real -> real).runJob(job(resumed));
 
     final OntologyPackInstallJob job = manager().get(resumed);
     assertEquals(OntologyPackInstallJobStatus.COMPLETED, job.getStatus());
-    assertEquals(4, job.getMemberCount());
-    assertEquals(8, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
-    assertEquals(6, count("/v1/ontologyAxioms?ontologyId=" + ontology.getId()));
+    assertEquals(44, job.getMemberCount());
+    assertEquals(22, count("/v1/ontologyConcepts?ontology=" + ontology.getFullyQualifiedName()));
+    assertEquals(73, count("/v1/ontologyAxioms?ontologyId=" + ontology.getId()));
     assertEquals(
         1, SdkClients.adminClient().ontologies().get(ontology.getId()).getInstalledPacks().size());
 
-    final long rerun = queuedJob(ontology, "fhir", Set.of("workflow"));
-    OntologyPackInstallJobHandler.create(realModels(), 5, real -> real).runJob(job(rerun));
+    final long rerun = queuedJob(ontology, "sosa-ssn", Set.of("ssn"));
+    OntologyPackInstallJobHandler.create(realModels(), 50, real -> real).runJob(job(rerun));
     assertEquals(0, manager().get(rerun).getMemberCount());
   }
 
@@ -203,7 +202,7 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
                   sliceMillis.add(Duration.ofNanos(System.nanoTime() - started).toMillis());
                 });
 
-    final long id = queuedJob(ontology, "fhir", Set.of("core"));
+    final long id = queuedJob(ontology, "sosa-ssn", Set.of("sosa"));
     handler.runJob(job(id));
 
     final OntologyPackInstallJob job = manager().get(id);
@@ -245,7 +244,7 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
                 RdfSerializationFormat.TURTLE);
     final var handler = OntologyPackInstallJobHandler.create(modules -> model, 2, real -> real);
 
-    final long id = queuedJob(ontology, "fhir", Set.of("core"));
+    final long id = queuedJob(ontology, "sosa-ssn", Set.of("sosa"));
     handler.runJob(job(id));
 
     final OntologyPackInstallJob done = manager().get(id);
@@ -273,8 +272,8 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
                       .start(
                           OntologyPackCatalog.bundled(),
                           ontology.getId(),
-                          "gs1",
-                          Set.of("core-vocabulary"),
+                          "sosa-ssn",
+                          Set.of("sosa"),
                           "admin")
                       .getId();
                 }));
@@ -294,17 +293,12 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
   @Test
   void theRealGs1WebVocabularyInstallsInSlicesAndInstallingAgainChangesNothing(TestNamespace ns) {
     final Ontology ontology = createOntology(ns, "gs1");
-    final OntologyPackCatalog catalog =
-        new OntologyPackCatalog(
-            getClass().getClassLoader(), List.of("ontology/gs1-web-vocabulary/manifest.json"));
-    assertEquals(
-        OntologyPackCatalog.bundled().require("gs1").getVersion(),
-        catalog.require("gs1").getVersion());
+    final OntologyPackCatalog catalog = OntologyPackCatalog.bundled();
     final OntologyPackContentLoader contents =
         new OntologyPackContentLoader(getClass().getClassLoader());
     final Model model =
         new OntologyPackModels(contents)
-            .load(catalog.select(catalog.require("gs1"), Set.of("core-vocabulary")));
+            .load(catalog.select(catalog.require("gs1"), Set.of("gs1-voc")));
     final NativeOntologyDocument document = NativeOntologyRdfImporter.read(model);
     final List<OntologyChangeOperation> planned =
         OntologyWorkingSnapshot.production()
@@ -320,7 +314,7 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
     final int expected = planned.size();
     assertEquals(concepts + properties + axioms, expected);
 
-    final long id = queuedJob(catalog, ontology, "gs1", Set.of("core-vocabulary"));
+    final long id = queuedJob(catalog, ontology, "gs1", Set.of("gs1-voc"));
     final long started = System.nanoTime();
     OntologyPackInstallJobHandler.create(
             catalog, new OntologyPackModels(contents), 1000, real -> real)
@@ -371,7 +365,7 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
                 document.axioms().size(),
                 millis));
 
-    final long rerun = queuedJob(catalog, ontology, "gs1", Set.of("core-vocabulary"));
+    final long rerun = queuedJob(catalog, ontology, "gs1", Set.of("gs1-voc"));
     OntologyPackInstallJobHandler.create(
             catalog, new OntologyPackModels(contents), 1000, real -> real)
         .runJob(job(rerun));
