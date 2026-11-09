@@ -21,21 +21,23 @@ caused it, both under REPEATABLE READ:
   and the `fromId` variant, and `DELETE FROM entity_extension WHERE id IN (...)`. These take gap
   locks that a concurrent insert of another ontology needs.
 
-The ITs of the parallel lane logged 35 InnoDB deadlock reports in one run on `main`. One deadlock
-outlasted the server's retry and failed a request with a 500.
+Three runs of the ontology ITs of the parallel lane on `main` logged 87 InnoDB deadlock reports,
+79 of them on these tables. In two of the runs a deadlock outlasted the server's retry and failed a
+request with a 500.
 
 The locking reads were redundant. Every write to an ontology's definitions, references and
 relationships runs inside `OntologyWorkingState.mutate`, which takes that ontology's
 `ontology_state` row lock (`OntologyWorkingState.lock`) as the first statement of the transaction.
-The release, review and library-pack paths take the same lock first. InnoDB fixes a
-REPEATABLE READ snapshot at the first non-locking read. So a plain read under the lock already sees
-every commit of every earlier writer of that ontology, and no later writer can commit until this
-transaction ends.
+The change-set and library-pack paths enter through `OntologyRepository.applyWorkingChanges`, which
+takes the same lock first. InnoDB fixes a REPEATABLE READ snapshot at the first non-locking read.
+So a plain read under the lock already sees every commit of every earlier writer of that ontology,
+and no later writer can commit until this transaction ends.
 
 ## Decision
 - The `ontology_state` row lock is the only lock that orders writers of one native ontology. A
-  transaction takes it before its first non-locking read. Code that discovers the ontology from a
-  row reads only immutable ownership before the lock.
+  transaction that reads the ontology's working rows takes it before its first non-locking read.
+  A path that must find the ontology first, as release cancellation does, reads only immutable
+  ownership before the lock and uses locking reads after it.
 - Reads of an ontology's working rows under that lock do not lock. `findDeclarations`,
   `incomingInverses`, `ancestors`, `disjointAxioms` and `referencing` have no locking variant.
   Locks by primary key on rows that exist, such as `findJsonByIdForUpdate` in
