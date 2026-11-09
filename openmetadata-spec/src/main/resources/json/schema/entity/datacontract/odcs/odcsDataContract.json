@@ -195,19 +195,24 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "authoritativeDefinitions": {
           "description": "External documentation links.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/odcsAuthoritativeDefinition"
-          }
+          },
+          "default": null
         },
         "customProperties": {
-          "description": "Non-standard attributes.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Non-standard attributes, each as a {property, value} pair.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          },
+          "default": null
         },
         "dataGranularityDescription": {
           "description": "Aggregation level details (for objects).",
@@ -264,7 +269,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "transformLogic": {
           "description": "Transformation SQL/logic.",
@@ -279,7 +285,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "criticalDataElement": {
           "description": "CDE designation.",
@@ -290,7 +297,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/odcsSchemaElement"
-          }
+          },
+          "default": null
         },
         "items": {
           "description": "Array element schema.",
@@ -301,7 +309,8 @@
           "type": "array",
           "items": {
             "$ref": "#/definitions/odcsQualityRule"
-          }
+          },
+          "default": null
         }
       },
       "required": ["name"],
@@ -424,7 +433,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "scheduler": {
           "description": "Cron or tool name.",
@@ -435,23 +445,28 @@
           "type": "string"
         },
         "customProperties": {
-          "description": "Additional execution properties.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Additional execution properties, each as a {property, value} pair.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          },
+          "default": null
         },
         "authoritativeDefinitions": {
           "description": "External rule documentation.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/odcsAuthoritativeDefinition"
-          }
+          },
+          "default": null
         },
         "tags": {
           "description": "Rule categorization.",
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         }
       },
       "additionalProperties": true
@@ -602,6 +617,22 @@
       },
       "additionalProperties": true
     },
+    "odcsTeam": {
+      "description": "Team of the contract, as an object with its members. The deprecated ODCS v3.0.2 bare array of members is normalized into this object on import.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.entity.datacontract.odcs.ODCSTeam",
+      "properties": {
+        "members": {
+          "description": "Team members.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsTeamMember"
+          },
+          "default": null
+        }
+      },
+      "additionalProperties": true
+    },
     "odcsRole": {
       "description": "IAM role definition.",
       "type": "object",
@@ -622,22 +653,19 @@
         },
         "firstLevelApprovers": {
           "description": "Initial approval authority.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "type": "string"
         },
         "secondLevelApprovers": {
           "description": "Secondary approval authority.",
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
+          "type": "string"
         },
         "customProperties": {
-          "description": "Additional role attributes.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Additional role attributes, each as a {property, value} pair.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          },
+          "default": null
         }
       },
       "required": ["role"],
@@ -653,12 +681,12 @@
           "type": "string"
         },
         "value": {
-          "description": "Agreement specification (required).",
-          "type": "string"
+          "description": "Agreement specification (required). ODCS allows any JSON value.",
+          "existingJavaType": "java.lang.Object"
         },
         "valueExt": {
-          "description": "Extended value.",
-          "type": "string"
+          "description": "Extended value. ODCS allows any JSON value.",
+          "existingJavaType": "java.lang.Object"
         },
         "unit": {
           "description": "Time unit (d/day/days, y/yr/years).",
@@ -704,7 +732,8 @@
           "type": "array",
           "items": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "host": {
           "description": "Server hostname.",
@@ -767,9 +796,12 @@
           "type": "string"
         },
         "customProperties": {
-          "description": "Non-standard attributes.",
-          "type": "object",
-          "additionalProperties": true
+          "description": "Non-standard attributes, each as a {property, value} pair.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/odcsCustomProperty"
+          },
+          "default": null
         }
       },
       "required": ["server", "type"],
@@ -785,8 +817,8 @@
           "type": "string"
         },
         "value": {
-          "description": "Property value.",
-          "type": "string"
+          "description": "Property value. ODCS allows any JSON value.",
+          "existingJavaType": "java.lang.Object"
         }
       },
       "additionalProperties": true
@@ -834,7 +866,8 @@
       "type": "array",
       "items": {
         "type": "string"
-      }
+      },
+      "default": null
     },
     "description": {
       "description": "Purpose, limitations, usage details.",
@@ -845,46 +878,48 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsAuthoritativeDefinition"
-      }
+      },
+      "default": null
     },
     "schema": {
       "description": "Schema definition with objects and properties.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsSchemaElement"
-      }
+      },
+      "default": null
     },
     "quality": {
       "description": "Data quality rules.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsQualityRule"
-      }
+      },
+      "default": null
     },
     "support": {
       "description": "Support channels.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsSupportChannel"
-      }
+      },
+      "default": null
     },
     "price": {
       "description": "Pricing information.",
       "$ref": "#/definitions/odcsPricing"
     },
     "team": {
-      "description": "Team members.",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/odcsTeamMember"
-      }
+      "description": "Team of the contract. ODCS v3.0.2 wrote a bare array of members; that deprecated form is normalized into the object form on import.",
+      "$ref": "#/definitions/odcsTeam"
     },
     "roles": {
       "description": "IAM roles.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsRole"
-      }
+      },
+      "default": null
     },
     "slaDefaultElement": {
       "description": "Default element for SLA checks.",
@@ -895,26 +930,28 @@
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsSlaProperty"
-      }
+      },
+      "default": null
     },
     "servers": {
       "description": "Infrastructure and server definitions.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsServer"
-      }
+      },
+      "default": null
     },
     "customProperties": {
       "description": "Non-standard key-value pairs.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/odcsCustomProperty"
-      }
+      },
+      "default": null
     },
     "contractCreatedTs": {
-      "description": "ISO 8601 UTC creation timestamp.",
-      "type": "string",
-      "format": "date-time"
+      "description": "ISO 8601 UTC creation timestamp, e.g. 2026-09-15T10:21:14.936Z.",
+      "type": "string"
     }
   },
   "required": ["apiVersion", "kind", "id", "version", "status"],
