@@ -27,6 +27,25 @@ from metadata.utils.operation_metrics import (
 from metadata.utils.singleton import Singleton
 
 
+@pytest.fixture(autouse=True)
+def wait_for_thread_start(monkeypatch):
+    # Avoid filelock's Python <3.12 tracing race: https://github.com/tox-dev/filelock/pull/747.
+    class ReadyThread(threading.Thread):
+        def start(self):
+            ready = threading.Event()
+            run = self.run
+
+            def run_when_ready():
+                ready.set()
+                run()
+
+            self.run = run_when_ready
+            super().start()
+            assert ready.wait(timeout=10), f"Thread {self.name} did not initialize"
+
+    monkeypatch.setattr(threading, "Thread", ReadyThread)
+
+
 class TestRunningStatistics:
     """Tests for the RunningStatistics class (Welford's algorithm)"""
 
@@ -271,7 +290,7 @@ class TestOperationMetricsState:
 
     def test_thread_isolation_before_merge(self) -> None:
         metrics = OperationMetricsState()
-        barrier = threading.Barrier(2)
+        barrier = threading.Barrier(2, timeout=10)
         results = {"thread1_count": 0, "thread2_count": 0}  # noqa: F841
 
         def thread1_work():
@@ -423,8 +442,10 @@ class TestMultiThreadedOperations:
         metrics = OperationMetricsState()
         num_threads = 10
         ops_per_thread = 100
+        barrier = threading.Barrier(num_threads, timeout=10)
 
         def record_operations():
+            barrier.wait()
             for i in range(ops_per_thread):
                 metrics.record_operation("db_queries", "SELECT", float(i))
             metrics.merge_thread_metrics()
