@@ -1,7 +1,7 @@
 # OSS memories are approved without reconciliation
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-06 (a document's owner approves its extracted memories)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryRepositoryTest`, `ContextMemoryCreateGrantIT`,
   `ContextMemoryLifecycleIT`; Collate's `ContextMemoryRepositoryExtTest`,
@@ -37,3 +37,11 @@ explicit Draft or Unprocessed memory, and its authorized owner can approve it th
 
 Collate keeps pending memories through app suspension and AI outages. Reconciliation or an
 authorized approval is required before those memories become generally available.
+
+## Amendment
+
+v2 (2026-11-06): under review, a document's owner, its uploader or author, also approves the
+document's extracted memories, from the document. The approval is written as a conflict-review
+decision is, through `governance-bot`, so the rule above still holds for every other write: an
+ordinary user's own PATCH or PUT into Approved is refused or keeps the stored stage
+(ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).

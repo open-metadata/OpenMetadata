@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Tests for the Clickhouse materialized view `TO` clause lineage."""
 
+import pickle
 import uuid
 from unittest import TestCase
 from unittest.mock import MagicMock
@@ -28,11 +29,14 @@ from metadata.generated.schema.type.basic import (
     FullyQualifiedEntityName,
     Uuid,
 )
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import search_cache
 from metadata.ingestion.source.database.clickhouse.lineage import ClickhouseLineageSource
 from metadata.ingestion.source.database.clickhouse.lineage_utils import (
     get_materialized_view_target_table,
     get_mv_target_lineage,
+    get_view_lineage_parser,
 )
 from metadata.ingestion.source.models import TableView
 from metadata.utils.db_utils import get_view_lineage
@@ -333,3 +337,82 @@ class TestClickhouseMaterializedViewLineage(TestCase):
             edges,
             {self.source_entity.fullyQualifiedName.root: self.mv_entity.fullyQualifiedName.root},
         )
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "CREATE MATERIALIZED VIEW schema1.mv TO schema2.orders AS SELECT id FROM schema1.src",
+        "CREATE MATERIALIZED VIEW IF NOT EXISTS schema1.mv ON CLUSTER cluster1 TO schema2.orders AS SELECT id FROM schema1.src",
+        'CREATE MATERIALIZED VIEW "schema1"."mv" TO "schema2"."orders" AS SELECT id FROM "schema1"."src"',
+        "CREATE MATERIALIZED VIEW schema1.mv TO schema2.orders (`id` Int64) AS SELECT id FROM schema1.src",
+    ],
+)
+def test_clickhouse_view_parser_separates_explicit_output(query):
+    parser = get_view_lineage_parser(query, Dialect.CLICKHOUSE, timeout_seconds=10)
+    assert [str(table) for table in parser.source_tables] == ["schema1.src"]
+    assert [str(table) for table in parser.target_tables] == ["schema1.mv"]
+    assert not parser.intermediate_tables
+    assert parser.query == query
+    original = LineageParser(query, Dialect.CLICKHOUSE, timeout_seconds=10)
+    assert parser.query_hash == original.query_hash
+    assert "TO" in parser.masked_query
+    assert parser.query_parsing_success
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "CREATE VIEW schema1.mv AS SELECT id FROM schema1.src",
+        "CREATE VIEW schema1.mv ON CLUSTER cluster1 AS SELECT id FROM schema1.src",
+        "CREATE MATERIALIZED VIEW schema1.mv ENGINE = Memory AS SELECT id FROM schema1.src",
+        "SELECT id FROM schema1.src",
+        "CREATE TABLE schema1.mv AS SELECT id FROM schema1.src",
+        "CREATE MATERIALIZED VIEW schema1.mv TO INNER UUID '1234' AS SELECT id FROM schema1.src",
+        "CREATE MATERIALIZED VIEW schema1.mv TO schema2.orders AS",
+    ],
+)
+def test_clickhouse_view_parser_falls_back_for_other_definitions(query):
+    expected = LineageParser(query, Dialect.CLICKHOUSE, timeout_seconds=10)
+    parser = get_view_lineage_parser(query, Dialect.CLICKHOUSE, timeout_seconds=10)
+    assert parser.query == expected.query
+    assert parser.masked_query == expected.masked_query
+    assert parser.query_hash == expected.query_hash
+    assert parser.query_parsing_success == expected.query_parsing_success
+    assert [str(table) for table in parser.source_tables] == [str(table) for table in expected.source_tables]
+    assert [str(table) for table in parser.target_tables] == [str(table) for table in expected.target_tables]
+
+
+def test_clickhouse_view_parser_preserves_original_masked_literals():
+    query = (
+        "CREATE MATERIALIZED VIEW schema1.mv TO schema2.orders AS SELECT id FROM schema1.src WHERE id = 'private-value'"
+    )
+    original = LineageParser(query, Dialect.CLICKHOUSE, timeout_seconds=10)
+    parser = get_view_lineage_parser(query, Dialect.CLICKHOUSE, timeout_seconds=10)
+    assert parser.masked_query == original.masked_query
+    assert "private-value" not in parser.masked_query
+    assert "TO schema2.orders" in parser.masked_query
+    assert [str(table) for table in parser.target_tables] == ["schema1.mv"]
+
+
+def test_clickhouse_view_parser_factory_is_picklable():
+    factory = ClickhouseLineageSource.get_view_lineage_parser_factory(object())
+    assert factory is get_view_lineage_parser
+    assert pickle.loads(pickle.dumps(factory)) is get_view_lineage_parser
+
+
+def test_clickhouse_view_parser_retains_native_graph_if_normalized_parse_fails(monkeypatch):
+    from sqlglot import expressions as exp
+
+    query = "CREATE MATERIALIZED VIEW schema1.mv TO schema2.orders AS SELECT id FROM schema1.src"
+    original = LineageParser(query, Dialect.CLICKHOUSE, parser_type="Auto")
+    # Simulate an unsupported rendering from the external AST serializer.
+    monkeypatch.setattr(exp.Create, "sql", lambda *_args, **_kwargs: "COPY table FROM path")
+    parser = get_view_lineage_parser(query, Dialect.CLICKHOUSE, parser_type="Auto")
+    assert parser.parser is not None
+    assert [str(table) for table in parser.source_tables] == [str(table) for table in original.source_tables]
+    assert [str(table) for table in parser.target_tables] == [str(table) for table in original.target_tables]
+    assert [str(table) for table in parser.intermediate_tables] == [
+        str(table) for table in original.intermediate_tables
+    ]
+    assert parser.masked_query == original.masked_query

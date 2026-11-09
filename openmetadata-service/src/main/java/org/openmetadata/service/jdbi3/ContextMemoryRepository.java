@@ -1152,7 +1152,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     // primaryEntity and the source link on update.
     List<UUID> ids = refs.stream().map(EntityReference::getId).toList();
     List<ContextMemory> memories = find(ids, Include.NON_DELETED);
-    setFieldsInBulk(getFields("primaryEntity,sourceEntity"), memories);
+    setFieldsInBulk(getFields("owners,primaryEntity,sourceEntity"), memories);
     return memories;
   }
 

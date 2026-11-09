@@ -396,14 +396,33 @@ public interface JobDAO {
   @RegisterRowMapper(BackgroundJobMapper.class)
   BackgroundJob findCsvJobById(@Bind("id") long id);
 
-  @SqlQuery(
-      "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
-          + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
-          + "FROM background_jobs WHERE createdBy = :createdBy "
-          + "AND jobType = 'ONTOLOGY_BULK' ORDER BY createdAt DESC LIMIT :limit")
+  // The optional glossaryId predicate lets the Ontology bulk jobs panel fetch
+  // only the selected glossary's jobs server-side, so jobs beyond the limit for
+  // other glossaries cannot push this glossary's active jobs out of the page.
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+              + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+              + "FROM background_jobs WHERE createdBy = :createdBy "
+              + "AND jobType = 'ONTOLOGY_BULK' "
+              + "AND (:glossaryId IS NULL "
+              + "OR JSON_UNQUOTE(JSON_EXTRACT(jobArgs, '$.request.glossaryId')) = :glossaryId) "
+              + "ORDER BY createdAt DESC LIMIT :limit",
+      connectionType = MYSQL)
+  @ConnectionAwareSqlQuery(
+      value =
+          "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "
+              + "progress, total, NULL AS result, error, message, cancelRequested, completedAt "
+              + "FROM background_jobs WHERE createdBy = :createdBy "
+              + "AND jobType = 'ONTOLOGY_BULK' "
+              + "AND (:glossaryId IS NULL OR jobArgs->'request'->>'glossaryId' = :glossaryId) "
+              + "ORDER BY createdAt DESC LIMIT :limit",
+      connectionType = POSTGRES)
   @RegisterRowMapper(BackgroundJobMapper.class)
   List<BackgroundJob> listOntologyBulkJobsByUser(
-      @Bind("createdBy") String createdBy, @Bind("limit") int limit);
+      @Bind("createdBy") String createdBy,
+      @Bind("glossaryId") String glossaryId,
+      @Bind("limit") int limit);
 
   @SqlQuery(
       "SELECT id, jobType, methodName, jobArgs, status, createdAt, updatedAt, createdBy, runAt, "

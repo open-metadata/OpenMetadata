@@ -150,7 +150,12 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
                 />
               </div>
             )}
-            <ExtractedMemoriesCard collapsible sourceId={knowledgePage.id} />
+            <ExtractedMemoriesCard
+              collapsible
+              sourceId={knowledgePage.id}
+              sourceOwners={knowledgePage.owners}
+              sourceType={EntityType.KNOWLEDGE_PAGE}
+            />
           </div>
         )}
       </Card.Content>
