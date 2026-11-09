@@ -30,8 +30,10 @@ import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -64,6 +66,7 @@ import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore.JournalLimits;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
 import org.openmetadata.service.rdf.storage.InferenceInvalidatingRdfStorage;
@@ -81,6 +84,10 @@ import org.testcontainers.containers.GenericContainer;
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfBlueGreenRebuildIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
@@ -142,7 +149,7 @@ public class RdfBlueGreenRebuildIT {
           queue.processNext(
               payload ->
                   JsonUtils.readValue(payload, RdfMutation.class)
-                      .apply(fixture.other.routedStorage(RdfWriteDelivery.DIRECT))));
+                      .apply(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), NO_RELEASES)));
       fixture.primary.promote(target, "test");
       assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "before-promotion");
 
@@ -151,7 +158,7 @@ public class RdfBlueGreenRebuildIT {
           queue.processNext(
               payload ->
                   JsonUtils.readValue(payload, RdfMutation.class)
-                      .apply(fixture.other.routedStorage(RdfWriteDelivery.DIRECT))));
+                      .apply(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), NO_RELEASES)));
       assertName(fixture.other.routedStorage(RdfWriteDelivery.DIRECT), id, "after-promotion");
       try (RdfStorageInterface previous = raw("openmetadata")) {
         assertName(previous, id, "before-promotion");
@@ -503,7 +510,9 @@ public class RdfBlueGreenRebuildIT {
             1024 * 1024);
         live.bulkStoreEntities(
             List.of(new EntityWriteRequest("table", id, model)), RdfWriteMode.RECONCILE);
-        live.replaceGraph("urn:journal:activeOntology", model);
+        final UUID release = UUID.randomUUID();
+        fixture.releases.put(release, ModelFactory.createDefaultModel().add(model));
+        live.replaceGraph("urn:journal:activeOntology", release, model);
       } finally {
         model.close();
       }
@@ -598,6 +607,7 @@ public class RdfBlueGreenRebuildIT {
     final RdfDatasetManager primary;
     final RdfDatasetManager other;
     final AtomicBoolean failAfterLiveWrite = new AtomicBoolean();
+    final Map<UUID, Model> releases = new ConcurrentHashMap<>();
     Runnable duringBuildWrite;
 
     Fixture(final Database database, final JournalLimits limits) {
@@ -655,7 +665,8 @@ public class RdfBlueGreenRebuildIT {
               }
             };
           },
-          Duration.ofMinutes(1));
+          Duration.ofMinutes(1),
+          release -> ModelFactory.createDefaultModel().add(releases.get(release)));
     }
 
     @Override

@@ -2,6 +2,7 @@ package org.openmetadata.service.rdf;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
@@ -47,6 +48,9 @@ final class RdfSourceNormalizer {
           OntologyRdfVocabulary.ABSTRACT,
           OntologyRdfVocabulary.UNIT,
           OntologyRdfVocabulary.IDENTIFIER_INTENT);
+  private static final List<Property> DESCRIPTIONS = List.of(SKOS.definition, RDFS.comment);
+  private static final Set<String> MARKUP_DATATYPES =
+      Set.of(RDF.HTML.getURI(), RDF.xmlLiteral.getURI());
   private static final String ENGLISH = "en";
 
   private final Model model;
@@ -60,6 +64,7 @@ final class RdfSourceNormalizer {
   static void normalize(final Model model, final RdfSkipLedger ledger) {
     final RdfSourceNormalizer normalizer = new RdfSourceNormalizer(model, ledger);
     normalizer.dropImports();
+    DESCRIPTIONS.forEach(normalizer::dropDescriptionsThatAreNotText);
     TEXT_PREDICATES.forEach(normalizer::preferOneLanguage);
     SINGLE_VALUED.forEach(normalizer::keepFirstValue);
   }
@@ -70,6 +75,46 @@ final class RdfSourceNormalizer {
         model.listStatements(null, OWL2.imports, (RDFNode) null).toList();
     imports.forEach(statement -> ledger.skip(NativeOntologyImportSkipReason.IMPORTS, statement));
     imports.forEach(model::remove);
+  }
+
+  /**
+   * A description that is a resource or markup cannot become native text without guessing at its
+   * rendering, so it is skipped and the subject keeps its other description or none. ESCO, for
+   * one, states each definition as a node with an HTML-bearing literal.
+   */
+  private void dropDescriptionsThatAreNotText(final Property predicate) {
+    for (final Statement statement :
+        model.listStatements(null, predicate, (RDFNode) null).toList()) {
+      if (!statement.getObject().isLiteral() || isMarkup(statement.getLiteral())) {
+        ledger.skip(NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE, statement);
+        model.remove(statement);
+        removeUnreferencedBlankStructure(statement.getObject());
+      }
+    }
+  }
+
+  private static boolean isMarkup(final Literal literal) {
+    return MARKUP_DATATYPES.contains(literal.getDatatypeURI());
+  }
+
+  /** The structure belongs to the skipped statement, so it is neither read nor counted again. */
+  private void removeUnreferencedBlankStructure(final RDFNode start) {
+    final List<Resource> pending = new ArrayList<>();
+    final Set<Resource> seen = new HashSet<>();
+    if (start.isAnon()) {
+      pending.add(start.asResource());
+    }
+    while (!pending.isEmpty()) {
+      final Resource node = pending.removeLast();
+      if (seen.add(node) && !model.contains(null, null, node)) {
+        for (final Statement inner : model.listStatements(node, null, (RDFNode) null).toList()) {
+          model.remove(inner);
+          if (inner.getObject().isAnon()) {
+            pending.add(inner.getObject().asResource());
+          }
+        }
+      }
+    }
   }
 
   /**

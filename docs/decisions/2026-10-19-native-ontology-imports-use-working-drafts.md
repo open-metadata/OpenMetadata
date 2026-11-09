@@ -1,7 +1,7 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`) · v13 2026-11-07 (a description that is a resource or markup is skipped)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
 - **Related:** Ontology Studio publication and release contracts
@@ -142,3 +142,16 @@ ORG 6 of 9 (2 name undeclared properties, 1 sits on a property the import refuse
 of 13, ODRL 22 of 22 and FOAF 12 of 13. The rules, their OWL 2 DL consequences and the FIBO,
 FHIR, GS1 and schema.org counts are in
 ADR:2026-11-07-ontology-property-hierarchies-are-superproperty-fields.
+
+## Amendment
+
+v13, 2026-11-07: a `skos:definition` or `rdfs:comment` whose value is a resource (an IRI or a
+blank node) or an `rdf:HTML` or `rdf:XMLLiteral` literal is skipped as `UNSUPPORTED_STRUCTURE`
+instead of failing the preview with "Expected a plain RDF literal". The concept still imports
+and keeps its other description, so a resource `skos:definition` falls back to a plain
+`rdfs:comment`. Blank-node structure under the skipped value is removed with it and not counted
+again, as for every skipped statement. Rendering markup to text or following a definition node
+would guess at what the source means. English ESCO states its 13 `skos:definition` values that
+are not literals as `esco:NodeLiteral` resources, and 76 of its node literals carry HTML. Any
+other literal of the wrong shape, such as `skos:definition 17`, still fails the preview, and the
+rule for labels is unchanged.

@@ -51,6 +51,7 @@ import org.openmetadata.service.rdf.rebuild.RdfLiveWritePause;
 import org.openmetadata.service.rdf.rebuild.RdfMutation;
 import org.openmetadata.service.rdf.rebuild.RdfRebuildStore;
 import org.openmetadata.service.rdf.rebuild.RdfWriteDelivery;
+import org.openmetadata.service.rdf.rebuild.ReleaseGraphs;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
@@ -66,6 +67,10 @@ import org.testcontainers.containers.GenericContainer;
 @EnabledIfSystemProperty(named = "enableRdf", matches = "true")
 @Execution(ExecutionMode.SAME_THREAD)
 public class RdfStorageMaintenanceIT {
+  private static final ReleaseGraphs NO_RELEASES =
+      release -> {
+        throw new IllegalStateException("No ontology release is journaled here");
+      };
   private static final String BASE = "https://open-metadata.org/";
   private static final String GRAPH = BASE + "graph/knowledge";
   private static final String NAME = BASE + "ontology/name";
@@ -280,7 +285,8 @@ public class RdfStorageMaintenanceIT {
               new RdfRebuildStore(database.jdbi(), clock, RdfRebuildStore.DEFAULT_LIMITS),
               clock,
               dataset -> raw,
-              WRITER_WAIT);
+              WRITER_WAIT,
+              NO_RELEASES);
       pause = new RdfLiveWritePause(locks, manager, "server-a");
     }
 
@@ -323,13 +329,13 @@ public class RdfStorageMaintenanceIT {
 
     void applyServing(final String payload) {
       JsonUtils.readValue(payload, RdfMutation.class)
-          .apply(manager.routedStorage(RdfWriteDelivery.DIRECT));
+          .apply(manager.routedStorage(RdfWriteDelivery.DIRECT), NO_RELEASES);
     }
 
     /** As the live writer applies a queue row: held back at once while paused, never waiting. */
     void applyQueued(final String payload) {
       JsonUtils.readValue(payload, RdfMutation.class)
-          .apply(manager.routedStorage(RdfWriteDelivery.QUEUED));
+          .apply(manager.routedStorage(RdfWriteDelivery.QUEUED), NO_RELEASES);
     }
 
     int headAttempts() {
