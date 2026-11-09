@@ -58,7 +58,7 @@ import {
 import type { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { debounce } from 'lodash';
-import type { ChangeEvent, Key, SyntheticEvent } from 'react';
+import type { ChangeEvent, Key, KeyboardEvent, SyntheticEvent } from 'react';
 import {
   ReactNode,
   useCallback,
@@ -254,9 +254,16 @@ const MAX_VISIBLE_BADGES = 2;
 // link inside a cell must stop these events or the row navigates instead (TableV2 does the same
 // for its filter trigger).
 const stopRowAction = (event: SyntheticEvent) => event.stopPropagation();
+// Escape never presses the row, and stopping it would also stop the native event at the React
+// root, so HoverCard's document listener could not close the "+N" card.
+const stopRowKey = (event: KeyboardEvent<HTMLElement>) => {
+  if (event.key !== 'Escape') {
+    event.stopPropagation();
+  }
+};
 const ROW_ACTION_GUARD = {
   onClick: stopRowAction,
-  onKeyDown: stopRowAction,
+  onKeyDown: stopRowKey,
   onMouseDown: stopRowAction,
   onPointerDown: stopRowAction,
 };
