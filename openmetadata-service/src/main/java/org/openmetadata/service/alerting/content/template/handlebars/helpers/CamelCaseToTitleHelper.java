@@ -80,6 +80,6 @@ public class CamelCaseToTitleHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{camelCaseToTitle }}")
-                    .withExample("{{camelCaseToTitle \"entityType\"}}")));
+                    .withExample("{{camelCaseToTitle event.entityType}}")));
   }
 }

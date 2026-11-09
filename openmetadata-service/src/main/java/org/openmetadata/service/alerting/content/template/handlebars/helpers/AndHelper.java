@@ -67,6 +67,7 @@ public class AndHelper implements HandlebarsHelper {
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{and }}")
-                    .withExample("{{#if (and hasChanges isPublished)}}Show changes{{/if}}")));
+                    .withExample(
+                        "{{#if (and entity.owners entity.description)}}Has an owner and description{{/if}}")));
   }
 }
