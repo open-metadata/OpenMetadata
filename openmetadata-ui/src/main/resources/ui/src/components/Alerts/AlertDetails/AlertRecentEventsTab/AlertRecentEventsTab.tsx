@@ -57,6 +57,7 @@ import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoFilteredResultsPlaceholder from '../../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
 import {
@@ -178,10 +179,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     if (isEmpty(alertRecentEvents)) {
       const isFiltered = filter !== AlertRecentEventFilters.ALL;
+      const EmptyStatePlaceholder = isFiltered
+        ? NoFilteredResultsPlaceholder
+        : NoDataPlaceholder;
 
       return (
         <Box className="tw:relative tw:min-h-80 tw:w-full">
-          <NoDataPlaceholder
+          <EmptyStatePlaceholder
             description={t(
               isFiltered
                 ? 'message.no-data-available-for-selected-filter'
@@ -206,7 +210,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     return (
       <Grid
-        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+        className="layout-row layout-grid tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
         rowGap="4">
         <Grid.Item
           className="layout-column"
@@ -224,66 +228,50 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                   key={`${changeEventData.id}-${changeEventData.timestamp}`}>
                   <AccordionHeader>
                     <Box
-                      className="layout-row"
+                      align="center"
+                      className="tw:w-full"
                       data-testid={`event-collapse-${changeEventData.id}`}
+                      gap={4}
                       justify="between"
                       wrap="wrap">
-                      <Box className="layout-column tw:block">
-                        <Box
-                          align="center"
-                          className="layout-row tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
-                          rowGap={4}
-                          wrap="wrap">
-                          <Box className="layout-column tw:block">
-                            {/* Display icon for the status of the alert event */}
-                            <Tooltip
-                              arrow
-                              excludeTriggerFromTabOrder
-                              title={startCase(typedEvent.status)}
-                              triggerClassName="tw:inline-flex">
-                              {getAlertStatusIcon(typedEvent.status)}{' '}
-                            </Tooltip>
-                          </Box>
-                          <Box className="layout-column tw:block">
-                            {/* Display icon for the asset the change event is related to */}
-                            <Tooltip
-                              arrow
-                              excludeTriggerFromTabOrder
-                              title={startCase(changeEventData.entityType)}
-                              triggerClassName="tw:inline-flex">
-                              {searchClassBase.getEntityIcon(
-                                changeEventData.entityType ?? '',
-                                'h-4 w-4'
-                              )}
-                            </Tooltip>
-                          </Box>
-                          <Box className="layout-column tw:block">
-                            {/* Display the change event id */}
-                            <Typography>
-                              {isEmpty(typedEvent.data)
-                                ? t('label.unreadable-event')
-                                : changeEventData.id}
-                            </Typography>
-                          </Box>
-                        </Box>
-                      </Box>
-                      <Box className="layout-column tw:block">
-                        {/* Display the event timestamp */}
-                        <Typography color="secondary">
-                          {formatDateTime(typedEvent.timestamp)}
+                      <Box align="center" gap={4}>
+                        <Tooltip
+                          arrow
+                          excludeTriggerFromTabOrder
+                          title={startCase(typedEvent.status)}
+                          triggerClassName="tw:inline-flex">
+                          {getAlertStatusIcon(typedEvent.status)}
+                        </Tooltip>
+                        <Tooltip
+                          arrow
+                          excludeTriggerFromTabOrder
+                          title={startCase(changeEventData.entityType)}
+                          triggerClassName="tw:inline-flex">
+                          {searchClassBase.getEntityIcon(
+                            changeEventData.entityType ?? '',
+                            'h-4 w-4'
+                          )}
+                        </Tooltip>
+                        <Typography>
+                          {isEmpty(typedEvent.data)
+                            ? t('label.unreadable-event')
+                            : changeEventData.id}
                         </Typography>
                       </Box>
+                      <Typography color="secondary">
+                        {formatDateTime(typedEvent.timestamp)}
+                      </Typography>
                     </Box>
                   </AccordionHeader>
                   <AccordionPanel unmountOnCollapse>
                     <Box
-                      className="layout-row tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                      className="layout-row tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
                       data-testid={`event-details-${changeEventData.id}`}
                       rowGap={4}
                       wrap="wrap">
                       <Box className="layout-column tw:block">
                         <Grid
-                          className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                          className="layout-row layout-grid tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
                           rowGap="4">
                           {Object.entries(changeEventDataToDisplay).map(
                             ([key, value]) =>
@@ -293,7 +281,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   key={key}
                                   span={key === 'reason' ? 24 : 8}>
                                   <Grid
-                                    className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-4)] tw:-mx-0.5"
+                                    className="layout-row layout-grid tw:[--layout-gutter:var(--tw-spacing)] tw:-mx-0.5"
                                     data-testid={`event-data-${key}`}
                                     rowGap="1">
                                     <Grid.Item
@@ -394,27 +382,19 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
   return (
     <Grid
-      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      className="layout-row layout-grid tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
       rowGap="4">
       <Grid.Item className="layout-column" span={24}>
-        <Box className="layout-row" justify="between" wrap="wrap">
-          <Box className="layout-column tw:block">
-            <Grid
-              className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-8)] tw:-mx-1"
-              rowGap="2">
-              <Grid.Item className="layout-column" span={24}>
-                <Typography weight="medium">
-                  {`${t('label.description')}:`}
-                </Typography>
-              </Grid.Item>
-              <Grid.Item className="layout-column" span={24}>
-                <Typography color="secondary">
-                  {t('message.alert-recent-events-description', { alertName })}
-                </Typography>
-              </Grid.Item>
-            </Grid>
+        <Box align="start" gap={4} justify="between">
+          <Box className="tw:min-w-0" direction="col" gap={1}>
+            <Typography weight="medium">
+              {`${t('label.description')}:`}
+            </Typography>
+            <Typography color="secondary">
+              {t('message.alert-recent-events-description', { alertName })}
+            </Typography>
           </Box>
-          <Box className="layout-column tw:block">
+          <Box className="tw:shrink-0">
             <Dropdown.Root>
               <Button
                 aria-label={`${t('label.filter-plural')}${appliedFilterText}`}

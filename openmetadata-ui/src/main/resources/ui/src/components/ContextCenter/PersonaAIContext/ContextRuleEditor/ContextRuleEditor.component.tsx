@@ -32,7 +32,6 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
-  FC,
   ReactNode,
   useCallback,
   useEffect,
@@ -113,10 +112,6 @@ const BEHAVIOR_CARD_CLASS =
 
 const ENTITY_TYPE_POPUP_CLASS =
   'tw:max-h-[min(320px,calc(100vh-96px))] tw:overflow-y-auto tw:overscroll-contain';
-
-const ViewInExploreIcon: FC<{ className?: string }> = ({ className }) => (
-  <LinkExternal01 className={`${className ?? ''} tw:size-4!`} />
-);
 
 const resolveFullyRendered = (
   rule: ContextRule | undefined,
@@ -201,9 +196,11 @@ export const ContextRuleEditor = ({
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const [filterIncomplete, setFilterIncomplete] = useState(false);
   const [filterErrorShown, setFilterErrorShown] = useState(false);
+  const [filterUnrendered, setFilterUnrendered] = useState(false);
   const clearFilterState = useCallback(() => {
     setFilterIncomplete(false);
     setFilterErrorShown(false);
+    setFilterUnrendered(false);
   }, []);
   const closeDrawerRef = useRef<() => void>(() => undefined);
   const lastResetRuleIdRef = useRef<string>();
@@ -492,6 +489,9 @@ export const ContextRuleEditor = ({
               shouldDirty: true,
             });
           }}
+          onReconstructionStatusChange={(rendered) => {
+            setFilterUnrendered(!rendered);
+          }}
           onValidityChange={(isValid) => {
             setFilterIncomplete(!isValid);
             if (isValid) {
@@ -499,6 +499,16 @@ export const ContextRuleEditor = ({
             }
           }}
         />
+        {filterUnrendered && (
+          <Alert
+            className="tw:mt-1.5"
+            data-testid="context-rule-filter-unrendered"
+            icon={AlertCircle}
+            iconSize="sm"
+            variant="warning">
+            {t('message.persona-context-rule-filter-unrendered')}
+          </Alert>
+        )}
         {shouldShowFilterError(filterErrorShown, filterIncomplete) && (
           <Typography
             className="tw:mt-1.5 tw:text-error-primary"
@@ -517,7 +527,7 @@ export const ContextRuleEditor = ({
               className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
               color="link-color"
               href={getRuleExplorePath(entityType, filterJsonTree, queryFilter)}
-              iconTrailing={ViewInExploreIcon}
+              iconTrailing={LinkExternal01}
               size="sm"
               target="_blank">
               {t('label.view-in-explore')}

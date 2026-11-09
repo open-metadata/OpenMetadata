@@ -3,14 +3,17 @@
 - **Status:** Accepted for a scoped first implementation (2026-09-16, review 3). Code is
   reviewed separately.
 - **Revisions:** v1 2026-09-16 (initial) · v2 2026-09-29 (§2a: default grant through Data
-  Consumer, [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231)) · v3 2026-10-13 (MCP knowledge-graph tools, #34270; reconciled with current column projection)
+  Consumer, [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231)) · v3 2026-10-13 (MCP knowledge-graph tools, #34270; reconciled with current column projection) · v4 2026-10-21 (the test profile runs the published Fuseki image) · v5 2026-11-06 (the inspector and the federation guard share one query walker)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `AgentSparqlResourceIT`, `AgentSparqlServiceTest`, `AgentSparqlQueryValidatorTest`,
   `AgentSparqlQueryInspectorTest`, `AgentSparqlTransportTest`
 - **Issue:** [OpenMetadata #33384](https://github.com/open-metadata/OpenMetadata/issues/33384)
 - **Amended by:** [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231),
   [OpenMetadata #34270](https://github.com/open-metadata/OpenMetadata/issues/34270)
-  (MCP knowledge-graph tools — see the amendment before the Review log).
+  (MCP knowledge-graph tools — see "Amendment: MCP knowledge-graph tools"),
+  ADR:2026-10-14-fuseki-image-of-record (the test profile's image),
+  [OpenMetadata #33436](https://github.com/open-metadata/OpenMetadata/issues/33436)
+  (one query walker for the inspector and the federation guard — see the 2026-11-06 amendment).
 - **Related:** ai-platform epic #224, ai-platform #1299, ai-platform PR #1310 (design, pinned at
   `0056ceb9`); OpenMetadata #33224 (asset-level RBAC — parallel work, explicitly **not** a
   prerequisite and **not** provided here).
@@ -610,6 +613,24 @@ Local runs on 2026-10-01 against Postgres, Elasticsearch and the supported Fusek
 - **Without RDF** (`McpRdfNotEnabledIT`, default lane, 4 of 4): the withheld tools are not offered,
   a direct call is refused, and describing a resource answers "not enabled".
 - **Unit coverage**: line coverage of the changed classes is 89 to 100 percent.
+
+## Amendment — 2026-10-21: the test profile runs the published image
+
+ADR:2026-10-14-fuseki-image-of-record retired `docker/rdf-store`, so two implementation notes no
+longer describe the tree. With no `rdfContainerImage` set, `TestSuiteBootstrap` runs the pinned
+`openmetadata/fuseki` image (`FusekiTestImage.DEFAULT_IMAGE`) instead of building
+`docker/rdf-store`. The union default graph comes from that image's
+`FUSEKI_UNION_DEFAULT_GRAPH=true`, not `docker/rdf-store/config.ttl`. The requirement is unchanged:
+without the union default graph, agent queries succeed with empty results.
+
+## Amendment — 2026-11-06: the inspector and the federation guard share one walker
+
+§4 kept `SparqlFederationGuard` off this path partly because the guard walked only the WHERE
+pattern. That reason no longer holds: the guard missed `SERVICE` inside `EXISTS` in every
+expression position, the inspector missed a bare `EXISTS { … }` pattern element, and both now walk
+queries with `SparqlQueryWalker`, which reaches every element and expression (#33436). The
+decision stands on its other reasons: the inspector grants no endpoint allowlist, and it reports
+`FEDERATION_NOT_ALLOWED` where the guard, ordered first, would report `QUERY_INVALID`.
 
 ## Review log
 

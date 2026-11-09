@@ -20,13 +20,27 @@ import {
 } from '@testing-library/react';
 import { Link, MemoryRouter, useLocation } from 'react-router-dom';
 import { CreateMemoryModalProps } from '../../../components/ContextCenter/CreateMemoryModal/CreateMemoryModal.interface';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import {
+  ContextMemory,
+  ContextMemoryStatus,
+} from '../../../generated/entity/context/contextMemory';
+import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { queryClient } from '../../../queryClient';
+import {
+  deleteContextMemory,
   getContextMemoryById,
   getContextMemoryByName,
   getListContextMemories,
+  updateContextMemory,
 } from '../../../rest/contextMemoryAPI';
 import { getUserAndTeamSearch } from '../../../rest/miscAPI';
+import {
+  useEnUsTranslations,
+  useKeyEchoTranslations,
+} from '../../../test/unit/enUsTranslation';
+import { CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import ContextCenterMemoriesPage from './ContextCenterMemoriesPage';
 
 // Resource-level permission (getResourcePermission(CONTEXT_MEMORY)) — no prior
@@ -41,11 +55,23 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../../hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockReturnValue({
+jest.mock('../../../hooks/useApplicationStore', () => {
+  const state = {
     currentUser: { id: 'user-1', name: 'test.user', isAdmin: false },
-  }),
-}));
+    userProfilePics: {},
+    updateUserProfilePics: jest.fn(),
+  };
+  const useApplicationStore = jest.fn(
+    (selector?: (current: typeof state) => unknown) =>
+      selector ? selector(state) : state
+  );
+
+  return {
+    useApplicationStore: Object.assign(useApplicationStore, {
+      getState: () => state,
+    }),
+  };
+});
 
 jest.mock('../../../rest/contextMemoryAPI', () => ({
   getListContextMemories: jest.fn().mockResolvedValue({
@@ -57,6 +83,7 @@ jest.mock('../../../rest/contextMemoryAPI', () => ({
   deleteContextMemory: jest.fn(),
   pinContextMemory: jest.fn(),
   unpinContextMemory: jest.fn(),
+  updateContextMemory: jest.fn(),
 }));
 
 jest.mock('../../../rest/miscAPI', () => ({
@@ -101,12 +128,20 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(({ canEdit, canDelete }) => (
+      .mockImplementation(({ canEdit, canDelete, data, onDeleteMemory }) => (
         <div
           data-can-delete={String(Boolean(canDelete))}
           data-can-edit={String(Boolean(canEdit))}
-          data-testid="memories-view"
-        />
+          data-memory-count={data.length}
+          data-testid="memories-view">
+          <button
+            aria-label="delete"
+            data-testid="mock-delete-memory"
+            onClick={() =>
+              onDeleteMemory?.({ id: 'memory-1', title: 'Test Memory' })
+            }
+          />
+        </div>
       )),
   })
 );
@@ -156,6 +191,7 @@ jest.mock(
           memoryToEdit,
           onClose,
           onEditMemory,
+          onNavigate,
           viewOnly,
         }: CreateMemoryModalProps) => (
           <div
@@ -168,6 +204,7 @@ jest.mock(
               <>
                 <span>{memoryToEdit?.name}</span>
                 <button onClick={onClose}>Close memory</button>
+                <button onClick={onNavigate}>Follow linked asset</button>
                 {viewOnly && memoryToEdit && (
                   <button onClick={() => onEditMemory?.(memoryToEdit)}>
                     Edit memory
@@ -287,6 +324,10 @@ describe('ContextCenterMemoriesPage — permissions', () => {
         );
       });
 
+      expect(screen.getByTestId('memory-status-filter')).not.toHaveClass(
+        'tw:after:outline-brand'
+      );
+
       fireEvent.click(screen.getByTestId('memory-status-filter'));
       fireEvent.click(await screen.findByText(label));
 
@@ -305,6 +346,10 @@ describe('ContextCenterMemoriesPage — permissions', () => {
           })
         );
       });
+
+      expect(screen.getByTestId('memory-status-filter')).toHaveClass(
+        'tw:after:outline-brand'
+      );
 
       fireEvent.click(screen.getByTestId('memory-count-card-created-by-me'));
       await waitFor(() => {
@@ -460,6 +505,23 @@ describe('ContextCenterMemoriesPage — memory links', () => {
       );
       expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument();
     });
+  });
+
+  // The followed link pushes its own entry; Back from it must land on the memory, not the list.
+  it('closes a memory whose link is followed without dropping it from the URL', async () => {
+    renderPage('/?memory=memory-one&author=test.user');
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Follow linked asset' })
+    );
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('view-memory-modal')).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('memory-route')).toHaveTextContent(
+      '?memory=memory-one&author=test.user'
+    );
   });
 
   it('keeps the view modal closed when editing and clears the link when the editor closes', async () => {
@@ -622,5 +684,222 @@ describe('ContextCenterMemoriesPage — needs review', () => {
     await screen.findByTestId('memory-reviews');
 
     expect(screen.queryByTestId('memory-search')).not.toBeInTheDocument();
+  });
+});
+
+describe('ContextCenterMemoriesPage — page size', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    usePersistentStorage
+      .getState()
+      .setUserPreference('test.user', { globalPageSize: 15 });
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [{ id: 'memory-1', title: 'Test Memory' }],
+      paging: { total: 40 },
+    });
+  });
+
+  afterEach(() => {
+    usePersistentStorage.getState().clearUserPreference('test.user');
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [{ id: 'memory-1', title: 'Test Memory' }],
+      paging: { total: 1 },
+    });
+  });
+
+  it('returns to page 1 when the saved page size changes, without requesting the old page', async () => {
+    renderPage();
+
+    await screen.findByText('Page 1 of 3');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next' })[0]);
+    await screen.findByText('Page 2 of 3');
+    fireEvent.click(screen.getAllByRole('button', { name: 'Next' })[0]);
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenLastCalledWith(
+        expect.objectContaining({ limit: 15, offset: 30 })
+      );
+    });
+
+    (getListContextMemories as jest.Mock).mockClear();
+
+    await act(async () => {
+      usePersistentStorage
+        .getState()
+        .setUserPreference('test.user', { globalPageSize: 50 });
+    });
+
+    await waitFor(() => {
+      expect(getListContextMemories).toHaveBeenLastCalledWith(
+        expect.objectContaining({ limit: 50, offset: 0 })
+      );
+    });
+
+    expect(getListContextMemories).not.toHaveBeenCalledWith(
+      expect.objectContaining({ offset: 100 })
+    );
+  });
+});
+
+describe('ContextCenterMemoriesPage — delete', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ Delete: true });
+  });
+
+  it('hard deletes the memory the permanent-delete modal confirms', async () => {
+    renderPage();
+
+    fireEvent.click(await screen.findByTestId('mock-delete-memory'));
+    fireEvent.click(await screen.findByTestId('confirm-button'));
+
+    await waitFor(() =>
+      expect(deleteContextMemory).toHaveBeenCalledWith('memory-1', true)
+    );
+  });
+});
+
+describe('ContextCenterMemoriesPage — approve pending', () => {
+  const listed: ContextMemory[] = [
+    {
+      id: 'pending-1',
+      name: 'vat-rate',
+      entityStatus: ContextMemoryStatus.Unprocessed,
+      updatedAt: 1001,
+    },
+    {
+      id: 'pending-2',
+      name: 'refund-window',
+      entityStatus: ContextMemoryStatus.Unprocessed,
+      updatedAt: 1002,
+    },
+    {
+      id: 'draft-1',
+      name: 'held-fact',
+      entityStatus: ContextMemoryStatus.Draft,
+    },
+    {
+      id: 'approved-1',
+      name: 'known-fact',
+      entityStatus: ContextMemoryStatus.Approved,
+    },
+  ];
+  // Each approval is refused unless the memory is still the one the admin saw.
+  const approvePatch = (updatedAt: number) => [
+    { op: 'test', path: '/updatedAt', value: updatedAt },
+    { op: 'replace', path: '/entityStatus', value: 'Approved' },
+  ];
+  const setIsAdmin = (isAdmin: boolean) =>
+    Object.assign(useApplicationStore.getState().currentUser ?? {}, {
+      isAdmin,
+    });
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({ EditAll: true });
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: listed,
+      paging: { total: listed.length },
+    });
+    (updateContextMemory as jest.Mock).mockResolvedValue({});
+    useEnUsTranslations();
+  });
+
+  afterEach(() => {
+    setIsAdmin(false);
+    useKeyEchoTranslations();
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: [{ id: 'memory-1', title: 'Test Memory' }],
+      paging: { total: 1 },
+    });
+  });
+
+  it('offers an admin to approve the Unprocessed memories shown', async () => {
+    setIsAdmin(true);
+    renderPage();
+
+    expect(
+      await screen.findByRole('button', { name: 'Approve 2 pending' })
+    ).toBeEnabled();
+  });
+
+  it('does not offer it to a user who is not an admin', async () => {
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('memories-view')).toHaveAttribute(
+        'data-memory-count',
+        '4'
+      )
+    );
+
+    expect(
+      screen.queryByTestId('approve-pending-memories-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  it('approves each Unprocessed memory shown, leaving the Draft and Approved ones, and refreshes the list', async () => {
+    const invalidateQueries = jest.spyOn(queryClient, 'invalidateQueries');
+    setIsAdmin(true);
+    renderPage();
+    const approvePending = await screen.findByRole('button', {
+      name: 'Approve 2 pending',
+    });
+    (getListContextMemories as jest.Mock).mockResolvedValue({
+      data: listed.slice(2),
+      paging: { total: 2 },
+    });
+
+    fireEvent.click(approvePending);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('memories-view')).toHaveAttribute(
+        'data-memory-count',
+        '2'
+      )
+    );
+
+    expect(updateContextMemory).toHaveBeenCalledTimes(2);
+    expect(updateContextMemory).toHaveBeenCalledWith(
+      'pending-1',
+      approvePatch(1001)
+    );
+    expect(updateContextMemory).toHaveBeenCalledWith(
+      'pending-2',
+      approvePatch(1002)
+    );
+    expect(showSuccessToast).toHaveBeenCalledWith('Memories approved: 2');
+    expect(showErrorToast).not.toHaveBeenCalled();
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+    });
+    expect(
+      screen.queryByTestId('approve-pending-memories-btn')
+    ).not.toBeInTheDocument();
+
+    invalidateQueries.mockRestore();
+  });
+
+  it('reports the approved and the failed count when some approvals fail', async () => {
+    (updateContextMemory as jest.Mock).mockImplementation((id: string) =>
+      id === 'pending-2'
+        ? Promise.reject(new Error('changed meanwhile'))
+        : Promise.resolve({})
+    );
+    setIsAdmin(true);
+    renderPage();
+
+    fireEvent.click(
+      await screen.findByRole('button', { name: 'Approve 2 pending' })
+    );
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'Memories not approved: 1. They stay pending.'
+      )
+    );
+
+    expect(showSuccessToast).toHaveBeenCalledWith('Memories approved: 1');
   });
 });

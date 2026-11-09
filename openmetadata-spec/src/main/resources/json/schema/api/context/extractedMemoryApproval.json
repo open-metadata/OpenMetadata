@@ -1,0 +1,37 @@
+{
+  "$id": "https://open-metadata.org/schema/api/context/extractedMemoryApproval.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExtractedMemoryApproval",
+  "description": "What approving a document's extracted memories does: how many it approves and which it leaves for a person to decide.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.context.ExtractedMemoryApproval",
+  "properties": {
+    "approved": {
+      "description": "Unprocessed extracted memories approved; on a preview, those approval would approve.",
+      "type": "integer",
+      "minimum": 0
+    },
+    "failed": {
+      "description": "Unprocessed extracted memories whose approval was refused or that changed while being approved. They stay pending.",
+      "type": "integer",
+      "minimum": 0,
+      "default": 0
+    },
+    "needsDecision": {
+      "description": "Unprocessed extracted memories left pending for a person to decide: a second value of a question another pending or Approved memory of the same document asks, or a value held beside a decided memory of the document, which may be that decision reworded.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/entityReference.json"
+      }
+    },
+    "approvable": {
+      "description": "On a preview, the memories approval would approve, each with when its claim last changed as read. A request to approve sends this list back, and only the memories it names are approved.",
+      "type": "array",
+      "items": {
+        "$ref": "../../type/memoryConflictReviewResolution.json#/definitions/comparedMemory"
+      }
+    }
+  },
+  "required": ["approved", "needsDecision"],
+  "additionalProperties": false
+}

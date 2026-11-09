@@ -150,6 +150,7 @@ describe('TableColumn.util', () => {
           expect.objectContaining({
             isCompactView: false,
             maxVisibleOwners: 4,
+            labelVariant: 'cell',
             showLabel: false,
           }),
           expect.anything()

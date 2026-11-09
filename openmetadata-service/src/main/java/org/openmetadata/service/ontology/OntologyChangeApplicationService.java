@@ -15,17 +15,22 @@ package org.openmetadata.service.ontology;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
+import com.google.common.collect.Lists;
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.core.UriInfo;
 import java.time.Clock;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Supplier;
+import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
+import org.openmetadata.schema.entity.data.OntologyConcept;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -34,6 +39,8 @@ import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyChangeOperationResult;
 import org.openmetadata.schema.type.OntologyChangeOperationResultStatus;
 import org.openmetadata.schema.type.OntologyChangeSetState;
+import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -45,6 +52,7 @@ import org.openmetadata.service.jdbi3.OntologyConceptRepository;
 import org.openmetadata.service.jdbi3.OntologyPropertyRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
 import org.openmetadata.service.ontology.OntologyChangeOperationExecutor.OperationOutcome;
+import org.openmetadata.service.ontology.OntologyPackInstallations.PreparedPackInstall;
 import org.openmetadata.service.util.RestUtil.PutResponse;
 
 public final class OntologyChangeApplicationService {
@@ -57,6 +65,7 @@ public final class OntologyChangeApplicationService {
       "operations,undoCursor,state,applicationResult,glossaries";
   private static final String ROLLBACK_MESSAGE =
       "Rolled back because a later ontology operation failed";
+  private static final int DECLARATION_BATCH = 500;
   private static final String SKIP_MESSAGE = "Skipped after an earlier ontology operation failed";
 
   private final OntologyChangeSetRepository changeSetRepository;
@@ -65,6 +74,9 @@ public final class OntologyChangeApplicationService {
   private final OntologyChangeEventPublisher eventPublisher;
   private final ChangeTransaction transaction;
   private final EntityCacheInvalidator cacheInvalidator;
+  private final OntologyPackCatalog packs;
+  private final OntologyWorkingSnapshot workingSnapshot;
+  private final PackInstallWriter installWriter;
   private final Clock clock;
 
   public OntologyChangeApplicationService(
@@ -84,6 +96,9 @@ public final class OntologyChangeApplicationService {
     this.eventPublisher = dependencies.eventPublisher();
     this.transaction = dependencies.transaction();
     this.cacheInvalidator = dependencies.cacheInvalidator();
+    this.packs = dependencies.packs();
+    this.workingSnapshot = dependencies.workingSnapshot();
+    this.installWriter = dependencies.installWriter();
     this.clock = clock;
   }
 
@@ -110,13 +125,13 @@ public final class OntologyChangeApplicationService {
           transaction.execute(
               () -> {
                 if (changeSet.getOntology() == null) {
-                  return applyAtomically(execution, operations);
+                  return applyAtomically(execution, operations, null);
                 }
                 return executor.inScope(
                     changeSet,
                     () -> {
                       preflight.validate(changeSet, operations);
-                      return applyAtomically(execution, operations);
+                      return applyNative(execution, changeSet, operations);
                     });
               });
     } catch (OperationApplicationException failure) {
@@ -125,9 +140,27 @@ public final class OntologyChangeApplicationService {
       invalidateMutationCaches(execution);
       if (changeSet.getOntology() != null) {
         cacheInvalidator.invalidate(changeSet.getEntityReference());
+        cacheInvalidator.invalidate(changeSet.getOntology());
       }
     }
     return response;
+  }
+
+  private PutResponse<OntologyChangeSet> applyNative(
+      final ApplicationExecution execution,
+      final OntologyChangeSet changeSet,
+      final List<OntologyChangeOperation> operations) {
+    if (changeSet.getSourcePack() == null) {
+      return applyAtomically(execution, operations, null);
+    }
+    final PreparedPackInstall install =
+        workingSnapshot.read(
+            changeSet.getOntology().getId(),
+            ignored -> {},
+            snapshot ->
+                OntologyPackInstallations.prepare(
+                    packs, snapshot, changeSet, execution.user(), clock.millis()));
+    return applyAtomically(execution, operations, install);
   }
 
   private void invalidateMutationCaches(final ApplicationExecution execution) {
@@ -139,9 +172,14 @@ public final class OntologyChangeApplicationService {
   }
 
   private PutResponse<OntologyChangeSet> applyAtomically(
-      final ApplicationExecution execution, final List<OntologyChangeOperation> operations) {
+      final ApplicationExecution execution,
+      final List<OntologyChangeOperation> operations,
+      final PreparedPackInstall install) {
     execution.results().clear();
     executeOperations(execution, operations);
+    if (install != null) {
+      installWriter.write(install, execution.user());
+    }
     final OntologyChangeApplicationResult result =
         applicationResult(execution.user(), execution.results());
     return transition(execution, OntologyChangeSetState.APPLIED, result);
@@ -320,7 +358,21 @@ public final class OntologyChangeApplicationService {
                 clock)),
         new OntologyChangeEventPublisher(),
         work -> termRepository.executeInTransaction(work),
-        OntologyChangeApplicationService::invalidateEntityCache);
+        OntologyChangeApplicationService::invalidateEntityCache,
+        OntologyPackCatalog.bundled(),
+        new OntologyWorkingSnapshot(
+            (OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY),
+            Map.of(
+                MemberKind.CONCEPT,
+                (OntologyConceptRepository) Entity.getEntityRepository(Entity.ONTOLOGY_CONCEPT),
+                MemberKind.PROPERTY,
+                (OntologyPropertyRepository) Entity.getEntityRepository(Entity.ONTOLOGY_PROPERTY),
+                MemberKind.AXIOM,
+                (OntologyAxiomRepository) Entity.getEntityRepository(Entity.ONTOLOGY_AXIOM))),
+        (install, user) ->
+            ((OntologyRepository) Entity.getEntityRepository(Entity.ONTOLOGY))
+                .recordPackInstallation(
+                    install.ontologyId(), install.installation(), install.moduleOrder(), user));
   }
 
   private static void invalidateEntityCache(final EntityReference entity) {
@@ -330,7 +382,30 @@ public final class OntologyChangeApplicationService {
 
   private static OntologyChangePreflight productionPreflight() {
     return new OntologyChangePreflight(
-        (entityType, id) -> Entity.getEntity(entityType, id, "", Include.ALL));
+        (entityType, id) -> Entity.getEntity(entityType, id, "", Include.ALL),
+        OntologyChangeApplicationService::declaredConcepts);
+  }
+
+  private static Set<String> declaredConcepts(final UUID ontologyId, final Set<String> iris) {
+    final var concepts = Entity.getCollectionDAO().ontologyConceptDAO();
+    final Set<String> declared = new HashSet<>();
+    Lists.partition(new ArrayList<>(iris), DECLARATION_BATCH)
+        .forEach(
+            batch ->
+                concepts
+                    .findDeclarations(
+                        concepts.getTableName(),
+                        ontologyId,
+                        batch.stream().map(DigestUtils::md5Hex).toList(),
+                        batch.size(),
+                        "")
+                    .forEach(
+                        json ->
+                            declared.add(
+                                JsonUtils.readValue(json, OntologyConcept.class)
+                                    .getIri()
+                                    .toString())));
+    return declared;
   }
 
   record Dependencies(
@@ -338,7 +413,15 @@ public final class OntologyChangeApplicationService {
       OntologyChangeOperationExecutor executor,
       OntologyChangeEventPublisher eventPublisher,
       ChangeTransaction transaction,
-      EntityCacheInvalidator cacheInvalidator) {}
+      EntityCacheInvalidator cacheInvalidator,
+      OntologyPackCatalog packs,
+      OntologyWorkingSnapshot workingSnapshot,
+      PackInstallWriter installWriter) {}
+
+  @FunctionalInterface
+  interface PackInstallWriter {
+    void write(PreparedPackInstall install, String user);
+  }
 
   @FunctionalInterface
   interface ChangeTransaction {

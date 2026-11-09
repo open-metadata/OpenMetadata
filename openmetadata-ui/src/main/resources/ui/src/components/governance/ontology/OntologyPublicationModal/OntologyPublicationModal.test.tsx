@@ -13,13 +13,14 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import OntologyPublicationModal from './OntologyPublicationModal';
 
 const mockReleasePanel = jest.fn();
-jest.mock('../../../../hooks/useEntityPermissions/useEntityPermissions');
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 jest.mock('../OntologyReleasePanel/OntologyReleasePanel', () => ({
   __esModule: true,
@@ -43,44 +44,53 @@ const ontology: Ontology = {
 };
 
 describe('OntologyPublicationModal', () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-    const permissions = {
-      ...DEFAULT_ENTITY_PERMISSION,
-      EditAll: true,
-      ViewBasic: true,
-    };
-    (useEntityPermissions as jest.Mock).mockReturnValue({
-      permissions,
-      ...getDerivedPermissionFlags(permissions, false),
-      isLoading: false,
-      error: null,
-      refresh: jest.fn(),
-    });
-  });
-
-  it('requires an explicit native owner before showing release contents', () => {
-    const onSelectOntology = jest.fn();
+  it('passes the Studio task callback to the release panel', () => {
+    const onOpenTask = jest.fn();
     render(
       <OntologyPublicationModal
-        canEdit={false}
-        ontologies={[ontology]}
+        canEdit
+        ontology={ontology}
         onClose={jest.fn()}
-        onSelectOntology={onSelectOntology}
+        onOpenTask={onOpenTask}
       />
     );
 
-    expect(screen.getByTestId('ontology-publication-picker')).toBeVisible();
-    expect(mockReleasePanel).not.toHaveBeenCalled();
+    expect(mockReleasePanel).toHaveBeenLastCalledWith(
+      expect.objectContaining({ onOpenTask })
+    );
+  });
 
-    fireEvent.click(
-      screen.getByTestId('ontology-publication-select-' + ontology.id)
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+  });
+
+  it('dismisses with Escape', () => {
+    const onClose = jest.fn();
+    render(
+      <OntologyPublicationModal canEdit ontology={ontology} onClose={onClose} />
     );
 
-    expect(onSelectOntology).not.toHaveBeenCalled();
-    expect(screen.getByTestId('ontology-release-panel')).toBeVisible();
+    fireEvent.keyDown(screen.getByRole('dialog'), { key: 'Escape' });
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('opens the named Releases tab from a history entry point', () => {
+    render(
+      <OntologyPublicationModal
+        canEdit
+        initialTab="releases"
+        ontology={ontology}
+        onClose={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('ontology-publication-tab-releases')
+    ).toHaveAttribute('aria-selected', 'true');
     expect(mockReleasePanel).toHaveBeenLastCalledWith(
-      expect.objectContaining({ ontology, canEdit: true })
+      expect.objectContaining({ view: 'releases' })
     );
   });
 

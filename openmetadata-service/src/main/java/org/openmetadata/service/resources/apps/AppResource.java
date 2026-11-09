@@ -7,7 +7,6 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
-import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -47,6 +46,8 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -76,6 +77,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.apps.AppException;
 import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
+import org.openmetadata.service.apps.bundles.rdf.RdfInitialIndexRun;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.exception.CatalogExceptionMessage;
@@ -98,11 +100,11 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.JsonPatchUtils;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 import org.openmetadata.service.util.PipelineStatusUtils;
 import org.openmetadata.service.util.RestUtil;
@@ -173,6 +175,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
         } else {
           scheduleAppIfNeeded(app);
         }
+        RdfInitialIndexRun.enqueueIfNeverRun(app, Entity.getCollectionDAO(), searchRepository);
       } catch (AppException ex) {
         LOG.warn(
             "We could not install the application {}. Error: {}",
@@ -770,7 +773,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
           UUID id) {
     EntityHistory entityHistory = super.listVersionsInternal(securityContext, id);
     // Defense-in-depth: version snapshots are already stripped at storage time
-    // (AppRepository.serializeForVersionHistory) and by the 2.0.0 migration, but strip each
+    // (AppRepository.getFieldsHiddenFromHistory) and by the 2.0.0 migration, but strip each
     // returned snapshot too so this path never depends on those guarantees alone.
     List<Object> versions =
         entityHistory.getVersions().stream()
@@ -916,14 +919,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
-    // Only admins can create apps with bot impersonation enabled
-    if (Boolean.TRUE.equals(create.getAllowBotImpersonation())) {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      if (!subjectContext.isAdmin()) {
-        throw new AuthorizationException(
-            "Only admins can create applications with bot impersonation enabled");
-      }
-    }
+    authorizeBotConfiguration(securityContext, create);
     App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     authorizer.authorize(
         securityContext,
@@ -981,10 +977,18 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
+    // Re-scheduling the app is a side effect beyond the patched field, so a patch that reaches it
+    // needs EditAll, not just permission on the field. A description-only patch leaves the schedule
+    // alone — otherwise it could reinstall or, if the install fails, leave the app unscheduled.
+    boolean reschedules =
+        SCHEDULED_TYPES.contains(app.getScheduleType()) && touchesScheduleOrConfig(patch);
+    if (reschedules) {
+      authorizeAppOperation(securityContext, id, MetadataOperation.EDIT_ALL);
+    }
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+    if (reschedules) {
+      AppScheduler.getInstance().deleteScheduledApplication(app);
       ApplicationHandler.getInstance()
           .installApplication(
               updatedApp,
@@ -995,6 +999,20 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // We don't want to store this information
     unsetAppRuntimeProperties(updatedApp);
     return response;
+  }
+
+  private static final Set<String> SCHEDULE_OR_CONFIG_FIELDS =
+      Set.of("appSchedule", "appConfiguration");
+
+  /**
+   * Whether a patch changes the schedule or configuration the app is installed with. A whole-document
+   * replace may change either, also when other operations in the same patch name only other fields,
+   * so it must still require EditAll and reschedule.
+   */
+  static boolean touchesScheduleOrConfig(JsonPatch patch) {
+    return JsonPatchUtils.replacesWholeDocument(patch)
+        || JsonUtils.extractPatchedFields(patch).stream()
+            .anyMatch(SCHEDULE_OR_CONFIG_FIELDS::contains);
   }
 
   @PATCH
@@ -1033,10 +1051,15 @@ public class AppResource extends EntityResource<App, AppRepository> {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.systemEntityModifyNotAllowed(app.getName(), "SystemApp"));
     }
-    AppScheduler.getInstance().deleteScheduledApplication(app);
+    boolean reschedules =
+        SCHEDULED_TYPES.contains(app.getScheduleType()) && touchesScheduleOrConfig(patch);
+    if (reschedules) {
+      authorizeAppOperation(securityContext, fqn, MetadataOperation.EDIT_ALL);
+    }
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     App updatedApp = (App) response.getEntity();
-    if (SCHEDULED_TYPES.contains(app.getScheduleType())) {
+    if (reschedules) {
+      AppScheduler.getInstance().deleteScheduledApplication(app);
       ApplicationHandler.getInstance()
           .installApplication(
               updatedApp,
@@ -1066,14 +1089,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
       throws SchedulerException {
-    // Only admins can create apps with bot impersonation enabled
-    if (Boolean.TRUE.equals(create.getAllowBotImpersonation())) {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      if (!subjectContext.isAdmin()) {
-        throw new AuthorizationException(
-            "Only admins can create applications with bot impersonation enabled");
-      }
-    }
+    authorizeBotConfiguration(securityContext, create);
     App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     // Evaluate exactly what the base createOrUpdate below will evaluate: Create against the
     // incoming entity when the app is new, EditAll against the stored one when it already exists.
@@ -1102,6 +1118,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
     return createOrUpdate(uriInfo, securityContext, app);
+  }
+
+  private void authorizeBotConfiguration(SecurityContext securityContext, CreateApp create) {
+    if (!nullOrEmpty(create.getBot()) || Boolean.TRUE.equals(create.getAllowBotImpersonation())) {
+      authorizer.authorizeAdmin(securityContext);
+    }
   }
 
   @DELETE
@@ -1330,6 +1352,30 @@ public class AppResource extends EntityResource<App, AppRepository> {
     return Response.status(Response.Status.OK).entity("App has been configured.").build();
   }
 
+  // Keys supplied at trigger time that target or parameterise the run rather than change the app's
+  // stored configuration. Setting one of these is part of a normal Trigger; changing anything else
+  // is
+  // a configuration override that needs EditAll - including a key the stored config omits and
+  // leaves
+  // at its schema default (recreateIndex drops and rebuilds every index; a retention period of 1
+  // wipes history), which comparing only against present values would let a Trigger-only user set.
+  private static final Set<String> RUNTIME_TRIGGER_PARAMETERS = Set.of("entityLink");
+
+  /**
+   * Whether the trigger payload changes a value the configuration holds or sets one it leaves to its
+   * schema default. A value for a declared runtime parameter ({@link #RUNTIME_TRIGGER_PARAMETERS},
+   * e.g. AutoPilot's {@code entityLink}) is part of a normal Trigger, not a configuration override.
+   */
+  static boolean overridesConfiguredValue(App app, Map<String, Object> configPayload) {
+    if (configPayload == null || configPayload.isEmpty()) {
+      return false;
+    }
+    Map<String, Object> configured = JsonUtils.getMap(app.getAppConfiguration());
+    return configPayload.entrySet().stream()
+        .filter(entry -> !RUNTIME_TRIGGER_PARAMETERS.contains(entry.getKey()))
+        .anyMatch(entry -> !Objects.equals(configured.get(entry.getKey()), entry.getValue()));
+  }
+
   @POST
   @Consumes(MediaType.APPLICATION_JSON)
   @Path("/trigger/{name}")
@@ -1361,6 +1407,13 @@ public class AppResource extends EntityResource<App, AppRepository> {
     EntityUtil.Fields fields = getFields(String.format("%s,bot,pipelines", FIELD_OWNERS));
     App app = repository.getByName(uriInfo, name, fields);
     authorizeAppOperation(securityContext, name, MetadataOperation.TRIGGER);
+    // Overriding a configured setting changes the configuration the run uses — a DataRetention run
+    // with auditLogRetentionPeriod:1 would wipe the audit log — so that needs EditAll. Supplying a
+    // value for a runtime parameter the configuration leaves unset (AutoPilot's entityLink) is part
+    // of a normal Trigger, so it must not demand EditAll.
+    if (overridesConfiguredValue(app, configPayload)) {
+      authorizeAppOperation(securityContext, name, MetadataOperation.EDIT_ALL);
+    }
     if (Boolean.FALSE.equals(ApplicationHandler.getInstance().isEnabled(name))) {
       throw AppException.byMessage(
           name, "NotEnabled", "App is not enabled. Enable it from the server configuration.");

@@ -7,7 +7,7 @@
   and Bots are admin-only again; a hash naming a hidden tab keeps the no-access state); v6
   2026-10-21 (route builders stay pure paths; links resolve through `getSettingsLink` at the
   call site); v7 2026-10-21 (names in hash segments are URL-encoded once and decoded once by
-  the panel's parser)
+  the panel's parser); v8 2026-10-23 (user links open the Members user page; Members follows classic's view permissions again)
 - **Deciders:** Chirag Madlani
 - **Guard:** `AppModeRoutes.test.tsx` ("classic-only settings routes": the AI shell serves its
   not-found page for `/settings/*`, `/marketplace/*` and `/bots/*`, ahead of a plugin fallback);
@@ -15,10 +15,12 @@
   parser, names with spaces, `%`, `/`, `#`, `?` and dots reaching each panel's API once-encoded,
   classic vs AI output of `getSettingsLink`, the builders staying paths in AI mode, and the
   development warning for an unmapped path); `PersonaDetailsCard.test.tsx` (a `pathname:` caller
-  in AI mode); `useSettingsHash.test.tsx` (a followed link keeps the query string, closing returns
+  in AI mode); `useSettingsLinkInterceptor.test.tsx` (a mention link opens the modal, not a new tab);
+  `useSettingsHash.test.tsx` (a followed link keeps the query string, closing returns
   to the page entry, and a push is counted once per hook instance); `profileNavConfig.test.tsx`,
-  `ProfilePage.test.tsx` (admin-only tabs and the no-access state); `ProfileOnlineUser.spec.ts`
-  ("Non-admin users cannot access the Members surface")
+  `ProfilePage.test.tsx` (admin-only tabs, the no-access state and the Members user-link
+  fallback); `ProfileOnlineUser.spec.ts` ("Non-admin users see Members without the Online users
+  section")
 - **Related:** `src/utils/SettingsModalLinkUtils.ts`, `hooks/useSettingsHash.ts`
 
 ## Context
@@ -47,11 +49,23 @@ URLs alive as a second way in, and the redirect needed its own permission rules.
   duplicate of it; the hook instance that closes it owns that count. The services listing maps
   to `/connections` instead. A path with no equivalent is returned unchanged, so in AI mode it
   lands on not-found, and development builds warn with the path.
-- **The settings tabs are admin-only.** Members, Access Control and Bots show to admins only,
-  whatever view permissions a non-admin holds on TEAM, USER, ROLE, POLICY or BOT; edit actions
-  inside them follow the entity's own permissions. A hash naming a tab the user cannot see (a
-  settings link to a team, role or policy, followed by a non-admin) shows that tab's header with
-  the permission placeholder, never another tab such as the user's own Profile.
+- **Access Control and Bots are admin-only; Members follows classic.** Access Control and Bots
+  show to admins only, whatever view permissions a non-admin holds on ROLE, POLICY or BOT. Members
+  shows to anyone who may view teams or users, as classic's settings menu does, and gates each
+  section the same way: Teams needs view on teams, Users and Admins need view on users, Online
+  users is admin-only. Edit actions inside them follow the entity's own permissions. A hash naming
+  a tab or view the user cannot see (a settings link to a role or policy, followed by a non-admin)
+  shows that tab's header with the permission placeholder, never another tab such as the user's
+  own Profile.
+- **User links open the Members user page in AI mode.** `getSettingsLink(getUserPath(…))` maps
+  `/users/<name>[/<tab>]` to `#members/user/<name>[/<tab>]`, translating classic tab keys
+  (`activity_feed`, `task`, `mydata`, `permissions`, `custom_properties`) to the user-detail tabs;
+  a tab with no equivalent opens the overview. A viewer who may not view users there is sent on
+  to the same read-only detail under `#profile/<name>` by the Profile page, which holds the
+  permissions. Rich text stores mentions as absolute classic URLs no builder sees, so in the AI
+  shell `useSettingsLinkInterceptor` (mounted in `AppShell`) turns a click on any same-origin link
+  `settingsPathToHash` maps into the modal hash over the current page. The classic `/users/*` route stays, and the classic-only surfaces (the legacy user
+  page, the classic nav and My Data widgets) keep plain `getUserPath`.
 - **`settingsPathToHash` is the contract.** Classic path segments map to modal tabs and to the
   sub-paths each panel's own parser reads. A downstream distribution's settings pages join only
   by matching it. Collate's `/settings/billing/<page>` maps to `#billing/<page>`, so its billing

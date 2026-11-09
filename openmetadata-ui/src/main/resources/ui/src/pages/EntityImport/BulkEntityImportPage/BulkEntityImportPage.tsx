@@ -15,6 +15,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Dialog,
   Modal,
@@ -55,6 +56,11 @@ import { useTranslation } from 'react-i18next';
 import { usePapaParse } from 'react-papaparse';
 import { useLocation, useNavigate } from 'react-router-dom';
 import BulkEditEntity from '../../../components/BulkEditEntity/BulkEditEntity.component';
+import {
+  BULK_EDIT_OPERATION_KEY,
+  filterBulkEditRows,
+  getBulkEditRenderedColumns,
+} from '../../../components/BulkEditEntity/BulkEditEntity.utils';
 import Banner from '../../../components/common/Banner/Banner';
 import { LazyDataGrid } from '../../../components/common/DataGrid/LazyDataGrid';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
@@ -105,6 +111,8 @@ import {
   getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
   getFailedImportRowIds,
+  normalizeCsvLineBreaks,
+  restoreFormula,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
 import entityBulkEditConfigClassBase, {
@@ -439,6 +447,44 @@ const BulkEntityImportPage = () => {
     [columns, shouldShowCsvColumn]
   );
 
+  const shouldRenderMetricImportEditor = useMemo(
+    () => isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE,
+    [isRichGridImport, activeStep]
+  );
+
+  const shouldRenderBulkEditView = useMemo(
+    () => isBulkEdit || shouldRenderMetricImportEditor,
+    [isBulkEdit, shouldRenderMetricImportEditor]
+  );
+
+  const [bulkEditSearchText, setBulkEditSearchText] = useState('');
+  const bulkEditGridRows = useMemo(
+    () =>
+      shouldRenderBulkEditView
+        ? filterBulkEditRows(dataSource, bulkEditSearchText)
+        : dataSource,
+    [bulkEditSearchText, dataSource, shouldRenderBulkEditView]
+  );
+
+  // The bulk edit grid renders an operation column and frozen columns first;
+  // the controller maps aria-colindex to a column, so it needs that order.
+  const gridEditColumns = useMemo(
+    () =>
+      shouldRenderBulkEditView
+        ? getBulkEditRenderedColumns(filterColumns, {
+            key: BULK_EDIT_OPERATION_KEY,
+            name: '',
+            editable: false,
+          })
+        : filterColumns,
+    [filterColumns, shouldRenderBulkEditView]
+  );
+
+  const handleClipboardError = useCallback(
+    () => showErrorToast(t('message.clipboard-not-available')),
+    [t]
+  );
+
   const {
     handleCopy,
     handlePaste: actualHandlePaste,
@@ -449,7 +495,9 @@ const BulkEntityImportPage = () => {
   } = useGridEditController({
     dataSource,
     setDataSource,
-    columns: filterColumns,
+    columns: gridEditColumns,
+    rows: bulkEditGridRows,
+    onClipboardError: handleClipboardError,
   });
 
   const bulkEditChangeSummary = useMemo(() => {
@@ -703,6 +751,7 @@ const BulkEntityImportPage = () => {
         },
         isBulkEdit,
         signal,
+        onEditCellHeightChange: handleEditCellHeightChange,
         onProgress: (loadedCount, matchedCount) =>
           setBulkEditLoadState({
             isLoading: true,
@@ -731,6 +780,7 @@ const BulkEntityImportPage = () => {
       canAddMultipleTeamOwner,
       canAddMultipleUserOwners,
       handleActiveStepChange,
+      handleEditCellHeightChange,
       isBulkEdit,
       effectiveBulkEditScope,
     ]
@@ -798,7 +848,7 @@ const BulkEntityImportPage = () => {
       // results.data is returning data with unknown type
       const cellEditable = true;
       const { columns, dataSource } = getEntityColumnsAndDataSourceFromCSV(
-        results.data as string[][],
+        (results.data as string[][]).map((row) => row.map(restoreFormula)),
         importedEntityType,
         {
           user: entityRules.canAddMultipleUserOwners,
@@ -839,7 +889,7 @@ const BulkEntityImportPage = () => {
 
   const handleLoadData = useCallback(
     (e: ProgressEvent<FileReader>, file?: File) => {
-      const result = String(e.target?.result ?? '');
+      const result = normalizeCsvLineBreaks(String(e.target?.result ?? ''));
 
       setSelectedCsvFile({
         content: result,
@@ -1601,13 +1651,13 @@ const BulkEntityImportPage = () => {
             )}`}
           </span>
         </div>
-        <button
-          aria-label={t('label.remove')}
-          className="csv-selected-file-remove"
-          type="button"
-          onClick={() => setSelectedCsvFile(undefined)}>
-          <XClose size={18} />
-        </button>
+        <ButtonUtility
+          className="tw:shrink-0"
+          icon={XClose}
+          size="lg"
+          tooltip={t('label.remove')}
+          onClick={() => setSelectedCsvFile(undefined)}
+        />
       </div>
     );
   };
@@ -1840,11 +1890,6 @@ const BulkEntityImportPage = () => {
     </Card>
   );
 
-  const shouldRenderMetricImportEditor = useMemo(
-    () => isRichGridImport && activeStep === VALIDATION_STEP.EDIT_VALIDATE,
-    [isRichGridImport, activeStep]
-  );
-
   const isAsyncValidationInProgress = useMemo(
     () => isValidating && activeAsyncImportJob,
     [isValidating, activeAsyncImportJob]
@@ -1864,11 +1909,6 @@ const BulkEntityImportPage = () => {
       }),
     }),
     [entityPluralDisplayName, t, translatedSteps]
-  );
-
-  const shouldRenderBulkEditView = useMemo(
-    () => isBulkEdit || shouldRenderMetricImportEditor,
-    [isBulkEdit, shouldRenderMetricImportEditor]
   );
 
   const bulkEditIsExportHydrationRequired = useMemo(
@@ -2170,6 +2210,7 @@ const BulkEntityImportPage = () => {
             changedRowCount={bulkEditChangeSummary.changedRowCount}
             columns={filterColumns}
             dataSource={dataSource}
+            editingRowHeight={editingRowHeight}
             handleBack={handleBack}
             handleCopy={handleCopy}
             handleOnRowsChange={handleOnRowsChange}
@@ -2182,13 +2223,16 @@ const BulkEntityImportPage = () => {
             isNextDisabled={bulkEditIsNextDisabled}
             isValidating={isValidating}
             pushToUndoStack={pushToUndoStack}
+            searchText={bulkEditSearchText}
             setGridContainer={setGridContainer}
             sourceEntityType={effectiveSourceEntityType}
             validateCSVData={validateCSVData}
             validationData={validationData}
+            visibleRows={bulkEditGridRows}
             workflowHeaderConfig={bulkEditWorkflowProps.workflowHeaderConfig}
             workflowMode={bulkEditWorkflowProps.workflowMode}
             onCSVReadComplete={onCSVReadComplete}
+            onSearchTextChange={setBulkEditSearchText}
           />
         ) : (
           <Fragment>

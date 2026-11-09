@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { ComponentType } from 'react';
 import { useDragAndDrop } from 'react-aria-components';
+import { TableProps } from '../Table.interface';
 import TableV2 from '../TableV2';
 import { ParityAdapter, runTableParitySuite } from './tableParity.shared';
 
@@ -494,7 +495,7 @@ describe('TableV2 — column resizing', () => {
 describe('TableV2 — row drag and drop', () => {
   const bodyRow = () => screen.getAllByRole('row')[1] as HTMLElement;
 
-  const renderWithHooks = (onRow?: () => Record<string, unknown>) => {
+  const renderWithHooks = (onRow?: TableProps<{ name: string }>['onRow']) => {
     const Harness = () => {
       const { dragAndDropHooks } = useDragAndDrop({ getItems: () => [] });
 

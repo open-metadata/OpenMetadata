@@ -35,6 +35,7 @@ import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { okJson } from './apiResponse';
 import {
+  clickIgnoringToasts,
   clickOutside,
   closeFirstPopupAlert,
   descriptionBox,
@@ -1299,9 +1300,11 @@ export const assignTagToGlossaryTerm = async (
   await expect(page.getByTestId('update-btn')).toBeEnabled();
   await page.getByTestId('update-btn').click();
 
-  await expect(page.getByRole('heading')).toContainText(
-    'Would you like to proceed with updating the tags?'
-  );
+  await expect(
+    page.getByRole('heading', {
+      name: 'Would you like to proceed with updating the tags?',
+    })
+  ).toBeVisible();
 
   const validateRes = page.waitForResponse('/api/v1/glossaryTerms/*');
   await page.getByRole('button', { name: 'Yes, confirm' }).click();
@@ -1456,7 +1459,7 @@ export const approveTagsTask = async (
   await taskFeeds;
 
   const taskResolve = waitForTaskResolveResponse(page);
-  await page.getByTestId('approve-button').first().click();
+  await clickIgnoringToasts(page.getByTestId('approve-button').first());
   await taskResolve;
 
   await redirectToHomePage(page);

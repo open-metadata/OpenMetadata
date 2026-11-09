@@ -13,20 +13,20 @@
 
 import { Divider, Skeleton } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   AlertCircle,
+  Check,
   CheckCircle,
+  Clock02,
+  GridView,
+  Mail,
+  Webhook,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { uniq, uniqBy } from 'lodash';
 import { Fragment } from 'react';
-import { ReactComponent as AlertIcon } from '../../assets/svg/alert.svg';
-import { ReactComponent as AllActivityIcon } from '../../assets/svg/all-activity.svg';
-import { ReactComponent as ClockIcon } from '../../assets/svg/clock.svg';
-import { ReactComponent as CheckIcon } from '../../assets/svg/ic-check.svg';
-import { ReactComponent as MailIcon } from '../../assets/svg/ic-mail.svg';
 import { ReactComponent as MSTeamsIcon } from '../../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../../assets/svg/slack.svg';
-import { ReactComponent as WebhookIcon } from '../../assets/svg/webhook.svg';
 import { InlineAlertType } from '../../components/common/InlineAlert/InlineAlert.interface';
 import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { UUID_REGEX } from '../../constants/regex.constants';
@@ -37,6 +37,7 @@ import { EventsRecord } from '../../generated/events/api/eventsRecord';
 import { Status } from '../../generated/events/api/typedEvent';
 import { SubscriptionType } from '../../generated/events/eventSubscription';
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
+import { SearchIndexSearchSourceMapping } from '../../interface/search.interface';
 import { searchQuery } from '../../rest/searchAPI';
 import alertsClassBase from '../AlertsClassBase';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
@@ -46,7 +47,7 @@ import searchClassBase from '../SearchClassBase';
 import { getTermQuery } from '../SearchPureUtils';
 import { showErrorToast } from '../ToastUtils';
 import './alerts-util.less';
-import { getAlertEventsFilterLabels } from './AlertsUtilPure';
+import { formatEventCount, getAlertEventsFilterLabels } from './AlertsUtilPure';
 
 export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
   switch (type) {
@@ -55,16 +56,30 @@ export const getAlertsActionTypeIcon = (type?: SubscriptionType) => {
     case SubscriptionType.MSTeams:
       return <MSTeamsIcon height={16} width={16} />;
     case SubscriptionType.Email:
-      return <MailIcon height={16} width={16} />;
+      return <Mail className="tw:text-utility-gray-500" size={16} />;
     case SubscriptionType.ActivityFeed:
-      return <AllActivityIcon height={16} width={16} />;
+      return <GridView size={16} />;
     case SubscriptionType.Webhook:
     default:
-      return <WebhookIcon height={16} width={16} />;
+      return <Webhook className="tw:text-utility-gray-500" size={16} />;
   }
 };
 
 export const EDIT_LINK_PATH = `/settings/notifications/edit-alert`;
+
+const getSearchEntityName = (
+  source: SearchIndexSearchSourceMapping[SearchIndex]
+) =>
+  getEntityName({
+    name:
+      'name' in source && typeof source.name === 'string'
+        ? source.name
+        : undefined,
+    displayName:
+      'displayName' in source && typeof source.displayName === 'string'
+        ? source.displayName
+        : undefined,
+  });
 
 export const searchEntity = async ({
   searchText,
@@ -92,13 +107,18 @@ export const searchEntity = async ({
 
     return uniqBy(
       response.hits.hits.map((d) => {
+        const fullyQualifiedName =
+          'fullyQualifiedName' in d._source
+            ? d._source.fullyQualifiedName ?? ''
+            : '';
+
         // Providing an option to hide display names, for inputs like 'fqnList',
         // where users can input text alongside selection options.
         // This helps avoid displaying the same option twice
         // when using regular expressions as inputs in the same field.
         const displayName = showDisplayNameAsLabel
-          ? getEntityName(d._source)
-          : d._source.fullyQualifiedName ?? '';
+          ? getSearchEntityName(d._source)
+          : fullyQualifiedName;
 
         // Container options (a type that has in-scope descendants) show a display-only ".*" hint
         // to convey "matches everything under this FQN"; the stored value stays the plain FQN.
@@ -112,7 +132,7 @@ export const searchEntity = async ({
               ...d._source,
               type: d._source.entityType,
             })
-          : d._source.fullyQualifiedName ?? '';
+          : fullyQualifiedName;
 
         return {
           label,
@@ -185,6 +205,17 @@ export const getOwnerOptions = async (searchText: string) => {
   });
 };
 
+// Resolves saved FQNs to display-name options, since a saved value may be outside the first page.
+export const getOptionsByFqns = (
+  fqns: string[],
+  searchIndex: SearchIndex | SearchIndex[]
+) =>
+  searchEntity({
+    searchText: '',
+    searchIndex,
+    queryFilter: getTermQuery({ fullyQualifiedName: fqns }, 'should', 1),
+  });
+
 export const getUserOptions = async (searchText: string) => {
   return searchEntity({
     searchText,
@@ -221,8 +252,11 @@ export const getEntityByIdOptions = async (
 
     return uniqBy(
       response.hits.hits.map((d) => {
-        const id = d._source.id ?? '';
-        const fqn = d._source.fullyQualifiedName ?? '';
+        const id = 'id' in d._source ? d._source.id ?? '' : '';
+        const fqn =
+          'fullyQualifiedName' in d._source
+            ? d._source.fullyQualifiedName ?? ''
+            : '';
 
         return { label: `${id} (${fqn})`, value: id };
       }),
@@ -247,11 +281,11 @@ export const getAlertRecentEventsFilterOptions = () =>
 export const getAlertStatusIcon = (status: Status): JSX.Element | null => {
   switch (status) {
     case Status.Successful:
-      return <CheckIcon className="status-icon successful-icon" />;
+      return <Check className="status-icon successful-icon" />;
     case Status.Failed:
-      return <AlertIcon className="status-icon failed-icon" />;
+      return <Alert className="status-icon failed-icon" />;
     case Status.Unprocessed:
-      return <ClockIcon className="status-icon unprocessed-icon" />;
+      return <Clock02 className="status-icon unprocessed-icon" />;
     default:
       return null;
   }
@@ -287,7 +321,10 @@ export const getAlertExtraInfo = (
         label={t('label.total-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.totalEventsCount ?? 0}
+        value={formatEventCount(
+          alertEventCounts?.totalEventsCount,
+          alertEventCounts?.countsAreLowerBound
+        )}
       />
       <ExtraInfoLabel
         inlineLayout
@@ -295,7 +332,10 @@ export const getAlertExtraInfo = (
         label={t('label.pending-entity', {
           entity: t('label.event-plural'),
         })}
-        value={alertEventCounts?.pendingEventsCount ?? 0}
+        value={formatEventCount(
+          alertEventCounts?.pendingEventsCount,
+          alertEventCounts?.countsAreLowerBound
+        )}
       />
       <ExtraInfoLabel
         inlineLayout
@@ -322,9 +362,9 @@ export const getDestinationStatusAlertData = (destinationStatus?: string) => {
       : 'destination-error-status';
   const alertIcon =
     destinationStatus === DestinationStatus.Success ? (
-      <CheckCircle height={14} width={14} />
+      <CheckCircle size={14} />
     ) : (
-      <AlertCircle height={14} width={14} />
+      <AlertCircle size={14} />
     );
 
   return {

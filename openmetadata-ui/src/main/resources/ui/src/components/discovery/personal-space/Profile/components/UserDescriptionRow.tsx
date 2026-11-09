@@ -15,6 +15,7 @@ import { Typography } from '@openmetadata/ui-core-components';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { User } from '../../../../../generated/entity/teams/user';
+import { useProfileCopy } from '../../../../../hooks/discovery/personal-space/useUserProfile';
 import RichTextEditor from '../../../../common/RichTextEditor/RichTextEditor';
 import RichTextEditorPreviewerV1 from '../../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import InlineEditCard from './InlineEditCard';
@@ -22,7 +23,7 @@ import InlineEditCard from './InlineEditCard';
 interface UserDescriptionRowProps {
   userData: User;
   canEdit: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
 }
 
 const UserDescriptionRow: React.FC<UserDescriptionRowProps> = ({
@@ -31,13 +32,17 @@ const UserDescriptionRow: React.FC<UserDescriptionRowProps> = ({
   updateUserDetails,
 }) => {
   const { t } = useTranslation();
+  const copy = useProfileCopy(userData);
   const savedDescription = userData.description ?? '';
   const [draft, setDraft] = useState(savedDescription);
 
   return (
     <InlineEditCard
       canEdit={canEdit}
-      description={t('message.user-description-description')}
+      description={copy(
+        'message.your-description-description',
+        'message.user-description-description'
+      )}
       isSaveDisabled={draft === savedDescription}
       renderEdit={() => (
         <RichTextEditor
@@ -54,7 +59,7 @@ const UserDescriptionRow: React.FC<UserDescriptionRowProps> = ({
         savedDescription ? (
           <RichTextEditorPreviewerV1 markdown={savedDescription} />
         ) : (
-          <Typography className="tw:text-tertiary" size="text-sm">
+          <Typography color="secondary" size="text-sm">
             {t('label.no-description')}
           </Typography>
         )

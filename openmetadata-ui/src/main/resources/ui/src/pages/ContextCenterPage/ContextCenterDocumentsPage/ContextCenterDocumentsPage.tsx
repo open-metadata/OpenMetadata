@@ -12,7 +12,11 @@
  */
 
 import { Box, PageLayout } from '@openmetadata/ui-core-components';
-import { Stars01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Documents,
+  Stars01,
+  UploadCloud01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
@@ -28,8 +32,6 @@ import {
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useSearchParams } from 'react-router-dom';
-import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
@@ -53,6 +55,7 @@ import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { Folder } from '../../../generated/entity/data/folder';
 import { BulkOperationResult } from '../../../generated/type/bulkOperationResult';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
 import {
   bulkDeleteDriveFiles,
@@ -170,7 +173,7 @@ const ContextCenterDocumentsEmptyState: FC<
         features={[
           {
             key: 'upload',
-            icon: <UploadIcon className="tw:text-fg-brand-primary" />,
+            icon: <UploadCloud01 className="tw:text-fg-brand-primary" />,
             title: t('label.upload-files'),
             description: t(
               'message.context-center-documents-empty-feature-upload'
@@ -178,7 +181,7 @@ const ContextCenterDocumentsEmptyState: FC<
           },
           {
             key: 'organize',
-            icon: <FolderIcon className="tw:text-fg-warning-primary" />,
+            icon: <Documents className="tw:text-fg-warning-primary" />,
             title: t('label.organize-with-folders'),
             description: t(
               'message.context-center-documents-empty-feature-organize'
@@ -245,6 +248,7 @@ const ContextCenterDeleteFileModal: FC<ContextCenterDeleteFileModalProps> = ({
 
 const ContextCenterDocumentsPage: FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const { getResourcePermission } = usePermissionProvider();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -519,9 +523,15 @@ const ContextCenterDocumentsPage: FC = () => {
     fetchPermission();
   }, [fetchPermission]);
 
+  // A link to another document (a memory's linked assets, Back) changes the URL without remounting.
   useEffect(() => {
     const documentId = searchParams.get('document');
-    if (!documentId || isDocumentsLoading || previewFile) {
+    if (!documentId) {
+      setPreviewFile(undefined);
+
+      return;
+    }
+    if (isDocumentsLoading || documentId === previewFile?.id) {
       return;
     }
     const match = allDocuments.find((d) => d.id === documentId);
@@ -557,8 +567,14 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => {
       isCancelled = true;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [allDocuments, isDocumentsLoading, searchParams, t, setSearchParams]);
+  }, [
+    allDocuments,
+    isDocumentsLoading,
+    previewFile?.id,
+    searchParams,
+    t,
+    setSearchParams,
+  ]);
 
   useEffect(() => {
     const folderId = searchParams.get('folder');
@@ -877,7 +893,9 @@ const ContextCenterDocumentsPage: FC = () => {
 
   return (
     <Box
-      className={`tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:w-full tw:h-full ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-documents-page"
       direction="col">
       <DocumentTitle title={t('label.document-plural')} />

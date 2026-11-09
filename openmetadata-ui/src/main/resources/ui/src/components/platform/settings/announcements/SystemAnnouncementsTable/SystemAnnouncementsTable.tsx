@@ -15,6 +15,7 @@ import {
   BadgeWithIcon,
   Box,
   Button,
+  ConfirmPopover,
   Dropdown,
   FilterSelect,
   Input,
@@ -22,6 +23,7 @@ import {
   Skeleton,
   Table,
   TableCard,
+  TableCardVariant,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -35,10 +37,10 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { DateTime } from 'luxon';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../constants/constants';
 import {
-  SYSTEM_ANNOUNCEMENT_PAGE_SIZES,
   SYSTEM_ANNOUNCEMENT_STATUS_LABEL_KEYS,
   SYSTEM_ANNOUNCEMENT_STATUS_ORDER,
 } from '../../../../../constants/platform/systemAnnouncements.constants';
@@ -50,6 +52,7 @@ import {
   SystemAnnouncementsListState,
   useDeleteSystemAnnouncement,
 } from '../../../../../hooks/platform/useSystemAnnouncements';
+import { useAnchoredConfirm } from '../../../../../hooks/popover/useAnchoredConfirm';
 import { AnnouncementEntity } from '../../../../../rest/announcementsAPI';
 import {
   ANNOUNCEMENT_STATUS_COLORS,
@@ -59,6 +62,7 @@ import {
   getAnnouncementTypeConfig,
   getAnnouncementTypeLabel,
 } from '../../../../../utils/AnnouncementsUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDeleteDialog';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
@@ -81,10 +85,17 @@ interface Column {
 }
 
 interface SystemAnnouncementsTableProps {
+  /**
+   * How a row delete is confirmed. The settings modal is already an overlay,
+   * so it confirms in a popover anchored to the row's menu instead of a modal.
+   * @default 'modal'
+   */
+  deleteConfirmation?: 'modal' | 'popover';
   list: SystemAnnouncementsListState;
   onAdd: () => void;
   onDuplicate: (announcement: AnnouncementEntity) => void;
   onEdit: (announcement: AnnouncementEntity) => void;
+  variant?: TableCardVariant;
 }
 
 // Announcements are scheduled by day, so the cell shows the day alone.
@@ -122,28 +133,25 @@ const RowActions = ({
   onEdit,
 }: {
   announcement: AnnouncementEntity;
-  onDelete: (announcement: AnnouncementEntity) => void;
+  /** `trigger` is the row's actions button, to anchor a confirmation to. */
+  onDelete: (announcement: AnnouncementEntity, trigger?: HTMLElement) => void;
   onDuplicate: (announcement: AnnouncementEntity) => void;
   onEdit: (announcement: AnnouncementEntity) => void;
 }) => {
   const { t } = useTranslation();
+  const actionsButtonRef = useRef<HTMLButtonElement>(null);
 
   const handlers: Record<RowAction, typeof onEdit> = {
     edit: onEdit,
     duplicate: onDuplicate,
-    delete: onDelete,
+    delete: (row) => onDelete(row, actionsButtonRef.current ?? undefined),
   };
 
   return (
     <Dropdown.Root>
-      {/* Core draws the focus outline while the button is pressed, and the
-          menu trigger stays pressed for as long as the menu is open. Only a
-          keyboard focus keeps the ring. */}
       <Dropdown.DotsButton
-        className={({ isFocusVisible, isPressed }) =>
-          isPressed && !isFocusVisible ? 'tw:outline-0' : ''
-        }
         data-testid={`announcement-actions-${announcement.name}`}
+        ref={actionsButtonRef}
       />
       <Dropdown.Popover className="tw:w-min">
         <Dropdown.Menu
@@ -182,14 +190,21 @@ const RowActions = ({
  * Duplicate lead, so the same table serves Classic and AI mode.
  */
 const SystemAnnouncementsTable = ({
+  deleteConfirmation = 'modal',
   list,
   onAdd,
   onDuplicate,
   onEdit,
+  variant,
 }: SystemAnnouncementsTableProps) => {
   const { t } = useTranslation();
-  const [pendingDelete, setPendingDelete] = useState<AnnouncementEntity>();
-  const closeDelete = useCallback(() => setPendingDelete(undefined), []);
+  // The modal branch reads the same pending row; only the popover anchors to the pressed menu.
+  const {
+    target: pendingDelete,
+    open: setPendingDelete,
+    close: closeDelete,
+    popoverProps,
+  } = useAnchoredConfirm<AnnouncementEntity>();
   const deleteMutation = useDeleteSystemAnnouncement(closeDelete);
 
   const {
@@ -379,7 +394,8 @@ const SystemAnnouncementsTable = ({
       <TableCard.Root
         className="tw:flex tw:flex-col"
         data-testid="system-announcements-table"
-        size="sm">
+        size="sm"
+        variant={variant}>
         <Box
           align="center"
           className="tw:border-b tw:border-subtle tw:px-4 tw:py-3"
@@ -389,6 +405,7 @@ const SystemAnnouncementsTable = ({
             aria-label={t('label.search-for-type', {
               type: t('label.announcement-plural'),
             })}
+            autoComplete="off"
             className="tw:max-w-xs"
             data-testid="announcement-search"
             icon={Search}
@@ -482,11 +499,11 @@ const SystemAnnouncementsTable = ({
             </Table.Body>
           </Table>
         </div>
-        {total > pageSize && (
+        {total > 0 && (
           <PaginationCardWithControls
             page={page}
             pageSize={pageSize}
-            pageSizeOptions={SYSTEM_ANNOUNCEMENT_PAGE_SIZES}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
             total={pageCount}
             onPageChange={goToPage}
             onPageSizeChange={setPageSize}
@@ -494,14 +511,30 @@ const SystemAnnouncementsTable = ({
         )}
       </TableCard.Root>
 
-      <AnnouncementDeleteDialog
-        isDeleting={deleteMutation.isPending}
-        isOpen={Boolean(pendingDelete)}
-        onCancel={closeDelete}
-        onConfirm={() =>
-          pendingDelete && deleteMutation.mutate(pendingDelete.id)
-        }
-      />
+      {deleteConfirmation === 'popover' ? (
+        pendingDelete && (
+          <ConfirmPopover
+            {...popoverProps}
+            data-testid="announcement-delete-popover"
+            description={t('message.confirm-delete-message')}
+            title={t('label.delete-entity', {
+              entity: getEntityName(pendingDelete),
+            })}
+            onConfirm={async () => {
+              await deleteMutation.mutateAsync(pendingDelete.id);
+            }}
+          />
+        )
+      ) : (
+        <AnnouncementDeleteDialog
+          isDeleting={deleteMutation.isPending}
+          isOpen={Boolean(pendingDelete)}
+          onCancel={closeDelete}
+          onConfirm={() =>
+            pendingDelete && deleteMutation.mutate(pendingDelete.id)
+          }
+        />
+      )}
     </>
   );
 };

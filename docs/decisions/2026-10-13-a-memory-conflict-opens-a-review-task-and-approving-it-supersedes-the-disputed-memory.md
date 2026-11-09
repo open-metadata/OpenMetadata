@@ -1,7 +1,7 @@
 # A memory conflict opens a review task, and approving it supersedes the disputed memory
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache) · v3 2026-10-19 (that eviction comes from every rolled-back transaction)
+- **Revisions:** v1 2026-10-13 (initial) · v2 2026-10-14 (a refused decision evicts the memories it wrote from the entity cache) · v3 2026-10-19 (that eviction comes from every rolled-back transaction) · v4 2026-11-03 (only automation records disputes)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryLifecycleTest`, `MemoryConflictDecisionTest`,
   `MemoryConflictReviewTasksTest`, `MemoryConflictResolutionTest`, `ContextMemoryLifecycleIT`,
@@ -113,3 +113,10 @@ ADR:2026-10-19-a-rolled-back-transaction-evicts-the-cache-keys-it-wrote, every t
 does not commit evicts the keys its writes recorded, so the refusal leaves no uncommitted memory in
 the cache without code of its own. `ContextMemoryConflictReviewIT` still checks that a decision
 failing part-way leaves both memories as they were, and now guards that rule.
+
+## Amendment — 2026-11-03: only automation records disputes
+
+Item 1's editability rule is necessary but no longer sufficient: only an admin, a bot, or a bot
+writing for a user records disputes, on create or update (403 otherwise), so a non-admin cannot
+open a review over their own memory and approve it there
+(ADR:2026-10-09-data-consumers-create-context-memories v3).

@@ -14,10 +14,10 @@
 import { Grid } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../utils/common/layout.utils';
 
+import { Globe01 } from '@openmetadata/ui-core-components/icons';
 import { compare } from 'fast-json-patch';
 import { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizeTabWidget } from '../../components/Customization/CustomizeTabWidget/CustomizeTabWidget';
 import { EntityHeader } from '../../components/Entity/EntityHeader/EntityHeader.component';
@@ -25,7 +25,6 @@ import { CustomizablePageHeader } from '../../components/MyData/CustomizableComp
 import { CustomizeMyDataProps } from '../../components/MyData/CustomizableComponents/CustomizeMyData/CustomizeMyData.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
-import { DE_ACTIVE_COLOR } from '../../constants/constants';
 import { EntityType } from '../../enums/entity.enum';
 import { Domain } from '../../generated/entity/domains/domain';
 import { Page } from '../../generated/system/ui/page';
@@ -126,12 +125,10 @@ const CustomizableDomainPage = ({
               entityData={entityDummyData}
               entityType={EntityType.DOMAIN}
               icon={
-                <DomainIcon
-                  className="align-middle"
-                  color={DE_ACTIVE_COLOR}
-                  height={36}
+                <Globe01
+                  className="align-middle tw:text-utility-gray-500"
                   name="folder"
-                  width={32}
+                  size={32}
                 />
               }
               serviceName=""

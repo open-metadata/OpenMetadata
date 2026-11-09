@@ -28,11 +28,11 @@ import {
 } from '../../../generated/entity/data/ontologyProperty';
 import {
   buildDataPropertyRequest,
-  buildObjectPropertyRequest,
   buildOntologyStudioGraph,
-  buildRestrictionAxiomRequest,
+  buildReusePropertyPatch,
   buildSubClassAxiomRequest,
   getAvailableName,
+  getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
   getConceptRelationRows,
@@ -365,6 +365,52 @@ describe('OntologyStudioModel utils', () => {
     ]);
   });
 
+  it('lists an annotation property on its concept, labelled annotation', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+    const rows = getConceptPropertyRows(
+      { ...model, properties: [...model.properties, note] },
+      getModelRelations(model),
+      premiumCustomer
+    );
+
+    expect(
+      rows.map((row) => [
+        row.property.name,
+        row.datatype,
+        row.inheritedFrom?.name,
+      ])
+    ).toContainEqual(['internalNote', 'annotation', undefined]);
+  });
+
+  it('offers data properties to bind, own then inherited, and leaves out annotations', () => {
+    const note = {
+      ...orderTotal,
+      domain: [premiumCustomer.iri],
+      id: 'note-id',
+      kind: Kind.Annotation,
+      name: 'internalNote',
+      range: [],
+    };
+
+    expect(
+      getBindableConceptProperties(
+        { ...model, properties: [...model.properties, note] },
+        getModelRelations(model),
+        premiumCustomer
+      ).map(({ label, isIdentifier }) => [label, isIdentifier])
+    ).toEqual([
+      ['customer id', true],
+      ['legal name', undefined],
+    ]);
+  });
+
   it('labels data types by their XSD local name, and enumerations as enum', () => {
     expect(getDatatypeLabel(orderTotal)).toBe('decimal');
     expect(
@@ -421,47 +467,6 @@ describe('OntologyStudioModel utils', () => {
     });
   });
 
-  it('builds an existential restriction through an object property', () => {
-    expect(
-      buildRestrictionAxiomRequest({
-        model,
-        from: shipment,
-        to: order,
-        property: fulfils,
-        statement: 'Shipment fulfils Order',
-      })
-    ).toEqual({
-      axiomType: 'SUBCLASS_OF',
-      description: 'Shipment fulfils Order',
-      displayName: 'Shipment fulfils Order',
-      expressions: [
-        {
-          filler: { classIri: order.iri, kind: 'NAMED_CLASS' },
-          kind: 'RESTRICTION',
-          propertyIri: fulfils.iri,
-          restrictionKind: 'SOME',
-        },
-      ],
-      name: 'ShipmentFulfillsOrder',
-      ontology: 'RetailCommerce',
-      provenance: 'Manual',
-      subjectIri: shipment.iri,
-    });
-  });
-
-  it('builds a new object property between two concepts', () => {
-    expect(
-      buildObjectPropertyRequest(model, 'placed by', order, customer)
-    ).toEqual({
-      displayName: 'placed by',
-      domain: [order.iri],
-      kind: 'OBJECT',
-      name: 'placedBy2',
-      ontology: 'RetailCommerce',
-      range: [customer.iri],
-    });
-  });
-
   it('builds a data property for the concept', () => {
     expect(
       buildDataPropertyRequest(model, order, {
@@ -482,5 +487,37 @@ describe('OntologyStudioModel utils', () => {
       ontology: 'RetailCommerce',
       range: [`${XSD}string`],
     });
+  });
+
+  it('builds an annotation property with no range', () => {
+    expect(
+      buildDataPropertyRequest(model, order, {
+        datatype: 'string',
+        isIdentifier: false,
+        kind: 'annotation',
+        name: 'reviewNote',
+      })
+    ).toEqual(
+      expect.objectContaining({
+        domain: [order.iri],
+        kind: 'ANNOTATION',
+        range: [],
+      })
+    );
+  });
+
+  it('reuses a declared property by adding the concept to its domain', () => {
+    const declared = {
+      domain: [customer.iri],
+      id: 'p',
+      iri: `${NS}code`,
+      version: 0.2,
+    } as OntologyProperty;
+
+    expect(buildReusePropertyPatch(declared, order)).toEqual([
+      { op: 'test', path: '/version', value: 0.2 },
+      { op: 'add', path: '/domain/1', value: order.iri },
+    ]);
+    expect(buildReusePropertyPatch(declared, customer)).toEqual([]);
   });
 });

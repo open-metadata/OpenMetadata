@@ -22,7 +22,7 @@ import InlineEditCard from './InlineEditCard';
 interface PreferredNameRowProps {
   userData: User;
   canEdit: boolean;
-  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<void>;
+  updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
   // The Members user page shows this as "Display Name" in third person.
   title?: string;
   description?: string;

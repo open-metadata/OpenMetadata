@@ -33,14 +33,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ entityType: 'table' }),
   useNavigate: jest.fn().mockImplementation(() => mockNavigate),
 }));
-jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
-  jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
-    <>
-      <div>{firstPanel.children}</div>
-      <div>{secondPanel.children}</div>
-    </>
-  ))
-);
 jest.mock('../../../utils/TaskEntityFetchUtils', () => ({
   ...jest.requireActual('../../../utils/TaskEntityFetchUtils'),
   fetchEntityDetail: jest
@@ -154,7 +146,7 @@ describe('RequestTagPage', () => {
       about: '<#E::table::sample_data.ecommerce_db.shopify.dim_location>',
       assignees: ['sample_data'],
       payload: {
-        fieldPath: 'columns."address.street_name"',
+        fieldPath: 'columns.address.street_name.tags',
         currentTags: [],
         tagsToAdd: [],
         tagsToRemove: [],

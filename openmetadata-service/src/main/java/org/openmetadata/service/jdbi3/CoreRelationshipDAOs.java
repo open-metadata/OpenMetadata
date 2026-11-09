@@ -14,7 +14,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeLikeBindValue;
 import static org.openmetadata.service.jdbi3.TermRelationMetadataCodec.DEFAULT_RELATION_TYPE;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
@@ -141,6 +141,10 @@ public interface CoreRelationshipDAOs {
 
     @SqlQuery("SELECT json FROM entity_extension WHERE id = :id AND extension = :extension")
     String getExtension(@BindUUID("id") UUID id, @Bind("extension") String extension);
+
+    @SqlQuery(
+        "SELECT json FROM entity_extension WHERE id = :id AND extension = :extension FOR UPDATE")
+    String getExtensionForUpdate(@BindUUID("id") UUID id, @Bind("extension") String extension);
 
     @SqlQuery(
         "SELECT id FROM entity_extension WHERE extension = :extension AND id > :after ORDER BY id LIMIT :limit")
@@ -2286,18 +2290,23 @@ public interface CoreRelationshipDAOs {
         @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
-    default void deleteAllByPrefix(String fqn) {
+    /**
+     * Deletes the rows under {@code fqn}, an FQN of {@code entityType}. Custom property definitions
+     * are rows of type {@code type} under an entity type's name, so only deleting that type removes
+     * them; an entity of another type that shares the name leaves them alone.
+     */
+    default void deleteAllByPrefix(String fqn, String entityType) {
       String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String condition = "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)";
+      String typeCondition =
+          Entity.TYPE.equals(entityType)
+              ? " AND fromType = :typeRow AND toType = :typeRow"
+              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      String condition =
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
       Map<String, String> bindMap = new HashMap<>();
       bindMap.put("prefix", prefix);
+      bindMap.put("typeRow", Entity.TYPE);
       deleteAllByPrefixInternal(condition, bindMap);
-    }
-
-    default void deleteAllByPrefixes(List<String> threadIds) {
-      for (String threadId : threadIds) {
-        deleteAllByPrefix(threadId);
-      }
     }
 
     @SqlUpdate("DELETE from field_relationship <cond>")
@@ -2334,20 +2343,29 @@ public interface CoreRelationshipDAOs {
         @Bind("newToFQNHash") String newToFQNHash);
 
     default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
-      String update =
-          String.format(
-              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
-              escapeApostrophe(oldToFQNPrefix),
-              escapeApostrophe(newToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(newToFQNPrefix),
-              escapeApostrophe(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix));
-      renameByToFQNPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldToFQNPrefix);
+      String newHash = FullyQualifiedName.buildHash(newToFQNPrefix);
+      renameByToFQNPrefixInternal(
+          oldToFQNPrefix + Entity.SEPARATOR,
+          newToFQNPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          escapeLikeBindValue(oldToFQNPrefix) + Entity.SEPARATOR + "%",
+          oldHash + Entity.SEPARATOR + "%");
     }
 
-    @SqlUpdate("<update>")
-    void renameByToFQNPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE field_relationship SET toFQN = REPLACE(toFQN, :oldPrefix, :newPrefix), "
+            + "toFQNHash = REPLACE(toFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE fromtype = 'THREAD' AND relation = '3' "
+            + "AND toFQN LIKE :oldPrefixLike AND toFQNHash LIKE :oldHashLike")
+    void renameByToFQNPrefixInternal(
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldPrefixLike") String oldPrefixLike,
+        @Bind("oldHashLike") String oldHashLike);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override

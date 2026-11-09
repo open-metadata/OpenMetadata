@@ -22,23 +22,21 @@ import {
   Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { User01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Persona as PersonaIcon,
+  User01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as PersonaIcon } from '../../../assets/svg/common/persona.svg';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import { useContextCenterPageLayout } from '../../../components/ContextCenter/ContextCenterLayout/useContextCenterPageLayout';
-import {
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
-} from '../../../constants/constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
 import { DEFAULT_PERSONA_CONTEXT_DEFINITION } from '../../../constants/PersonaAIContext.constants';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CursorType } from '../../../enums/pagination.enum';
@@ -46,6 +44,7 @@ import { Persona } from '../../../generated/entity/teams/persona';
 import { PersonaContextStatus } from '../../../generated/type/personaContextStatus';
 import { useAuth } from '../../../hooks/authHooks';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   getAllPersonas,
   getPersonaAIContextStatus,
@@ -66,6 +65,7 @@ const CHARS_PER_TOKEN = 4;
 
 const ContextCenterAIContextPage = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const pageLayoutClassNames = useContextCenterPageLayout();
   const navigate = useNavigate();
   const { isAdminUser } = useAuth();
@@ -256,16 +256,10 @@ const ContextCenterAIContextPage = () => {
               theme="light"
             />
             <Box className="tw:min-w-0" direction="col">
-              <Typography
-                ellipsis
-                className="tw:text-primary"
-                weight="semibold">
+              <Typography ellipsis weight="medium">
                 {getEntityName(persona)}
               </Typography>
-              <Typography
-                ellipsis
-                className="tw:font-mono tw:text-tertiary"
-                size="text-sm">
+              <Typography ellipsis color="secondary" size="text-xs">
                 {persona.name}
               </Typography>
             </Box>
@@ -301,7 +295,9 @@ const ContextCenterAIContextPage = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden ${contextCenterClassBase.getPageContainerClassName(
+        isAiMode
+      )}`}
       data-testid="context-center-ai-context-page">
       <DocumentTitle title={t('label.ai-context')} />
       <PageLayout
@@ -317,7 +313,7 @@ const ContextCenterAIContextPage = () => {
         </PageLayout.Header>
         <PageLayout.Content
           className={classNames(
-            'tw:min-h-0 tw:overflow-y-auto',
+            'tw:min-h-0 tw:overflow-y-auto tw:relative',
             pageLayoutClassNames.content
           )}>
           {isLoading && <Loader />}
@@ -363,11 +359,7 @@ const ContextCenterAIContextPage = () => {
                   minimal
                   page={currentPage}
                   pageSize={pageSize}
-                  pageSizeOptions={[
-                    PAGE_SIZE_BASE,
-                    PAGE_SIZE_MEDIUM,
-                    PAGE_SIZE_LARGE,
-                  ]}
+                  pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
                   total={Math.max(1, Math.ceil((paging.total ?? 0) / pageSize))}
                   onPageChange={handlePageNavigation}
                   onPageSizeChange={handlePageSizeChange}

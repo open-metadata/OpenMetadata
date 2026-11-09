@@ -15,7 +15,9 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  ButtonUtility,
   Card,
+  ConfirmPopover,
   FeaturedIcon,
   Select,
   Skeleton,
@@ -28,7 +30,7 @@ import {
   Key01,
   Plus,
   RefreshCcw02,
-  Trash02,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, {
@@ -41,6 +43,7 @@ import React, {
 } from 'react';
 import { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { useLimitStore } from '../../../../../context/LimitsProvider/useLimitsStore';
 import { PersonalAccessToken } from '../../../../../generated/auth/personalAccessToken';
 import { JWTTokenExpiry } from '../../../../../generated/entity/teams/user';
 import APIClient from '../../../../../rest/axiosClient';
@@ -72,12 +75,26 @@ const AccessTokenLoadingSkeleton = () => (
   </Card>
 );
 
+const TokenLimitHint = ({
+  t,
+}: {
+  t: ReturnType<typeof useTranslation>['t'];
+}) => (
+  <Typography
+    className="tw:text-tertiary"
+    data-testid="token-limit-reached"
+    size="text-sm">
+    {t('message.access-token-limit-reached')}
+  </Typography>
+);
+
 const AccessTokenEmptyState = ({
   t,
   expiryOptions,
   expiry,
   setExpiry,
   isLoading,
+  isLimitReached,
   handleGenerate,
 }: {
   t: ReturnType<typeof useTranslation>['t'];
@@ -85,6 +102,7 @@ const AccessTokenEmptyState = ({
   expiry: JWTTokenExpiry;
   setExpiry: Dispatch<SetStateAction<JWTTokenExpiry>>;
   isLoading: boolean;
+  isLimitReached: boolean;
   handleGenerate: () => void;
 }) => (
   <Card
@@ -127,13 +145,15 @@ const AccessTokenEmptyState = ({
         <Button
           color="primary"
           data-testid="generate-token"
-          icon={Plus}
+          iconLeading={Plus}
+          isDisabled={isLimitReached}
           isLoading={isLoading}
           size="sm"
           onClick={handleGenerate}>
           {t('label.generate-token')}
         </Button>
       </Box>
+      {isLimitReached && <TokenLimitHint t={t} />}
     </Card.Content>
   </Card>
 );
@@ -149,6 +169,7 @@ const AccessTokenDetails = ({
   canReveal,
   handleCopy,
   isLoading,
+  isLimitReached,
   handleRegenerate,
   handleRevoke,
 }: {
@@ -162,8 +183,9 @@ const AccessTokenDetails = ({
   canReveal: boolean;
   handleCopy: () => void;
   isLoading: boolean;
+  isLimitReached: boolean;
   handleRegenerate: () => void;
-  handleRevoke: () => void;
+  handleRevoke: () => Promise<boolean>;
 }) => (
   <Card
     className="tw:flex tw:flex-col ai-profile-page__edit-card tw:w-full"
@@ -209,14 +231,12 @@ const AccessTokenDetails = ({
                 : '************************************************************'}
             </span>
           </Box>
-          <Button
-            noTextPadding
-            aria-label={t('label.show')}
-            color="secondary"
+          <ButtonUtility
             data-testid="reveal-token"
-            iconLeading={reveal ? Eye : EyeOff}
+            icon={reveal ? Eye : EyeOff}
             isDisabled={!canReveal}
-            size="sm"
+            size="lg"
+            tooltip={t('label.show')}
             onClick={() => setReveal(!reveal)}
           />
           <Button
@@ -249,21 +269,29 @@ const AccessTokenDetails = ({
       <Button
         color="secondary"
         data-testid="regenerate-token"
-        iconLeading={<RefreshCcw02 height={12} width={12} />}
+        iconLeading={RefreshCcw02}
+        isDisabled={isLimitReached}
         isLoading={isLoading}
         size="sm"
         onClick={handleRegenerate}>
         {t('label.regenerate')}
       </Button>
-      <Button
-        color="secondary-destructive"
-        data-testid="revoke-token"
-        iconLeading={<Trash02 height={12} width={12} />}
-        isLoading={isLoading}
-        size="sm"
-        onClick={handleRevoke}>
-        {t('label.revoke')}
-      </Button>
+      <ConfirmPopover
+        confirmText={t('label.revoke')}
+        data-testid="revoke-token-popover"
+        description={t('message.are-you-sure-to-revoke-access-personal-access')}
+        title={t('message.are-you-sure')}
+        onConfirm={handleRevoke}>
+        <Button
+          color="secondary-destructive"
+          data-testid="revoke-token"
+          iconLeading={Trash01}
+          isLoading={isLoading}
+          size="sm">
+          {t('label.revoke')}
+        </Button>
+      </ConfirmPopover>
+      {isLimitReached && <TokenLimitHint t={t} />}
     </Box>
   </Card>
 );
@@ -275,6 +303,23 @@ const AccessTokenRow: React.FC = () => {
   const [isFetching, setIsFetching] = useState(true);
   const [reveal, setReveal] = useState(false);
   const [expiry, setExpiry] = useState<JWTTokenExpiry>(JWTTokenExpiry.OneHour);
+  const { getResourceLimit } = useLimitStore();
+  // Legacy parity: the user limit can switch off personal access tokens.
+  const [isLimitReached, setIsLimitReached] = useState(false);
+
+  useEffect(() => {
+    getResourceLimit('user', false)
+      .then((limit) =>
+        setIsLimitReached(
+          Boolean(
+            limit?.configuredLimit?.disabledFields?.includes(
+              'personalAccessToken'
+            )
+          )
+        )
+      )
+      .catch(() => setIsLimitReached(false));
+  }, [getResourceLimit]);
 
   const expiryOptions = useMemo(
     () => [
@@ -355,14 +400,18 @@ const AccessTokenRow: React.FC = () => {
 
   const handleRevoke = async () => {
     if (!token?.token) {
-      return;
+      return false;
     }
     setIsLoading(true);
     try {
       await revokeToken(token.token);
       setToken(undefined);
+
+      return true;
     } catch (error) {
       showErrorToast(error as AxiosError);
+
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -395,6 +444,7 @@ const AccessTokenRow: React.FC = () => {
         expiry={expiry}
         expiryOptions={expiryOptions}
         handleGenerate={handleGenerate}
+        isLimitReached={isLimitReached}
         isLoading={isLoading}
         setExpiry={setExpiry}
         t={t}
@@ -419,6 +469,7 @@ const AccessTokenRow: React.FC = () => {
       handleCopy={handleCopy}
       handleRegenerate={handleRegenerate}
       handleRevoke={handleRevoke}
+      isLimitReached={isLimitReached}
       isLoading={isLoading}
       isTokenExpired={isTokenExpired}
       reveal={reveal}
