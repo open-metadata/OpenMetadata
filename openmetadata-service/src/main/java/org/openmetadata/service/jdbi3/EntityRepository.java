@@ -5717,7 +5717,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /**
    * This repository's post-delete cleanup and every lifecycle handler's, both captured while the
-   * entities' rows still exist. The handlers' cleanup runs even when the repository's fails.
+   * entities' rows still exist. The handlers' cleanup runs even when the repository's fails. Call it
+   * before removing references and queue the result with {@link PostCommitActionQueue#runOrDefer}
+   * (ADR:2026-11-09-lifecycle-handlers-prepare-a-hard-delete-before-its-rows-are-removed).
    */
   private Runnable prepareHardDeleteCleanup(List<T> entities) {
     Runnable repositoryCleanup = preparePostDeleteCleanup(entities);

@@ -115,8 +115,9 @@ public interface EntityLifecycleEventHandler {
 
   /**
    * Called while an entity is being hard deleted, before its relationships and extensions are
-   * removed and inside the delete's transaction. Read what the cleanup needs here and return the
-   * cleanup; it runs once the delete has committed and never when the delete rolls back.
+   * removed. Read what the cleanup needs here and return the cleanup; it runs once the delete's rows
+   * are gone for good and never when the delete fails or rolls back
+   * (ADR:2026-11-09-lifecycle-handlers-prepare-a-hard-delete-before-its-rows-are-removed).
    */
   default Runnable prepareHardDelete(EntityInterface<?> entity) {
     return () -> {};
