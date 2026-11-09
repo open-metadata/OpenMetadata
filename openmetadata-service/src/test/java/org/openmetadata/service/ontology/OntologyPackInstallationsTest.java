@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
@@ -388,6 +389,24 @@ class OntologyPackInstallationsTest {
     assertThrows(
         PreconditionFailedException.class,
         () -> OntologyPackInstallations.requireMatchingOperations(expected, actual));
+  }
+
+  @Test
+  void anEmptyOwnerListAddedByStorageIsNotADifferenceInThePlan() {
+    final String rdf =
+        """
+        @prefix owl: <http://www.w3.org/2002/07/owl#> .
+        @prefix ex: <https://example.org/> .
+        ex:knows a owl:ObjectProperty .
+        """;
+    final var expected = reconcile(rdf, emptySnapshot);
+    final var stored = reconcile(rdf, emptySnapshot);
+    stored.stream()
+        .map(OntologyChangeOperation::getProperty)
+        .filter(Objects::nonNull)
+        .forEach(property -> property.setOwners(new ArrayList<>()));
+
+    OntologyPackInstallations.requireMatchingOperations(expected, stored);
   }
 
   private void assertRejected(final OntologyChangeSet draft, final Snapshot snapshot) {

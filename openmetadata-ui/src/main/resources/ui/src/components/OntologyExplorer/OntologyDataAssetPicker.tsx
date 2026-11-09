@@ -66,8 +66,8 @@ const SEARCH_DEBOUNCE_MS = 250;
 
 type OntologyDataAssetPickerProps = {
   readonly onCancel: () => void;
-  /** Every selected asset was added. */
-  readonly onSave: () => void;
+  /** Every selected asset was added; a native picker names the ones it newly linked. */
+  readonly onSave: (linked: EntityReference[]) => void;
 } & (
   | {
       readonly term: GlossaryTerm;
@@ -356,18 +356,17 @@ const OntologyDataAssetPicker = ({
   const saveNativeAssets = async (
     config: NonNullable<OntologyDataAssetPickerProps['native']>
   ) => {
-    const result = await config.saveAssets(
-      [...selected.values()].filter(
-        (asset) => !config.linkedIds.includes(asset.id)
-      )
+    const toLink = [...selected.values()].filter(
+      (asset) => !config.linkedIds.includes(asset.id)
     );
+    const result = await config.saveAssets(toLink);
     if (!mounted.current) {
       return;
     }
     setNativeResult(result);
     setSelected(new Map(result.remaining.map((asset) => [asset.id, asset])));
     if (result.stop === 'none') {
-      onSave();
+      onSave(toLink);
     }
   };
 
@@ -380,7 +379,7 @@ const OntologyDataAssetPicker = ({
     ]);
     const refused = result.failedRequest ?? [];
     if (refused.length === 0) {
-      onSave();
+      onSave([]);
 
       return;
     }

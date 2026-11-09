@@ -26,7 +26,7 @@ import org.openmetadata.schema.utils.JsonUtils;
  */
 public final class OntologyPropertyRules {
   private static final int MAX_UNIT_LENGTH = 256;
-  private static final int MAX_ENUM_VALUES = 1000;
+  public static final int MAX_ENUM_VALUES = 1000;
 
   private OntologyPropertyRules() {}
 
@@ -124,6 +124,16 @@ public final class OntologyPropertyRules {
     return null;
   }
 
+  /** The characteristics a property of this kind may carry. */
+  public static EnumSet<RelationshipCharacteristic> allowedCharacteristics(
+      final OntologyPropertyKind kind) {
+    return switch (kind) {
+      case OBJECT -> EnumSet.allOf(RelationshipCharacteristic.class);
+      case DATA -> EnumSet.of(RelationshipCharacteristic.FUNCTIONAL);
+      case ANNOTATION -> EnumSet.noneOf(RelationshipCharacteristic.class);
+    };
+  }
+
   private static Violation kind(final OntologyProperty property) {
     final OntologyPropertyKind kind = property.getKind();
     if (kind != OntologyPropertyKind.OBJECT
@@ -132,12 +142,7 @@ public final class OntologyPropertyRules {
           property.getInverse() != null ? "inverse" : "propertyChain",
           "Only object properties can have inverses or property chains");
     }
-    final EnumSet<RelationshipCharacteristic> allowed =
-        switch (kind) {
-          case OBJECT -> EnumSet.allOf(RelationshipCharacteristic.class);
-          case DATA -> EnumSet.of(RelationshipCharacteristic.FUNCTIONAL);
-          case ANNOTATION -> EnumSet.noneOf(RelationshipCharacteristic.class);
-        };
+    final EnumSet<RelationshipCharacteristic> allowed = allowedCharacteristics(kind);
     if (!nullOrEmpty(property.getCharacteristics())
         && !allowed.containsAll(property.getCharacteristics())) {
       return new Violation(

@@ -203,6 +203,10 @@ test.describe('Ontology Studio', () => {
       );
       const saveConcept = page.getByTestId('ontology-draft-save');
       await expect(draftInspector).toBeVisible();
+      await expect(addConcept).toBeDisabled();
+      await expect(page.getByTestId('ontology-add-concept-reason')).toHaveText(
+        'Finish or close the open concept first'
+      );
       await expect(
         page.getByTestId('ontology-draft-glossary-field')
       ).toBeVisible();
