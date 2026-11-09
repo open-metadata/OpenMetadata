@@ -39,6 +39,10 @@
       "description": "Primary/default LLM model used by this application",
       "$ref": "../../type/basic.json#/definitions/fullyQualifiedEntityName"
     },
+    "mcpServers": {
+      "description": "MCP servers this application connects to for tools, resources, and prompts",
+      "$ref": "../../type/entityReferenceList.json"
+    },
     "promptTemplates": {
       "description": "Prompt templates used by this application",
       "$ref": "../../type/entityReferenceList.json"
