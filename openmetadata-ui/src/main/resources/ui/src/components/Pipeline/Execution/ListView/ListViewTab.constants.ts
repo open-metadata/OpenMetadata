@@ -11,18 +11,15 @@
  *  limitations under the License.
  */
 
-export const CRITICAL_ANNOUNCEMENTS_QUERY_KEY = [
-  'landingPage',
-  'announcements',
-  'critical',
-] as const;
+import { ViewDataInterface } from '../../../../utils/executionUtils';
 
-export const CRITICAL_ANNOUNCEMENTS_TTL_MS = 60_000;
+// Task metrics come only from producers that push them through the status API
+// (no built-in connector sends them), so their columns appear only when the
+// listed runs report them (ADR:2026-11-04-pipeline-execution-metric-columns-render-only-when-reported).
+export const OPTIONAL_COLUMN_KEYS: ReadonlyArray<keyof ViewDataInterface> = [
+  'rowsRead',
+  'rowsWritten',
+  'logLink',
+];
 
-export const CRITICAL_ANNOUNCEMENTS_GC_TIME_MS =
-  CRITICAL_ANNOUNCEMENTS_TTL_MS + 5 * 60 * 1000;
-
-// A page size, not a cap: the banner pages until the cursor runs out, so no
-// live critical is ever left behind. Live criticals are a handful, so this is
-// one request in practice.
-export const CRITICAL_ANNOUNCEMENTS_PAGE_SIZE = 25;
+export const LIST_VIEW_SCROLL = { x: 'max-content' } as const;

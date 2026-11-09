@@ -11,13 +11,91 @@
  *  limitations under the License.
  */
 
-import { Task } from '../generated/entity/data/pipeline';
+import { StatusType, Task } from '../generated/entity/data/pipeline';
 import { TreeNode } from '../interface/tree.interface';
+import { formatDuration } from './date-time/DateTimeUtils';
 import {
   buildCompleteTree,
+  getTableViewData,
   getTreeData,
   ViewDataInterface,
 } from './executionUtils';
+
+describe('getTableViewData', () => {
+  it('carries task metrics and a safe log link into the view rows', () => {
+    const rows = getTableViewData(
+      [
+        {
+          timestamp: 1715404800000,
+          executionStatus: StatusType.Successful,
+          taskStatus: [
+            {
+              name: 'load_orders',
+              executionStatus: StatusType.Successful,
+              startTime: 1715404800000,
+              endTime: 1715404802000,
+              logLink: 'https://orchestrator.example/runs/1',
+              metrics: {
+                rowsRead: 1234,
+                rowsWritten: 1200,
+                rowsFiltered: 34,
+                executionTimeMs: 1500,
+              },
+            },
+            {
+              name: 'notify',
+              executionStatus: StatusType.Successful,
+              logLink: 'javascript:alert(1)',
+            },
+          ],
+        },
+      ],
+      StatusType.Successful,
+      undefined
+    );
+
+    expect(rows).toHaveLength(2);
+    expect(rows?.[0]).toMatchObject({
+      name: 'load_orders',
+      duration: formatDuration(2000),
+      rowsRead: 1234,
+      rowsWritten: 1200,
+      logLink: 'https://orchestrator.example/runs/1',
+    });
+    expect(rows?.[1]).toMatchObject({ name: 'notify', duration: '--' });
+    expect(rows?.[1].logLink).toBeUndefined();
+  });
+
+  it('falls back to the reported execution time only when start or end is missing', () => {
+    const rows = getTableViewData(
+      [
+        {
+          timestamp: 1715404800000,
+          executionStatus: StatusType.Successful,
+          taskStatus: [
+            {
+              name: 'with_wall_clock',
+              executionStatus: StatusType.Successful,
+              startTime: 1715404800000,
+              endTime: 1715404802000,
+              metrics: { executionTimeMs: 90000 },
+            },
+            {
+              name: 'reported_only',
+              executionStatus: StatusType.Successful,
+              metrics: { executionTimeMs: 90000 },
+            },
+          ],
+        },
+      ],
+      StatusType.Successful,
+      undefined
+    );
+
+    expect(rows?.[0].duration).toBe(formatDuration(2000));
+    expect(rows?.[1].duration).toBe(formatDuration(90000));
+  });
+});
 
 const makeTasks = (graph: Record<string, string[]>): Task[] =>
   Object.entries(graph).map(([name, downstream]) => ({

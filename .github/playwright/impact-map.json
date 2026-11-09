@@ -821,6 +821,8 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/**",
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useRailPager.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/criticalAnnouncementsQuery.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
@@ -1078,10 +1080,13 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/rest/announcementsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/AnnouncementsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/AnnouncementsUtils.ts"
       ],
       "projects": ["chromium"],
       "specs": [
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"
