@@ -103,9 +103,27 @@ abstract class BaseOntologyIT<T extends OntologyEntityInterface, K> extends Base
           && Boolean.TRUE.equals(service.get(root.id().toString(), null, "all").getDeleted())) {
         continue;
       }
-      service.delete(
-          root.id().toString(),
-          Map.of("hardDelete", Boolean.toString(!retained), "recursive", "true"));
+      deleteRetryingDeadlocks(
+          () ->
+              service.delete(
+                  root.id().toString(),
+                  Map.of("hardDelete", Boolean.toString(!retained), "recursive", "true")));
+    }
+  }
+
+  // Deleting an ontology that holds an installed library pack contends with other deleting tests
+  // for MySQL gap locks; the server rolls one back and a retry succeeds.
+  private static void deleteRetryingDeadlocks(Runnable delete) {
+    for (int attempt = 1; ; attempt++) {
+      try {
+        delete.run();
+        return;
+      } catch (RuntimeException exception) {
+        final String message = String.valueOf(exception.getMessage());
+        if (attempt == 5 || !message.contains("Deadlock found")) {
+          throw exception;
+        }
+      }
     }
   }
 

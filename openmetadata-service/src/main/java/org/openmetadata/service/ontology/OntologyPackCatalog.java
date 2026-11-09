@@ -13,9 +13,11 @@
 
 package org.openmetadata.service.ontology;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -35,29 +37,18 @@ public final class OntologyPackCatalog {
     return Bundled.INSTANCE;
   }
 
-  private static final List<String> MANIFEST_PATHS =
-      List.of(
-          "json/data/ontology/packs/epcis.json",
-          "json/data/ontology/packs/fhir.json",
-          "json/data/ontology/packs/fibo.json",
-          "json/data/ontology/packs/gs1.json",
-          "json/data/ontology/packs/hr-open.json",
-          "json/data/ontology/packs/isa-95.json");
+  private static final String PACKS_DIRECTORY = "json/data/ontology/packs/";
+  private static final String INDEX_PATH = PACKS_DIRECTORY + "index.json";
 
   private final List<OntologyPackManifest> manifests;
   private final OntologyPackVerifier verifier;
   private final OntologyPackContentLoader contentLoader;
 
   public OntologyPackCatalog(final ClassLoader classLoader) {
-    this(classLoader, MANIFEST_PATHS);
-  }
-
-  /** A catalogue of the manifests at these paths, for callers that serve their own pack set. */
-  public OntologyPackCatalog(final ClassLoader classLoader, final List<String> manifestPaths) {
     final ClassLoader requiredClassLoader = Objects.requireNonNull(classLoader);
     contentLoader = new OntologyPackContentLoader(requiredClassLoader);
     verifier = new OntologyPackVerifier(contentLoader);
-    manifests = load(requiredClassLoader, manifestPaths);
+    manifests = load(requiredClassLoader);
     requireUniquePackIds(manifests);
     manifests.forEach(verifier::verify);
   }
@@ -83,20 +74,51 @@ public final class OntologyPackCatalog {
     return contentLoader.loadSelected(this, packId, moduleIds);
   }
 
-  private static List<OntologyPackManifest> load(
-      final ClassLoader classLoader, final List<String> manifestPaths) {
-    return manifestPaths.stream().map(path -> loadManifest(classLoader, path)).toList();
+  private static List<OntologyPackManifest> load(final ClassLoader classLoader) {
+    return readIndex(classLoader).stream()
+        .map(packId -> loadManifest(classLoader, packId))
+        .toList();
+  }
+
+  private static List<String> readIndex(final ClassLoader classLoader) {
+    try (InputStream input = requireResource(classLoader, INDEX_PATH)) {
+      final JsonNode packs =
+          JsonUtils.readTree(new String(input.readAllBytes(), StandardCharsets.UTF_8)).get("packs");
+      if (packs == null || !packs.isArray() || packs.isEmpty()) {
+        throw new IllegalStateException(
+            "Ontology pack index '%s' lists no packs".formatted(INDEX_PATH));
+      }
+      final List<String> packIds = new ArrayList<>();
+      packs.forEach(pack -> packIds.add(pack.asText()));
+      return packIds;
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Unable to load ontology pack index '%s'".formatted(INDEX_PATH), exception);
+    }
   }
 
   private static OntologyPackManifest loadManifest(
-      final ClassLoader classLoader, final String resourcePath) {
+      final ClassLoader classLoader, final String packId) {
+    final String resourcePath = PACKS_DIRECTORY + packId + ".json";
+    final String json;
     try (InputStream input = requireResource(classLoader, resourcePath)) {
-      final String json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
-      return JsonUtils.readValue(json, OntologyPackManifest.class);
+      json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
     } catch (IOException exception) {
       throw new IllegalStateException(
           "Unable to load ontology pack manifest '%s'".formatted(resourcePath), exception);
     }
+    final OntologyPackManifest manifest;
+    try {
+      manifest = JsonUtils.readValue(json, OntologyPackManifest.class);
+    } catch (RuntimeException exception) {
+      throw new IllegalStateException(
+          "Malformed ontology pack manifest '%s'".formatted(resourcePath), exception);
+    }
+    if (!packId.equals(manifest.getId())) {
+      throw new IllegalStateException(
+          "Ontology pack manifest '%s' declares id '%s'".formatted(resourcePath, manifest.getId()));
+    }
+    return manifest;
   }
 
   private static InputStream requireResource(

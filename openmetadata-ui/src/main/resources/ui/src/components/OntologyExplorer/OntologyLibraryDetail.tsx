@@ -235,6 +235,16 @@ const OntologyPackStatCards = ({
   );
 };
 
+const OntologyPackAttribution = ({ attribution }: { attribution?: string }) =>
+  attribution ? (
+    <Typography
+      color="secondary"
+      data-testid="ontology-pack-attribution"
+      size="text-xs">
+      {attribution}
+    </Typography>
+  ) : null;
+
 const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
   const { pack, selectedModuleIds, onBack, onModuleChange } = props;
   const installedResult = props.native ? undefined : props.installedResult;
@@ -379,6 +389,7 @@ const OntologyLibraryDetail = (props: OntologyLibraryDetailProps) => {
                     {t('label.version')} {pack.version}
                   </Typography>
                 </Box>
+                <OntologyPackAttribution attribution={pack.attribution} />
               </Box>
             </Card.Content>
           </Card>

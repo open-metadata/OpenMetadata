@@ -38,26 +38,23 @@ describe('OntologyNativePackReview', () => {
 
   it('lists each definition the pack adds with the clash reason on its rule', async () => {
     (reviewNativeOntologyPack as jest.Mock).mockResolvedValue({
-      changeSet: { operations: [] },
-      summary: {
-        items: [
-          {
-            id: 'concept:https://example.org/Patient',
-            kind: Kind.Concept,
-            label: 'Patient',
-            status: Status.New,
-            conceptIds: [],
-          },
-          {
-            id: 'axiom:aaaaaaaaaaaaaaaa',
-            kind: Kind.Rule,
-            label: 'Patient and Person are disjoint',
-            status: Status.New,
-            warning: 'Patient and Person would clash with Employee',
-            conceptIds: [],
-          },
-        ],
-      },
+      items: [
+        {
+          id: 'concept:https://example.org/Patient',
+          kind: Kind.Concept,
+          label: 'Patient',
+          status: Status.New,
+          conceptIds: [],
+        },
+        {
+          id: 'axiom:aaaaaaaaaaaaaaaa',
+          kind: Kind.Rule,
+          label: 'Patient and Person are disjoint',
+          status: Status.New,
+          warning: 'Patient and Person would clash with Employee',
+          conceptIds: [],
+        },
+      ],
     });
 
     renderReview();
@@ -75,8 +72,7 @@ describe('OntologyNativePackReview', () => {
 
   it('renders nothing when the pack adds no definitions', async () => {
     (reviewNativeOntologyPack as jest.Mock).mockResolvedValue({
-      changeSet: { operations: [] },
-      summary: { items: [] },
+      items: [],
     });
 
     const { container } = renderReview();
@@ -90,18 +86,15 @@ describe('OntologyNativePackReview', () => {
     (reviewNativeOntologyPack as jest.Mock)
       .mockRejectedValueOnce(new Error('boom'))
       .mockResolvedValueOnce({
-        changeSet: { operations: [] },
-        summary: {
-          items: [
-            {
-              id: 'concept:https://example.org/Patient',
-              kind: Kind.Concept,
-              label: 'Patient',
-              status: Status.New,
-              conceptIds: [],
-            },
-          ],
-        },
+        items: [
+          {
+            id: 'concept:https://example.org/Patient',
+            kind: Kind.Concept,
+            label: 'Patient',
+            status: Status.New,
+            conceptIds: [],
+          },
+        ],
       });
 
     renderReview();

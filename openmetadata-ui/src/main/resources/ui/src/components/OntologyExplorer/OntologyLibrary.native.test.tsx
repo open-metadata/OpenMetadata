@@ -308,12 +308,80 @@ describe('OntologyLibrary native installation', () => {
     post.mockImplementation(respond);
   });
 
+  it('lists cross-industry packs under their own filter and shows the attribution a license requires', async () => {
+    const dcat: OntologyPackManifest = {
+      ...pack,
+      id: 'dcat',
+      abbreviation: 'DCAT',
+      name: 'DCAT 3',
+      industry: Industry.CrossIndustry,
+      standard: 'Data Catalog Vocabulary (DCAT) Version 3',
+      attribution:
+        'DCAT Version 3, W3C Recommendation. Licensed under CC BY 4.0.',
+    };
+    get.mockImplementation(async (url) => {
+      if (url === '/ontologyPacks') {
+        return { data: { packs: [pack, dcat], installations: [] } };
+      }
+      if (url.includes('/sample')) {
+        return { data: { ...sampleResponse().data, packId: dcat.id } };
+      }
+
+      return { data: {} };
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await act(async () => undefined);
+    await screen.findByTestId('ontology-pack-dcat');
+
+    expect(
+      screen.getByTestId('ontology-library-filter-cross-industry')
+    ).toHaveTextContent('label.ontology-library-cross-industry');
+
+    fireEvent.click(
+      screen.getByTestId('ontology-library-filter-cross-industry')
+    );
+
+    expect(screen.getByTestId('ontology-pack-dcat')).toBeVisible();
+    expect(screen.queryByTestId('ontology-pack-fhir')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-pack-details-dcat'));
+
+    expect(screen.getByTestId('ontology-pack-attribution')).toHaveTextContent(
+      dcat.attribution as string
+    );
+  });
+
+  it('offers Install for a pack of any size because every install runs as a job', async () => {
+    const fibo: OntologyPackManifest = {
+      ...pack,
+      id: 'fibo',
+      abbreviation: 'FIBO',
+      name: 'FIBO',
+      industry: Industry.Finance,
+    };
+    get.mockImplementation(async (url) => {
+      if (url === '/ontologyPacks') {
+        return { data: { packs: [fibo], installations: [] } };
+      }
+
+      return { data: {} };
+    });
+    renderWithQueryClient(<OntologyLibrary native={nativeProps()} />);
+    await act(async () => undefined);
+    await screen.findByTestId('ontology-pack-fibo');
+    fireEvent.click(screen.getByTestId('ontology-pack-details-fibo'));
+
+    expect(
+      await screen.findByTestId('ontology-library-native-install')
+    ).toBeVisible();
+  });
+
   it('filters native packs by industry and opens the aligned detail from the card action', async () => {
     const fibo: OntologyPackManifest = {
       ...pack,
       id: 'fibo',
       abbreviation: 'FIBO',
-      name: 'FIBO Starter',
+      name: 'FIBO',
       industry: Industry.Finance,
       standard: 'Financial Industry Business Ontology',
     };
@@ -338,7 +406,7 @@ describe('OntologyLibrary native installation', () => {
     const action = screen.getByTestId('ontology-pack-details-fibo');
 
     expect(action).toHaveClass('tw:after:absolute');
-    expect(action).toHaveAccessibleName('label.view FIBO Starter');
+    expect(action).toHaveAccessibleName('label.view FIBO');
 
     fireEvent.click(action);
 
@@ -596,7 +664,7 @@ describe('OntologyLibrary native installation', () => {
         screen.getByTestId('ontology-library-native-install')
       ).toBeDisabled();
       expect(
-        post.mock.calls.filter(([url]) => !String(url).endsWith('/review'))
+        post.mock.calls.filter(([url]) => !String(url).endsWith('/summary'))
       ).toHaveLength(0);
     }
   );
@@ -611,7 +679,7 @@ describe('OntologyLibrary native installation', () => {
     expect(creates()).toHaveLength(1);
     expect(
       post.mock.calls.some(
-        ([url]) => url.includes('/library/') && !url.endsWith('/review')
+        ([url]) => url.includes('/library/') && !url.endsWith('/summary')
       )
     ).toBe(false);
     expect(screen.getByTestId('ontology-library-close')).toBeDisabled();

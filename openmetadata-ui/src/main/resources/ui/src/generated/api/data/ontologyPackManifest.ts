@@ -16,6 +16,11 @@
 export interface OntologyPackManifest {
     abbreviation: string;
     /**
+     * Copyright and license notice the license requires us to show wherever the pack is
+     * redistributed.
+     */
+    attribution?: string;
+    /**
      * Whether every selected module can be installed from verified classpath content.
      */
     bundled:     boolean;
@@ -33,6 +38,10 @@ export interface OntologyPackManifest {
     licenseUrl: string;
     modules:    OntologyPackModule[];
     name:       string;
+    /**
+     * Organization that publishes the standard, or OpenMetadata for an authored starter.
+     */
+    publisher?: string;
     sourceUrl:  string;
     standard:   string;
     version:    string;
@@ -42,6 +51,8 @@ export interface OntologyPackManifest {
  * Industry the pack models. The library catalogue filters packs by it.
  */
 export enum Industry {
+    BuildingsAndEnergy = "buildings-and-energy",
+    CrossIndustry = "cross-industry",
     Finance = "finance",
     Healthcare = "healthcare",
     HumanResources = "human-resources",
@@ -65,6 +76,9 @@ export enum Layer {
  * One independently selectable module in an ontology library pack.
  */
 export interface OntologyPackModule {
+    /**
+     * Distinct IRIs typed owl:Class, rdfs:Class or skos:Concept in the payload.
+     */
     conceptCount: number;
     dependencies: string[];
     description:  string;
@@ -72,8 +86,12 @@ export interface OntologyPackModule {
     /**
      * Stable module key within the pack.
      */
-    id:                string;
-    name:              string;
+    id:   string;
+    name: string;
+    /**
+     * Distinct IRI-to-IRI rdfs:subClassOf, rdfs:subPropertyOf, skos:broader, skos:narrower and
+     * skos:related statements in the payload.
+     */
     relationshipCount: number;
     /**
      * Classpath resource used for redistributable bundled modules.
@@ -85,7 +103,13 @@ export interface OntologyPackModule {
      */
     sha256?: string;
     /**
-     * Authoritative external source for catalogue-only modules.
+     * Lowercase SHA-256 of the published file, recorded only when the generator converted it to
+     * the bundled Turtle payload.
+     */
+    sourceSha256?: string;
+    /**
+     * Authoritative external source: where a catalogue-only module is obtained, or where a
+     * bundled module was published.
      */
     sourceUrl?: string;
 }

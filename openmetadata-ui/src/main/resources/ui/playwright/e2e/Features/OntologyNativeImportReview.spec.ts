@@ -744,7 +744,7 @@ test.describe(
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
 
         const created = page.waitForResponse(
           (response) =>
@@ -758,7 +758,7 @@ test.describe(
         );
         expect(installed.iri).toMatch(/^https:\/\//);
         expect(installed.name).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}/);
-        await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
+        await expect(page.getByTestId('ontology-pack-dcat')).toContainText(
           'Installed'
         );
         await page.keyboard.press('Escape');
@@ -770,7 +770,7 @@ test.describe(
           /\((\d+)\)/.exec((await publish.textContent()) ?? '')?.[1]
         );
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await selectOntologyOption(
           page,
           page.getByTestId('ontology-library-target'),
@@ -789,7 +789,7 @@ test.describe(
         expect((await applied).ok()).toBeTruthy();
         await page.keyboard.press('Escape');
 
-        await expect(publish).toHaveText(`Publish (${before + 14})`);
+        await expect(publish).toHaveText(`Publish (${before + 62})`);
       } finally {
         await remove(api, ontology.id);
         if (installed) {
@@ -810,7 +810,7 @@ test.describe(
         await applyImport(page);
         await page.keyboard.press('Escape');
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await selectOntologyOption(
           page,
           page.getByTestId('ontology-library-target'),
@@ -818,10 +818,10 @@ test.describe(
         );
 
         const review = page.getByTestId('ontology-library-pack-review');
-        await expect(review).toContainText('Financial Instrument');
+        await expect(review).toContainText('Dataset');
         await expect(
           review.locator('[data-testid^="ontology-native-import-item-status-"]')
-        ).toHaveText(Array(14).fill('New'));
+        ).toHaveText(Array(62).fill('New'));
         await expect(
           review.locator(
             '[data-testid^="ontology-native-import-item-warning-"]'
@@ -847,7 +847,7 @@ test.describe(
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await selectOntologyOption(
           page,
           page.getByTestId('ontology-library-target'),
@@ -891,14 +891,14 @@ test.describe(
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-sosa-ssn').click();
         await expect.poll(() => modules.count()).toBeGreaterThan(1);
-        await page.getByTestId('ontology-module-business-entities').click();
+        await page.getByTestId('ontology-module-ssn').click();
         const initial = await checkedModules();
 
         expect(initial).toEqual([
-          ['ontology-module-foundations', true],
-          ['ontology-module-business-entities', false],
+          ['ontology-module-sosa', true],
+          ['ontology-module-ssn', false],
         ]);
 
         await selectOntologyOption(

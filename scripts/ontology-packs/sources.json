@@ -1,0 +1,752 @@
+{
+  "$comment": "Source list for the bundled ontology library packs. generate.py is the only writer of the manifests and payloads this file describes. Upstream payloads are published verbatim at a pinned URL and verified by sourceSha256; authored packs are OpenMetadata-written outlines whose payload is checked in by hand.",
+  "allowedLicenses": [
+    "CC BY 4.0",
+    "CC BY 1.0",
+    "CC0 1.0",
+    "MIT",
+    "BSD-3-Clause",
+    "Apache License 2.0",
+    "Open Data Commons PDDL 1.0",
+    "W3C Software and Document License",
+    "W3C Software and Document License or OGC Software License",
+    "W3C Document License",
+    "No license statement published by GS1; included pending confirmation",
+    "MIT; BFO module CC BY 4.0"
+  ],
+  "packs": [
+    {
+      "id": "dcat",
+      "name": "DCAT 3",
+      "abbreviation": "DCAT",
+      "standard": "Data Catalog Vocabulary (DCAT) Version 3",
+      "publisher": "W3C",
+      "version": "3",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C vocabulary for describing data catalogs, datasets, distributions and data services, published verbatim.",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "sourceUrl": "https://www.w3.org/TR/vocab-dcat-3/",
+      "attribution": "DCAT Version 3, W3C Recommendation. Copyright W3C. Licensed under CC BY 4.0. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "dcat",
+          "name": "DCAT 3 vocabulary",
+          "description": "Catalogs, datasets, distributions, data services and their relationships.",
+          "url": "https://www.w3.org/ns/dcat3.ttl",
+          "format": "turtle",
+          "sourceSha256": "d1624d3bbf364f6fc1d43b9a188bbb9e67639b1a7d46a5cb7ea3f5d47d02b62f"
+        }
+      ]
+    },
+    {
+      "id": "prov-o",
+      "name": "PROV-O",
+      "abbreviation": "PROV-O",
+      "standard": "PROV-O: The PROV Ontology",
+      "publisher": "W3C",
+      "version": "2013-04-30",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C provenance ontology for describing entities, activities and agents, published verbatim.",
+      "license": "W3C Software and Document License",
+      "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+      "sourceUrl": "https://www.w3.org/TR/prov-o/",
+      "attribution": "PROV-O: The PROV Ontology, W3C Recommendation 30 April 2013. Copyright W3C (MIT, ERCIM, Keio, Beihang). Used under the W3C Software and Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "prov-o",
+          "name": "PROV-O",
+          "description": "Entities, activities, agents and the derivation, attribution and usage relations between them.",
+          "url": "https://www.w3.org/ns/prov-o.ttl",
+          "format": "turtle",
+          "sourceSha256": "7d203989f67b38bca572253942acc5a1bf24ce3ccfece16f072dcb4be2b79a96"
+        }
+      ]
+    },
+    {
+      "id": "org",
+      "name": "W3C Organization Ontology",
+      "abbreviation": "ORG",
+      "standard": "The Organization Ontology",
+      "publisher": "W3C",
+      "version": "0.8",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C ontology for organizational structure: organizations, units, roles, posts and membership, published verbatim.",
+      "license": "Open Data Commons PDDL 1.0",
+      "licenseUrl": "https://opendatacommons.org/licenses/pddl/1-0/",
+      "sourceUrl": "https://www.w3.org/TR/vocab-org/",
+      "attribution": "The Organization Ontology, W3C Recommendation 16 January 2014. Copyright W3C. The ontology file declares the Open Data Commons PDDL 1.0; the Recommendation text is under the W3C Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "org",
+          "name": "Organization ontology",
+          "description": "Organizations, organizational units, sites, posts, roles and memberships.",
+          "url": "https://www.w3.org/ns/org.ttl",
+          "format": "turtle",
+          "sourceSha256": "3e01f89a17475a88f8b1606ca0fae04800d34dbbf93adc6db12dc30929848729"
+        }
+      ]
+    },
+    {
+      "id": "owl-time",
+      "name": "OWL-Time",
+      "abbreviation": "Time",
+      "standard": "Time Ontology in OWL",
+      "publisher": "W3C and OGC",
+      "version": "2017-04-06",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C and OGC ontology of temporal concepts: instants, intervals, durations and calendar-clock descriptions, published verbatim.",
+      "license": "CC BY 4.0",
+      "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+      "sourceUrl": "https://www.w3.org/TR/owl-time/",
+      "attribution": "Time Ontology in OWL, W3C Recommendation. Copyright 2006-2017 W3C, OGC. Licensed under CC BY 4.0. W3C and OGC liability, trademark and document use rules apply. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "owl-time",
+          "name": "OWL-Time",
+          "description": "Temporal entities, positions, durations, calendar and clock descriptions, and Allen interval relations.",
+          "url": "https://www.w3.org/2006/time.ttl",
+          "format": "turtle",
+          "sourceSha256": "251bd6970b0d7a5efa97ff681afe81a297df85deab3d860fa4f8eeba72d8f16c"
+        }
+      ]
+    },
+    {
+      "id": "sosa-ssn",
+      "name": "SOSA and SSN",
+      "abbreviation": "SOSA/SSN",
+      "standard": "Semantic Sensor Network Ontology",
+      "publisher": "W3C and OGC",
+      "version": "2017-10-19",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C and OGC sensor, observation, sampling and actuation vocabulary. SOSA is the lightweight core; SSN adds systems, deployments and stimuli on top of it. Published verbatim.",
+      "license": "W3C Software and Document License or OGC Software License",
+      "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+      "sourceUrl": "https://www.w3.org/TR/vocab-ssn/",
+      "attribution": "Semantic Sensor Network Ontology, W3C Recommendation and OGC Implementation Standard 19 October 2017. Copyright 2017 W3C/OGC. Used under the W3C Software and Document License or the OGC Software License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "sosa",
+          "name": "SOSA",
+          "description": "Sensors, observations, samples, actuators and the platforms that host them.",
+          "url": "https://www.w3.org/ns/sosa/",
+          "accept": "text/turtle",
+          "format": "turtle",
+          "sourceSha256": "c70b0d1c843c0047e4c98e0a89392e46a05752ff6365bda7f7f55303905a0392"
+        },
+        {
+          "id": "ssn",
+          "name": "SSN",
+          "description": "Systems, deployments, stimuli and properties layered on SOSA.",
+          "url": "https://www.w3.org/ns/ssn/",
+          "accept": "text/turtle",
+          "format": "turtle",
+          "dependencies": [
+            "sosa"
+          ],
+          "sourceSha256": "184d86189191146e314cc52b1bceb96fca11e70aacbc160d71588102a5153eb9"
+        }
+      ]
+    },
+    {
+      "id": "odrl",
+      "name": "ODRL 2.2",
+      "abbreviation": "ODRL",
+      "standard": "ODRL Vocabulary and Expression 2.2",
+      "publisher": "W3C",
+      "version": "2.2",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C Open Digital Rights Language vocabulary for policies, permissions, prohibitions, duties and constraints, published verbatim.",
+      "license": "W3C Document License",
+      "licenseUrl": "https://www.w3.org/copyright/document-license-2023/",
+      "sourceUrl": "https://www.w3.org/TR/odrl-vocab/",
+      "attribution": "ODRL Vocabulary and Expression 2.2, W3C Recommendation 15 February 2018. Copyright W3C. Used under the W3C Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "odrl",
+          "name": "ODRL 2.2 vocabulary",
+          "description": "Policies, rules, actions, constraints, parties and assets.",
+          "url": "https://www.w3.org/ns/odrl/2/ODRL22.ttl",
+          "format": "turtle",
+          "sourceSha256": "7895765e80d86d1d0349d945a28b8a2479f03169572345080a5b3e561ef31457"
+        }
+      ]
+    },
+    {
+      "id": "foaf",
+      "name": "FOAF",
+      "abbreviation": "FOAF",
+      "standard": "Friend of a Friend (FOAF) vocabulary",
+      "publisher": "Dan Brickley and Libby Miller",
+      "version": "0.99",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The Friend of a Friend vocabulary for people, groups, accounts and documents, published verbatim as RDF/XML.",
+      "license": "CC BY 1.0",
+      "licenseUrl": "http://creativecommons.org/licenses/by/1.0/",
+      "sourceUrl": "http://xmlns.com/foaf/spec/",
+      "attribution": "FOAF Vocabulary Specification 0.99 (Paddington Edition, 14 January 2014), Dan Brickley and Libby Miller. Licensed under CC BY 1.0. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "foaf",
+          "name": "FOAF vocabulary",
+          "description": "Persons, agents, groups, organizations, accounts, documents and images.",
+          "url": "https://xmlns.com/foaf/spec/index.rdf",
+          "format": "rdfxml",
+          "sourceSha256": "3d859b5d92a2c3d041545d014fa826f682ca06d056af8c7b31e32d930abf2bc5"
+        }
+      ]
+    },
+    {
+      "id": "dpv",
+      "name": "Data Privacy Vocabulary",
+      "abbreviation": "DPV",
+      "standard": "Data Privacy Vocabulary (DPV) 2.3",
+      "publisher": "W3C Data Privacy Vocabularies and Controls Community Group",
+      "version": "2.3",
+      "industry": "cross-industry",
+      "layer": "L1",
+      "description": "The W3C community vocabulary for personal data processing: purposes, processing, legal bases, data subjects and technical measures, plus the personal-data categories extension. Published verbatim.",
+      "license": "W3C Software and Document License",
+      "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+      "sourceUrl": "https://w3c.github.io/dpv/2.3/dpv/",
+      "attribution": "Data Privacy Vocabulary (DPV) 2.3, W3C Data Privacy Vocabularies and Controls Community Group. Copyright W3C. Used under the W3C Software and Document License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "dpv",
+          "name": "DPV core",
+          "description": "Core concepts for personal data handling, purposes, processing, legal bases and measures.",
+          "url": "https://w3c-cg.github.io/dpv/2.3/dpv/dpv-owl.ttl",
+          "format": "turtle",
+          "sourceSha256": "af2aa4776ac7afe4c6c66b310fe4b7cbb4ef12bddfc2092cf30c9ebf524112a5"
+        },
+        {
+          "id": "personal-data",
+          "name": "Personal data categories",
+          "description": "The personal-data extension: categories of personal data such as identifiers, contact details and financial data.",
+          "url": "https://w3c-cg.github.io/dpv/2.3/pd/pd-owl.ttl",
+          "format": "turtle",
+          "dependencies": [
+            "dpv"
+          ],
+          "sourceSha256": "99308e733f9f4825ddc3783a973e94c8e005faa12bf644f103d03443126aa12a"
+        }
+      ]
+    },
+    {
+      "id": "gs1",
+      "name": "GS1 Web Vocabulary",
+      "abbreviation": "GS1",
+      "standard": "GS1 Web Vocabulary",
+      "publisher": "GS1",
+      "version": "1.18",
+      "industry": "retail",
+      "layer": "L2",
+      "description": "The GS1 Web Vocabulary for products, organizations, places, offers and the GS1 code lists, published verbatim.",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://ref.gs1.org/voc/",
+      "attribution": "GS1 Web Vocabulary 1.18. Copyright 2015-2019 GS1 AISBL. Licensed under the Apache License, Version 2.0. GS1 and the GS1 logo are registered trademarks of GS1 AISBL. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "gs1-voc",
+          "name": "GS1 Web Vocabulary",
+          "description": "Products, organizations, places, offers, certifications and code lists.",
+          "url": "https://ref.gs1.org/voc/data/gs1Voc.ttl",
+          "format": "turtle",
+          "sourceSha256": "b6039ed1b3229853a0aed1eb8568527f2d393925fd163d6fce5fddefe7ea1aa7"
+        }
+      ]
+    },
+    {
+      "id": "fibo",
+      "name": "FIBO",
+      "abbreviation": "FIBO",
+      "standard": "Financial Industry Business Ontology, production quickstart",
+      "publisher": "EDM Council and OMG",
+      "version": "2026Q2",
+      "industry": "finance",
+      "layer": "L2",
+      "description": "The Financial Industry Business Ontology production release as one merged file, including the OMG Commons and Languages, Countries and Codes terms. Published verbatim.",
+      "license": "MIT",
+      "licenseUrl": "https://opensource.org/licenses/MIT",
+      "sourceUrl": "https://spec.edmcouncil.org/fibo/",
+      "attribution": "Financial Industry Business Ontology (FIBO) production quickstart 2026Q2. Copyright 2018-2026 EDM Council Inc. Copyright 2018-2025 Object Management Group, Inc. Licensed under the MIT License. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "fibo-quickstart",
+          "name": "FIBO production quickstart",
+          "description": "All production FIBO modules merged into one ontology.",
+          "url": "https://spec.edmcouncil.org/fibo/ontology/master/2026Q2/prod.fibo-quickstart.ttl",
+          "format": "turtle",
+          "sourceSha256": "5cd164c787cdfb2d7c1c386bc21bb3410f5963199bc547dc000a70b3c0e195b1"
+        }
+      ]
+    },
+    {
+      "id": "fhir",
+      "name": "HL7 FHIR R5",
+      "abbreviation": "FHIR",
+      "standard": "HL7 FHIR Release 5 RDF ontology",
+      "publisher": "HL7 International",
+      "version": "5.0.0",
+      "industry": "healthcare",
+      "layer": "L2",
+      "description": "The FHIR R5 resource and element ontology. It carries no value sets or code systems. Published verbatim.",
+      "license": "CC0 1.0",
+      "licenseUrl": "https://creativecommons.org/publicdomain/zero/1.0/",
+      "sourceUrl": "https://hl7.org/fhir/R5/rdf.html",
+      "attribution": "HL7 FHIR Release 5 (5.0.0) RDF ontology, published by HL7 International under CC0 1.0 (https://hl7.org/fhir/R5/license.html). HL7 and FHIR are registered trademarks of Health Level Seven International. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "fhir-r5",
+          "name": "FHIR R5 ontology",
+          "description": "FHIR resources, data types and their elements.",
+          "url": "https://hl7.org/fhir/R5/fhir.ttl",
+          "format": "turtle",
+          "sourceSha256": "0ced303dc994ef7a05613aca91d911ab463477ad779851a0e65195d39de5497d"
+        }
+      ]
+    },
+    {
+      "id": "brick",
+      "name": "Brick Schema",
+      "abbreviation": "Brick",
+      "standard": "Brick Schema 1.4",
+      "publisher": "Brick Consortium",
+      "version": "1.4.2",
+      "industry": "buildings-and-energy",
+      "layer": "L2",
+      "description": "The Brick schema for building equipment, spaces, points and the relationships between them, published verbatim.",
+      "license": "BSD-3-Clause",
+      "licenseUrl": "https://opensource.org/licenses/BSD-3-Clause",
+      "sourceUrl": "https://brickschema.org/",
+      "attribution": "Brick Schema 1.4.2. Copyright 2016-2026, Brick Consortium, Inc. All rights reserved. Redistribution and use in source and binary forms, with or without modification, are permitted under the BSD 3-Clause License. The name of the Brick Consortium may not be used to endorse products derived from this software without permission. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "brick",
+          "name": "Brick schema",
+          "description": "Equipment, locations, points, collections and the Brick relationships.",
+          "url": "https://brickschema.org/schema/1.4/Brick.ttl",
+          "format": "turtle",
+          "sourceSha256": "c4a9a35355da6be158123f5dced3a7ad0714d3a2cab51c6a80c4720c3c8d28f0"
+        }
+      ]
+    },
+    {
+      "id": "iof",
+      "name": "Industrial Ontologies Foundry (IOF)",
+      "abbreviation": "IOF",
+      "standard": "Industrial Ontologies Foundry (IOF) production ontologies: Core, Supply Chain, Maintenance, Certification and Biopharma",
+      "publisher": "Industrial Ontologies Foundry",
+      "version": "Release_202603",
+      "industry": "manufacturing",
+      "layer": "L2",
+      "description": "The full IOF manufacturing ontology as IOF releases it in its production manifests (AboutIOFProd): the IOF Core, Supply Chain, Maintenance and Certification modules, the thirteen Released biopharma modules and the Basic Formal Ontology (BFO) 2020 they build on, converted to Turtle from the published RDF/XML with the triples unchanged. Provisional and development modules are not included. The ISA-95 starter is an OpenMetadata-authored outline aligned to ISA-95; IOF is the complete open ontology.",
+      "license": "MIT; BFO module CC BY 4.0",
+      "licenseUrl": "https://opensource.org/licenses/MIT",
+      "sourceUrl": "https://github.com/iofoundry/ontology/tree/Release_202603",
+      "attribution": "Industrial Ontologies Foundry (IOF) ontologies, release 202603. Copyright (c) 2022 Industrial Ontologies Foundry, licensed under the MIT License (https://github.com/iofoundry/ontology/blob/Release_202603/LICENSE). The IOF modules also carry: Copyright (c) 2022, 2023, 2024, 2025, 2026 Open Applications Group. The Biopharma Molecular Entity module adapts terms from ChEBI (https://www.ebi.ac.uk/chebi/), licensed under CC BY 4.0. The BFO module is Basic Formal Ontology 2020 by Barry Smith and the BFO team, licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). Redistributed as the publisher released them, converted to Turtle from the published RDF/XML with the triples unchanged.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "bfo",
+          "name": "Basic Formal Ontology (BFO) 2020",
+          "description": "The top-level ontology of continuants, occurrents, qualities and dispositions, as cached by IOF. License: CC BY 4.0.",
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/cache/bfo/2020/bfo.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "88ff27e1762d223a214744335a9b3f44242f354594ce92391d67227e9f9e3323",
+          "payloadSha256": "be7b3985f4c729d2b7e1ecd923532912f21f9a52cef534f3382b6bf4ba16fc94"
+        },
+        {
+          "id": "annotation-vocabulary",
+          "name": "IOF Annotation Vocabulary",
+          "description": "Annotation properties IOF uses for definitions, examples, maturity and provenance.",
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/meta/AnnotationVocabulary.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "26342082a23e629ea27777543b2e400fcd4feee8d6be22dedc72969917b01c00",
+          "payloadSha256": "920dded4a24654b8211881e6ff986c8f79e2547463715042f69dea62604924fd"
+        },
+        {
+          "id": "core",
+          "name": "IOF Core",
+          "description": "Manufacturing core: processes, products, materials, equipment, agents, plans and the relations between them.",
+          "dependencies": [
+            "bfo",
+            "annotation-vocabulary"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/core/Core.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "bdd9271a6ed190e6c0ac8a01d2728ccd517ad33913c436b3882679dfcf94cfde",
+          "payloadSha256": "97bf94cdcfbcb9ad24e416e6584eff99bc2bef90be98a0f263e9add8763155ae"
+        },
+        {
+          "id": "supply-chain",
+          "name": "IOF Supply Chain",
+          "description": "Supply-chain concepts such as orders, shipments, suppliers and inventory, built on the IOF Core.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/supplychain/SupplyChain.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "aa898340e1f3e72b151286fa58fec56c67a2977d2204f8882f43d6389c3fad10",
+          "payloadSha256": "4a10f730da6fe0626177fd829b242160f9ae48cb5543fcccd6d52648ac009688"
+        },
+        {
+          "id": "maintenance",
+          "name": "IOF Maintenance",
+          "description": "Maintenance management, maintenance procedures, asset failure and failure modes and effects analysis, aligned with the IOF Core.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/maintenance/Maintenance.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "0c7bdada677221469e67a004c0e3fcca6e65f467bdf35cf9afdd1f109bc3ca5f",
+          "payloadSha256": "baef9f3f0f0c5c4b27919fb872f82988f917ea3c49012d6a6e5476fce19ea1ef"
+        },
+        {
+          "id": "certification",
+          "name": "IOF Certification",
+          "description": "Certification concepts built on the IOF Core.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/certification/Certification.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "36c95eecc460e9ccebce13a458bb943287a3a88b8c9cb3408e6ff69929a2ddb4",
+          "payloadSha256": "421db1149e2884dbffff984029361c69b9028c8badb195529c10cd57c306befe"
+        },
+        {
+          "id": "biopharma-agent",
+          "name": "IOF Biopharma Agent",
+          "description": "Human actors, engineered systems and organizations in biopharmaceutical manufacturing.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaAgent.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "282a79e17fe4b8ef8b0595ee0f76accce0aac6ed89b21bc5148df8beb1f09d21",
+          "payloadSha256": "46b7fc3eb3fbda8773845f2b41fe0ed107eccbf0465f1c83eab889fb6c14243a"
+        },
+        {
+          "id": "manufacturing-system-organization",
+          "name": "IOF Biopharma Manufacturing System Organization",
+          "description": "The physical spaces where biopharmaceutical processing and storage occurs.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/ManufacturingSystemOrganization.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "c078d049a81d968311950c112e7068c7f0f85c52e321126a94e0514d6b7afca9",
+          "payloadSha256": "d0049cab3f81c9a1d8b40f1ae52fa6d4c515a77643288b73364f72d569db0358"
+        },
+        {
+          "id": "reference-ontology-candidates",
+          "name": "IOF Reference Ontology Candidates",
+          "description": "Cross-cutting constructs developed in the biopharma work and proposed for IOF reference ontologies.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/ReferenceOntologyCandidates.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "1688f276b2b5eea7306a991fbb80687712963a3759122f21dbe6d6229c675fc5",
+          "payloadSha256": "ebc7f2088f77ec181a6c836c139b0cc39770db7641d987ca960d51cb22ce4392"
+        },
+        {
+          "id": "molecular-entity",
+          "name": "IOF Biopharma Molecular Entity",
+          "description": "Molecular entities, roles, residues, sequences, proteins and glycans, many adapted from ChEBI.",
+          "dependencies": [
+            "core"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/MolecularEntity.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "dc0b52472fa968ebb5e5f5f5a6bb21d64e6f3817066ae0ef26022230fea11077",
+          "payloadSha256": "b2d10b67f3130e256c7176831df7d5977b4d04d209ba41e93debfe81daf96dab"
+        },
+        {
+          "id": "targets-limits-ranges",
+          "name": "IOF Targets, Limits and Ranges",
+          "description": "Target values, setpoints, operating ranges, specification, control, alert and action limits.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/TargetsLimitsRanges.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "91f078a5cbcf9c3abe8d7fa0f93c49ab81b532fb07f1d10ab0c88b79cb7df32c",
+          "payloadSha256": "71e2c736348ffedf5f04784f6b6cba5ce48ef4334e0c14118e139f3e0c2e7f11"
+        },
+        {
+          "id": "biopharma-reference-ontology-attributes",
+          "name": "IOF Biopharma Reference Ontology Attributes",
+          "description": "Candidate common attribute constructs that apply across materials and equipment.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaReferenceOntologyAttributes.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "d30ffc845df44979317117b0e2540db3b707507ba6fbd04a31643725542bce34",
+          "payloadSha256": "0f27828b4f33e334a45692ab15acee406020cf0118d800ecf21a44cd0254b26d"
+        },
+        {
+          "id": "biopharma-material",
+          "name": "IOF Biopharma Material",
+          "description": "Material types, their properties and their usages (consumable, process intermediate, final product).",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "molecular-entity",
+            "biopharma-reference-ontology-attributes"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaMaterial.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "309d9ef7774dda36e24f2e1be5262443abbb1a3394814beba4aa4968eae3110d",
+          "payloadSha256": "5c649b4420a8b02c9a788e70770c42b1064639b09b0469fc68ba5b118c4f6f22"
+        },
+        {
+          "id": "biopharma-parameter",
+          "name": "IOF Biopharma Parameter",
+          "description": "Process intermediate and product quality attributes, process indicators and process parameters.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "targets-limits-ranges",
+            "biopharma-material"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaParameter.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "c762f7a82cb368d5e9a2cc95846da674b5c89c32ab651a0df506f555cc46fedf",
+          "payloadSha256": "3586d407695c6d6f3a20e5d041c025872e2822add3264cbf20042ff236568d02"
+        },
+        {
+          "id": "recipe",
+          "name": "IOF Biopharma Recipe",
+          "description": "The hierarchical, sequenced operations of a recipe, from general recipe to batch recipe.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "manufacturing-system-organization"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/Recipe.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "9e31d6cf85892141cb470e1004dd29ea570f26cc11c16f9e47371a9effabd169",
+          "payloadSha256": "f6577f7aa3358cacdddd3b662cb4e9dc6de9655fe6fbe771e3d574e38cb95cc5"
+        },
+        {
+          "id": "biopharma-equipment",
+          "name": "IOF Biopharma Equipment",
+          "description": "Equipment types, properties, specifications and validation.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "biopharma-reference-ontology-attributes"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaEquipment.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "26a93b6c6fe7482dc704c480dcb8dd0264c35a10e5f1fd6f27a106e674936b15",
+          "payloadSha256": "70dc11fe068fb16f4584fa8990b2a2a05425b76e5c8dfc3711e86f8cde323408"
+        },
+        {
+          "id": "biopharma-monitoring-and-control",
+          "name": "IOF Biopharma Monitoring and Control",
+          "description": "Planning and execution of monitoring and controlling at laboratory and manufacturing scale.",
+          "dependencies": [
+            "reference-ontology-candidates",
+            "manufacturing-system-organization",
+            "biopharma-parameter"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaMonitoringAndControl.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "1b5a4f943a41d2fc0d801c8f058b6c01744d3dc2fbbe426c7309dd09503fa2bd",
+          "payloadSha256": "18066110e58684fbecf03169c01c89bde07b54c6cc2022db3d76f41ad7ed0546"
+        },
+        {
+          "id": "biopharma-material-procurement-and-storage",
+          "name": "IOF Biopharma Material Procurement and Storage",
+          "description": "Tracking and tracing of materials from raw material procurement through storage.",
+          "dependencies": [
+            "core",
+            "reference-ontology-candidates",
+            "certification",
+            "supply-chain"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaMaterialProcurementAndStorage.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "37c6a175e2205727a8c01e9b1e81326ead2fa45eb519d4815a4317c0e5fc4a92",
+          "payloadSha256": "5d773f5d618fd8f792be76f609b47a495b90c4aad70e211aa57407bde9e6b5b2"
+        },
+        {
+          "id": "biopharma-manufacturing-execution",
+          "name": "IOF Biopharma Manufacturing Execution",
+          "description": "Actual occurrences of manufacturing processes with respect to recipes.",
+          "dependencies": [
+            "biopharma-equipment",
+            "biopharma-material",
+            "biopharma-monitoring-and-control",
+            "recipe"
+          ],
+          "url": "https://raw.githubusercontent.com/iofoundry/ontology/0c5af080dba16489db1b5c7a432a34222524c6e9/biopharma/BiopharmaManufacturingExecution.rdf",
+          "format": "rdfxml",
+          "convert": "turtle",
+          "sourceSha256": "798265b33d05a6cbc1f7a9e04ec87600f7a145bbaaf7906296690a11d1f59493",
+          "payloadSha256": "64162ebf371cd2533d83201e74fbd75220f88afb31d0d2d4231cfd89d6573bfb"
+        }
+      ]
+    },
+    {
+      "id": "isa-95",
+      "name": "ISA-95 Starter (OpenMetadata-authored)",
+      "abbreviation": "ISA-95",
+      "standard": "ANSI/ISA-95",
+      "publisher": "OpenMetadata",
+      "version": "2025Q1-om1",
+      "industry": "manufacturing",
+      "layer": "L2",
+      "description": "An OpenMetadata-authored concept outline aligned to the ANSI/ISA-95 equipment hierarchy and resource model. It is not the ISA-95 standard, which is a paid publication, and it does not reproduce its text.",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://www.isa.org/standards-and-publications/isa-standards/isa-95-standard",
+      "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to ANSI/ISA-95; ISA-95 is a standard of the International Society of Automation and is not licensed to this project.",
+      "origin": "authored",
+      "modules": [
+        {
+          "id": "manufacturing-operations",
+          "name": "Manufacturing operations",
+          "description": "A role-based equipment hierarchy and resource outline aligned to ISA-95.",
+          "format": "turtle"
+        }
+      ]
+    },
+    {
+      "id": "hr-open",
+      "name": "HR Open Starter (OpenMetadata-authored)",
+      "abbreviation": "HR Open",
+      "standard": "HR Open Standards",
+      "publisher": "OpenMetadata",
+      "version": "2025Q1-om1",
+      "industry": "human-resources",
+      "layer": "L2",
+      "description": "An OpenMetadata-authored concept outline aligned to HR Open Standards workforce concepts. HR Open publishes no RDF form of its standard, so this is not a copy of it.",
+      "license": "Apache License 2.0",
+      "licenseUrl": "https://www.apache.org/licenses/LICENSE-2.0",
+      "sourceUrl": "https://www.hropenstandards.org/",
+      "attribution": "Written by the OpenMetadata project and licensed under the Apache License 2.0 as part of OpenMetadata. Aligned to HR Open Standards, which are not licensed to this project.",
+      "origin": "authored",
+      "modules": [
+        {
+          "id": "workforce",
+          "name": "Workforce",
+          "description": "Workers, positions, organizations and compensation concepts aligned to HR Open.",
+          "format": "turtle"
+        }
+      ]
+    },
+    {
+      "id": "epcis",
+      "name": "GS1 EPCIS 2.0 and CBV",
+      "abbreviation": "EPCIS",
+      "standard": "GS1 EPCIS 2.0 and Core Business Vocabulary (CBV) ontologies",
+      "publisher": "GS1",
+      "version": "2.0.1",
+      "industry": "supply-chain",
+      "layer": "L2",
+      "description": "The GS1 EPCIS 2.0 event ontology and the Core Business Vocabulary (CBV) of business steps, dispositions and identifiers, published verbatim.",
+      "license": "No license statement published by GS1; included pending confirmation",
+      "licenseUrl": "https://www.gs1.org/standards/epcis",
+      "sourceUrl": "https://ref.gs1.org/standards/epcis/",
+      "attribution": "GS1 EPCIS 2.0.1 and CBV 2.0.1 ontologies. Copyright GS1 AISBL. GS1 and EPCIS are trademarks of GS1 AISBL. GS1 publishes these files openly at ref.gs1.org without a license statement, and no GS1 terms granting or refusing redistribution were found; they are included pending GS1 confirmation and removed in a release if GS1 asks. Redistributed without changes.",
+      "origin": "upstream",
+      "modules": [
+        {
+          "id": "cbv",
+          "name": "Core Business Vocabulary (CBV)",
+          "description": "Business steps, dispositions, business transaction types and other standard values used in EPCIS events.",
+          "url": "https://ref.gs1.org/standards/epcis/2.0.1/cbv-ontology.ttl",
+          "format": "turtle",
+          "sourceSha256": "9d41ff84c2b298ca0247ac72a26dc4ad92ca30efc5d34e3f67c65a13a72ca289"
+        },
+        {
+          "id": "epcis",
+          "name": "EPCIS 2.0 ontology",
+          "description": "Event types and the what, when, where and why properties of EPCIS 2.0, which draw their values from the CBV.",
+          "dependencies": [
+            "cbv"
+          ],
+          "url": "https://ref.gs1.org/standards/epcis/2.0.1/epcis-ontology.ttl",
+          "format": "turtle",
+          "sourceSha256": "64a6bdebfb6a52f01c0fef38f8d58185b5c93bf281b5af136e91947b6b3b10d5"
+        }
+      ]
+    }
+  ],
+  "excluded": [
+    {
+      "id": "schema-org",
+      "name": "schema.org",
+      "reason": "CC BY-SA 3.0. Share-alike terms need legal review before the vocabulary can ship inside an Apache-2.0 distribution."
+    },
+    {
+      "id": "dcterms",
+      "name": "DCMI Terms",
+      "reason": "The file carries no license statement and the CC BY 4.0 claim on the DCMI site is unconfirmed."
+    },
+    {
+      "id": "saref",
+      "name": "ETSI SAREF",
+      "reason": "The ETSI Software License text could not be retrieved, so its terms are unconfirmed."
+    },
+    {
+      "id": "qudt",
+      "name": "QUDT",
+      "reason": "Not evaluated. Its file header carries a UCUM license notice that would need its own review."
+    },
+    {
+      "id": "isa-95-open",
+      "name": "ISA-95 and IEC 62264",
+      "reason": "A paid standard with no official open ontology. The ISA-95 starter is OpenMetadata-authored."
+    },
+    {
+      "id": "hr-open-rdf",
+      "name": "HR Open Standards",
+      "reason": "No official RDF or OWL form. The HR Open starter is OpenMetadata-authored."
+    }
+  ]
+}

@@ -1,28 +1,46 @@
 {
   "abbreviation": "EPCIS",
+  "attribution": "GS1 EPCIS 2.0.1 and CBV 2.0.1 ontologies. Copyright GS1 AISBL. GS1 and EPCIS are trademarks of GS1 AISBL. GS1 publishes these files openly at ref.gs1.org without a license statement, and no GS1 terms granting or refusing redistribution were found; they are included pending GS1 confirmation and removed in a release if GS1 asks. Redistributed without changes.",
   "bundled": true,
-  "description": "A compact OpenMetadata starter subset of GS1 EPCIS supply-chain event concepts.",
+  "description": "The GS1 EPCIS 2.0 event ontology and the Core Business Vocabulary (CBV) of business steps, dispositions and identifiers, published verbatim.",
   "id": "epcis",
   "industry": "supply-chain",
   "layer": "L2",
-  "license": "MIT",
+  "license": "No license statement published by GS1; included pending confirmation",
   "licenseUrl": "https://www.gs1.org/standards/epcis",
   "modules": [
     {
-      "conceptCount": 10,
+      "conceptCount": 6,
       "dependencies": [],
-      "description": "EPCIS event types and the core event dimensions (what, when, where, why).",
+      "description": "Business steps, dispositions, business transaction types and other standard values used in EPCIS events.",
       "format": "turtle",
-      "id": "event-model",
-      "name": "Event model",
-      "relationshipCount": 8,
-      "resourcePath": "rdf/ontology-packs/epcis/event-model.ttl",
+      "id": "cbv",
+      "name": "Core Business Vocabulary (CBV)",
+      "relationshipCount": 6,
+      "resourcePath": "rdf/ontology-packs/epcis/cbv.ttl",
       "selectedByDefault": true,
-      "sha256": "88647daab7673008fb8d20dd0e792496779b15b40bb7e06c4cd58140a1d932d5"
+      "sha256": "9d41ff84c2b298ca0247ac72a26dc4ad92ca30efc5d34e3f67c65a13a72ca289",
+      "sourceUrl": "https://ref.gs1.org/standards/epcis/2.0.1/cbv-ontology.ttl"
+    },
+    {
+      "conceptCount": 20,
+      "dependencies": [
+        "cbv"
+      ],
+      "description": "Event types and the what, when, where and why properties of EPCIS 2.0, which draw their values from the CBV.",
+      "format": "turtle",
+      "id": "epcis",
+      "name": "EPCIS 2.0 ontology",
+      "relationshipCount": 5,
+      "resourcePath": "rdf/ontology-packs/epcis/epcis.ttl",
+      "selectedByDefault": true,
+      "sha256": "64a6bdebfb6a52f01c0fef38f8d58185b5c93bf281b5af136e91947b6b3b10d5",
+      "sourceUrl": "https://ref.gs1.org/standards/epcis/2.0.1/epcis-ontology.ttl"
     }
   ],
-  "name": "EPCIS",
-  "sourceUrl": "https://www.gs1.org/standards/epcis",
-  "standard": "GS1 EPCIS",
-  "version": "2025Q1-om1"
+  "name": "GS1 EPCIS 2.0 and CBV",
+  "publisher": "GS1",
+  "sourceUrl": "https://ref.gs1.org/standards/epcis/",
+  "standard": "GS1 EPCIS 2.0 and Core Business Vocabulary (CBV) ontologies",
+  "version": "2.0.1"
 }

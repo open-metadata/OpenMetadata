@@ -45,44 +45,44 @@ public class OntologyPackResourceIT {
   void listsTheLicensedCatalogueAndDryRunsDependencyClosure(TestNamespace namespace) {
     final OntologyPackList catalogue = SdkClients.adminClient().ontologyPacks().list();
 
-    assertEquals(6, catalogue.getPacks().size());
-    assertTrue(catalogue.getPacks().stream().anyMatch(pack -> pack.getId().equals("fhir")));
+    assertEquals(16, catalogue.getPacks().size());
+    assertTrue(catalogue.getPacks().stream().anyMatch(pack -> pack.getId().equals("sosa-ssn")));
 
     final InstallOntologyPack request =
         new InstallOntologyPack()
-            .withModuleIds(Set.of("clinical"))
-            .withTargetGlossaryName(namespace.prefix("FhirDryRun"))
+            .withModuleIds(Set.of("ssn"))
+            .withTargetGlossaryName(namespace.prefix("SensorDryRun"))
             .withDryRun(true);
-    final OntologyPackInstallResult result = install("fhir", request);
+    final OntologyPackInstallResult result = install("sosa-ssn", request);
 
-    assertEquals(Set.of("core", "clinical"), Set.copyOf(result.getModuleIds()));
-    assertEquals(8, result.getConceptCount());
+    assertEquals(Set.of("sosa", "ssn"), Set.copyOf(result.getModuleIds()));
+    assertEquals(27, result.getConceptCount());
     assertTrue(result.getDryRun());
   }
 
   @Test
   void installsVerifiedPackContentIntoANewGlossary(TestNamespace namespace) {
-    final String targetGlossary = namespace.prefix("FiboLibrary");
+    final String targetGlossary = namespace.prefix("IsaLibrary");
     final InstallOntologyPack request =
         new InstallOntologyPack()
-            .withModuleIds(Set.of("foundations"))
+            .withModuleIds(Set.of("manufacturing-operations"))
             .withTargetGlossaryName(targetGlossary)
             .withDryRun(false);
 
-    final OntologyPackInstallResult result = install("fibo", request);
+    final OntologyPackInstallResult result = install("isa-95", request);
     final Glossary glossary = SdkClients.adminClient().glossaries().getByName(targetGlossary);
     namespace.trackRoot(Entity.GLOSSARY, glossary);
 
-    assertEquals(4, result.getConceptCount());
-    assertEquals(4, result.getImportResults().getFirst().getTermsCreated());
-    assertEquals("fibo", result.getPackId());
-    assertEquals(Set.of("foundations"), Set.copyOf(result.getModuleIds()));
+    assertEquals(9, result.getConceptCount());
+    assertEquals(9, result.getImportResults().getFirst().getTermsCreated());
+    assertEquals("isa-95", result.getPackId());
+    assertEquals(Set.of("manufacturing-operations"), Set.copyOf(result.getModuleIds()));
     assertNotNull(glossary.getId());
     assertEquals(
-        "Financial Concept",
+        "Enterprise",
         SdkClients.adminClient()
             .glossaryTerms()
-            .getByName(targetGlossary + ".FinancialConcept")
+            .getByName(targetGlossary + ".Enterprise")
             .getDisplayName());
   }
 

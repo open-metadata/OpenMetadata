@@ -135,11 +135,9 @@ test.describe('Ontology RDF authorization', { tag: ['@ontology-rdf'] }, () => {
 
       await page.getByTestId('ontology-library-trigger').click();
       await expect(page.getByTestId('ontology-pack-catalogue')).toBeVisible();
-      await page.getByTestId('ontology-pack-details-fibo').click();
+      await page.getByTestId('ontology-pack-details-sosa-ssn').click();
       await expect(page.getByTestId('ontology-pack-detail')).toBeVisible();
-      await expect(
-        page.getByTestId('ontology-module-foundations')
-      ).toBeDisabled();
+      await expect(page.getByTestId('ontology-module-sosa')).toBeDisabled();
       await expect(page.getByTestId('ontology-pack-dry-run')).toBeHidden();
       await expect(page.getByTestId('ontology-pack-install')).toBeHidden();
     } finally {
