@@ -44,8 +44,8 @@ import org.openmetadata.service.jdbi3.AppRepository;
 
 /**
  * An app's alerts come from its own code, never from its marketplace definition, and only the
- * server records them on the app (ADR:2026-10-26-an-apps-alerts-come-from-its-code). A signed-up
- * user can own an app and its definition, since neither has an owner, so whatever the app or its
+ * server records them on the app (ADR:2026-10-26-an-apps-alerts-come-from-its-code). An admin can
+ * make a signed-up user the owner of an app and its definition, so whatever the app or its
  * definition holds was theirs to decide.
  */
 // Installs and deletes apps, which walks every app's scheduler job: isolated like AppsResourceIT.
@@ -127,8 +127,8 @@ class AppEventSubscriptionRemovalIT {
     final User user = UserTestFactory.createUser(ns, "appOwner");
     final HttpClient asOwner =
         SdkClients.createClient(user.getName(), user.getEmail(), new String[] {}).getHttpClient();
-    claim(asOwner, "/v1/apps/marketplace/" + definition.getId(), user);
-    claim(asOwner, "/v1/apps/" + app.getId(), user);
+    assignOwner("/v1/apps/marketplace/" + definition.getId(), user);
+    assignOwner("/v1/apps/" + app.getId(), user);
     return new OwnedApp(app, definition, asOwner);
   }
 
@@ -177,9 +177,10 @@ class AppEventSubscriptionRemovalIT {
     return alert;
   }
 
-  private static void claim(final HttpClient client, final String path, final User user) {
+  /** An admin makes {@code user} the owner: apps and their definitions cannot be claimed. */
+  private static void assignOwner(final String path, final User user) {
     final Map<String, Object> owner = Map.of("id", user.getId().toString(), "type", "user");
-    patch(client, path, List.of(Map.of("op", "add", "path", "/owners", "value", List.of(owner))));
+    patch(admin(), path, List.of(Map.of("op", "add", "path", "/owners", "value", List.of(owner))));
   }
 
   private static List<Map<String, Object>> plantedAlert(final String name, final String endpoint) {

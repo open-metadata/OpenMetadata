@@ -17,11 +17,24 @@
     },
     {
       "name": "OrganizationPolicy-NoOwner-Rule",
-      "description" : "Allow any one to set the owner of an entity that has no owner set.",
-      "resources" : ["all"],
+      "description" : "Allow anyone to set the owner of a data asset that has no owner set.",
+      "resources" : [
+        "apiCollection", "apiEndpoint", "chart", "container", "dashboard", "dashboardDataModel",
+        "database", "databaseSchema", "directory", "file", "llmModel", "mcpServer", "mlmodel",
+        "pipeline", "query", "report", "searchIndex", "spreadsheet", "storedProcedure", "table",
+        "topic", "worksheet"
+      ],
       "operations": ["EditOwners"],
       "effect": "allow",
       "condition": "noOwner()"
+    },
+    {
+      "name": "OrganizationPolicy-OwnerNoPolicyEdit-Rule",
+      "description" : "Deny owners of a policy changing or deleting it. Admins manage policies.",
+      "resources" : ["policy"],
+      "operations": ["Delete", "EditAll"],
+      "effect": "deny",
+      "condition": "isOwner()"
     },
     {
       "name": "OrganizationPolicy-ViewAll-Rule",

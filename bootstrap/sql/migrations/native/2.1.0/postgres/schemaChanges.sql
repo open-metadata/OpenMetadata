@@ -922,3 +922,56 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
 
+
+-- OrganizationPolicy: anyone may set the owner of an unowned data asset, meaning an item that lives
+-- in a service and describes something in the source system. The claim rule is narrowed from every
+-- type to those types, only where it still reads exactly as shipped (allow, EditOwners on all,
+-- noOwner()): a rule an administrator changed is left alone.
+-- ADR:2026-11-09-only-data-assets-can-be-claimed-by-default
+UPDATE policy_entity
+SET json = jsonb_set(
+    json,
+    '{rules}',
+    (
+        SELECT jsonb_agg(
+            CASE
+                WHEN existing.rule->>'name' = 'OrganizationPolicy-NoOwner-Rule'
+                     AND existing.rule->>'effect' = 'allow'
+                     AND existing.rule->>'condition' = 'noOwner()'
+                     AND existing.rule->'operations' = '["EditOwners"]'::jsonb
+                     AND jsonb_array_length(existing.rule->'resources') = 1
+                     AND lower(existing.rule->'resources'->>0) = 'all'
+                THEN existing.rule || jsonb_build_object(
+                    'resources', '["apiCollection", "apiEndpoint", "chart", "container", "dashboard", "dashboardDataModel", "database", "databaseSchema", "directory", "file", "llmModel", "mcpServer", "mlmodel", "pipeline", "query", "report", "searchIndex", "spreadsheet", "storedProcedure", "table", "topic", "worksheet"]'::jsonb,
+                    'description', 'Allow anyone to set the owner of a data asset that has no owner set.')
+                ELSE existing.rule
+            END
+            ORDER BY existing.position
+        )
+        FROM jsonb_array_elements(json->'rules') WITH ORDINALITY AS existing(rule, position)
+    )
+)
+WHERE name = 'OrganizationPolicy'
+  AND EXISTS (
+        SELECT 1
+        FROM jsonb_array_elements(json->'rules') AS current_rule(rule)
+        WHERE current_rule.rule->>'name' = 'OrganizationPolicy-NoOwner-Rule'
+          AND current_rule.rule->>'effect' = 'allow'
+          AND current_rule.rule->>'condition' = 'noOwner()'
+          AND current_rule.rule->'operations' = '["EditOwners"]'::jsonb
+          AND jsonb_array_length(current_rule.rule->'resources') = 1
+          AND lower(current_rule.rule->'resources'->>0) = 'all'
+      );
+
+-- OrganizationPolicy: the owner of a policy cannot change or delete it; admins manage policies. A deny
+-- only removes access, so it is added to every install that does not have it yet, customised or not.
+-- ADR:2026-11-09-only-data-assets-can-be-claimed-by-default
+UPDATE policy_entity
+SET json = jsonb_set(json, '{rules}', (json->'rules') || '[
+    {"name": "OrganizationPolicy-OwnerNoPolicyEdit-Rule",
+     "description": "Deny owners of a policy changing or deleting it. Admins manage policies.",
+     "effect": "deny", "resources": ["policy"],
+     "operations": ["Delete", "EditAll"], "condition": "isOwner()"}
+  ]'::jsonb)
+WHERE name = 'OrganizationPolicy'
+  AND NOT (json->'rules' @> '[{"name": "OrganizationPolicy-OwnerNoPolicyEdit-Rule"}]'::jsonb);

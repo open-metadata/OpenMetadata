@@ -368,6 +368,10 @@ test.describe(
         page.getByText('OrganizationPolicy-Owner-Rule')
       ).toBeVisible();
 
+      await expect(
+        page.getByText('OrganizationPolicy-OwnerNoPolicyEdit-Rule')
+      ).toBeVisible();
+
       // validate roles tab
       await page.getByRole('tab', { name: 'Roles', exact: true }).click();
 

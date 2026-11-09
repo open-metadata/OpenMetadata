@@ -201,7 +201,7 @@ public class WorkflowTriggerPermissionsIT {
   @EnumSource(WorkflowUpdateMethod.class)
   void test_editTestConnection_cannotRetargetStoredSecrets(
       WorkflowUpdateMethod method, TestNamespace ns) throws Exception {
-    final WorkflowEditFixture fixture = workflowClaimedByNonServiceOwner(ns, method);
+    final WorkflowEditFixture fixture = workflowOwnedByNonServiceOwner(ns, method);
     final CreateWorkflow edit =
         testConnectionRequest(fixture.workflow().getName(), fixture.ownedService().getName())
             .withDescription("Retarget connection")
@@ -244,7 +244,7 @@ public class WorkflowTriggerPermissionsIT {
   @EnumSource(WorkflowUpdateMethod.class)
   void test_editTestConnection_cannotBypassTriggerBySwitchingType(
       WorkflowUpdateMethod method, TestNamespace ns) throws Exception {
-    final WorkflowEditFixture fixture = workflowClaimedByNonServiceOwner(ns, method);
+    final WorkflowEditFixture fixture = workflowOwnedByNonServiceOwner(ns, method);
     final CreateWorkflow edit =
         queryRunnerRequest(fixture.workflow().getName(), SharedEntities.get().USER3_REF)
             .withDescription("Switch workflow type")
@@ -268,7 +268,7 @@ public class WorkflowTriggerPermissionsIT {
   private record WorkflowEditFixture(
       Workflow workflow, DatabaseService ownedService, OpenMetadataClient editor, String token) {}
 
-  private WorkflowEditFixture workflowClaimedByNonServiceOwner(
+  private WorkflowEditFixture workflowOwnedByNonServiceOwner(
       TestNamespace ns, WorkflowUpdateMethod method) throws Exception {
     final OpenMetadataClient admin = SdkClients.adminClient();
     final EntityReference attacker = SharedEntities.get().USER3_REF;
@@ -293,19 +293,20 @@ public class WorkflowTriggerPermissionsIT {
     final String token = tokenFor(email, new String[] {});
     assertEquals(403, triggerWorkflow(workflow.getId(), token).statusCode());
 
-    final ArrayNode claim = JsonUtils.getObjectMapper().createArrayNode();
-    claim
+    // An admin assigns the owner: a workflow cannot be claimed.
+    final ArrayNode assignOwner = JsonUtils.getObjectMapper().createArrayNode();
+    assignOwner
         .addObject()
         .put("op", "add")
         .put("path", "/owners")
         .set("value", JsonUtils.valueToTree(List.of(attacker)));
-    final Workflow claimed = editor.workflows().patch(workflow.getId(), claim);
+    final Workflow owned = admin.workflows().patch(workflow.getId(), assignOwner);
     assertEquals(
         "*********",
-        JsonUtils.valueToTree(claimed.getRequest())
+        JsonUtils.valueToTree(owned.getRequest())
             .at("/connection/config/authType/password")
             .asText());
-    return new WorkflowEditFixture(claimed, ownedService, editor, token);
+    return new WorkflowEditFixture(owned, ownedService, editor, token);
   }
 
   private Workflow editWorkflow(

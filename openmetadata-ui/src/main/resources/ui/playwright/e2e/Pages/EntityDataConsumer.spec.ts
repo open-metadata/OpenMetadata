@@ -96,6 +96,11 @@ pickEntityMatrix(__filename, entities, [TableClass]).forEach((EntityClass) => {
     // Running following 2 tests serially since they are dependent on each other
     test.describe.serial('Owner permission tests', () => {
       test('User as Owner Add, Update and Remove', async ({ page }) => {
+        // Anyone can claim an unowned data asset; a metric is not one.
+        test.skip(
+          entity.type === 'Metric',
+          'A metric with no owner cannot be claimed'
+        );
         test.slow(true);
 
         const OWNER1 = EntityDataClass.user1.getUserDisplayName();

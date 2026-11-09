@@ -507,9 +507,9 @@ export class RightPanelPageObject {
     if (this.rolePermissions.canEditOwners) {
       await expect(this.panelEditOwners).toBeVisible();
     } else {
-      // In OpenMetadata, if an entity has no owner, any user can claim it.
-      // Therefore, the edit-owners button will be visible even if the user
-      // lacks EditOwners permission, provided the entity is ownerless.
+      // Any user can claim a data asset that has no owner. Therefore, the
+      // edit-owners button will be visible even if the user lacks EditOwners
+      // permission, provided the data asset is ownerless.
       if (!isOwnerless) {
         await expect(this.panelEditOwners).not.toBeVisible();
       }
