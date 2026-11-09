@@ -75,7 +75,7 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
     init_empty_connection_options,
 )
-from metadata.ingestion.models.custom_pydantic import CustomSecretStr
+from metadata.ingestion.models.custom_pydantic import CustomSecretStr, _CustomSecretStr
 from metadata.ingestion.source.connections import get_connection
 from metadata.utils.logger import utils_logger
 from metadata.utils.secure_tempfile import (
@@ -149,7 +149,7 @@ class SSLManager:
         ssl_keys = ("ssl_ca", "ssl_cert", "ssl_key", "ssl_verify_cert", "ssl_verify_identity")
         if any(key in args for key in (*ssl_keys, "ssl_key_password")):
             ssl_options = {
-                key: CustomSecretStr(args[key]).get_secret_value() if isinstance(args[key], str) else args[key]
+                key: _CustomSecretStr(args[key]).get_secret_value() if isinstance(args[key], str) else args[key]
                 for key in (*ssl_keys, "ssl_key_password")
                 if key in args
             }
