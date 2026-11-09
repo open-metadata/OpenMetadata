@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PaginationDot } from '@openmetadata/ui-core-components';
+import { Box, PaginationDot } from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { useEffect, useMemo } from 'react';
@@ -154,16 +154,17 @@ const CriticalAnnouncements = ({
       </ul>
 
       {count > 1 && (
-        <div
-          className="tw:mt-3 tw:flex tw:justify-center"
-          data-testid="critical-announcement-dots">
+        <Box
+          className="tw:mt-3"
+          data-testid="critical-announcement-dots"
+          justify="center">
           <PaginationDot
             page={position + 1}
             size="sm"
             total={count}
             onPageChange={(page) => goToPage(page - 1)}
           />
-        </div>
+        </Box>
       )}
     </section>
   );

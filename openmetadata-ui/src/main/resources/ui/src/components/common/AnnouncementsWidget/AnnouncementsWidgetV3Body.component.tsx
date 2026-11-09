@@ -99,11 +99,8 @@ const AnnouncementsWidgetV3Body = ({
   }
 
   return (
-    <Box
-      className={classNames('tw:gap-2', className)}
-      data-testid={testId}
-      direction="col">
-      <Box align="center" className="tw:gap-1">
+    <Box className={className} data-testid={testId} direction="col" gap={2}>
+      <Box align="center" gap={1}>
         {total > 1 && (
           <ButtonUtility
             data-testid="announcement-prev-btn"
