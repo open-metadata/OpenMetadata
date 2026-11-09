@@ -76,7 +76,8 @@
         "QuestDB",
         "Data360",
         "SapBw4Hana",
-        "Neo4j"
+        "Neo4j",
+        "Neptune"
       ],
       "javaEnums": [
         {
@@ -261,6 +262,9 @@
         },
         {
           "name": "Neo4j"
+        },
+        {
+          "name": "Neptune"
         }
       ]
     },
@@ -453,6 +457,9 @@
             },
             {
               "$ref": "./connections/database/neo4jConnection.json"
+            },
+            {
+              "$ref": "./connections/database/neptuneConnection.json"
             }
           ]
         }

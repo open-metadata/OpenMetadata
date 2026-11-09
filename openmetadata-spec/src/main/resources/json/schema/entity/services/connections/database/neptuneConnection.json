@@ -1,0 +1,79 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/neptuneConnection.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "NeptuneConnection",
+  "description": "Amazon Neptune (openCypher property graph) Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.NeptuneConnection",
+  "definitions": {
+    "neptuneType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["Neptune"],
+      "default": "Neptune"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/neptuneType",
+      "default": "Neptune"
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "description": "AWS credentials used to sign (SigV4) requests to the Neptune data API. Leave the keys blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity needs `neptune-db:ReadDataViaQuery`, and also `neptune-db:WriteDataViaQuery` when `computeSchemaIfMissing` is enabled.",
+      "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Neptune cluster or instance endpoint, e.g. `my-cluster.cluster-abc.us-east-1.neptune.amazonaws.com:8182`. The port can be omitted to use 8182.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, `default` is used.",
+      "type": "string"
+    },
+    "includeRelationships": {
+      "title": "Include Relationships",
+      "description": "Also ingest edge labels as tables in the `relationships` schema, with their properties as columns.",
+      "type": "boolean",
+      "default": true
+    },
+    "computeSchemaIfMissing": {
+      "title": "Compute Schema If Missing",
+      "description": "When Neptune has no computed property graph schema yet, start `CALL neptune.graph.pg_schema.compute()` and wait for it to finish. This requires write permission (`neptune-db:WriteDataViaQuery`) in addition to read. If disabled, ingestion fails when the schema is missing.",
+      "type": "boolean",
+      "default": true
+    },
+    "schemaComputeTimeoutSeconds": {
+      "title": "Schema Compute Timeout (seconds)",
+      "description": "Maximum time to wait for Neptune to finish computing the property graph schema before failing.",
+      "type": "integer",
+      "default": 900,
+      "minimum": 1
+    },
+    "propertyFilterPattern": {
+      "title": "Property Filter Pattern",
+      "description": "Regex to only include/exclude node and edge properties (columns) that match the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["awsConfig", "hostPort"]
+}
