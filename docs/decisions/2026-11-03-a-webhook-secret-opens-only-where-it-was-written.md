@@ -1,9 +1,9 @@
 # A webhook secret is encrypted for the destination or profile webhook that holds it, and opens only there
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a value waiting to be entered again stops no edit)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`
+- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`
 - **Related:** ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored, ADR:2026-10-30-owned-secret-keys-are-derived-from-owner-ids (owned vault keys, a different mechanism that shares `SecretOwner`)
 
 ## Context
@@ -74,3 +74,11 @@ so they can have keys of their own and open only there.
   from a stable field id rather than its JSON pointer; `ConfigSecrets` and the field list in
   `WebhookSecrets` then fold into it. Until then, renaming a webhook secret field needs a data step
   that binds its values again.
+
+## Amendment (v2, 2026-11-06)
+
+Only sending opens a stored secret. Saving an alert also reads its stored destinations, to compare
+them and to count their receivers, and neither needs a secret, so a value that does not open stops
+neither: an alert holding one can be edited and switched off, and the value can be entered again,
+which is the only way to repair it. A destination changed while it still holds such a value is
+refused with a 400 that names the field, and the same value is still never sent.

@@ -149,6 +149,40 @@ class WebhookSecretOwnershipIT {
     }
   }
 
+  /** Only an edit can repair these values, so the alert has to stay editable until they are. */
+  @Test
+  void aValueLeftToEnterAgainStopsNoEditAndDeliversOnceEntered(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      receiver.answer("/token", "{\"access_token\":\"the-token\",\"expires_in\":3600}");
+      String clientSecret = ns.prefix("client-secret-entered-again");
+      String header = ns.prefix("header-entered-again");
+      EventSubscription alert = legacyAlert(ns, "entered_again", receiver, "held-elsewhere");
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, dialect()));
+
+      HttpResponse<String> renamed =
+          patchAlert(alert.getId(), replace("/description", "edited after the upgrade"));
+      HttpResponse<String> entered =
+          patchAlert(
+              alert.getId(),
+              replace("/destinations/2/config/authType/clientSecret", clientSecret),
+              replace("/destinations/3/config/headers/X-Legacy", header));
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(AlertFixtures.stored(alert.getId()));
+
+      assertEquals(200, renamed.statusCode(), renamed.body());
+      assertEquals(200, entered.statusCode(), entered.body());
+      List<RecordingReceiver.Received> sends = receiver.received();
+      assertTrue(sendsTo(sends, "/token").stream().anyMatch(send -> carries(send, clientSecret)));
+      assertFalse(sendsTo(sends, "/hook-stored-twice").isEmpty(), sends.toString());
+      assertTrue(
+          sendsTo(sends, "/hook-header").stream()
+              .anyMatch(send -> header.equals(headerOf(send, "X-Legacy"))),
+          sends.toString());
+    }
+  }
+
   /**
    * An alert stored as a release before 2.1 could store it: a signing key and an OAuth2 client
    * secret the server encrypted for it, an OAuth2 client secret whose ciphertext a database service
@@ -320,6 +354,25 @@ class WebhookSecretOwnershipIT {
     String body =
         HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString()).body();
     return JsonUtils.readValue(body, EventSubscription.class).getDestinations();
+  }
+
+  private static Map<String, String> replace(String path, String value) {
+    return Map.of("op", "replace", "path", path, "value", value);
+  }
+
+  @SafeVarargs
+  private static HttpResponse<String> patchAlert(UUID id, Map<String, String>... operations)
+      throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/events/subscriptions/" + id))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .method(
+                "PATCH",
+                HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(List.of(operations))))
+            .build();
+    return HttpClient.newHttpClient().send(request, HttpResponse.BodyHandlers.ofString());
   }
 
   private static HttpResponse<String> postTestDestination(

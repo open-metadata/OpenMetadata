@@ -43,7 +43,10 @@ public interface ConfigRules {
    */
   void validate(SubscriptionDestination destination);
 
-  /** The configured receivers, or null for a channel that has none. */
+  /**
+   * The configured receivers as stored, or null for a channel that has none. Its secrets stay as
+   * stored, so a caller that sends with it decrypts the destination first.
+   */
   SubscriptionAction receiversOf(SubscriptionDestination destination);
 
   /**
