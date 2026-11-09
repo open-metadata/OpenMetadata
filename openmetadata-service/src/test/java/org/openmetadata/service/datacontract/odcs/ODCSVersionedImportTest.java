@@ -28,6 +28,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomProperty;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRuleArguments;
 import org.openmetadata.schema.type.Column;
@@ -536,6 +537,86 @@ class ODCSVersionedImportTest {
         assertThrows(IllegalArgumentException.class, () -> read(source, contract().getEntity()))
             .getMessage();
     assertTrue(error.contains("must be objects"));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0"})
+  void editingOnlyTheNativeUnitCannotRestoreTheOldUnitFromALegacyWrapper(String version) {
+    DataContract fixture =
+        contract()
+            .withOdcsQualityRules(
+                List.of(
+                    new ODCSQualityRule()
+                        .withName("validate_id")
+                        .withColumn("id")
+                        .withType(ODCSQualityRule.Type.LIBRARY)
+                        .withMetric(ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES)
+                        .withArguments(new ODCSQualityRuleArguments().withPattern("^[0-9]+$"))
+                        .withMustBeLessOrEqualTo(5.0)
+                        .withUnit("rows")));
+    DataContract imported =
+        read(exporter.export(fixture, version).requireValid(), fixture.getEntity());
+    imported.getOdcsQualityRules().getFirst().setUnit("percent");
+    JsonNode edited = exporter.export(imported, "v3.1.0").requireValid();
+    assertEquals("library", edited.at("/schema/0/properties/0/quality/0/type").asText());
+    assertEquals("percent", edited.at("/schema/0/properties/0/quality/0/unit").asText());
+    assertEquals(
+        "percent", read(edited, fixture.getEntity()).getOdcsQualityRules().getFirst().getUnit());
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0"})
+  void nativeQualityMetadataEditsAndDeletionsSurviveDecodedWrappers(String sourceVersion) {
+    DataContract fixture =
+        contract()
+            .withOdcsQualityRules(
+                List.of(
+                    new ODCSQualityRule()
+                        .withId("stable-check")
+                        .withName("validate_id")
+                        .withDescription("old description")
+                        .withColumn("id")
+                        .withType(ODCSQualityRule.Type.LIBRARY)
+                        .withMetric(ODCSQualityRule.OdcsQualityMetric.INVALID_VALUES)
+                        .withArguments(new ODCSQualityRuleArguments().withPattern("^[0-9]+$"))
+                        .withMustBe(0.0)
+                        .withCustomProperties(
+                            List.of(
+                                new ODCSCustomProperty()
+                                    .withProperty("detail")
+                                    .withValue("old")))));
+    JsonNode source = exporter.export(fixture, sourceVersion).requireValid();
+    DataContract edited = read(source, fixture.getEntity());
+    ODCSQualityRule rule = edited.getOdcsQualityRules().getFirst();
+    rule.setName("renamed_check");
+    rule.setDescription("new description");
+    rule.setCustomProperties(
+        List.of(new ODCSCustomProperty().withProperty("detail").withValue("new")));
+    DataContract deleted = read(source, fixture.getEntity());
+    deleted.getOdcsQualityRules().getFirst().setId(null);
+    deleted.getOdcsQualityRules().getFirst().setDescription(null);
+    deleted.getOdcsQualityRules().getFirst().setCustomProperties(null);
+    for (String targetVersion : ODCSProfiles.supportedVersions()) {
+      ODCSQualityRule restored =
+          read(exporter.export(edited, targetVersion).requireValid(), fixture.getEntity())
+              .getOdcsQualityRules()
+              .getFirst();
+      assertEquals("renamed_check", restored.getName(), targetVersion);
+      assertEquals("new description", restored.getDescription(), targetVersion);
+      assertEquals(
+          "new",
+          JSON.valueToTree(restored.getCustomProperties().getFirst().getValue()).asText(),
+          targetVersion);
+      ODCSQualityRule removed =
+          read(exporter.export(deleted, targetVersion).requireValid(), fixture.getEntity())
+              .getOdcsQualityRules()
+              .getFirst();
+      assertEquals(null, removed.getId(), targetVersion);
+      assertEquals(null, removed.getDescription(), targetVersion);
+      assertTrue(
+          removed.getCustomProperties() == null || removed.getCustomProperties().isEmpty(),
+          targetVersion);
+    }
   }
 
   private static DataContract read(JsonNode source, EntityReference target) {

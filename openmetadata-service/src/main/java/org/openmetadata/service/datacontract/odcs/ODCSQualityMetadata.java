@@ -97,7 +97,39 @@ final class ODCSQualityMetadata {
             && applied.has(operator)
             && equivalent(applied.path(operator), current.path(operator))) result.remove(operator);
     }
+    if (transformed && executionUnchanged) synchronizeEmbeddedMetadata(result, applied, current);
     return result;
+  }
+
+  private static void synchronizeEmbeddedMetadata(
+      ObjectNode result, JsonNode applied, JsonNode current) {
+    JsonNode implementation = result.path("implementation");
+    try {
+      JsonNode parsed =
+          implementation.isTextual()
+              ? ODCSExportModelWriter.JSON.readTree(implementation.asText())
+              : implementation.deepCopy();
+      if (parsed == null || !(parsed.path("odcsRule") instanceof ObjectNode source)) return;
+      Set<String> keys = new HashSet<>();
+      applied.fieldNames().forEachRemaining(keys::add);
+      current.fieldNames().forEachRemaining(keys::add);
+      // The next import decodes this declaration; its metadata must reflect native edits/deletions.
+      keys.stream()
+          .filter(key -> !executionField(key) && !equivalent(applied.path(key), current.path(key)))
+          .forEach(
+              key -> {
+                if (current.has(key)) source.set(key, current.path(key).deepCopy());
+                else source.remove(key);
+              });
+      result.set(
+          "implementation",
+          implementation.isTextual()
+              ? ODCSExportModelWriter.JSON.getNodeFactory().textNode(parsed.toString())
+              : parsed);
+    } catch (IOException exception) {
+      // Vendor implementations can be non-JSON text and have no compatibility metadata to update.
+      return;
+    }
   }
 
   private static boolean executionUnchanged(JsonNode applied, JsonNode current) {
@@ -111,7 +143,8 @@ final class ODCSQualityMetadata {
 
   private static boolean executionField(String key) {
     return OPERATORS.contains(key)
-        || Set.of("type", "engine", "implementation", "query", "metric", "rule", "arguments")
+        || Set.of(
+                "type", "unit", "engine", "implementation", "query", "metric", "rule", "arguments")
             .contains(key);
   }
 
