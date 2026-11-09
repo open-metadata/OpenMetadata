@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}}s eliminados exitosamente",
     "entity-already-exist": "{{entity}} \"{{name}}\" ya existe. No se permiten {{entityPlural}} duplicados.",
     "entity-already-exist-message-without-name": "Un {{entity}} con los detalles proporcionados ya existe. No se permiten duplicados de {{entityPlural}}.",
+    "entity-changed-refresh-and-retry": "Este activo se ha modificado en otro lugar. Actualice la página e inténtelo de nuevo.",
     "entity-created-success": "¡{{entity}} creado exitosamente!",
     "entity-creation-error": "Error al crear {{entity}}",
     "entity-deleted-success": "¡{{entity}} eliminado exitosamente!",
