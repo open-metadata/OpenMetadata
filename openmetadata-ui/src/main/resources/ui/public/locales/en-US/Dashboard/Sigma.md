@@ -46,6 +46,24 @@ Version of the Sigma REST API by default `v2`.
 To get to know the Sigma REST API Version visit <a href="https://help.sigmacomputing.com/reference/get-started-sigma-api#identify-your-api-request-url" target="_blank">here</a> and look into the `Token URL` section.
 $$
 
+## Certification Badges
+
+When **Include Tags** is on, a workbook's certification badge (Endorsed, Warning or Deprecated) is added to its dashboard as a tag in the `SigmaBadge` classification.
+
+## Projects
+
+A Sigma workbook's project is its workspace, the first part of the workbook's path in Sigma (for example `My Documents`). **Project Filter Pattern** includes or excludes workbooks by that workspace name.
+
+## Data Models
+
+When **Include Data Models** is on, each Sigma Data Model is ingested as one data model, with a table column per data model element holding that element's columns. **Data Model Filter Pattern** matches the Sigma Data Model name. A workbook element that reads a Sigma Data Model gets lineage from it.
+
+## Custom Properties
+
+When **Include Custom Properties** is on, each workbook's dashboard gets a `latestVersion` custom property: the most recently published version of the workbook in Sigma. The property is added to every dashboard in OpenMetadata, and is left alone when a property of that name already exists with another type.
+
 ## Lineage
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.
+
+Source tables are looked up only in the database services listed in **Database Service Prefixes**, so set it to get lineage. A table is linked only when exactly one table matches across those services; a table that matches several is left without lineage.
