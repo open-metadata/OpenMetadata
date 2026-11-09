@@ -62,7 +62,7 @@ concurrency:
 
 jobs:
   check-changes:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
@@ -132,7 +132,7 @@ jobs:
 
   cache-keys:
     needs: check-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: |
       !github.event.pull_request.draft &&
       (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
@@ -173,7 +173,7 @@ jobs:
 
   build:
     needs: [check-changes, cache-keys]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: |
       !github.event.pull_request.draft &&
       (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
@@ -322,7 +322,7 @@ jobs:
 
   detect-changes:
     needs: check-changes
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: |
       !github.event.pull_request.draft &&
       (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
@@ -372,7 +372,7 @@ jobs:
 
   plan-playwright:
     needs: [build, detect-changes]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       shard_count: ${{ steps.plan.outputs.shard_count }}
@@ -489,7 +489,7 @@ jobs:
 
   restore-playwright-fixture:
     needs: [cache-keys, plan-playwright]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       fixture_cache_hit: ${{ steps.validate-fixture.outputs.usable }}
       ingestion_cache_hit: ${{ steps.validate-ingestion.outputs.usable }}
@@ -580,7 +580,7 @@ jobs:
         plan-playwright,
         restore-playwright-fixture,
       ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ELASTICSEARCH_CLUSTER_ALIAS: openmetadata
     steps:
@@ -755,7 +755,7 @@ jobs:
   playwright-ci-postgresql:
     needs:
       [build, cache-keys, detect-changes, plan-playwright, prepare-playwright-fixture]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.prepare-playwright-fixture.result == 'success' }}
     environment: test
@@ -1199,7 +1199,7 @@ jobs:
         prepare-playwright-fixture,
         playwright-ci-postgresql,
       ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
       actions: read
