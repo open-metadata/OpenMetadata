@@ -141,6 +141,65 @@ describe('suggestionsAPI', () => {
     });
   });
 
+  describe('tagLabels', () => {
+    const TAGS = [{ tagFQN: 'PII.Sensitive', source: 'Classification' }];
+
+    const makeTagTask = (suggestedValue: string, suggestionType = 'Tag') => ({
+      ...makeTask('task-1', 'columns.col_name.tags', suggestionType),
+      payload: {
+        fieldPath: 'columns.col_name.tags',
+        suggestionType,
+        suggestedValue,
+      },
+    });
+
+    it('reads tag suggestions from the JSON in suggestedValue', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: { data: [makeTagTask(JSON.stringify(TAGS))], paging: {} },
+      });
+
+      const result = await getSuggestionsList();
+
+      expect(result.data[0].tagLabels).toEqual(TAGS);
+    });
+
+    it('leaves tagLabels unset for description suggestions and unparsable values', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: {
+          data: [
+            makeTagTask(JSON.stringify(TAGS), 'Description'),
+            makeTagTask('not json'),
+          ],
+          paging: {},
+        },
+      });
+
+      const result = await getSuggestionsList();
+
+      expect(result.data[0].tagLabels).toBeUndefined();
+      expect(result.data[1].tagLabels).toBeUndefined();
+    });
+
+    it('accepts all tag suggestions with the suggested tags as newValue', async () => {
+      (APIClient.get as jest.Mock).mockResolvedValue({
+        data: { data: [makeTagTask(JSON.stringify(TAGS))], paging: {} },
+      });
+      (resolveTask as jest.Mock).mockResolvedValue({});
+
+      await approveRejectAllSuggestions(
+        'user-1',
+        'db.schema.my_table',
+        SuggestionType.SuggestTagLabel,
+        SuggestionAction.Accept
+      );
+
+      expect(resolveTask).toHaveBeenCalledWith('task-1', {
+        resolutionType: TaskResolutionType.Approved,
+        newValue: JSON.stringify(TAGS),
+      });
+    });
+  });
+
   describe('getSuggestionsByUserId', () => {
     it('sends createdById (UUID) not createdBy (FQN) as query param', async () => {
       (APIClient.get as jest.Mock).mockResolvedValue({
