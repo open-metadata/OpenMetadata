@@ -192,8 +192,8 @@ public class OntologyBulkIT {
     final long jobA = createBackgroundJob(client, glossaryA, namespace).getId();
     final long jobB = createBackgroundJob(client, glossaryB, namespace).getId();
 
-    final String glossaryAId = glossaryA.getId().toString();
-    final String glossaryBId = glossaryB.getId().toString();
+    final UUID glossaryAId = glossaryA.getId();
+    final UUID glossaryBId = glossaryB.getId();
 
     // Filter by glossary A: only job A is visible
     assertTrue(containsJob(client.ontologyBulk().listJobs(glossaryAId, 100), jobA));

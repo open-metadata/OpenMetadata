@@ -70,7 +70,6 @@ const OntologyBulkAuthoring = ({
     isCancelling,
     isLoading,
     jobs,
-    noteBackgroundSubmission,
     refreshJobs,
   } = useOntologyBulkJobs(glossary?.id);
 
@@ -134,7 +133,6 @@ const OntologyBulkAuthoring = ({
         setResult(submission.result);
         setResultJobId(submission.job?.id);
         if (submission.executionMode === ExecutionMode.Background) {
-          noteBackgroundSubmission(submission.job?.id);
           await refreshJobs();
           showSuccessToast(t('label.queued'));
         } else {

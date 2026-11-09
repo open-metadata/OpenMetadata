@@ -1160,7 +1160,7 @@ export const submitOntologyBulkOperation = async (
   return response.data;
 };
 
-export const listOntologyBulkJobs = async (glossaryId: string, limit = 100) => {
+export const listOntologyBulkJobs = async (glossaryId: string, limit = 20) => {
   const response = await APIClient.get<OntologyBulkJobList>(
     `${ONTOLOGY_BULK_PATH}/jobs`,
     { params: { glossaryId, limit } }

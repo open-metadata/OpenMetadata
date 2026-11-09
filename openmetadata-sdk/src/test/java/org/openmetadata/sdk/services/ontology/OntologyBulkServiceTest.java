@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.schema.api.data.OntologyBulkJob;
@@ -34,6 +35,8 @@ import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 
 class OntologyBulkServiceTest {
+  private static final UUID GLOSSARY_ID = UUID.fromString("5f0c8a3e-2b1d-4e6f-9a7b-3c2d1e0f9a8b");
+
   @Test
   void routesEveryTypedBulkAndBackgroundJobEndpoint() {
     final HttpClient httpClient = mock(HttpClient.class);
@@ -109,7 +112,7 @@ class OntologyBulkServiceTest {
             org.mockito.ArgumentMatchers.any(RequestOptions.class)))
         .thenReturn(jobs);
 
-    assertSame(jobs, service.listJobs("glossary-uuid", 50));
+    assertSame(jobs, service.listJobs(GLOSSARY_ID, 50));
 
     verify(httpClient)
         .execute(
@@ -118,7 +121,7 @@ class OntologyBulkServiceTest {
             isNull(),
             eq(OntologyBulkJobList.class),
             options.capture());
-    assertEquals("glossary-uuid", options.getValue().getQueryParams().get("glossaryId"));
+    assertEquals(GLOSSARY_ID.toString(), options.getValue().getQueryParams().get("glossaryId"));
     assertEquals("50", options.getValue().getQueryParams().get("limit"));
   }
 }

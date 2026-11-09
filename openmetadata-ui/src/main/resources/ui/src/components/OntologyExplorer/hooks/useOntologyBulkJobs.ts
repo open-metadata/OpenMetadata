@@ -26,16 +26,8 @@ interface UseOntologyBulkJobsResult {
   isCancelling: boolean;
   isLoading: boolean;
   jobs: OntologyBulkJob[];
-  noteBackgroundSubmission: (jobId?: number) => void;
   refreshJobs: () => Promise<void>;
 }
-
-// Sentinel used when the caller knows a background job was submitted but does
-// not have its numeric id. Real ids are positive auto-increment values, so -1
-// will never collide with an actual job row.
-const PENDING_WITHOUT_ID = -1;
-const PENDING_SUBMISSION_TIMEOUT_MS = 60_000;
-const JOB_LIST_LIMIT = 100;
 
 export const useOntologyBulkJobs = (
   glossaryId: string | undefined
@@ -44,12 +36,6 @@ export const useOntologyBulkJobs = (
   const [isLoading, setIsLoading] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [hasLoadError, setHasLoadError] = useState(false);
-  // Tracks a background submission whose job may not yet be visible in the
-  // list (race condition). Keeping this flag ensures polling continues until
-  // the job appears, so its progress and result are not lost.
-  const [pendingBackgroundJobId, setPendingBackgroundJobId] = useState<
-    number | undefined
-  >();
 
   const refreshJobs = useCallback(async () => {
     if (!glossaryId) {
@@ -61,7 +47,7 @@ export const useOntologyBulkJobs = (
     setHasLoadError(false);
 
     try {
-      const response = await listOntologyBulkJobs(glossaryId, JOB_LIST_LIMIT);
+      const response = await listOntologyBulkJobs(glossaryId);
       setJobs(response.jobs);
     } catch {
       setHasLoadError(true);
@@ -76,47 +62,11 @@ export const useOntologyBulkJobs = (
     } else {
       setJobs([]);
     }
-    // Clear any pending submission flag when the glossary changes so a
-    // stale flag from the previous glossary doesn't keep polling alive.
-    setPendingBackgroundJobId(undefined);
   }, [glossaryId, refreshJobs]);
 
-  const noteBackgroundSubmission = useCallback((jobId?: number) => {
-    setPendingBackgroundJobId(jobId ?? PENDING_WITHOUT_ID);
-  }, []);
-
-  // Safety valve: clear the pending flag after a bounded window so polling
-  // cannot run indefinitely if the job never appears in the list.
-  useEffect(() => {
-    if (pendingBackgroundJobId === undefined) {
-      return undefined;
-    }
-    const timeout = setTimeout(
-      () => setPendingBackgroundJobId(undefined),
-      PENDING_SUBMISSION_TIMEOUT_MS
-    );
-
-    return () => clearTimeout(timeout);
-  }, [pendingBackgroundJobId]);
-
-  // Once the submitted job appears in the list, clear the pending flag so the
-  // job's own status controls polling rather than the 60s safety valve. The
-  // safety valve above still covers jobs that never appear (e.g. unknown id).
-  useEffect(() => {
-    if (
-      pendingBackgroundJobId !== undefined &&
-      pendingBackgroundJobId !== PENDING_WITHOUT_ID &&
-      jobs.some((job) => job.id === pendingBackgroundJobId)
-    ) {
-      setPendingBackgroundJobId(undefined);
-    }
-  }, [jobs, pendingBackgroundJobId]);
-
   const hasActiveJobs = useMemo(
-    () =>
-      jobs.some(isActiveOntologyBulkJob) ||
-      pendingBackgroundJobId !== undefined,
-    [jobs, pendingBackgroundJobId]
+    () => jobs.some(isActiveOntologyBulkJob),
+    [jobs]
   );
 
   usePollingEffect(refreshJobs, { enabled: hasActiveJobs });
@@ -140,7 +90,6 @@ export const useOntologyBulkJobs = (
     isCancelling,
     isLoading,
     jobs,
-    noteBackgroundSubmission,
     refreshJobs,
   };
 };
