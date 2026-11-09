@@ -1093,6 +1093,7 @@ class DbtSource(DbtServiceSource):
                             upstream_table_ids={node.fqn: node.table_id for node in upstream_nodes if node.table_id},
                             # Sources and seeds never list parents, and the table may be another
                             # project's model, so only nodes dbt builds from refs qualify.
+                            # ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
                             declared_no_upstream=resource_type in ("model", "snapshot")
                             and not getattr(getattr(manifest_node, "depends_on", None), "nodes", None),
                             datamodel=DataModel(

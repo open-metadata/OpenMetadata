@@ -105,6 +105,8 @@ class DbtServiceTopology(ServiceTopology):
     process_dbt_entities: Annotated[TopologyNode, Field(description="Process dbt entities")] = TopologyNode(
         producer="get_data_model",
         stages=[
+            # Must stay ahead of create_dbt_query_lineage, or its override delete would remove the
+            # compiled-SQL edges. ADR:2026-11-09-dbt-override-lineage-deletes-when-the-manifest-declares-no-parent
             NodeStage(
                 type_=AddLineageRequest,
                 processor="create_dbt_lineage",
