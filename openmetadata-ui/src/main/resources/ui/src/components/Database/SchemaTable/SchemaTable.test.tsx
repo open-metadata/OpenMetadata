@@ -581,6 +581,27 @@ describe('Test EntityTable Component', () => {
     expect(emptyPlaceholder).toBeInTheDocument();
   });
 
+  it('should not re-merge the loaded page when table columns are unchanged', async () => {
+    (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
+      data: mockColumns,
+      paging: { total: mockColumns.length },
+    });
+    const setDisplayedColumns = mockGenericContextProps.setDisplayedColumns;
+    setDisplayedColumns.mockClear();
+
+    render(<SchemaTable />, { wrapper: MemoryRouter });
+
+    expect(await screen.findAllByTestId('column-name')).toHaveLength(3);
+
+    // setDisplayedColumns mirrors every tableColumns update. A mount-time merge or a
+    // deep-compare sync would publish a second, re-merged page here.
+    const loadedPageUpdates = setDisplayedColumns.mock.calls.filter(
+      ([columns]: [Column[]]) => columns.length > 0
+    );
+
+    expect(loadedPageUpdates).toHaveLength(1);
+  });
+
   it('should apply column edits from the table context to the loaded page', async () => {
     (getTableColumnsByFQN as jest.Mock).mockResolvedValue({
       data: mockColumns,

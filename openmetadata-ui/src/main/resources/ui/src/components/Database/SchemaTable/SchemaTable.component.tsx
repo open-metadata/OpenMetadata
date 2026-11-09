@@ -468,6 +468,8 @@ const SchemaTable = () => {
   // table query cache) into the loaded page. Reference equality, not a deep compare, and
   // a single Map-based pass: wide tables made the old deep isEqual + per-column nested
   // merge block the main thread for hundreds of ms on every navigation.
+  // Assumes every writer to the table query cache replaces the `columns` array; mutating
+  // it in place and then calling setQueryData would be skipped here.
   useEffect(() => {
     if (
       !hasInitialLoad ||
