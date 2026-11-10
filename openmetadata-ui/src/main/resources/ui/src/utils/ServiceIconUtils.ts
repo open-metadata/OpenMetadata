@@ -38,6 +38,7 @@ import mariadb from '../assets/img/service-icon-mariadb.svg';
 import mongodb from '../assets/img/service-icon-mongodb.webp';
 import mssql from '../assets/img/service-icon-mssql.svg';
 import neo4j from '../assets/img/service-icon-neo4j.svg';
+import neptune from '../assets/img/service-icon-neptune.svg';
 import oracle from '../assets/img/service-icon-oracle.webp';
 import pinot from '../assets/img/service-icon-pinot.webp';
 import postgres from '../assets/img/service-icon-post.webp';
@@ -189,6 +190,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   sas: sas,
   iomete: iomete,
   neo4j: neo4j,
+  neptune: neptune,
   questdb: questdb,
   domodatabase: domo,
   customdatabase: databasedefault,
