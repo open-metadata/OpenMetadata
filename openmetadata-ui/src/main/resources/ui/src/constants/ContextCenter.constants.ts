@@ -13,6 +13,7 @@
 // ─── File type badge ──────────────────────────────────────────────────────────
 
 import { EntityFields } from '../enums/AdvancedSearch.enum';
+import { Reason } from '../generated/api/context/extractionAvailability';
 import {
   ContextMemoryStatus,
   MemoryType,
@@ -22,8 +23,32 @@ import { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 
 export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const CONTEXT_FILE_ENTITY_TYPE = 'contextFile';
-/** The fields every file read asks for; neverExtracted drives the Not processed badge. */
-export const CONTEXT_FILE_FIELDS = 'folder,memoryCount,neverExtracted';
+/**
+ * The fields every file read asks for. They match the server's EXTRACTION_RESPONSE_FIELDS, so an
+ * Extract response replaces a Documents row as it is; owners gate Extract and Retry.
+ */
+export const CONTEXT_FILE_FIELDS = 'owners,folder,memoryCount,neverExtracted';
+
+/** What a document's owners and admins can do about its memories, by the document's state. */
+export enum MemoryExtractionAction {
+  Extract = 'extract',
+  Retry = 'retry',
+}
+
+export const MEMORY_EXTRACTION_MENU_ITEM_KEY = 'memory-extraction';
+
+export const MEMORY_EXTRACTION_ACTION_LABEL_KEYS: Record<
+  MemoryExtractionAction,
+  string
+> = {
+  [MemoryExtractionAction.Extract]: 'label.extract',
+  [MemoryExtractionAction.Retry]: 'label.retry',
+};
+
+export const EXTRACTION_UNAVAILABLE_MESSAGE_KEYS: Record<Reason, string> = {
+  [Reason.ExtractionDisabled]: 'message.memory-extraction-off',
+  [Reason.ProviderUnavailable]: 'message.memory-extraction-service-unavailable',
+};
 
 /**
  * The status reason the server stores when a Query a memory cites is deleted (MemoryEvidenceHolds),

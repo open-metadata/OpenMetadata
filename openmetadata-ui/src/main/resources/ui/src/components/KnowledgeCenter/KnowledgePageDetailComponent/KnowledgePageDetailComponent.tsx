@@ -86,6 +86,7 @@ import {
 } from '../../../rest/knowledgeCenterAPI';
 import { stripPendingUploadNodes } from '../../../utils/BlockEditorPureUtils';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
+import { withExtractionState } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import {
   fetchEntityActivityCountInto,
   fetchEntityTaskCountsInto,
@@ -235,20 +236,21 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     extractionStateRequestRef.current += 1;
     const request = extractionStateRequestRef.current;
     try {
-      const { neverExtracted, processingError, processingStatus } =
-        await getKnowledgePageByFqn(page.fullyQualifiedName, {
-          fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
-        });
+      const read = await getKnowledgePageByFqn(page.fullyQualifiedName, {
+        fields: KNOWLEDGE_PAGE_FIELDS.NEVER_EXTRACTED,
+      });
       if (request === extractionStateRequestRef.current) {
-        setKnowledgePage((prev) =>
-          prev?.id === page.id
-            ? { ...prev, neverExtracted, processingError, processingStatus }
-            : prev
-        );
+        setKnowledgePage((prev) => withExtractionState(prev, read));
       }
     } catch (error) {
       showErrorToast(error as AxiosError);
     }
+  }, []);
+
+  // What an Extract or Retry left: newer than any refresh still in flight, which it discards.
+  const applyExtractionState = useCallback((page: KnowledgePage) => {
+    extractionStateRequestRef.current += 1;
+    setKnowledgePage((prev) => withExtractionState(prev, page));
   }, []);
 
   // Persists a locally-stashed draft (created while offline/unsaved) back to the
@@ -1042,6 +1044,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
             permissions={permissions}
             tags={tags}
             updatePageTag={updatePageTag}
+            onExtractionStateChange={applyExtractionState}
           />
         </GenericProvider>
       );
@@ -1077,6 +1080,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
+    applyExtractionState,
   ]);
 
   useEffect(() => {

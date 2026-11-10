@@ -206,15 +206,22 @@ interface ContextCenterDocumentPreviewProps {
   previewFile?: ContextFile;
   url: string;
   onClose: () => void;
+  onFileRefreshed: (file: ContextFile) => void;
 }
 
 const ContextCenterDocumentPreview: FC<ContextCenterDocumentPreviewProps> = ({
   previewFile,
   url,
   onClose,
+  onFileRefreshed,
 }) =>
   previewFile ? (
-    <DocumentPreviewPanel file={previewFile} url={url} onClose={onClose} />
+    <DocumentPreviewPanel
+      file={previewFile}
+      url={url}
+      onClose={onClose}
+      onFileRefreshed={onFileRefreshed}
+    />
   ) : null;
 
 interface ContextCenterDeleteFileModalProps {
@@ -660,6 +667,12 @@ const ContextCenterDocumentsPage: FC = () => {
     );
   }, []);
 
+  // An Extract response, or a read after one is refused, carries every field the list reads.
+  const handleFileRefreshed = useCallback((file: ContextFile) => {
+    setAllDocuments((prev) => prev.map((d) => (d.id === file.id ? file : d)));
+    setPreviewFile((prev) => (prev?.id === file.id ? file : prev));
+  }, []);
+
   const handleFileMoved = useCallback(
     (file: ContextFile, targetFolderId: string | null) => {
       if (targetFolderId === null) {
@@ -1008,6 +1021,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     onDeleteFile={handleDeleteFile}
                     onDownload={handleAssetDownload}
                     onFileMoved={handleFileMoved}
+                    onFileRefreshed={handleFileRefreshed}
                     onFileUpdated={handleFileUpdated}
                     onLoadMoreFolders={fetchMoreFolders}
                     onOpenPreview={setFilePreviewModalFile}
@@ -1024,6 +1038,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     previewFile={previewFile}
                     url={previewFileUrl}
                     onClose={() => handlePreview(undefined)}
+                    onFileRefreshed={handleFileRefreshed}
                   />
                 </Box>
               </ReflexElement>

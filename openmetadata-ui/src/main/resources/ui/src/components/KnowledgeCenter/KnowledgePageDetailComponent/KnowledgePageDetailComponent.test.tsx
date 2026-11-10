@@ -25,6 +25,7 @@ import {
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
+import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import KnowledgePageDetailComponent from './KnowledgePageDetailComponent';
 
 // KnowledgePageDetailComponent.tsx had ZERO existing test coverage before this conversion
@@ -631,5 +632,107 @@ describe('KnowledgePageDetailComponent drafts', () => {
       fqn: 'test.page.fqn',
       version: 0.1,
     });
+  });
+});
+
+describe('KnowledgePageDetailComponent extraction requests', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    setMockPermissions({
+      ...ENTITY_PERMISSIONS,
+      ViewBasic: true,
+      EditAll: true,
+    });
+  });
+
+  afterEach(() => {
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(() =>
+      Promise.resolve(MOCK_KNOWLEDGE_PAGE)
+    );
+  });
+
+  // The right panel is handed to the layout; render it to reach the callback it is given.
+  const openRightPanel = async (onPageChange: jest.Mock) => {
+    await waitFor(() =>
+      expect(onPageChange.mock.calls.at(-1)?.[0].rightPanel).toBeTruthy()
+    );
+    render(onPageChange.mock.calls.at(-1)?.[0].rightPanel, {
+      wrapper: MemoryRouter,
+    });
+
+    return (KnowledgePageDetailRightPanel as jest.Mock).mock.calls.at(-1)?.[0]
+      .onExtractionStateChange;
+  };
+
+  it('shows the state an extraction request leaves the article in', async () => {
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+    await screen.findByTestId('title');
+    const onExtractionStateChange = await openRightPanel(onPageChange);
+
+    act(() =>
+      onExtractionStateChange({
+        ...MOCK_KNOWLEDGE_PAGE,
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
+
+    expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+      expect.objectContaining({
+        description: 'test description',
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
+  });
+
+  // A refresh a body save started earlier read the article before the request queued it.
+  it('keeps that state over an older refresh that returns after it', async () => {
+    (patchKnowledgePage as jest.Mock).mockResolvedValue({
+      ...MOCK_KNOWLEDGE_PAGE,
+      description: '<p>edited</p>',
+      version: 0.2,
+    });
+    let finishRefresh: ((page: unknown) => void) | undefined;
+    (getKnowledgePageByFqn as jest.Mock).mockImplementation(
+      (_fqn: string, params?: { fields?: string }) =>
+        params?.fields === 'neverExtracted'
+          ? new Promise((resolve) => {
+              finishRefresh = resolve;
+            })
+          : Promise.resolve(MOCK_KNOWLEDGE_PAGE)
+    );
+    const onPageChange = jest.fn();
+    renderComponent(onPageChange);
+    await screen.findByTestId('title');
+    const onExtractionStateChange = await openRightPanel(onPageChange);
+
+    const { onChange } = (BlockEditor as unknown as jest.Mock).mock.calls[
+      (BlockEditor as unknown as jest.Mock).mock.calls.length - 1
+    ][0];
+    act(() => onChange('<p>edited</p>'));
+    await act(async () => {
+      onPageChange.mock.calls.at(-1)?.[0].handlers.onSave();
+    });
+    await waitFor(() => expect(finishRefresh).toBeDefined());
+
+    act(() =>
+      onExtractionStateChange({
+        ...MOCK_KNOWLEDGE_PAGE,
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
+    await act(async () => {
+      finishRefresh?.({ ...MOCK_KNOWLEDGE_PAGE, neverExtracted: true });
+    });
+
+    expect(onPageChange.mock.calls.at(-1)?.[0].data).toEqual(
+      expect.objectContaining({
+        neverExtracted: false,
+        processingStatus: 'Queued',
+      })
+    );
   });
 });

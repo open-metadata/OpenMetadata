@@ -147,6 +147,15 @@ export const getContextFileById = async (
   return response.data;
 };
 
+/** Extracts or retries a file's memories; the file it returns is what the Documents list reads. */
+export const extractFileMemories = async (id: string): Promise<ContextFile> => {
+  const response = await APIClient.post<ContextFile>(
+    `/contextCenter/drive/files/${id}/extract`
+  );
+
+  return response.data;
+};
+
 export const updateContextFile = async (
   id: string,
   patch: Operation[]

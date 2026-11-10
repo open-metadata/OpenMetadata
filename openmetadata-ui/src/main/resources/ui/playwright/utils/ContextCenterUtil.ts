@@ -178,6 +178,27 @@ export const ARTICLES_URL = '/context-center/articles';
 export const DOCUMENTS_URL = '/context-center/documents';
 export const MEMORIES_URL = '/context-center/memories';
 export const MEMORIES_API = '/api/v1/contextCenter/memories';
+export const MEMORY_EXTRACTION_AVAILABILITY_API = `${MEMORIES_API}/extractionAvailability`;
+export const MEMORY_EXTRACTION_OFF_MESSAGE =
+  'Memory extraction is off — ask an admin to turn it on.';
+
+/**
+ * The e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
+ * leaves an upload or a new article Not processed. A spec that relies on that says so first.
+ */
+export const expectMemoryExtractionOff = async (
+  apiContext: APIRequestContext
+) => {
+  const availability = await okJson<{ available: boolean; reason?: string }>(
+    await apiContext.get(MEMORY_EXTRACTION_AVAILABILITY_API),
+    'Read whether memory extraction is available'
+  );
+
+  expect(
+    availability,
+    'This spec needs a server with memory extraction off'
+  ).toEqual({ available: false, reason: 'ExtractionDisabled' });
+};
 
 /**
  * The per-page `data-testid` wait that follows every navigation is the real

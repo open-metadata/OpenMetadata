@@ -47,6 +47,11 @@ export const CONTEXT_CENTER_RETIRED_QUERY_NAME_QUERY_KEY = [
   'context-center-retired-query-name',
 ];
 
+/** Whether memories can be extracted now: read once, and again after a 409. */
+export const CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY = [
+  'context-center-extraction-availability',
+];
+
 /**
  * Converge a badge-count query after an async (`202`) delete: poll `hasLanded`
  * until the deleted row is gone, then refetch once and keep the server's
