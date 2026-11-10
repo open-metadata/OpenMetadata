@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "ลบ {{entity}} {{count}} รายการสำเร็จ",
     "entity-already-exist": "{{entity}} \"{{name}}\" มีอยู่แล้ว การทำซ้ำ {{entityPlural}} ไม่ได้รับอนุญาต",
     "entity-already-exist-message-without-name": "มี {{entity}} ที่มีรายละเอียดที่ระบุไว้แล้ว การทำซ้ำ {{entityPlural}} ไม่ได้รับอนุญาต",
+    "entity-changed-refresh-and-retry": "สินทรัพย์นี้ถูกเปลี่ยนแปลงจากที่อื่น โปรดรีเฟรชหน้าแล้วลองอีกครั้ง",
     "entity-created-success": "สร้าง {{entity}} สำเร็จ!",
     "entity-creation-error": "เกิดข้อผิดพลาดขณะสร้าง {{entity}}",
     "entity-deleted-success": "ลบ {{entity}} สำเร็จ!",
