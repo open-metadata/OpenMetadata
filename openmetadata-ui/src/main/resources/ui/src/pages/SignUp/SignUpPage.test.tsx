@@ -22,7 +22,7 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () =>
   jest.fn().mockImplementation(() => <div>DocumentTitle</div>)
 );
 
-let letExpectedUserName = {
+let letExpectedUserName: Record<string, string> = {
   name: 'sample123',
   email: 'sample123@sample.com',
 };
@@ -122,6 +122,41 @@ describe('SignUp page', () => {
 
     expect(createUser as jest.Mock).toHaveBeenCalledTimes(1);
   });
+
+  it.each([
+    ['empty picture from SSO', ''],
+    ['picture url', 'https://example.com/avatar.png'],
+  ])(
+    'should send %s only as profile image, not as a CreateUser field',
+    async (_, picture) => {
+      letExpectedUserName = {
+        displayName: 'Sample User',
+        name: 'sample123',
+        email: 'sample123@sample.com',
+        picture,
+      };
+      (getImages as jest.Mock).mockReturnValueOnce({ image: picture });
+
+      render(<SignUp />);
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('create-button'));
+      });
+
+      expect(getImages).toHaveBeenLastCalledWith(picture);
+
+      const payload = (createUser as jest.Mock).mock.calls.at(-1)?.[0];
+
+      expect(payload).not.toHaveProperty('picture');
+      expect(payload).toEqual(
+        expect.objectContaining({
+          name: 'sample123',
+          email: 'sample123@sample.com',
+          profile: { images: { image: picture } },
+        })
+      );
+    }
+  );
 
   it('Error should be thrown if createUser API fails', async () => {
     render(<SignUp />);

@@ -105,11 +105,12 @@ const SignUp = () => {
     setLoading(true);
 
     try {
+      const { picture, ...userData } = data;
       const res = await createUser({
-        ...data,
+        ...userData,
         teams: (data.teams as EntityReference[])?.map((t) => t.id),
         profile: {
-          images: getImages(data.picture ?? ''),
+          images: getImages(picture ?? ''),
         },
       });
       updateCurrentUser(res);
