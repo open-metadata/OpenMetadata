@@ -70,6 +70,25 @@ test.describe(
       });
 
       await test.step('Check browser-loaded bundles, styles, images and API prefixes', async () => {
+        const iconPath = `${prefix}/favicons/apple-icon-57x57.png`;
+        await expect(
+          page.locator('link[rel="apple-touch-icon"][sizes="57x57"]')
+        ).toHaveAttribute('href', iconPath);
+        const imageResponse = page.waitForResponse(
+          (response) => new URL(response.url()).pathname === iconPath
+        );
+        // The sign-in logo is inlined; load the shell's touch icon to exercise image serving.
+        await page.evaluate(
+          (path) =>
+            new Promise<void>((resolve, reject) => {
+              const image = new Image();
+              image.onload = () => resolve();
+              image.onerror = () => reject(new Error(`Cannot load ${path}`));
+              image.src = path;
+            }),
+          iconPath
+        );
+        expect((await imageResponse).status()).toBe(200);
         for (const resourceType of ['script', 'stylesheet', 'image']) {
           await expect
             .poll(

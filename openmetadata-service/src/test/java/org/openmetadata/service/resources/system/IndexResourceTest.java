@@ -16,12 +16,15 @@ package org.openmetadata.service.resources.system;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.ws.rs.core.Response;
+import java.lang.reflect.Field;
 import java.util.Base64;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -259,5 +262,60 @@ class IndexResourceTest {
     } finally {
       initIndex();
     }
+  }
+
+  @Test
+  void testMissingIndexTemplateFailsClearly() throws ReflectiveOperationException {
+    Field template = IndexResource.class.getDeclaredField("configProcessedHtml");
+    template.setAccessible(true);
+    Object initializedTemplate = template.get(null);
+    try {
+      template.set(null, null);
+      IllegalStateException failure =
+          assertThrows(
+              IllegalStateException.class, () -> IndexResource.getIndexFile("/openmetadata"));
+      assertEquals("IndexResource not initialized. Call initialize() first.", failure.getMessage());
+    } finally {
+      template.set(null, initializedTemplate);
+    }
+  }
+
+  @Test
+  void testMissingCallbackRemainsAbsentForEveryRenderingVariant()
+      throws ReflectiveOperationException {
+    Field template = IndexResource.class.getDeclaredField("silentCallbackRawHtml");
+    template.setAccessible(true);
+    Object initializedTemplate = template.get(null);
+    try {
+      template.set(null, null);
+      assertNull(IndexResource.getSilentCallbackFile("/openmetadata"));
+      assertNull(IndexResource.getSilentCallbackFile("/openmetadata", "nonce"));
+      assertNull(IndexResource.getSilentCallbackEtag("/openmetadata"));
+      assertNotNull(IndexResource.getIndexFile("/openmetadata"));
+    } finally {
+      template.set(null, initializedTemplate);
+    }
+  }
+
+  @Test
+  void testNullOptionalSentryValuesRenderAsEmptyStrings() {
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setSentryConfiguration(new SentryConfiguration().withUiDsn(null).withEnvironment(null));
+    try {
+      IndexResource.initialize(config);
+      String html = IndexResource.getIndexFile("/openmetadata");
+      assertTrue(html.contains("window.SENTRY_DSN = '';"));
+      assertTrue(html.contains("window.SENTRY_ENVIRONMENT = '';"));
+      assertFalse(html.contains("${sentry"));
+    } finally {
+      initIndex();
+    }
+  }
+
+  @Test
+  void testCanonicalEtagRemainsStableAfterCacheReset() {
+    String etag = IndexResource.getIndexEtag("/openmetadata");
+    IndexResource.clearEtagCacheForTesting();
+    assertEquals(etag, IndexResource.getIndexEtag("/openmetadata/"));
   }
 }
