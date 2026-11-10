@@ -31,7 +31,8 @@ export interface LogStorageConfiguration {
      */
     earlyFlushWatermarkBytes?: number;
     /**
-     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3 (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
+     * Deprecated and ignored. Pipelines store their logs in S3 whenever the type is s3
+     * (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
      */
     enabled?: boolean;
     /**
