@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}}s succesvol verwijderd",
     "entity-already-exist": "{{entity}} \"{{name}}\" bestaat al. Gedupliceerde {{entityPlural}} zijn niet toegestaan.",
     "entity-already-exist-message-without-name": "Een {{entity}} met de opgegeven data bestaat al. Gedupliceerde {{entityPlural}} zijn niet toegestaan.",
+    "entity-changed-refresh-and-retry": "Dit asset is elders gewijzigd. Vernieuw de pagina en probeer het opnieuw.",
     "entity-created-success": "{{entity}} is succesvol aangemaakt!",
     "entity-creation-error": "Fout bij het maken van {{entity}}",
     "entity-deleted-success": "{{entity}} succesvol verwijderd!",

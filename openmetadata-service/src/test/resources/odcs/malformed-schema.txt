@@ -1,0 +1,1 @@
+This fixture intentionally contains malformed JSON to verify required-schema failure reporting.

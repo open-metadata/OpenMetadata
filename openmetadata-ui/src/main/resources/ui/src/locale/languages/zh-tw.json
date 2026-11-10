@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "成功刪除{{count}}個{{entity}}",
     "entity-already-exist": "{{entity}} \"{{name}}\" 已存在。不允許重複的 {{entityPlural}}。",
     "entity-already-exist-message-without-name": "具有相同詳細資料的 {{entity}} 已存在。不允許重複的 {{entityPlural}}。",
+    "entity-changed-refresh-and-retry": "此資產已在其他位置變更。請重新整理頁面後再試一次。",
     "entity-created-success": "已成功建立 {{entity}}！",
     "entity-creation-error": "建立 {{entity}} 時發生錯誤",
     "entity-deleted-success": "已成功刪除 {{entity}}！",

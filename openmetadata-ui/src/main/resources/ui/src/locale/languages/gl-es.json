@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "Eliminados correctamente {{count}} {{entity}}",
     "entity-already-exist": "{{entity}} \"{{name}}\" xa existe. Non se permiten {{entityPlural}} duplicados.",
     "entity-already-exist-message-without-name": "Xa existe un {{entity}} cos detalles proporcionados. Non se permiten {{entityPlural}} duplicados.",
+    "entity-changed-refresh-and-retry": "Este activo modificouse noutro lugar. Actualiza a páxina e téntao de novo.",
     "entity-created-success": "{{entity}} creado correctamente!",
     "entity-creation-error": "Erro ao crear {{entity}}",
     "entity-deleted-success": "{{entity}} eliminado correctamente!",

@@ -12,6 +12,7 @@
 Workflow definition for the profiler
 """
 
+from metadata.generated.schema.entity.services.ingestionPipelines.status import StackTraceError
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
 )
@@ -21,7 +22,9 @@ from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificat
 from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
     StorageServiceAutoClassificationPipeline,
 )
+from metadata.ingestion.api.step import Step
 from metadata.ingestion.api.steps import Processor
+from metadata.pii.base_processor import AutoClassificationProcessor
 from metadata.pii.constants import PII
 from metadata.pii.processor_factory import create_pii_processor
 from metadata.sampler.processor import SamplerProcessor
@@ -79,3 +82,15 @@ class AutoClassificationWorkflow(ProfilerWorkflow):
 
     def _get_sampler_processor(self) -> Processor:
         return SamplerProcessor.create(self.config.model_dump(), self.metadata)
+
+    def _step_meets_success_threshold(self, step: Step) -> bool:
+        if isinstance(step, AutoClassificationProcessor) and step.model_load_failure is not None:
+            return False
+        return super()._step_meets_success_threshold(step)
+
+    def get_failures(self) -> list[StackTraceError]:
+        failures = list(super().get_failures())
+        for step in self.steps:
+            if isinstance(step, AutoClassificationProcessor) and step.model_load_failure is not None:
+                failures.extend(step.get_status().failures)
+        return failures

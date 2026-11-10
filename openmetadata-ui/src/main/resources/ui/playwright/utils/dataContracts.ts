@@ -19,7 +19,12 @@ import {
 } from '../constant/dataContracts';
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
-import { getApiContext } from './common';
+import {
+  clickIgnoringToasts,
+  getApiContext,
+  scrollIntoViewAndSettle,
+  selectOptionWithRetry,
+} from './common';
 import { selectDropdownOption } from './destination';
 import { waitForAllLoadersToDisappear } from './entity';
 import { sidebarClick } from './sidebar';
@@ -730,7 +735,8 @@ export const triggerContractValidation = async (
 
 export const exportContractYaml = async (
   page: Page,
-  type: 'native' | 'odcs' = 'native'
+  type: 'native' | 'odcs' = 'native',
+  odcsVersion?: string
 ): Promise<string> => {
   const downloadPromise = page.waitForEvent('download');
 
@@ -738,6 +744,18 @@ export const exportContractYaml = async (
 
   if (type === 'odcs') {
     await page.getByTestId('export-odcs-contract-button').click();
+    const dialog = page.getByTestId('odcs-export-modal');
+    await expect(dialog).toBeVisible();
+    if (odcsVersion) {
+      const selector = dialog.getByRole('button', { name: /Version/ });
+      await scrollIntoViewAndSettle(selector);
+      await selectOptionWithRetry(
+        selector,
+        page.getByRole('option', { name: odcsVersion, exact: true })
+      );
+      await expect(selector).toContainText(odcsVersion);
+    }
+    await clickIgnoringToasts(dialog.getByTestId('confirm-odcs-export'));
   } else {
     await page.getByTestId('export-contract-button').click();
   }
