@@ -279,6 +279,24 @@ class DescriptionSanitizerTest {
   }
 
   @Test
+  void pureMarkdownBackticksAreNotEncoded() {
+    String input = "**Source:** `deal_option_attrs`";
+    assertEquals(input, DescriptionSanitizer.sanitize(input));
+  }
+
+  @Test
+  void pureMarkdownApostrophesAreNotEncoded() {
+    String input = "It's a test with 'single quotes'";
+    assertEquals(input, DescriptionSanitizer.sanitize(input));
+  }
+
+  @Test
+  void entityLinkWithSurroundingMarkdownIsPreserved() {
+    String input = "See `table` via <#E::table::db.schema.t1>";
+    assertEquals(input, DescriptionSanitizer.sanitize(input));
+  }
+
+  @Test
   void entityMentionAttributesOnAnchorArePreservedForMention() {
     String input =
         "<a data-type=\"mention\" data-id=\"u1\" data-label=\"admin\""
