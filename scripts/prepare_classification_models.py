@@ -179,56 +179,6 @@ def import_archive(archive, cache_dir):
                 shutil.copy2(source, destination)
 
 
-def prepare_batch(models, archives, uv_version, cache_command, save_cache):
-    """Sequentially restore or prepare model archives through a cache adapter."""
-    archive = Path("model-cache/model.tar")
-    shutil.rmtree(archives, ignore_errors=True)
-    with tempfile.TemporaryDirectory(prefix="classification-cache-") as scratch:
-        result_file = Path(scratch) / "result.json"
-
-        def cache(operation, key):
-            result_file.unlink(missing_ok=True)
-            subprocess.run([*cache_command, operation, key, str(result_file)], check=True, timeout=600)
-            return json.loads(result_file.read_text())
-
-        for model in models:
-            shutil.rmtree(archive.parent, ignore_errors=True)
-            restored = cache("restore", model["key"]) == model["key"]
-            if not restored:
-                if model["uv-version"] == uv_version:
-                    prepare(model["requirement"], uv_version, archive)
-                else:
-                    subprocess.run(
-                        [
-                            "uv",
-                            "run",
-                            "--no-project",
-                            "--with",
-                            f"uv=={model['uv-version']}",
-                            "python",
-                            str(Path(__file__).resolve()),
-                            "prepare",
-                            "--requirement",
-                            model["requirement"],
-                            "--uv-version",
-                            model["uv-version"],
-                            "--output",
-                            str(archive),
-                        ],
-                        check=True,
-                        timeout=720,
-                    )
-                if save_cache and cache("save", model["key"]) < 0:
-                    raise ValueError(f"Cache save failed: {model['name']}")
-            if not save_cache:
-                destination = archives / model["key"] / "model.tar"
-                destination.parent.mkdir(parents=True, exist_ok=True)
-                shutil.copyfile(archive, destination)
-            sys.stdout.write(f"{model['name']}: {'cache hit' if restored else 'prepared'}\n")
-            sys.stdout.flush()
-    shutil.rmtree(archive.parent, ignore_errors=True)
-
-
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
@@ -247,12 +197,6 @@ def main():
     importing = commands.add_parser("import")
     importing.add_argument("--archive", type=Path, required=True)
     importing.add_argument("--cache-dir", type=Path, required=True)
-    batch = commands.add_parser("batch")
-    batch.add_argument("--models", type=json.loads, required=True)
-    batch.add_argument("--archives", type=Path, required=True)
-    batch.add_argument("--uv-version", required=True)
-    batch.add_argument("--cache-command", nargs="+", required=True)
-    batch.add_argument("--save-cache", action="store_true")
     args = parser.parse_args()
     if args.command == "matrix":
         sys.stdout.write(json.dumps(python_matrix(args.project)) + "\n")
@@ -260,8 +204,6 @@ def main():
         sys.stdout.write(json.dumps(discover(args.project)) + "\n")
     elif args.command == "prepare":
         prepare(args.requirement, args.uv_version, args.output)
-    elif args.command == "batch":
-        prepare_batch(args.models, args.archives, args.uv_version, args.cache_command, args.save_cache)
     elif args.command == "verify":
         verify(args.project)
     elif args.command == "clean":

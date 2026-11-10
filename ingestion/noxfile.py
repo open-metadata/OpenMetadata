@@ -251,7 +251,6 @@ def lint(session):
         str(INGESTION_ROOT),
         str(ROOT / "openmetadata-airflow-apis"),
         str(ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py"),
-        str(ROOT / ".github/scripts/classification_model_revisions.py"),
     ]
     sources.extend(
         str(ROOT / "scripts" / name)

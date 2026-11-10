@@ -80,8 +80,8 @@ jobs:
             python:
               - 'ingestion/**'
               - 'scripts/prepare_classification_models.py'
-              - '.github/scripts/classification_model_revisions.py'
               - '.github/actions/prepare-classification-models/**'
+              - '.github/actions/prepare-classification-model/**'
               - '.github/workflows/warm-classification-models.yml'
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'

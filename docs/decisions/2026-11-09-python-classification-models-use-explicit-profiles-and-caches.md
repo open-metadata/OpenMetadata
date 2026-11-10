@@ -1,7 +1,7 @@
 # Python classification models use explicit profiles and isolated caches
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action); v3 2026-11-10 (independent test setup and native cache adapter)
+- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action); v3 2026-11-10 (independent test setup and native cache adapter); v4 2026-11-10 (standard cache actions and main-only warming)
 - **Deciders:** Pablo Takara
 - **Guard:** `ingestion/tests/unit/test_python_tooling.py`; DB2 connection tests; reviewer for workflow ordering and cache ownership
 - **Related:** ADR:2026-10-27-local-python-environments-use-locked-profiles; https://github.com/open-metadata/OpenMetadata/pull/37424
@@ -138,3 +138,21 @@ Python owns sequential preparation, uv selection, archive handling and save-resu
 A native JavaScript action provides only the official Actions cache calls and launches Python.
 The runner supplies the cache runtime environment to that native action; an ordinary shell
 invocation does not receive it. The adapter fails before preparation if that runtime is absent.
+
+## Amendment — 2026-11-10: Standard cache actions and main-only warming
+
+Automatic warming targets only main. Manual dispatch may select one exact commit SHA; the
+trusted default-branch checkout reads that revision's project metadata as data. Supported-head
+and retained-revision lists, multi-revision discovery and the custom cache adapter are removed.
+
+Preparation uses four sequential calls to a single-model composite action, with no matrix.
+Discovery must return exactly four models; their requirements, uv pin and immutable keys remain
+in project metadata. Python/uv setup happens once for the selected project. Simple shell steps
+invoke the existing Python archive helper, stage consumer artifacts and remove staging files.
+There are no custom JavaScript files, npm dependencies or Node setup steps for model preparation.
+
+Pinned standard `actions/cache/restore` and `actions/cache/save` provide transport. Only the
+warmer saves. A lookup with `fail-on-cache-miss: true` after saving makes an unavailable persistent
+entry fail the warmer instead of accepting a save warning. Consumers remain restore-only and
+prepare misses independently. Other branches reuse matching default-branch entries; their unique
+model sets can be warmed manually. Different version keys continue to coexist.

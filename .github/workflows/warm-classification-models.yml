@@ -7,13 +7,13 @@ on:
       - ingestion/pyproject.toml
       - ingestion/uv.lock
       - scripts/prepare_classification_models.py
-      - .github/scripts/classification_model_revisions.py
       - .github/actions/prepare-classification-models/**
+      - .github/actions/prepare-classification-model/**
       - .github/workflows/warm-classification-models.yml
   workflow_dispatch:
     inputs:
       revision:
-        description: Exact commit SHA; leave empty to sweep supported heads and retained revisions
+        description: Exact commit SHA; leave empty to warm main
         type: string
         default: ''
   schedule:
@@ -38,13 +38,21 @@ jobs:
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
-      - id: revisions
+      - id: metadata
         env:
-          REQUESTED_REVISION: ${{ github.event_name == 'push' && github.sha || inputs.revision }}
-          SUPPORTED_HEADS: '["main"]'
-          RETAINED_REVISIONS: '[]'
-        run: python3 .github/scripts/classification_model_revisions.py --discover-models >> "$GITHUB_OUTPUT"
+          REQUESTED_REVISION: ${{ inputs.revision || github.sha }}
+        run: |
+          if [[ ! "$REQUESTED_REVISION" =~ ^[a-f0-9]{40}$ ]]; then
+            echo "Expected an exact commit SHA" >&2
+            exit 1
+          fi
+          if ! git cat-file -e "$REQUESTED_REVISION:ingestion/pyproject.toml"; then
+            git fetch --no-tags --depth=1 origin "$REQUESTED_REVISION"
+          fi
+          project=$(mktemp -d "$RUNNER_TEMP/classification-metadata.XXXXXX")
+          git show "$REQUESTED_REVISION:ingestion/pyproject.toml" > "$project/pyproject.toml"
+          echo "project=$project" >> "$GITHUB_OUTPUT"
       - uses: ./.github/actions/prepare-classification-models
         with:
-          models: ${{ steps.revisions.outputs.models }}
+          project: ${{ steps.metadata.outputs.project }}
           save-cache: 'true'

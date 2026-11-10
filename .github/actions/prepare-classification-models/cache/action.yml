@@ -1,5 +1,0 @@
-name: Classification model cache transport
-description: Provide the Actions cache toolkit to the Python model preparation helper
-runs:
-  using: node24
-  main: index.js
