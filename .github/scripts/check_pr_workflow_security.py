@@ -9,8 +9,9 @@ import yaml
 
 
 ROOT = Path(__file__).resolve().parents[2]
-EXPRESSIONS = re.compile(r"\$\{\{(.*?)\}\}", re.DOTALL)
-READ_TOKEN = re.compile(r"\bsecrets(?:\.GITHUB_TOKEN\b|\[\s*'GITHUB_TOKEN'\s*\])")
+READ_TOKEN = re.compile(
+    r"\bsecrets(?:\.GITHUB_TOKEN\b|\[\s*'GITHUB_TOKEN'\s*\])", re.IGNORECASE
+)
 
 
 def split_expression(expression: str, operator: str) -> list[str]:
@@ -26,9 +27,9 @@ def split_expression(expression: str, operator: str) -> list[str]:
                 continue
             quoted = not quoted
         elif not quoted:
-            if char == "(":
+            if char in "([":
                 depth += 1
-            elif char == ")":
+            elif char in ")]":
                 depth -= 1
             elif depth == 0 and expression.startswith(operator, index):
                 parts.append(expression[start:index].strip())
@@ -69,6 +70,7 @@ def excludes_pull_request(condition: str) -> bool:
     if not match:
         return False
     operator, event = match.groups()
+    event = event.casefold()
     return (operator == "!=" and event == "pull_request") or (
         operator == "==" and event != "pull_request"
     )
@@ -86,11 +88,16 @@ def strings(value):
 
 
 def has_secrets(value) -> bool:
-    return any(
-        re.search(r"(?<![\w.])secrets\b", READ_TOKEN.sub("", expression))
-        for value_string in strings(value)
-        for expression in EXPRESSIONS.findall(value_string)
-    )
+    for value_string in strings(value):
+        start = value_string.find("${{")
+        # A quoted '}}' is legal inside an expression, so scan through the whole value.
+        if start >= 0 and re.search(
+            r"(?<![\w.])secrets\b",
+            READ_TOKEN.sub("", value_string[start:]),
+            re.IGNORECASE,
+        ):
+            return True
+    return False
 
 
 def read_only(permissions) -> bool:
@@ -139,6 +146,18 @@ def check_workflows(root: Path = ROOT) -> list[str]:
                     f"{location}: use a hosted runner without ambient credentials"
                 )
             for step in job.get("steps", []):
+                if (
+                    step.get("uses", "").startswith("dorny/paths-filter@")
+                    and not excludes_pull_request(step.get("if", ""))
+                    and permissions != "read-all"
+                    and (
+                        not isinstance(permissions, dict)
+                        or permissions.get("pull-requests") != "read"
+                    )
+                ):
+                    failures.append(
+                        f"{location}: PR file detection needs pull-requests: read"
+                    )
                 if step.get("uses", "").startswith("actions/checkout@"):
                     if step.get("with", {}).get("persist-credentials") != "false":
                         failures.append(

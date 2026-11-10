@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ui-checkstyle-${{ github.event.pull_request.number || github.run_id }}

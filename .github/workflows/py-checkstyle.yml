@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: py-checkstyle-${{ github.event.pull_request.number || github.run_id }}

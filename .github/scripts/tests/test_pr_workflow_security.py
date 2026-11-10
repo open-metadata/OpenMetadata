@@ -38,6 +38,10 @@ def workflow(tmp_path, job, *, extra=None):
     [
         "${{ secrets.COLLATE_PAT }}",
         "${{ secrets.GITHUB_TOKEN_EXTRA }}",
+        "${{ SECRETS.COLLATE_PAT }}",
+        "${{ toJSON(SeCrEtS) }}",
+        "${{ '}}' && secrets.REPO_TOKEN }}",
+        "${{ 'it''s }}' && SECRETS['TOKEN'] }}",
         "${{ secrets['TOKEN'] }}",
         "${{ secrets[format('{0}_SSO_PASSWORD', matrix.provider)] }}",
         "${{ toJSON(secrets) }}",
@@ -73,6 +77,7 @@ def test_pr_cannot_receive_write_permissions(tmp_path, permissions):
 
 def test_read_token_and_explicit_non_pr_jobs_are_allowed(tmp_path):
     assert workflow(tmp_path, {"env": {"TOKEN": "${{ secrets.GITHUB_TOKEN }}"}}) == []
+    assert workflow(tmp_path, {"env": {"TOKEN": "${{ SECRETS.github_token }}"}}) == []
     assert (
         workflow(
             tmp_path,
@@ -95,6 +100,19 @@ def test_or_branch_cannot_bypass_event_exclusion(tmp_path):
         },
     )
     assert any("remove secret references" in error for error in errors)
+
+
+def test_case_insensitive_event_comparison_cannot_hide_a_pr_job(tmp_path):
+    errors = workflow(
+        tmp_path,
+        {
+            "if": "github.event_name == 'PULL_REQUEST'",
+            "env": {"TOKEN": "${{ SECRETS.TOKEN }}"},
+            "permissions": {"contents": "write"},
+        },
+    )
+    assert any("remove secret references" in error for error in errors)
+    assert any("read-only" in error for error in errors)
 
 
 def test_global_environment_and_job_environment_are_checked(tmp_path):
@@ -152,6 +170,12 @@ def test_checkout_does_not_persist_credentials(tmp_path):
     )
 
 
+def test_pr_file_detection_retains_required_read_access(tmp_path):
+    job = {"steps": [{"uses": "dorny/paths-filter@v4"}]}
+    assert any("pull-requests: read" in error for error in workflow(tmp_path, job))
+    assert workflow(tmp_path, {**job, "permissions": {"pull-requests": "read"}}) == []
+
+
 @pytest.mark.parametrize(
     "condition,excluded",
     [
@@ -164,6 +188,12 @@ def test_checkout_does_not_persist_credentials(tmp_path):
             True,
         ),
         ("(github.event_name != 'pull_request') || (always())", False),
+        ("github.event_name == 'PULL_REQUEST'", False),
+        ("github.event_name != 'Pull_Request'", True),
+        (
+            "fromJSON(format('{{\"false\":{0}}}', true))[true && github.event_name != 'pull_request' && false]",
+            False,
+        ),
         ("contains('github.event_name != ''pull_request''', github.actor)", False),
     ],
 )
