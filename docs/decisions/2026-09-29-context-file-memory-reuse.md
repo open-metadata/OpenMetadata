@@ -78,7 +78,8 @@ ones. The file is marked `Processed` only after the extraction and reconciliatio
 #### §4 amended 2026-11-10: a document's archive, restore and sharing move its memories
 
 Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclosureTest`,
-`ContextMemoryRepositoryTest`, `ContextMemoryExtractionIT` and `ContextFileIT`.
+`ContextMemoryRepositoryTest`, `ContextMemoryReconcilerTest`, `ContextMemoryExtractorTest` and
+`ContextMemoryExtractionIT`; `ContextFileIT` guards a file's archive, mark and restore.
 
 - **Archive.** Archiving (soft-deleting) a file soft-deletes each memory no other live source
   states; it keeps its links, so restoring the file can bring it back. A memory another live source
@@ -125,13 +126,18 @@ Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclo
   new memory with its own clock.
 - **Articles** have no Archive. `page.json` has no `deleted` field, so every article delete is
   permanent and releases its memories; `PUT /pages/restore` exists but has nothing to restore.
-- **Where a restricted document is named.** A document not everyone may read is never added to a
-  memory's related entities, and no lifecycle write after this change names it in the memory's
-  history: such a write records it by id and type alone, in its change and in the version it
-  stores. A memory shows it as its source only when it is the memory's anchor, whose readers are the
-  memory's readers, or when no anchor and no document everyone may read is linked
-  (`MemorySourceDisclosure`). History written while a file was org-wide can still name it, and so
-  can a person's own edit of the memory.
+- **Where a restricted document is named.** Linking and lifecycle writes never add a document not
+  everyone may read to a memory's related entities; a person's own edit can, and is recorded as made.
+  No lifecycle write after this change names such a document in the memory's history: it records it
+  by id and type alone, in its change and in the version it stores. A memory shows it as its source
+  only when it is the memory's anchor, whose readers are the memory's readers, or when no anchor and
+  no document everyone may read is linked (`MemorySourceDisclosure`). History written while a file
+  was org-wide still names it: these conditional writes are never consolidated, so each stores the
+  memory as it was, withheld, as a new version and leaves the earlier ones as they were.
+- **Naming.** An extracted memory, and a copy, is named `memory-<uuid>`. A name is the memory's FQN
+  and never changes, and a memory can move to a document whose readers may not read the one it came
+  from, so a name names no document. Memories extracted before this change keep their
+  `<file>-<uuid>` names; 2.1 is unreleased, so only test environments have them.
 - **Sharing changes.** Only a file's own share setting counts; a folder shares nothing of its own.
   Inside the write that turns a file from org-wide to restricted, every memory it is linked to stops
   naming it among its related entities, and one it anchors moves to a live source everyone may read,
@@ -144,26 +150,35 @@ Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclo
   not everyone may read, unless every reader of that source reads the anchor too. A file's readers
   are its user owners and, when it is Shared, the principals it names, matched by id: teams are not
   expanded, a team owner reads nothing it owns, and a Private file's leftover list names nobody. A
-  wrong call costs a duplicate memory for people who read both files. The copy has the memory's
-  title, summary, description, question, answer, machine representation, type, scope, source type,
-  stage, status reason, successor and last review, and its owners and sharing. It is anchored on and
-  linked to that source alone, which stops linking the original, and that move is why restricting
-  the file again makes no second copy. Nothing extracts, reconciles or judges it, no glossary term is
-  derived from it, and it is indexed as it is created (with vector search on, that embeds its text,
-  as for every memory). It carries no disputes or review tasks, approval history, usage or related
-  entities. Archiving runs the same rule, against the anchor `chooseAnchor` picked, when only
-  restricted live sources remain.
-- **Sharing limits.** A person's note with no anchor that cites the file only loses or regains it
-  among its related entities. A memory a person deleted is left as it is. An extracted memory is
-  named after the file it came from (`<file>-<uuid>`) and a name never changes, so a memory that moves
-  to a copy keeps the original's name in its `name` and `fullyQualifiedName`. A permanent delete
-  that skips the Archive, or a re-extraction that drops the fact from its anchor, moves the anchor
-  by the same ranking but makes no copies. The share change and its moves commit together, and they
-  run only inside a transaction.
-- **Lifecycle writes are conditional** on the memory as they read it. A decision another user
-  writes on it meanwhile fails the archive, restore or share change with 412, to be retried, instead
-  of being overwritten; a write by the same user within an edit session is consolidated without that
-  check.
+  wrong call costs a duplicate memory for people who read both files. Separately, when a document
+  leaves those everyone may read (restricted, archived or released) and a memory would then show a
+  restricted document that is not its anchor, such as one a person anchored on an asset whose only
+  document is F, that document takes the memory's copy, or for a retired memory just stops linking it.
+- **What a copy is.** It has the memory's title, summary, description, question, answer, machine
+  representation, type, scope, source type, stage, status reason and last review, and is anchored on
+  and linked to its document alone, which stops linking the original; that move is why restricting
+  the file again makes no second copy. It takes extraction's defaults for the rest: a generated name,
+  its creator as owner and Entity visibility, so no owner or principal of the original reads it
+  through them. It carries no disputes, review tasks, approval history, usage or related entities.
+  Only a memory in use, under review or rejected (Unprocessed, Draft, Approved, Rejected) is copied:
+  Superseded and Deprecated carry a `supersededBy` the copy's readers may not read, and Invalidated
+  and Archived retire a memory without one; such a memory gets no copy and blocks nothing. No
+  extraction, duplicate judge or reconciliation runs for a copy, and no glossary term is derived from
+  it; with vector search on, indexing it embeds its text, as any memory write does.
+- **Sharing limits.** A person's note cites documents through its related entities, and the
+  transitions visit only the memories a document is linked to as a source, so a note citing F keeps
+  naming it: a person's own citation, out of scope. A memory a person deleted is left as it is. A
+  release, a permanent delete that skips the Archive or a re-extraction that drops the fact, moves
+  the anchor by the same ranking but copies only for a document the memory would otherwise show.
+  Two PATCHes restricting the same file at once can each make copies. The share change and its
+  moves commit together, and they run only inside a transaction.
+- **Lifecycle writes are conditional** on the memory as they read it, so a decision written on it
+  meanwhile fails the archive, restore or share change with 412 ("The memory has been modified.
+  Please refresh and retry.") instead of being overwritten, and the person retries. On MySQL's
+  REPEATABLE READ those reads are snapshot reads, so a decision landing anywhere inside that
+  transaction fails it, and the linking write's bounded attempts cannot succeed within one snapshot.
+  A re-extraction's release that a decision overtook leaves the link, as the reconciler's other
+  conditional writes do, and the next extraction reconciles it.
 
 ## Consequences
 
