@@ -86,8 +86,14 @@ jobs:
           # was watching went on to pass.
           WAIT_SECONDS: 5700
         run: |
+          # Collate's push mode follows the branch tip instead of inputs.sha.
+          # Its dispatched-run mode pins the supplied immutable OpenMetadata SHA.
+          dispatch_event="$EVENT"
+          if [ "$dispatch_event" = push ]; then
+            dispatch_event=workflow_dispatch
+          fi
           run_id=$(gh api -X POST "repos/$COLLATE_REPO/actions/workflows/openmetadata-dispatch.yml/dispatches" \
-            -f ref="$COLLATE_REF" -f "inputs[sha]=$SHA" -f "inputs[event]=$EVENT" \
+            -f ref="$COLLATE_REF" -f "inputs[sha]=$SHA" -f "inputs[event]=$dispatch_event" \
             -F return_run_details=true --jq .workflow_run_id)
           if [ -z "$run_id" ]; then
             echo "::error::The dispatch returned no run id; find the run at https://github.com/$COLLATE_REPO/actions/workflows/openmetadata-dispatch.yml"

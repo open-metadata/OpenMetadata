@@ -82,22 +82,43 @@ def test_trusted_checks_follow_the_release_branch(filename, job_id):
     assert f"github.ref == 'refs/heads/{RELEASE_BRANCH}'" in condition
 
 
-def test_collate_dispatch_uses_matching_release_and_propagates_failure(tmp_path):
-    job = load("maven-build-collate.yml")["jobs"]["maven-collate-ci"]
-    resolve = next(s for s in job["steps"] if s.get("id") == "collate-ref")
-    output = tmp_path / "output"
-    result = subprocess.run(
-        ["bash", "-c", resolve["run"]],
-        env={
-            **os.environ,
-            "BASE_REF": f"refs/heads/{RELEASE_BRANCH}",
-            "GITHUB_OUTPUT": str(output),
-        },
-        capture_output=True,
-        text=True,
-    )
-    assert result.returncode == 0, result.stderr
-    assert output.read_text().strip() == f"ref={RELEASE_BRANCH}"
+@pytest.mark.parametrize(
+    "filename,job_id,step_name",
+    [
+        ("maven-build-collate.yml", "maven-collate-ci", "Trigger Collate build & wait"),
+        *(
+            [
+                (
+                    "data-access-request-e2e.yml",
+                    "data-access-request-e2e",
+                    "Trigger Collate Playwright run & wait",
+                )
+            ]
+            if RELEASE_BRANCH != "1.13"
+            else []
+        ),
+    ],
+)
+@pytest.mark.parametrize("event", ["push", "merge_group", "workflow_dispatch"])
+def test_collate_dispatch_pins_release_sha_and_propagates_failure(
+    tmp_path, filename, job_id, step_name, event
+):
+    job = load(filename)["jobs"][job_id]
+    if filename == "maven-build-collate.yml":
+        resolve = next(s for s in job["steps"] if s.get("id") == "collate-ref")
+        output = tmp_path / "output"
+        result = subprocess.run(
+            ["bash", "-c", resolve["run"]],
+            env={
+                **os.environ,
+                "BASE_REF": f"refs/heads/{RELEASE_BRANCH}",
+                "GITHUB_OUTPUT": str(output),
+            },
+            capture_output=True,
+            text=True,
+        )
+        assert result.returncode == 0, result.stderr
+        assert output.read_text().strip() == f"ref={RELEASE_BRANCH}"
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir()
     gh = bin_dir / "gh"
@@ -108,9 +129,7 @@ def test_collate_dispatch_uses_matching_release_and_propagates_failure(tmp_path)
     timeout = bin_dir / "timeout"
     timeout.write_text('#!/bin/bash\nshift\nexec "$@"\n')
     timeout.chmod(0o755)
-    dispatch = next(
-        s for s in job["steps"] if s.get("name") == "Trigger Collate build & wait"
-    )
+    dispatch = next(s for s in job["steps"] if s.get("name") == step_name)
     log = tmp_path / "calls"
     env = {
         **os.environ,
@@ -119,7 +138,7 @@ def test_collate_dispatch_uses_matching_release_and_propagates_failure(tmp_path)
         "COLLATE_REPO": "org/private-repo",
         "COLLATE_REF": RELEASE_BRANCH,
         "SHA": "reviewed-sha",
-        "EVENT": "push",
+        "EVENT": event,
         "WAIT_SECONDS": "5",
     }
     for watch_status in (0, 1, 124):
@@ -133,6 +152,10 @@ def test_collate_dispatch_uses_matching_release_and_propagates_failure(tmp_path)
     calls = log.read_text()
     assert f"ref={RELEASE_BRANCH}" in calls
     assert "inputs[sha]=reviewed-sha" in calls
+    # Existing Collate receivers skip their SHA-pinning step in push mode.
+    expected_event = "workflow_dispatch" if event == "push" else event
+    assert f"inputs[event]={expected_event}" in calls
+    assert "inputs[event]=push" not in calls
 
 
 def test_required_checks_still_exist():
