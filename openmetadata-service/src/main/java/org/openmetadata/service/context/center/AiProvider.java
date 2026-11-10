@@ -37,6 +37,9 @@ public interface AiProvider {
   /**
    * Whether memories can be extracted now, and why not: uploads and article edits extract only
    * while it is. By default that takes the LLM layer and {@code memoryExtractionEnabled}.
+   *
+   * <p>Article prepare and update call it, so an override must be cheap, must never throw or return
+   * null, and must answer the same way throughout one request.
    */
   default ExtractionAvailability extractionAvailability() {
     return LLMClientHolder.isMemoryExtractionEnabled()

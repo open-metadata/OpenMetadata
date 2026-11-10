@@ -103,7 +103,11 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
 
-  /** What the Documents list reads of a file, so an Extract response can replace its row. */
+  /**
+   * What the Documents list reads of a file, so an Extract response can replace its row; the UI's
+   * CONTEXT_FILE_FIELDS changes with it
+   * (ADR:2026-11-09-a-documents-owner-or-an-admin-starts-or-retries-its-extraction).
+   */
   private static final String EXTRACTION_RESPONSE_FIELDS =
       "owners,folder,memoryCount," + MemoryExtractionState.NEVER_EXTRACTED;
 
@@ -817,7 +821,10 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
                 "Already queued or being extracted, nothing to extract, or extraction unavailable"),
         @ApiResponse(
             responseCode = "503",
-            description = "The queue could not take the run; the file is left Failed to retry")
+            description =
+                "The queue refused the run. The file is left Failed to retry, unless concurrent"
+                    + " writes keep that from being recorded: it then stays in progress, and a"
+                    + " retry gets 409 until a restart resubmits it")
       })
   public ContextFile requestExtraction(
       @Context UriInfo uriInfo,

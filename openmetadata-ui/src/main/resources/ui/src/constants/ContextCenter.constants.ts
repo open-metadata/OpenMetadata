@@ -25,7 +25,8 @@ export const DOCUMENT_MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const CONTEXT_FILE_ENTITY_TYPE = 'contextFile';
 /**
  * The fields every file read asks for. They match the server's EXTRACTION_RESPONSE_FIELDS, so an
- * Extract response replaces a Documents row as it is; owners gate Extract and Retry.
+ * Extract response replaces a Documents row as it is; owners gate Extract and Retry
+ * (ADR:2026-11-09-a-documents-owner-or-an-admin-starts-or-retries-its-extraction).
  */
 export const CONTEXT_FILE_FIELDS = 'owners,folder,memoryCount,neverExtracted';
 

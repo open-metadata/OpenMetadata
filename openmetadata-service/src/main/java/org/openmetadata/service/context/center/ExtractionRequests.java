@@ -23,7 +23,9 @@ import org.openmetadata.service.context.center.ContextProcessingEngine.Condition
 
 /**
  * What an Extract or Retry of one file or article answers when it cannot start, the same for both:
- * a 409 before anything is written, or a 503 once a run the queue refused is recorded as Failed.
+ * a 409 before anything is written, or a 503 once the queue refused its run, recorded as Failed
+ * unless contention outlasts every budget
+ * (ADR:2026-11-09-a-documents-owner-or-an-admin-starts-or-retries-its-extraction).
  */
 @Slf4j
 final class ExtractionRequests {
@@ -42,14 +44,17 @@ final class ExtractionRequests {
 
   private ExtractionRequests() {}
 
-  /** Refuses a request whose run the queue would not take, once the document is left Failed. */
+  /** Refuses a request whose run the queue would not take, after trying to leave it Failed. */
   static ServiceUnavailableException queueRefused(
       String entityType, UUID id, String reason, Runnable recordFailure) {
     recordFailure(entityType, id, recordFailure);
     return new ServiceUnavailableException(reason);
   }
 
-  /** Leaves a document whose run could not be queued Failed, so the next Extract can retry it. */
+  /**
+   * Leaves a document whose run could not be queued Failed, so the next Extract can retry it. One
+   * that loses every round keeps its in-progress status, refusing Extract until it is recovered.
+   */
   static void recordFailure(String entityType, UUID id, Runnable recordFailure) {
     boolean recorded = false;
     for (int round = 1; round <= FAILURE_RECORD_ROUNDS && !recorded; round++) {
