@@ -33,7 +33,12 @@ existing recovery resumed it:
   - It gets no automatic retry. Its owner or an admin recovers it with Retry (#37479).
   - A failure the run determines itself keeps its own message, such as no object storage or an
     empty read.
-  - A crash still leaves no stamp, so the startup scan resumes the file as before.
+  - A crash still leaves no stamp, so the startup scan resumes the file as before. So does a
+    stop whose stamp cannot land: a parse that outlives the shutdown grace period, or a database
+    pool that closes first. The file keeps its in-progress status until the next startup, and
+    Retry refuses it until then.
+  - While the server is stopping, a thrown parse failure reads `Interrupted by a server stop`
+    too, since a closing object store throws like any read; Retry then shows the real error.
 - **One rule says what a stop cut short** (`Interruptions.isStopInterruption`). It holds when any
   of these does:
   - `ServerStopping` is set;
