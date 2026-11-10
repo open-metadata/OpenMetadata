@@ -105,12 +105,14 @@ const SignUp = () => {
     setLoading(true);
 
     try {
-      const { picture, ...userData } = data;
+      // Form values also carry IdP profile data (e.g. picture); CreateUser rejects unknown fields.
       const res = await createUser({
-        ...userData,
-        teams: (data.teams as EntityReference[])?.map((t) => t.id),
+        name: data.name,
+        displayName: data.displayName,
+        email: data.email,
+        teams: data.teams?.map((t) => t.id),
         profile: {
-          images: getImages(picture ?? ''),
+          images: getImages(data.picture ?? ''),
         },
       });
       updateCurrentUser(res);
