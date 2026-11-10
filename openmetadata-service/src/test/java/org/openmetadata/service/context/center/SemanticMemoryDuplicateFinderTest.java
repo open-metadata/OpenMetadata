@@ -824,7 +824,10 @@ class SemanticMemoryDuplicateFinderTest {
         .findMatch(
             memory(UUID.randomUUID(), "What is churn?", "Customers leave.")
                 .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED));
-    keywordFinder().findMatch(memory(UUID.randomUUID(), "What is churn?", "Customers leave."));
+    // memoryScope defaults to EntityScoped, so a value stored without one is an explicit null.
+    keywordFinder()
+        .findMatch(
+            memory(UUID.randomUUID(), "What is churn?", "Customers leave.").withMemoryScope(null));
 
     ArgumentCaptor<String> filters = ArgumentCaptor.forClass(String.class);
     verify(searchClient, times(2))
