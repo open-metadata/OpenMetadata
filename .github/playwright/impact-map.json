@@ -90,6 +90,22 @@
   ],
   "mappings": [
     {
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/HistoryUtils*",
+        "openmetadata-ui/src/main/resources/ui/src/rest/apiBaseUrl*",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/system/IndexResource.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/socket/OpenMetadataAssetServlet.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/system/IndexResource*",
+        "openmetadata-service/src/test/java/org/openmetadata/service/socket/OpenMetadataAssetServlet*",
+        "openmetadata-service/src/test/resources/assets/**",
+        "openmetadata-ui/src/main/resources/ui/src/context/WebSocketProvider/*.test.tsx",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCustomLocation/*.test.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLogStream.test.ts"
+      ],
+      "projects": ["chromium"],
+      "specs": ["playwright/e2e/Features/BasePath.spec.ts"]
+    },
+    {
       "_comment": "QueryViewer renders the topic Config, search index Settings, table dbt and View Definition tabs and the incident SQL Query tab.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/QueryViewer/**",

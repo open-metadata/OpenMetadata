@@ -47,10 +47,6 @@ jest.mock('../utils/Auth/AuthCoordinator/AuthCoordinator', () => ({
   },
 }));
 
-jest.mock('../utils/HistoryUtils', () => ({
-  getBasePath: jest.fn().mockReturnValue(''),
-}));
-
 const mockFetchEventSource = fetchEventSource as jest.MockedFunction<
   typeof fetchEventSource
 >;
@@ -377,6 +373,30 @@ describe('useLogStream', () => {
 });
 
 describe('log stream urls', () => {
+  const originalBasePath = Object.getOwnPropertyDescriptor(
+    globalThis,
+    'BASE_PATH'
+  );
+
+  afterEach(() => {
+    if (originalBasePath) {
+      Object.defineProperty(globalThis, 'BASE_PATH', originalBasePath);
+    } else {
+      Reflect.deleteProperty(globalThis, 'BASE_PATH');
+    }
+  });
+
+  it.each(['/openmetadata', '/openmetadata/', '/team/catalog'])(
+    'keeps the complete %s log stream prefix',
+    (basePath) => {
+      Reflect.set(globalThis, 'BASE_PATH', basePath);
+
+      expect(getIngestionLogStreamUrl(FQN, RUN_ID)).toBe(
+        `${basePath.replace(/\/$/, '')}${BASE_URL}`
+      );
+    }
+  );
+
   it('builds the ingestion stream url with an encoded fqn and run id', () => {
     expect(getIngestionLogStreamUrl(FQN, RUN_ID)).toBe(BASE_URL);
   });

@@ -61,9 +61,59 @@ const buildFakeJwt = (expSeconds: number) => {
 };
 
 describe('GenericAuthenticator', () => {
+  const originalBasePath = Object.getOwnPropertyDescriptor(
+    globalThis,
+    'BASE_PATH'
+  );
+  const originalLocation = Object.getOwnPropertyDescriptor(window, 'location');
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
+
+  afterEach(() => {
+    if (originalBasePath) {
+      Object.defineProperty(globalThis, 'BASE_PATH', originalBasePath);
+    } else {
+      Reflect.deleteProperty(globalThis, 'BASE_PATH');
+    }
+    if (originalLocation) {
+      Object.defineProperty(window, 'location', originalLocation);
+    }
+  });
+
+  it.each(['/openmetadata', '/openmetadata/', '/team/catalog'])(
+    'keeps the complete %s prefix when starting authentication',
+    (basePath) => {
+      Reflect.set(globalThis, 'BASE_PATH', basePath);
+      const locationAssign = jest.fn();
+      Object.defineProperty(window, 'location', {
+        configurable: true,
+        value: { origin: 'http://localhost', assign: locationAssign },
+      });
+      const ref = createRef<AuthenticatorRef>();
+      render(
+        <MemoryRouter>
+          <GenericAuthenticator ref={ref}>
+            <div />
+          </GenericAuthenticator>
+        </MemoryRouter>
+      );
+      act(() => ref.current?.invokeLogin());
+
+      const loginUrl = new URL(
+        locationAssign.mock.calls[0][0],
+        'http://localhost'
+      );
+
+      expect(loginUrl.pathname).toBe(
+        `${basePath.replace(/\/$/, '')}/api/v1/auth/login`
+      );
+      expect(loginUrl.searchParams.get('redirectUri')).toBe(
+        'http://localhost/auth/callback'
+      );
+    }
+  );
 
   it('should render children', () => {
     const { getByText } = render(

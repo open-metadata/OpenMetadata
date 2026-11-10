@@ -28,10 +28,15 @@ import java.util.regex.Pattern;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.configuration.SentryConfiguration;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.security.CspNonceHandler;
 
+@Isolated
 class IndexResourceTest {
   private IndexResource resource;
 
@@ -193,5 +198,66 @@ class IndexResourceTest {
     assertFalse(
         etagRoot.equals(etagCustom),
         "ETag for two different basePaths must differ — they produce different bodies");
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/openmetadata", "/team/catalog", "/Team/%E9%9B%AA", "/team//catalog"})
+  void testPrefixesWithAndWithoutTrailingSlashRenderTheSameAssets(String prefix) {
+    String html = IndexResource.getIndexFile(prefix);
+    assertEquals(IndexResource.getIndexFile(prefix + "/"), html);
+    assertEquals(IndexResource.getIndexFile(prefix + "///"), html);
+    assertTrue(html.contains("window.BASE_PATH = '" + prefix + "/'"));
+    assertTrue(html.contains("src=\"" + prefix + "/assets/test.js\""));
+    assertTrue(html.contains("href=\"" + prefix + "/assets/test.css\""));
+    assertTrue(html.contains("href=\"" + prefix + "/favicon.png\""));
+    assertTrue(html.contains("href=\"" + prefix + "/manifest.json\""));
+    assertTrue(html.contains("'" + prefix + "/images/governance.png'"));
+    assertFalse(html.contains("${basePath}"));
+    assertEquals(IndexResource.getIndexEtag(prefix + "/"), IndexResource.getIndexEtag(prefix));
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"/", "////"})
+  void testEmptyAndRootPrefixesRenderRootAssets(String prefix) {
+    assertEquals(IndexResource.getIndexFile("/"), IndexResource.getIndexFile(prefix));
+    assertEquals(IndexResource.getIndexEtag("/"), IndexResource.getIndexEtag(prefix));
+    assertEquals(
+        IndexResource.getSilentCallbackFile("/"), IndexResource.getSilentCallbackFile(prefix));
+    assertEquals(
+        IndexResource.getSilentCallbackEtag("/"), IndexResource.getSilentCallbackEtag(prefix));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/openmetadata", "/team/catalog", "/Team/%E9%9B%AA"})
+  void testSilentCallbackUsesCanonicalPrefixAndIsolatedBundle(String prefix) {
+    String html = IndexResource.getSilentCallbackFile(prefix, "callback-nonce");
+    assertEquals(IndexResource.getSilentCallbackFile(prefix + "/", "callback-nonce"), html);
+    assertTrue(html.contains("src=\"" + prefix + "/assets/silent-callback.js\""));
+    assertTrue(html.contains("nonce=\"callback-nonce\""));
+    assertFalse(html.contains("${basePath}"));
+    assertFalse(html.contains("${cspNonce}"));
+    assertFalse(html.contains("id=\"root\""));
+    assertFalse(html.contains("assets/test.js"));
+    assertEquals(
+        IndexResource.getSilentCallbackEtag(prefix + "/"),
+        IndexResource.getSilentCallbackEtag(prefix));
+    assertFalse(
+        IndexResource.getIndexEtag(prefix).equals(IndexResource.getSilentCallbackEtag(prefix)));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"/openmetadata", "/openmetadata/", "/team/catalog"})
+  void testConfiguredPrefixIsCanonicalInResourceResponse(String prefix) {
+    OpenMetadataApplicationConfig config = new OpenMetadataApplicationConfig();
+    config.setBasePath(prefix);
+    try {
+      IndexResource.initialize(config);
+      Response response = resource.getIndex(mock(HttpServletRequest.class));
+      assertEquals(200, response.getStatus());
+      assertEquals(IndexResource.getIndexFile(prefix + "/"), response.getEntity());
+    } finally {
+      initIndex();
+    }
   }
 }

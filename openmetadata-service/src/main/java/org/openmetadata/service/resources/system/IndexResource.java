@@ -61,8 +61,7 @@ public class IndexResource {
       throw new IllegalStateException("Failed to load /assets/index.html", e);
     }
 
-    String basePath = catalogConfig.getBasePath();
-    configuredBasePath = (basePath != null && !basePath.isEmpty()) ? basePath : "/";
+    configuredBasePath = normalizeHtmlBasePath(catalogConfig.getBasePath());
     SentryConfiguration sentryConfig = catalogConfig.getSentryConfiguration();
     String clusterName = catalogConfig.getClusterName();
     configProcessedHtml =
@@ -113,6 +112,11 @@ public class IndexResource {
     return StringEscapeUtils.escapeEcmaScript(value);
   }
 
+  private static String normalizeHtmlBasePath(String basePath) {
+    String prefix = basePath == null ? "" : basePath.replaceAll("/+$", "");
+    return prefix + "/";
+  }
+
   public static String getIndexFile(String basePath) {
     String html = configProcessedHtml;
     if (html == null) {
@@ -120,7 +124,7 @@ public class IndexResource {
     }
 
     LOG.debug("IndexResource.getIndexFile called with basePath: [{}]", basePath);
-    return html.replace("${basePath}", basePath);
+    return html.replace("${basePath}", normalizeHtmlBasePath(basePath));
   }
 
   public static String getIndexFile(String basePath, String cspNonce) {
@@ -144,7 +148,7 @@ public class IndexResource {
    * the CSP header. The asset servlet enforces this guard.
    */
   public static String getIndexEtag(String basePath) {
-    String key = basePath == null ? "/" : basePath;
+    String key = normalizeHtmlBasePath(basePath);
     EtagCacheEntry cached = ETAG_CACHE.getIfPresent(key);
     String stableHtml = getIndexFile(basePath);
     if (cached != null && cached.stableHtml.equals(stableHtml)) {
@@ -165,7 +169,7 @@ public class IndexResource {
     if (html == null) {
       return null;
     }
-    return html.replace("${basePath}", basePath);
+    return html.replace("${basePath}", normalizeHtmlBasePath(basePath));
   }
 
   /**
@@ -193,7 +197,7 @@ public class IndexResource {
     if (silentCallbackRawHtml == null) {
       return null;
     }
-    String key = basePath == null ? "/" : basePath;
+    String key = normalizeHtmlBasePath(basePath);
     EtagCacheEntry cached = SILENT_CALLBACK_ETAG_CACHE.getIfPresent(key);
     String stableHtml = getSilentCallbackFile(basePath);
     if (cached != null && cached.stableHtml.equals(stableHtml)) {
