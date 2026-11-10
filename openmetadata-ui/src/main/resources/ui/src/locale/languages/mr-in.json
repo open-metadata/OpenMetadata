@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "निकालांमध्ये स्वतंत्रपणे दाखवायच्या शीर्ष मिती मूल्यांची संख्या (1-50, पूर्वनिर्धारित 5). उर्वरित मूल्ये \"इतर\" गटात एकत्र केली जातात.",
+    "document-no-longer-exists-or-archived": "हा दस्तऐवज आता अस्तित्वात नाही किंवा संग्रहणात हलवला गेला आहे.",
     "documents-uploaded-successfully": "दस्तऐवज यशस्वीरित्या अपलोड केले",
     "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-belong-description": "Data domains you belong to",

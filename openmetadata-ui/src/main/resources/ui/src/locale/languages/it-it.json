@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Scegli se il test viene eseguito a livello di tabella, colonna o dimensione. I campi qui sotto si adattano al livello scelto.",
     "doc-field-test-type": "Il tipo di convalida da eseguire. Scegli un test a livello di tabella o di colonna; i parametri qui sotto si adattano alla tua selezione.",
     "doc-field-top-dimensions": "Quanti valori principali delle dimensioni mostrare singolarmente nei risultati (1-50, predefinito 5). I valori rimanenti vengono raggruppati nella voce \"Altri\".",
+    "document-no-longer-exists-or-archived": "Questo documento non esiste più o è stato spostato nell'Archivio.",
     "documents-uploaded-successfully": "Documenti caricati correttamente",
     "domain-access-restricted": "Hai accesso solo ai domini che ti sono stati assegnati.",
     "domain-belong-description": "Domini di dati a cui appartieni",

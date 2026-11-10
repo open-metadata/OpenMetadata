@@ -434,6 +434,24 @@ class ContextMemoryExtractionRequestIT {
     assertEquals(1, jobs().countInFlightMemoryJobs(pageJob(page), true));
   }
 
+  /** An edit whose run the queue refuses leaves the article Failed to retry, not Queued for good. */
+  @Test
+  void anEditWhoseRunTheQueueRefusesLeavesTheArticleFailedToRetry(TestNamespace ns)
+      throws Exception {
+    Page page = articleWrittenWhileOff(ns, "edit-refused");
+    installPageWorker(refusingPageJobs());
+
+    bodyEditedByItsOwner(page);
+
+    Page failed = read(page);
+    assertEquals(PageProcessingStatus.Failed, failed.getProcessingStatus());
+    assertEquals(QUEUE_FAILED, failed.getProcessingError());
+    assertEquals(0, jobs().countInFlightMemoryJobs(pageJob(page), true));
+    installPageWorker(jobs());
+    Page retried = accepted(extract(asOwner(), PAGES, page.getId()), Page.class);
+    assertEquals(PageProcessingStatus.Queued, retried.getProcessingStatus());
+  }
+
   @Test
   void extractingAnArticleWhileUnavailableGets409WithReason(TestNamespace ns) throws Exception {
     Page page = articleWrittenWhileOff(ns, "unavailable");
@@ -716,6 +734,18 @@ class ContextMemoryExtractionRequestIT {
                     .withOwners(List.of(owner)),
                 Page.class);
     return ns.trackRoot(Entity.PAGE, page);
+  }
+
+  private Page bodyEditedByItsOwner(Page page) throws Exception {
+    Page current = RestClient.admin().getById(PAGES, page.getId(), "", Page.class);
+    return asOwner()
+        .patch(
+            PAGES,
+            page.getId(),
+            JsonUtils.pojoToJson(current),
+            JsonUtils.deepCopy(current, Page.class)
+                .withDescription(current.getDescription() + " Edited."),
+            Page.class);
   }
 
   /** Written while extraction was off: never queued, so no run has read its body. */

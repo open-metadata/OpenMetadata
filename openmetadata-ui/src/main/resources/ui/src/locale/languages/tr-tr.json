@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "Sonuçlarda ayrı olarak gösterilecek en yüksek boyut değeri sayısı (1-50, varsayılan 5). Kalan değerler bir \"Diğer\" grubunda toplanır.",
+    "document-no-longer-exists-or-archived": "Bu belge artık mevcut değil veya Arşiv'e taşındı.",
     "documents-uploaded-successfully": "Belgeler başarıyla yüklendi",
     "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-belong-description": "Data domains you belong to",

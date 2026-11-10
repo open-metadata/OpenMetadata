@@ -38,10 +38,11 @@ every such document without anyone asking for it.
   - `ExtractionDisabled`: the LLM or memory extraction is switched off.
   - `ProviderDisabled`: the provider's own AI platform is switched off. OSS's default provider never
     answers it; Collate's does while its AI platform is off. It is not `ProviderUnavailable`
-    because an admin acts differently: a platform that is off is turned on, one that is down is
-    fixed.
+    because an admin acts differently: a platform that is off is turned on, a provider that is
+    unavailable is fixed.
   - `ProviderUnavailable`: extraction is switched on but its LLM failed to build, or, in Collate,
-    the AI platform is down or its extraction agent is missing.
+    its extraction agent is missing. An outage is not detected: it fails the run, and Retry
+    recovers it.
   - A switch that is off wins over a failed build.
 - **What the UI reads.** Every action on a page shares one availability read. It is read again
   once a minute old, on focus or when another action mounts, and after every 409. While extraction
@@ -81,10 +82,16 @@ every such document without anyone asking for it.
   Neither promises a retry, since a retry can get 409 (below). The UI says memory extraction
   couldn't be queued and to try again in a few minutes, and reads the document again, which offers
   Retry once it is Failed. No job is left to record the failure, so it gets up to
-  `FAILURE_RECORD_ROUNDS = 3` full conditional-write budgets rather than one. If every round loses,
-  the document keeps the in-progress stamp, an error is logged and the request still answers 503;
-  a retry then gets 409 until the document is recovered: a file by restart recovery, an article by
-  its next body edit.
+  `FAILURE_RECORD_ROUNDS = 3` full conditional-write budgets rather than one.
+- **A run the pipeline queued is recorded the same way** when the queue refuses it, so the
+  document offers Retry rather than reading in progress with nothing to run it. That covers a
+  file's upload and startup recovery (`ContextFileProcessingService.submit`), its requeue after
+  contention (`requeueAfterConditionalUpdateContention`) and its memory run
+  (`submitMemoryExtraction`), and an article's create or body edit
+  (`PageContextProcessingEngine.submit`, after the write commits).
+- **The one residual:** if every record round loses, the document keeps its in-progress stamp and
+  an error is logged (a request still answers 503). A retry then gets 409 until the document is
+  recovered: a file by restart recovery, an article by its next body edit.
 - **200** carries the document in its new state. A file's carries the fields the Documents list
   reads (`owners,folder,memoryCount,neverExtracted`), so the UI replaces the row with it rather
   than merging it the way a metadata write's response is merged; the two field lists change
@@ -99,7 +106,8 @@ every such document without anyone asking for it.
 - An article's Retry takes effect after its quiet period, not at once. An immediate run would need
   the engine to tell bookkeeping writes from body edits.
 - Three record budgets depart from the ten-attempt budget of
-  ADR:2026-10-30-context-center-processing-writes-use-current-snapshots, for this one write; that
-  record is amended to say so.
+  ADR:2026-10-30-context-center-processing-writes-use-current-snapshots, for every write that
+  records a run the queue refused, whether requested or queued by the pipeline; that record is
+  amended to say so.
 - A provider's `extractionAvailability()` runs in article prepare and update, so an override must be
   cheap, must never throw or return null, and must answer the same way throughout a request.

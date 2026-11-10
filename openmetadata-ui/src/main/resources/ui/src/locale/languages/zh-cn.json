@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "在结果中单独显示的排名靠前的维度值数量（1-50，默认 5）。其余值将归入“其他”分组。",
+    "document-no-longer-exists-or-archived": "此文档已不存在，或已移至归档。",
     "documents-uploaded-successfully": "文档上传成功",
     "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-belong-description": "您所属的数据域",

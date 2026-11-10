@@ -987,14 +987,16 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
 
   /**
    * Enqueues a delayed job, coalescing autosaves in the persistent background job table. A no-op
-   * when extraction is unavailable, mirroring the file pipeline.
+   * when extraction is unavailable, mirroring the file pipeline. A job the queue refuses leaves the
+   * article Failed to retry; the write has committed, so nothing here may fail it.
    */
   private void schedulePillExtraction(UUID pageId) {
     if (isExtractionEnabled()) {
       try {
-        PageContextProcessingEngineHolder.get().schedule(pageId);
+        PageContextProcessingEngineHolder.get().submit(pageId);
       } catch (RuntimeException e) {
-        LOG.warn("Unable to queue memory extraction for page {}", pageId, e);
+        LOG.warn(
+            "Unable to queue memory extraction for page {} or record that it failed", pageId, e);
       }
     }
   }

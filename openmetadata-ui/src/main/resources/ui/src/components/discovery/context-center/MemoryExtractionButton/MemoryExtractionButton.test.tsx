@@ -10,8 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { focusManager } from '@tanstack/react-query';
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  focusManager,
+  QueryClient,
+  QueryClientProvider,
+} from '@tanstack/react-query';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { MemoryExtractionAction } from '../../../../constants/ContextCenter.constants';
 import { Reason } from '../../../../generated/api/context/extractionAvailability';
@@ -335,6 +345,64 @@ describe('MemoryExtractionButton', () => {
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
+  // The document is gone for this user, so reading it again would only say so twice.
+  it('after a 404 says the document is gone, hides the action and does not read it again', async () => {
+    request.mockRejectedValue(
+      httpError(404, 'Knowledge Page instance for doc-1 not found')
+    );
+    await renderButton();
+
+    fireEvent.click(button());
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('memory-extraction-btn')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.document-no-longer-exists-or-archived'
+    );
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+    expect(reload).not.toHaveBeenCalled();
+  });
+
+  // The app retries a failed read with a backoff; the 409's toast does not wait it out.
+  it('after a 409 does not retry a failing availability read before saying the run cannot start', async () => {
+    (getExtractionAvailability as jest.Mock)
+      .mockResolvedValueOnce({ available: true })
+      .mockRejectedValue(httpError(503, 'Unavailable'));
+    request.mockRejectedValue(httpError(409, 'Already queued.'));
+    reload.mockResolvedValue({ id: 'doc-1', processingStatus: 'Failed' });
+    const retryingClient = new QueryClient({
+      defaultOptions: { queries: { retry: 2 } },
+    });
+    await act(async () => {
+      render(
+        <QueryClientProvider client={retryingClient}>
+          <MemoryExtractionButton<Document>
+            action={MemoryExtractionAction.Extract}
+            documentId="doc-1"
+            owners={OWNERS}
+            reload={reload}
+            request={request}
+            onUpdate={onUpdate}
+          />
+        </QueryClientProvider>
+      );
+    });
+
+    fireEvent.click(button());
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'message.memory-extraction-cannot-start'
+      )
+    );
+
+    expect(getExtractionAvailability).toHaveBeenCalledTimes(2);
+  });
+
   it('spins while the request runs and stops once it settles', async () => {
     let settle: (document: Document) => void = jest.fn();
     request.mockReturnValue(
@@ -379,6 +447,87 @@ describe('MemoryExtractionButton', () => {
 
     expect(button()).not.toHaveAttribute('data-loading');
   });
+});
+
+// The preview and the Documents row show one document: a request or a refusal on one is on both.
+describe('MemoryExtractionButton on two surfaces of one document', () => {
+  beforeEach(() => {
+    signIn({});
+    (getExtractionAvailability as jest.Mock).mockResolvedValue({
+      available: true,
+    });
+  });
+
+  afterEach(() => {
+    act(() => {
+      useApplicationStore.setState({ currentUser: undefined });
+    });
+  });
+
+  const renderTwoSurfaces = () =>
+    act(async () => {
+      renderWithQueryClient(
+        <>
+          {['preview', 'row'].map((surface) => (
+            <MemoryExtractionButton<Document>
+              action={MemoryExtractionAction.Extract}
+              documentId="doc-1"
+              key={surface}
+              owners={OWNERS}
+              reload={reload}
+              request={request}
+              onUpdate={onUpdate}
+            />
+          ))}
+        </>
+      );
+    });
+
+  it('shows a request from one surface running on the other, which sends no second one', async () => {
+    let settle: (document: Document) => void = jest.fn();
+    request.mockReturnValue(
+      new Promise<Document>((resolve) => {
+        settle = resolve;
+      })
+    );
+    await renderTwoSurfaces();
+    const [preview, row] = screen.getAllByTestId('memory-extraction-btn');
+
+    fireEvent.click(preview);
+
+    await waitFor(() => expect(row).toHaveAttribute('data-loading', 'true'));
+
+    fireEvent.click(row);
+
+    expect(request).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      settle({ id: 'doc-1', processingStatus: 'ExtractingContext' });
+    });
+
+    expect(row).not.toHaveAttribute('data-loading');
+    expect(preview).not.toHaveAttribute('data-loading');
+  });
+
+  it.each([
+    [403, 'message.memory-extraction-owners-or-admins-only'],
+    [404, 'message.document-no-longer-exists-or-archived'],
+  ])(
+    'hides the action on both once the server answers %s to one',
+    async (status, message) => {
+      request.mockRejectedValue(httpError(status, 'Refused'));
+      await renderTwoSurfaces();
+
+      fireEvent.click(screen.getAllByTestId('memory-extraction-btn')[0]);
+
+      await waitFor(() =>
+        expect(screen.queryAllByTestId('memory-extraction-btn')).toHaveLength(0)
+      );
+
+      expect(showErrorToast).toHaveBeenCalledWith(message);
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
+    }
+  );
 });
 
 // The availability can change at runtime (Collate's AI platform comes back), so it goes stale.

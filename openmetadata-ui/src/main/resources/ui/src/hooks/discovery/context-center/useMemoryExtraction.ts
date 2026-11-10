@@ -10,15 +10,23 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useIsMutating,
+  useMutation,
+  useMutationState,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import { AxiosError } from 'axios';
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { MemoryExtractionAction } from '../../../constants/ContextCenter.constants';
 import { EntityReference } from '../../../generated/entity/type';
 import { getExtractionAvailability } from '../../../rest/contextMemoryAPI';
-import { CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
+import {
+  CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY,
+  CONTEXT_CENTER_MEMORY_EXTRACTION_MUTATION_KEY,
+} from '../../../utils/ContextCenterQueryKeys';
 import {
   canRequestMemoryExtraction,
   getExtractionUnavailableMessageKey,
@@ -35,13 +43,25 @@ const CANNOT_START_MESSAGE_KEY = 'message.memory-extraction-cannot-start';
 const REFUSAL_MESSAGE_KEYS: Partial<Record<number, string>> = {
   [HTTP_STATUS_CODE.FORBIDDEN]:
     'message.memory-extraction-owners-or-admins-only',
-  [HTTP_STATUS_CODE.CONFLICT]: CANNOT_START_MESSAGE_KEY,
+  [HTTP_STATUS_CODE.NOT_FOUND]: 'message.document-no-longer-exists-or-archived',
   [HTTP_STATUS_CODE.SERVICE_UNAVAILABLE]:
     'message.memory-extraction-not-queued',
 };
 
+// Final for this user: the action hides wherever the document shows, and it is not read again.
+const FINAL_REFUSAL_STATUSES: ReadonlySet<number> = new Set([
+  HTTP_STATUS_CODE.FORBIDDEN,
+  HTTP_STATUS_CODE.NOT_FOUND,
+]);
+
 const getRefusalMessageKey = (status?: number) =>
   status === undefined ? undefined : REFUSAL_MESSAGE_KEYS[status];
+
+const isFinalRefusal = (status?: number) =>
+  status !== undefined && FINAL_REFUSAL_STATUSES.has(status);
+
+const getStatus = (error: unknown) =>
+  (error as AxiosError | null)?.response?.status;
 
 export interface MemoryExtractionOptions<T> {
   /** What the document's state offers; none offers nothing. */
@@ -57,7 +77,7 @@ export interface MemoryExtractionOptions<T> {
 }
 
 export interface MemoryExtraction {
-  /** None for anyone but the document's owners and admins, or once the server refused the user. */
+  /** None for anyone but the document's owners and admins, or once a 403 or 404 refused the user. */
   action?: MemoryExtractionAction;
   /** Set while extraction is unavailable: the action shows, disabled with this reason. */
   disabledReasonKey?: string;
@@ -67,7 +87,8 @@ export interface MemoryExtraction {
 
 /**
  * Extract or Retry on one file or article. Every action on a page shares one availability read,
- * read again once it is a minute old or after a 409, whose message it then decides.
+ * read again once it is a minute old or after a 409, whose message it then decides. Every surface
+ * showing the document shares its request in flight and a final refusal.
  */
 export const useMemoryExtraction = <T>({
   action,
@@ -81,10 +102,18 @@ export const useMemoryExtraction = <T>({
   // Each Documents row runs this hook, so it re-renders on the signed-in user only.
   const currentUser = useApplicationStore((state) => state.currentUser);
   const queryClient = useQueryClient();
-  const [requestingId, setRequestingId] = useState<string>();
-  const [refusedId, setRefusedId] = useState<string>();
+  const mutationKey = [
+    ...CONTEXT_CENTER_MEMORY_EXTRACTION_MUTATION_KEY,
+    currentUser?.id,
+    documentId,
+  ];
+  const isRequesting = useIsMutating({ mutationKey, exact: true }) > 0;
+  const isRefused = useMutationState({
+    filters: { mutationKey, exact: true, status: 'error' },
+    select: (mutation) => getStatus(mutation.state.error),
+  }).some(isFinalRefusal);
   const offeredAction =
-    refusedId !== documentId && canRequestMemoryExtraction(currentUser, owners)
+    !isRefused && canRequestMemoryExtraction(currentUser, owners)
       ? action
       : undefined;
   const { data: availability } = useQuery({
@@ -110,6 +139,8 @@ export const useMemoryExtraction = <T>({
         queryKey: CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY,
         queryFn: getExtractionAvailability,
         staleTime: 0,
+        // The toast waits on this read, so it does not wait out a retry's backoff too.
+        retry: false,
       });
 
       return (
@@ -129,33 +160,38 @@ export const useMemoryExtraction = <T>({
     showErrorToast(messageKey ? t(messageKey) : error);
   };
 
-  // A 403 is final for this user; any other refusal means the document the UI showed was stale.
+  // A final refusal hides the action; any other means the document the UI showed was stale.
   const handleRefusal = (error: AxiosError) => {
     void notifyRefusal(error);
-    if (error.response?.status === HTTP_STATUS_CODE.FORBIDDEN) {
-      setRefusedId(documentId);
-    } else {
+    if (!isFinalRefusal(error.response?.status)) {
       void reloadDocument();
     }
   };
 
+  const { mutateAsync } = useMutation<T, AxiosError>({
+    mutationKey,
+    // The callers' callbacks take no mutation variables or context.
+    mutationFn: () => request(),
+    onSuccess: (document) => onUpdate(document),
+    onError: handleRefusal,
+  });
+
+  // Read from the cache, not the render: another surface may have just sent it.
   const requestExtraction = async () => {
-    setRequestingId(documentId);
+    if (queryClient.isMutating({ mutationKey, exact: true }) > 0) {
+      return;
+    }
     try {
-      onUpdate(await request());
-    } catch (error) {
-      handleRefusal(error as AxiosError);
-    } finally {
-      setRequestingId((current) =>
-        current === documentId ? undefined : current
-      );
+      await mutateAsync();
+    } catch {
+      // handleRefusal has told the user.
     }
   };
 
   return {
     action: offeredAction,
     disabledReasonKey: getExtractionUnavailableMessageKey(availability),
-    isRequesting: requestingId === documentId,
+    isRequesting,
     requestExtraction,
   };
 };

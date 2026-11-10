@@ -86,6 +86,19 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     scheduleAt(pageId, System.currentTimeMillis() + quietPeriodMillis);
   }
 
+  /**
+   * Schedules the run an article write armed, after that write commits. One the queue refuses
+   * leaves the article Failed to retry, as the file pipeline's submit does, not Queued for good.
+   */
+  public void submit(UUID pageId) {
+    try {
+      schedule(pageId);
+    } catch (RuntimeException e) {
+      LOG.error("Unable to queue memory extraction for page {}", pageId, e);
+      ExtractionRequests.recordFailure(Entity.PAGE, pageId, () -> stampQueueFailed(pageId));
+    }
+  }
+
   private void scheduleAt(UUID pageId, long runAt) {
     long now = System.currentTimeMillis();
     ContextMemoryExtractionJobHandler.Args jobArgs =
@@ -154,11 +167,12 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     } catch (RuntimeException e) {
       LOG.error("Unable to queue requested memory extraction for page {}", pageId, e);
       throw ExtractionRequests.queueRefused(
-          Entity.PAGE,
-          pageId,
-          ExtractionRequests.QUEUE_FAILED,
-          () -> stampStatus(pageId, PageProcessingStatus.Failed, ExtractionRequests.QUEUE_FAILED));
+          Entity.PAGE, pageId, ExtractionRequests.QUEUE_FAILED, () -> stampQueueFailed(pageId));
     }
+  }
+
+  private void stampQueueFailed(UUID pageId) {
+    stampStatus(pageId, PageProcessingStatus.Failed, ExtractionRequests.QUEUE_FAILED);
   }
 
   /** Cancels work whose source has been deleted. A claimed job will skip the missing page. */

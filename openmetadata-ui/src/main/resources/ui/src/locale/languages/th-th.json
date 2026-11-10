@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "จำนวนค่ามิติอันดับต้นที่จะแสดงแยกในผลลัพธ์ (1-50 ค่าเริ่มต้น 5) ค่าที่เหลือจะถูกจัดกลุ่มไว้ในกลุ่ม \"อื่น ๆ\"",
+    "document-no-longer-exists-or-archived": "เอกสารนี้ไม่มีอยู่แล้วหรือถูกย้ายไปยังที่เก็บถาวร",
     "documents-uploaded-successfully": "อัปโหลดเอกสารสำเร็จ",
     "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-belong-description": "โดเมนข้อมูลที่คุณสังกัด",

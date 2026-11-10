@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "Hur många av de främsta dimensionsvärdena som visas separat i resultaten (1–50, standard 5). Övriga värden grupperas i kategorin ”Övriga”.",
+    "document-no-longer-exists-or-archived": "Det här dokumentet finns inte längre eller har flyttats till arkivet.",
     "documents-uploaded-successfully": "Dokumenten laddades upp",
     "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-belong-description": "Data domains you belong to",

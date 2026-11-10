@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "How many top dimension values to show individually in results (1-50, default 5). Remaining values are grouped into an \"Others\" bucket.",
+    "document-no-longer-exists-or-archived": "This document no longer exists or was moved to the Archive.",
     "documents-uploaded-successfully": "Documents uploaded successfully",
     "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-belong-description": "Data domains you belong to",

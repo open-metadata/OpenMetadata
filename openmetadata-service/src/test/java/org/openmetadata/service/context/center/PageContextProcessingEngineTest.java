@@ -424,6 +424,29 @@ class PageContextProcessingEngineTest {
     assertEquals(ExtractionRequests.QUEUE_FAILED, recorded.getProcessingError());
   }
 
+  /** A write's run the queue refuses leaves the article Failed to retry, not Queued with no job. */
+  @Test
+  void anArticleWhoseWrittenRunTheQueueRefusesIsLeftFailedToRetry() {
+    Page queued = article(PageProcessingStatus.Queued, "stale-hash");
+    when(pageRepository.get(isNull(), eq(pageId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(queued);
+    refuseEveryJob();
+
+    engine(available()).submit(pageId);
+
+    Page recorded = capturedUpdates(EDITOR).getLast();
+    assertEquals(PageProcessingStatus.Failed, recorded.getProcessingStatus());
+    assertEquals(ExtractionRequests.QUEUE_FAILED, recorded.getProcessingError());
+  }
+
+  @Test
+  void anArticleWhoseWrittenRunIsQueuedIsNotWritten() {
+    engine(available()).submit(pageId);
+
+    scheduledRunAt();
+    verify(pageRepository, never()).updateIfCurrent(any(), any(), any(), anyString());
+  }
+
   /** A failure no budget can record is still answered 503, never 500. */
   @Test
   void anArticleWhoseFailureCannotBeRecordedStillAnswers503() {
@@ -445,6 +468,10 @@ class PageContextProcessingEngineTest {
         JsonUtils.deepCopy(failed, Page.class).withProcessingStatus(PageProcessingStatus.Queued);
     when(pageRepository.get(isNull(), eq(pageId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(failed, queued);
+    refuseEveryJob();
+  }
+
+  private void refuseEveryJob() {
     doThrow(new IllegalStateException("queue unavailable"))
         .when(jobDao)
         .enqueuePageMemoryJob(

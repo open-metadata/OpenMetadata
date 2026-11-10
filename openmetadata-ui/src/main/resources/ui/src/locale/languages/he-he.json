@@ -4826,6 +4826,7 @@
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "כמה מערכי המימד המובילים יוצגו בנפרד בתוצאות (1–50, ברירת מחדל 5). הערכים הנותרים מקובצים לקטגוריית \"אחרים\".",
+    "document-no-longer-exists-or-archived": "המסמך הזה כבר לא קיים או שהועבר לארכיון.",
     "documents-uploaded-successfully": "המסמכים הועלו בהצלחה",
     "domain-access-restricted": "You only have access to your assigned domain(s).",
     "domain-belong-description": "תחומי נתונים שאתה שייך אליהם",
