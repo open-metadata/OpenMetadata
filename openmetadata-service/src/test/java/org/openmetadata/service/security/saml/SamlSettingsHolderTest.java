@@ -14,6 +14,7 @@
 package org.openmetadata.service.security.saml;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -21,7 +22,9 @@ import static org.mockito.Mockito.mockStatic;
 
 import com.onelogin.saml2.settings.Saml2Settings;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
@@ -42,6 +45,31 @@ class SamlSettingsHolderTest {
   @AfterEach
   void forgetInstalledSettings() {
     SamlSettingsHolder.setSaml2Settings(null);
+  }
+
+  /**
+   * Microsoft Entra encrypts assertions once token encryption is on, whatever the SP asks for, and
+   * java-saml decrypts them with the SP key, so a configured key is used even when this SP signs
+   * nothing.
+   */
+  @Test
+  void buildSettingsGivesJavaSamlTheSpKeyWithoutRequestSigning() throws Exception {
+    SamlSSOClientConfig samlConfig = samlConfig("https://idp.example.com/sso");
+    samlConfig
+        .getSp()
+        .withSpX509Certificate(resource("/saml/mock-idp.crt"))
+        .setSpPrivateKey(resource("/saml/mock-idp-pkcs8.key"));
+
+    Saml2Settings settings = SamlSettingsHolder.buildSettings(samlConfig);
+
+    assertNotNull(settings.getSPkey());
+    assertNotNull(settings.getSPcert());
+  }
+
+  private static String resource(String path) throws IOException {
+    try (InputStream stream = SamlSettingsHolderTest.class.getResourceAsStream(path)) {
+      return new String(stream.readAllBytes(), StandardCharsets.UTF_8);
+    }
   }
 
   @Test
