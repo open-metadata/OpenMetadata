@@ -2,14 +2,17 @@ package org.openmetadata.service.resources.audit;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.Set;
+import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.resources.feeds.AnnouncementVisibility;
@@ -27,13 +30,26 @@ final class AuditLogEntityAccess {
 
   private AuditLogEntityAccess() {}
 
-  static void authorizeEntity(
+  static UUID authorizeEntity(
       Authorizer authorizer, SecurityContext context, String type, String fqn) {
     final ResourceContext<?> resource = resourceContext(type, fqn);
     authorizer.authorize(
         context, new OperationContext(type, MetadataOperation.VIEW_BASIC), resource);
+    UUID entityId = null;
     if (hasVisibilityRules(type) && !readsAll(context)) {
-      enforceVisibility(resource.getEntity(), authorizer, context);
+      final EntityInterface<?> entity = resource.getEntity();
+      if (entity == null) {
+        throw EntityNotFoundException.byName(fqn);
+      }
+      enforceVisibility(entity, authorizer, context);
+      entityId = entity.getId();
+    }
+    return entityId;
+  }
+
+  static void validateEntityType(String type) {
+    if (!nullOrEmpty(type) && !Entity.getEntityList().contains(type)) {
+      throw new BadRequestException("Unknown entity type: " + type);
     }
   }
 

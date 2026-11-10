@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.ForbiddenException;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
@@ -61,6 +63,12 @@ class AuditLogResourceTest {
   }
 
   @ParameterizedTest
+  @ValueSource(strings = {Entity.CONTEXT_MEMORY, Entity.CONTEXT_FILE, Entity.ANNOUNCEMENT})
+  void aHardDeletedEntityHasNoCurrentReadDecision(String type) {
+    assertEntityReadIsDenied(EntityNotFoundException.class, type, null);
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {Entity.CONTEXT_MEMORY, Entity.CONTEXT_FILE, Entity.ANNOUNCEMENT, ""})
   void collectionReadsRequireAnAdminOrBotForTypesWithTheirOwnReadRules(String type) {
     final Authorizer authorizer = collectionReader();
@@ -73,6 +81,17 @@ class AuditLogResourceTest {
   void ordinaryEntityTypesKeepTheirCollectionPolicy() {
     assertDoesNotThrow(
         () -> AuditLogEntityAccess.authorizeCollection(collectionReader(), null, Entity.TABLE));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"CONTEXTMEMORY", "CONTEXTFILE", "ANNOUNCEMENT", "contextMémory"})
+  void typeFiltersUseRegisteredCanonicalNames(String type) {
+    try (MockedStatic<Entity> registry = mockStatic(Entity.class)) {
+      registry
+          .when(Entity::getEntityList)
+          .thenReturn(Set.of(Entity.CONTEXT_MEMORY, Entity.CONTEXT_FILE, Entity.ANNOUNCEMENT));
+      assertThrows(BadRequestException.class, () -> AuditLogEntityAccess.validateEntityType(type));
+    }
   }
 
   @Test
@@ -127,8 +146,13 @@ class AuditLogResourceTest {
     return authorizer;
   }
 
-  @SuppressWarnings("unchecked")
   private void assertPrivateEntityIsDenied(String type, EntityInterface<?> entity) {
+    assertEntityReadIsDenied(ForbiddenException.class, type, entity);
+  }
+
+  @SuppressWarnings("unchecked")
+  private void assertEntityReadIsDenied(
+      Class<? extends Throwable> expected, String type, EntityInterface<?> entity) {
     final SecurityContext context = mock(SecurityContext.class);
     when(context.getUserPrincipal()).thenReturn(() -> READER);
     final EntityRepository<EntityInterface<?>> entities = mock(EntityRepository.class);
@@ -141,6 +165,7 @@ class AuditLogResourceTest {
     try (MockedStatic<Entity> registry = mockStatic(Entity.class);
         MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       registry.when(() -> Entity.getEntityRepository(type)).thenReturn(entities);
+      registry.when(Entity::getEntityList).thenReturn(Set.of(type));
       registry
           .when(() -> Entity.getEntityByName(anyString(), anyString(), anyString(), any()))
           .thenReturn(entity);
@@ -149,7 +174,7 @@ class AuditLogResourceTest {
           .thenReturn(new SubjectContext(new User().withName(READER).withIsAdmin(false), null));
 
       assertThrows(
-          ForbiddenException.class,
+          expected,
           () ->
               resource.listAuditLogs(
                   context,

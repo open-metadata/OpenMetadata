@@ -5,14 +5,18 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -28,14 +32,20 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ActivityAuditDAOs.AuditLogDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.resources.context.ContextMemoryDocumentAccess;
+import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.policyevaluator.OperationContext;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 class MemoryAuditProjectionTest {
   private static final String FILE_NAME = "restricted-document";
@@ -112,30 +122,66 @@ class MemoryAuditProjectionTest {
     assertEquals("not JSON", event.getEntity());
   }
 
+  @Test
+  void anOrgWideFileStillNeedsItsPolicyPermission() {
+    withFileProjection(
+        MemoryVisibility.ENTITY,
+        false,
+        projection -> {
+          final ContextMemory projected =
+              projection.apply(new ContextMemory().withSourceEntity(source));
+          assertNull(projected.getSourceEntity().getName());
+          assertEquals(source.getId(), projected.getSourceEntity().getId());
+        });
+  }
+
+  @Test
+  void aReadableFileKeepsItsName() {
+    withFileProjection(
+        MemoryVisibility.ENTITY,
+        true,
+        projection ->
+            assertEquals(
+                source,
+                projection.apply(new ContextMemory().withSourceEntity(source)).getSourceEntity()));
+  }
+
   private AuditLogRepository repository() {
     final CollectionDAO dao = mock(CollectionDAO.class);
-    when(dao.auditLogDAO()).thenReturn(mock(CollectionDAO.AuditLogDAO.class));
+    when(dao.auditLogDAO()).thenReturn(mock(AuditLogDAO.class));
     return new AuditLogRepository(dao);
   }
 
+  private void withFileProjection(Consumer<UnaryOperator<ContextMemory>> action) {
+    withFileProjection(MemoryVisibility.PRIVATE, true, action);
+  }
+
   private void withFileProjection(
-      java.util.function.Consumer<UnaryOperator<ContextMemory>> action) {
+      MemoryVisibility visibility,
+      boolean policyAllows,
+      Consumer<UnaryOperator<ContextMemory>> action) {
     final SecurityContext context = mock(SecurityContext.class);
     when(context.getUserPrincipal()).thenReturn(() -> "reader");
+    final ContextFileRepository files = mock(ContextFileRepository.class);
+    when(files.getFields(anyString())).thenReturn(new Fields(Set.of(Entity.FIELD_OWNERS)));
+    doReturn(new ContextFile().withShareConfig(new MemoryShareConfig().withVisibility(visibility)))
+        .when(files)
+        .get(any(), any(UUID.class), any(), any(RelationIncludes.class), anyBoolean());
     try (MockedStatic<Entity> registry = mockStatic(Entity.class);
         MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
       subjects
           .when(() -> DefaultAuthorizer.getSubjectContext(context))
           .thenReturn(new SubjectContext(new User().withName("reader").withIsAdmin(false), null));
-      registry
-          .when(
-              () ->
-                  Entity.getEntityOrNull(
-                      any(EntityReference.class), anyString(), any(Include.class)))
-          .thenReturn(
-              new ContextFile()
-                  .withShareConfig(
-                      new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+      registry.when(() -> Entity.hasEntityRepository(Entity.CONTEXT_FILE)).thenReturn(true);
+      registry.when(() -> Entity.getEntityRepository(Entity.CONTEXT_FILE)).thenReturn(files);
+      if (!policyAllows) {
+        subjects
+            .when(
+                () ->
+                    DefaultAuthorizer.authorizeUser(
+                        anyString(), any(OperationContext.class), any(ResourceContext.class)))
+            .thenThrow(new AuthorizationException("File is not readable"));
+      }
       action.accept(ContextMemoryDocumentAccess.versionRedaction(context));
     }
   }

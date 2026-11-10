@@ -18,6 +18,9 @@ A single-entity audit read applies `ViewBasic` and the entity's current read rul
 decision loads the fields those rules need, including owners and a memory's primary entity,
 and includes soft-deleted entities. A hard-deleted entity of these types has no current
 read decision for an ordinary reader; admins and bots retain their audit access.
+The ordinary reader's query and count are bound to the current entity's id, so reusing a
+deleted entity's name does not make its earlier audit entries part of the new entity's history.
+Entity-type filters use registered canonical names before authorization and querying.
 
 Collection reads of these types, unfiltered collection reads, and audit exports require an
 admin or bot as well as the existing audit permission. Service-level queries for other types
@@ -25,7 +28,7 @@ retain their existing service permission check. Export status and download apply
 as requesting an export.
 
 A memory's audit images and change values apply the memory's existing query-evidence rules
-and file-sharing rules to their references. A file the reader cannot read now retains only its
+and file policy and sharing rules to their references. A file the reader cannot read now retains only its
 id and type. The structured event, raw JSON fallback and summary use the same projected values;
 stored audit records remain whole. Admins and bots retain the complete memory audit payload.
 

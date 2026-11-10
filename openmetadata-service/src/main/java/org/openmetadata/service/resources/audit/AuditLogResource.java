@@ -37,6 +37,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogEntry;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.audit.AuditLogRepository.ReadAccess;
 import org.openmetadata.service.csv.CsvAsyncJob;
 import org.openmetadata.service.csv.CsvAsyncJobArgs;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
@@ -77,7 +78,11 @@ public class AuditLogResource {
             content =
                 @Content(
                     mediaType = MediaType.APPLICATION_JSON,
-                    schema = @Schema(implementation = ResultList.class)))
+                    schema = @Schema(implementation = ResultList.class))),
+        @ApiResponse(
+            responseCode = "403",
+            description = "Audit entries are not readable by this user"),
+        @ApiResponse(responseCode = "404", description = "Entity not found")
       })
   public ResultList<AuditLogEntry> listAuditLogs(
       @Context SecurityContext securityContext,
@@ -140,7 +145,9 @@ public class AuditLogResource {
           String searchTerm) {
 
     // Authorization: service-level, entity-level, or global based on filters provided
-    authorizeAuditLogAccess(securityContext, serviceName, entityType, entityFqn);
+    AuditLogEntityAccess.validateEntityType(entityType);
+    final UUID entityId =
+        authorizeAuditLogAccess(securityContext, serviceName, entityType, entityFqn);
 
     ResultList<AuditLogEntry> entries =
         repository.list(
@@ -156,7 +163,7 @@ public class AuditLogResource {
             limit,
             before,
             after,
-            readsUserEmails(securityContext));
+            new ReadAccess(readsUserEmails(securityContext), entityId));
     return redactMemoryEntries(entries, entityType, securityContext);
   }
 
@@ -199,7 +206,8 @@ public class AuditLogResource {
                 @Content(
                     mediaType = MediaType.APPLICATION_JSON,
                     schema = @Schema(implementation = CSVExportResponse.class))),
-        @ApiResponse(responseCode = "400", description = "Invalid parameters")
+        @ApiResponse(responseCode = "400", description = "Invalid parameters"),
+        @ApiResponse(responseCode = "403", description = "An admin or bot is required")
       })
   @Produces(MediaType.APPLICATION_JSON)
   public Response exportAuditLogs(
@@ -436,10 +444,12 @@ public class AuditLogResource {
    *   <li>Otherwise: Require global AUDIT_LOGS permission (admin-only)
    * </ul>
    */
-  private void authorizeAuditLogAccess(
+  private UUID authorizeAuditLogAccess(
       SecurityContext securityContext, String serviceName, String entityType, String entityFqn) {
+    UUID entityId = null;
     if (!nullOrEmpty(entityFqn) && !nullOrEmpty(entityType)) {
-      AuditLogEntityAccess.authorizeEntity(authorizer, securityContext, entityType, entityFqn);
+      entityId =
+          AuditLogEntityAccess.authorizeEntity(authorizer, securityContext, entityType, entityFqn);
     } else if (!nullOrEmpty(serviceName) && !nullOrEmpty(entityType)) {
       AuditLogEntityAccess.authorizeCollection(authorizer, securityContext, entityType);
       // Service-level authorization: user needs VIEW_BASIC on the service
@@ -454,6 +464,7 @@ public class AuditLogResource {
           new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
       authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
     }
+    return entityId;
   }
 
   /**

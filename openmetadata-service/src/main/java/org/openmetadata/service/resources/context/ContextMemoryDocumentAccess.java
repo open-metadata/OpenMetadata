@@ -27,15 +27,12 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.drive.ContextFileVisibility;
 
 /**
  * A memory's history names a file only to a caller who may read that file now
@@ -181,8 +178,7 @@ public final class ContextMemoryDocumentAccess {
 
   /** A file gone for good reads to no one but an admin, as its sharing can no longer be checked. */
   private static boolean mayRead(EntityReference file, String caller) {
-    ContextFile stored = Entity.getEntityOrNull(file, Entity.FIELD_OWNERS, Include.ALL);
-    return stored != null && ContextFileVisibility.isVisibleToUser(stored, caller, false);
+    return ContextMemoryAnchorAccess.canView(caller, file);
   }
 
   private static FileAccess decidedOncePerFile(FileAccess access) {

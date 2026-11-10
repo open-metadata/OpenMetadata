@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ActivityAuditDAOs.AuditLogDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.slf4j.LoggerFactory;
 import org.slf4j.Marker;
@@ -60,7 +61,7 @@ class AuditLogRepositoryTest {
   private static final String AUDIT_MARKER_NAME = "AUDIT";
   private static final String BOT_USER = "ingestion-bot";
 
-  private CollectionDAO.AuditLogDAO auditLogDAO;
+  private AuditLogDAO auditLogDAO;
   private AuditLogRepository repository;
   private Logger auditLogger;
   private ListAppender<ILoggingEvent> appender;
@@ -68,7 +69,7 @@ class AuditLogRepositoryTest {
   @BeforeEach
   void setUp() {
     CollectionDAO collectionDAO = mock(CollectionDAO.class);
-    auditLogDAO = mock(CollectionDAO.AuditLogDAO.class);
+    auditLogDAO = mock(AuditLogDAO.class);
     when(collectionDAO.auditLogDAO()).thenReturn(auditLogDAO);
     repository = new AuditLogRepository(collectionDAO);
 
@@ -217,12 +218,38 @@ class AuditLogRepositoryTest {
 
     AuditLogEntry masked =
         repository
-            .list(null, null, null, null, null, null, null, null, null, 25, null, null, false)
+            .list(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                25,
+                null,
+                null,
+                new AuditLogRepository.ReadAccess(false, null))
             .getData()
             .getFirst();
     AuditLogEntry plain =
         repository
-            .list(null, null, null, null, null, null, null, null, null, 25, null, null, true)
+            .list(
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                25,
+                null,
+                null,
+                new AuditLogRepository.ReadAccess(true, null))
             .getData()
             .getFirst();
 
@@ -293,7 +320,7 @@ class AuditLogRepositoryTest {
                   25,
                   null,
                   null,
-                  readsUserEmails)
+                  new AuditLogRepository.ReadAccess(readsUserEmails, null))
               .getData()
               .getFirst();
       String response = JsonUtils.pojoToJson(entry);

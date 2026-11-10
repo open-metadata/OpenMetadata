@@ -40,6 +40,8 @@ import org.openmetadata.service.util.RestUtil;
 /** Repository for reading and writing audit log entries. */
 @Slf4j
 public class AuditLogRepository {
+  public record ReadAccess(boolean readsUserEmails, UUID entityId) {}
+
   private static final int MAX_PAGE_SIZE = 200;
 
   /**
@@ -398,7 +400,7 @@ public class AuditLogRepository {
               null, // before
               afterCursor,
               false, // skip the count — it would re-run once per batch
-              readsUserEmails);
+              new ReadAccess(readsUserEmails, null));
 
       if (batch.getData().isEmpty()) {
         break;
@@ -460,7 +462,7 @@ public class AuditLogRepository {
         limitParam,
         before,
         after,
-        true);
+        new ReadAccess(true, null));
   }
 
   /**
@@ -480,7 +482,7 @@ public class AuditLogRepository {
       int limitParam,
       String before,
       String after,
-      boolean readsUserEmails) {
+      ReadAccess access) {
     return list(
         userName,
         actorType,
@@ -495,7 +497,7 @@ public class AuditLogRepository {
         before,
         after,
         true,
-        readsUserEmails);
+        access);
   }
 
   private ResultList<AuditLogEntry> list(
@@ -512,7 +514,7 @@ public class AuditLogRepository {
       String before,
       String after,
       boolean countTotal,
-      boolean readsUserEmails) {
+      ReadAccess access) {
     RestUtil.validateCursors(before, after);
 
     int limit = Math.max(1, limitParam);
@@ -532,6 +534,12 @@ public class AuditLogRepository {
             startTs,
             endTs,
             searchTerm);
+    if (access.entityId() != null) {
+      baseCondition +=
+          Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+              ? " AND entity_id = :entityId"
+              : " AND entity_id = :entityId::uuid";
+    }
 
     List<AuditLogRecord> records;
     boolean isBackward = beforeCursor != null;
@@ -549,7 +557,7 @@ public class AuditLogRepository {
               actorType,
               serviceName,
               entityType,
-              entityFqn,
+              access.entityId() == null ? null : access.entityId().toString(),
               entityFqnHash,
               eventType,
               startTs,
@@ -575,7 +583,7 @@ public class AuditLogRepository {
               actorType,
               serviceName,
               entityType,
-              entityFqn,
+              access.entityId() == null ? null : access.entityId().toString(),
               entityFqnHash,
               eventType,
               startTs,
@@ -606,7 +614,7 @@ public class AuditLogRepository {
                 actorType,
                 serviceName,
                 entityType,
-                entityFqn,
+                access.entityId() == null ? null : access.entityId().toString(),
                 entityFqnHash,
                 eventType,
                 startTs,
@@ -615,7 +623,7 @@ public class AuditLogRepository {
             : records.size();
 
     List<AuditLogEntry> resultEntries =
-        records.stream().map(record -> toAuditLogEntry(record, readsUserEmails)).toList();
+        records.stream().map(record -> toAuditLogEntry(record, access.readsUserEmails())).toList();
 
     // Compute cursors for navigation
     String beforeCursorOut = null;
