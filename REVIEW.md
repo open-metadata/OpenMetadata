@@ -97,6 +97,28 @@ Every finding carries three parts: the **trigger** (an input or state that occur
     falls back to an untyped `Map` hides secrets from the secret walkers.
   - Never pass an exception cause that carries a URI or credential to the logger.
 
+### CI credentials and PR code
+
+- **New or modified `pull_request` jobs run without secrets.** This applies to fork, same-repository,
+  and Dependabot PRs. Do not expose repository, organization, or environment secrets. The built-in
+  `GITHUB_TOKEN` is allowed with read-only permissions. Checkouts of PR code set
+  `persist-credentials: false`. Do not grant `id-token: write` or use runners with credentials that
+  PR code can reach.
+- **Trace indirect credential access.** Read the job's callers, reusable workflows, composite
+  actions, and scripts. Check `secrets: inherit`, secret-backed inputs and environment variables,
+  generated tokens, and cloud authentication. Treat credentials in another step on the same runner
+  as reachable by PR code. Log masking does not prevent exfiltration.
+- **Exclude PRs from jobs that need secrets.** In workflows with multiple event triggers, require
+  an explicit job condition that excludes `pull_request` before credentials become available.
+  Run those checks on trusted branch pushes or nightly runs. An approved merge group may run them
+  against its immutable SHA when the queue is enabled. Labels, earlier approvals, and same-repository
+  guards do not exempt a `pull_request` job from this rule.
+- **Keep privileged automation separate from PR execution.** `pull_request_target` and privileged
+  `workflow_run` jobs must not execute PR code, scripts, artifacts, or caches. A downstream dispatch
+  must not give unapproved PR code access to secrets. Trace the executed ref through every dispatch
+  and checkout. Report a credential path that violates these rules as a 🔴 security finding. Include
+  the event, executed ref, and credential source.
+
 ### Writes and data integrity
 
 - **Writes keep what the caller did not send.**
