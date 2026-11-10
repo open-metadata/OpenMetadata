@@ -127,4 +127,4 @@ jobs:
           SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
         with:
           projectBaseDir: openmetadata-airflow-apis/
-          args: -Dproject.settings=sonar-project.properties
+          args: -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties

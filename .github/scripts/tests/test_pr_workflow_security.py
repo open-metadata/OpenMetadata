@@ -4,6 +4,7 @@ import importlib.util
 import json
 import os
 import re
+import shlex
 import subprocess
 from pathlib import Path
 
@@ -303,3 +304,28 @@ await (async () => {
     summary = json.loads(result.stdout)
     assert "UI Checkstyle Failed" in summary
     assert "ESLint" in summary
+
+
+def test_airflow_sonar_settings_resolve_from_the_workspace():
+    document = yaml.load(
+        (ROOT / ".github/workflows/airflow-apis-tests.yml").read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    scan = next(
+        step
+        for step in document["jobs"]["airflow-apis-sonar"]["steps"]
+        if step.get("uses", "").startswith("SonarSource/sonarqube-scan-action@")
+    )["with"]
+    settings = next(
+        (
+            arg.split("=", 1)[1]
+            for arg in shlex.split(scan.get("args", ""))
+            if arg.startswith("-Dproject.settings=")
+        ),
+        str(Path(scan["projectBaseDir"]) / "sonar-project.properties"),
+    )
+    path = ROOT / settings
+    assert path.is_file(), (
+        f"Sonar settings do not exist relative to the workspace: {settings}"
+    )
+    assert path.parent.resolve() == (ROOT / scan["projectBaseDir"]).resolve()
