@@ -1,7 +1,7 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`) · v13 2026-11-07 (a description that is a resource or markup is skipped)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`) · v13 2026-11-07 (a description that is a resource or markup is skipped) · v14 2026-11-10 (a deadlocked install slice is retried)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
 - **Related:** Ontology Studio publication and release contracts
@@ -155,3 +155,15 @@ would guess at what the source means. English ESCO states its 13 `skos:definitio
 are not literals as `esco:NodeLiteral` resources, and 76 of its node literals carry HTML. Any
 other literal of the wrong shape, such as `skos:definition 17`, still fails the preview, and the
 rule for labels is unchanged.
+
+## Amendment
+
+v14, 2026-11-10: a library install slice that the database rolls back as a deadlock or
+serialization victim (`SQLTransactionRollbackException`, or any SQLState in class `40`) is
+applied again, at most 3 attempts per slice, with a cancellation check between attempts and no
+wait. Any other failure ends the job as FAILED. Concurrent writes to the reference index of other
+ontologies can pick a slice as the victim. The retry is safe because the apply of a slice is one
+transaction, so the rollback undoes every operation in it. Creating the slice's change set is a
+separate, earlier commit, so each attempt creates its own stamped `pack-install-<job>-<index>-<random>`
+change set, and an earlier attempt's change set stays behind as APPLY_FAILED, or as a draft when
+the rollback happened outside an operation.
