@@ -3496,6 +3496,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/OwnerLabel/OwnerInheritedBadge.component.tsx"
+      ],
+      "specs": [
+        "playwright/e2e/Pages/Domains.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/OwnerLabel/OwnerLabel.component.tsx"
       ],
       "specs": [
