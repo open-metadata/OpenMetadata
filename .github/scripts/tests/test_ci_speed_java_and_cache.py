@@ -312,6 +312,27 @@ def test_allowlist_covers_only_the_exact_existing_writer(tmp_path: Path) -> None
     assert "Another save" in extra
 
 
+def test_allowlist_does_not_hide_a_second_writer_with_the_same_name(
+    tmp_path: Path,
+) -> None:
+    save = {"name": "Save Maven dependencies", "uses": "actions/cache/save@v6"}
+    write(
+        tmp_path,
+        ".github/workflows/maven-sonar-build.yml",
+        {
+            "on": {"pull_request": {}},
+            "jobs": {
+                "maven-sonarcloud-ci": {
+                    "runs-on": "ubuntu-latest",
+                    "steps": [save, {**save, "with": {"key": "other"}}],
+                }
+            },
+        },
+    )
+    [extra] = unexpected_writers(pull_request_cache_writers(tmp_path))
+    assert "Save Maven dependencies" in extra
+
+
 # ---------------------------------------------------------------------------
 # O-5: the real repository.
 # ---------------------------------------------------------------------------
@@ -322,7 +343,17 @@ def all_writers(by_workflow: dict[str, list[str]]) -> set[str]:
 
 
 def unexpected_writers(by_workflow: dict[str, list[str]]) -> list[str]:
-    return sorted(all_writers(by_workflow) - KNOWN_UNOWNED_WRITERS)
+    # Per workflow, each allowlisted writer excuses one occurrence only, so a
+    # second step with the same label is still reported.
+    unexpected = []
+    for found in by_workflow.values():
+        excused = set()
+        for writer in found:
+            if writer in KNOWN_UNOWNED_WRITERS and writer not in excused:
+                excused.add(writer)
+            else:
+                unexpected.append(writer)
+    return sorted(unexpected)
 
 
 def test_no_job_reachable_from_pull_request_saves_a_cache() -> None:
