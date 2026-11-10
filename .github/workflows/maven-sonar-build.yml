@@ -29,7 +29,7 @@ on:
 
 permissions:
   contents: read
-  checks: write
+  checks: read
 
 concurrency:
   group: maven-sonar-build-${{ github.event.pull_request.number || github.run_id }}

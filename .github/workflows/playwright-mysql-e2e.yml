@@ -14,11 +14,12 @@
 
 name: MySQL PR Playwright E2E Tests
 on:
+  push:
+    branches: ["2.0"]
   merge_group:
   workflow_dispatch:
-  pull_request_target:
+  pull_request:
     types:
-      - labeled
       - opened
       - synchronize
       - reopened
@@ -34,16 +35,16 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: playwright-ci-pr-mysql-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
+  cancel-in-progress: true
 
 jobs:
   playwright-ci-mysql:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-ci-mysql (ignored label)' || 'playwright-ci-mysql' }}
     runs-on: ubuntu-24.04
-    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) }}
     environment: test
     permissions:
       contents: read
@@ -70,23 +71,6 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.7.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v5
@@ -95,7 +79,7 @@ jobs:
           persist-credentials: false
       - name: Detect ingestion-only changes
         id: changes
-        if: ${{ github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         uses: dorny/paths-filter@v4
         with:
           predicate-quantifier: 'every'
