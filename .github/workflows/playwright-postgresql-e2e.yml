@@ -14,6 +14,8 @@
 
 name: Postgresql PR Playwright E2E Tests
 on:
+  push:
+    branches: ["1.13"]
   merge_group:
   workflow_dispatch:
   pull_request:
@@ -25,7 +27,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
@@ -39,14 +41,22 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.outside.outputs.code == 'true' || steps.compose.outputs.compose == 'true' }}
-      run_tests: ${{ (steps.outside.outputs.code == 'true' || steps.compose.outputs.compose == 'true') && !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
+      run_tests: ${{ (steps.outside.outputs.code == 'true' || steps.compose.outputs.compose == 'true') && !github.event.pull_request.draft && (github.event_name != 'pull_request' && (github.ref == 'refs/heads/1.13' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/1.13'))) }}
     steps:
+      - name: Checkout trusted branch for change detection
+        if: github.event_name != 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
       # predicate-quantifier: every — a file must match ALL patterns, which is
       # what makes the negations exclude. With the default (some) the leading
       # '**' matches everything and nothing is ever excluded.
       - uses: dorny/paths-filter@v3
         id: outside
         with:
+          base: ${{ github.event.merge_group.base_sha || github.event.before || '' }}
           predicate-quantifier: every
           filters: |
             code:
@@ -63,6 +73,7 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: compose
         with:
+          base: ${{ github.event.merge_group.base_sha || github.event.before || '' }}
           filters: |
             compose:
               - 'docker/development/docker-compose.yml'
@@ -77,6 +88,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup JDK 21
@@ -109,7 +121,7 @@ jobs:
   playwright-ci-postgresql:
     needs: [build]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' }}
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.event_name != 'pull_request' && (github.ref == 'refs/heads/1.13' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/1.13')) }}
     environment: test
     strategy:
       fail-fast: false
@@ -131,6 +143,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Download Maven build artifact
@@ -317,181 +330,6 @@ jobs:
           pattern: playwright-results-json-*
           path: results
 
-      - name: Post consolidated PR comment
-        if: ${{ needs.playwright-ci-postgresql.result == 'success' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-        uses: actions/github-script@v7
-        with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-          script: |
-            const fs = require('fs');
-            const path = require('path');
-
-            const runId = '${{ github.run_id }}';
-            const repo = context.repo;
-            const prNumber = context.payload.pull_request?.number;
-            if (!prNumber) return;
-
-            const artifactUrl = `https://github.com/${repo.owner}/${repo.repo}/actions/runs/${runId}`;
-            const commentMarker = '<!-- playwright-summary -->';
-
-            // Collect results from all shards
-            const shardResults = [];
-            const resultsDir = 'results';
-            if (fs.existsSync(resultsDir)) {
-              for (const dir of fs.readdirSync(resultsDir).sort()) {
-                const jsonPath = path.join(resultsDir, dir, 'results.json');
-                if (!fs.existsSync(jsonPath)) continue;
-
-                const shardNum = dir.replace('playwright-results-json-', '');
-                const report = JSON.parse(fs.readFileSync(jsonPath, 'utf8'));
-
-                const allTests = [];
-                function collectTests(suite, filePath) {
-                  const file = suite.file || filePath || '';
-                  for (const spec of (suite.specs || [])) {
-                    for (const test of (spec.tests || [])) {
-                      const results = test.results || [];
-                      const lastResult = results[results.length - 1] || {};
-                      const firstResult = results[0] || {};
-                      allTests.push({
-                        title: spec.title,
-                        file: file,
-                        status: test.status,
-                        retries: results.length - 1,
-                        error: lastResult.error?.message || firstResult.error?.message || '',
-                      });
-                    }
-                  }
-                  for (const child of (suite.suites || [])) {
-                    collectTests(child, file);
-                  }
-                }
-                for (const suite of (report.suites || [])) {
-                  collectTests(suite, '');
-                }
-
-                shardResults.push({
-                  shard: shardNum,
-                  genuine: allTests.filter(t => t.status === 'unexpected'),
-                  flaky: allTests.filter(t => t.status === 'flaky'),
-                  passed: allTests.filter(t => t.status === 'expected'),
-                  skipped: allTests.filter(t => t.status === 'skipped'),
-                });
-              }
-            }
-
-            if (shardResults.length === 0) {
-              console.log('No shard results found');
-              return;
-            }
-
-            // Aggregate totals
-            const totalPassed = shardResults.reduce((s, r) => s + r.passed.length, 0);
-            const totalFailed = shardResults.reduce((s, r) => s + r.genuine.length, 0);
-            const totalFlaky = shardResults.reduce((s, r) => s + r.flaky.length, 0);
-            const totalSkipped = shardResults.reduce((s, r) => s + r.skipped.length, 0);
-
-            const lines = [commentMarker];
-
-            if (totalFailed > 0) {
-              lines.push(`## 🔴 Playwright Results — ${totalFailed} failure(s)${totalFlaky > 0 ? `, ${totalFlaky} flaky` : ''}`);
-            } else if (totalFlaky > 0) {
-              lines.push(`## 🟡 Playwright Results — all passed (${totalFlaky} flaky)`);
-            } else {
-              lines.push(`## ✅ Playwright Results — all ${totalPassed} tests passed`);
-            }
-            lines.push('');
-            lines.push(`✅ ${totalPassed} passed · ❌ ${totalFailed} failed · 🟡 ${totalFlaky} flaky · ⏭️ ${totalSkipped} skipped`);
-            lines.push('');
-
-            // Per-shard summary table
-            lines.push('| Shard | Passed | Failed | Flaky | Skipped |');
-            lines.push('|-------|--------|--------|-------|---------|');
-            for (const r of shardResults) {
-              const status = r.genuine.length > 0 ? '🔴' : r.flaky.length > 0 ? '🟡' : '✅';
-              lines.push(`| ${status} Shard ${r.shard} | ${r.passed.length} | ${r.genuine.length} | ${r.flaky.length} | ${r.skipped.length} |`);
-            }
-            lines.push('');
-
-            // Genuine failures detail
-            const allGenuine = shardResults.flatMap(r => r.genuine.map(t => ({ ...t, shard: r.shard })));
-            if (allGenuine.length > 0) {
-              lines.push('### Genuine Failures (failed on all attempts)');
-              lines.push('');
-              for (const t of allGenuine.slice(0, 30)) {
-                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
-                lines.push(`<details><summary>❌ <code>${shortFile}</code> › ${t.title} (shard ${t.shard})</summary>`);
-                lines.push('');
-                lines.push('```');
-                lines.push(t.error.substring(0, 1000));
-                lines.push('```');
-                lines.push('</details>');
-                lines.push('');
-              }
-              if (allGenuine.length > 30) {
-                lines.push(`... and ${allGenuine.length - 30} more failures`);
-                lines.push('');
-              }
-            }
-
-            // Flaky tests
-            const allFlaky = shardResults.flatMap(r => r.flaky.map(t => ({ ...t, shard: r.shard })));
-            if (allFlaky.length > 0) {
-              lines.push(`<details><summary>🟡 ${allFlaky.length} flaky test(s) (passed on retry)</summary>`);
-              lines.push('');
-              for (const t of allFlaky.slice(0, 30)) {
-                const shortFile = t.file.replace(/.*playwright\/e2e\//, '');
-                lines.push(`- \`${shortFile}\` › ${t.title} (shard ${t.shard}, ${t.retries} ${t.retries === 1 ? 'retry' : 'retries'})`);
-              }
-              if (allFlaky.length > 30) {
-                lines.push(`- ... and ${allFlaky.length - 30} more`);
-              }
-              lines.push('');
-              lines.push('</details>');
-              lines.push('');
-            }
-
-            lines.push(`📦 [Download artifacts](${artifactUrl})`);
-            lines.push('');
-            lines.push('<details><summary>How to debug locally</summary>');
-            lines.push('');
-            lines.push('```bash');
-            lines.push('# Download playwright-test-results-<shard> artifact and unzip');
-            lines.push('npx playwright show-trace path/to/trace.zip    # view trace');
-            lines.push('```');
-            lines.push('</details>');
-
-            const body = lines.join('\n');
-
-            // Find existing consolidated comment
-            let existingComment = null;
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              const found = response.data.find(c =>
-                c.user?.login === 'github-actions[bot]' && c.body?.includes(commentMarker)
-              );
-              if (found) { existingComment = found; break; }
-            }
-
-            // Also clean up any old per-shard comments from previous runs
-            for await (const response of github.paginate.iterator(
-              github.rest.issues.listComments, { ...repo, issue_number: prNumber, per_page: 100 }
-            )) {
-              for (const c of response.data) {
-                if (c.user?.login === 'github-actions[bot]' && /Playwright Shard \d/.test(c.body || '') && !c.body?.includes(commentMarker)) {
-                  await github.rest.issues.deleteComment({ ...repo, comment_id: c.id });
-                  console.log(`Deleted old per-shard comment ${c.id}`);
-                }
-              }
-            }
-
-            if (existingComment) {
-              await github.rest.issues.updateComment({ ...repo, comment_id: existingComment.id, body });
-            } else {
-              await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
-            }
-
       - name: Verify the Playwright run
         id: verify-run
         if: always()
@@ -506,7 +344,7 @@ jobs:
             exit 1
           fi
           if [[ "$RUN_EXPECTED" == "false" ]]; then
-            echo "Playwright did not run: draft, unrelated paths, or unavailable PR secrets." >> "$GITHUB_STEP_SUMMARY"
+            echo "Playwright did not run: draft, unrelated paths, or a credential-free PR run." >> "$GITHUB_STEP_SUMMARY"
             exit 0
           fi
           if [[ "$RUN_EXPECTED" != "true" || "$BUILD_RESULT" != "success" || "$TEST_RESULT" != "success" ]]; then

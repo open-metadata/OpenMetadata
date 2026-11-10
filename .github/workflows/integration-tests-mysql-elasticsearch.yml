@@ -31,7 +31,7 @@ on:
 permissions:
   contents: read
   pull-requests: read
-  checks: write
+  checks: read
 
 concurrency:
   group: integration-tests-mysql-es-${{ github.event.pull_request.number || github.run_id }}
@@ -80,6 +80,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Cache Maven dependencies
@@ -123,16 +124,17 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: mvn verify -pl :openmetadata-integration-tests -Pmysql-elasticsearch
 
+      - name: Upload integration test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-tests-mysql-elasticsearch-reports
+          path: openmetadata-integration-tests/target/failsafe-reports/
+          if-no-files-found: ignore
+          retention-days: 5
+
       - name: Clean Up
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf ${PWD}/docker-volume
-
-      - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'

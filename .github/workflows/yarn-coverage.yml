@@ -1,4 +1,4 @@
-name: SonarCloud + Jest Coverage
+name: Jest Coverage
 
 on:
   merge_group:
@@ -15,7 +15,7 @@ on:
 
 permissions:
   contents: read
-  pull-requests: write # Required for Providing Jest Coverage Comment
+  pull-requests: read
 
 env:
   UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
@@ -30,6 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           # Disabling shallow clone is recommended for improving relevancy of reporting.
           # Use partial clone (blob:none) to avoid downloading every blob in history —
@@ -90,43 +91,8 @@ jobs:
           title: Jest test Coverage
           summary-title: UI tests summary
           badge-title: Coverage
-          # Fork and Dependabot PRs get a read-only token, so they get no comment; the next step
-          # puts the report in the job summary for everyone.
-          hide-comment: ${{ github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]' }}
+          hide-comment: true
       - name: Coverage summary
         env:
           SUMMARY_HTML: ${{ steps.coverage_comment.outputs.summaryHtml }}
         run: echo "$SUMMARY_HTML" >> "$GITHUB_STEP_SUMMARY"
-      - name: yarn add sonarqube-scanner
-        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: npm install -g sonarqube-scanner
-        id: npm_install_sonar_scanner
-      # Fork and Dependabot PRs get no Sonar token, so they skip the PR scan.
-      - name: SonarCloud Scan On PR
-        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.npm_install_sonar_scanner.outcome == 'success'
-        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: |
-          sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
-          -Dproject.settings=sonar-project.properties \
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }} \
-          -Dsonar.pullrequest.branch=$PR_HEAD_REF \
-          -Dsonar.pullrequest.base=main \
-          -Dsonar.pullrequest.github.repository=OpenMetadata \
-          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }} \
-          -Dsonar.pullrequest.provider=github \
-          -Dsonar.scm.disabled=true
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
-          SONARCLOUD_URL: https://sonarcloud.io
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-      - name: SonarCloud Scan
-        if: github.event_name == 'push' && steps.npm_install_sonar_scanner.outcome == 'success'
-        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: |
-          sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \
-          -Dproject.settings=sonar-project.properties
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.UI_SONAR_TOKEN }}
-          SONARCLOUD_URL: https://sonarcloud.io

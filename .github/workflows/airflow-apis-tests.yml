@@ -12,6 +12,10 @@
 
 name: airflow-apis-tests
 on:
+  push:
+    branches: ["1.13"]
+    paths:
+      - 'openmetadata-airflow-apis/**'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
     paths:
@@ -20,7 +24,7 @@ on:
 permissions:
   contents: read
 
-concurrency: 
+concurrency:
   group: airflow-apis-tests-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 jobs:
@@ -41,6 +45,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
       with:
+        persist-credentials: false
         ref: ${{ github.event.pull_request.head.sha }}
         fetch-depth: 0
         filter: blob:none
@@ -94,28 +99,31 @@ jobs:
         # fix coverage xml report for github
         sed -i 's/openmetadata_managed_apis/\/github\/workspace\/openmetadata-airflow-apis\/openmetadata_managed_apis/g' openmetadata-airflow-apis/ci-coverage.xml
 
-    # Fork and Dependabot PRs get no secrets, so they skip the PR analysis.
-    - name: Push Results in PR to Sonar
-      uses: sonarsource/sonarcloud-github-action@master
-      if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
+    - name: Upload coverage for trusted Sonar analysis
+      uses: actions/upload-artifact@v4
       with:
-        projectBaseDir: openmetadata-airflow-apis/
-        args: >
-          -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties
-          -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-          -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
-          -Dsonar.pullrequest.github.repository=OpenMetadata
-          -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-          -Dsonar.pullrequest.provider=github
+        name: airflow-apis-coverage
+        path: openmetadata-airflow-apis/ci-coverage.xml
+        retention-days: 1
 
-    - name: Push Results to Sonar
-      uses: sonarsource/sonarcloud-github-action@master
-      if: ${{ github.event_name == 'push' }}
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
-      with:
-        projectBaseDir: openmetadata-airflow-apis/
+  airflow-apis-sonar:
+    needs: airflow-apis-tests
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/1.13'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: airflow-apis-coverage
+          path: openmetadata-airflow-apis/
+      - name: Publish Sonar analysis
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SONAR_TOKEN: ${{ secrets.AIRFLOW_APIS_SONAR_TOKEN }}
+        with:
+          projectBaseDir: openmetadata-airflow-apis/
+          args: -Dproject.settings=openmetadata-airflow-apis/sonar-project.properties

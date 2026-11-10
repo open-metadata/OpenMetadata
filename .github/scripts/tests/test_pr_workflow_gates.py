@@ -50,16 +50,23 @@ def test_required_workflows_run_on_pr_updates_without_label_authorization(filena
         "integration-tests-postgres-opensearch.yml",
     ],
 )
-def test_java_report_publishing_requires_a_writable_pr_token(filename):
-    workflow = yaml.safe_load((WORKFLOWS / filename).read_text())
+def test_java_pr_execution_is_read_only_and_preserves_reports(filename):
+    workflow = yaml.load((WORKFLOWS / filename).read_text(), Loader=yaml.BaseLoader)
+    assert all(permission == "read" for permission in workflow["permissions"].values())
+    job = workflow["jobs"][filename.removesuffix(".yml")]
+    assert "pull_request" not in job["if"]
+    assert any("mvn verify" in step.get("run", "") for step in job["steps"])
+    assert not any("surefire-report@" in step.get("uses", "") for step in job["steps"])
     report = next(
         step
-        for job in workflow["jobs"].values()
-        for step in job.get("steps", [])
-        if step.get("name") == "Publish Test Report"
+        for step in job["steps"]
+        if step.get("name") == "Upload integration test reports"
     )
-    assert "head.repo.full_name == github.repository" in report["if"]
-    assert "github.actor != 'dependabot[bot]'" in report["if"]
+    assert report["if"] == "always()"
+    assert (
+        report["with"]["path"]
+        == "openmetadata-integration-tests/target/failsafe-reports/"
+    )
 
 
 @pytest.mark.parametrize(
@@ -91,7 +98,10 @@ def test_playwright_required_check_reports_the_actual_run_outcome(
         "playwright-ci-postgresql",
     }
     assert "run_tests" in jobs["build"]["if"]
-    assert "dependabot[bot]" in jobs["check-changes"]["outputs"]["run_tests"]
+    assert (
+        "github.event_name != 'pull_request'"
+        in jobs["check-changes"]["outputs"]["run_tests"]
+    )
     gate = next(step for step in summary["steps"] if step.get("id") == "verify-run")
     result = subprocess.run(
         ["bash", "-e", "-o", "pipefail", "-c", gate["run"]],

@@ -11,6 +11,32 @@
 
 name: Postgresql PR Knowledge Graph E2E Tests
 on:
+  push:
+    branches: ["1.13"]
+    paths:
+      - '.github/actions/setup-openmetadata-test-environment/action.yml'
+      - '.github/workflows/playwright-knowledge-graph-postgresql-e2e.yml'
+      - 'docker/run_local_docker.sh'
+      - 'docker/run_local_docker_common.sh'
+      - 'docker/run_local_docker_rdf.sh'
+      - 'docker/validate_compose.py'
+      - 'docker/development/docker-compose-fuseki.yml'
+      - 'docker/development/docker-compose-postgres-fuseki.yml'
+      - 'docs/rdf-local-development.md'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/rdf/**'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/rdf/**'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/rdf/**'
+      - 'openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/**'
+      - 'openmetadata-service/src/test/java/org/openmetadata/service/rdf/**'
+      - 'openmetadata-service/src/test/java/org/openmetadata/service/resources/rdf/**'
+      - 'openmetadata-spec/src/main/resources/rdf/**'
+      - 'openmetadata-ui/src/main/resources/ui/playwright/e2e/Features/KnowledgeGraph.spec.ts'
+      - 'openmetadata-ui/src/main/resources/ui/playwright.config.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/components/KnowledgeGraph/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/components/OntologyExplorer/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/rest/rdfAPI.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/types/knowledgeGraph.types.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/utils/TableUtils.tsx'
   workflow_dispatch:
   pull_request:
     types:
@@ -58,6 +84,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup JDK 21
@@ -90,7 +117,7 @@ jobs:
   playwright-knowledge-graph-postgresql:
     needs: [build]
     runs-on: ubuntu-latest
-    if: ${{ !cancelled() && needs.build.result == 'success' && (github.event_name != 'pull_request' || !github.event.pull_request.head.repo.fork) }}
+    if: ${{ !cancelled() && needs.build.result == 'success' && github.event_name != 'pull_request' && (github.ref == 'refs/heads/1.13' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/1.13')) }}
     environment: test
     steps:
       - name: Free Disk Space (Ubuntu)
@@ -107,6 +134,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Prepare temporary directory for Maven build artifact
