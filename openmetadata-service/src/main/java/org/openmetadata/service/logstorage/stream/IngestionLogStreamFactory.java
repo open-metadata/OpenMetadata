@@ -15,9 +15,7 @@ package org.openmetadata.service.logstorage.stream;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
@@ -35,15 +33,8 @@ import org.openmetadata.service.logstorage.stream.IngestionLogTailer.RunState;
  * configured for, because the two cursor formats are not interchangeable: object storage paginates
  * by line offset while the pipeline service paginates by fixed-size chunk.
  */
-@Slf4j
 public class IngestionLogStreamFactory {
 
-  private static final Set<PipelineStatusType> TERMINAL_STATES =
-      Set.of(
-          PipelineStatusType.SUCCESS,
-          PipelineStatusType.FAILED,
-          PipelineStatusType.PARTIAL_SUCCESS,
-          PipelineStatusType.STOPPED);
   private static final String LATEST_RUN = "last";
 
   private final IngestionPipelineRepository repository;
@@ -87,38 +78,13 @@ public class IngestionLogStreamFactory {
   }
 
   /**
-   * Object storage owns a run's log only when streamable logs are on for that pipeline, a bucket is
-   * configured, and the run is identified — otherwise the pipeline service is still the only place
-   * the log exists.
+   * Object storage owns a run's log when the run stored it there, or when the run is still going
+   * and its pipeline ships logs there. Otherwise the pipeline service is the only place the log
+   * exists. A run with no status row yet counts as going: it was most likely just triggered.
    */
   private boolean readsFromLogStorage(IngestionPipeline pipeline, String runId) {
-    return isStorageRunKey(runId)
-        && repository.isS3LogStorageEnabled()
-        && streamableLogsEnabled(pipeline);
-  }
-
-  /**
-   * Object storage keys a run's log by the run's UUID, so a run named any other way cannot be
-   * there. Callers may name a run freely, and asking storage for one it cannot key would fail the
-   * request rather than fall through to the backend that does hold the log.
-   */
-  private static boolean isStorageRunKey(String runId) {
-    boolean keyed = false;
-    if (runId != null) {
-      try {
-        UUID.fromString(runId);
-        keyed = true;
-      } catch (IllegalArgumentException notAUuid) {
-        LOG.debug("Run '{}' is not keyed for object storage; tailing the pipeline service", runId);
-      }
-    }
-    return keyed;
-  }
-
-  private boolean streamableLogsEnabled(IngestionPipeline pipeline) {
-    return Boolean.TRUE.equals(pipeline.getEnableStreamableLogs())
-        || (pipeline.getIngestionRunner() != null
-            && repository.isIngestionRunnerStreamableLogsEnabled(pipeline.getIngestionRunner()));
+    final boolean runGoing = runState(pipeline.getFullyQualifiedName(), runId) != RunState.FINISHED;
+    return repository.readsRunLogsFromStorage(pipeline, runId, runGoing);
   }
 
   private LogTailSource storageSource(String fqn, String runId, String startCursor) {
@@ -164,7 +130,9 @@ public class IngestionLogStreamFactory {
   }
 
   private static RunState toRunState(PipelineStatusType state) {
-    return TERMINAL_STATES.contains(state) ? RunState.FINISHED : RunState.RUNNING;
+    return IngestionPipelineRepository.FINISHED_RUN_STATES.contains(state)
+        ? RunState.FINISHED
+        : RunState.RUNNING;
   }
 
   private static String key(boolean storageBacked, String fqn, String runId) {

@@ -18,6 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import java.io.IOException;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -427,6 +429,104 @@ class IngestionPipelineRepositoryTest {
     deploymentRepository.deployIngestionPipeline(pipeline, mock(ServiceEntityInterface.class));
 
     assertTrue(pipeline.getEnableStreamableLogs());
+  }
+
+  private static final String RUN_ID = "11111111-1111-1111-1111-111111111111";
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("runsAndWhereTheirLogsAre")
+  void runLogsAreReadFromWhereTheRunWroteThem(
+      String scenario,
+      LogStorageConfiguration.Type storageType,
+      String runId,
+      boolean runGoing,
+      boolean pipelineShipsLogs,
+      boolean logsStored,
+      boolean expected)
+      throws IOException {
+    LogStorageInterface storage = mock(LogStorageInterface.class);
+    when(storage.logsExist(any(), any())).thenReturn(logsStored);
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    logRepository.setLogStorage(storage);
+    logRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration().withType(storageType).withBucketName("logs"));
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withFullyQualifiedName("svc.agent")
+            .withEnableStreamableLogs(pipelineShipsLogs);
+
+    assertEquals(
+        expected, logRepository.readsRunLogsFromStorage(pipeline, runId, runGoing), scenario);
+  }
+
+  private static Stream<Arguments> runsAndWhereTheirLogsAre() {
+    LogStorageConfiguration.Type s3 = LogStorageConfiguration.Type.S_3;
+    return Stream.of(
+        Arguments.of("finished run with stored logs", s3, RUN_ID, false, true, true, true),
+        Arguments.of(
+            "finished run whose logs were stored by a flag the pipeline lost",
+            s3,
+            RUN_ID,
+            false,
+            false,
+            true,
+            true),
+        Arguments.of(
+            "finished run that stored nothing, e.g. one from before S3",
+            s3,
+            RUN_ID,
+            false,
+            true,
+            false,
+            false),
+        Arguments.of("going run of a pipeline that ships", s3, RUN_ID, true, true, false, true),
+        Arguments.of(
+            "going run of a pipeline that does not ship", s3, RUN_ID, true, false, false, false),
+        Arguments.of("run not named by a UUID", s3, "scheduled__2026", false, true, true, false),
+        Arguments.of("no run", s3, null, true, true, true, false),
+        Arguments.of(
+            "default storage reads nothing from S3",
+            LogStorageConfiguration.Type.DEFAULT,
+            RUN_ID,
+            true,
+            true,
+            true,
+            false));
+  }
+
+  @ParameterizedTest(name = "pipeline ships logs: {0}")
+  @ValueSource(booleans = {true, false})
+  void withoutS3ThePipelinesFlagDecidesAsBefore(boolean pipelineShipsLogs) {
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    logRepository.setLogStorage(mock(LogStorageInterface.class));
+    logRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration().withType(LogStorageConfiguration.Type.DEFAULT));
+    IngestionPipeline pipeline =
+        new IngestionPipeline()
+            .withFullyQualifiedName("svc.agent")
+            .withEnableStreamableLogs(pipelineShipsLogs);
+
+    assertEquals(
+        pipelineShipsLogs, logRepository.readsRunLogsThroughLogStorage(pipeline, RUN_ID, false));
+  }
+
+  @Test
+  void aRunWhoseStoredLogsCannotBeCheckedIsReadFromTheRunner() throws IOException {
+    LogStorageInterface storage = mock(LogStorageInterface.class);
+    when(storage.logsExist(any(), any())).thenThrow(new IOException("S3 unreachable"));
+    IngestionPipelineRepository logRepository =
+        repositoryWithClient(mock(PipelineServiceClientInterface.class));
+    logRepository.setLogStorage(storage);
+    logRepository.setLogStorageConfiguration(
+        new LogStorageConfiguration()
+            .withType(LogStorageConfiguration.Type.S_3)
+            .withBucketName("logs"));
+    IngestionPipeline pipeline =
+        new IngestionPipeline().withFullyQualifiedName("svc.agent").withEnableStreamableLogs(true);
+
+    assertFalse(logRepository.readsRunLogsFromStorage(pipeline, RUN_ID, false));
   }
 
   @Test

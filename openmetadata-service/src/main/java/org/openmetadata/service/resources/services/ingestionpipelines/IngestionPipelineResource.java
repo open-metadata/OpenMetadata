@@ -1224,15 +1224,10 @@ public class IngestionPipelineResource
     IngestionPipeline ingestionPipeline =
         getIngestionPipelineByIdOrName(uriInfo, securityContext, id, LOG_STREAM_FIELDS);
     Map<String, String> lastIngestionLogs;
-    boolean useStreamableLogs =
-        ingestionPipeline.getEnableStreamableLogs()
-            || (ingestionPipeline.getIngestionRunner() != null
-                && repository.isIngestionRunnerStreamableLogsEnabled(
-                    ingestionPipeline.getIngestionRunner()));
-    if (useStreamableLogs) {
+    PipelineStatus latestStatus =
+        IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
+    if (readsLastRunLogsFromStorage(ingestionPipeline, latestStatus)) {
       // Get logs using the repository's log storage picking up the last runId
-      PipelineStatus latestStatus =
-          IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);
       String runId = latestStatus == null ? null : latestStatus.getRunId();
       if (!CommonUtil.nullOrEmpty(runId)) {
         Map<String, Object> lastIngestionLogsMap =
@@ -1273,6 +1268,14 @@ public class IngestionPipelineResource
     return Response.ok(lastIngestionLogs, MediaType.APPLICATION_JSON_TYPE).build();
   }
 
+  private boolean readsLastRunLogsFromStorage(
+      IngestionPipeline ingestionPipeline, PipelineStatus latestStatus) {
+    return repository.readsRunLogsThroughLogStorage(
+        ingestionPipeline,
+        latestStatus == null ? null : latestStatus.getRunId(),
+        IngestionPipelineRepository.isRunGoing(latestStatus));
+  }
+
   @GET
   @Path("/logs/{id}/last/download")
   @Produces(MediaType.APPLICATION_OCTET_STREAM)
@@ -1311,11 +1314,9 @@ public class IngestionPipelineResource
         String.format(
             "ingestion_logs_%s_%d.txt", ingestionPipeline.getName(), System.currentTimeMillis());
 
-    boolean useStreamableLogs =
-        ingestionPipeline.getEnableStreamableLogs()
-            || (ingestionPipeline.getIngestionRunner() != null
-                && repository.isIngestionRunnerStreamableLogsEnabled(
-                    ingestionPipeline.getIngestionRunner()));
+    boolean fromLogStorage =
+        readsLastRunLogsFromStorage(
+            ingestionPipeline, IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline));
 
     StreamingOutput streamingOutput =
         output -> {
@@ -1325,7 +1326,7 @@ public class IngestionPipelineResource
           while (hasMoreData) {
             Map<String, String> logChunk;
 
-            if (useStreamableLogs) {
+            if (fromLogStorage) {
               // Get logs using the repository's log storage picking up the last runId
               PipelineStatus latestStatus =
                   IngestionPipelineRepository.latestPipelineStatus(ingestionPipeline);

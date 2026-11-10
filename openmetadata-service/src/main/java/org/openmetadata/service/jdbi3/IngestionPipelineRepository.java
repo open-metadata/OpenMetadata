@@ -24,6 +24,7 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import jakarta.ws.rs.sse.Sse;
 import jakarta.ws.rs.sse.SseEventSink;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -124,6 +125,12 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   private static final String PIPELINE_STATUS_JSON_SCHEMA = "ingestionPipelineStatus";
   public static final String PIPELINE_STATUS_EXTENSION = "ingestionPipeline.pipelineStatus";
   private static final String RUN_ID_EXTENSION_KEY = "runId";
+  public static final Set<PipelineStatusType> FINISHED_RUN_STATES =
+      Set.of(
+          PipelineStatusType.SUCCESS,
+          PipelineStatusType.FAILED,
+          PipelineStatusType.PARTIAL_SUCCESS,
+          PipelineStatusType.STOPPED);
   private static final int DEFAULT_RECENT_RUN_LIMIT = 5;
   private static final int DEFAULT_QUEUED_STATUS_TIMEOUT_SECONDS = 3600;
   private static final Pattern NON_ALPHANUMERIC = Pattern.compile("[^a-z0-9]+");
@@ -1680,6 +1687,70 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
         && logStorageConfiguration.getType() == LogStorageConfiguration.Type.S_3
         && logStorageConfiguration.getBucketName() != null
         && !logStorageConfiguration.getBucketName().isEmpty();
+  }
+
+  /**
+   * Whether a run's logs are read from S3 log storage rather than from the runner. What the run did
+   * decides, not the pipeline's flag, which can differ from the configuration the run was deployed
+   * with: a run whose logs are stored is read from storage, and a run still going is read from
+   * where its pipeline ships them (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
+   */
+  public boolean readsRunLogsFromStorage(
+      IngestionPipeline pipeline, String runId, boolean runGoing) {
+    return isS3LogStorageEnabled()
+        && isStorageRunKey(runId)
+        && ((runGoing && shipsLogsToStorage(pipeline))
+            || runLogsStored(pipeline.getFullyQualifiedName(), UUID.fromString(runId)));
+  }
+
+  /**
+   * Whether a run's logs are read through the log storage rather than straight from the runner.
+   * Without S3, the default log storage asks the runner by run id, and a pipeline that ships its
+   * logs keeps reading through it.
+   */
+  public boolean readsRunLogsThroughLogStorage(
+      IngestionPipeline pipeline, String runId, boolean runGoing) {
+    return isS3LogStorageEnabled()
+        ? readsRunLogsFromStorage(pipeline, runId, runGoing)
+        : shipsLogsToStorage(pipeline);
+  }
+
+  public boolean shipsLogsToStorage(IngestionPipeline pipeline) {
+    return Boolean.TRUE.equals(pipeline.getEnableStreamableLogs())
+        || (pipeline.getIngestionRunner() != null
+            && isIngestionRunnerStreamableLogsEnabled(pipeline.getIngestionRunner()));
+  }
+
+  public static boolean isRunGoing(PipelineStatus run) {
+    return run != null && !FINISHED_RUN_STATES.contains(run.getPipelineState());
+  }
+
+  /** Storage keys a run's logs by the run's UUID, so a run named any other way is not there. */
+  private static boolean isStorageRunKey(String runId) {
+    boolean keyed = false;
+    if (runId != null) {
+      try {
+        UUID.fromString(runId);
+        keyed = true;
+      } catch (IllegalArgumentException notAUuid) {
+        LOG.debug("Run '{}' is not keyed for log storage", runId);
+      }
+    }
+    return keyed;
+  }
+
+  private boolean runLogsStored(String pipelineFQN, UUID runId) {
+    boolean stored = false;
+    try {
+      stored = logStorage.logsExist(pipelineFQN, runId);
+    } catch (IOException e) {
+      LOG.warn(
+          "Could not check the stored logs of {}/{}, reading them from the runner: {}",
+          pipelineFQN,
+          runId,
+          e.getMessage());
+    }
+    return stored;
   }
 
   public void appendLogs(String pipelineFQN, UUID runId, String logContent) {
