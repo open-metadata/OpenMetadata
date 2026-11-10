@@ -121,6 +121,10 @@ Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow chang
   must not give unapproved PR code access to secrets. Trace the executed ref through every dispatch
   and checkout. Report a credential path that violates these rules as a 🔴 security finding. Include
   the event, executed ref, and credential source.
+- **Keep manual checkouts in their event's cache scope.** A read-only `GITHUB_TOKEN` does not
+  remove the runner's cache-write capability. A manual run on `main` must not execute a separately
+  supplied PR or branch while using `main`'s cache scope. Generation workflows check out the event
+  SHA on manual runs. Use `pull_request` for PR code so its caches remain scoped to that PR.
 
 ### Writes and data integrity
 

@@ -329,3 +329,31 @@ def test_airflow_sonar_settings_resolve_from_the_workspace():
         f"Sonar settings do not exist relative to the workspace: {settings}"
     )
     assert path.parent.resolve() == (ROOT / scan["projectBaseDir"]).resolve()
+
+
+@pytest.mark.parametrize(
+    "filename",
+    [
+        "typescript-type-generation.yml",
+        "playwright-impact-map-drift.yml",
+    ],
+)
+def test_manual_generation_checkouts_stay_in_the_event_cache_scope(filename):
+    document = yaml.load(
+        (ROOT / ".github/workflows" / filename).read_text(), Loader=yaml.BaseLoader
+    )
+    assert not (document["on"]["workflow_dispatch"] or {}).get("inputs"), (
+        "Manual generation must use its event ref, not a separately supplied PR or branch"
+    )
+    for job in document["jobs"].values():
+        for step in job.get("steps", []):
+            if step.get("uses", "").startswith("actions/checkout@"):
+                options = step.get("with", {})
+                assert (
+                    options.get("repository", "${{ github.repository }}")
+                    == "${{ github.repository }}"
+                )
+                assert (
+                    options["ref"]
+                    == "${{ github.event.pull_request.head.sha || github.sha }}"
+                )

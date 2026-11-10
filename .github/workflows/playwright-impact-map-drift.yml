@@ -35,11 +35,6 @@ on:
       - '.github/scripts/generate_playwright_impact_map.py'
       - '.github/playwright/impact-map.generated.json'
   workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'PR number to refresh the impact map for (optional)'
-        required: false
-        type: string
 
 concurrency:
   group: playwright-impact-map-drift-${{ github.event.pull_request.number || github.run_id }}
@@ -50,107 +45,27 @@ jobs:
     name: Playwright impact-map drift
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
     permissions:
       contents: read
-      pull-requests: read
 
     steps:
-      - name: Get PR details for workflow_dispatch
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
-        id: pr-details
-        env:
-          PR_NUMBER: ${{ github.event.inputs.pr_number }}
-          BASE_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner,headRefOid --repo "$BASE_REPO")
-          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
-          echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
-          echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
-
-      - name: Classify fork vs same-repo
-        id: check-fork
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
-          HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
-          BASE_REPO: ${{ github.repository }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
-            if [ "$FULL_REPO" != "$BASE_REPO" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
-            else
-              echo "is_fork=false" >> $GITHUB_OUTPUT
-            fi
-          elif [ "$EVENT_NAME" == "pull_request" ]; then
-            # Dependabot runs get no secrets either, so they are handled like a fork.
-            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ] || [ "$ACTOR" == "dependabot[bot]" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
-            else
-              echo "is_fork=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "is_fork=false" >> $GITHUB_OUTPUT
-          fi
-
-      # Fork PRs are a no-op past this point — see the header docstring
-      # for the rationale. The step below records the reason in the log so
-      # a reviewer looking at the run can see why nothing else fired.
-      - name: Skip on fork PRs
-        if: steps.check-fork.outputs.is_fork == 'true'
-        run: |
-          echo "Fork PR detected — impact-map drift is a no-op on forks."
-          echo "The 'unmapped code → full' fallback in select_playwright_tests still"
-          echo "runs the specs a stale map would have routed to (see PR #32809)."
-
-      - name: Determine checkout ref
-        if: steps.check-fork.outputs.is_fork != 'true'
-        id: checkout-ref
-        env:
-          IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
-          EVENT_NAME: ${{ github.event_name }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_DETAILS_HEAD_SHA: ${{ steps.pr-details.outputs.head_sha }}
-          PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
-          GITHUB_SHA_VAL: ${{ github.sha }}
-        run: |
-          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
-            echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
-            echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
-          else
-            echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout
-        if: steps.check-fork.outputs.is_fork != 'true'
         uses: actions/checkout@v7
         with:
-          repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
-          ref: ${{ steps.checkout-ref.outputs.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Setup Python
-        if: steps.check-fork.outputs.is_fork != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Regenerate impact map
-        if: steps.check-fork.outputs.is_fork != 'true'
         run: python3 .github/scripts/generate_playwright_impact_map.py
 
       - name: Check for drift
         id: git-check
-        if: steps.check-fork.outputs.is_fork != 'true'
         continue-on-error: true
         run: |
           git add .github/playwright/impact-map.generated.json
@@ -158,12 +73,9 @@ jobs:
 
       - name: Summarise the diff
         id: summarise
-        # `git-check` is skipped on forks, and a skipped step's outcome is
-        # 'skipped' (!= 'success'), so without the fork guard this ran `git show`
-        # in a workspace that was never checked out and failed the job.
-        if: steps.check-fork.outputs.is_fork != 'true' && steps.git-check.outcome != 'success'
+        if: steps.git-check.outcome != 'success'
         run: |
-          # Cap the summary at what fits comfortably in a PR comment. The full
+          # Cap the job summary so it stays readable. The full
           # file is a single JSON line — a raw diff would be unreadable — so
           # count the affected entries semantically instead.
           python3 - <<'PY' > "$RUNNER_TEMP/summary.txt"
@@ -201,7 +113,7 @@ jobs:
           } >> "$GITHUB_OUTPUT"
 
       - name: Report impact-map drift
-        if: steps.check-fork.outputs.is_fork != 'true' && steps.git-check.outcome != 'success'
+        if: steps.git-check.outcome != 'success'
         env:
           DRIFT_SUMMARY: ${{ steps.summarise.outputs.summary }}
         run: |

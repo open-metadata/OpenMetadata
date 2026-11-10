@@ -11,16 +11,6 @@ on:
       - 'openmetadata-ui/src/main/resources/ui/public/jsons/**'
       - 'openmetadata-ui/src/main/resources/ui/parseSchemas.js'
   workflow_dispatch:
-    inputs:
-      branch:
-        description: 'Branch to run the workflow on (ignored if pr_number is provided)'
-        required: false
-        default: 'main'
-        type: string
-      pr_number:
-        description: 'PR number to run the workflow for (same-repo PRs only; fork PRs regenerate locally)'
-        required: false
-        type: string
 
 concurrency:
   group: typescript-generation-${{ github.event.pull_request.number || github.run_id }}
@@ -32,93 +22,11 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: read
-      pull-requests: read
     steps:
-      - name: Get PR details for workflow_dispatch
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
-        id: pr-details
-        env:
-          PR_NUMBER: ${{ github.event.inputs.pr_number }}
-          BASE_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner,headRefOid --repo "$BASE_REPO")
-          echo "head_repo=$(echo "$PR_DATA" | jq -r '.headRepository.name')" >> $GITHUB_OUTPUT
-          echo "head_owner=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login')" >> $GITHUB_OUTPUT
-          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
-          echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
-          echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
-
-      - name: Check if repository is a fork
-        id: check-fork
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
-          HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
-          BASE_REPO: ${{ github.repository }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
-            # For workflow_dispatch with PR number
-            if [ "$FULL_REPO" != "$BASE_REPO" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
-            else
-              echo "is_fork=false" >> $GITHUB_OUTPUT
-            fi
-          elif [ "$EVENT_NAME" == "pull_request" ]; then
-            # Dependabot runs get no secrets either, so they are handled like a fork.
-            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ] || [ "$ACTOR" == "dependabot[bot]" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
-            else
-              echo "is_fork=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            # Default to non-fork for direct branch runs
-            echo "is_fork=false" >> $GITHUB_OUTPUT
-          fi
-
-      # A dispatch runs with this repository's secrets, so it must never execute a fork's code.
-      - name: Refuse to run a fork PR's code on dispatch
-        if: github.event_name == 'workflow_dispatch' && steps.check-fork.outputs.is_fork == 'true'
-        run: |
-          echo "::error title=Fork PR::A dispatch cannot run a fork's code. Ask the author to run ./json2ts-generate-all.sh -l true and yarn parse-schema in openmetadata-ui/src/main/resources/ui and commit the result."
-          exit 1
-
-      - name: Determine checkout ref
-        id: checkout-ref
-        env:
-          IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
-          EVENT_NAME: ${{ github.event_name }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_DETAILS_HEAD_SHA: ${{ steps.pr-details.outputs.head_sha }}
-          PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
-          INPUT_BRANCH: ${{ github.event.inputs.branch }}
-          GITHUB_REF: ${{ github.ref }}
-          GITHUB_SHA_VAL: ${{ github.sha }}
-        run: |
-          if [ "$EVENT_NAME" == "merge_group" ]; then
-            echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
-            echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
-            echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
-          elif [ -n "$INPUT_BRANCH" ]; then
-            echo "ref=$INPUT_BRANCH" >> $GITHUB_OUTPUT
-          else
-            echo "ref=$GITHUB_REF" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout repository
         uses: actions/checkout@v7
         with:
-          repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
-          ref: ${{ steps.checkout-ref.outputs.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Set up Node.js

@@ -1,7 +1,7 @@
 # PR jobs never receive credentials, including same-repository PRs
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-10 (initial)
+- **Revisions:** v1 2026-11-10 (initial) · v2 2026-11-10 (manual checkouts retain their event cache scope)
 - **Deciders:** @pmbrull
 - **Guard:** `.github/scripts/check_pr_workflow_security.py` and its regression tests run in
   `validate-jsons-yamls.yml`; reviewer checks credential access through actions, scripts, and runners.
@@ -49,3 +49,14 @@ to run without those credentials. The workflows and decision record must enforce
   write permissions, and persisted checkout credentials in PR-reachable local job graphs. It
   recognizes explicit event exclusions and treats unknown conditions as reachable. Review still
   checks third-party actions, runner setup, and changes to the guard itself.
+
+## Amendment — v2: manual checkouts retain their event cache scope
+
+The runner can write Actions caches even when its `GITHUB_TOKEN` is read-only. A manual run on
+`main` that checks out a separately supplied PR or branch can let unreviewed code poison a cache
+that trusted jobs restore later.
+
+Type generation and impact-map validation remove their `pr_number` and `branch` inputs. PR runs
+check out the PR head SHA. Manual runs check out `github.sha`, matching the run's ref and cache
+scope. The workflow ref selector still supports manual runs without executing another revision
+under the default branch's cache scope. Regression tests verify both checkout contracts.
