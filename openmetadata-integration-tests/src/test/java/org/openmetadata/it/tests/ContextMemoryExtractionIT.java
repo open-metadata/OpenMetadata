@@ -31,12 +31,15 @@ import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.context.CreateContextMemory;
 import org.openmetadata.schema.api.data.CreatePage;
+import org.openmetadata.schema.api.tasks.ResolveTask;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Article;
@@ -46,10 +49,14 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.type.TaskEntityStatus;
+import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -373,12 +380,7 @@ class ContextMemoryExtractionIT {
     String text = "Anchor back " + ns.shortPrefix();
     ContextFile original = file(ns, "org-wide-original", text);
     runFile(original);
-    ContextFile copy =
-        file(
-            ns,
-            "private-copy",
-            text,
-            new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    ContextFile copy = file(ns, "private-copy", text, privately());
     runFile(copy);
     ContextMemory shared = extracted(original.getEntityReference()).getFirst();
     awaitChips(ns, shared, original, Set.of(copy.getId()));
@@ -413,6 +415,99 @@ class ContextMemoryExtractionIT {
 
     awaitChips(ns, shared, kept, Set.of());
     assertEquals(kept.getId(), storedAnchor(shared).getId());
+  }
+
+  /**
+   * Archiving the org-wide anchor after an org-wide copy leaves the anchor on a private copy, whose
+   * owners alone see the memory. Restoring the org-wide copy, until then a related source, gives
+   * its readers the memory back.
+   */
+  @Test
+  void restoringAnOrgWideCopyTakesTheAnchorFromAPrivateOneForItsReaders(TestNamespace ns)
+      throws Exception {
+    String text = "Readers of the copy " + ns.shortPrefix();
+    ContextFile anchor = file(ns, "org-wide-anchor", text);
+    runFile(anchor);
+    ContextFile copy = file(ns, "org-wide-copy", text);
+    runFile(copy);
+    ContextFile privateCopy = file(ns, "private-copy", text, privately());
+    runFile(privateCopy);
+    ContextMemory shared = extracted(anchor.getEntityReference()).getFirst();
+    RestClient.admin().delete(FILES, copy.getId());
+    RestClient.admin().delete(FILES, anchor.getId());
+    awaitChips(ns, shared, privateCopy, Set.of());
+    assertEquals(
+        403,
+        assertThrows(OpenMetadataException.class, () -> readAsAnotherUser(shared)).getStatusCode());
+
+    RestClient.admin().restore(FILES, copy.getId(), ContextFile.class);
+
+    awaitChips(ns, shared, copy, Set.of(privateCopy.getId()));
+    assertEquals(shared.getId(), readAsAnotherUser(shared).getId());
+  }
+
+  /**
+   * Archiving and restoring the disputed memory's file moves its anchor twice, which changes who may
+   * read it but not what it says: a review detected before is still decided after.
+   */
+  @Test
+  void aReviewDetectedBeforeAnArchiveAndRestoreIsDecidedAfterThem(TestNamespace ns)
+      throws Exception {
+    String text = "Disputed definition " + ns.shortPrefix();
+    ContextFile original = file(ns, "disputed-original", text);
+    runFile(original);
+    ContextFile privateCopy = file(ns, "disputed-copy", text, privately());
+    runFile(privateCopy);
+    ContextMemory disputed = extracted(original.getEntityReference()).getFirst();
+    ContextMemory reviewed = heldInReviewAgainst(ns, disputed);
+    Long contentClock = readMemory(disputed).getLastContentUpdatedAt();
+    RestClient.admin().delete(FILES, original.getId());
+    awaitChips(ns, disputed, privateCopy, Set.of());
+    RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
+    awaitChips(ns, disputed, original, Set.of(privateCopy.getId()));
+
+    Task decided =
+        SdkClients.adminClient()
+            .tasks()
+            .resolve(
+                openReviewOf(reviewed).toString(),
+                new ResolveTask()
+                    .withTransitionId("approve")
+                    .withResolutionType(TaskResolutionType.Approved));
+
+    assertEquals(TaskEntityStatus.Approved, decided.getStatus());
+    ContextMemory superseded = readMemory(disputed);
+    assertEquals(ContextMemoryStatus.SUPERSEDED, superseded.getEntityStatus());
+    assertEquals(contentClock, superseded.getLastContentUpdatedAt());
+  }
+
+  /** A person moving the anchor changes what the memory is about, so its content clock moves. */
+  @Test
+  void aPersonMovingTheAnchorMovesTheContentClock(TestNamespace ns) throws Exception {
+    ContextFile file = file(ns, "first-anchor", "Anchored definition " + ns.shortPrefix());
+    runFile(file);
+    ContextFile other = file(ns, "second-anchor", "Other definition " + ns.shortPrefix());
+    ContextMemory memory = extracted(file.getEntityReference()).getFirst();
+    ContextMemory before =
+        RestClient.admin().getById(MEMORIES, memory.getId(), "primaryEntity", ContextMemory.class);
+
+    ContextMemory moved =
+        RestClient.admin()
+            .patch(
+                MEMORIES,
+                memory.getId(),
+                JsonUtils.pojoToJson(before),
+                JsonUtils.deepCopy(before, ContextMemory.class)
+                    .withPrimaryEntity(other.getEntityReference()),
+                ContextMemory.class);
+
+    assertEquals(
+        other.getId(),
+        RestClient.admin()
+            .getById(MEMORIES, memory.getId(), "primaryEntity", ContextMemory.class)
+            .getPrimaryEntity()
+            .getId());
+    assertTrue(moved.getLastContentUpdatedAt() > before.getLastContentUpdatedAt());
   }
 
   @Test
@@ -669,6 +764,65 @@ class ContextMemoryExtractionIT {
     await()
         .atMost(Duration.ofSeconds(30))
         .untilAsserted(() -> assertGone(FILES + "/" + file.getId()));
+  }
+
+  private static MemoryShareConfig privately() {
+    return new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE);
+  }
+
+  /** The memory as read by a user who owns none of the files. */
+  private static ContextMemory readAsAnotherUser(ContextMemory memory) {
+    return SdkClients.user2Client()
+        .getHttpClient()
+        .execute(HttpMethod.GET, "/" + MEMORIES + "/" + memory.getId(), null, ContextMemory.class);
+  }
+
+  /** A memory held in review for contradicting {@code disputed}, as reconciliation holds one. */
+  private ContextMemory heldInReviewAgainst(TestNamespace ns, ContextMemory disputed)
+      throws Exception {
+    ContextMemory reviewed =
+        RestClient.admin()
+            .create(
+                MEMORIES,
+                new CreateContextMemory()
+                    .withName(ns.prefix("reviewed"))
+                    .withTitle(ns.prefix("reviewed"))
+                    .withQuestion(disputed.getQuestion())
+                    .withAnswer("A contradicting answer " + ns.shortPrefix()),
+                ContextMemory.class);
+    ns.trackRoot(Entity.CONTEXT_MEMORY, reviewed.getId());
+    ContextMemory current = readMemory(reviewed);
+    return RestClient.admin()
+        .patch(
+            MEMORIES,
+            reviewed.getId(),
+            JsonUtils.pojoToJson(current),
+            JsonUtils.deepCopy(current, ContextMemory.class)
+                .withEntityStatus(ContextMemoryStatus.DRAFT)
+                .withDisputes(
+                    List.of(
+                        new MemoryDispute()
+                            .withMemory(disputed.getEntityReference())
+                            .withReason("The two answers differ"))),
+            ContextMemory.class);
+  }
+
+  /** The id of the memory's open conflict review. */
+  private static UUID openReviewOf(ContextMemory memory) {
+    return SdkClients.adminClient()
+        .tasks()
+        .listWithFilters(
+            Map.of(
+                "aboutEntity", memory.getFullyQualifiedName(),
+                "type", TaskEntityType.MemoryConflictReview.value(),
+                "status", TaskEntityStatus.Open.value(),
+                "fields", "about"))
+        .getData()
+        .stream()
+        .filter(task -> memory.getId().equals(task.getAbout().getId()))
+        .map(Task::getId)
+        .findFirst()
+        .orElseThrow();
   }
 
   /** A person's edit through the API, as the memory dialog makes it. */

@@ -24,8 +24,9 @@ public final class ArchivedWithSources {
     extensions.insert(memoryId, EXTENSION, JSON_SCHEMA, MARK);
   }
 
+  /** Read for update: a delete clearing the mark waits for the caller's transaction to end. */
   public boolean isMarked(UUID memoryId) {
-    return extensions.getExtension(memoryId, EXTENSION) != null;
+    return extensions.getExtensionForUpdate(memoryId, EXTENSION) != null;
   }
 
   public void clear(UUID memoryId) {

@@ -1,6 +1,7 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -58,17 +60,21 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 class MemorySourceLifecycleTest {
 
   private ContextMemoryRepository repository;
+  private CollectionDAO daoCollection;
+  private CollectionDAO.ContextMemoryDAO memoryDAO;
   private CollectionDAO.EntityRelationshipDAO relationshipDAO;
   private CollectionDAO.EntityExtensionDAO extensionDAO;
 
   @BeforeEach
   void setUp() {
-    CollectionDAO daoCollection = mock(CollectionDAO.class);
+    daoCollection = mock(CollectionDAO.class);
+    memoryDAO = mock(CollectionDAO.ContextMemoryDAO.class);
     relationshipDAO = mock(CollectionDAO.EntityRelationshipDAO.class);
     extensionDAO = mock(CollectionDAO.EntityExtensionDAO.class);
-    when(daoCollection.contextMemoryDAO()).thenReturn(mock(CollectionDAO.ContextMemoryDAO.class));
+    when(daoCollection.contextMemoryDAO()).thenReturn(memoryDAO);
     when(daoCollection.relationshipDAO()).thenReturn(relationshipDAO);
     when(daoCollection.entityExtensionDAO()).thenReturn(extensionDAO);
+    when(daoCollection.isInTransaction()).thenReturn(true);
     Entity.setCollectionDAO(daoCollection);
     Entity.setEntityRelationshipRepository(new EntityRelationshipRepository(daoCollection));
     repository = new ContextMemoryRepository();
@@ -272,30 +278,28 @@ class MemorySourceLifecycleTest {
   }
 
   /**
-   * The restored org-wide file was the anchor of the first two memories, which archiving moved: it
-   * takes it back from a private copy, which stays a related source, but not from an org-wide one,
-   * beside which it is a related source again. It was only related to the third, which keeps its
-   * private anchor.
+   * A restored org-wide file takes the anchor from a private copy, which stays a related source,
+   * whether the file was the anchor or only related. An org-wide copy and an article keep the anchor,
+   * and the restored file is a related source again beside them.
    */
   @Test
   void restoreMovesTheAnchorBackOnlyFromARestrictedAnchor() {
     EntityReference restored = contextFile("Restored");
     EntityReference privateCopy = contextFile("Private copy");
     EntityReference orgWideCopy = contextFile("Org-wide copy");
+    EntityReference article =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PAGE).withName("Article");
     ContextMemory onPrivate = anchoredMemory(privateCopy);
     ContextMemory onOrgWide = anchoredMemory(orgWideCopy);
-    ContextMemory relatedOnly = anchoredMemory(privateCopy).withRelatedEntities(List.of(restored));
-    sourceMentions(restored, onPrivate, onOrgWide, relatedOnly);
+    ContextMemory relatedOnPrivate =
+        anchoredMemory(privateCopy).withRelatedEntities(List.of(restored));
+    ContextMemory onArticle = anchoredMemory(article);
+    sourceMentions(restored, onPrivate, onOrgWide, relatedOnPrivate, onArticle);
     anchoredOn(onPrivate.getId(), privateCopy, restored);
     anchoredOn(onOrgWide.getId(), orgWideCopy, restored);
-    anchoredOn(relatedOnly.getId(), privateCopy, restored);
-    when(relationshipDAO.findFrom(
-            relatedOnly.getId(),
-            Entity.CONTEXT_MEMORY,
-            Relationship.RELATED_TO.ordinal(),
-            restored.getType()))
-        .thenReturn(edgesFrom(restored));
-    Map<UUID, ContextMemory> stored = storedAs(onPrivate, onOrgWide, relatedOnly);
+    anchoredOn(relatedOnPrivate.getId(), privateCopy, restored);
+    anchoredOn(onArticle.getId(), article, restored);
+    Map<UUID, ContextMemory> stored = storedAs(onPrivate, onOrgWide, relatedOnPrivate, onArticle);
     ContextMemoryRepository memories = writesKept(spy(repository), stored);
     EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
 
@@ -308,9 +312,11 @@ class MemorySourceLifecycleTest {
           restored,
           privateCopy,
           orgWideCopy,
+          article,
           onPrivate.getEntityReference(),
           onOrgWide.getEntityReference(),
-          relatedOnly.getEntityReference());
+          relatedOnPrivate.getEntityReference(),
+          onArticle.getEntityReference());
       sharedAs(entities, restored, MemoryVisibility.ENTITY);
       sharedAs(entities, privateCopy, MemoryVisibility.PRIVATE);
       sharedAs(entities, orgWideCopy, MemoryVisibility.ENTITY);
@@ -321,12 +327,60 @@ class MemorySourceLifecycleTest {
 
     assertSourceLinks(stored.get(onPrivate.getId()), restored, privateCopy);
     assertSourceLinks(stored.get(onOrgWide.getId()), orgWideCopy, restored);
-    assertSourceLinks(stored.get(relatedOnly.getId()), privateCopy, restored);
-    verify(memories, never())
-        .update(any(), argThat((ContextMemory memory) -> memory == relatedOnly), any(), any());
-    verifyRefreshed(dispatcher, onPrivate.getId());
-    verifyRefreshed(dispatcher, onOrgWide.getId());
-    verifyRefreshed(dispatcher, relatedOnly.getId());
+    assertSourceLinks(stored.get(relatedOnPrivate.getId()), restored, privateCopy);
+    assertSourceLinks(stored.get(onArticle.getId()), article, restored);
+    Stream.of(onPrivate, onOrgWide, relatedOnPrivate, onArticle)
+        .forEach(memory -> verifyRefreshed(dispatcher, memory.getId()));
+  }
+
+  /** The marks and memory rows it locks only hold inside a transaction, so restore needs one. */
+  @Test
+  void restoreRefusesToRunOutsideATransaction() {
+    EntityReference restored = contextFile("Restored");
+    ContextMemory archived = memory(MemoryVisibility.ENTITY).withDeleted(true);
+    sourceMentions(restored, archived);
+    committed(archived);
+    marked(archived);
+    when(daoCollection.isInTransaction()).thenReturn(false);
+    ContextMemoryRepository memories = restoresRecorded(spy(repository));
+
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new MemorySourceLifecycle(memories)
+                .restoreExtractedMemories(restored.getId(), restored.getType()));
+
+    verify(memories, never()).restoreEntity(any(), any(UUID.class));
+  }
+
+  /**
+   * The source's lookup can read a memory another source's restore has just brought back as still
+   * archived. The memory as last committed is live, so it shows the restored file again.
+   */
+  @Test
+  void restoreDecidesOnTheMemoryAsLastCommitted() {
+    EntityReference restored = contextFile("Restored");
+    ContextMemory restoredMeanwhile = memory(MemoryVisibility.ENTITY);
+    sourceMentions(restored, restoredMeanwhile);
+    anchoredOn(restoredMeanwhile.getId(), restored);
+    committed(restoredMeanwhile);
+    ContextMemoryRepository memories = restoresRecorded(spy(repository));
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+      resolveReferences(
+          entities, restored, restoredMeanwhile.getEntityReference().withDeleted(true));
+
+      new MemorySourceLifecycle(memories)
+          .restoreExtractedMemories(restored.getId(), restored.getType());
+    }
+
+    verify(memories, never()).restoreEntity(any(), any(UUID.class));
+    verify(extensionDAO, never()).getExtensionForUpdate(any(), any());
+    verifyRefreshed(dispatcher, restoredMeanwhile.getId());
   }
 
   /**
@@ -362,6 +416,7 @@ class MemorySourceLifecycleTest {
     sourceMentions(restored, archivedWithIt, deletedByAPerson);
     anchoredOn(archivedWithIt.getId(), restored);
     anchoredOn(deletedByAPerson.getId(), restored);
+    committed(archivedWithIt, deletedByAPerson);
     marked(archivedWithIt);
     ContextMemoryRepository memories = restoresRecorded(spy(repository));
     EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
@@ -400,8 +455,9 @@ class MemorySourceLifecycleTest {
     UUID memoryId = staleAnchor.getId();
     sourceMentions(restored, staleAnchor);
     anchoredOn(memoryId, archivedCopy, restored);
-    marked(staleAnchor);
     Map<UUID, ContextMemory> stored = storedAs(staleAnchor);
+    committed(JsonUtils.deepCopy(staleAnchor, ContextMemory.class).withDeleted(true));
+    marked(staleAnchor);
     ContextMemoryRepository memories = restoresRecorded(writesKept(spy(repository), stored));
     EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
 
@@ -472,13 +528,24 @@ class MemorySourceLifecycleTest {
 
   /** The source lifecycle archived the memory with its sources. */
   private void marked(ContextMemory memory) {
-    when(extensionDAO.getExtension(memory.getId(), ArchivedWithSources.EXTENSION)).thenReturn("{}");
+    when(extensionDAO.getExtensionForUpdate(memory.getId(), ArchivedWithSources.EXTENSION))
+        .thenReturn("{}");
   }
 
-  /** The live memories as stored, keyed by id. */
-  private static Map<UUID, ContextMemory> storedAs(ContextMemory... memories) {
+  /** The memories as last committed, which the restore reads with their rows locked. */
+  private void committed(ContextMemory... memories) {
+    Stream.of(memories)
+        .forEach(
+            memory ->
+                when(memoryDAO.findJsonByIdForUpdate(memory.getId(), Include.ALL))
+                    .thenReturn(JsonUtils.pojoToJson(memory)));
+  }
+
+  /** The live memories as stored and committed, keyed by id. */
+  private Map<UUID, ContextMemory> storedAs(ContextMemory... memories) {
     Map<UUID, ContextMemory> stored = new HashMap<>();
     Stream.of(memories).forEach(memory -> stored.put(memory.getId(), memory));
+    committed(memories);
     return stored;
   }
 

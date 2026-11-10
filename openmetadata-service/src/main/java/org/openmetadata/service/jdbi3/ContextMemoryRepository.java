@@ -1135,7 +1135,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         || !Objects.equals(before.getMemoryType(), after.getMemoryType())
         || !Objects.equals(before.getMemoryScope(), after.getMemoryScope())
         || !Objects.equals(before.getMachineRepresentation(), after.getMachineRepresentation())
-        || !sameAnchor(before.getPrimaryEntity(), after.getPrimaryEntity());
+        || anchorMovedAsContent(before, after);
+  }
+
+  /** A source-lifecycle anchor move changes who may read the memory, not what it says. */
+  private static boolean anchorMovedAsContent(ContextMemory before, ContextMemory after) {
+    return !sameAnchor(before.getPrimaryEntity(), after.getPrimaryEntity())
+        && !MemorySourceLifecycle.isRelinking(after.getId());
   }
 
   private static boolean extractionManagedFieldChanged(
