@@ -7,8 +7,8 @@ on:
       - ingestion/pyproject.toml
       - ingestion/uv.lock
       - scripts/prepare_classification_models.py
-      - .github/workflows/prepare-classification-models.yml
-      - .github/workflows/write-classification-models.yml
+      - .github/workflows/reusable-prepare-classification-models.yml
+      - .github/workflows/reusable-write-classification-models.yml
       - .github/workflows/warm-classification-models.yml
 
 permissions:

@@ -42,6 +42,6 @@ jobs:
       fail-fast: false
       matrix:
         revision: ${{ fromJSON(needs.revisions.outputs.revisions) }}
-    uses: ./.github/workflows/write-classification-models.yml
+    uses: ./.github/workflows/reusable-write-classification-models.yml
     with:
       revision: ${{ matrix.revision }}

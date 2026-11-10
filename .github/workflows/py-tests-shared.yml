@@ -81,8 +81,8 @@ jobs:
               - 'ingestion/**'
               - 'scripts/prepare_classification_models.py'
               - '.github/scripts/classification_model_revisions.py'
-              - '.github/workflows/prepare-classification-models.yml'
-              - '.github/workflows/write-classification-models.yml'
+              - '.github/workflows/reusable-prepare-classification-models.yml'
+              - '.github/workflows/reusable-write-classification-models.yml'
               - '.github/workflows/classification-models-changed.yml'
               - '.github/workflows/warm-classification-models.yml'
               - '.github/workflows/py-tests.yml'
@@ -193,7 +193,7 @@ jobs:
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' && (inputs.run-unit-tests || needs.changes.outputs.integration == 'true') }}
     cache-mode: read
-    uses: ./.github/workflows/prepare-classification-models.yml
+    uses: ./.github/workflows/reusable-prepare-classification-models.yml
     with:
       revision: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
 

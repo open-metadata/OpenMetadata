@@ -30,7 +30,7 @@ env:
 jobs:
   prepare-spacy-model:
     cache-mode: read
-    uses: ./.github/workflows/prepare-classification-models.yml
+    uses: ./.github/workflows/reusable-prepare-classification-models.yml
     with:
       revision: ${{ github.sha }}
 
