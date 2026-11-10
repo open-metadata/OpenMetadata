@@ -253,9 +253,9 @@ Mark these three required on `main`:
 | **`ui-sonar-gate`** | the Clean-as-You-Code quality gate, incl. 90% coverage on new code |
 
 Mark **`ui-sonar-gate`**, **not** SonarCloud's own check. The scan is gated behind
-`dorny/paths-filter` and the `safe to test` label, so a PR with no UI changes never produces that
-check and would block forever waiting on it. `ui-sonar-gate` always runs and passes when the scan
-was legitimately skipped.
+`dorny/paths-filter` and runs for same-repo PRs only (fork PRs get no Sonar token), so a PR with no
+UI changes or from a fork never produces that check and would block forever waiting on it.
+`ui-sonar-gate` always runs and passes when the scan was legitimately skipped.
 
 The gate result comes from the scanner itself: the PR scan passes `-Dsonar.qualitygate.wait=true`
 (timeout 600s), so SonarCloud decides and the scanner exits non-zero on failure. `ui-sonar-gate`
