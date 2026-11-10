@@ -21,6 +21,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 import org.apache.commons.codec.digest.DigestUtils;
 import org.junit.jupiter.api.AfterEach;
@@ -30,6 +31,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
+import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
+import org.openmetadata.it.factories.TableTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -53,6 +56,7 @@ import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.entity.data.PageType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.EntityReference;
@@ -457,6 +461,157 @@ class ContextMemoryExtractionIT {
   }
 
   /**
+   * While the private copy anchors the memory, a rewrite by reconciliation stores a version naming
+   * it. Once the org-wide file anchors the memory again everyone reads its history, and no version
+   * names the copy to a reader it is hidden from. An admin reads that version in full, but no change
+   * the lifecycle recorded names the copy, even to an admin.
+   */
+  @Test
+  void noVersionNamesThePrivateCopyOnceTheOrgWideFileAnchorsTheMemoryAgain(TestNamespace ns)
+      throws Exception {
+    String text = "History after the restore " + ns.shortPrefix();
+    ContextFile original = file(ns, "org-wide-original", text);
+    runFile(original);
+    ContextFile copy = file(ns, "private-copy", text, privately());
+    runFile(copy);
+    ContextMemory shared = extracted(original.getEntityReference()).getFirst();
+    RestClient.admin().delete(FILES, original.getId());
+    awaitChips(ns, shared, copy, Set.of());
+    reconcileAnswer(
+        copy, shared, "Rewritten while the private copy anchors it " + ns.shortPrefix());
+
+    RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
+
+    awaitChips(ns, shared, original, Set.of());
+    List<String> asRead = versionsAsRead(SdkClients.user2Client(), shared);
+    assertTrue(asRead.size() >= 4, "every version, listed and read one by one");
+    asRead.forEach(version -> assertFalse(version.contains(copy.getName()), version));
+    List<String> asAdmin = versionsAsRead(SdkClients.adminClient(), shared);
+    assertTrue(asAdmin.stream().anyMatch(version -> version.contains(copy.getName())));
+    for (String version : asAdmin) {
+      String changes = JsonUtils.readTree(version).path("changeDescription").toString();
+      assertFalse(changes.contains(copy.getName()), changes);
+    }
+  }
+
+  /**
+   * A file shared with the private copy's owner and a colleague keeps the anchor while it is live.
+   * Archiving it moves the anchor to the private copy, hiding the memory from the colleague;
+   * restoring it gives the anchor back, so the colleague reads the memory again.
+   */
+  @Test
+  void restoringAFileSharedWithTheAnchorsReadersGivesTheMemoryBackToItsOtherReaders(
+      TestNamespace ns) throws Exception {
+    String text = "Shared with a colleague " + ns.shortPrefix();
+    ContextFile original = file(ns, "shared-original", text);
+    runFile(original);
+    ContextFile copy = fileOwnedBy(ns, "private-copy", text, privately());
+    runFile(copy);
+    ContextMemory shared = extracted(original.getEntityReference()).getFirst();
+    share(original, sharedWith(SharedEntities.get().USER2_REF, SharedEntities.get().USER3_REF));
+    assertEquals(original.getId(), storedAnchor(shared).getId());
+    RestClient.admin().delete(FILES, original.getId());
+    awaitChips(ns, shared, copy, Set.of());
+    assertHiddenFrom(SdkClients.user3Client(), shared);
+
+    RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
+
+    assertEquals(original.getId(), storedAnchor(shared).getId());
+    for (OpenMetadataClient reader : List.of(SdkClients.user2Client(), SdkClients.user3Client())) {
+      assertEquals(shared.getId(), readAs(reader, shared).getId());
+    }
+    assertEquals(List.of(shared.getId()), ids(extracted(copy.getEntityReference())));
+  }
+
+  /**
+   * Archiving the org-wide anchor of a memory two private copies reuse anchors it on the first and
+   * leaves the second's reader a copy of their own. No version of the memory names the second copy
+   * to the first's reader, and no version of the copy names the first.
+   */
+  @Test
+  void archivingTheOrgWideAnchorLeavesACopyForAPrivateCopyWithOtherReaders(TestNamespace ns)
+      throws Exception {
+    String text = "Two private copies " + ns.shortPrefix();
+    ContextFile original = file(ns, "org-wide-original", text);
+    runFile(original);
+    ContextFile first = fileOwnedBy(ns, "first-private-copy", text, privately());
+    runFile(first);
+    ContextFile second =
+        file(ns, "second-private-copy", text, privately(), List.of(SharedEntities.get().USER3_REF));
+    runFile(second);
+    ContextMemory shared = extracted(original.getEntityReference()).getFirst();
+    assertEquals(Set.of(original.getId(), first.getId(), second.getId()), sourceIds(shared));
+
+    RestClient.admin().delete(FILES, original.getId());
+
+    assertEquals(first.getId(), storedAnchor(shared).getId());
+    assertEquals(Set.of(original.getId(), first.getId()), sourceIds(shared));
+    List<ContextMemory> copies = extracted(second.getEntityReference());
+    assertCopiesOf(List.of(shared), copies, second);
+    ContextMemory copied = copies.getFirst();
+    assertEquals(copied.getId(), readAs(SdkClients.user3Client(), copied).getId());
+    assertHiddenFrom(SdkClients.user3Client(), shared);
+    versionsAsRead(SdkClients.user2Client(), shared)
+        .forEach(version -> assertFalse(version.contains(second.getName()), version));
+    versionsAsRead(SdkClients.user3Client(), copied)
+        .forEach(version -> assertFalse(version.contains(first.getName()), version));
+  }
+
+  /**
+   * A memory a person anchored on a table shows its org-wide document. Archiving that document would
+   * show the restricted one in its place, so the restricted one takes a copy, and the memory, which
+   * only the archived document states now, waits in the Archive until that document is restored.
+   */
+  @Test
+  void archivingWhatATableAnchoredMemoryShowsLeavesACopyAndArchivesTheMemory(TestNamespace ns)
+      throws Exception {
+    String text = "Shown beside a table " + ns.shortPrefix();
+    ContextFile orgWide = file(ns, "org-wide-document", text);
+    runFile(orgWide);
+    ContextFile restricted = file(ns, "restricted-document", text, privately());
+    runFile(restricted);
+    ContextMemory memory = extracted(orgWide.getEntityReference()).getFirst();
+    anchorOn(memory, table(ns).getEntityReference());
+
+    RestClient.admin().delete(FILES, orgWide.getId());
+
+    assertCopiesOf(List.of(memory), extracted(restricted.getEntityReference()), restricted);
+    assertArchived(ns, memory);
+    assertEquals(Set.of(orgWide.getId()), sourceIds(memory));
+
+    RestClient.admin().restore(FILES, orgWide.getId(), ContextFile.class);
+
+    assertEquals(memory.getId(), readMemory(memory).getId(), "the memory is live again");
+    assertEquals(Set.of(orgWide.getId()), sourceIds(memory));
+  }
+
+  /**
+   * A review cannot be decided while the memory it disputes is in the Archive: an approval would
+   * leave that memory to come back Approved beside the reviewed one. Once its document is restored,
+   * the approval supersedes it.
+   */
+  @Test
+  void aReviewWaitsWhileTheMemoryItDisputesIsInTheArchive(TestNamespace ns) throws Exception {
+    ContextFile file = file(ns, "disputed-document", "Disputed definition " + ns.shortPrefix());
+    runFile(file);
+    ContextMemory disputed = extracted(file.getEntityReference()).getFirst();
+    ContextMemory reviewed = heldInReviewAgainst(ns, disputed);
+    UUID review = openReviewOf(reviewed);
+    RestClient.admin().delete(FILES, file.getId());
+    assertArchived(ns, disputed);
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> approve(review));
+
+    assertEquals(409, refused.getStatusCode());
+    assertTrue(refused.getMessage().contains("in the Archive"), refused.getMessage());
+    assertEquals(review, openReviewOf(reviewed), "the review stays open");
+    RestClient.admin().restore(FILES, file.getId(), ContextFile.class);
+    assertEquals(TaskEntityStatus.Approved, approve(review).getStatus());
+    assertEquals(ContextMemoryStatus.SUPERSEDED, readMemory(disputed).getEntityStatus());
+  }
+
+  /**
    * Archiving and restoring the disputed memory's file moves its anchor twice, which changes who may
    * read it but not what it says: a review detected before is still decided after.
    */
@@ -855,19 +1010,70 @@ class ContextMemoryExtractionIT {
 
   /** The memory as read by a user who owns none of the files. */
   private static ContextMemory readAsAnotherUser(ContextMemory memory) {
-    return SdkClients.user2Client()
+    return readAs(SdkClients.user2Client(), memory);
+  }
+
+  private static ContextMemory readAs(OpenMetadataClient reader, ContextMemory memory) {
+    return reader
         .getHttpClient()
         .execute(HttpMethod.GET, "/" + MEMORIES + "/" + memory.getId(), null, ContextMemory.class);
+  }
+
+  /** Each version of the memory as {@code reader} lists it, then as they read it on its own. */
+  private static List<String> versionsAsRead(OpenMetadataClient reader, ContextMemory memory) {
+    String path = "/" + MEMORIES + "/" + memory.getId() + "/versions";
+    JsonNode history =
+        JsonUtils.readTree(reader.getHttpClient().executeForString(HttpMethod.GET, path, null));
+    List<String> versions = new ArrayList<>();
+    for (JsonNode listed : history.path("versions")) {
+      String version = listed.isTextual() ? listed.asText() : listed.toString();
+      versions.add(version);
+      String number = JsonUtils.readTree(version).path("version").asText();
+      versions.add(
+          reader.getHttpClient().executeForString(HttpMethod.GET, path + "/" + number, null));
+    }
+    return versions;
+  }
+
+  private static Task approve(UUID review) {
+    return SdkClients.adminClient()
+        .tasks()
+        .resolve(
+            review.toString(),
+            new ResolveTask()
+                .withTransitionId("approve")
+                .withResolutionType(TaskResolutionType.Approved));
+  }
+
+  /** A person moves the memory's anchor to {@code anchor}, as the memory dialog does. */
+  private static void anchorOn(ContextMemory memory, EntityReference anchor) throws Exception {
+    ContextMemory before =
+        RestClient.admin().getById(MEMORIES, memory.getId(), "primaryEntity", ContextMemory.class);
+    RestClient.admin()
+        .patch(
+            MEMORIES,
+            memory.getId(),
+            JsonUtils.pojoToJson(before),
+            JsonUtils.deepCopy(before, ContextMemory.class).withPrimaryEntity(anchor),
+            ContextMemory.class);
+  }
+
+  private static Table table(TestNamespace ns) {
+    return TableTestFactory.createSimple(
+        ns, DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName());
   }
 
   private static MemoryShareConfig orgWide() {
     return new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY);
   }
 
-  private static MemoryShareConfig sharedWith(EntityReference reader) {
+  private static MemoryShareConfig sharedWith(EntityReference... readers) {
     return new MemoryShareConfig()
         .withVisibility(MemoryVisibility.SHARED)
-        .withSharedWith(List.of(new MemorySharedPrincipal().withPrincipal(reader)));
+        .withSharedWith(
+            Stream.of(readers)
+                .map(reader -> new MemorySharedPrincipal().withPrincipal(reader))
+                .toList());
   }
 
   private List<Double> versionsOf(List<ContextMemory> memories) throws Exception {
@@ -1045,6 +1251,18 @@ class ContextMemoryExtractionIT {
         .map(Task::getId)
         .findFirst()
         .orElseThrow();
+  }
+
+  /** Reconciliation rewrites the memory's answer, as re-extracting {@code source} would. */
+  private void reconcileAnswer(ContextFile source, ContextMemory memory, String answer) {
+    ContextMemory existing =
+        extracted(source.getEntityReference()).stream()
+            .filter(extracted -> memory.getId().equals(extracted.getId()))
+            .findFirst()
+            .orElseThrow();
+    ContextMemory updated = JsonUtils.deepCopy(existing, ContextMemory.class).withAnswer(answer);
+    updated.setUpdatedAt(System.currentTimeMillis());
+    memoryRepository().updateIfCurrent(null, existing, updated, Entity.ADMIN_USER_NAME);
   }
 
   /** A person's edit through the API, as the memory dialog makes it. */
