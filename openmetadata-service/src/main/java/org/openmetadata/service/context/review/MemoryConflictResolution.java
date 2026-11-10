@@ -38,6 +38,7 @@ import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.security.AuthorizationException;
@@ -66,6 +67,8 @@ public final class MemoryConflictResolution {
       "A memory in this review changed while it was being decided; reload it and decide again";
   static final String MAY_NOT_READ_DISPUTED =
       "User '%s' may not supersede a disputed memory they cannot read";
+  static final String DISPUTED_IN_THE_ARCHIVE =
+      "A memory this review disputes is in the Archive; restore its document to decide the review";
   private static final String DISPUTED_FIELDS =
       ContextMemoryVisibility.guardFields(Entity.CONTEXT_MEMORY, "owners");
 
@@ -163,6 +166,7 @@ public final class MemoryConflictResolution {
     ContextMemory reviewed = reviewedMemory(task);
     List<MemoryDispute> disputes = disputesOf(task, reviewed);
     Map<UUID, ContextMemory> disputed = disputedMemories(disputes);
+    requireNoneArchived(disputed.values());
     MemoryConflictDecision.requireComparedAsIs(decision.comparison(), reviewed, disputes, disputed);
     List<MemoryChange> changes =
         verdict == Verdict.APPROVE
@@ -193,6 +197,16 @@ public final class MemoryConflictResolution {
               whileDeciding(reviewed.getId(), () -> changes.forEach(change -> write(change, user)));
               return changes.size();
             });
+  }
+
+  /**
+   * An archived memory comes back in its stage when its document is restored, so a decision taken
+   * without it would leave two contradictory memories in use; it waits until the memory is back.
+   */
+  static void requireNoneArchived(Collection<ContextMemory> disputed) {
+    if (disputed.stream().anyMatch(memory -> Boolean.TRUE.equals(memory.getDeleted()))) {
+      throw TaskStateConflictException.of(DISPUTED_IN_THE_ARCHIVE);
+    }
   }
 
   /**
@@ -250,6 +264,7 @@ public final class MemoryConflictResolution {
     return Entity.getEntity(Entity.CONTEXT_MEMORY, about.getId(), "owners", Include.NON_DELETED);
   }
 
+  /** Archived ones included; a permanently deleted one is gone, and the decision skips it. */
   private static Map<UUID, ContextMemory> disputedMemories(List<MemoryDispute> disputes) {
     Map<UUID, ContextMemory> disputed = new HashMap<>();
     disputes.forEach(
@@ -257,8 +272,7 @@ public final class MemoryConflictResolution {
           UUID id = dispute.getMemory().getId();
           try {
             disputed.put(
-                id,
-                Entity.getEntity(Entity.CONTEXT_MEMORY, id, DISPUTED_FIELDS, Include.NON_DELETED));
+                id, Entity.getEntity(Entity.CONTEXT_MEMORY, id, DISPUTED_FIELDS, Include.ALL));
           } catch (EntityNotFoundException deleted) {
             LOG.debug("[MemoryConflictReview] disputed memory {} is gone", id, deleted);
           }

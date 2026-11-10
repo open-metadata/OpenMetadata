@@ -13,8 +13,10 @@
 
 package org.openmetadata.service.context.review;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -33,6 +35,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.review.MemoryConflictResolution.Verdict;
+import org.openmetadata.service.exception.TaskStateConflictException;
 
 class MemoryConflictResolutionTest {
 
@@ -50,6 +53,25 @@ class MemoryConflictResolutionTest {
     assertFalse(
         MemoryConflictResolution.hidesOneToSupersede(List.of(rejected), memory -> false),
         "a memory the approval leaves alone needs no read");
+  }
+
+  /**
+   * Restoring its document brings an archived disputed memory back in its stage, so approving
+   * without superseding it would leave two contradictory memories in use: the decision waits.
+   */
+  @Test
+  void aDecisionWaitsWhileADisputedMemoryIsInTheArchive() {
+    ContextMemory live = new ContextMemory().withId(UUID.randomUUID());
+    ContextMemory archived = new ContextMemory().withId(UUID.randomUUID()).withDeleted(true);
+
+    assertDoesNotThrow(() -> MemoryConflictResolution.requireNoneArchived(List.of(live)));
+    TaskStateConflictException refused =
+        assertThrows(
+            TaskStateConflictException.class,
+            () -> MemoryConflictResolution.requireNoneArchived(List.of(live, archived)));
+
+    assertEquals(409, refused.getResponse().getStatus());
+    assertEquals(MemoryConflictResolution.DISPUTED_IN_THE_ARCHIVE, refused.getMessage());
   }
 
   /** A decision retried after its memory left Draft reads the disputes the task recorded. */
