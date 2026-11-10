@@ -41,6 +41,8 @@ class WorkbookDetails(BaseModel):
     ownerId: str | None = None  # noqa: N815
     isArchived: bool | None = None  # noqa: N815
     description: str | None = None
+    # Not in the workbook response: Sigma returns the badge on the workbook's /files entry.
+    badge: str | None = None
     # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
     elements: list["Elements"] = []
     # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
@@ -71,8 +73,16 @@ class WorkBookPageResponse(BaseModel):
 class Elements(BaseModel):
     elementId: str  # noqa: N815
     name: str | None = None
+    type: str | None = Field(default=None)
     vizualizationType: str | None = None  # noqa: N815
     columns: list[str] | None = []
+
+    @property
+    def is_data_element(self) -> bool:
+        """Whether the element supports data models and lineage."""
+        if self.type is not None:
+            return self.type in ("table", "pivot-table", "visualization")
+        return bool(self.vizualizationType)
 
 
 class ElementsResponse(BaseModel):
@@ -114,6 +124,7 @@ class NodeDetails(BaseModel):
     name: str | None
     node_type: str = Field(alias="type")
     path: str | None = ""
+    badge: str | None = None
 
     @property
     def node_schema(self):

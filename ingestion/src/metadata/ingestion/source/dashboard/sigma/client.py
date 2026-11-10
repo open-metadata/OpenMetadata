@@ -122,7 +122,7 @@ class SigmaApiClient:
             if result:
                 workbooks.extend(result.entries)
                 while result.nextPage:
-                    data = {"page": int(result.nextPage)}
+                    data = {"page": result.nextPage}
                     result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks", data=data))
                     if result:
                         workbooks.extend(result.entries)
@@ -142,6 +142,17 @@ class SigmaApiClient:
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
+        return None
+
+    def get_badge(self, workbook_id: str) -> str | None:
+        """
+        The workbook's certification badge, read from its /files entry, whose inode id is the workbook id
+        """
+        try:
+            return NodeDetails.model_validate(self.client.get(f"/files/{workbook_id}")).badge
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the badge of workbook %s: %s", workbook_id, exc)
         return None
 
     def get_connection_type(self, connection_id: str) -> str | None:
@@ -248,7 +259,7 @@ class SigmaApiClient:
                 pages = WorkBookPageResponse.model_validate(
                     self.client.get(
                         f"/workbooks/{workbook_id}/pages",
-                        data={"page": int(pages.nextPage)},
+                        data={"page": pages.nextPage},
                     )
                 )
                 if not pages.entries:
@@ -273,7 +284,7 @@ class SigmaApiClient:
             if result:
                 queries.extend(result.entries)
                 while result.nextPage:
-                    data = {"page": int(result.nextPage)}
+                    data = {"page": result.nextPage}
                     result = WorkbookQueriesResponse.model_validate(
                         self.client.get(f"/workbooks/{workbook_id}/queries", data=data)
                     )

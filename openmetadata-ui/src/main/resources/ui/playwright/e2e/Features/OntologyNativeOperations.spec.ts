@@ -249,23 +249,25 @@ test.describe(
 
     for (const pack of [
       {
-        id: 'fibo',
-        industry: 'finance',
-        base: 'foundations',
-        extra: 'business-entities',
-        label: 'Business Entity',
+        id: 'sosa-ssn',
+        industry: 'cross-industry',
+        base: 'sosa',
+        extra: 'ssn',
+        label: 'Sensor',
         fromOwner: false,
       },
       {
-        id: 'fhir',
-        industry: 'healthcare',
-        base: 'core',
-        extra: 'clinical',
-        label: 'FHIR Resource',
+        id: 'sosa-ssn',
+        industry: 'cross-industry',
+        base: 'sosa',
+        extra: 'ssn',
+        label: 'Sensor',
         fromOwner: true,
       },
     ]) {
-      test(`installs ${pack.id} into a new native ontology and explicitly reuses it without changes`, async ({
+      test(`installs ${pack.id} ${
+        pack.fromOwner ? 'from a source ontology' : 'from the studio'
+      } into a new native ontology and explicitly reuses it without changes`, async ({
         isolatedUserPage: page,
       }) => {
         test.slow();
@@ -308,7 +310,7 @@ test.describe(
           await page.getByTestId(`ontology-module-${pack.extra}`).click();
           await expect(
             page.getByTestId('ontology-pack-concept-count')
-          ).toHaveText('8');
+          ).toHaveText('27');
           await page.route('**/api/v1/ontologyChangeSets', async (route) => {
             if (route.request().method() !== 'POST') {
               await route.continue();
@@ -355,7 +357,7 @@ test.describe(
             }),
             'Read installed concepts'
           );
-          expect(concepts.data).toHaveLength(8);
+          expect(concepts.data).toHaveLength(22);
           const concept = concepts.data.find(
             (item) => item.displayName === pack.label
           );

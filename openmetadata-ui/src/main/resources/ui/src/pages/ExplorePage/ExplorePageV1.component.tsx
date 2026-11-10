@@ -284,13 +284,12 @@ const ExplorePageV1: FC<unknown> = () => {
   };
 
   const searchIndex = useMemo(() => {
-    if (!searchQueryParam) {
-      return SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex;
-    }
-
     const tabInfo = Object.entries(tabsInfo).find(
       ([, tabInfo]) => tabInfo.path === tab
     );
+    if (!searchQueryParam) {
+      return SearchIndex.DATA_ASSET as unknown as ExploreSearchIndex;
+    }
     if (searchHitCounts && isNil(tabInfo)) {
       const activeKey = findActiveSearchIndex(
         searchHitCounts,

@@ -44,12 +44,32 @@ const useConceptOptions = (ontology: Ontology) => {
     .map((concept) => ({ iri: concept.iri, label: getEntityName(concept) }));
 };
 
+const usePropertyOptions = (ontology: Ontology) => {
+  const { model } = useOntologyStudioModel(ontology);
+
+  return model?.properties.map((property) => ({
+    iri: property.iri,
+    label: getEntityName(property),
+    kind: property.kind,
+  }));
+};
+
 const PropertyEditorWithConcepts = (
-  props: Omit<ComponentProps<typeof OntologyPropertyEditor>, 'concepts'>
+  props: Omit<
+    ComponentProps<typeof OntologyPropertyEditor>,
+    'concepts' | 'properties'
+  >
 ) => {
   const concepts = useConceptOptions(props.ontology);
+  const properties = usePropertyOptions(props.ontology);
 
-  return <OntologyPropertyEditor {...props} concepts={concepts} />;
+  return (
+    <OntologyPropertyEditor
+      {...props}
+      concepts={concepts}
+      properties={properties}
+    />
+  );
 };
 
 const ConceptEditorWithConcepts = (
