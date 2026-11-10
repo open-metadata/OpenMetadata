@@ -283,7 +283,9 @@ jest.mock('../../../rest/testAPI', () => ({
 
 const mockGetTableDetailsByFQN = jest.fn();
 
+const mockGetColumnByFQN = jest.fn();
 jest.mock('../../../rest/tableAPI', () => ({
+  getColumnByFQN: (...args: unknown[]) => mockGetColumnByFQN(...args),
   getTableDetailsByFQN: (...args: unknown[]) =>
     mockGetTableDetailsByFQN(...args),
   patchTableDetails: jest.fn(),
@@ -1318,6 +1320,55 @@ describe('EntitySummaryPanel component tests', () => {
   });
 
   describe('entityData sync when onEntityUpdate is provided (Lineage drawer)', () => {
+    it('shows the column extension from the API, not the stale search hit', async () => {
+      const columnHit = {
+        ...mockTableEntityDetails,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      };
+      mockGetColumnByFQN.mockResolvedValueOnce({
+        name: columnHit.name,
+        extension: { helloWorld: ['hello'] },
+      });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object; table?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify({
+              extension: props.dataAsset?.extension,
+              table: props.dataAsset?.table,
+            })}
+          </div>
+        ),
+      });
+
+      render(
+        <EntitySummaryPanel
+          entityDetails={{ details: columnHit as unknown as never }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({
+            extension: { helloWorld: ['hello'] },
+            table: { id: 'parent-table-id' },
+          })
+        );
+      });
+
+      expect(mockGetColumnByFQN).toHaveBeenCalledWith(
+        columnHit.fullyQualifiedName,
+        { entityType: EntityType.TABLE, fields: 'tags,extension' }
+      );
+    });
+
     it('should refresh the rendered dataAsset immediately, not just notify onEntityUpdate', async () => {
       const mockOnEntityUpdate = jest.fn();
       const tableEntity = {

@@ -87,6 +87,7 @@ import {
   patchStoredProceduresDetails,
 } from '../../../rest/storedProceduresAPI';
 import {
+  getColumnByFQN,
   getTableDetailsByFQN,
   patchTableDetails,
   updateTableColumn,
@@ -117,45 +118,38 @@ import {
 } from './EntitySummaryPanel.interface';
 import LineageTabContent from './LineageTab/LineageTabContent';
 
-type EntityFetchResolution =
-  | { immediate: true }
-  | { immediate: false; promise: Promise<object> | null };
-
 // Picks how to populate the panel for `entityType`: a dedicated fetch-by-fqn
-// call when one is registered, the search-hit data as-is for tableColumn
-// (it has no standalone API), a fields-scoped fetch for knowledge pages, or
+// call when one is registered, the column API for tableColumn (the search hit
+// goes stale after an edit), a fields-scoped fetch for knowledge pages, or
 // the generic `owners,domains,tags,extension` fetch otherwise.
 const resolveEntityFetch = (
   entityType: EntityType,
   fqn: string,
   entityFetchMap: Record<string, (fqn: string) => Promise<object>>
-): EntityFetchResolution => {
+): Promise<object> | null => {
   const fetchFn = entityFetchMap[entityType];
   if (fetchFn) {
-    return { immediate: false, promise: fetchFn(fqn) };
+    return fetchFn(fqn);
   }
   if (entityType === EntityType.TABLE_COLUMN) {
-    return { immediate: true };
+    return getColumnByFQN(fqn, {
+      entityType: EntityType.TABLE,
+      fields: 'tags,extension',
+    });
   }
   if (entityType === EntityType.KNOWLEDGE_PAGE) {
-    return {
-      immediate: false,
-      promise: entityUtilClassBase.getEntityByFqn(
-        entityType,
-        fqn,
-        'owners,domains,tags'
-      ),
-    };
-  }
-
-  return {
-    immediate: false,
-    promise: entityUtilClassBase.getEntityByFqn(
+    return entityUtilClassBase.getEntityByFqn(
       entityType,
       fqn,
-      'owners,domains,tags,extension'
-    ),
-  };
+      'owners,domains,tags'
+    );
+  }
+
+  return entityUtilClassBase.getEntityByFqn(
+    entityType,
+    fqn,
+    'owners,domains,tags,extension'
+  );
 };
 
 interface FetchedEntityData {
@@ -463,27 +457,23 @@ export default function EntitySummaryPanel({
     setIsEntityDataLoading(true);
     try {
       const fqn = entityDetails.details.fullyQualifiedName;
-      const resolution = resolveEntityFetch(entityType, fqn, entityFetchMap);
+      const entityPromise = resolveEntityFetch(entityType, fqn, entityFetchMap);
 
-      if (resolution.immediate) {
+      if (!entityPromise) {
         setEntityData(entityDetails.details as EntityData);
-        setIsEntityDataLoading(false);
 
         return;
       }
 
-      const entityPromise = resolution.promise;
+      const data = (await entityPromise) as FetchedEntityData;
 
-      if (entityPromise) {
-        const data = (await entityPromise) as FetchedEntityData;
-        setEntityData(mergeEntityData(data, entityDetails.details));
-      } else {
-        // For entity types without a dedicated API (like tableColumn),
-        // use the search index data directly. The search index already
-        // contains all necessary fields (service, database, schema, table, etc.)
-        const searchData = entityDetails.details as EntityData;
-        setEntityData(searchData);
-      }
+      // The column API returns only the column; the search hit carries its
+      // table/schema/service context, so overlay the fresh column onto it.
+      setEntityData(
+        entityType === EntityType.TABLE_COLUMN
+          ? ({ ...entityDetails.details, ...data } as EntityData)
+          : mergeEntityData(data, entityDetails.details)
+      );
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
