@@ -28,6 +28,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ui-checkstyle-${{ github.event.pull_request.number || github.run_id }}
@@ -588,25 +589,12 @@ jobs:
     if: always()
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
+      contents: read
     steps:
-      - name: Find existing summary comment
-        uses: peter-evans/find-comment@v4
-        id: fc
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-        continue-on-error: true
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          comment-author: github-actions[bot]
-          body-includes: '<!-- check:ui-checkstyle-summary -->'
-
-      - name: Post or update summary comment
+      - name: Write checkstyle summary
         uses: actions/github-script@v9
-        if: ${{ github.event_name == 'pull_request' && steps.fc.outcome != 'failure' }}
+        if: ${{ github.event_name == 'pull_request' }}
         continue-on-error: true
-        env:
-          # Fork and Dependabot PRs get a read-only token: they get the job summary but no comment.
-          POST_COMMENT: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         with:
           script: |
             const checks = [
@@ -685,8 +673,6 @@ jobs:
             ];
 
             const failures = checks.filter(c => c.result === 'failure');
-            const commentId = '${{ steps.fc.outputs.comment-id }}';
-            const postComment = process.env.POST_COMMENT === 'true';
 
             const eslintFindings = ${{ toJSON(needs.checkstyle.outputs.eslint_has_findings) }} === 'true';
             const eslintSummary  = ${{ toJSON(needs.checkstyle.outputs.eslint_summary) }} || '';
@@ -694,23 +680,14 @@ jobs:
 
             // The checkstyle job can die before its outputs are evaluated — a step output too
             // large for the job-output expression limit does exactly that. Every entry above is
-            // then blank, so without this branch the PR gets a red required check and no comment.
+            // then blank, so without this branch the PR gets a red required check and no summary.
             const jobResult = '${{ needs.checkstyle.result }}';
             // Only a genuine failure. `cancelled` is the concurrency group superseding this run,
             // and `skipped` is a PR with no UI changes — neither is worth a red comment.
             const jobFailed = jobResult === 'failure';
             const unexplained = jobFailed && failures.length === 0;
 
-            // Warnings do not fail the build, so a comment posted only on
-            // failure would hide them entirely — which defeats the warn tier.
             if (failures.length === 0 && !eslintFindings && !jobFailed) {
-              if (postComment && commentId) {
-                await github.rest.issues.deleteComment({
-                  owner: context.repo.owner,
-                  repo: context.repo.repo,
-                  comment_id: parseInt(commentId, 10),
-                });
-              }
               return;
             }
 
@@ -767,25 +744,6 @@ jobs:
             ].join('\n');
 
             await core.summary.addRaw(body).write();
-            if (!postComment) {
-              return;
-            }
-
-            if (commentId) {
-              await github.rest.issues.updateComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                comment_id: parseInt(commentId, 10),
-                body,
-              });
-            } else {
-              await github.rest.issues.createComment({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                issue_number: context.issue.number,
-                body,
-              });
-            }
 
       - name: Check final results
         if: always()

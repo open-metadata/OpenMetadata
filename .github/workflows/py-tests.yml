@@ -36,7 +36,6 @@ jobs:
       test-profile: python-integration
       run-unit-tests: true
       run-coverage: true
-    secrets: inherit
 
   # The sole required check for this workflow. Must stay in the caller: inside
   # py-tests-shared.yml it would report as "py-tests / python / <job>".

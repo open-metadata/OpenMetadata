@@ -1,6 +1,6 @@
 # PR code never runs on pull_request_target; fork PRs run unprivileged
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-10-pr-jobs-never-receive-credentials
 - **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-20 (the merge queue runs only approved commits) · v3 2026-11-09 (retain team membership for PR assignment)
 - **Deciders:** @pmbrull
 - **Guard:** `actions/checkout@v7` refuses to fetch fork code under `pull_request_target` unless the step
