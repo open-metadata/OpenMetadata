@@ -65,6 +65,10 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -146,7 +150,6 @@ import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
-import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -164,6 +167,10 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   private static final String PATCH_FIELDS =
       "conceptMappings,references,relatedTerms,synonyms,style";
   private static final String PARENT_OF_RELATION_TYPE = "parentOf";
+  // ponytail: one lane per server for every glossary; per-glossary lanes if rewrites queue up.
+  private static final ExecutorService ASSET_REWRITES =
+      Executors.newSingleThreadExecutor(
+          Thread.ofVirtual().name("glossary-asset-rewrite-", 0).factory());
   private static final String ONTOLOGY_EDGE_ID_NAMESPACE = "ontology:";
   private static final int ONTOLOGY_RELATION_CANDIDATE_MULTIPLIER = 5;
   private static final int MAX_ONTOLOGY_RELATION_CANDIDATES = 2500;
@@ -2163,20 +2170,39 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   // A reviewer accepting a held move or rename does not wait for the tagged assets to be
-  // rewritten: an update-by-query across every index can outlast the request on a large cluster,
-  // which is why an unheld move already runs as a background job. It still starts after commit.
+  // rewritten: an update-by-query across every index can outlast the request on a large cluster.
+  // Inline or not, every rewrite joins one lane in the order it is drained after commit, so a
+  // later rename cannot overtake an earlier rewrite still going through the index
+  // (ADR:2026-11-10-an-approved-glossary-term-move-rewrites-tagged-assets-in-the-background).
   private void updateAssetIndexes(String oldFqn, String newFqn, boolean inBackground) {
-    Runnable rewrite =
+    final Runnable rewrite =
         () ->
             searchRepository
                 .getSearchClient()
                 .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
     searchRepository.deferIfFlushScopeActive(
-        inBackground ? () -> AsyncService.getInstance().execute(rewrite) : rewrite,
+        () -> {
+          final Future<?> queued = ASSET_REWRITES.submit(rewrite);
+          if (!inBackground) {
+            awaitAssetRewrite(queued, oldFqn, newFqn);
+          }
+        },
         "updateGlossaryTermByFqnPrefix",
         null,
         newFqn,
         Entity.GLOSSARY_TERM);
+  }
+
+  private static void awaitAssetRewrite(Future<?> queued, String oldFqn, String newFqn) {
+    try {
+      queued.get();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Interrupted waiting for the tagged-asset rewrite {} -> {}", oldFqn, newFqn);
+    } catch (ExecutionException e) {
+      throw new IllegalStateException(
+          "Tagged-asset rewrite %s -> %s failed".formatted(oldFqn, newFqn), e.getCause());
+    }
   }
 
   private void updateEntityLinks(String oldFqn, String newFqn, GlossaryTerm updated) {
