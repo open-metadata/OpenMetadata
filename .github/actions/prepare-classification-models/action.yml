@@ -39,14 +39,13 @@ runs:
         cd "$RUNNER_TEMP/classification-model-toolkit"
         npm ci --ignore-scripts --no-audit --no-fund
     - name: Prepare model archives sequentially
-      shell: bash
+      uses: ./.github/actions/prepare-classification-models/cache
       env:
         NODE_PATH: ${{ runner.temp }}/classification-model-toolkit/node_modules
         MODELS: ${{ steps.discover.outputs.models }}
         UV_VERSION: ${{ steps.discover.outputs.uv }}
         ARCHIVE_DIRECTORY: ${{ runner.temp }}/classification-models
         SAVE_CACHE: ${{ inputs.save-cache }}
-      run: node "$GITHUB_ACTION_PATH/prepare.cjs"
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       if: inputs.save-cache != 'true'
       with:

@@ -997,43 +997,43 @@ def fixture_model_metadata(requirements):
 
 
 def sequential_models(tmp_path, records, write, uv_version, save_failure=False):
-    script = tmp_path / "prepare.cjs"
-    script.write_text(
-        """const fs = require('node:fs');
-const path = require('node:path');
-const { prepareModels } = require(process.argv[2]);
-const cache = {
-  async restoreCache([archive], key) {
-    const stored = path.join('stored', key);
-    if (!fs.existsSync(stored)) return undefined;
-    fs.mkdirSync(path.dirname(archive), {recursive: true});
-    fs.copyFileSync(stored, archive);
-    return key;
-  },
-  async saveCache([archive], key) {
-    if (process.argv[7] === 'true') return -1;
-    fs.mkdirSync('stored', {recursive: true});
-    fs.copyFileSync(archive, path.join('stored', key));
-    return 1;
-  }
-};
-prepareModels(JSON.parse(process.argv[4]), {
-  directory: 'artifacts', helper: process.argv[3],
-  write: process.argv[5] === 'true', uvVersion: process.argv[6]
-}, cache).catch(error => { console.error(error); process.exitCode = 1; });
+    adapter = tmp_path / "cache_adapter.py"
+    adapter.write_text(
+        """import json, pathlib, shutil, sys
+failure, operation, key, result_file = sys.argv[1:]
+archive = pathlib.Path("model-cache/model.tar")
+stored = pathlib.Path("stored") / key
+if operation == "restore":
+    result = None
+    if stored.exists():
+        archive.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copyfile(stored, archive)
+        result = key
+elif failure == "true":
+    result = -1
+else:
+    stored.parent.mkdir(exist_ok=True)
+    shutil.copyfile(archive, stored)
+    result = 1
+pathlib.Path(result_file).write_text(json.dumps(result))
 """
     )
-    return run(
-        "node",
-        str(script),
-        str(REPO_ROOT / ".github/actions/prepare-classification-models/prepare.cjs"),
-        str(REPO_ROOT / "scripts/prepare_classification_models.py"),
+    args = [
+        "batch",
+        "--models",
         json.dumps(records),
-        str(write).lower(),
+        "--archives",
+        str(tmp_path / "artifacts"),
+        "--uv-version",
         uv_version,
+        "--cache-command",
+        sys.executable,
+        str(adapter),
         str(save_failure).lower(),
-        cwd=tmp_path,
-    )
+    ]
+    if write:
+        args.append("--save-cache")
+    return model_helper(*args, cwd=tmp_path)
 
 
 @pytest.mark.parametrize("write,uv_version", [(True, "0.13.4"), (False, "0.13.4"), (True, "0.13.3")])
@@ -1073,7 +1073,7 @@ def test_sequential_model_hash_failure_publishes_no_archives(tmp_path, model_ori
     assert_success(result)
     result = sequential_models(tmp_path, json.loads(result.stdout)["include"], True, "0.13.4")
     assert result.returncode != 0
-    assert "Model preparation failed" in result.stderr
+    assert "Hash mismatch" in result.stderr
     assert requests
     assert not list((tmp_path / "artifacts").glob("*/model.tar"))
     assert not list((tmp_path / "stored").glob("*"))
@@ -1090,6 +1090,56 @@ def test_sequential_model_save_failure_fails_warmer(tmp_path, model_origin):
     assert result.returncode != 0
     assert "Cache save failed" in result.stderr
     assert not list((tmp_path / "stored").glob("*"))
+
+
+@pytest.mark.parametrize("missing", ["ACTIONS_CACHE_URL", "ACTIONS_RUNTIME_TOKEN"])
+def test_native_cache_adapter_rejects_missing_runtime_before_preparation(tmp_path, monkeypatch, missing):
+    monkeypatch.setenv("ACTIONS_CACHE_URL", "http://127.0.0.1:1/")
+    monkeypatch.setenv("ACTIONS_RUNTIME_TOKEN", "fixture")
+    monkeypatch.delenv("ACTIONS_RESULTS_URL", raising=False)
+    monkeypatch.delenv(missing)
+    adapter = REPO_ROOT / ".github/actions/prepare-classification-models/cache/index.js"
+    result = run("node", str(adapter), cwd=tmp_path)
+    assert result.returncode != 0
+    assert "Actions cache runtime unavailable" in result.stderr
+    assert not (tmp_path / "model-cache").exists()
+
+
+def test_model_free_test_profile_preserves_test_dependencies_after_model_selection(nox_repo, model_origin, monkeypatch):
+    requirements, state, requests = model_origin
+    add_fixture_models(nox_repo, requirements)
+    cache = nox_repo / "cache"
+    monkeypatch.setenv("UV_CACHE_DIR", str(cache))
+    for index, requirement in enumerate(requirements):
+        archive = nox_repo / f"model-{index}.tar"
+        assert_success(
+            model_helper(
+                "prepare",
+                "--requirement",
+                requirement,
+                "--uv-version",
+                "0.13.4",
+                "--output",
+                str(archive),
+                cwd=nox_repo,
+            )
+        )
+        assert_success(model_helper("import", "--archive", str(archive), "--cache-dir", str(cache), cwd=nox_repo))
+    state["status"] = 403
+    requests.clear()
+    for profile, present in [("test", False), ("test-classification", True), ("test", False)]:
+        assert_success(run("make", "install_test", f"PYTHON_TEST_PROFILE={profile}", cwd=nox_repo))
+        result = run(
+            str(nox_repo / "env/bin/python"),
+            "-I",
+            "-c",
+            "import importlib.util, pytest; "
+            f"assert (importlib.util.find_spec('fixture_first') is not None) is {present}; "
+            f"assert (importlib.util.find_spec('fixture_second') is not None) is {present}",
+            cwd=nox_repo,
+        )
+        assert_success(result)
+    assert requests == []
 
 
 @pytest.mark.parametrize("unsupported", [False, True])

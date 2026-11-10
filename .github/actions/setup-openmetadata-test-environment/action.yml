@@ -6,7 +6,7 @@ inputs:
     description: Python Version to install
     required: true
   classification-models:
-    description: Import prepared model archives and install the locked full-test profile
+    description: Import model archives and retain models in the test profile
     default: 'false'
   java-version:
     description: Java Version to install
@@ -48,12 +48,8 @@ inputs:
     required: false
     default: "false"
   install-test-dependencies:
-    # ingestion[all], ingestion[test], sqlalchemy-redshift/ibmi, and nox are only
-    # used by py-tests / py-cli-e2e / py-operator
-    # workflows that invoke Python on the runner. Playwright E2E workflows drive
-    # the browser and let the ingestion Docker container run its own installs, so
-    # they can pass "false" here to shave ~3-4 minutes per shard off setup.
-    description: Whether to install the ingestion Python packages needed to run ingestion / py-tests on the runner
+    # Browser-only jobs use the ingestion container and can omit runner test dependencies.
+    description: Install the locked ingestion test dependencies on the runner
     required: false
     default: "true"
 
@@ -131,6 +127,13 @@ runs:
         make generate
       shell: bash
 
+    - name: Install test dependencies
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
+      run: |
+        source env/bin/activate
+        make install_test PYTHON_TEST_PROFILE=test
+      shell: bash
+
     - name: Download classification model archives
       if: inputs.classification-models == 'true'
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
@@ -144,31 +147,6 @@ runs:
         for archive in "$RUNNER_TEMP"/classification-models/*/model.tar; do
           python scripts/prepare_classification_models.py import --archive "$archive" --cache-dir "$(uv cache dir)"
         done
-      shell: bash
-
-    - name: Install locked test dependencies
-      if: inputs.classification-models == 'true'
-      run: |
-        source env/bin/activate
-        make install_test PYTHON_TEST_PROFILE=test
-      shell: bash
-
-    - name: Install Python Dependencies
-      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' && inputs.classification-models != 'true' }}
-      run: |
-        source env/bin/activate
-        uv pip install --no-deps "sqlalchemy-ibmi==0.9.3"
-        uv pip install "${{ github.workspace }}/ingestion[all]"
-        uv pip install "${{ github.workspace }}/ingestion[test]"
-        uv pip install nox
-        # Airflow core owns the airflow package. Repair only that distribution if an
-        # exact-key cache restored inconsistent package files. Bypass uv's cache because
-        # installed files can share hardlinks with its cached wheel payload.
-        if ! python -c "import airflow; from airflow.models import Connection"; then
-          airflow_version="$(python -c 'from importlib.metadata import version; print(version("apache-airflow"))')"
-          uv pip install --no-cache --reinstall-package apache-airflow-core "apache-airflow-core==${airflow_version}"
-        fi
-        python -c "import airflow; from airflow.models import Connection; print(f'Airflow {airflow.__version__}: {Connection.__module__}.Connection')"
       shell: bash
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
@@ -222,10 +200,20 @@ runs:
           ./.github/scripts/start_playwright_fast_environment.sh "${fast_args[@]}"
       shell: bash
 
-    - name: Install and verify classification models after server setup
-      if: inputs.classification-models == 'true'
+    - name: Synchronize test dependencies after server setup
+      if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' && inputs.install-test-dependencies == 'true' }}
+      env:
+        CLASSIFICATION_MODELS: ${{ inputs.classification-models }}
       run: |
         source env/bin/activate
-        make install_test
-        python scripts/prepare_classification_models.py verify --project ingestion
+        profile=test
+        if [ "$CLASSIFICATION_MODELS" = 'true' ]; then
+          profile=test-classification
+        fi
+        make install_test PYTHON_TEST_PROFILE="$profile"
+      shell: bash
+
+    - name: Verify classification models
+      if: inputs.classification-models == 'true'
+      run: env/bin/python scripts/prepare_classification_models.py verify --project ingestion
       shell: bash

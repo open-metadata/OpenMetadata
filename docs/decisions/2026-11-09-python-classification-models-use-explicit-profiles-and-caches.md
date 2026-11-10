@@ -1,7 +1,7 @@
 # Python classification models use explicit profiles and isolated caches
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action)
+- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action); v3 2026-11-10 (independent test setup and native cache adapter)
 - **Deciders:** Pablo Takara
 - **Guard:** `ingestion/tests/unit/test_python_tooling.py`; DB2 connection tests; reviewer for workflow ordering and cache ownership
 - **Related:** ADR:2026-10-27-local-python-environments-use-locked-profiles; https://github.com/open-metadata/OpenMetadata/pull/37424
@@ -125,3 +125,16 @@ Different model versions remain distinct cache entries, but their warming is ser
 consumer preparation and warming retain a 15-minute whole-job timeout; individual downloads
 remain bounded by the helper. Requested uv pins differing from the current pin are selected with
 `uv run --no-project --with uv==<pin>` on cache misses.
+
+## Amendment — 2026-11-10: Independent test setup and native cache adapter
+
+`install-test-dependencies` controls both test dependency synchronizations in shared setup,
+independently of `classification-models`. The initial model-free `test` profile retains the existing
+all/Airflow/great-expectations extras and dialect compatibility dependencies. After server setup,
+the same test flag triggers synchronization, selecting `test-classification` when models are
+requested and `test` otherwise. Archive import and model verification remain model-specific.
+
+Python owns sequential preparation, uv selection, archive handling and save-result validation.
+A native JavaScript action provides only the official Actions cache calls and launches Python.
+The runner supplies the cache runtime environment to that native action; an ordinary shell
+invocation does not receive it. The adapter fails before preparation if that runtime is absent.
