@@ -207,7 +207,7 @@ public class MemorySourceLifecycle {
     } else {
       copyForTheSourcesItWouldShow(memoryId);
     }
-    memories.refreshSearchDocument(memoryId);
+    settle(memoryId);
   }
 
   /** No transaction spans an archive's hook, so each attempt reads the memory afresh. */
@@ -230,6 +230,27 @@ public class MemorySourceLifecycle {
     return anchor.get();
   }
 
+  /**
+   * Once copies took documents from the live memory, one that only archived documents still state
+   * waits in the Archive with them and one that none states is deleted; any other is refreshed.
+   */
+  private void settle(UUID memoryId) {
+    List<EntityReference> documents = sources(memoryId);
+    if (documents.stream().anyMatch(document -> !isArchived(document))) {
+      memories.refreshSearchDocument(memoryId);
+    } else {
+      retire(memoryId, documents.isEmpty());
+    }
+  }
+
+  private void retire(UUID memoryId, boolean unstated) {
+    if (unstated) {
+      memories.delete(Entity.ADMIN_USER_NAME, memoryId, false, true);
+    } else {
+      archive(memoryId);
+    }
+  }
+
   /** No longer names {@code source} among the memory's related entities; its links stay. */
   void dropRelatedSource(UUID memoryId, EntityReference source) {
     if (hasSourceRelationship(memoryId, source, Relationship.RELATED_TO)) {
@@ -245,7 +266,7 @@ public class MemorySourceLifecycle {
    * not all readers of its restricted anchor, so none of them loses it.
    */
   void copyForSourcesTheAnchorHides(UUID memoryId, EntityReference anchor) {
-    if (anchor != null && !readableByEveryone(anchor)) {
+    if (anchor != null && isRestrictedFile(anchor)) {
       Set<UUID> anchorReaders = readers.readersOf(anchor);
       copyFor(
           memoryId,
@@ -311,7 +332,7 @@ public class MemorySourceLifecycle {
     deleteSourceLinks(memoryId, source, links);
     if (staysLive) {
       copyForTheSourcesItWouldShow(memoryId);
-      memories.refreshSearchDocument(memoryId);
+      settle(memoryId);
     }
   }
 
@@ -390,16 +411,18 @@ public class MemorySourceLifecycle {
   }
 
   /**
-   * Shows {@code restored} as a source of the live memory again. Only a memory anchored on another of
-   * its sources changes: the restored file takes the anchor back, or rejoins its related sources.
+   * Shows {@code restored} as a source of the live memory again, then re-applies both copy rules. A
+   * memory anchored on another of its sources may give the restored file its anchor back.
    */
   private void showAsSourceAgain(UUID memoryId, EntityReference restored) {
     EntityReference anchor = anchorEdge(memoryId);
     if (isAnotherSource(memoryId, anchor, restored)) {
-      giveAnchorBackIfDue(memoryId, anchor, restored);
+      EntityReference kept = giveAnchorBackIfDue(memoryId, anchor, restored);
       addRelatedSource(memoryId, restored);
+      copyForSourcesTheAnchorHides(memoryId, kept);
     }
-    memories.refreshSearchDocument(memoryId);
+    copyForTheSourcesItWouldShow(memoryId);
+    settle(memoryId);
   }
 
   /**
@@ -415,12 +438,14 @@ public class MemorySourceLifecycle {
     memories.refreshSearchDocument(memoryId);
   }
 
-  private void giveAnchorBackIfDue(
+  /** The anchor once {@code document} is back, moved there when it is due. */
+  private EntityReference giveAnchorBackIfDue(
       UUID memoryId, EntityReference anchor, EntityReference document) {
     EntityReference target = anchorAfterRestore(memoryId, anchor, document);
     if (!isSameSource(target, anchor)) {
       reanchor(memoryId, anchor, target);
     }
+    return target;
   }
 
   /** The anchor its edge names, a live one first: the stored anchor can be stale in the Archive. */
@@ -440,15 +465,22 @@ public class MemorySourceLifecycle {
   /**
    * Where the anchor belongs once {@code restored} is live, or readable by everyone, again. An
    * archived anchor moves to a live source; a file only some may read gives way to the restored
-   * file when everyone may read that.
+   * document when everyone may read that, or every reader of the anchor.
    */
   private EntityReference anchorAfterRestore(
       UUID memoryId, EntityReference anchor, EntityReference restored) {
     if (isArchived(anchor)) {
       return chooseAnchor(memoryId, anchor);
     }
-    boolean takesTheAnchor = isRestrictedFile(anchor) && readableByEveryone(restored);
+    boolean takesTheAnchor = isRestrictedFile(anchor) && readsAllItsReaders(restored, anchor);
     return takesTheAnchor ? restored : anchor;
+  }
+
+  /** Whether everyone may read {@code document}, or each reader of the restricted anchor may. */
+  private boolean readsAllItsReaders(EntityReference document, EntityReference anchor) {
+    return readableByEveryone(document)
+        || (Entity.CONTEXT_FILE.equals(document.getType())
+            && readers.readersOf(document).containsAll(readers.readersOf(anchor)));
   }
 
   /** A file shared with only some people; an article or an asset anchor is never one. */
@@ -503,11 +535,12 @@ public class MemorySourceLifecycle {
 
   /** The memory's sources besides {@code source}, archived ones included, in name order. */
   private List<EntityReference> otherSources(UUID memoryId, EntityReference source) {
-    return memories
-        .findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null, Include.ALL)
-        .stream()
-        .filter(other -> !isSameSource(other, source))
-        .toList();
+    return sources(memoryId).stream().filter(other -> !isSameSource(other, source)).toList();
+  }
+
+  private List<EntityReference> sources(UUID memoryId) {
+    return memories.findFrom(
+        memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null, Include.ALL);
   }
 
   private static boolean isSameSource(EntityReference reference, EntityReference source) {
