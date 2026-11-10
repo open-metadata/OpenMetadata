@@ -392,7 +392,7 @@ class ContextMemoryExtractionIT {
     String handbook = "Handbook " + ns.shortPrefix();
     String revised = "Revised handbook " + ns.shortPrefix();
     ContextFile first = file(ns, "a-handbook", handbook, null);
-    ContextFile second = file(ns, "b-handbook", revised, SharedEntities.get().USER1_REF);
+    ContextFile second = ownedFile(ns, "b-handbook", revised, SharedEntities.get().USER1_REF);
     List<Fact> facts = List.of(KAFKA_OWNER, PAYROLL, VACATION, RECOVERY_SITE);
     extractor =
         new ContextMemoryExtractor(
@@ -440,7 +440,7 @@ class ContextMemoryExtractionIT {
         "covers the memory index lookup that runs without vector search");
     ContextFile first = file(ns, "a-billing", "Billing " + ns.shortPrefix(), null);
     ContextFile second =
-        file(
+        ownedFile(
             ns, "b-billing", "Revised billing " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
     scriptFacts(
         Map.of(first.getId(), List.of(BILLING_DAY), second.getId(), List.of(BILLING_DAY_MOVED)));
@@ -472,7 +472,7 @@ class ContextMemoryExtractionIT {
         "covers the memory index lookup that runs without vector search");
     ContextFile first = file(ns, "a-payroll", "Payroll " + ns.shortPrefix(), null);
     ContextFile second =
-        file(
+        ownedFile(
             ns, "b-payroll", "Revised payroll " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
     scriptFacts(Map.of(first.getId(), List.of(PAYROLL), second.getId(), List.of(PAYROLL)));
     runFile(first);
@@ -502,7 +502,7 @@ class ContextMemoryExtractionIT {
     ContextFile first = file(ns, "a-billing", "Billing " + ns.shortPrefix(), null);
     ContextFile copy = file(ns, "c-billing-copy", "Billing copy " + ns.shortPrefix(), null);
     ContextFile second =
-        file(
+        ownedFile(
             ns, "b-billing", "Revised billing " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
     scriptFacts(Map.of(first.getId(), List.of(BILLING_DAY), second.getId(), List.of(BILLING_DAY)));
     runFile(first);
@@ -534,7 +534,7 @@ class ContextMemoryExtractionIT {
         "covers the memory index lookup that runs without vector search");
     ContextFile cited = file(ns, "a-billing-policy", "Billing policy " + ns.shortPrefix(), null);
     ContextFile second =
-        file(
+        ownedFile(
             ns, "b-billing", "Revised billing " + ns.shortPrefix(), SharedEntities.get().USER1_REF);
     ContextMemory note =
         memories(SdkClients.user1Client())
@@ -694,7 +694,7 @@ class ContextMemoryExtractionIT {
 
     RestClient.admin().restore(FILES, file.getId(), ContextFile.class);
 
-    assertEquals(List.of(memory.getId()), ids(extracted(file.getEntityReference())));
+    assertEquals(Set.of(memory.getId()), ids(extracted(file.getEntityReference())));
     ContextMemory restored = readMemory(memory);
     assertEquals(beforeArchive.getEntityStatus(), restored.getEntityStatus());
     assertEquals(edited.getAnswer(), restored.getAnswer());
@@ -721,8 +721,54 @@ class ContextMemoryExtractionIT {
     RestClient.admin().restore(FILES, copy.getId(), ContextFile.class);
 
     awaitChips(ns, shared, original, Set.of(copy.getId()));
-    assertEquals(List.of(shared.getId()), ids(extracted(copy.getEntityReference())));
+    assertEquals(Set.of(shared.getId()), ids(extracted(copy.getEntityReference())));
     assertEquals(1, readFile(copy).getMemoryCount());
+  }
+
+  @Test
+  void aMemoryOwnerDoesNotLearnThePrivateDocumentThatTookItsAnchor(TestNamespace ns)
+      throws Exception {
+    ContextFile original = file(ns, "public-original", "Original " + ns.shortPrefix());
+    ContextFile privateCopy =
+        file(
+            ns,
+            "private-copy",
+            "Private " + ns.shortPrefix(),
+            privately(),
+            List.of(SharedEntities.get().USER2_REF));
+    ContextMemory memory =
+        memories(SdkClients.user1Client())
+            .create(
+                new CreateContextMemory()
+                    .withName(ns.prefix("owned-note"))
+                    .withQuestion("What is the refund window?")
+                    .withAnswer("Thirty days.")
+                    .withSourceType(ContextMemorySourceType.MANUAL)
+                    .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
+                    .withShareConfig(
+                        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
+                    .withPrimaryEntity(original.getEntityReference())
+                    .withSourceEntity(original.getEntityReference()));
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
+    memoryRepository().linkExtractedMemory(memory.getId(), privateCopy.getEntityReference());
+
+    RestClient.admin().delete(FILES, original.getId());
+
+    assertEquals(privateCopy.getId(), readMemory(memory).getPrimaryEntity().getId());
+    String response =
+        SdkClients.user1Client()
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/"
+                    + MEMORIES
+                    + "/"
+                    + memory.getId()
+                    + "?fields=owners,primaryEntity,relatedEntities,sourceEntity,sourceFile",
+                null);
+    assertTrue(response.contains(memory.getName()), response);
+    assertTrue(response.contains(privateCopy.getId().toString()), response);
+    assertFalse(response.contains(privateCopy.getName()), response);
   }
 
   /** The org-wide copy that took the anchor keeps it, and the restored file is a source again. */
@@ -911,7 +957,7 @@ class ContextMemoryExtractionIT {
     for (OpenMetadataClient reader : List.of(SdkClients.user2Client(), SdkClients.user3Client())) {
       assertEquals(shared.getId(), readAs(reader, shared).getId());
     }
-    assertEquals(List.of(shared.getId()), ids(extracted(copy.getEntityReference())));
+    assertEquals(Set.of(shared.getId()), ids(extracted(copy.getEntityReference())));
   }
 
   /**
@@ -1775,7 +1821,10 @@ class ContextMemoryExtractionIT {
 
   /** The document's memory panel, as the reader lists it, holds exactly {@code expected}. */
   private static void assertListedFrom(
-      OpenMetadataClient reader, ContextFile document, List<UUID> expected, ContextFile unnamed) {
+      OpenMetadataClient reader,
+      ContextFile document,
+      Collection<UUID> expected,
+      ContextFile unnamed) {
     String listed =
         reader
             .getHttpClient()
@@ -1918,10 +1967,6 @@ class ContextMemoryExtractionIT {
     return RestClient.admin().getById(FILES, file.getId(), "memoryCount", ContextFile.class);
   }
 
-  private static List<UUID> ids(List<ContextMemory> memories) {
-    return memories.stream().map(ContextMemory::getId).toList();
-  }
-
   private static String fileJobKey(ContextFile file) {
     return ContextMemoryExtractionJobHandler.Args.file(
             file.getId(), UUID.fromString(file.getHeadContentId()))
@@ -2047,7 +2092,7 @@ class ContextMemoryExtractionIT {
     return file(ns, label, text, null, null);
   }
 
-  private ContextFile file(TestNamespace ns, String label, String text, EntityReference owner)
+  private ContextFile ownedFile(TestNamespace ns, String label, String text, EntityReference owner)
       throws Exception {
     return file(ns, label, text, null, owner == null ? null : List.of(owner));
   }

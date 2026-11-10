@@ -99,7 +99,7 @@ class ContextMemoryDocumentAccessTest {
             .withChangeDescription(anchorMovedTo(readable))
             .withIncrementalChangeDescription(anchorMovedTo(readable));
 
-    ContextMemoryDocumentAccess.redactChanges(List.of(memory), access);
+    ContextMemoryDocumentAccess.redactDocuments(List.of(memory), access);
 
     assertEquals(readable, memory.getPrimaryEntity());
     for (ChangeDescription change :
@@ -109,6 +109,25 @@ class ContextMemoryDocumentAccessTest {
       assertTrue(recorded.contains(hidden.getId().toString()), recorded);
       assertTrue(recorded.contains(readable.getName()), recorded);
     }
+  }
+
+  @Test
+  void aMemoryOwnerDoesNotLearnAnUnreadableCurrentAnchor() {
+    ContextMemory memory =
+        memory()
+            .withPrimaryEntity(hidden)
+            .withSourceEntity(hidden)
+            .withSourceFile(hidden)
+            .withRelatedEntities(List.of(hidden, readable));
+
+    ContextMemoryDocumentAccess.redactDocuments(List.of(memory), access);
+
+    String redacted = JsonUtils.pojoToJson(memory);
+    assertFalse(redacted.contains(hidden.getName()), redacted);
+    assertEquals(idOnly(hidden), memory.getPrimaryEntity());
+    assertEquals(idOnly(hidden), memory.getSourceEntity());
+    assertEquals(idOnly(hidden), memory.getSourceFile());
+    assertTrue(redacted.contains(readable.getName()), redacted);
   }
 
   /** Only the link fields hold references; any other change says what it says. */
@@ -126,7 +145,7 @@ class ContextMemoryDocumentAccessTest {
                                 .withOldValue(answer)
                                 .withNewValue(answer))));
 
-    ContextMemoryDocumentAccess.redactChanges(List.of(memory), access);
+    ContextMemoryDocumentAccess.redactDocuments(List.of(memory), access);
 
     assertEquals(answer, memory.getChangeDescription().getFieldsUpdated().getFirst().getNewValue());
   }

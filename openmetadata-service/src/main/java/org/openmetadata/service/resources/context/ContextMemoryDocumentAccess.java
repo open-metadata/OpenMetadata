@@ -27,15 +27,12 @@ import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
-import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.resources.drive.ContextFileVisibility;
 
 /**
  * A memory's history names a file only to a caller who may read that file now
@@ -69,11 +66,11 @@ public final class ContextMemoryDocumentAccess {
   }
 
   /**
-   * The memories as read now. Their links are current, which their readers may read; the change
-   * their last write recorded may name a file as it was linked before.
+   * The memories as read now: owning a memory does not grant access to every document it names.
    */
-  public static void redactChanges(List<ContextMemory> memories, SecurityContext securityContext) {
-    redactChanges(memories, callerAccess(securityContext));
+  public static void redactDocuments(
+      List<ContextMemory> memories, SecurityContext securityContext) {
+    redactDocuments(memories, callerAccess(securityContext));
   }
 
   static UnaryOperator<ContextMemory> versionRedaction(FileAccess access) {
@@ -89,14 +86,14 @@ public final class ContextMemoryDocumentAccess {
       version.setRelatedEntities(
           version.getRelatedEntities().stream().map(related -> visible(related, access)).toList());
     }
-    redactChanges(List.of(version), access);
+    redactChange(version.getChangeDescription(), access);
+    redactChange(version.getIncrementalChangeDescription(), access);
     return version;
   }
 
-  static void redactChanges(List<ContextMemory> memories, FileAccess access) {
+  static void redactDocuments(List<ContextMemory> memories, FileAccess access) {
     for (ContextMemory memory : listOrEmpty(memories)) {
-      redactChange(memory.getChangeDescription(), access);
-      redactChange(memory.getIncrementalChangeDescription(), access);
+      redactVersion(memory, access);
     }
   }
 
@@ -176,13 +173,7 @@ public final class ContextMemoryDocumentAccess {
     String caller = ContextMemoryVisibility.callerName(securityContext);
     return ContextMemoryVisibility.isAdmin(securityContext)
         ? file -> true
-        : decidedOncePerFile(file -> mayRead(file, caller));
-  }
-
-  /** A file gone for good reads to no one but an admin, as its sharing can no longer be checked. */
-  private static boolean mayRead(EntityReference file, String caller) {
-    ContextFile stored = Entity.getEntityOrNull(file, Entity.FIELD_OWNERS, Include.ALL);
-    return stored != null && ContextFileVisibility.isVisibleToUser(stored, caller, false);
+        : decidedOncePerFile(file -> ContextMemoryAnchorAccess.canView(caller, file));
   }
 
   private static FileAccess decidedOncePerFile(FileAccess access) {

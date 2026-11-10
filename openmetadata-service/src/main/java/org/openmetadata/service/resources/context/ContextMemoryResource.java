@@ -340,7 +340,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       SecurityContext securityContext, ResultList<ContextMemory> memories) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         memories.getData(), authorizer, securityContext);
-    ContextMemoryDocumentAccess.redactChanges(memories.getData(), securityContext);
+    ContextMemoryDocumentAccess.redactDocuments(memories.getData(), securityContext);
     return memories;
   }
 
@@ -353,7 +353,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     if (response.getEntity() instanceof ContextMemory memory) {
       ContextMemory copy =
           ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
-      ContextMemoryDocumentAccess.redactChanges(List.of(copy), securityContext);
+      ContextMemoryDocumentAccess.redactDocuments(List.of(copy), securityContext);
       visible = Response.fromResponse(response).entity(copy).build();
     }
     return visible;
@@ -362,7 +362,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private ContextMemory withVisibleEvidence(SecurityContext securityContext, ContextMemory memory) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         List.of(memory), authorizer, securityContext);
-    ContextMemoryDocumentAccess.redactChanges(List.of(memory), securityContext);
+    ContextMemoryDocumentAccess.redactDocuments(List.of(memory), securityContext);
     return memory;
   }
 

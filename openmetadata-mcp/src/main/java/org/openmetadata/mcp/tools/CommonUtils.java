@@ -22,6 +22,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.context.ContextMemoryDocumentAccess;
 import org.openmetadata.service.resources.context.ContextMemoryEvidenceAccess;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.feeds.AnnouncementVisibility;
@@ -65,9 +66,13 @@ public class CommonUtils {
    */
   public static EntityInterface<?> withVisibleEvidence(
       EntityInterface<?> entity, Authorizer authorizer, SecurityContext securityContext) {
-    return entity instanceof ContextMemory memory
-        ? ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext)
-        : MetricRelationVisibility.visibleTo(entity, authorizer, securityContext);
+    if (entity instanceof ContextMemory memory) {
+      ContextMemory copy =
+          ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
+      ContextMemoryDocumentAccess.redactDocuments(List.of(copy), securityContext);
+      return copy;
+    }
+    return MetricRelationVisibility.visibleTo(entity, authorizer, securityContext);
   }
 
   /**

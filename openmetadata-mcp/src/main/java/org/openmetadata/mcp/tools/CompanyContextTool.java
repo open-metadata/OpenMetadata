@@ -19,9 +19,11 @@ import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.resources.context.ContextMemoryDocumentAccess;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
@@ -107,7 +109,7 @@ public class CompanyContextTool implements McpTool {
       ContextMemory memory = fetchPill(fqn);
       result =
           isExposablePill(memory, securityContext)
-              ? projectPill(memory)
+              ? projectVisiblePill(memory, securityContext)
               : errorResponse(NOT_A_SHARED_PILL_ERROR, Response.Status.NOT_FOUND);
     } catch (EntityNotFoundException e) {
       result =
@@ -163,6 +165,13 @@ public class CompanyContextTool implements McpTool {
       pill.put("sourceFile", memory.getSourceFile().getFullyQualifiedName());
     }
     return pill;
+  }
+
+  private static Map<String, Object> projectVisiblePill(
+      ContextMemory memory, CatalogSecurityContext securityContext) {
+    ContextMemory copy = JsonUtils.deepCopy(memory, ContextMemory.class);
+    ContextMemoryDocumentAccess.redactDocuments(List.of(copy), securityContext);
+    return projectPill(copy);
   }
 
   private static void putIfPresent(Map<String, Object> pill, String key, Object value) {
