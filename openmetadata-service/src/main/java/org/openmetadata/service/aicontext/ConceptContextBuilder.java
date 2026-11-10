@@ -237,12 +237,15 @@ final class ConceptContextBuilder {
     return metric.getMetricExpression() == null ? null : metric.getMetricExpression().getCode();
   }
 
-  /** The conditions the metric is defined under; null when it has none, so the field is omitted. */
+  /**
+   * The conditions the metric is defined under, which all apply together; null when it has none, so
+   * the field is omitted (ADR:2026-11-10-a-metric-concept-context-carries-what-changes-its-number).
+   */
   private static List<String> filters(Metric metric) {
     List<String> where =
         listOrEmpty(metric.getFilters()).stream()
             .map(filter -> filter.getWhere())
-            .filter(condition -> !nullOrEmpty(condition))
+            .filter(condition -> condition != null && !condition.isBlank())
             .toList();
     return where.isEmpty() ? null : where;
   }

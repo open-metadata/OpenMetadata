@@ -74,8 +74,8 @@ final class ConceptContextMarkdown {
           .append('\n');
     }
     if (!nullOrEmpty(concept.getFilters())) {
-      markdown.append("\n**Filters (apply with the definition):**\n");
-      AIContextMarkdown.appendSqlBlock(markdown, String.join("\n", concept.getFilters()));
+      markdown.append("\n**Filters (all apply with the definition):**\n");
+      AIContextMarkdown.appendSqlBlock(markdown, conjunction(concept.getFilters()));
     }
     if (!nullOrEmpty(concept.getGranularity())) {
       markdown.append("\n**Granularity:** ").append(concept.getGranularity()).append('\n');
@@ -83,6 +83,13 @@ final class ConceptContextMarkdown {
     if (!nullOrEmpty(concept.getUnit())) {
       markdown.append("\n**Unit:** ").append(PromptText.forPrompt(concept.getUnit())).append('\n');
     }
+  }
+
+  /** One condition: every filter parenthesised and joined with AND, so none can be read as OR. */
+  private static String conjunction(List<String> filters) {
+    return filters.stream()
+        .map(condition -> "(" + condition.strip() + ")")
+        .collect(Collectors.joining("\nAND "));
   }
 
   private static void appendRelations(

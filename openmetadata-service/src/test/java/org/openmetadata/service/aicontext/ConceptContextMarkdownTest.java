@@ -43,14 +43,16 @@ class ConceptContextMarkdownTest {
   void rendersWhatDefinesAMetricsNumber() {
     ConceptContext concept =
         concept()
-            .withFilters(List.of("fee_category = 'ATM Fee'"))
+            .withFilters(List.of("fee_category = 'ATM Fee'", " region = 'EU' OR region = 'UK' "))
             .withGranularity("MONTH")
             .withUnit("DOLLARS");
 
     String markdown = AIContextMarkdown.render(context(concept));
 
-    assertTrue(markdown.contains("**Filters (apply with the definition):**"), markdown);
-    assertTrue(markdown.contains("fee_category = 'ATM Fee'"), markdown);
+    assertTrue(markdown.contains("**Filters (all apply with the definition):**"), markdown);
+    assertTrue(
+        markdown.contains("(fee_category = 'ATM Fee')\nAND (region = 'EU' OR region = 'UK')"),
+        markdown);
     assertTrue(markdown.contains("**Granularity:** MONTH"), markdown);
     assertTrue(markdown.contains("**Unit:** DOLLARS"), markdown);
   }
