@@ -1511,6 +1511,8 @@ def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_h
     [
         ({"type": "table"}, True),
         ({"type": "visualization"}, True),
+        # Sigma's element lineage endpoint accepts "a table, pivot table, or visualization"
+        ({"type": "pivot-table", "vizualizationType": "pivot"}, True),
         ({"vizualizationType": "bar"}, True),
         ({"type": None, "vizualizationType": "table"}, True),
         ({"type": "control"}, False),
@@ -1518,7 +1520,17 @@ def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_h
         ({"type": "control", "vizualizationType": "bar"}, False),
         ({}, False),
     ],
-    ids=["table", "visualization", "legacy", "null-type", "control", "text", "control-with-viz", "unknown"],
+    ids=[
+        "table",
+        "visualization",
+        "pivot-table",
+        "legacy",
+        "null-type",
+        "control",
+        "text",
+        "control-with-viz",
+        "unknown",
+    ],
 )
 def test_data_element_types_create_charts_models_and_lineage(sigma_over_http, routes, element_fields, eligible, sql):
     source, _ = sigma_over_http

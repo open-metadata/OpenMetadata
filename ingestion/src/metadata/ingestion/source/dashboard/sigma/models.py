@@ -81,7 +81,7 @@ class Elements(BaseModel):
     def is_data_element(self) -> bool:
         """Whether the element supports data models and lineage."""
         if self.type is not None:
-            return self.type in ("table", "visualization")
+            return self.type in ("table", "pivot-table", "visualization")
         return bool(self.vizualizationType)
 
 
