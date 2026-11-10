@@ -36,13 +36,23 @@ _security = importlib.util.module_from_spec(_SPEC)
 _SPEC.loader.exec_module(_security)
 excludes_pull_request = _security.excludes_pull_request
 
-# PR-reachable cache writers in workflows outside this change's ownership.
-# Each entry must still be a real violation (see the staleness test), so the
-# list can only shrink. Fix the workflow, then delete its entry here.
+# Exact PR-reachable cache writers outside this change's ownership. Each entry
+# must still be a real violation (see the staleness test), so the list can only
+# shrink, and any other writer in the same workflow still fails the guard.
 KNOWN_UNOWNED_WRITERS = {
     # Saves ~/.m2 on every PR with no event gate; runs on pull_request and
     # workflow_dispatch only, so it needs a main-scoped writer before gating.
-    ".github/workflows/maven-sonar-build.yml",
+    (
+        ".github/workflows/maven-sonar-build.yml: jobs.maven-sonarcloud-ci"
+        " > Save Maven dependencies: actions/cache/save"
+    ),
+}
+
+# Third-party composites that save a cache internally, where the guard cannot
+# read their steps. Verified in each action.yml at the pinned version.
+THIRD_PARTY_WRITERS = {
+    # v1.6.3 action.yml: `save-cache` step runs actions/cache/save on a miss.
+    "awalsh128/cache-apt-pkgs-action": "cache-apt-pkgs saves on a cache miss",
 }
 
 
@@ -67,6 +77,8 @@ def cache_writer(step: dict) -> str | None:
         return "actions/cache saves in its post step"
     if action == "actions/cache/save":
         return "actions/cache/save"
+    if action in THIRD_PARTY_WRITERS:
+        return THIRD_PARTY_WRITERS[action]
     if action == "astral-sh/setup-uv":
         if is_false_on_pull_request(inputs.get("enable-cache")):
             return None
@@ -269,25 +281,57 @@ def test_guard_follows_reusable_workflows_and_honours_job_gates(tmp_path: Path) 
     assert "reusable.yml: jobs.open" in writer
 
 
+def test_guard_flags_third_party_composite_writers(tmp_path: Path) -> None:
+    # v1.6.3 restores with actions/cache/restore and, on a miss, saves with
+    # actions/cache/save inside its own composite, which we cannot resolve.
+    pr_workflow(tmp_path, [{"uses": "awalsh128/cache-apt-pkgs-action@v1.6.3"}])
+    assert pull_request_cache_writers(tmp_path)
+
+
+def test_allowlist_covers_only_the_exact_existing_writer(tmp_path: Path) -> None:
+    write(
+        tmp_path,
+        ".github/workflows/maven-sonar-build.yml",
+        {
+            "on": {"pull_request": {}},
+            "jobs": {
+                "maven-sonarcloud-ci": {
+                    "runs-on": "ubuntu-latest",
+                    "steps": [
+                        {
+                            "name": "Save Maven dependencies",
+                            "uses": "actions/cache/save@v6",
+                        },
+                        {"name": "Another save", "uses": "actions/cache/save@v6"},
+                    ],
+                }
+            },
+        },
+    )
+    [extra] = unexpected_writers(pull_request_cache_writers(tmp_path))
+    assert "Another save" in extra
+
+
 # ---------------------------------------------------------------------------
 # O-5: the real repository.
 # ---------------------------------------------------------------------------
 
 
+def all_writers(by_workflow: dict[str, list[str]]) -> set[str]:
+    return {writer for found in by_workflow.values() for writer in found}
+
+
+def unexpected_writers(by_workflow: dict[str, list[str]]) -> list[str]:
+    return sorted(all_writers(by_workflow) - KNOWN_UNOWNED_WRITERS)
+
+
 def test_no_job_reachable_from_pull_request_saves_a_cache() -> None:
-    writers = pull_request_cache_writers()
-    unexpected = {
-        path: found
-        for path, found in writers.items()
-        if path not in KNOWN_UNOWNED_WRITERS
-    }
-    assert unexpected == {}, "\n".join(
-        writer for found in unexpected.values() for writer in found
-    )
+    unexpected = unexpected_writers(pull_request_cache_writers())
+    assert unexpected == [], "\n".join(unexpected)
 
 
 def test_known_unowned_writers_are_still_real_violations() -> None:
-    stale = KNOWN_UNOWNED_WRITERS - set(pull_request_cache_writers())
+    stale = KNOWN_UNOWNED_WRITERS - all_writers(pull_request_cache_writers())
     assert not stale, f"fixed, delete from KNOWN_UNOWNED_WRITERS: {sorted(stale)}"
 
 
