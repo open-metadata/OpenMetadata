@@ -24,10 +24,10 @@ behaviour. Verifies:
 """
 
 import uuid
+from typing import TYPE_CHECKING
 from unittest import TestCase
 from unittest.mock import MagicMock
 
-from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.entity.data.chart import Chart, ChartType
 from metadata.generated.schema.entity.data.dashboard import Dashboard, DashboardType
@@ -38,10 +38,8 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
 from metadata.generated.schema.type.basic import (
     EntityName,
     FullyQualifiedEntityName,
-    SourceUrl,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
 )
@@ -53,6 +51,9 @@ from metadata.ingestion.source.dashboard.superset.models import (
     FetchChart,
     FetchDashboard,
 )
+
+if TYPE_CHECKING:
+    from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 
 
 def _make_dashboard_entity() -> Dashboard:
@@ -79,9 +80,7 @@ def _make_datamodel_entity(datamodel_id: str) -> DashboardDataModel:
     return DashboardDataModel(
         id=uuid.uuid4(),
         name=EntityName(datamodel_id),
-        fullyQualifiedName=FullyQualifiedEntityName(
-            f"superset_test.model.{datamodel_id}"
-        ),
+        fullyQualifiedName=FullyQualifiedEntityName(f"superset_test.model.{datamodel_id}"),
         dataModelType=DataModelType.SupersetDataModel,
         columns=[],
         service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
@@ -105,9 +104,7 @@ class TestSupersetDashboardDataModelsCleared(TestCase):
         source.metadata = MagicMock()
         source.service_connection = MagicMock(hostPort="https://superset.example.com")
         source.context = MagicMock()
-        source.context.get.return_value = _build_context(
-            charts=["10", "11"], datamodels=["45", "46"]
-        )
+        source.context.get.return_value = _build_context(charts=["10", "11"], datamodels=["45", "46"])
         source.get_owner_ref = MagicMock(return_value=None)
 
         dashboard_details = FetchDashboard(
@@ -133,9 +130,7 @@ class TestSupersetDashboardDataModelsCleared(TestCase):
         source.metadata = MagicMock()
         source.service_connection = MagicMock(hostPort="https://superset.example.com")
         source.context = MagicMock()
-        source.context.get.return_value = _build_context(
-            charts=["10"], datamodels=["45"]
-        )
+        source.context.get.return_value = _build_context(charts=["10"], datamodels=["45"])
         source.get_owner_ref = MagicMock(return_value=None)
 
         dashboard_details = DashboardResult(
@@ -163,9 +158,7 @@ class TestSupersetSuppressesDirectDataModelDashboardEdge(TestCase):
     def test_override_yields_no_edges(self):
         source = MagicMock()
         # Bind the unbound method to the mock so the override runs
-        result = list(
-            SupersetSourceMixin.yield_datamodel_dashboard_lineage(source)
-        )
+        result = list(SupersetSourceMixin.yield_datamodel_dashboard_lineage(source))
         self.assertEqual(result, [])
 
 
@@ -177,10 +170,8 @@ class TestSupersetEmitsChartBridgeEdges(TestCase):
     def _make_source(self, chart_entity, datamodel_entity, dashboard_entity):
         source = MagicMock()
         # Real bound methods we want to exercise
-        source.yield_dashboard_lineage_details = (
-            lambda *a, **kw: SupersetSourceMixin.yield_dashboard_lineage_details(
-                source, *a, **kw
-            )
+        source.yield_dashboard_lineage_details = lambda *a, **kw: SupersetSourceMixin.yield_dashboard_lineage_details(
+            source, *a, **kw
         )
         source._get_chart_entity = lambda chart_json: chart_entity
         source._get_dashboard_entity = lambda dashboard_details: dashboard_entity
@@ -222,7 +213,8 @@ class TestSupersetEmitsChartBridgeEdges(TestCase):
             json_metadata=None,
         )
         results = [
-            r for r in source.yield_dashboard_lineage_details(dashboard_details)
+            r
+            for r in source.yield_dashboard_lineage_details(dashboard_details)
             if r is not None and r.right is not None
         ]
 
@@ -245,9 +237,7 @@ class TestSupersetEmitsChartBridgeEdges(TestCase):
         # When the Chart entity isn't yet visible on the server, both bridge
         # edges should be skipped (no crash, just no emission).
         datamodel = _make_datamodel_entity("45")
-        source = self._make_source(
-            chart_entity=None, datamodel_entity=datamodel, dashboard_entity=None
-        )
+        source = self._make_source(chart_entity=None, datamodel_entity=datamodel, dashboard_entity=None)
         dashboard_details = FetchDashboard(
             id=4,
             dashboard_title="Meltano",
@@ -257,7 +247,8 @@ class TestSupersetEmitsChartBridgeEdges(TestCase):
             json_metadata=None,
         )
         results = [
-            r for r in source.yield_dashboard_lineage_details(dashboard_details)
+            r
+            for r in source.yield_dashboard_lineage_details(dashboard_details)
             if r is not None and r.right is not None
         ]
         edges = [r.right for r in results if isinstance(r.right, AddLineageRequest)]

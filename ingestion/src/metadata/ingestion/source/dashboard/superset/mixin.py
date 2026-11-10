@@ -313,7 +313,7 @@ class SupersetSourceMixin(DashboardServiceSource):
         emitted in yield_dashboard_lineage_details.
         """
         return
-        yield  # pragma: no cover  # noqa: F841  # mark this as a generator
+        yield  # pragma: no cover  # mark this as a generator
 
     def yield_dashboard_lineage_details(
         self,
