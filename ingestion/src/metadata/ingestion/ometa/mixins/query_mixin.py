@@ -65,8 +65,8 @@ class OMetaQueryMixin:
         if query_entity is None:
             try:
                 resp = self.client.put(self.get_suffix(Query), data=query.model_dump_json())
-                if resp and resp.get("id"):
-                    query_entity = Query(**resp)
+                if isinstance(resp, dict) and resp.get("id"):
+                    query_entity = Query.model_validate(resp)
             except APIError as err:
                 if err.status_code == 409:
                     query_entity = self.get_by_name(entity=Query, fqn=fqn)
