@@ -148,9 +148,16 @@ class PersonaAIContextIT extends McpTestBase {
   @Test
   void invalidSavedSearchScopesAreSkippedWhileContextRemainsAvailable() throws Exception {
     Table excluded = createServiceDatabaseSchemaTable("outside_scope_" + shortId());
+    User member = createUser("legacy_scope_member_" + shortId());
     Persona owned =
-        post("personas", new CreatePersona().withName("legacy_scope_" + shortId()), Persona.class);
+        post(
+            "personas",
+            new CreatePersona()
+                .withName("legacy_scope_" + shortId())
+                .withUsers(List.of(member.getId())),
+            Persona.class);
     String path = "personas/" + owned.getId();
+    String memberToken = tokenFor(member);
     try {
       addRule(
           path + "/aiContext/rules", scopedFqnRule("Healthy scope", table.getFullyQualifiedName()));
@@ -178,12 +185,12 @@ class PersonaAIContextIT extends McpTestBase {
                   assertThat(context.path("searchScope").path("rules").findValuesAsText("ruleName"))
                       .containsExactly("Healthy scope");
                   JsonNode unscoped =
-                      searchMetadataWithPersona(owned, authToken, table, excluded, true);
+                      searchMetadataWithPersona(owned, memberToken, table, excluded, true);
                   assertThat(resultFqns(unscoped))
                       .containsExactlyInAnyOrder(
                           table.getFullyQualifiedName(), excluded.getFullyQualifiedName());
                   JsonNode scoped =
-                      searchMetadataWithPersona(owned, authToken, table, excluded, false);
+                      searchMetadataWithPersona(owned, memberToken, table, excluded, false);
                   assertThat(resultFqns(scoped)).containsExactly(table.getFullyQualifiedName());
                   assertThat(scoped.path("personaScopeApplied").asBoolean()).isTrue();
                 });
@@ -199,6 +206,7 @@ class PersonaAIContextIT extends McpTestBase {
       }
     } finally {
       deleteResponse(path + "?hardDelete=true", authToken);
+      deleteResponse("users/" + member.getId() + "?hardDelete=true", authToken);
     }
   }
 
