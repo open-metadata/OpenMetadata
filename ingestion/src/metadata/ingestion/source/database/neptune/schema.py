@@ -205,15 +205,15 @@ class SchemaReader:
         compute_if_missing: bool,
         timeout_seconds: float,
         poll_interval: float = DEFAULT_POLL_INTERVAL_SECONDS,
-        sleep: Callable[[float], None] = time.sleep,
-        clock: Callable[[], float] = time.monotonic,
+        sleep: Callable[[float], None] | None = None,
+        clock: Callable[[], float] | None = None,
     ) -> None:
         self._run = run
         self._compute_if_missing = compute_if_missing
         self._timeout = timeout_seconds
         self._poll_interval = poll_interval
-        self._sleep = sleep
-        self._clock = clock
+        self._sleep = sleep or time.sleep
+        self._clock = clock or time.monotonic
 
     def read_state(self) -> tuple[SchemaState, Mapping[str, Any] | None]:
         payload = unwrap_payload(self._run(NEPTUNE_PG_SCHEMA))
