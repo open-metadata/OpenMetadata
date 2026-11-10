@@ -10,22 +10,26 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-package org.openmetadata.service.util;
+package org.openmetadata.it.tests;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.TestInstance;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.teams.CreateTeam;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.OpenMetadataApplicationTest;
+import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.util.UserUtil;
 
 /**
  * Regression coverage for the boot-time team-strip loop on bot users.
@@ -39,35 +43,31 @@ import org.openmetadata.service.jdbi3.UserRepository;
  * {@code fieldsDeleted=[FieldChange[name=teams, oldValue=[Organization], newValue=null]]} on
  * every boot, each one triggering an Elasticsearch reindex of the bot user.
  */
-@Slf4j
-@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-class UserUtilBotTest extends OpenMetadataApplicationTest {
+@ExtendWith(TestNamespaceExtension.class)
+public class UserUtilBotIT {
 
   @Test
-  void addOrUpdateBotUserDoesNotStripTeams() throws Exception {
-    UserRepository userRepository =
-        (UserRepository) Entity.getEntityRepository(Entity.USER);
+  void addOrUpdateBotUserDoesNotStripTeams(final TestNamespace namespace) {
+    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(Entity.USER);
+    TeamRepository teamRepository = (TeamRepository) Entity.getEntityRepository(Entity.TEAM);
 
-    String suffix = String.valueOf(System.currentTimeMillis());
-    String botName = "bot-team-strip-regression-" + suffix;
-    String email = botName + "@open-metadata.org";
+    String botName = namespace.prefix("bot-team-strip-regression");
 
     // Create a real (non-Organization) team and assign the bot to it. Organization is a
     // virtual default that UserRepository.getTeams adds back whenever there are zero stored
     // relationships, so a test that only checks for Organization can't tell whether the
     // upsert wiped real team membership. With this real team, a wipe is observable.
-    org.openmetadata.service.jdbi3.TeamRepository teamRepository =
-        (org.openmetadata.service.jdbi3.TeamRepository)
-            Entity.getEntityRepository(Entity.TEAM);
-    org.openmetadata.schema.entity.teams.Team realTeam =
-        teamRepository.create(
-            null,
-            new org.openmetadata.schema.entity.teams.Team()
-                .withId(UUID.randomUUID())
-                .withName("bot-strip-team-" + suffix)
-                .withTeamType(org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP)
-                .withUpdatedBy("admin")
-                .withUpdatedAt(System.currentTimeMillis()));
+    Team realTeam =
+        namespace.trackRoot(
+            Entity.TEAM,
+            teamRepository.create(
+                null,
+                new Team()
+                    .withId(UUID.randomUUID())
+                    .withName(namespace.prefix("bot-strip-team"))
+                    .withTeamType(CreateTeam.TeamType.GROUP)
+                    .withUpdatedBy("admin")
+                    .withUpdatedAt(System.currentTimeMillis())));
 
     // Build the initial bot the same way the boot path does: via UserUtil.user(...). Both
     // initial create and the simulated boot upsert below construct the in-memory User this
@@ -77,12 +77,11 @@ class UserUtilBotTest extends OpenMetadataApplicationTest {
     User initialBot =
         UserUtil.user(botName, "open-metadata.org", botName)
             .withIsBot(true)
-            .withTeams(new java.util.ArrayList<>(List.of(realTeam.getEntityReference())));
-    User stored = userRepository.create(null, initialBot);
+            .withTeams(new ArrayList<>(List.of(realTeam.getEntityReference())));
+    namespace.trackRoot(Entity.USER, userRepository.create(null, initialBot));
 
     // Sanity-check the bot really is in the real team.
-    User beforeBoot =
-        userRepository.getByName(null, botName, userRepository.getFields("teams"));
+    User beforeBoot = userRepository.getByName(null, botName, userRepository.getFields("teams"));
     List<EntityReference> teamsBefore = beforeBoot.getTeams();
     assertNotNull(teamsBefore, "Setup failed: bot should have at least one team");
     assertTrue(
@@ -90,22 +89,19 @@ class UserUtilBotTest extends OpenMetadataApplicationTest {
         "Setup failed: bot should be in real team before upsert. Got: " + teamsBefore);
 
     // Simulate the bootstrap path: a fresh User object describing the same bot, without the
-    // teams field populated. This is exactly what UserUtil.addOrUpdateBotUser is called with
-    // on every OM boot — the in-memory User from configuration carries id/name/email and a
-    // few scalar fields, but never teams.
-    // Build the in-memory User the same way BotResource.initialize does on boot:
-    // UserUtil.user(name, domain, updatedBy).withIsBot(true). Note that the result does NOT
-    // have `teams` populated.
+    // teams field populated. This is exactly what BotResource.initialize passes to
+    // UserUtil.addOrUpdateBotUser on every OM boot: the in-memory User from configuration
+    // carries id/name/email and a few scalar fields, but never teams.
     User boundary = UserUtil.user(botName, "open-metadata.org", botName).withIsBot(true);
 
     // The call under test.
     UserUtil.addOrUpdateBotUser(boundary);
 
-    // After the boot upsert the bot MUST still be a member of the Organization team. With the
-    // bug present, this fails with teams=null (or empty), exactly matching the production logs
-    // we observed (fieldsDeleted=[teams: oldValue=[Organization], newValue=null]).
-    User afterBoot =
-        userRepository.getByName(null, botName, userRepository.getFields("teams"));
+    // After the boot upsert the bot MUST still be a member of the real team. With the bug
+    // present, this fails with teams=[Organization] (the real team has been wiped and only
+    // the virtual default remains), matching the production boot logs
+    // (fieldsDeleted=[teams: oldValue=[Organization], newValue=null]).
+    User afterBoot = userRepository.getByName(null, botName, userRepository.getFields("teams"));
     List<EntityReference> teamsAfter = afterBoot.getTeams();
     assertNotNull(
         teamsAfter,
