@@ -15,8 +15,10 @@ Test fivetran using the topology
 import json
 import logging
 from datetime import datetime, timezone
+from fnmatch import fnmatchcase
 from pathlib import Path
 from unittest.mock import Mock, patch
+from urllib.parse import parse_qs, unquote, urlsplit
 from uuid import uuid4
 
 import pytest
@@ -44,6 +46,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName, SourceUrl
 from metadata.generated.schema.type.entityLineage import ColumnLineage
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.pipeline.fivetran.client import FivetranClient
 from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
@@ -57,7 +61,7 @@ from metadata.ingestion.source.pipeline.fivetran.fivetran_log import (
 )
 from metadata.ingestion.source.pipeline.fivetran.metadata import FivetranSource
 from metadata.ingestion.source.pipeline.fivetran.models import FivetranPipelineDetails
-from metadata.utils.fqn import prefix_entity_for_wildcard_search
+from metadata.utils.fqn import prefix_entity_for_wildcard_search, split
 
 mock_file_path = Path(__file__).parent.parent.parent / "resources/datasets/fivetran_dataset.json"
 with open(mock_file_path) as file:  # noqa: PTH123
@@ -587,187 +591,551 @@ class TestFivetranStatus:
         assert statuses[0].right.pipeline_status.executionStatus == StatusType.Successful
 
 
-class TestFivetranLineage:
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    def test_skips_disabled_schemas(self, mock_get_services, fivetran_source):
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg"]
-        client.get_connector_schema_details.return_value = {
-            "s": {
-                "enabled": False,
-                "name_in_destination": "s",
-                "tables": {"t": {"enabled": True}},
+class FivetranMetadataTransport:
+    def __init__(self):
+        self.entities = {model_str(MOCK_PIPELINE.fullyQualifiedName): MOCK_PIPELINE}
+        self.hits = None
+        self.total = None
+        self.relation = "eq"
+        self.partial = {}
+        self.errors = {}
+        self.requests = []
+        self.closed = False
+
+    def get(self, path):
+        parsed = urlsplit(path)
+        name = unquote(parsed.path)
+        params = parse_qs(parsed.query)
+        self.requests.append((name, params))
+        if error := self.errors.get(name):
+            raise error
+        if name == "/search/query":
+            return {"hits": {"hits": [], "total": {"value": 0, "relation": "eq"}}}
+        if name == "/search/fieldQuery":
+            hits = self.hits
+            if hits is None:
+                query = params["fieldValue"][0].casefold()
+                hits = [
+                    key
+                    for key, value in self.entities.items()
+                    if isinstance(value, Table) and fnmatchcase(key.casefold(), query)
+                ]
+            return {
+                "hits": {
+                    "total": {"value": len(hits) if self.total is None else self.total, "relation": self.relation},
+                    "hits": [{"_source": {"fullyQualifiedName": key}} for key in hits],
+                },
+                **self.partial,
             }
+        entity = self.entities.get(name.split("/name/", 1)[1])
+        if entity is None:
+            raise APIError({"code": 404, "message": "not found"})
+        return entity.model_dump(mode="json")
+
+    def close(self):
+        self.closed = True
+
+
+def lineage_table(name, **kwargs):
+    return Table(
+        id=uuid4(),
+        name=split(name)[-1],
+        fullyQualifiedName=name,
+        columns=[{"name": "id", "dataType": "INT", "fullyQualifiedName": name + ".id"}],
+        **kwargs,
+    )
+
+
+@pytest.fixture
+def lineage_boundary(fivetran_source):
+    source, client = fivetran_source
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_FIVETRAN_CONFIG)
+    source.metadata = OpenMetadata(config.workflowConfig.openMetadataServerConfig)
+    transport = FivetranMetadataTransport()
+    source.metadata.client = transport
+    source.source_config = type(source.source_config).model_validate(
+        {"type": "PipelineMetadata", "lineageInformation": {"dbServiceNames": ["A", "B", "warehouse"]}}
+    )
+    client.get_connector_schema_details.return_value = {
+        "public": {
+            "enabled": True,
+            "name_in_destination": "landing",
+            "tables": {"orders": {"enabled": True, "name_in_destination": "orders_copy"}},
         }
-        assert list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)) == []
+    }
+    client.get_connector_column_lineage.return_value = {"id": {"enabled": True, "name_in_destination": "id"}}
+    details = FivetranPipelineDetails(
+        source={"id": "orders_connector", "service": "postgres", "schema": "public", "config": {"database": "db"}},
+        destination={"id": "destination", "service": "snowflake", "config": {"database": "analytics"}},
+        group={"id": "group", "name": "group"},
+        connector_id="orders_connector",
+    )
+    return source, client, transport, details
 
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_cross_service(self, mock_build, mock_get_services, fivetran_source):
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg_svc", "sf_svc"]
-        mock_src = Mock(spec=Table)
-        mock_src.id = str(uuid4())
-        mock_dst = Mock(spec=Table)
-        mock_dst.id = str(uuid4())
-        mock_pipe = Mock()
-        mock_pipe.id.root = str(uuid4())
 
-        mock_build.side_effect = lambda *a, **kw: ".".join(
-            str(v)
-            for v in [
-                kw.get("service_name", ""),
-                kw.get("database_name", ""),
-                kw.get("schema_name", ""),
-                kw.get("table_name", ""),
-            ]
-            if v
+class TestFivetranUniqueTableLineage:
+    @pytest.mark.parametrize("services", [["A", "B", "warehouse"], ["B", "A", "warehouse"]])
+    def test_ambiguous_source_warns_and_emits_no_edge(self, lineage_boundary, services, caplog):
+        source, client, transport, details = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = services
+        tables = [
+            lineage_table(name)
+            for name in ("A.db.public.orders", "B.db.public.orders", "warehouse.analytics.landing.orders_copy")
+        ]
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in tables})
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "ambiguous" in caplog.text
+        assert "source" in caplog.text
+        assert "public <> group" in caplog.text
+        assert "A.db.public.orders" in caplog.text
+        assert "B.db.public.orders" in caplog.text
+        assert client.get_connector_column_lineage.call_count == 0
+
+    def test_unique_later_service_preserves_table_and_column_ids(self, lineage_boundary):
+        source, _, transport, details = lineage_boundary
+        upstream = lineage_table("B.db.public.orders")
+        downstream = lineage_table("warehouse.analytics.landing.orders_copy")
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in (upstream, downstream)})
+
+        result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        edge = result[0].right.edge
+        assert edge.fromEntity.id == upstream.id
+        assert edge.toEntity.id == downstream.id
+        assert edge.lineageDetails.columnsLineage == [
+            ColumnLineage(fromColumns=["B.db.public.orders.id"], toColumn="warehouse.analytics.landing.orders_copy.id")
+        ]
+
+    def test_ambiguous_destination_warns_without_fetching_columns(self, lineage_boundary, caplog):
+        source, client, transport, details = lineage_boundary
+        tables = [
+            lineage_table(name)
+            for name in (
+                "A.db.public.orders",
+                "B.analytics.landing.orders_copy",
+                "warehouse.analytics.landing.orders_copy",
+            )
+        ]
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in tables})
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "destination" in caplog.text
+        assert "ambiguous" in caplog.text
+        assert "B.analytics.landing.orders_copy" in caplog.text
+        assert "warehouse.analytics.landing.orders_copy" in caplog.text
+        assert client.get_connector_column_lineage.call_count == 0
+
+    def test_ambiguity_remains_visible_when_another_edge_is_unique(self, lineage_boundary, caplog):
+        source, client, transport, details = lineage_boundary
+        client.get_connector_schema_details.return_value["public"]["tables"]["customers"] = {
+            "enabled": True,
+            "name_in_destination": "customers_copy",
+        }
+        tables = [
+            lineage_table(name)
+            for name in (
+                "A.db.public.orders",
+                "B.db.public.orders",
+                "A.db.public.customers",
+                "warehouse.analytics.landing.orders_copy",
+                "warehouse.analytics.landing.customers_copy",
+            )
+        ]
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in tables})
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert result[0].right.edge.fromEntity.id == tables[2].id
+        assert result[0].right.edge.toEntity.id == tables[4].id
+        assert "ambiguous" in caplog.text
+        assert "A.db.public.orders" in caplog.text
+        assert "produced no lineage" not in caplog.text
+
+    @pytest.mark.parametrize("status", [403, 503])
+    def test_lookup_failed_after_a_match_does_not_prove_uniqueness(self, lineage_boundary, caplog, status):
+        source, client, transport, details = lineage_boundary
+        upstream = lineage_table("A.db.public.orders")
+        transport.entities[model_str(upstream.fullyQualifiedName)] = upstream
+        transport.errors["/tables/name/B.db.public.orders"] = APIError(
+            {"code": status, "message": "secret-host:secret-password"}
         )
 
-        def side_effect(entity, fqn):
-            s = str(fqn)
-            if "sf_svc" in s and "users" in s and "users_dest" not in s:
-                return mock_src
-            if "pg_svc" in s and "users_dest" in s:
-                return mock_dst
-            if "pipeline" in s or "fivetran" in s:
-                return mock_pipe
-            return None
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(side_effect=side_effect)
-            client.get_connector_schema_details.return_value = {
-                "public": {
-                    "enabled": True,
-                    "name_in_destination": "pub",
-                    "tables": {"users": {"enabled": True, "name_in_destination": "users_dest"}},
-                }
-            }
-            client.get_connector_column_lineage.return_value = {}
-            result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
-            assert len(result) == 1
-            assert str(result[0].right.edge.fromEntity.id.root) == mock_src.id
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_skips_self_ref(self, mock_build, mock_get_services, fivetran_source):
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg"]
-        same_id = str(uuid4())
-        mock_table = Mock(spec=Table)
-        mock_table.id = same_id
-
-        mock_build.side_effect = lambda *a, **kw: "pg.db.public.orders"
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(
-                side_effect=lambda entity, fqn: mock_table if "orders" in str(fqn) else None
-            )
-            client.get_connector_schema_details.return_value = {
-                "public": {
-                    "enabled": True,
-                    "name_in_destination": "public",
-                    "tables": {"orders": {"enabled": True, "name_in_destination": "orders"}},
-                }
-            }
-            client.get_connector_column_lineage.return_value = {}
-            assert list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS)) == []
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_messaging_lineage(self, mock_build, mock_db, mock_msg, fivetran_source):
-        source, client = fivetran_source
-        mock_db.return_value = ["sf"]
-        mock_msg.return_value = ["kafka"]
-        mock_topic = Mock(spec=Topic)
-        mock_topic.id = str(uuid4())
-        mock_table = Mock(spec=Table)
-        mock_table.id = str(uuid4())
-        mock_pipe = Mock()
-        mock_pipe.id.root = str(uuid4())
-
-        def build_se(*a, **kw):
-            if kw.get("topic_name"):
-                return f"{kw['service_name']}.{kw['topic_name']}"
-            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
-
-        mock_build.side_effect = build_se
-
-        def side_effect(entity, fqn):
-            s = str(fqn)
-            if "kafka" in s:
-                return mock_topic
-            if "sf" in s:
-                return mock_table
-            if "pipeline" in s or "fivetran" in s:
-                return mock_pipe
-            return None
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(side_effect=side_effect)
-            client.get_connector_schema_details.return_value = {
-                "topics": {
-                    "enabled": True,
-                    "name_in_destination": "cc",
-                    "tables": {"TRADES": {"enabled": True, "name_in_destination": "TRADES"}},
-                }
-            }
-            details = FivetranPipelineDetails(
-                source={
-                    "id": "cc",
-                    "service": "confluent_cloud",
-                    "schema": "cc",
-                    "config": {},
-                },
-                destination=mock_data["destination"],
-                group=mock_data["group"],
-                connector_id="cc",
-            )
+        with caplog.at_level(logging.WARNING):
             result = list(source.yield_pipeline_lineage_details(details))
-            assert len(result) == 1
-            assert result[0].right.edge.fromEntity.type == "topic"
 
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    def test_falls_back_to_cross_service_search_when_unconfigured(self, mock_get_services, fivetran_source):
-        source, _ = fivetran_source
-        mock_get_services.return_value = []
-        found = Mock(spec=Table)
-        found.service = Mock(name="svc")
+        assert result == []
+        assert "lookup failed" in caplog.text
+        assert "source" in caplog.text
+        assert "secret-host" not in caplog.text
+        assert "secret-password" not in caplog.text
+        assert client.get_connector_column_lineage.call_count == 0
+        assert not transport.closed
 
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.search_in_any_service = Mock(return_value=found)
-            result = source._resolve_table(table_name="orders", schema_name="crm", database_name=None)
+    @pytest.mark.parametrize("services", [[], ["A"], ["A", "A"]])
+    def test_unique_resolution_deduplicates_services_and_hits(self, lineage_boundary, services):
+        source, _, transport, _ = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = services
+        entity = lineage_table("A.db.public.orders")
+        transport.entities[model_str(entity.fullyQualifiedName)] = entity
+        transport.hits = [model_str(entity.fullyQualifiedName)] * 2
 
-        assert result is found
-        assert mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == "crm.orders"
+        result = source._resolve_table(table_name="orders", schema_name="public", database_name="db")
 
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    def test_configured_services_do_not_use_fallback(self, mock_get_services, fivetran_source):
-        source, _ = fivetran_source
-        mock_get_services.return_value = ["pg"]
-        found = Mock()
+        assert result.entity == entity
+        assert result.reason is None
+        assert not transport.closed
 
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(return_value=found)
-            mock_metadata.search_in_any_service = Mock()
-            result = source._resolve_table(table_name="orders", schema_name="crm", database_name="db")
+    @pytest.mark.parametrize("services", [[], ["A"]])
+    def test_ambiguous_partial_name_checks_every_database(self, lineage_boundary, services):
+        source, _, transport, _ = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = services
+        tables = [lineage_table(name) for name in ("A.db.public.orders", "A.another.public.orders")]
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in tables})
 
-        assert result is found
-        mock_metadata.search_in_any_service.assert_not_called()
+        result = source._resolve_table(table_name="orders", schema_name="public", database_name=None)
 
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    def test_configured_but_not_found_still_skips(self, mock_get_services, fivetran_source):
-        source, _ = fivetran_source
-        mock_get_services.return_value = ["pg"]
+        assert result.entity is None
+        assert result.reason == "ambiguous"
+        assert set(result.candidates) == {model_str(table.fullyQualifiedName) for table in tables}
 
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(return_value=None)
-            mock_metadata.search_in_any_service = Mock()
-            result = source._resolve_table(table_name="orders", schema_name="crm", database_name="db")
+    def test_configured_miss_never_widens_to_another_service(self, lineage_boundary):
+        source, _, transport, _ = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = ["A"]
+        entity = lineage_table("B.db.public.orders")
+        transport.entities[model_str(entity.fullyQualifiedName)] = entity
 
-        assert result is None
-        mock_metadata.search_in_any_service.assert_not_called()
+        result = source._resolve_table(table_name="orders", schema_name="public", database_name="db")
+
+        assert result.entity is None
+        assert result.reason == "not_found"
+
+    @pytest.mark.parametrize(
+        "database,schema,expected",
+        [
+            (None, "public", "A.*.public.orders"),
+            ("db", None, "A.db.*.orders"),
+            (None, None, "A.*.*.orders"),
+        ],
+    )
+    def test_unique_missing_parent_slots_stay_in_place(self, lineage_boundary, database, schema, expected):
+        source, _, transport, _ = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = ["A"]
+        entity = lineage_table("A.db.public.orders")
+        transport.entities[model_str(entity.fullyQualifiedName)] = entity
+
+        result = source._resolve_table(table_name="orders", schema_name=schema, database_name=database)
+
+        assert result.entity == entity
+        assert transport.requests[0][1]["fieldValue"] == [expected]
+
+    @pytest.mark.parametrize(
+        "field,value",
+        [
+            ("partial", {"timed_out": True}),
+            ("partial", {"_shards": {"failed": 1}}),
+            ("total", 2),
+            ("relation", "gte"),
+            ("total", 11),
+        ],
+    )
+    def test_incomplete_lookup_is_not_a_unique_match(self, lineage_boundary, field, value):
+        source, _, transport, _ = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = ["A"]
+        entity = lineage_table("A.db.public.orders")
+        transport.entities[model_str(entity.fullyQualifiedName)] = entity
+        setattr(transport, field, value)
+
+        result = source._resolve_table(table_name="orders", schema_name="public", database_name=None)
+
+        assert result.entity is None
+        assert result.reason == "lookup_failed"
+        assert not transport.closed
+
+    @pytest.mark.parametrize("table_name", [None, ""])
+    def test_missing_leaf_has_no_fabricated_lookup(self, lineage_boundary, table_name):
+        source, _, transport, _ = lineage_boundary
+
+        result = source._resolve_table(table_name=table_name, schema_name="public", database_name="db")
+
+        assert result.entity is None
+        assert result.reason == "not_found"
+        assert transport.requests == []
+
+    def test_second_run_can_resolve_a_previously_ambiguous_table(self, lineage_boundary):
+        source, _, transport, _ = lineage_boundary
+        tables = [lineage_table(name) for name in ("A.db.public.orders", "B.db.public.orders")]
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in tables})
+        first = source._resolve_table(table_name="orders", schema_name="public", database_name="db")
+        assert first.reason == "ambiguous"
+        del transport.entities["B.db.public.orders"]
+
+        second = source._resolve_table(table_name="orders", schema_name="public", database_name="db")
+
+        assert second.entity == tables[0]
+        assert second.reason is None
+
+    @pytest.mark.parametrize(
+        "name,fqn_name,search",
+        [
+            ("orders.2026", 'A.db.public."orders.2026"', 'A.*.public."orders.2026"'),
+            ('"orders.2026"', 'A.db.public."orders.2026"', 'A.*.public."orders.2026"'),
+            ("order rows", "A.db.public.order rows", "A.*.public.order rows"),
+            ("고객", "A.db.public.고객", "A.*.public.고객"),
+            ("orders*", "A.db.public.orders*", r"A.*.public.orders\*"),
+            ("orders?", "A.db.public.orders?", r"A.*.public.orders\?"),
+        ],
+    )
+    def test_unique_literal_name_is_not_reparsed_or_expanded(self, lineage_boundary, name, fqn_name, search):
+        source, _, transport, _ = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = ["A"]
+        entity = lineage_table(fqn_name)
+        transport.entities[fqn_name] = entity
+        transport.hits = [fqn_name, "A.db.public.orders_other"]
+
+        result = source._resolve_table(table_name=name, schema_name="public", database_name=None)
+
+        assert result.entity == entity
+        assert transport.requests[0][1]["fieldValue"] == [search]
+
+    def test_exact_first_policy_does_not_give_a_service_precedence(self, lineage_boundary):
+        source, _, transport, _ = lineage_boundary
+        tables = [lineage_table(name) for name in ("A.db.public.orders", "B.DB.PUBLIC.ORDERS")]
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in tables})
+
+        result = source._resolve_table(table_name="orders", schema_name="public", database_name="db")
+
+        assert result.reason == "ambiguous"
+        assert result.entity is None
+
+    @pytest.mark.parametrize("state", ["deleted", "stale", "identity_mismatch"])
+    def test_stale_or_deleted_search_hits_cannot_supply_an_entity(self, lineage_boundary, state):
+        source, _, transport, _ = lineage_boundary
+        source.source_config.lineageInformation.dbServiceNames = ["A"]
+        transport.hits = ["A.db.public.orders"]
+        if state != "stale":
+            transport.entities["A.db.public.orders"] = lineage_table(
+                "A.db.public.other" if state == "identity_mismatch" else "A.db.public.orders",
+                deleted=state == "deleted",
+            )
+
+        result = source._resolve_table(table_name="orders", schema_name="public", database_name=None)
+
+        assert result.entity is None
+        assert result.reason == "not_found"
+
+    def test_self_referencing_edge_is_still_rejected(self, lineage_boundary, caplog):
+        source, _, transport, details = lineage_boundary
+        upstream = lineage_table("A.db.public.orders")
+        downstream = lineage_table("warehouse.analytics.landing.orders_copy").model_copy(update={"id": upstream.id})
+        transport.entities.update({model_str(table.fullyQualifiedName): table for table in (upstream, downstream)})
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "self-referencing edge" in caplog.text
+
+
+@pytest.fixture
+def unique_lineage_boundary(lineage_boundary):
+    source, client, transport, details = lineage_boundary
+    for name in ("A.db.public.orders", "warehouse.analytics.landing.orders_copy"):
+        transport.entities[name] = lineage_table(name)
+    return source, client, transport, details
+
+
+class TestFivetranLineage:
+    @pytest.mark.parametrize("configured", [None, []])
+    def test_unique_unconfigured_generator_fallback(self, unique_lineage_boundary, configured):
+        source, _, transport, details = unique_lineage_boundary
+        if configured is None:
+            source.source_config.lineageInformation = None
+        else:
+            source.source_config.lineageInformation.dbServiceNames = configured
+
+        result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert result[0].right.edge.fromEntity.id == transport.entities["A.db.public.orders"].id
+        assert result[0].right.edge.toEntity.id == transport.entities["warehouse.analytics.landing.orders_copy"].id
+
+    def test_closing_generator_keeps_borrowed_metadata_usable(self, unique_lineage_boundary):
+        source, _, transport, details = unique_lineage_boundary
+        generator = source.yield_pipeline_lineage_details(details)
+        result = next(generator)
+
+        generator.close()
+
+        assert result.right.edge.fromEntity.id == transport.entities["A.db.public.orders"].id
+        assert (
+            source.metadata.get_by_name(entity=Table, fqn="A.db.public.orders")
+            == transport.entities["A.db.public.orders"]
+        )
+        assert not transport.closed
+
+    @pytest.mark.parametrize("disabled", ["schema", "table"])
+    def test_skips_disabled_without_warning(self, lineage_boundary, caplog, disabled):
+        source, client, _, details = lineage_boundary
+        schema = client.get_connector_schema_details.return_value["public"]
+        if disabled == "schema":
+            schema["enabled"] = False
+        else:
+            schema["tables"]["orders"]["enabled"] = False
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "produced no lineage" not in caplog.text
+
+    def test_warns_when_lineage_enabled_but_no_edges(self, lineage_boundary, caplog):
+        source, _, _, details = lineage_boundary
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "produced no lineage" in caplog.text
+        assert "source entity not found" in caplog.text
+
+    def test_warning_names_actionable_reason_over_disabled(self, lineage_boundary, caplog):
+        source, client, _, details = lineage_boundary
+        client.get_connector_schema_details.return_value.update(
+            {"disabled_one": {"enabled": False}, "disabled_two": {"enabled": False}}
+        )
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "source entity not found" in caplog.text
+        assert "schema disabled in Fivetran" not in caplog.text
+
+    def test_no_warning_when_edges_produced_despite_disables(self, unique_lineage_boundary, caplog):
+        source, client, _, details = unique_lineage_boundary
+        client.get_connector_schema_details.return_value["disabled"] = {"enabled": False}
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert not caplog.records
+
+    def test_missing_destination_is_reported(self, lineage_boundary, caplog):
+        source, _, transport, details = lineage_boundary
+        transport.entities["A.db.public.orders"] = lineage_table("A.db.public.orders")
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "destination entity not found" in caplog.text
+
+    @pytest.mark.parametrize("destination_name", [None, ""])
+    def test_missing_destination_name_does_not_search_for_a_fabricated_leaf(
+        self, unique_lineage_boundary, destination_name, caplog
+    ):
+        source, client, transport, details = unique_lineage_boundary
+        client.get_connector_schema_details.return_value["public"]["tables"]["orders"]["name_in_destination"] = (
+            destination_name
+        )
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "destination entity not found" in caplog.text
+        assert all("None" not in path for path, _ in transport.requests)
+        assert client.get_connector_column_lineage.call_count == 0
+
+    def test_column_api_failure_still_emits_entity_edge(self, unique_lineage_boundary, caplog):
+        source, client, _, details = unique_lineage_boundary
+        client.get_connector_column_lineage.side_effect = RuntimeError("Column endpoint unavailable")
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert result[0].right.edge.lineageDetails.columnsLineage is None
+        assert "Column lineage skipped" in caplog.text
+
+    def test_entity_edge_survives_unresolvable_column(self, unique_lineage_boundary):
+        source, client, _, details = unique_lineage_boundary
+        client.get_connector_column_lineage.return_value = {
+            "unknown": {"enabled": True, "name_in_destination": "unknown"}
+        }
+
+        result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        assert result[0].right.edge.lineageDetails.columnsLineage is None
+
+    def test_missing_pipeline_still_skips_lineage(self, unique_lineage_boundary, caplog):
+        source, _, transport, details = unique_lineage_boundary
+        del transport.entities[model_str(MOCK_PIPELINE.fullyQualifiedName)]
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert result == []
+        assert "Pipeline entity not found" in caplog.text
+
+    @pytest.mark.parametrize("messaging_source", [True, False])
+    @pytest.mark.parametrize("column_failure", [False, True])
+    def test_messaging_and_table_lineage_keeps_unique_table_endpoint(
+        self, unique_lineage_boundary, messaging_source, column_failure, caplog
+    ):
+        source, client, transport, details = unique_lineage_boundary
+        source.source_config.lineageInformation.messagingServiceNames = ["kafka"]
+        topic_name = "orders" if messaging_source else "landing.orders_copy"
+        topic_fqn = "kafka.orders" if messaging_source else 'kafka."landing.orders_copy"'
+        topic = Topic(
+            id=uuid4(),
+            name=topic_name,
+            fullyQualifiedName=topic_fqn,
+            service=EntityReference(id=uuid4(), type="messagingService", name="kafka"),
+            partitions=1,
+            messageSchema={
+                "schemaFields": [{"name": "id", "dataType": "INT", "fullyQualifiedName": topic_fqn + ".id"}]
+            },
+        )
+        transport.entities[topic_fqn] = topic
+        endpoint = details.source if messaging_source else details.destination
+        endpoint["service"] = "kafka"
+        if column_failure:
+            client.get_connector_column_lineage.side_effect = RuntimeError("Column endpoint unavailable")
+
+        with caplog.at_level(logging.WARNING):
+            result = list(source.yield_pipeline_lineage_details(details))
+
+        assert len(result) == 1
+        edge = result[0].right.edge
+        upstream = topic if messaging_source else transport.entities["A.db.public.orders"]
+        downstream = transport.entities["warehouse.analytics.landing.orders_copy"] if messaging_source else topic
+        assert edge.fromEntity.id == upstream.id
+        assert edge.toEntity.id == downstream.id
+        assert edge.fromEntity.type == ("topic" if messaging_source else "table")
+        assert edge.toEntity.type == ("table" if messaging_source else "topic")
+        if column_failure:
+            assert edge.lineageDetails.columnsLineage is None
+            assert "Column lineage skipped" in caplog.text
+        else:
+            assert edge.lineageDetails.columnsLineage == [
+                ColumnLineage(
+                    fromColumns=[model_str(upstream.fullyQualifiedName) + ".id"],
+                    toColumn=model_str(downstream.fullyQualifiedName) + ".id",
+                )
+            ]
 
     @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
     def test_topic_search_string_quotes_dotted_name(self, mock_get_services, fivetran_source):
@@ -780,379 +1148,9 @@ class TestFivetranLineage:
             mock_metadata.search_in_any_service = Mock(return_value=found)
             source._resolve_topic(topic_name="hr_stream.employee_events")
 
-        # Topic FQNs have 2 slots; an unquoted dotted name would be read as service.topic
         assert (
             mock_metadata.search_in_any_service.call_args.kwargs["fqn_search_string"] == '"hr_stream.employee_events"'
         )
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_table_to_topic_lineage(self, mock_build, mock_db, mock_msg, fivetran_source):
-        source, client = fivetran_source
-        mock_db.return_value = ["pg"]
-        mock_msg.return_value = ["kafka"]
-        mock_table = Mock(spec=Table)
-        mock_table.id = str(uuid4())
-        mock_topic = Mock(spec=Topic)
-        mock_topic.id = str(uuid4())
-        mock_pipe = Mock()
-        mock_pipe.id.root = str(uuid4())
-
-        def build_se(*a, **kw):
-            if kw.get("topic_name"):
-                return f"{kw['service_name']}.{kw['topic_name']}"
-            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
-
-        mock_build.side_effect = build_se
-
-        def get_by_name(entity, fqn):
-            s = str(fqn)
-            if "kafka" in s:
-                return mock_topic
-            if "pg" in s:
-                return mock_table
-            return mock_pipe
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(side_effect=get_by_name)
-            client.get_connector_schema_details.return_value = {
-                "hr": {
-                    "enabled": True,
-                    "name_in_destination": "hr_stream",
-                    "tables": {"employees": {"enabled": True, "name_in_destination": "employee_events"}},
-                }
-            }
-            client.get_connector_column_lineage.return_value = {}
-            details = FivetranPipelineDetails(
-                source={"id": "pg", "service": "postgres", "schema": "hr", "config": {"database": "db"}},
-                destination={"id": "cc", "service": "confluent_cloud", "config": {}},
-                group=mock_data["group"],
-                connector_id="pg",
-            )
-            result = list(source.yield_pipeline_lineage_details(details))
-
-        assert len(result) == 1
-        assert result[0].right.edge.fromEntity.type == "table"
-        assert result[0].right.edge.toEntity.type == "topic"
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    def test_warns_when_lineage_enabled_but_no_edges(self, mock_get_services, fivetran_source, caplog):
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg"]
-        client.get_connector_schema_details.return_value = {
-            "public": {
-                "enabled": True,
-                "name_in_destination": "pub",
-                "tables": {"users": {"enabled": True, "name_in_destination": "users"}},
-            }
-        }
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(return_value=None)
-            with caplog.at_level(logging.WARNING):
-                result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
-
-        assert result == []
-        assert "produced no lineage" in caplog.text
-        assert "source entity not found" in caplog.text
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    def test_no_warning_when_only_fivetran_side_disables_skipped(self, mock_get_services, fivetran_source, caplog):
-        """Finding 4: every schema disabled is deliberate Fivetran-side configuration,
-        not a defect - it must stay silent so the warning isn't trained to be ignored."""
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg"]
-        client.get_connector_schema_details.return_value = {
-            "s": {
-                "enabled": False,
-                "name_in_destination": "s",
-                "tables": {"t": {"enabled": True}},
-            }
-        }
-        with caplog.at_level(logging.WARNING):
-            result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
-
-        assert result == []
-        assert "produced no lineage" not in caplog.text
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    def test_warning_names_actionable_reason_over_disabled(self, mock_get_services, fivetran_source, caplog):
-        """When both Fivetran-side disables and a real resolution failure are present,
-        the warning must name the actionable reason, not whichever is more common."""
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg"]
-        client.get_connector_schema_details.return_value = {
-            "disabled_one": {
-                "enabled": False,
-                "name_in_destination": "d1",
-                "tables": {"t": {"enabled": True}},
-            },
-            "disabled_two": {
-                "enabled": False,
-                "name_in_destination": "d2",
-                "tables": {"t": {"enabled": True}},
-            },
-            "public": {
-                "enabled": True,
-                "name_in_destination": "pub",
-                "tables": {"users": {"enabled": True, "name_in_destination": "users"}},
-            },
-        }
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(return_value=None)
-            with caplog.at_level(logging.WARNING):
-                result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
-
-        assert result == []
-        assert "produced no lineage" in caplog.text
-        assert "source entity not found" in caplog.text
-        assert "schema disabled in Fivetran" not in caplog.text
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_no_warning_when_edges_produced_despite_skips(self, mock_build, mock_get_services, fivetran_source, caplog):
-        """A healthy connector that produced at least one edge must stay silent even
-        though some other candidates were skipped."""
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg"]
-        mock_src = Mock(spec=Table)
-        mock_src.id = str(uuid4())
-        mock_dst = Mock(spec=Table)
-        mock_dst.id = str(uuid4())
-        mock_pipe = Mock()
-        mock_pipe.id.root = str(uuid4())
-
-        mock_build.side_effect = lambda *a, **kw: ".".join(
-            str(v)
-            for v in [
-                kw.get("service_name", ""),
-                kw.get("database_name", ""),
-                kw.get("schema_name", ""),
-                kw.get("table_name", ""),
-            ]
-            if v
-        )
-
-        def side_effect(entity, fqn):
-            s = str(fqn)
-            if "orders_dest" in s:
-                return mock_dst
-            if "orders" in s:
-                return mock_src
-            if "pipeline" in s or "fivetran" in s:
-                return mock_pipe
-            return None
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(side_effect=side_effect)
-            client.get_connector_schema_details.return_value = {
-                "disabled": {
-                    "enabled": False,
-                    "name_in_destination": "d",
-                    "tables": {"t": {"enabled": True}},
-                },
-                "public": {
-                    "enabled": True,
-                    "name_in_destination": "pub",
-                    "tables": {"orders": {"enabled": True, "name_in_destination": "orders_dest"}},
-                },
-            }
-            client.get_connector_column_lineage.return_value = {}
-            with caplog.at_level(logging.WARNING):
-                result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
-
-        assert len(result) == 1
-        assert "produced no lineage" not in caplog.text
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_topic_field_fqn")
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_messaging_source_column_lineage_happy_path(
-        self, mock_build, mock_db, mock_msg, mock_col_fqn, mock_topic_fqn, fivetran_source
-    ):
-        """Column lineage is now attempted when the *source* side is a Topic - this was
-        never exercised end-to-end before the messaging gate was removed."""
-        source, client = fivetran_source
-        mock_db.return_value = ["sf"]
-        mock_msg.return_value = ["kafka"]
-        mock_topic = Mock(spec=Topic)
-        mock_topic.id = str(uuid4())
-        mock_table = Mock(spec=Table)
-        mock_table.id = str(uuid4())
-        mock_pipe = Mock()
-        mock_pipe.id.root = str(uuid4())
-
-        def build_se(*a, **kw):
-            if kw.get("topic_name"):
-                return f"{kw['service_name']}.{kw['topic_name']}"
-            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
-
-        mock_build.side_effect = build_se
-        mock_topic_fqn.return_value = "kafka.TRADES.symbol"
-        mock_col_fqn.return_value = "sf.db.sch.tbl.symbol"
-
-        def side_effect(entity, fqn):
-            s = str(fqn)
-            if "kafka" in s:
-                return mock_topic
-            if "sf" in s:
-                return mock_table
-            if "pipeline" in s or "fivetran" in s:
-                return mock_pipe
-            return None
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(side_effect=side_effect)
-            client.get_connector_schema_details.return_value = {
-                "topics": {
-                    "enabled": True,
-                    "name_in_destination": "cc",
-                    "tables": {"TRADES": {"enabled": True, "name_in_destination": "TRADES"}},
-                }
-            }
-            client.get_connector_column_lineage.return_value = {
-                "symbol": {"enabled": True, "name_in_destination": "symbol"}
-            }
-            details = FivetranPipelineDetails(
-                source={
-                    "id": "cc",
-                    "service": "confluent_cloud",
-                    "schema": "cc",
-                    "config": {},
-                },
-                destination=mock_data["destination"],
-                group=mock_data["group"],
-                connector_id="cc",
-            )
-            result = list(source.yield_pipeline_lineage_details(details))
-
-        assert len(result) == 1
-        columns_lineage = result[0].right.edge.lineageDetails.columnsLineage
-        assert columns_lineage is not None
-        assert len(columns_lineage) == 1
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_messaging_service_names")
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_messaging_source_column_lineage_raises_still_emits_edge(
-        self, mock_build, mock_db, mock_msg, fivetran_source, caplog
-    ):
-        """Regression test for Finding 1: Fivetran's column-config endpoint 404s /
-        raises for connector types it doesn't support (messaging sources are the
-        newly-reachable case). That must not abort the whole entity-level edge."""
-        source, client = fivetran_source
-        mock_db.return_value = ["sf"]
-        mock_msg.return_value = ["kafka"]
-        mock_topic = Mock(spec=Topic)
-        mock_topic.id = str(uuid4())
-        mock_table = Mock(spec=Table)
-        mock_table.id = str(uuid4())
-        mock_pipe = Mock()
-        mock_pipe.id.root = str(uuid4())
-
-        def build_se(*a, **kw):
-            if kw.get("topic_name"):
-                return f"{kw['service_name']}.{kw['topic_name']}"
-            return ".".join(str(v) for v in [kw.get("service_name", ""), kw.get("table_name", "")] if v)
-
-        mock_build.side_effect = build_se
-
-        def side_effect(entity, fqn):
-            s = str(fqn)
-            if "kafka" in s:
-                return mock_topic
-            if "sf" in s:
-                return mock_table
-            if "pipeline" in s or "fivetran" in s:
-                return mock_pipe
-            return None
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(side_effect=side_effect)
-            client.get_connector_schema_details.return_value = {
-                "topics": {
-                    "enabled": True,
-                    "name_in_destination": "cc",
-                    "tables": {"TRADES": {"enabled": True, "name_in_destination": "TRADES"}},
-                }
-            }
-            client.get_connector_column_lineage.side_effect = RuntimeError(
-                "Fivetran API request failed for /connectors/cc/schemas/topics/tables/TRADES/columns"
-                " — received None response"
-            )
-            details = FivetranPipelineDetails(
-                source={
-                    "id": "cc",
-                    "service": "confluent_cloud",
-                    "schema": "cc",
-                    "config": {},
-                },
-                destination=mock_data["destination"],
-                group=mock_data["group"],
-                connector_id="cc",
-            )
-            with caplog.at_level(logging.WARNING):
-                result = list(source.yield_pipeline_lineage_details(details))
-
-        assert len(result) == 1
-        assert result[0].right.edge.lineageDetails.columnsLineage is None
-        assert "Column lineage skipped" in caplog.text
-
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.get_column_fqn")
-    @patch("metadata.ingestion.source.pipeline.fivetran.metadata.FivetranSource.get_db_service_names")
-    @patch("metadata.utils.fqn.build")
-    def test_entity_edge_survives_unresolvable_column(
-        self, mock_build, mock_get_services, mock_col_fqn, fivetran_source
-    ):
-        """At the yield_pipeline_lineage_details level (not just _fetch_column_lineage):
-        when column FQN resolution yields nothing, the entity-level edge must still land."""
-        source, client = fivetran_source
-        mock_get_services.return_value = ["pg_svc"]
-        mock_src = Mock(spec=Table)
-        mock_src.id = str(uuid4())
-        mock_dst = Mock(spec=Table)
-        mock_dst.id = str(uuid4())
-        mock_pipe = Mock()
-        mock_pipe.id.root = str(uuid4())
-
-        mock_build.side_effect = lambda *a, **kw: ".".join(
-            str(v)
-            for v in [
-                kw.get("service_name", ""),
-                kw.get("database_name", ""),
-                kw.get("schema_name", ""),
-                kw.get("table_name", ""),
-            ]
-            if v
-        )
-        mock_col_fqn.return_value = None  # unresolvable -> _fetch_column_lineage yields []
-
-        def side_effect(entity, fqn):
-            s = str(fqn)
-            if "users_dest" in s:
-                return mock_dst
-            if "users" in s:
-                return mock_src
-            if "pipeline" in s or "fivetran" in s:
-                return mock_pipe
-            return None
-
-        with patch.object(source, "metadata") as mock_metadata:
-            mock_metadata.get_by_name = Mock(side_effect=side_effect)
-            client.get_connector_schema_details.return_value = {
-                "public": {
-                    "enabled": True,
-                    "name_in_destination": "pub",
-                    "tables": {"users": {"enabled": True, "name_in_destination": "users_dest"}},
-                }
-            }
-            client.get_connector_column_lineage.return_value = {"id": {"enabled": True, "name_in_destination": "id"}}
-            result = list(source.yield_pipeline_lineage_details(EXPECTED_FIVETRAN_DETAILS))
-
-        assert len(result) == 1
-        assert result[0].right.edge.lineageDetails.columnsLineage is None
 
 
 class TestSearchAnyService:
