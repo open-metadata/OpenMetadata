@@ -30,6 +30,7 @@ MANIFEST_VERSION = 2
 
 INPUT_ROOTS = (
     ROOT / "openmetadata-spec/src/main/resources/json/schema",
+    ROOT / "openmetadata-spec/src/main/resources/odcs",
     ROOT / "openmetadata-spec/src/main/antlr4",
 )
 INPUT_FILES = (
@@ -39,6 +40,7 @@ INPUT_FILES = (
     ROOT / "ingestion/noxfile.py",
     ROOT / "ingestion/Makefile",
     ROOT / "scripts/datamodel_generation.py",
+    ROOT / "openmetadata-spec/scripts/prepare_model_schemas.py",
     ROOT / "scripts/generate_ingestion_models.py",
     Path(__file__).resolve(),
 )
