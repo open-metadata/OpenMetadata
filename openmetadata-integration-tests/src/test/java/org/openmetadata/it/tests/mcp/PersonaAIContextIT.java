@@ -21,6 +21,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +54,7 @@ import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.personaContext.ContextRule;
 import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.PersonaRepository;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class PersonaAIContextIT extends McpTestBase {
@@ -140,6 +142,63 @@ class PersonaAIContextIT extends McpTestBase {
           owned, Set.of(table.getFullyQualifiedName()), Set.of(preloaded.getFullyQualifiedName()));
     } finally {
       deleteResponse("personas/" + owned.getId() + "?hardDelete=true", authToken);
+    }
+  }
+
+  @Test
+  void invalidSavedSearchScopesAreSkippedWhileContextRemainsAvailable() throws Exception {
+    Table excluded = createServiceDatabaseSchemaTable("outside_scope_" + shortId());
+    Persona owned =
+        post("personas", new CreatePersona().withName("legacy_scope_" + shortId()), Persona.class);
+    String path = "personas/" + owned.getId();
+    try {
+      addRule(
+          path + "/aiContext/rules", scopedFqnRule("Healthy scope", table.getFullyQualifiedName()));
+      addRule(path + "/aiContext/rules", tableRule("Preloaded tables"));
+      Persona stored = get(path + "?fields=contextDefinition", Persona.class);
+      List<ContextRule> original = stored.getContextDefinition().getRules();
+      PersonaRepository repository = (PersonaRepository) Entity.getEntityRepository(Entity.PERSONA);
+      for (String filter : List.of("{", "{\"regexp\":{\"name\":\"[shop\"}}")) {
+        List<ContextRule> rules = new ArrayList<>(original);
+        rules.add(
+            scopedFqnRule("Broken scope", table.getFullyQualifiedName()).withQueryFilter(filter));
+        stored.getContextDefinition().setRules(rules);
+        // Bypass write validation to reproduce a rule saved before validation existed.
+        repository.storeEntity(stored, true);
+        Awaitility.await()
+            .atMost(Duration.ofMinutes(1))
+            .untilAsserted(
+                () -> {
+                  HttpResponse<String> response =
+                      getResponse(path + "/context?format=json&refresh=true", authToken);
+                  assertThat(response.statusCode()).isEqualTo(200);
+                  JsonNode context = OBJECT_MAPPER.readTree(response.body());
+                  assertThat(context.path("rules").toString())
+                      .contains(table.getFullyQualifiedName());
+                  assertThat(context.path("searchScope").path("rules").findValuesAsText("ruleName"))
+                      .containsExactly("Healthy scope");
+                  JsonNode unscoped =
+                      searchMetadataWithPersona(owned, authToken, table, excluded, true);
+                  assertThat(resultFqns(unscoped))
+                      .containsExactlyInAnyOrder(
+                          table.getFullyQualifiedName(), excluded.getFullyQualifiedName());
+                  JsonNode scoped =
+                      searchMetadataWithPersona(owned, authToken, table, excluded, false);
+                  assertThat(resultFqns(scoped)).containsExactly(table.getFullyQualifiedName());
+                  assertThat(scoped.path("personaScopeApplied").asBoolean()).isTrue();
+                });
+        HttpResponse<String> markdown = getResponse(path + "/context", authToken);
+        assertThat(markdown.statusCode()).isEqualTo(200);
+        assertThat(markdown.body()).contains(table.getFullyQualifiedName());
+        JsonNode mcp =
+            executeMcp(
+                McpTestUtils.createToolCallRequest(
+                    "get_persona_context", Map.of("personaName", owned.getFullyQualifiedName())),
+                authToken);
+        assertThat(mcp.toString()).contains(table.getFullyQualifiedName());
+      }
+    } finally {
+      deleteResponse(path + "?hardDelete=true", authToken);
     }
   }
 

@@ -201,7 +201,7 @@ public class PersonaContextBuilder {
             .withPrompt(prompt(definition))
             .withGeneratedAt(System.currentTimeMillis())
             .withSharedKnowledge(sharedKnowledge)
-            .withSearchScope(searchScope(definition));
+            .withSearchScope(buildSearchScope());
     return PersonaContextMarkdown.render(
         persona, definition, materializedRules, context, source.knowledgeOverflowed());
   }
@@ -262,7 +262,6 @@ public class PersonaContextBuilder {
         continue;
       }
       if (isFilteredInSearch(rule)) {
-        validateScopedRule(rule);
         continue;
       }
       RuleSearchResult matches = search(rule);
@@ -303,7 +302,23 @@ public class PersonaContextBuilder {
     return results;
   }
 
-  private void validateScopedRule(ContextRule rule) {
+  public SearchScope buildSearchScope() {
+    PersonaContextDefinition definition = definitionOf(persona);
+    List<ContextRule> validRules = new ArrayList<>();
+    if (Boolean.TRUE.equals(definition.getEnabled())) {
+      for (ContextRule rule : listOrEmpty(definition.getRules())) {
+        if (Boolean.TRUE.equals(rule.getEnabled())
+            && isFilteredInSearch(rule)
+            && isValidScopedRule(rule)) {
+          validRules.add(rule);
+        }
+      }
+    }
+    return searchScope(
+        new PersonaContextDefinition().withEnabled(definition.getEnabled()).withRules(validRules));
+  }
+
+  private boolean isValidScopedRule(ContextRule rule) {
     try {
       Runnable validate = () -> PersonaContextRuleValidation.validate(rule, searchRepository);
       if (sourceCache == null) {
@@ -312,13 +327,14 @@ public class PersonaContextBuilder {
         sourceCache.validate(sourceScope, rule, validate);
       }
     } catch (BadRequestException exception) {
-      throw new ServiceUnavailableException(
-          "Invalid persona context rule '"
-              + rule.getName()
-              + "'. Ask an administrator to correct the filter.",
-          Response.status(Response.Status.SERVICE_UNAVAILABLE).build(),
-          exception);
+      LOG.warn(
+          "Skipping invalid saved search rule '{}' for persona '{}': {}",
+          rule.getName(),
+          persona.getFullyQualifiedName(),
+          exception.getMessage());
+      return false;
     }
+    return true;
   }
 
   RuleSearchResult search(ContextRule rule) {

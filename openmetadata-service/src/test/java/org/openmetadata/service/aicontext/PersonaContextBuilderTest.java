@@ -393,21 +393,47 @@ class PersonaContextBuilderTest {
     }
   }
 
-  @Test
-  void anInvalidLegacyScopedRuleFailsMaterializationUntilDisabled() throws IOException {
+  @ParameterizedTest
+  @ValueSource(strings = {"{", "[]", "{\"regexp\":{\"name\":\"[shop\"}}"})
+  void invalidSavedScopesDoNotBlockContextOrReachSearchDefaults(String filter) throws IOException {
     SearchRepository repository = mock(SearchRepository.class);
     SearchClient client = mock(SearchClient.class);
     when(repository.getSearchClient()).thenReturn(client);
     when(repository.getIndexOrAliasName(Entity.TABLE)).thenReturn("tables");
     when(client.rawSearchRequest(anyString(), anyString(), anyString()))
         .thenReturn(new SearchClient.RawSearchResponse(200, "{\"valid\":false}"));
-    ContextRule rule =
-        assetRule("Broken scope", "{\"regexp\":{\"name\":\"[shop\"}}").withFilteredInSearch(true);
-    PersonaContextDefinition definition = new PersonaContextDefinition().withRules(List.of(rule));
-    PersonaContextBuilder builder = new PersonaContextBuilder(persona(), repository);
-    assertThrows(ServiceUnavailableException.class, () -> builder.selectRules(definition));
-    rule.setEnabled(false);
-    assertTrue(builder.selectRules(definition).isEmpty());
+    when(repository.listWithDeepPagination(
+            anyString(), isNull(), anyString(), any(), any(), anyInt(), nullable(Object[].class)))
+        .thenReturn(
+            new SearchResultListMapper(
+                List.of(Map.of("fullyQualifiedName", "visible.preload")), 1));
+    ContextRule broken = assetRule("Broken scope", filter).withFilteredInSearch(true);
+    ContextRule healthy =
+        assetRule("Healthy scope", "").withEntityType(Entity.DASHBOARD).withFilteredInSearch(true);
+    ContextRule preload = assetRule("Preloaded tables", "");
+    for (boolean includeHealthyScope : List.of(true, false)) {
+      PersonaContextDefinition definition =
+          new PersonaContextDefinition()
+              .withRules(
+                  includeHealthyScope
+                      ? List.of(broken, healthy, preload)
+                      : List.of(broken, preload));
+      var result =
+          new PersonaContextBuilder(persona().withContextDefinition(definition), repository)
+              .withSourceCache(new PersonaContextSourceCache())
+              .build();
+      var scope = result.context().getSearchScope();
+      assertEquals(
+          includeHealthyScope ? List.of("Healthy scope") : List.of(),
+          scope.getRules().stream().map(rule -> rule.getRuleName()).toList());
+      assertFalse(scope.getEntityTypes().contains(Entity.TABLE));
+      assertEquals(!includeHealthyScope, nullOrEmpty(scope.getQueryFilter()));
+      assertEquals(
+          "visible.preload",
+          result.context().getRules().getFirst().getEntities().getFirst().getFullyQualifiedName());
+      assertTrue(result.markdown().contains("visible.preload"));
+      assertTrue(broken.getEnabled());
+    }
   }
 
   @Test

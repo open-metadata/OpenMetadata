@@ -1,7 +1,7 @@
 # Persona context keeps access, preloading and search independent
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-09 (shared source caching and review corrections)
+- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-09 (shared source caching and review corrections) · v3 2026-11-10 (skip invalid saved search scopes)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `PersonaContextBuilderTest`, `PersonaContextSourceCacheTest`, `PersonaContextVisibilityTest`, `PersonaRepositoryTest`, `PersonaAIContextIT`
 - **Related:** [AI persona Context release feedback](https://app.notion.com/p/3d0b4572302480f182a5f2ea4ee3572b)
@@ -24,8 +24,8 @@ asset-context `ViewAll` permission and knowledge `ViewBasic` permission before r
 Caller-specific documents bypass the persona-wide cache. Admin and bot documents retain that
 cache; member documents must never be stored in it.
 Materialization version 2 participates in the definition hash so documents compiled under the old
-scope-composition rules are rebuilt after upgrade. Invalid active scoped filters fail compilation
-and report failed cache state, including filters stored before write-time validation existed.
+scope-composition rules are rebuilt after upgrade. Invalid saved search scopes are logged and
+skipped when compiling context; working rules and preloaded context remain available.
 
 Rule filters are validated by the configured search engine before a new or changed filter is
 persisted, including search-scoped rules. Re-enabling a rule or its context validates active
@@ -85,7 +85,12 @@ activation comparisons still determine whether validation is required.
 Explore retains its existing all-assets index for links without search text. Persona links carry
 an explicit entity-type quick filter rather than changing the shared Explore default.
 
-Invalid active legacy scope filters remain explicit compilation failures. Administrators must
-preflight enabled rules before rollout and correct or disable failures, following
-[the upgrade guide](../persona-context-upgrade.md). Silently dropping a configured search default
-would change the persona's behavior without notifying its owner.
+## Amendment: skip invalid saved search scopes
+
+An invalid saved search scope must not block the persona's context. Log a warning with the persona
+and rule name, omit that rule from the returned search defaults, and continue with the remaining
+rules. If no valid scopes remain, use the existing unscoped search behavior. Do not change the
+saved definition or asset permissions. New or changed filters still validate on save; unavailable
+search still reports a service error during save validation or context generation.
+Active-persona MCP searches use the same validated scopes and source-validation cache, retaining
+their existing logged fallback when scope resolution is unavailable.

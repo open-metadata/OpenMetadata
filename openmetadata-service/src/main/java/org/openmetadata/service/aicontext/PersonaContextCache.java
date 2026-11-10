@@ -30,6 +30,7 @@ import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.personaContext.PersonaContextCacheState;
+import org.openmetadata.schema.type.personaContext.SearchScope;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
@@ -118,6 +119,10 @@ public class PersonaContextCache implements Invalidatable {
   /** The {@link Invalidatable} to register with {@code CacheBundle} for this cache. */
   public static Invalidatable invalidator() {
     return INVALIDATOR;
+  }
+
+  public SearchScope getSearchScope(Persona persona) {
+    return new PersonaContextBuilder(persona).withSourceCache(sources).buildSearchScope();
   }
 
   public CachedResult get(Persona persona, boolean refresh) {

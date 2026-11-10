@@ -55,7 +55,7 @@ import org.openmetadata.service.security.Authorizer;
 
 class PersonaContextCacheTest {
   @Test
-  void aMemberCompilationFailureRecordsTheRuleForAdministratorDiagnostics() throws Exception {
+  void aMemberValidationOutageStillRecordsAdministratorDiagnostics() throws Exception {
     Persona persona =
         personaFor(UUID.randomUUID())
             .withContextDefinition(
@@ -63,16 +63,16 @@ class PersonaContextCacheTest {
                     .withRules(
                         List.of(
                             new ContextRule()
-                                .withName("Legacy invalid filter")
+                                .withName("Scoped tables")
                                 .withEntityType(Entity.TABLE)
                                 .withFilteredInSearch(true)
-                                .withQueryFilter("{\"regexp\":{\"name\":\"[broken\"}}"))));
+                                .withQueryFilter("{\"term\":{\"name\":\"orders\"}}"))));
     SearchRepository repository = mock(SearchRepository.class);
     SearchClient client = mock(SearchClient.class);
     when(repository.getSearchClient()).thenReturn(client);
     when(repository.getIndexOrAliasName(Entity.TABLE)).thenReturn("tables");
     when(client.rawSearchRequest(anyString(), anyString(), anyString()))
-        .thenReturn(new SearchClient.RawSearchResponse(200, "{\"valid\":false}"));
+        .thenReturn(new SearchClient.RawSearchResponse(503, "{}"));
     PersonaContextCache cache =
         new PersonaContextCache(mock(CacheProvider.class), new CacheKeys("test"));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class)) {
@@ -81,7 +81,7 @@ class PersonaContextCacheTest {
           ServiceUnavailableException.class,
           () -> cache.getForCaller(persona, mock(Authorizer.class), mock(SecurityContext.class)));
       assertEquals(PersonaContextCacheState.FAILED, cache.snapshot(persona).state());
-      assertTrue(cache.snapshot(persona).error().contains("Legacy invalid filter"));
+      assertTrue(cache.snapshot(persona).error().contains("Search is unavailable"));
     }
   }
 
