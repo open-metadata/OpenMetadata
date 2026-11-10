@@ -420,11 +420,14 @@ jobs:
     needs: [ui-it-nightly, search-it-nightly]
     if: ${{ always() && github.event_name != 'pull_request' && (github.ref == 'refs/heads/2.0' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/2.0')) }}
     runs-on: ubuntu-latest
+    env:
+      SLACK_JAVA_PLAYWRIGHT_URL: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
     steps:
       - name: Slack notification
+        if: env.SLACK_JAVA_PLAYWRIGHT_URL != ''
         uses: slackapi/slack-github-action@v3.0.5
         with:
-          webhook: ${{ secrets.SLACK_JAVA_PLAYWRIGHT_URL }}
+          webhook: ${{ env.SLACK_JAVA_PLAYWRIGHT_URL }}
           webhook-type: incoming-webhook
           payload: |
             text: "Java Playwright: UI=${{ needs.ui-it-nightly.result }}, search=${{ needs.search-it-nightly.result }}. Logs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"

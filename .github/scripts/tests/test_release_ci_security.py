@@ -199,17 +199,17 @@ def test_sso_summary_reports_results_without_pr_api_access(tmp_path, test_status
         """
 import { createRequire } from 'node:module';
 const require = createRequire(import.meta.url);
-let summary = ''; const failures = [];
+let summary = ''; const failures = []; let apiAccesses = 0;
 const core = {
   summary: { addRaw(text) { summary += text; return this; }, async write() {} },
   warning() {}, setFailed(message) { failures.push(message); }
 };
 const context = { payload: { pull_request: { number: 1, draft: false } }, repo: { owner: 'org', repo: 'repo' } };
-const github = new Proxy({}, { get() { throw new Error('PR API access forbidden'); } });
+const github = new Proxy({}, { get() { apiAccesses++; throw new Error('PR API access forbidden'); } });
 await (async () => {
 """
         + script
-        + "\n})();\nprocess.stdout.write(JSON.stringify({summary, failures}));\n"
+        + "\n})();\nprocess.stdout.write(JSON.stringify({summary, failures, apiAccesses}));\n"
     )
     result = subprocess.run(
         ["node", "--input-type=module", "-"],
@@ -224,5 +224,6 @@ await (async () => {
     )
     assert result.returncode == 0, result.stderr
     rendered = json.loads(result.stdout)
+    assert rendered["apiAccesses"] == 0
     assert "SSO Playwright Results" in rendered["summary"]
     assert bool(rendered["failures"]) == (test_status == "unexpected")
