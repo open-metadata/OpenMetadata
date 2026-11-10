@@ -131,7 +131,10 @@ class TrinoLineageSource(TrinoQueryParserSource, LineageSource):
     ) -> str | None:
         trino_schema_name = None
         if trino_table.databaseSchema and trino_table.databaseSchema.name:
-            trino_schema_name = trino_table.databaseSchema.name.root
+            # databaseSchema is an EntityReference, whose name is a plain string; only an
+            # entity's own name is the EntityName wrapper with .root. Accept both.
+            schema_ref_name = trino_table.databaseSchema.name
+            trino_schema_name = getattr(schema_ref_name, "root", schema_ref_name)
 
         if not trino_schema_name and trino_table.fullyQualifiedName and trino_table.fullyQualifiedName.root:
             trino_table_fqn_parts = fqn.split(trino_table.fullyQualifiedName.root)

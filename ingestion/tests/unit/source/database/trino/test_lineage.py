@@ -155,3 +155,34 @@ def test_get_cross_database_schema_fqn_parses_quoted_schema_from_fqn():
         )
 
     assert result == 'repro_postgres.source_db."source.schema"'
+
+
+def test_get_cross_database_schema_fqn_reads_schema_reference_name_as_string():
+    """databaseSchema is an EntityReference whose name is a plain string (no .root)."""
+    from metadata.generated.schema.type.entityReference import EntityReference
+
+    metadata = MagicMock()
+
+    trino_table = MagicMock()
+    trino_table.databaseSchema = EntityReference(
+        id="33333333-3333-3333-3333-333333333333",
+        type="databaseSchema",
+        name="source_schema",
+        fullyQualifiedName="repro_trino.postgres.source_schema",
+    )
+    trino_table.fullyQualifiedName.root = "repro_trino.postgres.source_schema.customer"
+
+    lineage_source = TrinoLineageSourceTestDouble(metadata)
+
+    with patch(
+        "metadata.ingestion.source.database.trino.lineage.fqn.search_database_schema_from_es",
+        return_value=None,
+    ) as mock_search_database_schema:
+        result = lineage_source._get_cross_database_schema_fqn(
+            "repro_postgres.source_db",
+            trino_table,
+            {},
+        )
+
+    assert result == "repro_postgres.source_db.source_schema"
+    assert mock_search_database_schema.call_args.kwargs["schema_name"] == "source_schema"
