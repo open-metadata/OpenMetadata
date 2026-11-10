@@ -303,6 +303,15 @@ export interface ConceptContext {
     definition?: string;
     evidence?:   ConceptEvidence[];
     /**
+     * Metrics only: the SQL conditions the metric is defined under, each to be applied with the
+     * definition. The number is wrong without them.
+     */
+    filters?: string[];
+    /**
+     * Metrics only: the time grain the metric is reported at (DAY, MONTH, ...).
+     */
+    granularity?: string;
+    /**
      * Applied or related metrics with their expressions, sharing the envelope's knowledge
      * budget.
      */
@@ -324,6 +333,11 @@ export interface ConceptContext {
      * the 500-candidate scan cap stopped counting early.
      */
     truncated?: boolean;
+    /**
+     * Metrics only: the unit the value is measured in. The custom unit when unitOfMeasurement
+     * is OTHER, otherwise the unitOfMeasurement value.
+     */
+    unit?: string;
 }
 
 /**
