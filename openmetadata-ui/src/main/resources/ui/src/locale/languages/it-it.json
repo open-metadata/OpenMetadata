@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "Eliminati correttamente {{count}} {{entity}}",
     "entity-already-exist": "{{entity}} \"{{name}}\" esiste già. Non sono consentiti {{entityPlural}} duplicati.",
     "entity-already-exist-message-without-name": "Esiste già un {{entity}} con i dettagli indicati. Non sono consentiti {{entityPlural}} duplicati.",
+    "entity-changed-refresh-and-retry": "Questo asset è stato modificato altrove. Aggiorna la pagina e riprova.",
     "entity-created-success": "{{entity}} creato correttamente!",
     "entity-creation-error": "Errore durante la creazione di {{entity}}",
     "entity-deleted-success": "{{entity}} eliminato correttamente!",

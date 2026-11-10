@@ -6779,6 +6779,7 @@
     "entities-deleted-successfully": "تم حذف {{count}} {{entity}}s بنجاح",
     "entity-already-exist": "{{entity}} \"{{name}}\" موجود بالفعل. لا يُسمح بتكرار {{entityPlural}}.",
     "entity-already-exist-message-without-name": "يوجد بالفعل {{entity}} بالتفاصيل المُعطاة. لا يُسمح بتكرار {{entityPlural}}.",
+    "entity-changed-refresh-and-retry": "تم تغيير هذا الأصل في مكان آخر. حدّث الصفحة وحاول مرة أخرى.",
     "entity-created-success": "تم إنشاء {{entity}} بنجاح!",
     "entity-creation-error": "خطأ أثناء إنشاء {{entity}}",
     "entity-deleted-success": "تم حذف {{entity}} بنجاح!",

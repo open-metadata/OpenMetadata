@@ -83,6 +83,7 @@
         "module": "openmetadata-spec",
         "inputs": [
           "openmetadata-spec/src/main/resources/json/schema",
+          "openmetadata-spec/scripts/prepare_model_schemas.py",
           "common/src/main/java/org/openmetadata/annotations",
           "openmetadata-spec/pom.xml",
           "pom.xml"
@@ -888,7 +889,9 @@
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/DataContract*",
         "openmetadata-service/src/main/java/org/openmetadata/service/apps/bundles/dataContracts/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/util/OD*Converter*",
-        "openmetadata-spec/src/main/resources/json/schema/entity/datacontract/**"
+        "openmetadata-spec/src/main/resources/json/schema/entity/datacontract/**",
+        "openmetadata-spec/src/main/resources/odcs/**",
+        "openmetadata-spec/scripts/**"
       ],
       "tests": [
         "*DataContract*IT",

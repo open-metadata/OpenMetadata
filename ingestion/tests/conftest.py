@@ -10,14 +10,30 @@
 #  limitations under the License.
 """Shared tag client fixtures."""
 
-from unittest.mock import MagicMock
+import os
+from unittest.mock import MagicMock, patch
 from uuid import UUID
 
+import pytest
 from pytest import fixture
 
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.fqn import split
+
+
+@fixture(scope="session", autouse=True)
+def classification_models():
+    if os.environ.get("OM_SKIP_CLASSIFICATION_MODELS") != "true":
+        yield
+        return
+
+    def skip_model(*args, **kwargs):
+        pytest.skip("Classification model tests are temporarily disabled by OM_SKIP_CLASSIFICATION_MODELS")
+
+    # Skip at the model boundary, including callers outside the classification suites.
+    with patch("spacy.load", side_effect=skip_model):
+        yield
 
 
 @fixture
