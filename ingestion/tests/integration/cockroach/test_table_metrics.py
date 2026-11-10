@@ -16,9 +16,8 @@ Integration tests for CockroachTableMetricComputer against a real CockroachDB da
 from unittest.mock import Mock
 
 import pytest
-from sqlalchemy import Column, Integer, String, create_engine, text
+from sqlalchemy import Column, Integer, String, text
 from sqlalchemy.orm import DeclarativeBase
-from testcontainers.cockroachdb import CockroachDBContainer
 
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.ingestion.connections.session import create_and_bind_session
@@ -46,28 +45,22 @@ class NonExistentModel(Base):
 
 
 @pytest.fixture(scope="module")
-def crdb_engine():
-    container = CockroachDBContainer(image="cockroachdb/cockroach:v23.1.0")
-    with container as container:
-        container.exec("cockroach sql --insecure -e 'GRANT SELECT ON TABLE system.table_statistics TO cockroach'")
-        engine = create_engine(container.get_connection_url())
-        with engine.connect() as conn:
-            conn.execute(
-                text(
-                    "CREATE TABLE IF NOT EXISTS public.metric_computer_test (id INTEGER PRIMARY KEY, name VARCHAR(256))"
-                )
+def crdb_engine(cockroach_container, cockroach_engine):
+    cockroach_container.exec("cockroach sql --insecure -e 'GRANT SELECT ON TABLE system.table_statistics TO cockroach'")
+    with cockroach_engine.connect() as conn:
+        conn.execute(
+            text("CREATE TABLE IF NOT EXISTS public.metric_computer_test (id INTEGER PRIMARY KEY, name VARCHAR(256))")
+        )
+        conn.execute(
+            text(
+                "INSERT INTO public.metric_computer_test (id, name) "
+                "SELECT g, 'name_' || g::text FROM generate_series(1, 100) AS g"
             )
-            conn.execute(
-                text(
-                    "INSERT INTO public.metric_computer_test (id, name) "
-                    "SELECT g, 'name_' || g::text FROM generate_series(1, 100) AS g"
-                )
-            )
-            conn.commit()
-            conn.execute(text("ANALYZE metric_computer_test"))
-            conn.commit()
-        yield engine
-        engine.dispose()
+        )
+        conn.commit()
+        conn.execute(text("ANALYZE metric_computer_test"))
+        conn.commit()
+    yield cockroach_engine
 
 
 @pytest.fixture()
@@ -96,12 +89,14 @@ def _build_computer(session, model, table_type):
 
 
 class TestCockroachTableMetricComputer:
+    @pytest.mark.profiler
     def test_compute_returns_row_count(self, session):
         computer = _build_computer(session, MetricComputerTestTable, TableType.Regular)
         result = computer.compute()
         assert result is not None
         assert result.rowCount == 100
 
+    @pytest.mark.profiler
     def test_compute_returns_column_metadata(self, session):
         computer = _build_computer(session, MetricComputerTestTable, TableType.Regular)
         result = computer.compute()
