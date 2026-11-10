@@ -28,10 +28,12 @@ import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
@@ -756,6 +758,13 @@ public class VectorDocBuilder {
     if (entity instanceof Table table) {
       bodyParts.add("columns: " + columnsToString(table.getColumns()));
     }
+    // Topics reuse the "columns:" label so consumers that parse a hit's column section (CAIP's
+    // HybridSearchTool keeps it when trimming a long context) read schema fields the same way.
+    // A topic without fields gets no section, keeping its fingerprint (and embedding) unchanged.
+    String schemaFields = schemaFieldsText(entity);
+    if (!schemaFields.isEmpty()) {
+      bodyParts.add("columns: " + schemaFields);
+    }
 
     return String.join("; ", bodyParts);
   }
@@ -934,6 +943,10 @@ public class VectorDocBuilder {
         bodyParts.add("Columns include " + columnsToString(columns));
       }
     }
+    String schemaFields = schemaFieldsText(entity);
+    if (!schemaFields.isEmpty()) {
+      bodyParts.add("Schema fields include " + schemaFields);
+    }
 
     String childContext = buildChildContextPhrase(entity, entityType);
     if (childContext != null) {
@@ -1046,15 +1059,37 @@ public class VectorDocBuilder {
   static String columnsToString(List<Column> columns) {
     if (columns == null || columns.isEmpty()) return "[]";
     return columns.stream()
-        .map(
-            col -> {
-              String name = col.getName();
-              String desc = col.getDescription();
-              desc = desc == null ? "" : desc.trim();
-              return desc.isEmpty() || "null".equalsIgnoreCase(desc)
-                  ? name
-                  : name + " (" + desc + ")";
-            })
+        .map(col -> nameWithDescription(col.getName(), col.getDescription()))
         .collect(Collectors.joining(", "));
+  }
+
+  /**
+   * A topic's message schema fields in the column format ({@code name (description)}), nested
+   * fields flattened depth-first as dotted paths so a term that only appears on a nested field
+   * still reaches the embedded and lexical text. Empty for any other entity or a schema-less topic.
+   */
+  static String schemaFieldsText(EntityInterface<?> entity) {
+    List<String> entries = new ArrayList<>();
+    if (entity instanceof Topic topic && topic.getMessageSchema() != null) {
+      appendSchemaFields(entries, null, topic.getMessageSchema().getSchemaFields());
+    }
+    return String.join(", ", entries);
+  }
+
+  private static void appendSchemaFields(
+      List<String> entries, String parentPath, List<Field> fields) {
+    if (nullOrEmpty(fields)) {
+      return;
+    }
+    for (Field field : fields) {
+      String path = parentPath == null ? field.getName() : parentPath + "." + field.getName();
+      entries.add(nameWithDescription(path, field.getDescription()));
+      appendSchemaFields(entries, path, field.getChildren());
+    }
+  }
+
+  private static String nameWithDescription(String name, String description) {
+    String desc = description == null ? "" : description.trim();
+    return desc.isEmpty() || "null".equalsIgnoreCase(desc) ? name : name + " (" + desc + ")";
   }
 }
