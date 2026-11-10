@@ -58,13 +58,17 @@ def _hashlib_md5_aliases(tree: ast.Module) -> tuple[set[str], set[str]]:
     module_aliases: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            module_aliases.update(a.asname or a.name for a in node.names if a.name == "hashlib")
+            module_aliases.update(
+                a.asname or a.name for a in node.names if a.name == "hashlib"
+            )
         elif isinstance(node, ast.ImportFrom) and node.module == "hashlib":
             bare_names.update(a.asname or a.name for a in node.names if a.name == "md5")
     return bare_names, module_aliases
 
 
-def _is_md5_call(node: ast.Call, bare_names: set[str], module_aliases: set[str]) -> bool:
+def _is_md5_call(
+    node: ast.Call, bare_names: set[str], module_aliases: set[str]
+) -> bool:
     """True only for hashlib's md5 -- never for SQL-side helpers such as ``func.md5(...)``."""
     func = node.func
     if isinstance(func, ast.Name):
@@ -83,10 +87,14 @@ def _unflagged_md5_call_sites() -> list[str]:
         if not bare_names and not module_aliases:
             continue
         for node in ast.walk(tree):
-            if not isinstance(node, ast.Call) or not _is_md5_call(node, bare_names, module_aliases):
+            if not isinstance(node, ast.Call) or not _is_md5_call(
+                node, bare_names, module_aliases
+            ):
                 continue
             flagged = any(
-                kw.arg == "usedforsecurity" and isinstance(kw.value, ast.Constant) and kw.value.value is False
+                kw.arg == "usedforsecurity"
+                and isinstance(kw.value, ast.Constant)
+                and kw.value.value is False
                 for kw in node.keywords
             )
             if not flagged:
@@ -101,12 +109,18 @@ def test_no_unflagged_md5_call_sites_remain():
     first pass at this fix.
     """
     offenders = _unflagged_md5_call_sites()
-    assert offenders == [], "hashlib.md5 without usedforsecurity=False breaks FIPS hosts: " + ", ".join(offenders)
+    assert (
+        offenders == []
+    ), "hashlib.md5 without usedforsecurity=False breaks FIPS hosts: " + ", ".join(
+        offenders
+    )
 
 
 def test_fips_stub_rejects_unflagged_calls():
     """The stub only proves something if an unflagged call really does fail under it."""
-    with patch("hashlib.md5", _fips_md5), pytest.raises(ValueError, match="disabled for FIPS"):
+    with patch("hashlib.md5", _fips_md5), pytest.raises(
+        ValueError, match="disabled for FIPS"
+    ):
         hashlib.md5(b"payload")
 
 
@@ -132,7 +146,12 @@ def test_generate_source_hash_survives_fips():
         LineageParser.get_query_hash,
         lambda query: OMetaQueryMixin._get_query_hash(None, query=query),
     ],
-    ids=["fqn.get_query_checksum", "helpers.get_query_hash", "parser.get_query_hash", "query_mixin._get_query_hash"],
+    ids=[
+        "fqn.get_query_checksum",
+        "helpers.get_query_hash",
+        "parser.get_query_hash",
+        "query_mixin._get_query_hash",
+    ],
 )
 def test_query_hashes_survive_fips(hash_function):
     query = "SELECT id FROM fips_probe"
@@ -151,7 +170,12 @@ def test_sampler_table_name_survives_fips():
         assert SQASampler.get_sampler_table_name(sampler)
 
 
-@pytest.mark.parametrize("payload", [b"", b"a", b"openmetadata", b"x" * 10000, bytes(range(256))])
+@pytest.mark.parametrize(
+    "payload", [b"", b"a", b"openmetadata", b"x" * 10000, bytes(range(256))]
+)
 def test_flag_does_not_change_the_digest(payload):
     """Stored sourceHash values stay valid across the upgrade, so no re-ingestion is triggered."""
-    assert hashlib.md5(payload, usedforsecurity=False).hexdigest() == hashlib.md5(payload).hexdigest()
+    assert (
+        hashlib.md5(payload, usedforsecurity=False).hexdigest()
+        == hashlib.md5(payload).hexdigest()
+    )

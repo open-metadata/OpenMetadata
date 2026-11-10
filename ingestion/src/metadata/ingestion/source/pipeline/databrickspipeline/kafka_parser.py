@@ -111,14 +111,22 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
                 found_explicit_kafka = True
                 config_block = match.group(1)
 
-                bootstrap_servers = _extract_option(config_block, r"kafka\.bootstrap\.servers", variables)
-                subscribe_topics = _extract_option(config_block, r"subscribe", variables)
+                bootstrap_servers = _extract_option(
+                    config_block, r"kafka\.bootstrap\.servers", variables
+                )
+                subscribe_topics = _extract_option(
+                    config_block, r"subscribe", variables
+                )
                 topics = _extract_option(config_block, r"topics", variables)
-                group_id_prefix = _extract_option(config_block, r"groupIdPrefix", variables)
+                group_id_prefix = _extract_option(
+                    config_block, r"groupIdPrefix", variables
+                )
 
                 topic_list = []
                 if subscribe_topics:
-                    topic_list = [t.strip() for t in subscribe_topics.split(",") if t.strip()]
+                    topic_list = [
+                        t.strip() for t in subscribe_topics.split(",") if t.strip()
+                    ]
                 elif topics:
                     topic_list = [t.strip() for t in topics.split(",") if t.strip()]
 
@@ -143,9 +151,14 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
             topic_candidates = []
             for var_name, var_value in variables.items():
                 # Look for variables that likely contain topic names
-                if any(keyword in var_name.lower() for keyword in ["topic", "subject", "stream"]):
+                if any(
+                    keyword in var_name.lower()
+                    for keyword in ["topic", "subject", "stream"]
+                ):
                     topic_candidates.append(var_value)
-                    logger.debug(f"Found potential topic from variable {var_name}: {var_value}")
+                    logger.debug(
+                        f"Found potential topic from variable {var_name}: {var_value}"
+                    )
 
             if topic_candidates:
                 kafka_config = KafkaSourceConfig(
@@ -154,7 +167,9 @@ def extract_kafka_sources(source_code: str) -> List[KafkaSourceConfig]:  # noqa:
                     group_id_prefix=None,
                 )
                 kafka_configs.append(kafka_config)
-                logger.debug(f"Extracted Kafka config from variables: topics={topic_candidates}")
+                logger.debug(
+                    f"Extracted Kafka config from variables: topics={topic_candidates}"
+                )
 
     except Exception as exc:
         logger.warning(f"Error parsing Kafka sources from code: {exc}")
@@ -175,22 +190,30 @@ def _extract_option(
 
     try:
         # Try matching quoted string literal: .option("subscribe", "topic")
-        pattern_literal = rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*["\']([^"\']+)["\']\s*\)'
+        pattern_literal = (
+            rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*["\']([^"\']+)["\']\s*\)'
+        )
         match = re.search(pattern_literal, config_block, re.IGNORECASE)
         if match:
             return match.group(2)
 
         # Try matching variable reference: .option("subscribe", TOPIC)
-        pattern_variable = rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*([A-Z_][A-Z0-9_]*)\s*\)'
+        pattern_variable = (
+            rf'\.option\s*\(\s*["\']({option_name})["\']\s*,\s*([A-Z_][A-Z0-9_]*)\s*\)'
+        )
         match = re.search(pattern_variable, config_block, re.IGNORECASE)
         if match:
             var_name = match.group(2)
             # Resolve variable
             if var_name in variables:
-                logger.debug(f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}")
+                logger.debug(
+                    f"Resolved variable {var_name} = {variables[var_name]} for option {option_name}"
+                )
                 return variables[var_name]
             else:  # noqa: RET505
-                logger.debug(f"Variable {var_name} referenced but not found in source code")
+                logger.debug(
+                    f"Variable {var_name} referenced but not found in source code"
+                )
 
     except Exception as exc:
         logger.debug(f"Failed to extract option {option_name}: {exc}")
@@ -223,7 +246,9 @@ def glob_base_directory(include: str) -> str:
     return f"{parent}/" if parent else include
 
 
-def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # noqa: UP006
+def get_pipeline_libraries(
+    pipeline_config: dict,
+) -> List[DLTLibrarySource]:  # noqa: UP006
     """
     Collect the source paths a DLT pipeline declares in `spec.libraries`.
 
@@ -256,7 +281,11 @@ def get_pipeline_libraries(pipeline_config: dict) -> List[DLTLibrarySource]:  # 
                 break
             else:
                 glob_entry = lib.get("glob")
-                include = glob_entry.get("include") if isinstance(glob_entry, dict) else glob_entry
+                include = (
+                    glob_entry.get("include")
+                    if isinstance(glob_entry, dict)
+                    else glob_entry
+                )
                 if include:
                     base_path = glob_base_directory(include)
                     libraries.append(

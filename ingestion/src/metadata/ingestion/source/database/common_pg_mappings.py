@@ -45,21 +45,31 @@ class PgMatviewMixin:
     CommonDbSourceService, so it cannot be redeclared here without conflicting with it.
     """
 
-    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         views = [
             TableNameAndType(name=view_name, type_=TableType.View)
-            for view_name in self.inspector.get_view_names(schema_name)  # pyright: ignore[reportAttributeAccessIssue]
+            for view_name in self.inspector.get_view_names(
+                schema_name
+            )  # pyright: ignore[reportAttributeAccessIssue]
             or []
         ]
         try:
             matviews = [
                 TableNameAndType(name=matview_name, type_=TableType.MaterializedView)
-                for matview_name in self.inspector.get_materialized_view_names(schema_name)  # pyright: ignore[reportAttributeAccessIssue]
+                for matview_name in self.inspector.get_materialized_view_names(
+                    schema_name
+                )  # pyright: ignore[reportAttributeAccessIssue]
                 or []
             ]
         except Exception as err:
             logger.debug(traceback.format_exc())
-            logger.warning("Fetching materialized views failed for schema %s due to - %s", schema_name, err)
+            logger.warning(
+                "Fetching materialized views failed for schema %s due to - %s",
+                schema_name,
+                err,
+            )
             matviews = []
         return views + matviews
 

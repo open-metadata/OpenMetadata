@@ -468,7 +468,9 @@ def _prepare_constraint_args(self, connection, table_name, schema, **kw):
             table_name = self.denormalize_name(row.table_name)
             schema = self.denormalize_name(row.table_owner)
             if row.db_link:
-                dblink = row.db_link if row.db_link.startswith("@") else f"@{row.db_link}"
+                dblink = (
+                    row.db_link if row.db_link.startswith("@") else f"@{row.db_link}"
+                )
     else:
         table_name = self.denormalize_name(table_name)
         schema = self.denormalize_name(schema or self.default_schema_name)
@@ -479,7 +481,9 @@ def _prepare_constraint_args(self, connection, table_name, schema, **kw):
 @reflection.cache
 def get_pk_constraint(self, connection, table_name, schema=None, **kw):
     """Reflect a primary key from the selected Oracle catalog."""
-    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    table_name, schema, dblink = _prepare_constraint_args(
+        self, connection, table_name, schema, **kw
+    )
     constraint_data = _get_constraint_data(
         self,
         connection,
@@ -502,7 +506,9 @@ def get_pk_constraint(self, connection, table_name, schema=None, **kw):
 @reflection.cache
 def get_unique_constraints(self, connection, table_name, schema=None, **kw):
     """Reflect unique constraints from the selected Oracle catalog."""
-    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    table_name, schema, dblink = _prepare_constraint_args(
+        self, connection, table_name, schema, **kw
+    )
     constraint_data = _get_constraint_data(
         self,
         connection,
@@ -523,7 +529,9 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
             {
                 "name": constraint_name,
                 "column_names": [],
-                "duplicates_index": constraint_name if index_name == constraint_name else None,
+                "duplicates_index": constraint_name
+                if index_name == constraint_name
+                else None,
             },
         )
         constraint["column_names"].append(self.normalize_name(row[2]))
@@ -535,7 +543,9 @@ def get_unique_constraints(self, connection, table_name, schema=None, **kw):
 def get_foreign_keys(self, connection, table_name, schema=None, **kw):
     """Reflect foreign keys from the selected Oracle catalog."""
     requested_schema = schema
-    table_name, schema, dblink = _prepare_constraint_args(self, connection, table_name, schema, **kw)
+    table_name, schema, dblink = _prepare_constraint_args(
+        self, connection, table_name, schema, **kw
+    )
     constraint_data = _get_constraint_data(
         self,
         connection,
@@ -574,7 +584,10 @@ def get_foreign_keys(self, connection, table_name, schema=None, **kw):
                 "options": {},
             },
         )
-        if requested_schema is not None or self.denormalize_name(remote_owner) != schema:
+        if (
+            requested_schema is not None
+            or self.denormalize_name(remote_owner) != schema
+        ):
             foreign_key["referred_schema"] = remote_owner
         if row[9] != "NO ACTION":
             foreign_key["options"]["ondelete"] = row[9]

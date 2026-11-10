@@ -31,8 +31,32 @@ CONSTRAINT_ROWS = [
         None,
     ),
     ("PK_MY_TABLE", "P", "ID", None, None, None, 1, None, None, None, "PK_MY_TABLE"),
-    ("UQ_MY_TABLE_CODE", "U", "CODE", None, None, None, 1, None, None, None, "UQ_MY_TABLE_CODE"),
-    ("UQ_MY_TABLE_CODE", "U", "REGION", None, None, None, 2, None, None, None, "UQ_MY_TABLE_CODE"),
+    (
+        "UQ_MY_TABLE_CODE",
+        "U",
+        "CODE",
+        None,
+        None,
+        None,
+        1,
+        None,
+        None,
+        None,
+        "UQ_MY_TABLE_CODE",
+    ),
+    (
+        "UQ_MY_TABLE_CODE",
+        "U",
+        "REGION",
+        None,
+        None,
+        None,
+        2,
+        None,
+        None,
+        None,
+        "UQ_MY_TABLE_CODE",
+    ),
 ]
 
 
@@ -58,7 +82,9 @@ def test_constraint_reflection_uses_configured_catalog(prefix):
         "constrained_columns": ["id"],
         "name": "pk_my_table",
     }
-    assert dialect.get_unique_constraints(connection, "my_table", schema="my_schema") == [
+    assert dialect.get_unique_constraints(
+        connection, "my_table", schema="my_schema"
+    ) == [
         {
             "name": "uq_my_table_code",
             "column_names": ["code", "region"],
@@ -92,7 +118,9 @@ def test_constraint_reflection_returns_empty_defaults():
         "constrained_columns": [],
         "name": None,
     }
-    assert dialect.get_unique_constraints(connection, "my_table", schema="my_schema") == []
+    assert (
+        dialect.get_unique_constraints(connection, "my_table", schema="my_schema") == []
+    )
     assert dialect.get_foreign_keys(connection, "my_table", schema="my_schema") == []
 
 

@@ -576,7 +576,9 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
         if key not in foreign_key_map:
             referred_schema = self.normalize_name(row._mapping["pk_schema_name"])
             foreign_key_map[key] = {
-                "constrained_columns": [self.normalize_name(row._mapping["fk_column_name"])],
+                "constrained_columns": [
+                    self.normalize_name(row._mapping["fk_column_name"])
+                ],
                 # referred schema should be None in context where it doesn't need to be specified
                 # https://docs.sqlalchemy.org/en/14/core/reflection.html#reflection-schema-qualified-interaction
                 "referred_schema": (
@@ -601,8 +603,12 @@ def get_schema_foreign_keys(self, connection, schema, **kw):
                 options["onupdate"] = self.normalize_name(row._mapping["update_rule"])
             foreign_key_map[key]["options"] = options
         else:
-            foreign_key_map[key]["constrained_columns"].append(self.normalize_name(row._mapping["fk_column_name"]))
-            foreign_key_map[key]["referred_columns"].append(self.normalize_name(row._mapping["pk_column_name"]))
+            foreign_key_map[key]["constrained_columns"].append(
+                self.normalize_name(row._mapping["fk_column_name"])
+            )
+            foreign_key_map[key]["referred_columns"].append(
+                self.normalize_name(row._mapping["pk_column_name"])
+            )
 
     ans = {}
 

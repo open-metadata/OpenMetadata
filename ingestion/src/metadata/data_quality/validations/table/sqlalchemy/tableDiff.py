@@ -291,7 +291,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _run(self) -> TestCaseResult:
         column_diff: ColumnDiffResult = self.get_column_diff()
-        threshold = self.get_test_case_param_value(self.test_case.parameterValues, "threshold", int, default=0)
+        threshold = self.get_test_case_param_value(
+            self.test_case.parameterValues, "threshold", int, default=0
+        )
         # get_test_case_param_value is typed on the caster it is handed, so its return widens to type[int] | None
         threshold = cast("int", threshold or 0)
         if column_diff:
@@ -336,8 +338,12 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 count = self._compute_row_count(self.runner, None)  # type: ignore
                 test_case_result.passedRows = stats["unchanged"]
                 if count:
-                    test_case_result.passedRowsPercentage = (test_case_result.passedRows or 0) / count * 100
-                    test_case_result.failedRowsPercentage = (test_case_result.failedRows or 0) / count * 100
+                    test_case_result.passedRowsPercentage = (
+                        (test_case_result.passedRows or 0) / count * 100
+                    )
+                    test_case_result.failedRowsPercentage = (
+                        (test_case_result.failedRows or 0) / count * 100
+                    )
                 return test_case_result
             return self.get_row_diff_test_case_result(
                 threshold,
@@ -667,7 +673,9 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
                 raise UnsupportedDialectError(name, dialect)
 
     @contextmanager
-    def _duplicate_keys_named(self, table_diff_iter: DiffResultWrapper) -> Iterator[None]:
+    def _duplicate_keys_named(
+        self, table_diff_iter: DiffResultWrapper
+    ) -> Iterator[None]:
         """Re-raise data-diff's duplicate-key failures with the key columns named.
 
         A key that is not unique makes a row-level diff undefined, and data-diff reports it in two
@@ -700,9 +708,15 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
 
     def _diff_key_columns(self) -> List[str]:  # noqa: UP006
         """The key columns the diff runs on. Both sides diff on the same key."""
-        return list(self.runtime_params.table1.key_columns or self.runtime_params.table2.key_columns or [])
+        return list(
+            self.runtime_params.table1.key_columns
+            or self.runtime_params.table2.key_columns
+            or []
+        )
 
-    def _table_with_duplicate_keys(self, table_diff_iter: DiffResultWrapper) -> Optional[TableParameter]:  # noqa: UP045
+    def _table_with_duplicate_keys(
+        self, table_diff_iter: DiffResultWrapper
+    ) -> Optional[TableParameter]:  # noqa: UP045
         """The table whose rows repeat a key, or None if the diffed rows show no duplicate.
 
         Read off the rows `_get_stats` had already materialised into `result_list` when it failed,
@@ -716,7 +730,11 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         for sign, values in table_diff_iter.result_list:
             marker = (sign, tuple(values[:key_length]))
             if marker in seen:
-                return self.runtime_params.table1 if sign == "-" else self.runtime_params.table2
+                return (
+                    self.runtime_params.table1
+                    if sign == "-"
+                    else self.runtime_params.table2
+                )
             seen.add(marker)
         return None
 

@@ -432,7 +432,9 @@ class MlflowSource(MlModelServiceSource):
             return self._build_ml_features(columns)
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
-            reason = f"Cannot build ML features for {model_name} from its signature - {exc}"
+            reason = (
+                f"Cannot build ML features for {model_name} from its signature - {exc}"
+            )
             logger.warning(reason)
             self.status.warning(model_name, reason)
             return None

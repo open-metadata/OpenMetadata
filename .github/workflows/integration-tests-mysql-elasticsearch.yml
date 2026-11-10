@@ -25,11 +25,12 @@ on:
       - "common/**"
       - "pom.xml"
       - "bootstrap/**"
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
+  pull-requests: read
   checks: write
 
 concurrency:
@@ -75,24 +76,6 @@ jobs:
           large-packages: true
           docker-images: false
           swap-storage: true
-
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
 
       - name: Checkout
         uses: actions/checkout@v4
@@ -147,7 +130,7 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
       - name: Publish Test Report
-        if: ${{ always() }}
+        if: ${{ always() && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
         uses: scacap/action-surefire-report@v1
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}

@@ -53,7 +53,9 @@ class DltSourceParser(Protocol):
         ...
 
 
-def extract_dlt_table_dependencies(source_code: str) -> List[DLTTableDependency]:  # noqa: UP006
+def extract_dlt_table_dependencies(
+    source_code: str,
+) -> List[DLTTableDependency]:  # noqa: UP006
     """
     Extract the datasets a DLT source file declares.
 
@@ -95,7 +97,9 @@ SQL_DLT_APPLY_CHANGES_PATTERN = re.compile(r"\bAPPLY\s+CHANGES\s+INTO\b", re.IGN
 # function, and query parsers otherwise report "stream" itself as the source table.
 # Only unwrapped when it holds a plain identifier, so `STREAM read_files(...)` and
 # other table-valued forms are left untouched.
-SQL_STREAM_WRAPPER_PATTERN = re.compile(r"\bSTREAM\s*\(\s*([A-Za-z0-9_.`\"]+)\s*\)", re.IGNORECASE)
+SQL_STREAM_WRAPPER_PATTERN = re.compile(
+    r"\bSTREAM\s*\(\s*([A-Za-z0-9_.`\"]+)\s*\)", re.IGNORECASE
+)
 
 # `LIVE.name` addresses a dataset inside the same pipeline. The prefix is a DLT
 # namespace, not a schema, so it must be dropped rather than resolved as one.
@@ -112,7 +116,8 @@ SQL_PRIVATE_MODIFIER_PATTERN = re.compile(
     r"(\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+)?)PRIVATE\s+", re.IGNORECASE
 )
 SQL_LEGACY_STREAMING_TABLE_PATTERN = re.compile(
-    r"(\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+)?)STREAMING\s+LIVE\s+TABLE\b", re.IGNORECASE
+    r"(\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+)?)STREAMING\s+LIVE\s+TABLE\b",
+    re.IGNORECASE,
 )
 SQL_LEGACY_LIVE_TABLE_PATTERN = re.compile(
     r"(\bCREATE\s+(?:OR\s+REFRESH\s+)?(?:TEMPORARY\s+)?)LIVE\s+TABLE\b", re.IGNORECASE
@@ -121,7 +126,9 @@ SQL_LEGACY_LIVE_TABLE_PATTERN = re.compile(
 # Table-valued functions a query parser surfaces as if they were tables. These are
 # only dropped when the statement actually invokes them, so a dataset legitimately
 # named `range` or `stream` still resolves.
-SQL_TABLE_VALUED_FUNCTIONS = frozenset({"stream", "read_files", "cloud_files", "read_kafka", "read_kinesis", "range"})
+SQL_TABLE_VALUED_FUNCTIONS = frozenset(
+    {"stream", "read_files", "cloud_files", "read_kafka", "read_kinesis", "range"}
+)
 
 # An identifier immediately followed by "(" is a call, not a table reference
 SQL_FUNCTION_CALL_PATTERN = re.compile(r"\b([A-Za-z_][A-Za-z0-9_]*)\s*\(")
@@ -138,10 +145,15 @@ class SqlDltParser:
 
     @staticmethod
     def handles(source_code: str) -> bool:
-        return bool(SQL_DLT_CREATE_PATTERN.search(source_code) or SQL_DLT_APPLY_CHANGES_PATTERN.search(source_code))
+        return bool(
+            SQL_DLT_CREATE_PATTERN.search(source_code)
+            or SQL_DLT_APPLY_CHANGES_PATTERN.search(source_code)
+        )
 
     @staticmethod
-    def _normalise(table: Any, called_functions: frozenset = frozenset()) -> Optional[str]:  # noqa: UP045
+    def _normalise(
+        table: Any, called_functions: frozenset = frozenset()
+    ) -> Optional[str]:  # noqa: UP045
         """Turn a parser table reference into a name, or None when it is not a table."""
         from metadata.utils.helpers import get_formatted_entity_name, has_table_name
 
@@ -165,7 +177,9 @@ class SqlDltParser:
         is not mistaken for the batch one.
         """
         statement = SQL_PRIVATE_MODIFIER_PATTERN.sub(r"\1", statement)
-        statement = SQL_LEGACY_STREAMING_TABLE_PATTERN.sub(r"\1STREAMING TABLE", statement)
+        statement = SQL_LEGACY_STREAMING_TABLE_PATTERN.sub(
+            r"\1STREAMING TABLE", statement
+        )
         return SQL_LEGACY_LIVE_TABLE_PATTERN.sub(r"\1MATERIALIZED VIEW", statement)
 
     @staticmethod
@@ -191,27 +205,56 @@ class SqlDltParser:
                 parsed_targets: Any = parser.target_tables or []
                 parsed_sources: Any = parser.source_tables or []
 
-                called = frozenset(match.group(1).lower() for match in SQL_FUNCTION_CALL_PATTERN.finditer(statement))
-                targets = _unique(name for name in (SqlDltParser._normalise(t, called) for t in parsed_targets) if name)
+                called = frozenset(
+                    match.group(1).lower()
+                    for match in SQL_FUNCTION_CALL_PATTERN.finditer(statement)
+                )
+                targets = _unique(
+                    name
+                    for name in (
+                        SqlDltParser._normalise(t, called) for t in parsed_targets
+                    )
+                    if name
+                )
                 if not targets:
-                    logger.debug(f"No dataset parsed from SQL DLT statement: {statement[:120]}")
+                    logger.debug(
+                        f"No dataset parsed from SQL DLT statement: {statement[:120]}"
+                    )
                     continue
 
-                sources = _unique(name for name in (SqlDltParser._normalise(s, called) for s in parsed_sources) if name)
+                sources = _unique(
+                    name
+                    for name in (
+                        SqlDltParser._normalise(s, called) for s in parsed_sources
+                    )
+                    if name
+                )
                 # A dataset never depends on itself. APPLY CHANGES INTO in particular
                 # names the same table it writes to. Stripping the LIVE. prefix can also
                 # collapse two references onto one dataset, hence the de-duplication.
                 depends_on = [name for name in sources if name not in targets]
 
                 for target in targets:
-                    existing = next((d for d in dependencies if d.table_name == target), None)
+                    existing = next(
+                        (d for d in dependencies if d.table_name == target), None
+                    )
                     if existing:
                         # CDC pipelines declare the table, then populate it in a
                         # separate APPLY CHANGES statement. Merge rather than duplicate.
-                        existing.depends_on.extend(name for name in depends_on if name not in existing.depends_on)
+                        existing.depends_on.extend(
+                            name
+                            for name in depends_on
+                            if name not in existing.depends_on
+                        )
                         continue
-                    dependencies.append(DLTTableDependency(table_name=target, depends_on=list(depends_on)))
-                    logger.debug(f"Extracted SQL DLT dataset {target} depends_on={depends_on}")
+                    dependencies.append(
+                        DLTTableDependency(
+                            table_name=target, depends_on=list(depends_on)
+                        )
+                    )
+                    logger.debug(
+                        f"Extracted SQL DLT dataset {target} depends_on={depends_on}"
+                    )
             except Exception as exc:
                 logger.debug(f"Error parsing SQL DLT statement: {exc}")
                 continue
@@ -310,10 +353,14 @@ class PythonDltParser:
                     if function_call:
                         # Extract table name hint from function name
                         # e.g., generate_event_log_table_name() -> event_log
-                        inferred_name = PythonDltParser._infer_table_name_from_function(function_call, source_code)
+                        inferred_name = PythonDltParser._infer_table_name_from_function(
+                            function_call, source_code
+                        )
                         if inferred_name:
                             table_names.append(inferred_name)
-                            logger.debug(f"Found DLT table (inferred from {function_call}): {inferred_name}")
+                            logger.debug(
+                                f"Found DLT table (inferred from {function_call}): {inferred_name}"
+                            )
 
         except Exception as exc:
             logger.warning(f"Error parsing DLT table names from code: {exc}")
@@ -321,7 +368,9 @@ class PythonDltParser:
         return table_names
 
     @staticmethod
-    def _infer_table_name_from_function(function_call: str, source_code: str) -> Optional[str]:  # noqa: UP045
+    def _infer_table_name_from_function(
+        function_call: str, source_code: str
+    ) -> Optional[str]:  # noqa: UP045
         """
         Infer table name from function call pattern
 
@@ -337,21 +386,31 @@ class PythonDltParser:
             # Strategy 1: Materializer pattern - entity_name + suffix from function
             # Handles: @dlt.table(name=materializer.generate_event_log_table_name())
             # where entity_name = "customerEvent" should produce "customerevent_event_log"
-            entity_name = variables.get("entity_name") or variables.get("entity") or variables.get("table_name")
+            entity_name = (
+                variables.get("entity_name")
+                or variables.get("entity")
+                or variables.get("table_name")
+            )
 
             if entity_name and "generate_event_log_table_name" in function_call.lower():
                 table_name = f"{entity_name.lower()}_event_log"
-                logger.debug(f"Inferred event_log table from Materializer pattern: {table_name}")
+                logger.debug(
+                    f"Inferred event_log table from Materializer pattern: {table_name}"
+                )
                 return table_name
 
             if entity_name and "generate_snapshot_table_name" in function_call.lower():
                 table_name = f"{entity_name.lower()}_snapshot"
-                logger.debug(f"Inferred snapshot table from Materializer pattern: {table_name}")
+                logger.debug(
+                    f"Inferred snapshot table from Materializer pattern: {table_name}"
+                )
                 return table_name
 
             # Strategy 2: Use entity_name variable if present (fallback)
             if entity_name:
-                logger.debug(f"Inferred table name from entity_name variable: {entity_name}")
+                logger.debug(
+                    f"Inferred table name from entity_name variable: {entity_name}"
+                )
                 return entity_name
 
             # Strategy 3: Extract from function name (e.g., "event_log" from "generate_event_log_table_name")
@@ -366,7 +425,9 @@ class PythonDltParser:
                 return inferred
 
         except Exception as exc:
-            logger.debug(f"Could not infer table name from function {function_call}: {exc}")
+            logger.debug(
+                f"Could not infer table name from function {function_call}: {exc}"
+            )
 
         return None
 
@@ -426,18 +487,24 @@ class PythonDltParser:
                         # Try function name pattern
                         func_name_match = DLT_TABLE_NAME_FUNCTION.search(function_block)
                         if func_name_match and func_name_match.group(1):
-                            table_name = PythonDltParser._infer_table_name_from_function(
-                                func_name_match.group(1), source_code
+                            table_name = (
+                                PythonDltParser._infer_table_name_from_function(
+                                    func_name_match.group(1), source_code
+                                )
                             )
 
                     if not table_name:
                         # Try to extract from function definition itself
-                        def_match = re.search(r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", function_block)
+                        def_match = re.search(
+                            r"def\s+([a-zA-Z_][a-zA-Z0-9_]*)\s*\(", function_block
+                        )
                         if def_match:
                             table_name = def_match.group(1)
 
                     if not table_name:
-                        logger.debug(f"Could not extract table name from block: {function_block[:100]}...")
+                        logger.debug(
+                            f"Could not extract table name from block: {function_block[:100]}..."
+                        )
                         continue
 
                     # Check if it reads from Kafka
@@ -447,10 +514,15 @@ class PythonDltParser:
                     # Materializer pattern: materializer.build_event_log_dataframe()
                     # This method internally reads from Kafka, so if we find this pattern
                     # and the table name matches event_log pattern, mark as Kafka reader
-                    if not reads_from_kafka and "materializer.build_event_log_dataframe" in function_block:  # noqa: SIM102
+                    if (
+                        not reads_from_kafka
+                        and "materializer.build_event_log_dataframe" in function_block
+                    ):  # noqa: SIM102
                         if "event_log" in table_name:
                             reads_from_kafka = True
-                            logger.debug(f"Table {table_name} reads from Kafka via Materializer")
+                            logger.debug(
+                                f"Table {table_name} reads from Kafka via Materializer"
+                            )
 
                     # Check if it reads from S3
                     s3_locations = []
@@ -464,7 +536,9 @@ class PythonDltParser:
 
                     # Extract dlt.read_stream dependencies (streaming)
                     depends_on = []
-                    for stream_match in DLT_READ_STREAM_PATTERN.finditer(function_block):
+                    for stream_match in DLT_READ_STREAM_PATTERN.finditer(
+                        function_block
+                    ):
                         source_table = stream_match.group(1)
                         depends_on.append(source_table)
                         logger.debug(f"Table {table_name} streams from {source_table}")
@@ -500,19 +574,33 @@ class PythonDltParser:
             try:
                 variables = extract_variables(source_code)
                 snapshot_required = variables.get("snapshot_required")
-                entity_name = variables.get("entity_name") or variables.get("entity") or variables.get("table_name")
+                entity_name = (
+                    variables.get("entity_name")
+                    or variables.get("entity")
+                    or variables.get("table_name")
+                )
 
                 # Check if snapshot table is built
                 # snapshot_required can be "True" (string) or True (boolean)
-                is_snapshot_enabled = snapshot_required and str(snapshot_required).lower() == "true"
+                is_snapshot_enabled = (
+                    snapshot_required and str(snapshot_required).lower() == "true"
+                )
 
-                if is_snapshot_enabled and entity_name and "build_snapshot_dataframe" in source_code:
+                if (
+                    is_snapshot_enabled
+                    and entity_name
+                    and "build_snapshot_dataframe" in source_code
+                ):
                     snapshot_table_name = f"{entity_name.lower()}_snapshot"
                     event_log_table_name = f"{entity_name.lower()}_event_log"
 
                     # Find the event_log table in existing dependencies
                     event_log_dep = next(
-                        (d for d in dependencies if d.table_name == event_log_table_name),
+                        (
+                            d
+                            for d in dependencies
+                            if d.table_name == event_log_table_name
+                        ),
                         None,
                     )
 
@@ -546,4 +634,7 @@ class PythonDltParser:
 # Checked in order. Python comes first because a `@dlt.` decorator is unambiguous,
 # while the SQL keywords can also appear inside a string literal in a Python
 # notebook that calls spark.sql(...).
-DLT_PARSERS: List[Type[DltSourceParser]] = [PythonDltParser, SqlDltParser]  # noqa: UP006
+DLT_PARSERS: List[Type[DltSourceParser]] = [
+    PythonDltParser,
+    SqlDltParser,
+]  # noqa: UP006

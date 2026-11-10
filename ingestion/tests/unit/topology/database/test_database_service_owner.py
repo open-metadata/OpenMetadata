@@ -64,8 +64,12 @@ def test_global_inspector_patch_makes_the_inspector_probe_useless():
         assert not hasattr(inspector.dialect, "get_table_owner")
 
 
-@pytest.mark.parametrize("dialect_class", NON_POSTGRES_DIALECTS, ids=lambda d: d.__name__)
-def test_owner_extraction_is_skipped_when_the_dialect_cannot_do_it(dialect_class, caplog):
+@pytest.mark.parametrize(
+    "dialect_class", NON_POSTGRES_DIALECTS, ids=lambda d: d.__name__
+)
+def test_owner_extraction_is_skipped_when_the_dialect_cannot_do_it(
+    dialect_class, caplog
+):
     source = make_source(dialect_class)
 
     with caplog.at_level(logging.WARNING):
@@ -82,7 +86,9 @@ def test_owner_extraction_still_runs_on_a_dialect_that_implements_it():
     owner_ref = source.get_owner_ref(table_name="customers")
 
     source.inspector.get_table_owner.assert_called_once()
-    source.metadata.get_reference_by_name.assert_called_once_with(name="alice", is_owner=True)
+    source.metadata.get_reference_by_name.assert_called_once_with(
+        name="alice", is_owner=True
+    )
     assert owner_ref is source.metadata.get_reference_by_name.return_value
 
 

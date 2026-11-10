@@ -52,7 +52,9 @@ MAX_PAGES = 50
 # A managed connector's producer client is named connector-producer-<connector-id>-<task>.
 # The convention is not documented, so it is matched rather than constructed, and a client
 # id that does not match yields no attribution instead of a guess.
-PRODUCER_CLIENT_PATTERN = re.compile(r"connector-producer-(?P<connector_id>lcc-[a-z0-9]+)-\d+$")
+PRODUCER_CLIENT_PATTERN = re.compile(
+    r"connector-producer-(?P<connector_id>lcc-[a-z0-9]+)-\d+$"
+)
 
 # Confluent Cloud Connect URLs end in /clusters/<kafka-cluster-id>, which is the id the
 # telemetry query filters on.
@@ -94,7 +96,9 @@ def build_dataflow_query(cluster_id: str, now: datetime | None = None) -> dict:
         "aggregations": [{"metric": METRIC, "aggregations": ["SUM"]}],
         "filter": {
             "op": "AND",
-            "filters": [{"field": "resource.kafka.id", "op": "EQ", "value": cluster_id}],
+            "filters": [
+                {"field": "resource.kafka.id", "op": "EQ", "value": cluster_id}
+            ],
         },
         "granularity": "ALL",
         "group_by": ["metric.topic", "metric.client_id"],

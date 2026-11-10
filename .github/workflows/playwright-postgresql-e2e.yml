@@ -16,21 +16,8 @@ name: Postgresql PR Playwright E2E Tests
 on:
   merge_group:
   workflow_dispatch:
-  # pull_request resolves the workflow file from the PR's own merge ref, so on
-  # this branch it is the trigger that actually fires. pull_request_target below
-  # is inert here: those runs resolve the default branch's copy, whose gate job
-  # skips same-repo PRs on the assumption that a pull_request run covers them.
-  # Without this trigger that assumption is false and the suite never runs.
   pull_request:
     types:
-      - labeled
-      - opened
-      - synchronize
-      - reopened
-      - ready_for_review
-  pull_request_target:
-    types:
-      - labeled
       - opened
       - synchronize
       - reopened
@@ -41,9 +28,7 @@ permissions:
   pull-requests: write
 
 concurrency:
-  # Keyed by event too, so a pull_request run and a pull_request_target run for
-  # the same PR never cancel each other — one skips, the other does the work.
-  group: playwright-ci-pr-postgresql-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  group: playwright-ci-pr-postgresql-${{ github.event.pull_request.number || github.run_id }}
   cancel-in-progress: true
 
 jobs:
@@ -54,6 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       relevant: ${{ steps.outside.outputs.code == 'true' || steps.compose.outputs.compose == 'true' }}
+      run_tests: ${{ (steps.outside.outputs.code == 'true' || steps.compose.outputs.compose == 'true') && !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
     steps:
       # predicate-quantifier: every — a file must match ALL patterns, which is
       # what makes the negations exclude. With the default (some) the leading
@@ -85,33 +71,9 @@ jobs:
   build:
     needs: check-changes
     runs-on: ubuntu-latest
-    # Fork PRs stay on the pull_request_target route, where the default
-    # branch's gate demands a "safe to test" label before handing over the
-    # cloud-connector secrets a pull_request run on a fork cannot read.
-    if: >-
-      ${{ needs.check-changes.outputs.relevant == 'true' &&
-          !github.event.pull_request.draft &&
-          (github.event_name != 'pull_request' ||
-           github.event.pull_request.head.repo.full_name == github.repository) }}
+    # Cloud-connector scenarios need secrets unavailable to fork and Dependabot PRs.
+    if: ${{ needs.check-changes.outputs.run_tests == 'true' }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -342,8 +304,8 @@ jobs:
           sudo rm -rf ${PWD}/docker-volume
 
   playwright-summary:
-    if: ${{ !cancelled() && github.event_name == 'pull_request_target' }}
-    needs: playwright-ci-postgresql
+    if: ${{ always() && !cancelled() }}
+    needs: [check-changes, build, playwright-ci-postgresql]
     runs-on: ubuntu-latest
     steps:
       # Skip when no tests ran: there are no artifacts to download, and the job
@@ -356,7 +318,7 @@ jobs:
           path: results
 
       - name: Post consolidated PR comment
-        if: ${{ needs.playwright-ci-postgresql.result == 'success' }}
+        if: ${{ needs.playwright-ci-postgresql.result == 'success' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
         uses: actions/github-script@v7
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -529,3 +491,25 @@ jobs:
             } else {
               await github.rest.issues.createComment({ ...repo, issue_number: prNumber, body });
             }
+
+      - name: Verify the Playwright run
+        id: verify-run
+        if: always()
+        env:
+          CHANGES_RESULT: ${{ needs.check-changes.result }}
+          RUN_EXPECTED: ${{ needs.check-changes.outputs.run_tests }}
+          BUILD_RESULT: ${{ needs.build.result }}
+          TEST_RESULT: ${{ needs.playwright-ci-postgresql.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::Playwright change detection did not succeed: $CHANGES_RESULT"
+            exit 1
+          fi
+          if [[ "$RUN_EXPECTED" == "false" ]]; then
+            echo "Playwright did not run: draft, unrelated paths, or unavailable PR secrets." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if [[ "$RUN_EXPECTED" != "true" || "$BUILD_RESULT" != "success" || "$TEST_RESULT" != "success" ]]; then
+            echo "::error::Expected Playwright run did not succeed: build=$BUILD_RESULT tests=$TEST_RESULT expected=$RUN_EXPECTED"
+            exit 1
+          fi

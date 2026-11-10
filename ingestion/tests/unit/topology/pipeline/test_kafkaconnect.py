@@ -1630,7 +1630,9 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
 
         _table_entity, edges = self._run_lineage(config, under_prefix)
 
-        assert len(edges) == 1, "the scan must not fan a dataset out across the namespace"
+        assert (
+            len(edges) == 1
+        ), "the scan must not fan a dataset out across the namespace"
 
     def test_multi_table_outbox_connector_does_not_fan_out(self):
         """
@@ -2251,7 +2253,9 @@ class TestInternalTopicExclusion:
                 ]
             }
         }
-        client.get_connector_config = MagicMock(return_value={"topic.prefix": "rigA.wallet.topiccol"})
+        client.get_connector_config = MagicMock(
+            return_value={"topic.prefix": "rigA.wallet.topiccol"}
+        )
 
         topics = client.get_connector_topics("outbox-wallet")
 
@@ -2286,9 +2290,16 @@ class TestInternalTopicExclusion:
         """
         client = self._client()
         client.client.list_connector_topics.return_value = {
-            "payments": {"topics": ["prod.ern.payments.transaction", "prod.ern.payments.refund_v1"]}
+            "payments": {
+                "topics": [
+                    "prod.ern.payments.transaction",
+                    "prod.ern.payments.refund_v1",
+                ]
+            }
         }
-        client.get_connector_config = MagicMock(return_value={"topic.prefix": "rigA.payments"})
+        client.get_connector_config = MagicMock(
+            return_value={"topic.prefix": "rigA.payments"}
+        )
 
         topics = client.get_connector_topics("payments")
 
@@ -2357,7 +2368,9 @@ class TestNamespaceScanRequiresAttribution:
                 "prod.ern.moneywallet.walletEntity_v1",
             ]
         )
-        details = KafkaConnectPipelineDetails(name="outbox-moneywallet-prod", type="source", config=self.OUTBOX_CONFIG)
+        details = KafkaConnectPipelineDetails(
+            name="outbox-moneywallet-prod", type="source", config=self.OUTBOX_CONFIG
+        )
 
         topics = source._resolve_source_topics(
             pipeline_details=details,
@@ -2365,13 +2378,22 @@ class TestNamespaceScanRequiresAttribution:
             effective_messaging_service="confluent-prod",
         )
 
-        assert [t.name for t in topics] == [], "an EventRouter connector must not namespace-scan"
+        assert [
+            t.name for t in topics
+        ] == [], "an EventRouter connector must not namespace-scan"
 
     def test_plain_cdc_still_resolves_through_the_prefix_scan(self):
         """With no rewriting SMT the scan is sound, and must keep working."""
-        source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
-        config = {"connector.class": "MySqlCdcSourceV2", "topic.prefix": "rigA.plaincdc"}
-        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
+        source = _source_with_topics(
+            ["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"]
+        )
+        config = {
+            "connector.class": "MySqlCdcSourceV2",
+            "topic.prefix": "rigA.plaincdc",
+        }
+        details = KafkaConnectPipelineDetails(
+            name="plain-cdc", type="source", config=config
+        )
 
         topics = source._resolve_source_topics(
             pipeline_details=details,
@@ -2400,7 +2422,9 @@ class TestNamespaceScanRequiresAttribution:
             "topic.prefix": "rigA.plaincdc",
             "table.include.list": "walletdb.customers",
         }
-        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
+        details = KafkaConnectPipelineDetails(
+            name="plain-cdc", type="source", config=config
+        )
 
         topics = source._resolve_source_topics(
             pipeline_details=details,
@@ -2453,7 +2477,9 @@ class TestRoutingPatternsDoNotGenerateTopics:
             effective_messaging_service="confluent-prod",
         )
 
-        assert [t.name for t in topics] == [], "a routing pattern must not generate candidates"
+        assert [
+            t.name for t in topics
+        ] == [], "a routing pattern must not generate candidates"
 
     def test_fully_static_replacement_is_config_deterministic(self):
         """
@@ -2461,7 +2487,9 @@ class TestRoutingPatternsDoNotGenerateTopics:
         destination is as derivable as any other declared name and must still resolve
         without the runtime. Only a replacement that interpolates a row value is unknown.
         """
-        source = _source_with_topics(["prod.events.all", "prod.events.settings_v1", "prod.events.orderPlaced_v1"])
+        source = _source_with_topics(
+            ["prod.events.all", "prod.events.settings_v1", "prod.events.orderPlaced_v1"]
+        )
         details = KafkaConnectPipelineDetails(
             name="outbox-static", type="source", config=self._config("prod.events.all")
         )
@@ -2472,19 +2500,23 @@ class TestRoutingPatternsDoNotGenerateTopics:
             effective_messaging_service="confluent-prod",
         )
 
-        assert [t.name for t in topics] == ["prod.events.all"], (
-            "a static replacement names exactly one topic, with no namespace scan or pattern match"
-        )
+        assert [t.name for t in topics] == [
+            "prod.events.all"
+        ], "a static replacement names exactly one topic, with no namespace scan or pattern match"
 
     def test_static_replacement_composes_with_a_following_regex_router(self):
         """The published name is what survives the SMT chain, so later routers apply."""
         config = self._config("outbox.event.all")
         config["transforms"] = "outbox,reroute"
-        config["transforms.reroute.type"] = "org.apache.kafka.connect.transforms.RegexRouter"
+        config[
+            "transforms.reroute.type"
+        ] = "org.apache.kafka.connect.transforms.RegexRouter"
         config["transforms.reroute.regex"] = r"outbox\.event\.(.*)"
         config["transforms.reroute.replacement"] = "prod.events.$1"
         source = _source_with_topics(["prod.events.all"])
-        details = KafkaConnectPipelineDetails(name="outbox-static", type="source", config=config)
+        details = KafkaConnectPipelineDetails(
+            name="outbox-static", type="source", config=config
+        )
 
         topics = source._resolve_source_topics(
             pipeline_details=details,
@@ -2500,8 +2532,12 @@ class TestRoutingPatternsDoNotGenerateTopics:
         "outbox.event.${routedByValue}", which invented a claim and matched nothing in
         the deployment where this was found.
         """
-        source = _source_with_topics(["outbox.event.wallet", "prod.ern.moneywallet.walletEntity_v1"])
-        details = KafkaConnectPipelineDetails(name="outbox-no-replacement", type="source", config=self._config(None))
+        source = _source_with_topics(
+            ["outbox.event.wallet", "prod.ern.moneywallet.walletEntity_v1"]
+        )
+        details = KafkaConnectPipelineDetails(
+            name="outbox-no-replacement", type="source", config=self._config(None)
+        )
 
         topics = source._resolve_source_topics(
             pipeline_details=details,
@@ -2532,10 +2568,13 @@ class TestConnectorEnrichmentOrdering:
 
         config = {"topic.prefix": "rigA.wallet", "description": "wallet outbox"}
         calls = []
-        client.get_connector_config = MagicMock(side_effect=lambda connector: calls.append("config") or config)
+        client.get_connector_config = MagicMock(
+            side_effect=lambda connector: calls.append("config") or config
+        )
         client.get_connector_topics = MagicMock(
             side_effect=lambda connector, connector_config=None: (
-                calls.append(("topics", connector_config)) or [KafkaConnectTopics(name="prod.events.orderPlaced_v1")]
+                calls.append(("topics", connector_config))
+                or [KafkaConnectTopics(name="prod.events.orderPlaced_v1")]
             )
         )
 
@@ -2543,8 +2582,13 @@ class TestConnectorEnrichmentOrdering:
         client._enrich_connector_details(details, "outbox-wallet")
 
         assert calls[0] == "config", "config must be fetched before the topic listing"
-        assert calls[1] == ("topics", config), "the fetched config must be handed to the topic listing"
-        assert client.get_connector_config.call_count == 1, "config must not be fetched twice"
+        assert calls[1] == (
+            "topics",
+            config,
+        ), "the fetched config must be handed to the topic listing"
+        assert (
+            client.get_connector_config.call_count == 1
+        ), "config must not be fetched twice"
         assert [t.name for t in details.topics] == ["prod.events.orderPlaced_v1"]
         assert details.description == "wallet outbox"
 
@@ -2575,7 +2619,9 @@ class TestColdStartFallsBackToDeclaredTopics:
         schema-change topic. That is a cold start, so its declared topic still resolves.
         """
         client = self._client()
-        client.client.list_connector_topics.return_value = {"datagen": {"topics": ["rigA.plaincdc"]}}
+        client.client.list_connector_topics.return_value = {
+            "datagen": {"topics": ["rigA.plaincdc"]}
+        }
         config = {"topic.prefix": "rigA.plaincdc", "kafka.topic": "orders"}
 
         topics = client.get_connector_topics("datagen", connector_config=config)
@@ -2598,13 +2644,17 @@ class TestColdStartFallsBackToDeclaredTopics:
         data topics. A freshly started CDC connector resolved nothing, losing the
         deterministically constructed names it should have had.
         """
-        source = _source_with_topics(["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"])
+        source = _source_with_topics(
+            ["rigA.plaincdc.walletdb.customers", "rigA.plaincdc.walletdb.orders"]
+        )
         config = {
             "connector.class": "MySqlCdcSourceV2",
             "topic.prefix": "rigA.plaincdc",
             "table.include.list": "walletdb.customers,walletdb.orders",
         }
-        details = KafkaConnectPipelineDetails(name="plain-cdc", type="source", config=config)
+        details = KafkaConnectPipelineDetails(
+            name="plain-cdc", type="source", config=config
+        )
 
         result = source._parse_and_resolve_topics(
             pipeline_details=details,
@@ -2666,7 +2716,9 @@ class TestForbiddenIsNotAlwaysUnsupported:
         client.get_connector_config = MagicMock(return_value={})
 
         assert client.get_connector_topics("outbox-a") is None
-        assert client._topics_endpoint_supported is None, "an auth 403 must not disable the endpoint"
+        assert (
+            client._topics_endpoint_supported is None
+        ), "an auth 403 must not disable the endpoint"
 
         topics = client.get_connector_topics("outbox-b")
 
@@ -2693,7 +2745,9 @@ class TestConfluentTelemetryTopics:
         auth.username = "CLOUDKEY"
         auth.password.get_secret_value.return_value = "cloudsecret"
         config.KafkaConnectConfig = auth
-        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
             return KafkaConnectClient(config)
 
     def test_cluster_id_comes_from_the_host_port(self):
@@ -2708,7 +2762,9 @@ class TestConfluentTelemetryTopics:
         config.hostPort = "http://localhost:8083"
         config.verifySSL = True
         config.KafkaConnectConfig = None
-        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
             client = KafkaConnectClient(config)
 
         assert client._confluent_kafka_cluster_id() is None
@@ -2721,7 +2777,9 @@ class TestConfluentTelemetryTopics:
         no config key. Telemetry reports them against the connector's producer client.
         """
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-wallet": "lcc-aaa111"}
+        )
         client._query_dataflow_topics_by_client = MagicMock(
             return_value={
                 "connector-producer-lcc-aaa111-0": {
@@ -2742,7 +2800,9 @@ class TestConfluentTelemetryTopics:
     def test_another_connectors_topics_are_never_claimed(self):
         """Client ids are per connector, so a sibling's topics must not leak across."""
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-wallet": "lcc-aaa111"}
+        )
         client._query_dataflow_topics_by_client = MagicMock(
             return_value={"connector-producer-lcc-bbb222-0": {"prod.events.other_v1"}}
         )
@@ -2756,7 +2816,9 @@ class TestConfluentTelemetryTopics:
         produced by a separate client, which is what makes it separable at all.
         """
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-wallet": "lcc-aaa111"}
+        )
         client._query_dataflow_topics_by_client = MagicMock(
             return_value={
                 "connector-producer-lcc-aaa111-0": {"prod.events.walletEntity_v1"},
@@ -2773,7 +2835,9 @@ class TestConfluentTelemetryTopics:
         client = self._cloud_client()
         client._connector_id_by_name = MagicMock(return_value={})
         client._query_dataflow_topics_by_client = MagicMock(
-            return_value={"connector-producer-lcc-aaa111-0": {"prod.events.walletEntity_v1"}}
+            return_value={
+                "connector-producer-lcc-aaa111-0": {"prod.events.walletEntity_v1"}
+            }
         )
 
         assert client._list_topics_from_telemetry("outbox-wallet") is None
@@ -2781,8 +2845,12 @@ class TestConfluentTelemetryTopics:
     def test_telemetry_failure_is_not_fatal(self):
         """Telemetry is additive. A failure must degrade to no enrichment, never raise."""
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
-        client._query_dataflow_topics_by_client = MagicMock(side_effect=Exception("telemetry down"))
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-wallet": "lcc-aaa111"}
+        )
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=Exception("telemetry down")
+        )
 
         assert client._list_topics_from_telemetry("outbox-wallet") is None
 
@@ -2796,7 +2864,9 @@ class TestConfluentTelemetryTopics:
         client._list_topics_from_telemetry = MagicMock(
             return_value=[KafkaConnectTopics(name="prod.events.walletEntity_v1")]
         )
-        client._parse_topics_from_config = MagicMock(return_value=[KafkaConnectTopics(name="declared.in.config")])
+        client._parse_topics_from_config = MagicMock(
+            return_value=[KafkaConnectTopics(name="declared.in.config")]
+        )
 
         topics = client.get_connector_topics("outbox-wallet", connector_config={})
 
@@ -2808,7 +2878,9 @@ class TestConfluentTelemetryTopics:
         client = self._cloud_client()
         client._list_data_topics_from_api = MagicMock(return_value=None)
         client._list_topics_from_telemetry = MagicMock(return_value=None)
-        client._parse_topics_from_config = MagicMock(return_value=[KafkaConnectTopics(name="declared.in.config")])
+        client._parse_topics_from_config = MagicMock(
+            return_value=[KafkaConnectTopics(name="declared.in.config")]
+        )
 
         topics = client.get_connector_topics("outbox-wallet", connector_config={})
 
@@ -2823,7 +2895,9 @@ class TestConfluentTelemetryTopics:
         config.hostPort = "http://localhost:8083"
         config.verifySSL = True
         config.KafkaConnectConfig = None
-        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
             client = KafkaConnectClient(config)
         client._query_dataflow_topics_by_client = MagicMock()
 
@@ -2836,7 +2910,9 @@ class TestConfluentTelemetryTopics:
         Here the operator is the one who can fix the credentials, so they must be told.
         """
         client = self._cloud_client()
-        client._query_dataflow_topics_by_client = MagicMock(side_effect=Exception("401 Unauthorized"))
+        client._query_dataflow_topics_by_client = MagicMock(
+            side_effect=Exception("401 Unauthorized")
+        )
 
         with pytest.raises(Exception, match="401 Unauthorized"):
             client.check_confluent_telemetry()
@@ -2850,7 +2926,9 @@ class TestConfluentTelemetryTopics:
         wrong edge that linking the outbox table to bookkeeping topics already was.
         """
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-wallet": "lcc-aaa111"}
+        )
         client._query_dataflow_topics_by_client = MagicMock(
             return_value={
                 "connector-producer-lcc-aaa111-0": {
@@ -2860,14 +2938,18 @@ class TestConfluentTelemetryTopics:
             }
         )
 
-        topics = client._list_topics_from_telemetry("outbox-wallet", connector_config={"topic.prefix": "wallet.prod"})
+        topics = client._list_topics_from_telemetry(
+            "outbox-wallet", connector_config={"topic.prefix": "wallet.prod"}
+        )
 
         assert [t.name for t in topics] == ["prod.events.walletEntity_v1"]
 
     def test_configured_internal_topics_are_excluded(self):
         """The names config does declare, such as schema history, are excluded too."""
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-wallet": "lcc-aaa111"}
+        )
         client._query_dataflow_topics_by_client = MagicMock(
             return_value={
                 "connector-producer-lcc-aaa111-0": {
@@ -2890,13 +2972,21 @@ class TestConfluentTelemetryTopics:
     def test_a_connector_producing_only_bookkeeping_resolves_nothing(self):
         """Bookkeeping alone is not lineage, so this must fall through to config."""
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-wallet": "lcc-aaa111"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-wallet": "lcc-aaa111"}
+        )
         client._query_dataflow_topics_by_client = MagicMock(
-            return_value={"connector-producer-lcc-aaa111-0": {"wallet.prod.lcc-aaa111.transaction"}}
+            return_value={
+                "connector-producer-lcc-aaa111-0": {
+                    "wallet.prod.lcc-aaa111.transaction"
+                }
+            }
         )
 
         assert (
-            client._list_topics_from_telemetry("outbox-wallet", connector_config={"topic.prefix": "wallet.prod"})
+            client._list_topics_from_telemetry(
+                "outbox-wallet", connector_config={"topic.prefix": "wallet.prod"}
+            )
             is None
         )
 
@@ -2927,8 +3017,12 @@ class TestConfluentTelemetryTopics:
 
         assert [t.name for t in first] == ["prod.events.a_v1"]
         assert [t.name for t in second] == ["prod.events.b_v1"]
-        assert query.call_count == 1, "the telemetry query is cluster wide, so once per run"
-        assert client.client.list_connectors.call_count == 1, "the connector list is cluster wide too"
+        assert (
+            query.call_count == 1
+        ), "the telemetry query is cluster wide, so once per run"
+        assert (
+            client.client.list_connectors.call_count == 1
+        ), "the connector list is cluster wide too"
 
     @staticmethod
     def _page(rows, next_token=None):
@@ -2938,7 +3032,9 @@ class TestConfluentTelemetryTopics:
         page.json = MagicMock(
             return_value={
                 "data": rows,
-                "meta": {"pagination": {"next_page_token": next_token}} if next_token else {},
+                "meta": {"pagination": {"next_page_token": next_token}}
+                if next_token
+                else {},
             }
         )
         return page
@@ -2952,10 +3048,22 @@ class TestConfluentTelemetryTopics:
         client = self._cloud_client()
         pages = [
             self._page(
-                [{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "a_v1"}],
+                [
+                    {
+                        "metric.client_id": "connector-producer-lcc-aaa111-0",
+                        "metric.topic": "a_v1",
+                    }
+                ],
                 next_token="TOKEN",
             ),
-            self._page([{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "b_v1"}]),
+            self._page(
+                [
+                    {
+                        "metric.client_id": "connector-producer-lcc-aaa111-0",
+                        "metric.topic": "b_v1",
+                    }
+                ]
+            ),
         ]
         with patch(
             "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
@@ -2987,7 +3095,9 @@ class TestConfluentTelemetryTopics:
         auth.username = "K"
         auth.password.get_secret_value.return_value = "S"
         config.KafkaConnectConfig = auth
-        with patch("metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"):
+        with patch(
+            "metadata.ingestion.source.pipeline.kafkaconnect.client.KafkaConnect"
+        ):
             client = KafkaConnectClient(config)
 
         with patch(
@@ -3005,13 +3115,21 @@ class TestConfluentTelemetryTopics:
         a call that already failed.
         """
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-a": "lcc-aaa111", "outbox-b": "lcc-bbb222"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-a": "lcc-aaa111", "outbox-b": "lcc-bbb222"}
+        )
         query = MagicMock(side_effect=Exception("telemetry down"))
         client._query_dataflow_topics_by_client = query
 
-        assert client._list_topics_from_telemetry("outbox-a", connector_config={}) is None
-        assert client._list_topics_from_telemetry("outbox-b", connector_config={}) is None
-        assert query.call_count == 1, "a failed cluster-wide query must not be retried per connector"
+        assert (
+            client._list_topics_from_telemetry("outbox-a", connector_config={}) is None
+        )
+        assert (
+            client._list_topics_from_telemetry("outbox-b", connector_config={}) is None
+        )
+        assert (
+            query.call_count == 1
+        ), "a failed cluster-wide query must not be retried per connector"
 
     def test_only_live_connectors_are_retained(self):
         """
@@ -3021,7 +3139,9 @@ class TestConfluentTelemetryTopics:
         never be attributed either, since resolution goes through the live connector list.
         """
         client = self._cloud_client()
-        client._connector_id_by_name = MagicMock(return_value={"outbox-live": "lcc-live01"})
+        client._connector_id_by_name = MagicMock(
+            return_value={"outbox-live": "lcc-live01"}
+        )
         client._query_dataflow_topics_by_client = MagicMock(
             return_value={
                 "connector-producer-lcc-live01-0": {"prod.events.live_v1"},
@@ -3032,7 +3152,9 @@ class TestConfluentTelemetryTopics:
 
         retained = client._telemetry_topics_for_connector_ids("lkc-xyz")
 
-        assert set(retained) == {"lcc-live01"}, "a deleted connector's topics must not be retained"
+        assert set(retained) == {
+            "lcc-live01"
+        }, "a deleted connector's topics must not be retained"
 
     def test_unattributable_rows_are_dropped_without_losing_the_page(self):
         """
@@ -3047,12 +3169,18 @@ class TestConfluentTelemetryTopics:
         """
         client = self._cloud_client()
         rows = [
-            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "good_v1"},
+            {
+                "metric.client_id": "connector-producer-lcc-aaa111-0",
+                "metric.topic": "good_v1",
+            },
             {"metric.topic": "orphan_v1"},
             {"metric.client_id": "connector-producer-lcc-aaa111-0"},
             {"metric.client_id": "", "metric.topic": "blank_client_v1"},
             {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": ""},
-            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "also_good_v1"},
+            {
+                "metric.client_id": "connector-producer-lcc-aaa111-0",
+                "metric.topic": "also_good_v1",
+            },
         ]
         with patch(
             "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
@@ -3060,7 +3188,9 @@ class TestConfluentTelemetryTopics:
         ):
             by_client = client._query_dataflow_topics_by_client("lkc-xyz")
 
-        assert by_client == {"connector-producer-lcc-aaa111-0": {"good_v1", "also_good_v1"}}
+        assert by_client == {
+            "connector-producer-lcc-aaa111-0": {"good_v1", "also_good_v1"}
+        }
         assert "" not in by_client, "an empty client id must not become a producer"
 
     def test_unrelated_producers_are_dropped_before_they_accumulate(self):
@@ -3076,10 +3206,19 @@ class TestConfluentTelemetryTopics:
         """
         client = self._cloud_client()
         rows = [
-            {"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "connector_v1"},
-            {"metric.client_id": "checkout-service-prod-17", "metric.topic": "orders_v1"},
+            {
+                "metric.client_id": "connector-producer-lcc-aaa111-0",
+                "metric.topic": "connector_v1",
+            },
+            {
+                "metric.client_id": "checkout-service-prod-17",
+                "metric.topic": "orders_v1",
+            },
             {"metric.client_id": "spark-streaming-job-42", "metric.topic": "events_v1"},
-            {"metric.client_id": "consumer-analytics-9", "metric.topic": "connector_v1"},
+            {
+                "metric.client_id": "consumer-analytics-9",
+                "metric.topic": "connector_v1",
+            },
         ]
         with patch(
             "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
@@ -3087,9 +3226,9 @@ class TestConfluentTelemetryTopics:
         ):
             by_client = client._query_dataflow_topics_by_client("lkc-xyz")
 
-        assert by_client == {"connector-producer-lcc-aaa111-0": {"connector_v1"}}, (
-            "only connector producers may be retained from a cluster-wide response"
-        )
+        assert by_client == {
+            "connector-producer-lcc-aaa111-0": {"connector_v1"}
+        }, "only connector producers may be retained from a cluster-wide response"
 
     def test_reachability_check_reads_one_page_even_when_more_exist(self):
         """
@@ -3105,7 +3244,12 @@ class TestConfluentTelemetryTopics:
         with patch(
             "metadata.ingestion.source.pipeline.kafkaconnect.client.requests.post",
             return_value=self._page(
-                [{"metric.client_id": "connector-producer-lcc-aaa111-0", "metric.topic": "a_v1"}],
+                [
+                    {
+                        "metric.client_id": "connector-producer-lcc-aaa111-0",
+                        "metric.topic": "a_v1",
+                    }
+                ],
                 next_token="MORE",
             ),
         ) as post:
@@ -3158,12 +3302,16 @@ class TestTelemetryFailureHint:
     def test_unauthorized_names_the_key_as_the_problem(self):
         """401 is unauthenticated, so no role grant can fix it. The key itself is wrong."""
         hint = telemetry.failure_hint(
-            self._error(401, {"errors": [{"status": "401", "detail": "Invalid credentials"}]})
+            self._error(
+                401, {"errors": [{"status": "401", "detail": "Invalid credentials"}]}
+            )
         )
 
         assert "Invalid credentials" in hint, "Confluent's own wording must survive"
         assert "Cloud API key" in hint
-        assert "MetricsViewer" not in hint, "a role grant cannot fix an unauthenticated key"
+        assert (
+            "MetricsViewer" not in hint
+        ), "a role grant cannot fix an unauthenticated key"
 
     def test_forbidden_names_the_role_as_the_problem(self):
         """403 authenticated fine, so the key is right and only the role is missing."""
@@ -3183,7 +3331,9 @@ class TestTelemetryFailureHint:
 
         assert "authorized resources" in hint, "Confluent's own wording must survive"
         assert "MetricsViewer" in hint
-        assert "Cloud API key" not in hint, "the key authenticated, so it is not the problem"
+        assert (
+            "Cloud API key" not in hint
+        ), "the key authenticated, so it is not the problem"
 
     def test_other_failures_report_the_response_but_prescribe_no_fix(self):
         """
@@ -3193,25 +3343,32 @@ class TestTelemetryFailureHint:
         """
         hint = telemetry.failure_hint(self._error(500, {"errors": []}))
 
-        assert "MetricsViewer" not in hint and "Cloud API key" not in hint, (
-            "a non-auth failure must not prescribe an auth fix"
-        )
+        assert (
+            "MetricsViewer" not in hint and "Cloud API key" not in hint
+        ), "a non-auth failure must not prescribe an auth fix"
         assert "errors" in hint, "the response itself is still worth reporting"
 
     def test_no_response_at_all_adds_nothing(self):
         """A connection error never reached Confluent, so there is no response to report."""
-        assert telemetry.failure_hint(requests.exceptions.ConnectionError("no route")) == ""
+        assert (
+            telemetry.failure_hint(requests.exceptions.ConnectionError("no route"))
+            == ""
+        )
 
     def test_non_json_body_falls_back_to_text(self):
         """A proxy in front of the API answers HTML, which must not crash the handler."""
-        hint = telemetry.failure_hint(self._error(401, body=None, text="<html>gateway</html>"))
+        hint = telemetry.failure_hint(
+            self._error(401, body=None, text="<html>gateway</html>")
+        )
 
         assert "gateway" in hint
         assert "Cloud API key" in hint
 
     def test_remote_text_is_capped(self):
         """The body is remote input going into a log line, so it cannot be unbounded."""
-        hint = telemetry.failure_hint(self._error(403, {"errors": [{"detail": "x" * 5000}]}))
+        hint = telemetry.failure_hint(
+            self._error(403, {"errors": [{"detail": "x" * 5000}]})
+        )
 
         assert len(hint) < 1000, "an unbounded remote string must not reach the log"
 
@@ -3242,15 +3399,23 @@ class TestTelemetryFailureHint:
         forge log entries and any body at all could break line-oriented parsing.
         """
         forged = "denied\n2026-01-01 00:00:00 INFO  everything is fine\nmore"
-        hint = telemetry.failure_hint(self._error(401, {"errors": [{"detail": forged}]}))
+        hint = telemetry.failure_hint(
+            self._error(401, {"errors": [{"detail": forged}]})
+        )
 
-        assert "\n" not in hint and "\r" not in hint, "remote text must not span log lines"
+        assert (
+            "\n" not in hint and "\r" not in hint
+        ), "remote text must not span log lines"
         assert "everything is fine" in hint, "the content is kept, only the newlines go"
 
     def test_html_error_body_is_flattened(self):
         """A proxy's HTML page is multi-line by nature and must collapse to one line."""
         hint = telemetry.failure_hint(
-            self._error(403, body=None, text="<html>\n  <body>\n    Forbidden\n  </body>\n</html>")
+            self._error(
+                403,
+                body=None,
+                text="<html>\n  <body>\n    Forbidden\n  </body>\n</html>",
+            )
         )
 
         assert "\n" not in hint
@@ -3267,7 +3432,9 @@ class TestTelemetryFailureHint:
             connect_authenticated=True,
         )
 
-        assert "authenticates to the Connect API" in hint, "the observed split must be stated"
+        assert (
+            "authenticates to the Connect API" in hint
+        ), "the observed split must be stated"
         assert "MetricsViewer" in hint and "scope" in hint, "both levers are named"
 
     def test_401_when_connect_also_failed_blames_the_key(self):
@@ -3292,7 +3459,9 @@ class TestTelemetryFailureHint:
         client._connect_authenticated = True
         client._telemetry_topics_by_connector_id = None
         client._query_dataflow_topics_by_client = MagicMock(
-            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+            side_effect=self._error(
+                401, {"errors": [{"detail": "Invalid credentials"}]}
+            )
         )
 
         with patch.object(client_module.logger, "warning") as warn:
@@ -3301,7 +3470,9 @@ class TestTelemetryFailureHint:
         rendered = warn.call_args[0][0] % warn.call_args[0][1:]
         assert "KEYID123" in rendered, "the key id identifies which credential to check"
         assert "SUPERSECRET" not in rendered, "the secret must never be logged"
-        assert "authenticates to the Connect API" in rendered, "Connect worked, so say so"
+        assert (
+            "authenticates to the Connect API" in rendered
+        ), "Connect worked, so say so"
 
     def test_empty_cluster_is_not_mistaken_for_a_rejected_credential(self):
         """
@@ -3318,16 +3489,18 @@ class TestTelemetryFailureHint:
         # Connect answers, the cluster simply has no connectors.
         client.get_connectors_list = MagicMock(return_value={})
         client._query_dataflow_topics_by_client = MagicMock(
-            side_effect=self._error(401, {"errors": [{"detail": "Invalid credentials"}]})
+            side_effect=self._error(
+                401, {"errors": [{"detail": "Invalid credentials"}]}
+            )
         )
 
         with patch.object(client_module.logger, "warning") as warn:
             client._telemetry_topics_for_connector_ids("lkc-xyz")
 
         rendered = warn.call_args[0][0] % warn.call_args[0][1:]
-        assert "authenticates to the Connect API" in rendered, (
-            "an empty connector list still means Connect authenticated"
-        )
+        assert (
+            "authenticates to the Connect API" in rendered
+        ), "an empty connector list still means Connect authenticated"
         assert "cannot authenticate here" not in rendered
 
     def test_large_body_is_capped_before_normalizing(self):
@@ -3344,7 +3517,9 @@ class TestTelemetryFailureHint:
 
         out = telemetry.single_log_line(body)
 
-        assert "MARKER_PAST_THE_CAP" not in out, "input must be capped before normalizing"
+        assert (
+            "MARKER_PAST_THE_CAP" not in out
+        ), "input must be capped before normalizing"
         assert len(out) <= telemetry.MAX_ERROR_CHARS
 
     def test_whitespace_heavy_body_still_yields_full_line(self):
@@ -3356,5 +3531,7 @@ class TestTelemetryFailureHint:
 
         out = telemetry.single_log_line(body)
 
-        assert len(out) == telemetry.MAX_ERROR_CHARS, "a real line of content must survive"
+        assert (
+            len(out) == telemetry.MAX_ERROR_CHARS
+        ), "a real line of content must survive"
         assert "\n" not in out

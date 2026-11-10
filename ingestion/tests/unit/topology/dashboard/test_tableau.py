@@ -1203,7 +1203,11 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="fld-order-date",
                     name="Order Date",
-                    upstreamColumns=[UpstreamColumn(id="col-order-date", name="order_date", remoteType="DATE")],
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-order-date", name="order_date", remoteType="DATE"
+                        )
+                    ],
                 ),
                 DatasourceField(
                     id="fld-order-amount",
@@ -1233,7 +1237,11 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="fld-revenue-usd",
                     name="Revenue (USD)",
-                    upstreamColumns=[UpstreamColumn(id="col-revenue", name="revenue", remoteType="R8")],
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-revenue", name="revenue", remoteType="R8"
+                        )
+                    ],
                 ),
             ],
         )
@@ -1284,12 +1292,18 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="fld-uriage",
                     name="売上",
-                    upstreamColumns=[UpstreamColumn(id="col-uriage", name="売上", remoteType="NUMERIC")],
+                    upstreamColumns=[
+                        UpstreamColumn(id="col-uriage", name="売上", remoteType="NUMERIC")
+                    ],
                 ),
                 DatasourceField(
                     id="fld-kokyaku",
                     name="顧客 名",
-                    upstreamColumns=[UpstreamColumn(id="col-kokyaku", name="顧客_名", remoteType="STRING")],
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-kokyaku", name="顧客_名", remoteType="STRING"
+                        )
+                    ],
                 ),
             ],
         )
@@ -1308,7 +1322,11 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="fld-uriage-daka",
                     name="売上",
-                    upstreamColumns=[UpstreamColumn(id="col-uriage-daka", name="売上高", remoteType="NUMERIC")],
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="col-uriage-daka", name="売上高", remoteType="NUMERIC"
+                        )
+                    ],
                 ),
             ],
         )
@@ -1631,7 +1649,13 @@ class TableauUnitTest(TestCase):
                 DatasourceField(
                     id="047ffe96",
                     name="revenue_provision",
-                    upstreamColumns=[UpstreamColumn(id="610f77a9", name="revenue_provision", remoteType="NUMERIC")],
+                    upstreamColumns=[
+                        UpstreamColumn(
+                            id="610f77a9",
+                            name="revenue_provision",
+                            remoteType="NUMERIC",
+                        )
+                    ],
                 ),
             ],
         )
@@ -1659,7 +1683,9 @@ class TableauUnitTest(TestCase):
                 )
             ],
         )
-        incoming_entity = stored_entity.model_copy(update={"columns": self.tableau.get_column_info(data_source)})
+        incoming_entity = stored_entity.model_copy(
+            update={"columns": self.tableau.get_column_info(data_source)}
+        )
 
         _sort_array_entity_fields(
             source=stored_entity,

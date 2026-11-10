@@ -82,7 +82,11 @@ class TestRenderUrlForDataDiff:
                     password="p@ssw0rd/x",
                     host="my_account",
                     database="my_db/my_schema",
-                    query={"account": "my_account", "warehouse": "MY WAREHOUSE", "role": "MY ROLE"},
+                    query={
+                        "account": "my_account",
+                        "warehouse": "MY WAREHOUSE",
+                        "role": "MY ROLE",
+                    },
                 ),
                 id="snowflake-email-username-and-special-password",
             ),
@@ -141,11 +145,18 @@ class TestRenderUrlForDataDiff:
                 id="nothing-to-encode",
             ),
             pytest.param(
-                URL.create(drivername="postgresql", host="pg.example.com", port=5432, database="my_db"),
+                URL.create(
+                    drivername="postgresql",
+                    host="pg.example.com",
+                    port=5432,
+                    database="my_db",
+                ),
                 id="no-credentials-at-all",
             ),
             pytest.param(
-                URL.create(drivername="postgresql", username="only_user", host="pg.example.com"),
+                URL.create(
+                    drivername="postgresql", username="only_user", host="pg.example.com"
+                ),
                 id="username-only-no-password-no-database",
             ),
         ],
@@ -164,9 +175,15 @@ class TestRenderUrlForDataDiff:
         )
 
         # What the code used to send: SQLAlchemy encoded the username, data-diff kept it encoded
-        assert data_diff_parse(url.render_as_string(hide_password=False)).username == "svc_user%40corp.com"
+        assert (
+            data_diff_parse(url.render_as_string(hide_password=False)).username
+            == "svc_user%40corp.com"
+        )
 
-        assert data_diff_parse(render_url_for_data_diff(url)).username == "svc_user@corp.com"
+        assert (
+            data_diff_parse(render_url_for_data_diff(url)).username
+            == "svc_user@corp.com"
+        )
 
     def test_it_keeps_the_password_encoded(self) -> None:
         """Decoding the whole URI is the tempting-but-wrong fix: data-diff decodes the password itself.
@@ -188,7 +205,9 @@ class TestRenderUrlForDataDiff:
         assert data_diff_parse(rendered).password == "p@ssw0rd/x"
 
     @pytest.mark.parametrize("reserved", [":", "/", "?", "#"])
-    def test_it_keeps_username_delimiters_encoded_so_the_uri_still_parses(self, reserved: str) -> None:
+    def test_it_keeps_username_delimiters_encoded_so_the_uri_still_parses(
+        self, reserved: str
+    ) -> None:
         """A raw delimiter in the username would move the userinfo/authority boundary.
 
         data-diff cannot decode these back, but a mangled username beats an unparseable URI.
@@ -209,16 +228,27 @@ class TestRenderUrlForDataDiff:
         assert parsed.port == 5432
         assert parsed.password == "my_password"
 
-    def test_it_warns_when_the_username_cannot_be_decoded(self, caplog: pytest.LogCaptureFixture) -> None:
-        url = URL.create(drivername="postgresql", username="svc:user", host="pg.example.com", database="my_db")
+    def test_it_warns_when_the_username_cannot_be_decoded(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        url = URL.create(
+            drivername="postgresql",
+            username="svc:user",
+            host="pg.example.com",
+            database="my_db",
+        )
 
         with caplog.at_level("WARNING"):
             render_url_for_data_diff(url)
 
         assert "reserved by the connection URI" in caplog.text
 
-    def test_it_stays_quiet_for_an_ordinary_username(self, caplog: pytest.LogCaptureFixture) -> None:
-        url = URL.create(drivername="postgresql", username="svc_user@corp.com", host="pg.example.com")
+    def test_it_stays_quiet_for_an_ordinary_username(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        url = URL.create(
+            drivername="postgresql", username="svc_user@corp.com", host="pg.example.com"
+        )
 
         with caplog.at_level("WARNING"):
             render_url_for_data_diff(url)
@@ -275,7 +305,10 @@ class TestTableParameterDataDiffServiceUrl:
             passPhrase=None,
         )
 
-        assert data_diff_parse(table_parameter.data_diff_service_url).username == "svc_user@corp.com"
+        assert (
+            data_diff_parse(table_parameter.data_diff_service_url).username
+            == "svc_user@corp.com"
+        )
 
         assert make_url(table_parameter.serviceUrl).username == "svc_user@corp.com"
         assert make_url(table_parameter.serviceUrl).password == "p@ss"
@@ -309,7 +342,9 @@ class TestSnowflakeServiceUrlEndToEnd:
             columns=[Column(name=ColumnName("id"), dataType=DataType.INT)],
         )
 
-    def get_table_parameter(self, service_url: str | None = None, **overrides) -> TableParameter:
+    def get_table_parameter(
+        self, service_url: str | None = None, **overrides
+    ) -> TableParameter:
         return SnowflakeTableParameter().get(
             self.build_service(**overrides),
             self.build_table(),

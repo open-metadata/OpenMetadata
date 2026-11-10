@@ -143,7 +143,9 @@ INTERNAL_TOPIC_CONFIG_KEYS = (
 )
 
 
-def extract_internal_topic_names(connector_config: Optional[dict]) -> set[str]:  # noqa: UP045
+def extract_internal_topic_names(
+    connector_config: Optional[dict],
+) -> set[str]:  # noqa: UP045
     """
     Topic names a connector creates for its own bookkeeping, derived from its config.
 
@@ -161,7 +163,9 @@ def extract_internal_topic_names(connector_config: Optional[dict]) -> set[str]: 
     if not isinstance(connector_config, dict):
         return names
 
-    prefix = connector_config.get("topic.prefix") or connector_config.get("database.server.name")
+    prefix = connector_config.get("topic.prefix") or connector_config.get(
+        "database.server.name"
+    )
     if prefix:
         names.update({prefix, f"{prefix}.transaction"})
 
@@ -173,7 +177,9 @@ def extract_internal_topic_names(connector_config: Optional[dict]) -> set[str]: 
     return names
 
 
-def confluent_managed_internal_topic_names(connector_config: dict | None, connector_id: str) -> set[str]:
+def confluent_managed_internal_topic_names(
+    connector_config: dict | None, connector_id: str
+) -> set[str]:
     """
     Bookkeeping topic names a Confluent managed connector produces, which its configuration
     does not state.
@@ -194,7 +200,9 @@ def confluent_managed_internal_topic_names(connector_config: dict | None, connec
     if not isinstance(connector_config, dict):
         return set()
 
-    prefix = connector_config.get("topic.prefix") or connector_config.get("database.server.name")
+    prefix = connector_config.get("topic.prefix") or connector_config.get(
+        "database.server.name"
+    )
     if not prefix:
         return set()
 
@@ -407,7 +415,9 @@ class KafkaConnectClient:
             # A cluster with more producer/topic pairs than fit in one page returns a
             # cursor. Stopping at the first page would drop topics silently, and a
             # connector resolving a partial set looks indistinguishable from a complete one.
-            page_token = ((body.get("meta") or {}).get("pagination") or {}).get("next_page_token")
+            page_token = ((body.get("meta") or {}).get("pagination") or {}).get(
+                "next_page_token"
+            )
             if not page_token:
                 break
         else:
@@ -423,7 +433,9 @@ class KafkaConnectClient:
 
         return by_client
 
-    def _telemetry_topics_for_connector_ids(self, cluster_id: str) -> dict[str, set[str]]:
+    def _telemetry_topics_for_connector_ids(
+        self, cluster_id: str
+    ) -> dict[str, set[str]]:
         """
         Topics each connector produced to, keyed by connector id, fetched once per run.
 
@@ -440,7 +452,9 @@ class KafkaConnectClient:
         live_connector_ids = set(self._connector_id_by_name().values())
         by_connector: dict[str, set[str]] = {}
         try:
-            for client_id, client_topics in self._query_dataflow_topics_by_client(cluster_id).items():
+            for client_id, client_topics in self._query_dataflow_topics_by_client(
+                cluster_id
+            ).items():
                 connector_id = telemetry.connector_id_from_client_id(client_id)
                 if connector_id in live_connector_ids:
                     by_connector.setdefault(connector_id, set()).update(client_topics)
@@ -458,7 +472,9 @@ class KafkaConnectClient:
                 cluster_id,
                 self._telemetry_auth[0] if self._telemetry_auth else "none",
                 exc,
-                telemetry.failure_hint(exc, connect_authenticated=self._connect_authenticated),
+                telemetry.failure_hint(
+                    exc, connect_authenticated=self._connect_authenticated
+                ),
             )
             logger.debug(traceback.format_exc())
 
@@ -489,21 +505,35 @@ class KafkaConnectClient:
         try:
             connector_id = self._connector_id_by_name().get(connector)
             if not connector_id:
-                logger.debug("No Confluent connector id for '%s', skipping telemetry lookup", connector)
+                logger.debug(
+                    "No Confluent connector id for '%s', skipping telemetry lookup",
+                    connector,
+                )
                 return None
 
-            topics = set(self._telemetry_topics_for_connector_ids(cluster_id).get(connector_id) or ())
+            topics = set(
+                self._telemetry_topics_for_connector_ids(cluster_id).get(connector_id)
+                or ()
+            )
             topics -= extract_internal_topic_names(connector_config)
-            topics -= confluent_managed_internal_topic_names(connector_config, connector_id)
+            topics -= confluent_managed_internal_topic_names(
+                connector_config, connector_id
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.debug("Confluent telemetry lookup failed for '%s': %s", connector, exc)
+            logger.debug(
+                "Confluent telemetry lookup failed for '%s': %s", connector, exc
+            )
             return None
 
         if not topics:
             return None
 
-        logger.info("Resolved %s topic(s) for '%s' from Confluent telemetry", len(topics), connector)
+        logger.info(
+            "Resolved %s topic(s) for '%s' from Confluent telemetry",
+            len(topics),
+            connector,
+        )
         return [KafkaConnectTopics(name=topic) for topic in sorted(topics)]
 
     def _infer_cdc_topics_from_server_name(
@@ -553,7 +583,10 @@ class KafkaConnectClient:
             )
 
             # For CDC connectors without explicit topics, try to infer from server name
-            if not connector_details.topics and (connector_details.conn_type or "").lower() == "source":
+            if (
+                not connector_details.topics
+                and (connector_details.conn_type or "").lower() == "source"
+            ):
                 database_server_name = connector_details.config.get(
                     "database.server.name"
                 ) or connector_details.config.get("topic.prefix")
@@ -790,8 +823,10 @@ class KafkaConnectClient:
         except Exception as exc:
             response = getattr(exc, "response", None)
             status_code = getattr(response, "status_code", None)
-            tracking_disabled = status_code == 403 and TOPIC_TRACKING_DISABLED_MARKER in (
-                f"{getattr(response, 'text', '')} {exc}".lower()
+            tracking_disabled = (
+                status_code == 403
+                and TOPIC_TRACKING_DISABLED_MARKER
+                in (f"{getattr(response, 'text', '')} {exc}".lower())
             )
             if status_code in UNSUPPORTED_ROUTE_STATUS_CODES or tracking_disabled:
                 if self._topics_endpoint_supported is None:
@@ -847,7 +882,9 @@ class KafkaConnectClient:
         return data_topics or None
 
     @staticmethod
-    def _parse_topics_from_config(connector_config: Optional[dict]) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
+    def _parse_topics_from_config(
+        connector_config: Optional[dict],
+    ) -> Optional[List[KafkaConnectTopics]]:  # noqa: UP006, UP045
         """Topic names written explicitly in the connector config, as a sink's `topics` list is."""
         if not connector_config:
             return None
@@ -857,7 +894,11 @@ class KafkaConnectClient:
             topic_value = connector_config.get(key)
             # Either a single topic or a comma-separated list.
             if isinstance(topic_value, str):
-                topics.extend(KafkaConnectTopics(name=name.strip()) for name in topic_value.split(",") if name.strip())
+                topics.extend(
+                    KafkaConnectTopics(name=name.strip())
+                    for name in topic_value.split(",")
+                    if name.strip()
+                )
         return topics or None
 
     def get_connector_topics(
@@ -882,7 +923,11 @@ class KafkaConnectClient:
                                             neither source names one.
         """
         try:
-            config = connector_config if connector_config is not None else self.get_connector_config(connector)
+            config = (
+                connector_config
+                if connector_config is not None
+                else self.get_connector_config(connector)
+            )
 
             topics = self._list_data_topics_from_api(connector, config)
             if topics:
@@ -892,13 +937,17 @@ class KafkaConnectClient:
             # what the connector actually did, whereas the config only describes what it
             # was asked to do. On Confluent Cloud the runtime list is never available, so
             # for a connector routing by row value this is the only source that can answer.
-            topics = self._list_topics_from_telemetry(connector, connector_config=config)
+            topics = self._list_topics_from_telemetry(
+                connector, connector_config=config
+            )
             if topics:
                 return topics
 
             topics = self._parse_topics_from_config(config)
             if topics:
-                logger.info(f"Extracted {len(topics)} topics from connector config for {connector}")
+                logger.info(
+                    f"Extracted {len(topics)} topics from connector config for {connector}"
+                )
                 return topics
         except Exception as exc:
             logger.debug(traceback.format_exc())
