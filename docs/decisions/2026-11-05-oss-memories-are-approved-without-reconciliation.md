@@ -1,7 +1,8 @@
 # OSS memories are approved without reconciliation
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-06 (a document's owner approves its extracted memories)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-06 (a document's owner approves its extracted memories) ·
+  v3 2026-11-09 (another document's decision holds a conflicting value)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryRepositoryTest`, `ContextMemoryCreateGrantIT`,
   `ContextMemoryLifecycleIT`; Collate's `ContextMemoryRepositoryExtTest`,
@@ -45,3 +46,14 @@ document's extracted memories, from the document. The approval is written as a c
 decision is, through `governance-bot`, so the rule above still holds for every other write: an
 ordinary user's own PATCH or PUT into Approved is refused or keeps the stored stage
 (ADR:2026-11-06-a-documents-extracted-memories-are-approved-from-the-document).
+
+v3 (2026-11-09): OSS also starts a memory `Unprocessed` when its file gives the same question a
+different number than a memory a person decided in another document (Rejected, Superseded,
+Invalidated, Deprecated, Archived, or a person's own: a correction, or a note citing that
+document), or states the figure a person's correction there
+replaced, as re-extraction already holds values beside a
+decided pill (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values). A
+fact another file already states links to that memory in its stage, so a fact a person rejected
+isn't brought back Approved through another document when the duplicate check finds it, which is
+best effort, and its other value waits for an admin
+(ADR:2026-09-29-context-file-memory-reuse, v3).
