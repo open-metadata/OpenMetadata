@@ -36,9 +36,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.glue.metadata import GlueSource
-from metadata.ingestion.source.database.glue.models import (
-    Column as GlueColumn,
-)
+from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
     GlueSchema,
@@ -344,7 +342,9 @@ class GlueUnitTest(TestCase):
                 mock_glue_config_db_test["source"],
                 self.config.workflowConfig.openMetadataServerConfig,
             )
-        source.context.get().__dict__["database_service"] = MOCK_DATABASE_SERVICE.name.root
+        source.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         source.context.get().__dict__["database"] = MOCK_CUSTOM_DB_NAME
         source._get_glue_database_and_schemas = lambda: pages
         return source
@@ -355,9 +355,13 @@ class GlueUnitTest(TestCase):
         The catalog check compares against a Glue CatalogId, so a custom name matched
         nothing and every schema was dropped while the run still reported Success.
         """
-        source = self._custom_db_name_source([DatabasePage(**mock_data.get("mock_database_paginator"))])
+        source = self._custom_db_name_source(
+            [DatabasePage(**mock_data.get("mock_database_paginator"))]
+        )
 
-        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(source.get_database_schema_names())  # noqa: SIM300
+        assert EXPECTED_DATABASE_SCHEMA_NAMES == list(
+            source.get_database_schema_names()
+        )  # noqa: SIM300
         assert source.status.failures == []
         assert source.status.warnings == []
 
@@ -382,7 +386,9 @@ class GlueUnitTest(TestCase):
             ]
         )
 
-        assert ["default", "foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert ["default", "foreign_schema"] == list(
+            source.get_database_schema_names()
+        )  # noqa: SIM300
         assert len(source.status.warnings) == 1
         assert "more than one catalog" in source.status.warnings[0][MOCK_CUSTOM_DB_NAME]
 
@@ -399,7 +405,9 @@ class GlueUnitTest(TestCase):
             ]
         )
 
-        assert ["default", "schema_without_catalog"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert ["default", "schema_without_catalog"] == list(
+            source.get_database_schema_names()
+        )  # noqa: SIM300
         assert source.status.warnings == []
 
     def test_tables_are_read_from_the_schema_own_catalog(self):
@@ -408,12 +416,16 @@ class GlueUnitTest(TestCase):
             [
                 DatabasePage(
                     DatabaseList=[
-                        GlueSchema(CatalogId="different-catalog", Name="foreign_schema"),
+                        GlueSchema(
+                            CatalogId="different-catalog", Name="foreign_schema"
+                        ),
                     ]
                 )
             ]
         )
-        assert ["foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert ["foreign_schema"] == list(
+            source.get_database_schema_names()
+        )  # noqa: SIM300
 
         paginator = Mock()
         paginator.paginate.return_value = [mock_data.get("mock_table_paginator")]
@@ -423,7 +435,9 @@ class GlueUnitTest(TestCase):
 
         list(source._get_glue_tables())
 
-        paginator.paginate.assert_called_once_with(DatabaseName="foreign_schema", CatalogId="different-catalog")
+        paginator.paginate.assert_called_once_with(
+            DatabaseName="foreign_schema", CatalogId="different-catalog"
+        )
 
     def test_iceberg_columns_are_read_from_the_schema_own_catalog(self):
         """The Iceberg detail lookup must name the same catalog the schema came from.
@@ -435,12 +449,16 @@ class GlueUnitTest(TestCase):
             [
                 DatabasePage(
                     DatabaseList=[
-                        GlueSchema(CatalogId="different-catalog", Name="foreign_schema"),
+                        GlueSchema(
+                            CatalogId="different-catalog", Name="foreign_schema"
+                        ),
                     ]
                 )
             ]
         )
-        assert ["foreign_schema"] == list(source.get_database_schema_names())  # noqa: SIM300
+        assert ["foreign_schema"] == list(
+            source.get_database_schema_names()
+        )  # noqa: SIM300
 
         iceberg_table = Mock()
         iceberg_table.Name = "iceberg_table"
@@ -450,7 +468,9 @@ class GlueUnitTest(TestCase):
         source.context.get().__dict__["table_data"] = iceberg_table
         self.addCleanup(source.context.get().__dict__.pop, "table_data", None)
         source.glue = Mock()
-        source.glue.get_table.return_value = {"Table": {"StorageDescriptor": {"Columns": []}}}
+        source.glue.get_table.return_value = {
+            "Table": {"StorageDescriptor": {"Columns": []}}
+        }
 
         list(source.get_columns(Mock()))
 
@@ -471,7 +491,9 @@ class TestGlueColumnDeduplication:
     @pytest.fixture
     def source(self):
         with patch.object(GlueSource, "test_connection", return_value=False):
-            workflow_config = OpenMetadataWorkflowConfig.model_validate(mock_glue_config)
+            workflow_config = OpenMetadataWorkflowConfig.model_validate(
+                mock_glue_config
+            )
             glue_source = GlueSource.create(
                 mock_glue_config["source"],
                 workflow_config.workflowConfig.openMetadataServerConfig,
@@ -500,22 +522,32 @@ class TestGlueColumnDeduplication:
                     SerializationLibrary="org.apache.hadoop.hive.serde2.lazy.LazySimpleSerDe"
                 ),
             ),
-            PartitionKeys=[GlueColumn(Name=name, Type="string") for name in partition_keys],
+            PartitionKeys=[
+                GlueColumn(Name=name, Type="string") for name in partition_keys
+            ],
         )
 
     @staticmethod
     def _column_names(source, table):
         source.context.get().__dict__["table_data"] = table
-        return [column.name.root for column in source.get_columns(table.StorageDescriptor)]
+        return [
+            column.name.root for column in source.get_columns(table.StorageDescriptor)
+        ]
 
     @staticmethod
     def _get_table_response(columns, partition_keys) -> dict:
         return {
             "Table": {
                 "StorageDescriptor": {
-                    "Columns": [{"Name": name, "Type": "string", "Parameters": {}} for name in columns]
+                    "Columns": [
+                        {"Name": name, "Type": "string", "Parameters": {}}
+                        for name in columns
+                    ]
                 },
-                "PartitionKeys": [{"Name": name, "Type": "string", "Parameters": {}} for name in partition_keys],
+                "PartitionKeys": [
+                    {"Name": name, "Type": "string", "Parameters": {}}
+                    for name in partition_keys
+                ],
             }
         }
 
@@ -531,21 +563,32 @@ class TestGlueColumnDeduplication:
         # names on write, so this shape is defensive rather than something Glue can hand us.
         ids=["partition_key_repeated", "partition_key_only", "case_distinct_kept"],
     )
-    def test_standard_path_emits_each_column_once(self, source, columns, partition_keys, expected):
-        assert self._column_names(source, self._glue_table(columns, partition_keys)) == expected
+    def test_standard_path_emits_each_column_once(
+        self, source, columns, partition_keys, expected
+    ):
+        assert (
+            self._column_names(source, self._glue_table(columns, partition_keys))
+            == expected
+        )
 
     def test_iceberg_path_drops_partition_field_repeated_in_columns(self, source):
-        table = self._glue_table(["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True)
+        table = self._glue_table(
+            ["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True
+        )
 
         with patch.object(source, "glue") as glue_client:
-            glue_client.get_table.return_value = self._get_table_response(["event_id", "bucket_key"], ["bucket_key"])
+            glue_client.get_table.return_value = self._get_table_response(
+                ["event_id", "bucket_key"], ["bucket_key"]
+            )
             names = self._column_names(source, table)
 
         assert names == ["event_id", "bucket_key"]
 
     def test_iceberg_fallback_path_drops_duplicate_when_get_table_fails(self, source):
         """A GetTable failure falls back to the standard path, which must dedupe too."""
-        table = self._glue_table(["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True)
+        table = self._glue_table(
+            ["event_id", "bucket_key"], ["bucket_key"], is_iceberg=True
+        )
 
         with patch.object(source, "glue") as glue_client:
             glue_client.get_table.side_effect = RuntimeError("AccessDeniedException")

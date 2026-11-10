@@ -11,12 +11,10 @@
 
 name: Validate JSON/YAML
 
-# read-write repo token
-# access to secrets
 on:
   merge_group:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened]
+  pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - "**.json"
       - "**.yaml"
@@ -28,27 +26,7 @@ permissions:
 jobs:
   validate-json-yaml:
     runs-on: ubuntu-latest
-    permissions:
-      pull-requests: write
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: '${{ secrets.GITHUB_TOKEN }}'
-          valid-labels: 'safe to test'
-          pull-request-number: '${{ github.event.pull_request.number }}'
-          disable-reviews: true  # To not auto approve changes
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -78,7 +56,8 @@ jobs:
           pip install pyyaml
           ./scripts/validate_json_yaml.sh
 
-      - name: JSON/Yaml validation failed, check the comment in the PR
+      - name: JSON/Yaml validation failed
         if: steps.style.outcome != 'success'
         run: |
+          echo "::error title=JSON/YAML validation failed::The Code style check step names the invalid file. Reproduce locally with ./scripts/validate_json_yaml.sh."
           exit 1

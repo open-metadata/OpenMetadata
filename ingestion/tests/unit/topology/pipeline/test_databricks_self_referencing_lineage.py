@@ -72,7 +72,9 @@ def _source(table_lineage_rows):
 
 
 def _edges(source):
-    details = DataBrickPipelineDetails(pipeline_id="11111111-2222-3333-4444-555555555555", name="orders")
+    details = DataBrickPipelineDetails(
+        pipeline_id="11111111-2222-3333-4444-555555555555", name="orders"
+    )
     with patch(
         "metadata.ingestion.source.pipeline.databrickspipeline.metadata.fqn.build",
         side_effect=lambda **kwargs: (
@@ -88,20 +90,33 @@ def _edges(source):
 
 class TestSelfReferencingTableLineage:
     def test_a_self_referencing_row_yields_no_edge(self):
-        source = _source([{"source_table_full_name": EVENT_LOG, "target_table_full_name": EVENT_LOG}])
+        source = _source(
+            [{"source_table_full_name": EVENT_LOG, "target_table_full_name": EVENT_LOG}]
+        )
         assert _edges(source) == []
 
     def test_a_normal_row_still_yields_an_edge(self):
-        source = _source([{"source_table_full_name": EVENT_LOG, "target_table_full_name": SNAPSHOT}])
+        source = _source(
+            [{"source_table_full_name": EVENT_LOG, "target_table_full_name": SNAPSHOT}]
+        )
         assert len(_edges(source)) == 1
 
     def test_only_the_self_reference_is_dropped(self):
         """The guard must not suppress real lineage produced by the same pipeline."""
         source = _source(
             [
-                {"source_table_full_name": EVENT_LOG, "target_table_full_name": EVENT_LOG},
-                {"source_table_full_name": EVENT_LOG, "target_table_full_name": SNAPSHOT},
-                {"source_table_full_name": SNAPSHOT, "target_table_full_name": SNAPSHOT},
+                {
+                    "source_table_full_name": EVENT_LOG,
+                    "target_table_full_name": EVENT_LOG,
+                },
+                {
+                    "source_table_full_name": EVENT_LOG,
+                    "target_table_full_name": SNAPSHOT,
+                },
+                {
+                    "source_table_full_name": SNAPSHOT,
+                    "target_table_full_name": SNAPSHOT,
+                },
             ]
         )
         edges = _edges(source)

@@ -5,8 +5,8 @@ on:
   workflow_dispatch:
   # Trigger analysis when pushing in master or pull requests, and when creating
   # a pull request.
-  pull_request_target:
-    types: [opened, synchronize, reopened, labeled, ready_for_review]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
     paths:
       - openmetadata-ui/src/main/resources/ui/**
       - "!openmetadata-ui/src/main/resources/ui/playwright/doc-generator/**"
@@ -28,24 +28,6 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
-
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
@@ -101,18 +83,27 @@ jobs:
         run: yarn test:cov-summary
         id: yarn_coverage
       - name: Jest coverage comment
+        id: coverage_comment
         uses: MishaKav/jest-coverage-comment@v1.0.22
         with:
           coverage-summary-path: ${{env.UI_COVERAGE_DIRECTORY}}/coverage-summary.json
           title: Jest test Coverage
           summary-title: UI tests summary
           badge-title: Coverage
+          # Fork and Dependabot PRs get a read-only token, so they get no comment; the next step
+          # puts the report in the job summary for everyone.
+          hide-comment: ${{ github.event.pull_request.head.repo.full_name != github.repository || github.actor == 'dependabot[bot]' }}
+      - name: Coverage summary
+        env:
+          SUMMARY_HTML: ${{ steps.coverage_comment.outputs.summaryHtml }}
+        run: echo "$SUMMARY_HTML" >> "$GITHUB_STEP_SUMMARY"
       - name: yarn add sonarqube-scanner
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: npm install -g sonarqube-scanner
         id: npm_install_sonar_scanner
+      # Fork and Dependabot PRs get no Sonar token, so they skip the PR scan.
       - name: SonarCloud Scan On PR
-        if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
+        if: github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.npm_install_sonar_scanner.outcome == 'success'
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
         run: |
           sonar-scanner -Dsonar.host.url=${SONARCLOUD_URL} \

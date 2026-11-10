@@ -87,8 +87,15 @@ class ConfluentTelemetryRow(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    client_id: str = Field(..., min_length=1, alias="metric.client_id", description="Producer or consumer client id")
-    topic: str = Field(..., min_length=1, alias="metric.topic", description="Topic the client wrote to")
+    client_id: str = Field(
+        ...,
+        min_length=1,
+        alias="metric.client_id",
+        description="Producer or consumer client id",
+    )
+    topic: str = Field(
+        ..., min_length=1, alias="metric.topic", description="Topic the client wrote to"
+    )
 
 
 class KafkaConnectColumnMapping(BaseModel):

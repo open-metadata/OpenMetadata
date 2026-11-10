@@ -263,7 +263,9 @@ def doris_function(elements, compiler, **kwargs):
     """Doris timestamp and datetime function"""
     interval = elements.clauses.clauses[0].value
     interval_unit = compiler.process(elements.clauses.clauses[1], **kwargs)
-    return f"CAST(CURRENT_TIMESTAMP - interval '{interval}' {interval_unit} AS DATETIME)"
+    return (
+        f"CAST(CURRENT_TIMESTAMP - interval '{interval}' {interval_unit} AS DATETIME)"
+    )
 
 
 def mysql_function(elements, compiler, **kwargs):

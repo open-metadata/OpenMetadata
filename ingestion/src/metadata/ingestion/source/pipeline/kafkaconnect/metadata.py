@@ -1517,7 +1517,9 @@ class KafkaconnectSource(PipelineServiceSource):
         if self._has_outbox_event_router(pipeline_details.config):
             static_topic = self._static_outbox_topic(pipeline_details.config or {})
             if static_topic:
-                logger.info(f"Outbox EventRouter routes every event to '{static_topic}'")
+                logger.info(
+                    f"Outbox EventRouter routes every event to '{static_topic}'"
+                )
                 return [KafkaConnectTopics(name=static_topic)]
 
             logger.warning(
@@ -1545,7 +1547,9 @@ class KafkaconnectSource(PipelineServiceSource):
 
         return topics_to_process
 
-    def _static_outbox_topic(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
+    def _static_outbox_topic(
+        self, connector_config: dict
+    ) -> Optional[str]:  # noqa: UP045
         """
         The destination of an outbox EventRouter whose ``route.topic.replacement`` holds
         no ``${...}`` token.
@@ -1559,12 +1563,18 @@ class KafkaconnectSource(PipelineServiceSource):
         is unknown, and synthesising Debezium's default would invent a claim.
         """
         transform = self._event_router_transform(connector_config)
-        replacement = connector_config.get(f"transforms.{transform}.route.topic.replacement") if transform else None
+        replacement = (
+            connector_config.get(f"transforms.{transform}.route.topic.replacement")
+            if transform
+            else None
+        )
         if not replacement or "${" in replacement:
             return None
         return apply_topic_routing_transforms(replacement, connector_config)
 
-    def _has_outbox_event_router(self, connector_config: Optional[dict]) -> bool:  # noqa: UP045
+    def _has_outbox_event_router(
+        self, connector_config: Optional[dict]
+    ) -> bool:  # noqa: UP045
         """Return True if the connector uses a Debezium outbox EventRouter SMT."""
         has_event_router = False
         if connector_config:
@@ -1580,7 +1590,9 @@ class KafkaconnectSource(PipelineServiceSource):
                     break
         return has_event_router
 
-    def _event_router_transform(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
+    def _event_router_transform(
+        self, connector_config: dict
+    ) -> Optional[str]:  # noqa: UP045
         """Return the name of the connector's Debezium outbox EventRouter transform, if any."""
         transform_name = None
         transforms = [
@@ -1596,7 +1608,9 @@ class KafkaconnectSource(PipelineServiceSource):
                 break
         return transform_name
 
-    def _get_service_topics(self, messaging_service_name: str) -> List[Topic]:  # noqa: UP006
+    def _get_service_topics(
+        self, messaging_service_name: str
+    ) -> List[Topic]:  # noqa: UP006
         """Return all topics for a messaging service, caching per service name."""
         if messaging_service_name not in self._topics_cache:
             self._topics_cache[messaging_service_name] = list(

@@ -164,7 +164,11 @@ class TestSqlDltParsing:
 
     def test_sql_files_are_not_silently_skipped(self):
         """Every SQL transformation must contribute at least one table."""
-        empty = [name for name, sql in SQL_FILES.items() if not extract_dlt_table_dependencies(sql)]
+        empty = [
+            name
+            for name, sql in SQL_FILES.items()
+            if not extract_dlt_table_dependencies(sql)
+        ]
         assert not empty, f"SQL DLT files parsed to nothing: {empty}"
 
 
@@ -193,7 +197,9 @@ class TestSqlDltPipelineLineage:
         assembled here, so an implementation change cannot leave this test
         asserting against a shape production no longer uses.
         """
-        with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
+        with patch(
+            "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        ):
             source = DatabrickspipelineSource.create(
                 mock_databricks_config["source"],
                 OpenMetadataWorkflowConfig.model_validate(
@@ -211,9 +217,12 @@ class TestSqlDltPipelineLineage:
             },
         }
         client.list_workspace_objects.return_value = [
-            {"object_type": "FILE", "path": TRANSFORMATIONS_DIR + name} for name in SQL_FILES
+            {"object_type": "FILE", "path": TRANSFORMATIONS_DIR + name}
+            for name in SQL_FILES
         ]
-        client.export_notebook_source.side_effect = lambda path: SQL_FILES[path.rsplit("/", 1)[-1]]
+        client.export_notebook_source.side_effect = lambda path: SQL_FILES[
+            path.rsplit("/", 1)[-1]
+        ]
         client.get_table_lineage.return_value = []
         client.get_column_lineage.return_value = []
         source.client = client
@@ -251,7 +260,9 @@ class TestSqlDltPipelineLineage:
         requests = [
             either.right
             for either in source._yield_kafka_lineage(
-                DataBrickPipelineDetails(pipeline_id="pipeline-uuid", name="demo_sql_dlt"),
+                DataBrickPipelineDetails(
+                    pipeline_id="pipeline-uuid", name="demo_sql_dlt"
+                ),
                 pipeline_entity,
             )
             if getattr(either, "right", None) is not None
@@ -282,7 +293,9 @@ class TestSqlDltPipelineLineage:
             f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.customer_orders",
         ) in edges
         assert not any(
-            "raw_catalog" in (src or "") and src.startswith(f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.") for src, _ in edges
+            "raw_catalog" in (src or "")
+            and src.startswith(f"{DB_SERVICE}.{CATALOG}.{SCHEMA}.")
+            for src, _ in edges
         ), "qualified upstream was nested under the pipeline catalog/schema"
 
     def test_all_expected_edges_are_produced(self):
@@ -362,11 +375,15 @@ class TestSqlDltEdgeCases:
             "FROM STREAM(raw_catalog.raw_schema.customers_raw) KEYS (id) SEQUENCE BY ts"
         )
         deps = _deps_by_name(source)
-        assert deps["customers_cdc"].depends_on == ["raw_catalog.raw_schema.customers_raw"]
+        assert deps["customers_cdc"].depends_on == [
+            "raw_catalog.raw_schema.customers_raw"
+        ]
 
     def test_live_prefix_resolves_to_a_sibling_dataset(self):
         """`LIVE.x` is a pipeline namespace, not a schema called `live`."""
-        deps = _deps_by_name("CREATE MATERIALIZED VIEW gold AS SELECT * FROM LIVE.silver JOIN live.bronze USING (id)")
+        deps = _deps_by_name(
+            "CREATE MATERIALIZED VIEW gold AS SELECT * FROM LIVE.silver JOIN live.bronze USING (id)"
+        )
         assert set(deps["gold"].depends_on) == {"silver", "bronze"}
 
     def test_table_valued_functions_are_not_treated_as_tables(self):
@@ -379,9 +396,9 @@ class TestSqlDltEdgeCases:
             == []
         )
         assert (
-            _deps_by_name("CREATE OR REFRESH STREAMING TABLE raw2 AS SELECT * FROM cloud_files('/mnt/data', 'json')")[
-                "raw2"
-            ].depends_on
+            _deps_by_name(
+                "CREATE OR REFRESH STREAMING TABLE raw2 AS SELECT * FROM cloud_files('/mnt/data', 'json')"
+            )["raw2"].depends_on
             == []
         )
 
@@ -399,7 +416,12 @@ class TestSqlDltEdgeCases:
         assert deps["c"].depends_on == ["raw_catalog.raw_schema.orders_raw"]
 
     def test_unparseable_statement_is_skipped_not_raised(self):
-        assert extract_dlt_table_dependencies("CREATE MATERIALIZED VIEW broken AS SELECT FROM WHERE ((") == []
+        assert (
+            extract_dlt_table_dependencies(
+                "CREATE MATERIALIZED VIEW broken AS SELECT FROM WHERE (("
+            )
+            == []
+        )
 
     def test_multiple_statements_in_one_file(self):
         deps = _deps_by_name(
@@ -418,23 +440,35 @@ class TestQualifyDltTableName:
         return DatabrickspipelineSource._qualify_dlt_table_name(name, "cat", "sch")
 
     def test_bare_name_uses_the_pipeline_target(self):
-        assert self._resolve("orders") == DLTTableReference(catalog="cat", schema="sch", table="orders")
+        assert self._resolve("orders") == DLTTableReference(
+            catalog="cat", schema="sch", table="orders"
+        )
 
     def test_two_part_name_overrides_only_the_schema(self):
-        assert self._resolve("other.orders") == DLTTableReference(catalog="cat", schema="other", table="orders")
+        assert self._resolve("other.orders") == DLTTableReference(
+            catalog="cat", schema="other", table="orders"
+        )
 
     def test_three_part_name_overrides_both(self):
-        assert self._resolve("c2.s2.orders") == DLTTableReference(catalog="c2", schema="s2", table="orders")
+        assert self._resolve("c2.s2.orders") == DLTTableReference(
+            catalog="c2", schema="s2", table="orders"
+        )
 
     def test_extra_qualifiers_keep_the_last_three_parts(self):
-        assert self._resolve("x.c2.s2.orders") == DLTTableReference(catalog="c2", schema="s2", table="orders")
+        assert self._resolve("x.c2.s2.orders") == DLTTableReference(
+            catalog="c2", schema="s2", table="orders"
+        )
 
     def test_empty_name_falls_back_to_the_pipeline_target(self):
-        assert self._resolve("") == DLTTableReference(catalog="cat", schema="sch", table="")
+        assert self._resolve("") == DLTTableReference(
+            catalog="cat", schema="sch", table=""
+        )
 
     def test_surrounding_whitespace_and_stray_dots_are_stripped(self):
         for raw in ("  orders  ", "orders.", ".orders"):
-            assert self._resolve(raw) == DLTTableReference(catalog="cat", schema="sch", table="orders")
+            assert self._resolve(raw) == DLTTableReference(
+                catalog="cat", schema="sch", table="orders"
+            )
 
 
 class TestGlobNormalisation:
@@ -454,7 +488,9 @@ class TestGlobNormalisation:
         assert glob_base_directory("/tx/one.sql") == "/tx/one.sql"
 
     def test_a_glob_library_reduces_to_a_known_directory(self):
-        libraries = get_pipeline_libraries({"libraries": [{"glob": {"include": "/tx/**"}}]})
+        libraries = get_pipeline_libraries(
+            {"libraries": [{"glob": {"include": "/tx/**"}}]}
+        )
         assert libraries == [DLTLibrarySource(path="/tx/", is_directory=True)]
 
     def test_all_library_shapes_are_collected(self):
@@ -491,8 +527,15 @@ class TestSqlUpstreamHygiene:
 
     def test_table_valued_function_dropped_only_when_invoked(self):
         """A dataset may legitimately be named `range`, so filter on call form."""
-        assert _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range")["m"].depends_on == ["range"]
-        assert _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range(1, 10)")["m"].depends_on == []
+        assert _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range")[
+            "m"
+        ].depends_on == ["range"]
+        assert (
+            _deps_by_name("CREATE MATERIALIZED VIEW m AS SELECT * FROM range(1, 10)")[
+                "m"
+            ].depends_on
+            == []
+        )
 
 
 class TestConnectorCaches:
@@ -504,7 +547,9 @@ class TestConnectorCaches:
 
     @staticmethod
     def _real_source():
-        with patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"):
+        with patch(
+            "metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection"
+        ):
             return DatabrickspipelineSource.create(
                 mock_databricks_config["source"],
                 OpenMetadataWorkflowConfig.model_validate(
@@ -562,11 +607,15 @@ class TestGlobExpansion:
         with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
             source = DatabrickspipelineSource(None, None)
         source.client = MagicMock()
-        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        source.client.list_workspace_objects.side_effect = (
+            lambda path: self.WORKSPACE.get(path, [])
+        )
         return source
 
     def _expand(self, include):
-        return self._source()._expand_workspace_directory(DLTLibrarySource(path=glob_base_directory(include)))
+        return self._source()._expand_workspace_directory(
+            DLTLibrarySource(path=glob_base_directory(include))
+        )
 
     def test_a_recursive_include_takes_the_whole_tree(self):
         assert self._expand("/tx/**") == self.WHOLE_TREE
@@ -580,14 +629,22 @@ class TestGlobExpansion:
 
     def test_a_directory_without_a_trailing_slash_takes_everything_below_it(self):
         """A source_path fallback points at a tree, not one level of it."""
-        assert self._source()._expand_workspace_directory(DLTLibrarySource(path="/tx/")) == self.WHOLE_TREE
+        assert (
+            self._source()._expand_workspace_directory(DLTLibrarySource(path="/tx/"))
+            == self.WHOLE_TREE
+        )
 
     def test_depth_is_capped(self):
         source = self._source()
         source.client.list_workspace_objects.side_effect = lambda path: [
             {"object_type": "DIRECTORY", "path": f"{path}d"}
         ]
-        assert source._expand_workspace_directory(DLTLibrarySource(path="/tx/"), max_depth=3) == []
+        assert (
+            source._expand_workspace_directory(
+                DLTLibrarySource(path="/tx/"), max_depth=3
+            )
+            == []
+        )
 
 
 class TestLibraryListIsHomogeneous:
@@ -620,7 +677,9 @@ class TestLibraryListIsHomogeneous:
             seen.append(library)
             return original(self, library, *args, **kwargs)
 
-        with patch.object(DatabrickspipelineSource, "_expand_workspace_directory", record):
+        with patch.object(
+            DatabrickspipelineSource, "_expand_workspace_directory", record
+        ):
             pipeline_entity = MagicMock()
             pipeline_entity.id.root = uuid.uuid4()
             list(
@@ -682,13 +741,20 @@ class TestLibraryShapeMatrix:
         "/tx/sub/": [{"object_type": "FILE", "path": "/tx/sub/d.sql"}],
         "/tx/2024_1/": [{"object_type": "FILE", "path": "/tx/2024_1/file.sql"}],
     }
-    WHOLE_TREE: ClassVar[list] = ["/tx/a.sql", "/tx/n.py", "/tx/sub/d.sql", "/tx/2024_1/file.sql"]
+    WHOLE_TREE: ClassVar[list] = [
+        "/tx/a.sql",
+        "/tx/n.py",
+        "/tx/sub/d.sql",
+        "/tx/2024_1/file.sql",
+    ]
 
     def _select(self, spec):
         with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
             source = DatabrickspipelineSource(None, None)
         source.client = MagicMock()
-        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        source.client.list_workspace_objects.side_effect = (
+            lambda path: self.WORKSPACE.get(path, [])
+        )
         selected = []
         for library in get_pipeline_libraries(spec):
             if library.is_directory:
@@ -698,10 +764,14 @@ class TestLibraryShapeMatrix:
         return selected
 
     def test_notebook_entry_is_read_directly(self):
-        assert self._select({"libraries": [{"notebook": {"path": "/tx/a.sql"}}]}) == ["/tx/a.sql"]
+        assert self._select({"libraries": [{"notebook": {"path": "/tx/a.sql"}}]}) == [
+            "/tx/a.sql"
+        ]
 
     def test_file_entry_is_read_directly(self):
-        assert self._select({"libraries": [{"file": {"path": "/tx/a.sql"}}]}) == ["/tx/a.sql"]
+        assert self._select({"libraries": [{"file": {"path": "/tx/a.sql"}}]}) == [
+            "/tx/a.sql"
+        ]
 
     def test_recursive_glob_takes_the_tree(self):
         assert self._select({"libraries": [{"glob": {"include": "/tx/**"}}]}) == [
@@ -719,10 +789,15 @@ class TestLibraryShapeMatrix:
         path that does not exist and finding nothing.
         """
         for include in ("/tx/*.sql", "/tx/**/*.sql", "/tx/2024_*/file.sql"):
-            assert self._select({"libraries": [{"glob": {"include": include}}]}) == self.WHOLE_TREE, include
+            assert (
+                self._select({"libraries": [{"glob": {"include": include}}]})
+                == self.WHOLE_TREE
+            ), include
 
     def test_glob_naming_a_concrete_file_is_read_directly(self):
-        assert self._select({"libraries": [{"glob": {"include": "/tx/one.sql"}}]}) == ["/tx/one.sql"]
+        assert self._select({"libraries": [{"glob": {"include": "/tx/one.sql"}}]}) == [
+            "/tx/one.sql"
+        ]
 
     def test_glob_naming_a_bare_directory_takes_the_tree(self):
         """No wildcard means no filter, so the whole directory is in scope."""
@@ -738,7 +813,9 @@ class TestLibraryShapeMatrix:
         with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
             source = DatabrickspipelineSource(None, None)
         source.client = MagicMock()
-        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        source.client.list_workspace_objects.side_effect = (
+            lambda path: self.WORKSPACE.get(path, [])
+        )
 
         # the listing key is normalised by the producer, so expansion is driven by path
         library = DLTLibrarySource(path="/tx/", is_directory=True)
@@ -768,16 +845,22 @@ class TestUnknownDirectoryness:
     """
 
     WORKSPACE: ClassVar[dict] = {
-        "/repo/transformations": [{"object_type": "FILE", "path": "/repo/transformations/a.sql"}],
+        "/repo/transformations": [
+            {"object_type": "FILE", "path": "/repo/transformations/a.sql"}
+        ],
     }
 
     def _select(self, include):
         with patch.object(DatabrickspipelineSource, "__init__", lambda s, a, b: None):
             source = DatabrickspipelineSource(None, None)
         source.client = MagicMock()
-        source.client.list_workspace_objects.side_effect = lambda path: self.WORKSPACE.get(path, [])
+        source.client.list_workspace_objects.side_effect = (
+            lambda path: self.WORKSPACE.get(path, [])
+        )
         selected = []
-        for library in get_pipeline_libraries({"libraries": [{"glob": {"include": include}}]}):
+        for library in get_pipeline_libraries(
+            {"libraries": [{"glob": {"include": include}}]}
+        ):
             if library.is_directory is False:
                 selected.append(library.path)
                 continue
@@ -789,7 +872,9 @@ class TestUnknownDirectoryness:
         return selected
 
     def test_the_spec_leaves_a_slashless_include_unknown(self):
-        library = get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/transformations"}}]})[0]
+        library = get_pipeline_libraries(
+            {"libraries": [{"glob": {"include": "/repo/transformations"}}]}
+        )[0]
         assert library.is_directory is None
 
     def test_a_slashless_directory_is_listed(self):
@@ -800,10 +885,20 @@ class TestUnknownDirectoryness:
         assert self._select("/repo/one.sql") == ["/repo/one.sql"]
 
     def test_a_wildcard_include_is_known_to_be_a_directory(self):
-        assert get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/**"}}]})[0].is_directory is True
+        assert (
+            get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/**"}}]})[
+                0
+            ].is_directory
+            is True
+        )
 
     def test_a_slash_terminated_include_is_known_to_be_a_directory(self):
-        assert get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/"}}]})[0].is_directory is True
+        assert (
+            get_pipeline_libraries({"libraries": [{"glob": {"include": "/repo/"}}]})[
+                0
+            ].is_directory
+            is True
+        )
 
 
 class TestLegacyAndModifierCreateForms:
@@ -833,27 +928,37 @@ class TestLegacyAndModifierCreateForms:
         assert dependency.depends_on == ["src_e"]
 
     def test_refreshable_legacy_live_table_is_read(self):
-        dependency = self._only("CREATE OR REFRESH LIVE TABLE f AS SELECT id FROM src_f")
+        dependency = self._only(
+            "CREATE OR REFRESH LIVE TABLE f AS SELECT id FROM src_f"
+        )
         assert dependency.table_name == "f"
         assert dependency.depends_on == ["src_f"]
 
     def test_refreshable_legacy_streaming_live_table_is_read(self):
-        dependency = self._only("CREATE OR REFRESH STREAMING LIVE TABLE g AS SELECT id FROM src_g")
+        dependency = self._only(
+            "CREATE OR REFRESH STREAMING LIVE TABLE g AS SELECT id FROM src_g"
+        )
         assert dependency.table_name == "g"
         assert dependency.depends_on == ["src_g"]
 
     def test_private_materialized_view_is_read(self):
-        dependency = self._only("CREATE PRIVATE MATERIALIZED VIEW h AS SELECT id FROM src_h")
+        dependency = self._only(
+            "CREATE PRIVATE MATERIALIZED VIEW h AS SELECT id FROM src_h"
+        )
         assert dependency.table_name == "h"
         assert dependency.depends_on == ["src_h"]
 
     def test_refreshable_private_materialized_view_is_read(self):
-        dependency = self._only("CREATE OR REFRESH PRIVATE MATERIALIZED VIEW i AS SELECT id FROM src_i")
+        dependency = self._only(
+            "CREATE OR REFRESH PRIVATE MATERIALIZED VIEW i AS SELECT id FROM src_i"
+        )
         assert dependency.table_name == "i"
         assert dependency.depends_on == ["src_i"]
 
     def test_private_streaming_table_is_read(self):
-        dependency = self._only("CREATE PRIVATE STREAMING TABLE j AS SELECT id FROM src_j")
+        dependency = self._only(
+            "CREATE PRIVATE STREAMING TABLE j AS SELECT id FROM src_j"
+        )
         assert dependency.table_name == "j"
         assert dependency.depends_on == ["src_j"]
 
@@ -865,7 +970,9 @@ class TestLegacyAndModifierCreateForms:
 
     def test_a_dataset_whose_name_contains_live_is_untouched(self):
         """The rewrite is anchored to the CREATE clause, so a name is never rewritten."""
-        dependency = self._only("CREATE OR REFRESH MATERIALIZED VIEW live_table_stats AS SELECT id FROM my_live_table")
+        dependency = self._only(
+            "CREATE OR REFRESH MATERIALIZED VIEW live_table_stats AS SELECT id FROM my_live_table"
+        )
         assert dependency.table_name == "live_table_stats"
         assert dependency.depends_on == ["my_live_table"]
 
@@ -910,15 +1017,29 @@ class TestNullLibrariesInSpec:
         return [call.args[0] for call in client.list_workspace_objects.call_args_list]
 
     def test_a_null_libraries_value_still_reaches_the_source_path_fallback(self):
-        spec = {"catalog": CATALOG, "schema": SCHEMA, "libraries": None, "configuration": {"source_path": "/src/"}}
+        spec = {
+            "catalog": CATALOG,
+            "schema": SCHEMA,
+            "libraries": None,
+            "configuration": {"source_path": "/src/"},
+        }
         assert self._listed_paths(spec) == ["/src/"]
 
     def test_a_missing_libraries_key_still_reaches_the_source_path_fallback(self):
-        spec = {"catalog": CATALOG, "schema": SCHEMA, "configuration": {"source_path": "/src/"}}
+        spec = {
+            "catalog": CATALOG,
+            "schema": SCHEMA,
+            "configuration": {"source_path": "/src/"},
+        }
         assert self._listed_paths(spec) == ["/src/"]
 
     def test_an_empty_libraries_list_still_reaches_the_source_path_fallback(self):
-        spec = {"catalog": CATALOG, "schema": SCHEMA, "libraries": [], "configuration": {"source_path": "/src/"}}
+        spec = {
+            "catalog": CATALOG,
+            "schema": SCHEMA,
+            "libraries": [],
+            "configuration": {"source_path": "/src/"},
+        }
         assert self._listed_paths(spec) == ["/src/"]
 
 
@@ -955,5 +1076,7 @@ class TestWildcardWithNoDirectory:
         source.client.list_workspace_objects.return_value = []
         library = DLTLibrarySource(path=glob_base_directory("**"))
         source._expand_workspace_directory(library)
-        listed = [call.args[0] for call in source.client.list_workspace_objects.call_args_list]
+        listed = [
+            call.args[0] for call in source.client.list_workspace_objects.call_args_list
+        ]
         assert "/" not in listed

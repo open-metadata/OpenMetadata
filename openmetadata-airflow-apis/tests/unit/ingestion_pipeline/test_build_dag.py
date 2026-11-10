@@ -26,6 +26,7 @@ correctly and that a poisoned ``DagContext`` no longer breaks the build.
 import uuid
 
 import pytest
+from openmetadata_managed_apis.workflows.ingestion.common import build_dag
 
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
@@ -49,7 +50,6 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
     OpenMetadataJWTClientConfig,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
-from openmetadata_managed_apis.workflows.ingestion.common import build_dag
 
 TASK_NAME = "ingestion_task"
 
@@ -74,7 +74,9 @@ def _ingestion_pipeline(name: str) -> IngestionPipeline:
         sourceConfig=SourceConfig(config=DatabaseServiceMetadataPipeline()),
         openMetadataServerConnection=_server_config(),
         airflowConfig=AirflowConfig(),
-        service=EntityReference(id=str(uuid.uuid4()), type="databaseService", name="svc"),
+        service=EntityReference(
+            id=str(uuid.uuid4()), type="databaseService", name="svc"
+        ),
     )
 
 
@@ -116,7 +118,9 @@ def test_build_dag_survives_poisoned_dag_context():
     fix this raised ``KeyError`` on ``with DAG(...) as dag:`` __exit__; the explicit
     ``dag=`` build must be immune to it.
     """
-    dag_context = pytest.importorskip("airflow.sdk.definitions._internal.contextmanager").DagContext
+    dag_context = pytest.importorskip(
+        "airflow.sdk.definitions._internal.contextmanager"
+    ).DagContext
 
     if not hasattr(dag_context, "current_autoregister_module_name"):
         pytest.skip("DagContext autoregister not present on this Airflow version")
@@ -133,7 +137,9 @@ def test_build_dag_survives_poisoned_dag_context():
 
 
 def test_build_dag_does_not_use_dag_context_stack():
-    dag_context = pytest.importorskip("airflow.sdk.definitions._internal.contextmanager").DagContext
+    dag_context = pytest.importorskip(
+        "airflow.sdk.definitions._internal.contextmanager"
+    ).DagContext
 
     _build("stack_dag")
 

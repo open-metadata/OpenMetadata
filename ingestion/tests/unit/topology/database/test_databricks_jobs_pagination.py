@@ -60,7 +60,9 @@ class FakeJobsApi:
     rather than silently cap out in production.
     """
 
-    def __init__(self, total_jobs: int = 3000, runs: int = 0, tasks_on_first_job: int = 1):
+    def __init__(
+        self, total_jobs: int = 3000, runs: int = 0, tasks_on_first_job: int = 1
+    ):
         self.tasks = [{"task_key": f"t{i:03d}"} for i in range(tasks_on_first_job)]
         self.jobs = [
             {
@@ -69,14 +71,20 @@ class FakeJobsApi:
             }
             for i in range(total_jobs)
         ]
-        self.runs = [{"run_id": 9_000_000 + i, "start_time": 1_700_000_000_000 - i} for i in range(runs)]
+        self.runs = [
+            {"run_id": 9_000_000 + i, "start_time": 1_700_000_000_000 - i}
+            for i in range(runs)
+        ]
         self.requests: list[dict] = []
 
     def _expand(self, job: dict) -> dict:
         """Attach tasks the way the API does, honouring the 100-element page."""
         if job["job_id"] != self.jobs[0]["job_id"]:
             return job
-        expanded = {**job, "settings": {**job["settings"], "tasks": self.tasks[:TASKS_PER_PAGE]}}
+        expanded = {
+            **job,
+            "settings": {**job["settings"], "tasks": self.tasks[:TASKS_PER_PAGE]},
+        }
         if len(self.tasks) > TASKS_PER_PAGE:
             expanded["has_more"] = True
         return expanded
@@ -119,7 +127,9 @@ class FakeJobsApi:
     def _get_job(self, args: dict) -> MagicMock:
         job = next((j for j in self.jobs if j["job_id"] == int(args["job_id"])), None)
         if job is None:
-            return _response(400, {"error_code": "RESOURCE_DOES_NOT_EXIST", "message": "no such job"})
+            return _response(
+                400, {"error_code": "RESOURCE_DOES_NOT_EXIST", "message": "no such job"}
+            )
         start = int(args.get("page_token", 0))
         page = self.tasks[start : start + TASKS_PER_PAGE]
         payload = {**job, "settings": {**job["settings"], "tasks": page}}
@@ -191,7 +201,11 @@ def test_list_jobs_raises_instead_of_truncating_on_an_api_error():
     failed page has to fail the run.
     """
     fake = FakeJobsApi(total_jobs=3000)
-    fake.get = MagicMock(return_value=_response(429, {"error_code": "REQUEST_LIMIT_EXCEEDED", "message": "slow down"}))
+    fake.get = MagicMock(
+        return_value=_response(
+            429, {"error_code": "REQUEST_LIMIT_EXCEEDED", "message": "slow down"}
+        )
+    )
 
     with pytest.raises(DatabricksClientException, match="429"):
         list(build_client(fake).list_jobs())
@@ -257,7 +271,9 @@ def test_get_job_runs_paginates_by_token():
     runs = list(build_client(fake).get_job_runs(job_id=1_000_000))
 
     assert len(runs) == 120
-    assert len({run["run_id"] for run in runs}) == 120, "boundary runs must not be yielded twice"
+    assert (
+        len({run["run_id"] for run in runs}) == 120
+    ), "boundary runs must not be yielded twice"
 
 
 @pytest.mark.usefixtures("_no_auth")
@@ -299,7 +315,9 @@ def test_a_failed_task_page_degrades_that_job_without_failing_the_run():
     def fail_only_jobs_get(url, **kwargs):
         attempted.append(url)
         if url.endswith("/jobs/get"):
-            return _response(503, {"error_code": "TEMPORARILY_UNAVAILABLE", "message": "try later"})
+            return _response(
+                503, {"error_code": "TEMPORARILY_UNAVAILABLE", "message": "try later"}
+            )
         return healthy(url, **kwargs)
 
     fake.get = fail_only_jobs_get
@@ -308,7 +326,9 @@ def test_a_failed_task_page_degrades_that_job_without_failing_the_run():
 
     # Without this the test also passes against a client that never attempts the
     # task page at all, which is exactly the behaviour it is supposed to catch.
-    assert any(url.endswith("/jobs/get") for url in attempted), "the task-page fallback never ran"
+    assert any(
+        url.endswith("/jobs/get") for url in attempted
+    ), "the task-page fallback never ran"
     assert len(jobs) == 3, "the other jobs must still be ingested"
     assert len(jobs[0]["settings"]["tasks"]) == TASKS_PER_PAGE, "the first page is kept"
 
@@ -326,7 +346,11 @@ def test_test_connection_passes_on_a_reachable_workspace():
 def test_test_connection_raises_on_an_unreachable_workspace():
     """The GetPipelines step has to fail loudly, it is what tells a user their token is wrong."""
     fake = FakeJobsApi(total_jobs=3)
-    fake.get = MagicMock(return_value=_response(403, {"error_code": "PERMISSION_DENIED", "message": "nope"}))
+    fake.get = MagicMock(
+        return_value=_response(
+            403, {"error_code": "PERMISSION_DENIED", "message": "nope"}
+        )
+    )
 
     with pytest.raises(DatabricksClientException, match="403"):
         build_client(fake).list_jobs_test_connection()
@@ -362,7 +386,9 @@ def test_alternating_page_tokens_raise_instead_of_looping():
     def alternating(url, **kwargs):
         calls["n"] += 1
         assert calls["n"] < 50, "pagination looped instead of raising"
-        return _response(200, {"jobs": [{"job_id": 1}], "next_page_token": next(tokens)})
+        return _response(
+            200, {"jobs": [{"job_id": 1}], "next_page_token": next(tokens)}
+        )
 
     fake.get = alternating
 
@@ -377,7 +403,9 @@ def test_an_endless_stream_of_fresh_tokens_hits_the_page_cap():
     counter = itertools.count()
 
     def always_a_fresh_token(url, **kwargs):
-        return _response(200, {"jobs": [{"job_id": 1}], "next_page_token": f"t{next(counter)}"})
+        return _response(
+            200, {"jobs": [{"job_id": 1}], "next_page_token": f"t{next(counter)}"}
+        )
 
     fake.get = always_a_fresh_token
 
