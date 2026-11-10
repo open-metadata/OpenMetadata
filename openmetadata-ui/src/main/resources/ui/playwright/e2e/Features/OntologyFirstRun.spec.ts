@@ -148,12 +148,10 @@ test.describe(
           .getByRole('button', { name: 'Install from library' })
           .click();
         await expect(page.getByTestId('ontology-library')).toBeVisible();
-        await page.getByTestId('ontology-pack-details-fibo').click();
-        await page.getByTestId('ontology-module-foundations').click();
-        await page.getByTestId('ontology-module-business-entities').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await expect(
           page.getByTestId('ontology-pack-concept-count')
-        ).toHaveText('8');
+        ).toHaveText('9');
 
         const created = page.waitForResponse(isOntologyCreate);
         await page.getByTestId('ontology-library-native-install').click();
@@ -161,7 +159,7 @@ test.describe(
           await created,
           'Install into a new ontology'
         );
-        await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
+        await expect(page.getByTestId('ontology-pack-dcat')).toContainText(
           'Installed'
         );
         await page.keyboard.press('Escape');

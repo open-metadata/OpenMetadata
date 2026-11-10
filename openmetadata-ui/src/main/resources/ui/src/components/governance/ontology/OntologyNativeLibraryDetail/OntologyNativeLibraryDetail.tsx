@@ -16,6 +16,7 @@ import {
   Button,
   Card,
   Divider,
+  ProgressBar,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -28,17 +29,18 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { CreateOntology } from '../../../../generated/api/data/createOntology';
+import {
+  OntologyPackInstallJob,
+  Status as InstallJobStatus,
+} from '../../../../generated/api/data/ontologyPackInstallJob';
 import type { OntologyPackManifest } from '../../../../generated/api/data/ontologyPackManifest';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
 import type { OntologyPackInstallationRecord } from '../../../../generated/type/ontologyPackInstallationRecord';
-import { useOntologyChangeSetApply } from '../../../../hooks/governance/ontology/useOntologyChangeSetApply';
+import { useOntologyPackInstallJob } from '../../../../hooks/governance/ontology/useOntologyPackInstallJob';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import {
-  getOntology,
-  previewNativeOntologyPack,
-} from '../../../../rest/ontologyAPI';
+import { getOntology } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
   defaultModuleIds,
@@ -99,7 +101,7 @@ const OntologyNativeLibraryDetail = ({
     defaultModuleIds(pack)
   );
   const [phase, setPhase] = useState<
-    'idle' | 'creating' | 'permission' | 'previewing' | 'blocked'
+    'idle' | 'creating' | 'permission' | 'installing' | 'blocked'
   >('idle');
   const [error, setError] = useState<string>();
   const attempt = useRef<{
@@ -151,26 +153,31 @@ const OntologyNativeLibraryDetail = ({
     },
     [onApplied, onCompleted]
   );
-  const apply = useOntologyChangeSetApply({
-    canApply: canEditTarget,
-    onApplied: () => finish('applied'),
-  });
-  const isBusy =
-    ['creating', 'permission', 'previewing'].includes(phase) ||
-    apply.status.kind === 'busy';
-  const isLocked =
-    Boolean(attempt.current) || apply.configurationLocked || isBusy;
+  const installJob = useOntologyPackInstallJob();
+  const startInstallJob = installJob.run;
+  const settle = useCallback(
+    (settled: OntologyPackInstallJob) => {
+      if (settled.status === InstallJobStatus.Completed) {
+        finish(settled.total === 0 ? 'unchanged' : 'applied');
+
+        return;
+      }
+      setPhase('blocked');
+      setError(
+        settled.status === InstallJobStatus.Cancelled
+          ? t('message.ontology-library-install-cancelled')
+          : settled.error ?? t('server.unexpected-error')
+      );
+    },
+    [finish, t]
+  );
+  const isBusy = ['creating', 'permission', 'installing'].includes(phase);
+  const isLocked = Boolean(attempt.current) || isBusy;
   const totals = selectedModuleTotals(pack, selectedModuleIds);
 
   useEffect(() => {
     onBusyChange(isBusy);
   }, [isBusy, onBusyChange]);
-
-  useEffect(() => {
-    if (apply.status.kind === 'unchanged' && attempt.current) {
-      finish('unchanged');
-    }
-  }, [apply.status.kind, finish]);
 
   useEffect(() => {
     if (phase !== 'permission' || isPermissionLoading || !preparing.current) {
@@ -188,24 +195,25 @@ const OntologyNativeLibraryDetail = ({
       return;
     }
     preparing.current = false;
-    setPhase('previewing');
-    void previewNativeOntologyPack(current.target.id, pack.id, {
-      moduleIds: current.moduleIds,
-    })
-      .then(async (plan) => {
-        setPhase('idle');
-        preparing.current = false;
-        await apply.start(plan);
-      })
+    setPhase('installing');
+    void startInstallJob(current.target.id, pack.id, current.moduleIds)
+      .then((settled) => settled && settle(settled))
       .catch((cause: unknown) => {
-        preparing.current = false;
         setPhase('blocked');
         setError(t('server.unexpected-error'));
         showErrorToast(
           isAxiosError(cause) ? cause : t('server.unexpected-error')
         );
       });
-  }, [canEditTarget, isPermissionLoading, pack.id, phase, t, apply]);
+  }, [
+    canEditTarget,
+    isPermissionLoading,
+    pack.id,
+    phase,
+    t,
+    startInstallJob,
+    settle,
+  ]);
 
   const review = useNativePackReview(
     targetId === 'new' ? undefined : targetId,
@@ -259,11 +267,6 @@ const OntologyNativeLibraryDetail = ({
       return;
     }
     setError(undefined);
-    if (apply.configurationLocked) {
-      await apply.retry();
-
-      return;
-    }
     if (!attempt.current) {
       if (isInstallDisabled()) {
         return;
@@ -298,6 +301,44 @@ const OntologyNativeLibraryDetail = ({
   };
   const isTargetDenied = () =>
     target ? !canEditTarget && !isPermissionLoading : !canCreate;
+
+  const renderInstallProgress = () => {
+    const { job } = installJob;
+    if (!job || job.total === 0) {
+      return (
+        <Typography color="secondary" size="text-xs">
+          {t('message.ontology-library-install-preparing')}
+        </Typography>
+      );
+    }
+
+    return (
+      <Box
+        data-testid="ontology-library-install-progress"
+        direction="col"
+        gap={2}>
+        <ProgressBar max={job.total} value={job.progress} />
+        <Box align="center" gap={3} justify="between">
+          <Typography color="secondary" size="text-xs">
+            {t('message.ontology-library-install-progress', {
+              done: job.progress,
+              total: job.total,
+              applied: job.membersApplied,
+              members: job.memberCount,
+            })}
+          </Typography>
+          <Button
+            color="secondary"
+            data-testid="ontology-library-install-cancel"
+            isDisabled={Boolean(job.cancelRequested)}
+            size="sm"
+            onPress={() => void installJob.cancel().catch(showErrorToast)}>
+            {t('label.cancel')}
+          </Button>
+        </Box>
+      </Box>
+    );
+  };
 
   const renderInstallActions = () => {
     return (
@@ -411,10 +452,8 @@ const OntologyNativeLibraryDetail = ({
             </Box>
             {targetId !== 'new' && <OntologyNativePackReview review={review} />}
             {renderInstallActions()}
+            {phase === 'installing' && renderInstallProgress()}
             {error && <Alert variant="error">{error}</Alert>}
-            {apply.status.kind === 'blocked' && (
-              <Alert variant="error">{apply.status.message}</Alert>
-            )}
             <Divider />
             <Box align="center" gap={2}>
               <CheckCircle className="tw:size-4 tw:text-fg-success-primary" />

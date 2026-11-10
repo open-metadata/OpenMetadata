@@ -384,6 +384,115 @@ describe('OntologyPropertyEditor', () => {
     expect(screen.getByRole('button', { name: 'label.remove' })).toBeDisabled();
   });
 
+  it('offers only same-kind properties as superproperties and sends the picked IRIs', async () => {
+    post.mockResolvedValue({ data: { ...property, kind: Kind.Object } });
+    const saved = jest.fn();
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        properties={[
+          {
+            iri: 'urn:sales:hasRelative',
+            label: 'Has relative',
+            kind: Kind.Object,
+          },
+          { iri: 'urn:sales:code', label: 'Code', kind: Kind.Data },
+        ]}
+        onSaved={saved}
+      />
+    );
+    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
+      target: { value: 'hasChild' },
+    });
+    const supers = within(
+      screen.getByTestId('ontology-property-superProperties')
+    );
+    const input = supers.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'e' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByRole('option', { name: /Has relative/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: /Code/ })
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('option', { name: /Has relative/ }));
+    fireEvent.click(supers.getByRole('button', { name: 'label.add' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+
+    expect(post).toHaveBeenCalledWith(
+      '/ontologyProperties',
+      expect.objectContaining({ superProperties: ['urn:sales:hasRelative'] })
+    );
+  });
+
+  it('never offers a property as its own superproperty and saves a removed link', async () => {
+    const hasChild: OntologyProperty = {
+      ...property,
+      name: 'hasChild',
+      iri: 'urn:sales:hasChild',
+      kind: Kind.Object,
+      range: [],
+      enumValues: undefined,
+      superProperties: ['urn:sales:hasRelative'],
+    };
+    patch.mockImplementation(async (_path, operations) => ({
+      data: applyPatch(
+        structuredClone(hasChild),
+        JSON.parse(JSON.stringify(operations)) as Operation[]
+      ).newDocument,
+    }));
+    const saved = jest.fn();
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        properties={[
+          { iri: hasChild.iri, label: 'Has child', kind: Kind.Object },
+          {
+            iri: 'urn:sales:hasRelative',
+            label: 'Has relative',
+            kind: Kind.Object,
+          },
+        ]}
+        property={hasChild}
+        onSaved={saved}
+      />
+    );
+    const supers = within(
+      screen.getByTestId('ontology-property-superProperties')
+    );
+    fireEvent.click(
+      supers.getByRole('button', { name: 'label.remove Has relative' })
+    );
+    const input = supers.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'Has' } });
+    fireEvent.keyDown(input, { key: 'ArrowDown' });
+
+    expect(
+      await screen.findByRole('option', { name: /Has relative/ })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('option', { name: /Has child/ })
+    ).not.toBeInTheDocument();
+
+    fireEvent.keyDown(input, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+
+    await waitFor(() =>
+      expect(saved).toHaveBeenCalledWith(
+        expect.objectContaining({ superProperties: [] })
+      )
+    );
+  });
+
   describe('AI mode', () => {
     beforeEach(() => (useIsAiMode as jest.Mock).mockReturnValue(true));
 
