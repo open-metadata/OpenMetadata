@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/entity/services/connections/database/neptuneConnection.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "NeptuneConnection",
-  "description": "Amazon Neptune (openCypher property graph) Connection Config",
+  "description": "Amazon Neptune property graph or RDF connection configuration",
   "type": "object",
   "javaType": "org.openmetadata.schema.services.connections.database.NeptuneConnection",
   "definitions": {
@@ -11,6 +11,12 @@
       "type": "string",
       "enum": ["Neptune"],
       "default": "Neptune"
+    },
+    "graphModel": {
+      "description": "Neptune graph model and query language.",
+      "type": "string",
+      "enum": ["propertyGraph", "rdf"],
+      "default": "propertyGraph"
     }
   },
   "properties": {
@@ -22,8 +28,14 @@
     },
     "awsConfig": {
       "title": "AWS Credentials Configuration",
-      "description": "AWS credentials used to sign (SigV4) requests to the Neptune data API. Leave the keys blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity needs `neptune-db:ReadDataViaQuery`, and also `neptune-db:WriteDataViaQuery` when `computeSchemaIfMissing` is enabled.",
+      "description": "AWS credentials used to sign (SigV4) requests to Neptune. Leave the keys blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity needs `neptune-db:ReadDataViaQuery`; RDF also needs `neptune-db:GetGraphSummary`. Property-graph schema computation additionally needs `neptune-db:WriteDataViaQuery`.",
       "$ref": "../../../../security/credentials/awsCredentials.json"
+    },
+    "graphModel": {
+      "title": "Graph Model",
+      "description": "Choose the Neptune graph model. Existing configurations default to openCypher property graphs.",
+      "$ref": "#/definitions/graphModel",
+      "default": "propertyGraph"
     },
     "hostPort": {
       "title": "Host and Port",
@@ -43,7 +55,7 @@
     },
     "computeSchemaIfMissing": {
       "title": "Compute Schema If Missing",
-      "description": "When Neptune has no computed property graph schema yet, start `CALL neptune.graph.pg_schema.compute()` and wait for it to finish. This requires write permission (`neptune-db:WriteDataViaQuery`) in addition to read. If disabled, ingestion fails when the schema is missing.",
+      "description": "For property graphs, when Neptune has no computed schema, start `CALL neptune.graph.pg_schema.compute()` and wait for it to finish. This requires `neptune-db:WriteDataViaQuery`. Ignored for RDF, which uses the read-only graph summary API.",
       "type": "boolean",
       "default": true
     },
@@ -53,6 +65,38 @@
       "type": "integer",
       "default": 900,
       "minimum": 1
+    },
+    "rdfMaxClasses": {
+      "title": "Maximum RDF Classes",
+      "description": "Maximum number of RDF classes to ingest as tables. Classes are selected deterministically by IRI; truncation is reported in the ingestion status.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "rdfMaxPredicatesPerClass": {
+      "title": "Maximum RDF Predicates Per Class",
+      "description": "Maximum number of predicates to ingest as columns for each RDF class. Truncation is reported in the ingestion status.",
+      "type": "integer",
+      "default": 100,
+      "minimum": 1,
+      "maximum": 1000
+    },
+    "rdfSampleSize": {
+      "title": "RDF Subject Sample Size",
+      "description": "Maximum number of subjects sampled per RDF class when discovering predicates and value types.",
+      "type": "integer",
+      "default": 1000,
+      "minimum": 1,
+      "maximum": 10000
+    },
+    "rdfQueryTimeoutSeconds": {
+      "title": "RDF Query Timeout (seconds)",
+      "description": "Per-query timeout for the bounded SPARQL class-discovery queries. Neptune requires this to be lower than the neptune_query_timeout database parameter.",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1,
+      "maximum": 300
     },
     "propertyFilterPattern": {
       "title": "Property Filter Pattern",

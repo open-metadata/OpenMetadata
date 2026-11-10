@@ -9,14 +9,13 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Neptune (openCypher property graph) source methods.
+Neptune property-graph and RDF source methods.
 
 The graph schema maps onto the database topology as:
 
     database  -> the configured name, or ``default``
-    schemas   -> ``nodes`` and, unless disabled, ``relationships``
-    tables    -> node labels / edge labels
-    columns   -> their properties, typed from neptune.graph.pg_schema()
+    property graphs: ``nodes`` and optional ``relationships`` schemas
+    RDF graphs:      ``classes`` schema with one table per class
 """
 
 import traceback
@@ -42,7 +41,18 @@ from metadata.ingestion.source.database.common_nosql_source import (
     CommonNoSQLSource,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.neptune.connection import run_query
+from metadata.ingestion.source.database.neptune.connection import is_rdf, run_query
+from metadata.ingestion.source.database.neptune.rdf import (
+    DEFAULT_MAX_CLASSES,
+    DEFAULT_MAX_PREDICATES_PER_CLASS,
+    DEFAULT_QUERY_TIMEOUT_SECONDS,
+    DEFAULT_SAMPLE_SIZE,
+    RDF_CLASSES_SCHEMA,
+    RDFClassSpec,
+    RDFGraphSchema,
+    rdf_property_to_column,
+    read_graph_schema,
+)
 from metadata.ingestion.source.database.neptune.schema import (
     GraphElementSpec,
     SchemaReader,
@@ -57,6 +67,7 @@ logger = ingestion_logger()
 NODES_SCHEMA = "nodes"
 RELATIONSHIPS_SCHEMA = "relationships"
 DEFAULT_DATABASE_NAME = "default"
+GraphElement = GraphElementSpec | RDFClassSpec
 
 
 class NeptuneSource(CommonNoSQLSource):
@@ -71,7 +82,7 @@ class NeptuneSource(CommonNoSQLSource):
         self._database: str | None = None
         # Read once per run: the deletion hooks list the schemas again, and a re-read
         # could disagree with what the walk ingested.
-        self._elements: dict[str, dict[str, GraphElementSpec]] | None = None
+        self._elements: dict[str, dict[str, GraphElement]] | None = None
         self._failed_schemas: set[str] = set()
 
     @classmethod
@@ -93,7 +104,10 @@ class NeptuneSource(CommonNoSQLSource):
             self._elements = self._read_graph_schema()
         return list(self._elements)
 
-    def _read_graph_schema(self) -> dict[str, dict[str, GraphElementSpec]]:
+    def _read_graph_schema(self) -> dict[str, dict[str, GraphElement]]:
+        if is_rdf(self.service_connection):
+            return self._read_rdf_graph_schema()
+
         connection = self.service_connection
         reader = SchemaReader(
             lambda query: run_query(self.client, query),
@@ -122,6 +136,42 @@ class NeptuneSource(CommonNoSQLSource):
             elements[RELATIONSHIPS_SCHEMA] = {element.name: element for element in graph.edges}
         return elements
 
+    def _read_rdf_graph_schema(self) -> dict[str, dict[str, RDFClassSpec]]:
+        connection = self.service_connection
+        try:
+            graph: RDFGraphSchema = read_graph_schema(
+                self.client,
+                max_classes=connection.rdfMaxClasses or DEFAULT_MAX_CLASSES,
+                max_predicates=connection.rdfMaxPredicatesPerClass or DEFAULT_MAX_PREDICATES_PER_CLASS,
+                sample_size=connection.rdfSampleSize or DEFAULT_SAMPLE_SIZE,
+                timeout_seconds=connection.rdfQueryTimeoutSeconds or DEFAULT_QUERY_TIMEOUT_SECONDS,
+            )
+        except Exception as exc:
+            self._failed_schemas.add(RDF_CLASSES_SCHEMA)
+            self.status.failed(
+                StackTraceError(
+                    name=f"{self._database}",
+                    error=f"Failed to read the RDF graph schema of [{self._database}]: {exc}",
+                    stackTrace=traceback.format_exc(),
+                )
+            )
+            return {}
+
+        if graph.classes_truncated:
+            self.status.warning(
+                key=self._database,
+                reason=f"Only the first {len(graph.classes)} of {graph.total_classes} RDF classes were ingested; "
+                "increase rdfMaxClasses to include more.",
+            )
+        truncated_predicates = sum(element.predicates_truncated for element in graph.classes)
+        if truncated_predicates:
+            self.status.warning(
+                key=self._database,
+                reason=f"The RDF predicate limit was reached for {truncated_predicates} classes; "
+                "increase rdfMaxPredicatesPerClass to discover more columns.",
+            )
+        return {RDF_CLASSES_SCHEMA: {element.name: element for element in graph.classes}}
+
     def mark_schemas_as_deleted(self):
         for schema_name in self._failed_schemas:
             self.schema_entity_source_state.add(
@@ -147,14 +197,22 @@ class NeptuneSource(CommonNoSQLSource):
             if filter_by_column(self.service_connection.propertyFilterPattern, prop.name):
                 logger.debug("Property [%s.%s.%s] filtered out", schema_name, table_name, prop.name)
                 continue
-            columns.append(property_to_column(prop))
+            if isinstance(element, RDFClassSpec):
+                columns.append(rdf_property_to_column(prop))
+            else:
+                columns.append(property_to_column(prop))
         return columns
 
     def yield_table(self, table_name_and_type) -> Iterable[Either[CreateTableRequest]]:
         schema_name = self.context.get().database_schema
         element = (self._elements or {}).get(schema_name, {}).get(table_name_and_type[0])
         for either in super().yield_table(table_name_and_type):
-            if either.right is not None and element is not None and element.endpoints:
+            if either.right is None or element is None:
+                yield either
+                continue
+            if isinstance(element, RDFClassSpec):
+                either.right.description = Markdown(f"RDF class IRI: {element.iri}")
+            elif element.endpoints:
                 either.right.description = Markdown(
                     "Edge label connecting:\n"
                     + "\n".join(f"- `({source})-[{element.name}]->({target})`" for source, target in element.endpoints)

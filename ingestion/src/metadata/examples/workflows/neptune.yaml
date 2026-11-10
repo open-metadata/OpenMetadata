@@ -4,6 +4,7 @@ source:
   serviceConnection:
     config:
       type: Neptune
+      # graphModel: propertyGraph  # default; use rdf for RDF graphs queried with SPARQL
       hostPort: my-cluster.cluster-xxxx.us-east-1.neptune.amazonaws.com:8182
       awsConfig:
         awsRegion: us-east-1
@@ -13,6 +14,10 @@ source:
       # includeRelationships: true
       # computeSchemaIfMissing: true  # needs neptune-db:WriteDataViaQuery
       # schemaComputeTimeoutSeconds: 900
+      # rdfMaxClasses: 100
+      # rdfMaxPredicatesPerClass: 100
+      # rdfSampleSize: 1000
+      # rdfQueryTimeoutSeconds: 30
   sourceConfig:
     config:
       type: DatabaseMetadata

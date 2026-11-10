@@ -36,7 +36,10 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.database.neptune.connection import (
     NEPTUNE_ERRORS,
+    NEPTUNE_RDF_ERRORS,
+    SPARQL_TEST_QUERY,
     NeptuneChecks,
+    NeptuneRDFChecks,
     endpoint_url,
     host_and_port,
 )
@@ -49,6 +52,7 @@ from metadata.ingestion.source.database.neptune.queries import (
     NEPTUNE_PG_SCHEMA,
     NEPTUNE_PG_SCHEMA_COMPUTE,
 )
+from metadata.ingestion.source.database.neptune.rdf import NeptuneRDFStatisticsUnavailableError
 from metadata.ingestion.source.database.neptune.schema import (
     NeptuneSchemaError,
     NeptuneSchemaFailedError,
@@ -139,6 +143,44 @@ class FakeNeptune:
         if isinstance(response, Exception):
             raise response
         return {"results": [{"schema": response}]}
+
+
+class FakeRDFNeptune:
+    def __init__(self):
+        self.calls: list[tuple[str, int | None]] = []
+
+    def get_rdf_graph_summary(self, mode="basic"):
+        self.calls.append(("summary", None))
+        return {
+            "statusCode": 200,
+            "payload": {
+                "graphSummary": {
+                    "numQuads": 10,
+                    "numClasses": 1,
+                    "classes": ["http://example.org/Person"],
+                    "predicates": [{"http://example.org/name": 1}],
+                }
+            },
+        }
+
+    def execute_sparql_query(self, query, timeout_seconds):
+        self.calls.append((query, timeout_seconds))
+        if query == SPARQL_TEST_QUERY:
+            return []
+        return [
+            {
+                "predicate": {"type": "uri", "value": "http://example.org/name"},
+                "valueType": {
+                    "type": "literal",
+                    "value": "http://www.w3.org/2001/XMLSchema#string",
+                },
+            },
+            {
+                "predicate": {"type": "uri", "value": "http://example.org/knows"},
+                "valueType": {"type": "literal", "value": "iri"},
+                "targetClass": {"type": "uri", "value": "http://example.org/Person"},
+            },
+        ]
 
 
 class Clock:
@@ -595,3 +637,74 @@ class TestConnectionChecks:
         diagnosis = NEPTUNE_ERRORS.classify(client_error("AccessDeniedException"))
         assert "neptune-db:ReadDataViaQuery" in diagnosis.remediation
         assert "neptune-db:WriteDataViaQuery" in diagnosis.remediation
+
+
+class TestRDFSource:
+    def test_rdf_class_becomes_a_table_with_predicate_columns(self):
+        source = build_source(FakeRDFNeptune(), graphModel="rdf")
+        assert source.get_schema_name_list() == ["classes"]
+
+        tables = tables_in(source, "classes")
+        person = tables["person"]
+        assert person.description.root == "RDF class IRI: http://example.org/Person"
+        assert person.databaseSchema.root == "local_neptune.default.classes"
+        columns = columns_of(person)
+        assert columns["name"].dataType == DataType.STRING
+        assert columns["name"].description.root == "RDF predicate IRI: http://example.org/name"
+        assert "Observed linked RDF classes (sampled): http://example.org/Person" in columns["knows"].description.root
+
+    def test_rdf_metadata_uses_summary_then_bounded_class_query(self):
+        client = FakeRDFNeptune()
+        source = build_source(client, graphModel="rdf")
+        source.get_schema_name_list()
+
+        assert client.calls[0] == ("summary", None)
+        (query, timeout) = client.calls[1]
+        assert "LIMIT 1000" in query
+        assert "LIMIT 101" in query
+        assert "hint:queryTimeout 30000" in query
+        assert timeout == 30
+
+    def test_missing_rdf_statistics_is_an_ingestion_failure(self):
+        class NoStatistics(FakeRDFNeptune):
+            def get_rdf_graph_summary(self, mode="basic"):
+                raise client_error("StatisticsNotAvailableException")
+
+        source = build_source(NoStatistics(), graphModel="rdf")
+        assert source.get_schema_name_list() == []
+        (failure,) = source.status.failures
+        assert "statistics are unavailable" in model_str(failure.error)
+        assert "db.t3.medium" in model_str(failure.error)
+
+
+class TestRDFConnectionChecks:
+    def checks(self, client: FakeRDFNeptune) -> NeptuneRDFChecks:
+        config = workflow_config(graphModel="rdf")["source"]["serviceConnection"]["config"]
+        return NeptuneRDFChecks(
+            client=Borrowed(lambda: client),  # pyright: ignore[reportArgumentType]
+            connection=NeptuneConnection.model_validate(config),
+        )
+
+    def test_check_access_uses_read_only_limited_sparql(self):
+        client = FakeRDFNeptune()
+        with patch("metadata.ingestion.source.database.neptune.connection.probe_or_fail"):
+            evidence = run(self.checks(client).check_access)
+
+        assert client.calls == [(SPARQL_TEST_QUERY, 1)]
+        assert "SELECT ?s" in evidence.command
+        assert "LIMIT 1" in evidence.command
+
+    def test_rdf_summary_check_is_read_only(self):
+        client = FakeRDFNeptune()
+        evidence = run(self.checks(client).get_rdf_graph_summary)
+
+        assert client.calls == [("summary", None)]
+        assert evidence.summary == "1 RDF classes available"
+
+    def test_statistics_diagnostic_names_required_engine_and_instance_support(self):
+        diagnosis = NEPTUNE_RDF_ERRORS.classify(NeptuneRDFStatisticsUnavailableError("statistics missing"))
+
+        assert diagnosis.title == "RDF graph summary unavailable"
+        assert "1.2.1.0" in diagnosis.remediation
+        assert "db.t3.medium" in diagnosis.remediation
+        assert "db.t4g.medium" in diagnosis.remediation
