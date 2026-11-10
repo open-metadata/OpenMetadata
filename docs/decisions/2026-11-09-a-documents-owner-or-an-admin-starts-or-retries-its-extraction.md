@@ -70,6 +70,11 @@ every such document without anyone asking for it.
   retried article never keeps its last failure's.
 - **The UI words each refusal itself**, in the user's language, from its status; the server's
   English `message` is for API callers.
+- **404** when the document was deleted or moved to the Archive since the page loaded. The UI says
+  so and hides the action, without reading the document again.
+- **A final refusal is shared.** A 403 or a 404 hides the action on every surface showing that
+  document to that user. It lapses a few minutes after the last of them closes, so a change of
+  owners shows after that or after a reload.
 - **409** leaves the document as it was: extraction is unavailable (with the reason), the document
   is already queued or being extracted, it is neither Failed nor Not processed or has no content
   snapshot, or it changed while the request was stamped (every conditional write lost). The UI
@@ -89,9 +94,15 @@ every such document without anyone asking for it.
   contention (`requeueAfterConditionalUpdateContention`) and its memory run
   (`submitMemoryExtraction`), and an article's create or body edit
   (`PageContextProcessingEngine.submit`, after the write commits).
-- **The one residual:** if every record round loses, the document keeps its in-progress stamp and
-  an error is logged (a request still answers 503). A retry then gets 409 until the document is
-  recovered: a file by restart recovery, an article by its next body edit.
+- **Residuals.** The document keeps its in-progress stamp, with nothing to run it, when:
+  - every record round loses, and an error is logged (a request still answers 503);
+  - the record write itself fails, for example while the database is unavailable, and the error
+    reaches the caller's guard;
+  - the server stops between an article write's commit and its enqueue, since articles have no
+    startup recovery.
+
+  A retry then gets 409 until the document is recovered: a file by restart recovery, an article by
+  its next body edit.
 - **200** carries the document in its new state. A file's carries the fields the Documents list
   reads (`owners,folder,memoryCount,neverExtracted`), so the UI replaces the row with it rather
   than merging it the way a metadata write's response is merged; the two field lists change
