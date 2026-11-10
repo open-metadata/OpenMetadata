@@ -7,7 +7,6 @@ import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescri
 
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -19,7 +18,6 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.Folder;
-import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
@@ -417,16 +415,6 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   public List<ContextFile> listByExtractedSourceHash(String sourceHash, UUID excludeId) {
     return JsonUtils.readObjects(
         contextFileDAO.listByExtractedSourceHash(sourceHash, excludeId.toString()),
-        ContextFile.class);
-  }
-
-  /** Live files with a content snapshot, in one of {@code statuses}, updated in [after, before). */
-  public List<ContextFile> listWithContentInProcessingStatus(
-      Collection<ProcessingStatus> statuses, long updatedAfter, long updatedBefore, int limit) {
-    List<String> values = statuses.stream().map(ProcessingStatus::value).toList();
-    return JsonUtils.readObjects(
-        contextFileDAO.listWithContentByProcessingStatus(
-            values, updatedAfter, updatedBefore, limit),
         ContextFile.class);
   }
 

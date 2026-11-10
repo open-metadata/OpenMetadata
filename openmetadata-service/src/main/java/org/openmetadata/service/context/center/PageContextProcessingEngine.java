@@ -6,6 +6,7 @@ import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
@@ -115,7 +116,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
           "Knowledge pill extraction for page {} was cut short by a server stop; recovery resumes"
               + " it: {}",
           pageId,
-          failure.toString());
+          ExceptionUtils.getRootCauseMessage(failure));
     } else {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, failure);
       try {

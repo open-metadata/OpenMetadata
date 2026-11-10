@@ -26,7 +26,6 @@ import java.util.List;
 import java.util.Map;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.customizer.Bind;
-import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
@@ -117,32 +116,6 @@ public interface KnowledgeAssetDAOs {
         connectionType = POSTGRES)
     List<String> listByExtractedSourceHash(
         @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
-
-    // The updatedAt range rides idx_context_file_updated_at, so the JSON filters see few rows. A
-    // file without a headContentId (a Collate chat upload) has no snapshot to process.
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM context_file "
-                + "WHERE updatedAt >= :updatedAfter AND updatedAt < :updatedBefore "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.processingStatus')) IN (<statuses>) "
-                + "AND JSON_EXTRACT(json, '$.headContentId') IS NOT NULL "
-                + "AND (deleted = false OR deleted IS NULL) "
-                + "ORDER BY updatedAt LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT json FROM context_file "
-                + "WHERE updatedAt >= :updatedAfter AND updatedAt < :updatedBefore "
-                + "AND json ->> 'processingStatus' IN (<statuses>) "
-                + "AND json ->> 'headContentId' IS NOT NULL "
-                + "AND (deleted = false OR deleted IS NULL) "
-                + "ORDER BY updatedAt LIMIT :limit",
-        connectionType = POSTGRES)
-    List<String> listWithContentByProcessingStatus(
-        @BindList("statuses") List<String> statuses,
-        @Bind("updatedAfter") long updatedAfter,
-        @Bind("updatedBefore") long updatedBefore,
-        @Bind("limit") int limit);
 
     @ConnectionAwareSqlQuery(
         value =

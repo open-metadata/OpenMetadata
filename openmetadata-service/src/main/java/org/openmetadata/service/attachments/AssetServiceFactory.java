@@ -136,8 +136,8 @@ public class AssetServiceFactory {
   }
 
   /**
-   * Raises the stop signal before closing, so work the close breaks counts as a server stop, not
-   * a failure. ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
+   * Raises the stop signal before closing, so work the close breaks counts as a server stop.
+   * ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
    */
   static void signalStopThenClose(Runnable close) {
     ServerStopping.set(true);

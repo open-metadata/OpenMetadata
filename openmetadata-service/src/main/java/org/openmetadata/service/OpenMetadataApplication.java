@@ -116,7 +116,6 @@ import org.openmetadata.service.config.source.DeploymentConfigReconciler;
 import org.openmetadata.service.config.source.LocalSettingsRefresher;
 import org.openmetadata.service.config.source.RawConfigCapture;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
-import org.openmetadata.service.context.center.ContextFileRecoveryScheduler;
 import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.csv.CsvAsyncJobManager;
@@ -332,7 +331,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Metrics initialization now handled by MicrometerBundle
 
-    // Before any resource starts work: extraction a stop cuts short is left for recovery.
+    // Before any resource starts work, so extraction can tell a server stop from a failure.
     // ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
     ServerStopping.registerShutdownHook();
     AsyncService.initialize(catalogConfig.getAsyncOperationsConfiguration());
@@ -520,7 +519,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
                 jdbi.onDemand(CollectionDAO.class), Entity.getSearchRepository()));
 
     environment.lifecycle().manage(new ChangeRequestRecoveryScheduler());
-    environment.lifecycle().manage(new ContextFileRecoveryScheduler());
 
     // Register Distributed Job Participant for distributed search indexing
     registerDistributedJobParticipant(environment, jdbi);

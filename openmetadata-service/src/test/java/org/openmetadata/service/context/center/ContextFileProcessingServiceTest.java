@@ -7,8 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -39,7 +37,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -538,25 +535,27 @@ class ContextFileProcessingServiceTest {
 
   /** The read ran on another thread, so only the failure's cause records the interrupt. */
   @Test
-  void anInterruptedTextExtractionStaysAnalyzing() {
+  void anInterruptedTextStageIsFailedAsInterruptedByAStop() {
     when(assetService.read(asset))
         .thenReturn(
             CompletableFuture.failedFuture(
                 new IllegalStateException("Asset read interrupted", new InterruptedException())));
 
-    service(Runnable::run, () -> assetService).process(fileId, contentId);
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
-    verifyLeftAnalyzing();
+    verifyFailedWith(ContextFileProcessingService.INTERRUPTED_BY_STOP);
+    verifyNoMemoryJob();
   }
 
   /** The asset service's own shutdown hook closes object storage under running text extraction. */
   @Test
-  void theAssetServiceClosingDuringAServerStopLeavesTheFileAnalyzing() {
+  void theAssetServiceClosingDuringAServerStopFailsTheFileAsInterrupted() {
     ServerStopping.set(true);
 
-    service(Runnable::run, closedAssetService()).process(fileId, contentId);
+    service(Runnable::run, closedAssetService(), true).process(fileId, contentId);
 
-    verifyLeftAnalyzing();
+    verifyFailedWith(ContextFileProcessingService.INTERRUPTED_BY_STOP);
+    verifyNoMemoryJob();
   }
 
   @Test
@@ -566,6 +565,17 @@ class ContextFileProcessingServiceTest {
     verifyFailedWith(CLOSED_ASSET_SERVICE);
   }
 
+  /** A failure the run determines itself, rather than one it throws, keeps its own reason. */
+  @Test
+  void aGenuineTextFailureWhileTheServerStopsKeepsItsOwnMessage() {
+    ServerStopping.set(true);
+    when(assetService.read(asset)).thenReturn(CompletableFuture.completedFuture(null));
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verifyFailedWith("Unable to read file content from object storage");
+  }
+
   /** What {@code AssetServiceFactory.getService()} throws once its shutdown hook closed it. */
   private static Supplier<AssetService> closedAssetService() {
     return () -> {
@@ -573,13 +583,9 @@ class ContextFileProcessingServiceTest {
     };
   }
 
-  private void verifyLeftAnalyzing() {
-    verify(repository)
-        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    assertEquals(ProcessingStatus.Analyzing, updatedFileCaptor.getValue().getProcessingStatus());
-    verify(contentRepository)
-        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
-    assertEquals(ProcessingStatus.Analyzing, updatedContentCaptor.getValue().getProcessingStatus());
+  private void verifyNoMemoryJob() {
+    verify(jobDao, never())
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
   }
 
   private void stubTextExtraction() throws IOException {
@@ -626,83 +632,6 @@ class ContextFileProcessingServiceTest {
     verify(jobDao)
         .enqueueFileMemoryJob(
             eq(extracting.getId().toString()), anyString(), anyString(), anyString(), eq(true));
-  }
-
-  @ParameterizedTest
-  @EnumSource(
-      value = ProcessingStatus.class,
-      names = {"Uploaded", "Analyzing"})
-  void aFileStrandedPastTheWindowIsResubmitted(ProcessingStatus status) {
-    long now = System.currentTimeMillis();
-    long staleBefore = now - ContextFileProcessingService.TEXT_STAGE_STALE_AFTER.toMillis();
-    file.withProcessingStatus(status).withUpdatedAt(staleBefore - 1);
-    sweepFinds(file);
-    List<Runnable> queued = new ArrayList<>();
-
-    int resubmitted = service(queued::add, () -> assetService).resubmitStaleTextExtraction(now);
-
-    assertEquals(1, resubmitted);
-    assertEquals(1, queued.size());
-    verify(repository)
-        .listWithContentInProcessingStatus(
-            ContextFileProcessingService.TEXT_STAGE_STATUSES,
-            now - ContextFileProcessingService.TEXT_STAGE_SWEEP_LOOKBACK.toMillis(),
-            staleBefore,
-            ContextFileProcessingService.TEXT_STAGE_SWEEP_BATCH);
-  }
-
-  @Test
-  void aFileInsideTheWindowIsLeftAlone() {
-    long now = System.currentTimeMillis();
-    file.withProcessingStatus(ProcessingStatus.Analyzing)
-        .withUpdatedAt(now - ContextFileProcessingService.TEXT_STAGE_STALE_AFTER.toMillis() + 1);
-    sweepFinds(file);
-    List<Runnable> queued = new ArrayList<>();
-
-    int resubmitted = service(queued::add, () -> assetService).resubmitStaleTextExtraction(now);
-
-    assertEquals(0, resubmitted);
-    assertEquals(List.of(), queued);
-  }
-
-  /** Its job, RUNNING or PENDING, belongs to the stale-job reaper. */
-  @Test
-  void anExtractingContextFileIsNeverTouched() {
-    long now = System.currentTimeMillis();
-    file.withProcessingStatus(ProcessingStatus.ExtractingContext)
-        .withUpdatedAt(now - 2 * ContextFileProcessingService.TEXT_STAGE_STALE_AFTER.toMillis());
-    sweepFinds(file);
-    List<Runnable> queued = new ArrayList<>();
-
-    int resubmitted = service(queued::add, () -> assetService).resubmitStaleTextExtraction(now);
-
-    assertEquals(0, resubmitted);
-    assertEquals(List.of(), queued);
-    verify(jobDao, never())
-        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
-  }
-
-  @Test
-  void aFullQueueLeavesTheStrandedFileForTheNextSweep() {
-    long now = System.currentTimeMillis();
-    file.withProcessingStatus(ProcessingStatus.Analyzing)
-        .withUpdatedAt(now - 2 * ContextFileProcessingService.TEXT_STAGE_STALE_AFTER.toMillis());
-    sweepFinds(file);
-    Executor rejectingExecutor =
-        task -> {
-          throw new RejectedExecutionException("queue full");
-        };
-
-    int resubmitted =
-        service(rejectingExecutor, () -> assetService).resubmitStaleTextExtraction(now);
-
-    assertEquals(0, resubmitted);
-    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
-  }
-
-  private void sweepFinds(ContextFile candidate) {
-    when(repository.listWithContentInProcessingStatus(any(), anyLong(), anyLong(), anyInt()))
-        .thenReturn(List.of(candidate));
   }
 
   @Test

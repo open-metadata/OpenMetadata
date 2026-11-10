@@ -6,7 +6,6 @@ import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_
 import static org.openmetadata.service.jobs.Interruptions.isStopInterruption;
 
 import java.io.InputStream;
-import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -20,6 +19,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
@@ -110,19 +110,6 @@ public class ContextFileProcessingService {
           ProcessingStatus.Analyzing,
           ProcessingStatus.ExtractingContext);
 
-  // Text-stage files have no job; ExtractingContext is job-backed and left to the stale-job reaper.
-  static final Set<ProcessingStatus> TEXT_STAGE_STATUSES =
-      Set.of(ProcessingStatus.Uploaded, ProcessingStatus.Analyzing);
-
-  // Text extraction has no timeout of its own; no run of a size-capped upload lasts this long.
-  static final Duration TEXT_STAGE_STALE_AFTER = Duration.ofMinutes(30);
-
-  // Bounds the sweep's index range; a file stranded for longer is left to the startup scan.
-  static final Duration TEXT_STAGE_SWEEP_LOOKBACK = Duration.ofDays(1);
-
-  // Below the text queue's smallest capacity (64), so one sweep cannot overflow an idle queue.
-  static final int TEXT_STAGE_SWEEP_BATCH = 50;
-
   private static Executor createBoundedExecutor(String threadPrefix) {
     int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
     ThreadFactory threadFactory =
@@ -204,50 +191,6 @@ public class ContextFileProcessingService {
         && TRANSIENT_STATUSES.contains(file.getProcessingStatus());
   }
 
-  /**
-   * Resubmits files whose text stage has not moved for {@link #TEXT_STAGE_STALE_AFTER}: a server
-   * that stops after its successor's startup scan (a surge-first rollout) strands them with no job.
-   * A peer still extracting one is unharmed: each write re-reads the row and lands only while it
-   * is current, both runs write the same head content's result, and the memory job is enqueued
-   * once, under the file's row lock. The cost is a second parse.
-   */
-  public int resubmitStaleTextExtraction(long now) {
-    long staleBefore = now - TEXT_STAGE_STALE_AFTER.toMillis();
-    List<ContextFile> candidates =
-        repository.listWithContentInProcessingStatus(
-            TEXT_STAGE_STATUSES,
-            now - TEXT_STAGE_SWEEP_LOOKBACK.toMillis(),
-            staleBefore,
-            TEXT_STAGE_SWEEP_BATCH);
-    int resubmitted = 0;
-    for (ContextFile file : candidates) {
-      if (isStaleTextStage(file, staleBefore) && resubmitText(file)) {
-        resubmitted++;
-      }
-    }
-    return resubmitted;
-  }
-
-  private boolean isStaleTextStage(ContextFile file, long staleBefore) {
-    return file.getHeadContentId() != null
-        && TEXT_STAGE_STATUSES.contains(file.getProcessingStatus())
-        && file.getUpdatedAt() != null
-        && file.getUpdatedAt() < staleBefore;
-  }
-
-  /** Unlike {@link #submit}, a full queue leaves the file to the next sweep instead of failing it. */
-  private boolean resubmitText(ContextFile file) {
-    boolean queued = false;
-    UUID contentId = UUID.fromString(file.getHeadContentId());
-    try {
-      executor.execute(() -> process(file.getId(), contentId));
-      queued = true;
-    } catch (RejectedExecutionException e) {
-      LOG.info("Text extraction queue is full; the next sweep resubmits file {}", file.getId());
-    }
-    return queued;
-  }
-
   void process(UUID fileId, UUID contentId) {
     RequestEntityCache.clear();
     try {
@@ -322,8 +265,8 @@ public class ContextFileProcessingService {
 
   /**
    * Runs the text-extraction stage and returns the resulting text status, or {@code null} when the
-   * run was abandoned (stale content, missing entities, a conditional update that lost to a
-   * concurrent writer, or an interruption).
+   * run was abandoned (stale content, missing entities, or a conditional update that lost to a
+   * concurrent writer).
    */
   private ProcessingStatus extractText(UUID fileId, UUID contentId) {
     try {
@@ -362,23 +305,25 @@ public class ContextFileProcessingService {
     }
   }
 
+  static final String INTERRUPTED_BY_STOP = "Interrupted by a server stop";
+
   /**
-   * A run a server stop cuts short stays Analyzing, with no job: the startup scan or the stale
-   * text-stage sweep resubmits it.
+   * A run a server stop cuts short has no job to resume it, so it is stamped Failed with {@link
+   * #INTERRUPTED_BY_STOP} for its owner to retry.
+   * ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
    */
   private ProcessingStatus recordTextFailure(UUID fileId, UUID contentId, Throwable failure) {
-    ProcessingStatus result = null;
-    if (isStopInterruption(failure)) {
+    boolean stopped = isStopInterruption(failure);
+    if (stopped) {
       LOG.info(
-          "Text extraction for file {} was cut short by a server stop; recovery resumes it: {}",
+          "Text extraction for file {} was interrupted by a server stop: {}",
           fileId,
-          failure.toString());
+          ExceptionUtils.getRootCauseMessage(failure));
     } else {
       LOG.error("Failed to extract text for file {} content {}", fileId, contentId, failure);
-      applyFailure(fileId, contentId, describeFailure(failure));
-      result = ProcessingStatus.Failed;
     }
-    return result;
+    applyFailure(fileId, contentId, stopped ? INTERRUPTED_BY_STOP : describeFailure(failure));
+    return ProcessingStatus.Failed;
   }
 
   private void submitMemoryExtraction(UUID fileId, UUID contentId) {
@@ -452,7 +397,7 @@ public class ContextFileProcessingService {
           "Knowledge pill extraction for file {} was cut short by a server stop; recovery resumes"
               + " it: {}",
           fileId,
-          failure.toString());
+          ExceptionUtils.getRootCauseMessage(failure));
     } else {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, failure);
       applyFailure(fileId, contentId, describeFailure(failure), false);

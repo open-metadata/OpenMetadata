@@ -4,7 +4,7 @@ import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.service.events.consumer.ServerStopping;
 
 /**
- * Work a server stop cuts short is left for recovery, not marked failed.
+ * Tells work a server stop cut short from work that failed on its own.
  * ADR:2026-11-09-a-server-stop-leaves-memory-extraction-for-recovery
  */
 public final class Interruptions {
