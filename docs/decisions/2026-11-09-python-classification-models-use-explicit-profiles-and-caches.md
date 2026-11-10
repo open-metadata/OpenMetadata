@@ -1,7 +1,7 @@
 # Python classification models use explicit profiles and isolated caches
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action); v3 2026-11-10 (independent test setup and native cache adapter); v4 2026-11-10 (standard cache actions and main-only warming)
+- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action); v3 2026-11-10 (independent test setup and native cache adapter); v4 2026-11-10 (standard cache actions and main-only warming); v5 2026-11-10 (disable general uv cache persistence)
 - **Deciders:** Pablo Takara
 - **Guard:** `ingestion/tests/unit/test_python_tooling.py`; DB2 connection tests; reviewer for workflow ordering and cache ownership
 - **Related:** ADR:2026-10-27-local-python-environments-use-locked-profiles; https://github.com/open-metadata/OpenMetadata/pull/37424
@@ -156,3 +156,14 @@ warmer saves. A lookup with `fail-on-cache-miss: true` after saving makes an una
 entry fail the warmer instead of accepting a save warning. Consumers remain restore-only and
 prepare misses independently. Other branches reuse matching default-branch entries; their unique
 model sets can be warmed manually. Different version keys continue to coexist.
+
+## Amendment — 2026-11-10: Disable general uv cache persistence
+
+Shared test setup disables setup-uv cache restore and save. The observed general-cache miss runs
+spent approximately 18–20 seconds installing development and test dependencies, while one general
+cache prune/save took 7.4 seconds. A controlled warm-versus-cold comparison was not available;
+these measurements did not justify retaining the general cache persistence and cleanup machinery.
+
+uv still caches packages within each job. Dedicated immutable model caches, consumer artifacts
+and model cache imports remain enabled. The six consumer cleanup steps before general cache save
+are removed because there is no general save. Existing remote caches are left to expire normally.

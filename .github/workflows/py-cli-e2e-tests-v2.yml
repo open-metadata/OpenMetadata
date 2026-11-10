@@ -169,8 +169,3 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans
           sudo rm -rf "${PWD}/docker-volume"
-
-      - name: Remove model payloads before general uv cache save
-        if: always()
-        run: env/bin/python scripts/prepare_classification_models.py clean --project ingestion
-        shell: bash

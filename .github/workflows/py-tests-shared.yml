@@ -308,11 +308,6 @@ jobs:
           path: ingestion/.coverage
           include-hidden-files: true
 
-      - name: Remove model payloads before general uv cache save
-        if: always()
-        run: env/bin/python scripts/prepare_classification_models.py clean --project ingestion
-        shell: bash
-
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
     needs: [changes, python-matrix, build-distribution, prepare-spacy-model]
@@ -508,11 +503,6 @@ jobs:
           cd ./docker/development
           docker compose down --remove-orphans || true
           sudo rm -rf "${PWD}/docker-volume"
-
-      - name: Remove model payloads before general uv cache save
-        if: always()
-        run: env/bin/python scripts/prepare_classification_models.py clean --project ingestion
-        shell: bash
 
   # Cross-checks that the jobs which were supposed to run actually ran.
   verify:

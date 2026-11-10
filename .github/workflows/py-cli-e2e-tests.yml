@@ -371,11 +371,6 @@ jobs:
             "text": "<!subteam^S0AH093PEQL> 🔥 Failed E2E Test for: ${{ matrix.e2e-test }} 🔥\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           }
 
-    - name: Remove model payloads before general uv cache save
-      if: always()
-      run: env/bin/python scripts/prepare_classification_models.py clean --project ingestion
-      shell: bash
-
   py-cli-e2e-tests-status:
     name: py-cli-e2e-tests-status
     needs: [check-debug, py-cli-e2e-tests]
