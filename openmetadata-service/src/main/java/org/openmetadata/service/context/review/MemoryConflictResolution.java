@@ -37,6 +37,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -200,8 +201,8 @@ public final class MemoryConflictResolution {
   }
 
   /**
-   * An archived memory comes back in its stage when its document is restored, so a decision taken
-   * without it would leave two contradictory memories in use; it waits until the memory is back.
+   * A memory archived with its document comes back in its stage when the document is restored, so
+   * a decision taken without it would leave two contradictory memories in use; it waits until then.
    */
   static void requireNoneArchived(Collection<ContextMemory> disputed) {
     if (disputed.stream().anyMatch(memory -> Boolean.TRUE.equals(memory.getDeleted()))) {
@@ -277,7 +278,26 @@ public final class MemoryConflictResolution {
             LOG.debug("[MemoryConflictReview] disputed memory {} is gone", id, deleted);
           }
         });
-    return disputed;
+    return stillDisputed(disputed, archivedWithSources()::isMarked);
+  }
+
+  /**
+   * Without the memories deleted for good. A restore brings back only a memory its document's
+   * archive took, so one a person deleted, which carries no archive mark, is gone too.
+   */
+  static Map<UUID, ContextMemory> stillDisputed(
+      Map<UUID, ContextMemory> disputed, Predicate<UUID> archivedWithSources) {
+    Map<UUID, ContextMemory> kept = new HashMap<>(disputed);
+    kept.values()
+        .removeIf(
+            memory ->
+                Boolean.TRUE.equals(memory.getDeleted())
+                    && !archivedWithSources.test(memory.getId()));
+    return kept;
+  }
+
+  private static ArchivedWithSources archivedWithSources() {
+    return new ArchivedWithSources(memoryRepository().getDaoCollection().entityExtensionDAO());
   }
 
   /** The same check a direct PATCH superseding that memory would face. */

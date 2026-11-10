@@ -20,7 +20,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -72,6 +74,38 @@ class MemoryConflictResolutionTest {
 
     assertEquals(409, refused.getResponse().getStatus());
     assertEquals(MemoryConflictResolution.DISPUTED_IN_THE_ARCHIVE, refused.getMessage());
+  }
+
+  /**
+   * A memory a person deleted carries no archive mark, and no document restore brings it back, so it
+   * is gone like a permanently deleted one: the decision goes on without it. Only a memory archived
+   * with its document still holds the decision.
+   */
+  @Test
+  void aDisputedMemoryAPersonDeletedIsGoneAndTheDecisionGoesOn() {
+    ContextMemory live = new ContextMemory().withId(UUID.randomUUID());
+    ContextMemory deletedByAPerson =
+        new ContextMemory().withId(UUID.randomUUID()).withDeleted(true);
+    ContextMemory archivedWithItsDocument =
+        new ContextMemory().withId(UUID.randomUUID()).withDeleted(true);
+    Map<UUID, ContextMemory> read =
+        Map.of(
+            live.getId(), live,
+            deletedByAPerson.getId(), deletedByAPerson,
+            archivedWithItsDocument.getId(), archivedWithItsDocument);
+
+    Map<UUID, ContextMemory> disputed =
+        MemoryConflictResolution.stillDisputed(read, archivedWithItsDocument.getId()::equals);
+
+    assertEquals(Set.of(live.getId(), archivedWithItsDocument.getId()), disputed.keySet());
+    Map<UUID, ContextMemory> withoutTheArchivedOne =
+        MemoryConflictResolution.stillDisputed(
+            Map.of(live.getId(), live, deletedByAPerson.getId(), deletedByAPerson), id -> false);
+    assertDoesNotThrow(
+        () -> MemoryConflictResolution.requireNoneArchived(withoutTheArchivedOne.values()));
+    assertThrows(
+        TaskStateConflictException.class,
+        () -> MemoryConflictResolution.requireNoneArchived(disputed.values()));
   }
 
   /** A decision retried after its memory left Draft reads the disputes the task recorded. */
