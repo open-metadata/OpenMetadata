@@ -1,7 +1,7 @@
 # Persona context keeps access, preloading and search independent
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-09 (shared source caching and review corrections) · v3 2026-11-10 (skip invalid saved search scopes)
+- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-09 (shared source caching and review corrections) · v3 2026-11-10 (skip invalid saved search scopes) · v4 2026-11-10 (bound candidate scans)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `PersonaContextBuilderTest`, `PersonaContextSourceCacheTest`, `PersonaContextVisibilityTest`, `PersonaRepositoryTest`, `PersonaAIContextIT`
 - **Related:** [AI persona Context release feedback](https://app.notion.com/p/3d0b4572302480f182a5f2ea4ee3572b)
@@ -71,7 +71,7 @@ Data-product expansion retains lightweight member contexts. It does not run per-
 or data-quality builds; direct asset rules still load those sections when requested.
 
 Apply `maxAssets` after checking candidate visibility, continuing through search pages until the
-visible selection is full or candidates are exhausted. If selection stops before every candidate
+visible selection is full, candidates are exhausted or the rule's scan budget is spent. If selection stops before every candidate
 was checked, omit the optional `matched` total, mark the document truncated and say the total is
 unavailable in markdown. A selected count must never masquerade as the complete visible total.
 Continuation cursors and short or empty pages determine exhaustion. Search totals can be capped
@@ -94,3 +94,16 @@ saved definition or asset permissions. New or changed filters still validate on 
 search still reports a service error during save validation or context generation.
 Active-persona MCP searches use the same validated scopes and source-validation cache, retaining
 their existing logged fallback when scope resolution is unavailable.
+
+## Amendment: bound candidate scans
+
+Each preloaded rule checks at most 1,000 candidates per build, including its root search results
+and all expanded data-product members. This matches the maximum allowed `maxAssets`, permits
+filling the largest selection when candidates are visible, and bounds work independently of
+catalog size. Product pages request only the remaining budget, and their source-cache key includes
+that limit. Permission checks remain fresh on each read. Materialization version 4 invalidates
+documents cached before these scan and truncation semantics.
+
+When the budget stops a scan before exhaustion, keep the visible selection, leave `matched`
+unknown and mark the document truncated. A fully exhausted scan retains its exact visible count,
+including zero. Engine totals remain hints rather than pagination stop conditions.

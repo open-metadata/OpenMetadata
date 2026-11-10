@@ -78,8 +78,12 @@ final class PersonaContextSourceCache {
   }
 
   PersonaContextBuilder.ProductPage productPage(
-      Scope scope, String fqn, int offset, Supplier<PersonaContextBuilder.ProductPage> load) {
-    return products.get(new ProductKey(scope, fqn, offset), ignored -> load.get());
+      Scope scope,
+      String fqn,
+      int offset,
+      int limit,
+      Supplier<PersonaContextBuilder.ProductPage> load) {
+    return products.get(new ProductKey(scope, fqn, offset, limit), ignored -> load.get());
   }
 
   void validate(Scope scope, ContextRule rule, Runnable validate) {
@@ -129,7 +133,7 @@ final class PersonaContextSourceCache {
 
   private record EntityKey(Scope scope, String entityType, String fqn) {}
 
-  private record ProductKey(Scope scope, String fqn, int offset) {}
+  private record ProductKey(Scope scope, String fqn, int offset, int limit) {}
 
   private record RuleKey(Scope scope, String ruleName) {}
 

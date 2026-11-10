@@ -42,6 +42,16 @@ import org.openmetadata.service.search.SearchResultListMapper;
 
 class PersonaContextSourceCacheTest {
   @Test
+  void dataProductSourcePagesRespectTheRequestedCandidateLimit() {
+    PersonaContextSourceCache cache = new PersonaContextSourceCache();
+    var scope = cache.scope(persona());
+    var larger = new PersonaContextBuilder.ProductPage(List.of(), 10, 1000);
+    var smaller = new PersonaContextBuilder.ProductPage(List.of(), 5, 1000);
+    assertEquals(larger, cache.productPage(scope, "product", 0, 10, () -> larger));
+    assertEquals(smaller, cache.productPage(scope, "product", 0, 5, () -> smaller));
+  }
+
+  @Test
   void unapprovedOrMissingKnowledgeIsNotReloadedOnEveryRead() {
     PersonaContextSourceCache cache = new PersonaContextSourceCache();
     var scope = cache.scope(persona());

@@ -82,6 +82,7 @@ public class PersonaContextBuilder {
   private static final int DATA_PRODUCT_ASSET_BATCH_SIZE = 1000;
   static final int METRIC_ASSET_BATCH_SIZE = 1000;
   private static final int DEFAULT_MAX_ASSETS = 200;
+  private static final int MAX_CANDIDATES_PER_RULE = 1000;
   private static final List<String> KNOWLEDGE_ENTITY_TYPES =
       List.of(Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC);
   private static final Set<String> ASSET_ENTITY_TYPES =
@@ -264,7 +265,8 @@ public class PersonaContextBuilder {
       if (isFilteredInSearch(rule)) {
         continue;
       }
-      RuleSearchResult matches = search(rule);
+      ScanBudget scanBudget = new ScanBudget();
+      RuleSearchResult matches = search(rule, scanBudget);
       List<SelectedEntity> selected = new ArrayList<>();
       int maxAssets = rule.getMaxAssets() == null ? DEFAULT_MAX_ASSETS : rule.getMaxAssets();
       for (Map<String, Object> document : matches.documents()) {
@@ -284,7 +286,7 @@ public class PersonaContextBuilder {
           if (Entity.DATA_PRODUCT.equals(rule.getEntityType())
               && Boolean.TRUE.equals(rule.getFullyRendered())) {
             int remaining = maxAssets - selected.size();
-            for (SelectedEntity member : expandDataProductAssets(entity, remaining)) {
+            for (SelectedEntity member : expandDataProductAssets(entity, remaining, scanBudget)) {
               String memberFqn = member.context().getFullyQualifiedName();
               String memberType = member.context().getEntityType();
               if (!nullOrEmpty(memberFqn)
@@ -297,7 +299,8 @@ public class PersonaContextBuilder {
           }
         }
       }
-      results.add(new RuleMaterialization(rule, matches.matched(), selected));
+      results.add(
+          new RuleMaterialization(rule, scanBudget.truncated ? null : matches.matched(), selected));
     }
     return results;
   }
@@ -338,6 +341,10 @@ public class PersonaContextBuilder {
   }
 
   RuleSearchResult search(ContextRule rule) {
+    return search(rule, new ScanBudget());
+  }
+
+  private RuleSearchResult search(ContextRule rule, ScanBudget scanBudget) {
     if (searchRepository == null) {
       throw new IllegalStateException("Search is unavailable while materializing persona context");
     }
@@ -354,8 +361,8 @@ public class PersonaContextBuilder {
     SearchSortFilter sort = new SearchSortFilter(sortField, "asc", null, null);
     String queryFilter = activeEntityFilter(rule.getQueryFilter());
     try {
-      while (documents.size() < maxAssets) {
-        int pageSize = SEARCH_BATCH_SIZE;
+      while (documents.size() < maxAssets && scanBudget.remaining > 0) {
+        int pageSize = Math.min(SEARCH_BATCH_SIZE, scanBudget.remaining);
         SearchResultListMapper page = searchPage(rule, queryFilter, sort, pageSize, searchAfter);
         if (searchAfter == null) {
           matched = page.getTotal() > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) page.getTotal();
@@ -364,7 +371,9 @@ public class PersonaContextBuilder {
           exhausted = true;
           break;
         }
-        for (Map<String, Object> document : page.getResults()) {
+        int candidates = Math.min(scanBudget.remaining, page.getResults().size());
+        scanBudget.remaining -= candidates;
+        for (Map<String, Object> document : page.getResults().subList(0, candidates)) {
           if (canView(rule.getEntityType(), stringValue(document.get("fullyQualifiedName")))) {
             visibleCount++;
             if (documents.size() < maxAssets) {
@@ -373,7 +382,9 @@ public class PersonaContextBuilder {
           }
         }
         searchAfter = page.getLastHitSortValues();
-        exhausted = searchAfter == null || page.getResults().size() < pageSize;
+        exhausted =
+            candidates == page.getResults().size()
+                && (searchAfter == null || page.getResults().size() < pageSize);
         if (exhausted) {
           break;
         }
@@ -389,6 +400,7 @@ public class PersonaContextBuilder {
           Response.status(Response.Status.SERVICE_UNAVAILABLE).build(),
           exception instanceof UncheckedIOException failure ? failure.getCause() : exception);
     }
+    scanBudget.truncated |= !exhausted && scanBudget.remaining == 0;
     Integer visibleMatched = exhausted ? visibleCount : null;
     if (authorizer == null) {
       visibleMatched = matched;
@@ -572,9 +584,13 @@ public class PersonaContextBuilder {
   }
 
   protected List<SelectedEntity> expandDataProductAssets(
-      SelectedEntity dataProduct, int maxAssets) {
+      SelectedEntity dataProduct, int maxAssets, ScanBudget scanBudget) {
     List<SelectedEntity> members = new ArrayList<>();
     if (nullOrEmpty(dataProduct.id()) || maxAssets <= 0) {
+      return members;
+    }
+    if (scanBudget.remaining == 0) {
+      scanBudget.truncated = true;
       return members;
     }
     UUID dataProductId;
@@ -588,37 +604,50 @@ public class PersonaContextBuilder {
       return members;
     }
     int offset = 0;
-    while (members.size() < maxAssets) {
+    while (members.size() < maxAssets && scanBudget.remaining > 0) {
       int currentOffset = offset;
+      int pageSize = Math.min(DATA_PRODUCT_ASSET_BATCH_SIZE, scanBudget.remaining);
       Supplier<ProductPage> load =
           () ->
               new PersonaContextBuilder(persona, searchRepository)
-                  .loadDataProductPage(dataProductId, currentOffset);
+                  .loadDataProductPage(dataProductId, currentOffset, pageSize);
       ProductPage page =
           sourceCache == null
               ? load.get()
               : sourceCache.productPage(
-                  sourceScope, dataProduct.context().getFullyQualifiedName(), offset, load);
-      for (SelectedEntity candidate : page.entities()) {
-        if (members.size() < maxAssets
-            && canView(
-                candidate.context().getEntityType(), candidate.context().getFullyQualifiedName())) {
+                  sourceScope,
+                  dataProduct.context().getFullyQualifiedName(),
+                  offset,
+                  pageSize,
+                  load);
+      int checked = 0;
+      for (SelectedEntity candidate :
+          page.entities().subList(0, Math.min(page.entities().size(), pageSize))) {
+        if (members.size() >= maxAssets) {
+          break;
+        }
+        checked++;
+        if (canView(
+            candidate.context().getEntityType(), candidate.context().getFullyQualifiedName())) {
           members.add(candidate);
         }
       }
+      scanBudget.remaining -= Math.min(scanBudget.remaining, page.nextOffset() - offset);
+      scanBudget.truncated |= checked < page.entities().size();
       if (page.nextOffset() <= offset || page.nextOffset() >= page.total()) {
         break;
       }
+      scanBudget.truncated |= members.size() >= maxAssets || scanBudget.remaining == 0;
       offset = page.nextOffset();
     }
     return members;
   }
 
-  private ProductPage loadDataProductPage(UUID dataProductId, int offset) {
+  private ProductPage loadDataProductPage(UUID dataProductId, int offset, int limit) {
     DataProductRepository repository =
         (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
     ResultList<EntityReference> page =
-        repository.getDataProductAssets(dataProductId, DATA_PRODUCT_ASSET_BATCH_SIZE, offset);
+        repository.getDataProductAssets(dataProductId, limit, offset);
     List<SelectedEntity> members = new ArrayList<>();
     Map<String, List<String>> fqnsByType = new LinkedHashMap<>();
     for (EntityReference asset : listOrEmpty(page.getData())) {
@@ -1190,6 +1219,11 @@ public class PersonaContextBuilder {
       List<RuleMaterialization> rules, SharedKnowledge knowledge, boolean knowledgeOverflowed) {}
 
   record ProductPage(List<SelectedEntity> entities, int nextOffset, long total) {}
+
+  static final class ScanBudget {
+    private int remaining = MAX_CANDIDATES_PER_RULE;
+    private boolean truncated;
+  }
 
   public record RulePreview(int matchedCount, List<String> sampleNames) {}
 
