@@ -78,8 +78,8 @@ jobs:
               - 'conf/**'
               - 'bin/**'
 
-  # The openmetadata-service unit tests are pure JVM tests with no database
-  # interaction (no testcontainers, no JDBC). The {mysql, postgresql} matrix used
+  # The openmetadata-service unit tests need no shared database; the few classes
+  # that touch one start their own Testcontainers. The {mysql, postgresql} matrix used
   # to run the suite twice with different `-Pmysql` / `-Ppostgresql` profiles, but
   # those profiles are only defined in openmetadata-sdk/pom.xml and only affect
   # failsafe (integration) tests that aren't enabled in this workflow. Result:
@@ -97,8 +97,12 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v6
+      # Restore-only here; the save after the build runs on push to main only.
+      # A PR-scoped copy is readable by that PR alone but still evicts the
+      # main-scoped caches every run restores from the shared 10 GB budget.
+      - name: Restore Maven dependencies
+        id: maven-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -111,59 +115,29 @@ jobs:
           java-version: "21"
           distribution: "temurin"
 
-      - name: Install Ubuntu dependencies
-        timeout-minutes: 15
-        run: |
-          # The hosted-runner Azure apt mirror intermittently blackholes connections;
-          # apt then falls back to archive.ubuntu.com and can hang forever with no
-          # output, burning the whole job timeout. Bound every fetch and retry.
-          sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null <<'APTCONF'
-          Acquire::Retries "3";
-          Acquire::http::Timeout "30";
-          Acquire::https::Timeout "30";
-          Acquire::http::No-Cache "true";
-          APTCONF
-          # Keep the whole retry budget strictly inside this step's timeout-minutes.
-          # Otherwise the outer deadline truncates a retry and kills the step before
-          # the helper can say why it gave up, which is the failure we're fixing.
-          APT_BUDGET=600
-          APT_DEADLINE=$((SECONDS + APT_BUDGET))
-          apt_retry() {
-            local limit=$1; shift
-            local i remaining
-            for i in 1 2 3; do
-              remaining=$((APT_DEADLINE - SECONDS))
-              if [ "$remaining" -le 30 ]; then
-                echo "::error::apt-get $1 gave up: exhausted the ${APT_BUDGET}s apt budget"
-                return 1
-              fi
-              if [ "$limit" -gt "$remaining" ]; then
-                limit=$remaining
-              fi
-              if sudo timeout "$limit" apt-get "$@"; then
-                return 0
-              fi
-              if [ "$i" -lt 3 ]; then
-                echo "::warning::apt-get $1 failed or hung (attempt $i/3); retrying in 10s"
-                sleep 10
-              fi
-            done
-            echo "::error::apt-get $1 failed after 3 attempts"
-            return 1
-          }
-          apt_retry 240 update
-          apt_retry 300 install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          librdkafka-dev unixodbc-dev libevent-dev jq
-          sudo make install_antlr_cli
-
+      # Two surefire forks halve the wall time on the 4-vCPU runner. Each fork is
+      # its own JVM, so the static swaps behind @Isolated classes never meet, and
+      # the Testcontainers classes start their own containers on random ports.
+      # Memory: two forks at the default 1/4-of-RAM max heap (4 GB each on 16 GB)
+      # plus Maven and the containers still fit. No -Pstatic-code-analysis: its
+      # JaCoCo agent slowed every test, yet `package` never builds the report and
+      # nothing uploads it. No apt/ANTLR install either: nothing here uses them
+      # (openmetadata-spec's prepare_model_schemas.py needs only stdlib python3).
       - name: Run openmetadata-service unit tests
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B clean package -pl openmetadata-service -am \
-            -Pstatic-code-analysis \
-            -DfailIfNoTests=false \
-            -Dsonar.skip=true
+            -DforkCount=2 \
+            -DfailIfNoTests=false
+
+      - name: Save Maven dependencies
+        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
@@ -184,8 +158,12 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v6
+      # Restore-only here; the save after the build runs on push to main only.
+      # A PR-scoped copy is readable by that PR alone but still evicts the
+      # main-scoped caches every run restores from the shared 10 GB budget.
+      - name: Restore Maven dependencies
+        id: maven-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -205,6 +183,14 @@ jobs:
       - name: Run k8s-operator unit tests
         run: |
           mvn -B test -pl openmetadata-k8s-operator
+
+      - name: Save Maven dependencies
+        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
@@ -230,8 +216,12 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      - name: Cache Maven dependencies
-        uses: actions/cache@v6
+      # Restore-only here; the save after the build runs on push to main only.
+      # A PR-scoped copy is readable by that PR alone but still evicts the
+      # main-scoped caches every run restores from the shared 10 GB budget.
+      - name: Restore Maven dependencies
+        id: maven-cache
+        uses: actions/cache/restore@v6
         with:
           path: ~/.m2
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
@@ -258,6 +248,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           mvn -B -DskipTests package -pl openmetadata-dist -am
+
+      - name: Save Maven dependencies
+        if: github.event_name == 'push' && steps.maven-cache.outputs.cache-hit != 'true'
+        continue-on-error: true
+        uses: actions/cache/save@v6
+        with:
+          path: ~/.m2
+          key: ${{ steps.maven-cache.outputs.cache-primary-key }}
 
       - name: Smoke test the server image
         run: ./scripts/docker_smoke_test.sh

@@ -13,6 +13,8 @@
 Conftest for profiler tests
 """
 
+import types
+from pathlib import Path
 from uuid import UUID
 
 from pytest import fixture
@@ -23,6 +25,27 @@ from metadata.generated.schema.entity.services.connections.metadata.openMetadata
     OpenMetadataConnection,
 )
 from metadata.ingestion.connections.session import create_and_bind_session
+
+# compute_metrics_in_thread runs a full gc.collect() after every metric. In a
+# worker that has imported the whole unit suite each call takes seconds, and
+# test_metrics.py computes almost 500 metrics, so the collections alone kept one
+# CI worker busy for about 25 minutes. Only the modules listed here skip it;
+# sqlalchemy/test_profiler_interface_gc.py checks the real collection.
+GC_STUBBED_MODULES = frozenset(
+    {
+        "sqlalchemy/test_metrics.py",
+    }
+)
+
+
+@fixture(autouse=True)
+def skip_forced_gc_in_metric_heavy_modules(request, monkeypatch):
+    module = request.path.relative_to(Path(__file__).parent).as_posix()
+    if module in GC_STUBBED_MODULES:
+        monkeypatch.setattr(
+            "metadata.profiler.interface.sqlalchemy.profiler_interface.gc",
+            types.SimpleNamespace(collect=lambda *_args, **_kwargs: 0),
+        )
 
 
 def metadata_connection_object():

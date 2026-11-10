@@ -39,6 +39,7 @@ on:
       - "Makefile"
       - "bootstrap/**"
       - ".github/scripts/classify_test_outcome.py"
+      - ".github/scripts/configure_docker_storage.sh"
       - ".github/workflows/integration-tests-postgres-elasticsearch-redis.yml"
   # PRs trigger this workflow only so that `integration-tests-postgres-elasticsearch-redis` can be
   # a required check: every job is skipped by its `if:`, so no runner starts, and GitHub counts a
@@ -99,6 +100,7 @@ jobs:
               - 'Makefile'
               - 'bootstrap/**'
               - '.github/scripts/classify_test_outcome.py'
+              - '.github/scripts/configure_docker_storage.sh'
               - '.github/workflows/integration-tests-postgres-elasticsearch-redis.yml'
 
   integration-test-build:
@@ -216,7 +218,18 @@ jobs:
           - name: multi-node
           - name: retry-queue
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The hosted runner starts with ~86 GB free and a lane adds ~6 GB, so the ~3 minute
+      # SDK purge only runs when the script finds less space than Docker needs.
+      - name: Check Docker storage
+        id: docker-storage
+        continue-on-error: true
+        run: bash .github/scripts/configure_docker_storage.sh
       - name: Free Disk Space (Ubuntu)
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: true
@@ -226,11 +239,9 @@ jobs:
           large-packages: true
           docker-images: false
           swap-storage: true
-
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
+      - name: Check Docker storage after freeing disk space
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
+        run: bash .github/scripts/configure_docker_storage.sh
       - name: Cache Maven dependencies
         uses: actions/cache@v6
         with:
@@ -244,51 +255,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-
-      - name: Install Ubuntu dependencies
-        timeout-minutes: 15
-        run: |
-          # The hosted-runner Azure apt mirror intermittently blackholes connections;
-          # apt then falls back to archive.ubuntu.com and can hang forever with no
-          # output, burning the whole job timeout. Bound every fetch and retry.
-          sudo tee /etc/apt/apt.conf.d/99-ci-timeouts >/dev/null <<'APTCONF'
-          Acquire::Retries "3";
-          Acquire::http::Timeout "30";
-          Acquire::https::Timeout "30";
-          Acquire::http::No-Cache "true";
-          APTCONF
-          # Keep the whole retry budget strictly inside this step's timeout-minutes.
-          # Otherwise the outer deadline truncates a retry and kills the step before
-          # the helper can say why it gave up, which is the failure we're fixing.
-          APT_BUDGET=600
-          APT_DEADLINE=$((SECONDS + APT_BUDGET))
-          apt_retry() {
-            local limit=$1; shift
-            local i remaining
-            for i in 1 2 3; do
-              remaining=$((APT_DEADLINE - SECONDS))
-              if [ "$remaining" -le 30 ]; then
-                echo "::error::apt-get $1 gave up: exhausted the ${APT_BUDGET}s apt budget"
-                return 1
-              fi
-              if [ "$limit" -gt "$remaining" ]; then
-                limit=$remaining
-              fi
-              if sudo timeout "$limit" apt-get "$@"; then
-                return 0
-              fi
-              if [ "$i" -lt 3 ]; then
-                echo "::warning::apt-get $1 failed or hung (attempt $i/3); retrying in 10s"
-                sleep 10
-              fi
-            done
-            echo "::error::apt-get $1 failed after 3 attempts"
-            return 1
-          }
-          apt_retry 240 update
-          apt_retry 300 install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          libevent-dev jq
-          sudo make install_antlr_cli
 
       - name: Download Integration Test Runtime
         uses: actions/download-artifact@v7

@@ -21,6 +21,9 @@ on:
       - "**.yml"
       - ".github/scripts/check_pr_workflow_security.py"
       - ".github/scripts/tests/test_pr_workflow_security.py"
+      - ".github/scripts/tests/test_ci_speed_*.py"
+      - ".github/scripts/configure_docker_storage.sh"
+      - "openmetadata-ui/src/main/resources/ui/jest.config.js"
 
 permissions:
   contents: read
@@ -54,6 +57,12 @@ jobs:
           source env/bin/activate
           python .github/scripts/check_pr_workflow_security.py
           python -m pytest .github/scripts/tests/test_pr_workflow_security.py -q
+
+      # Speed settings that are easy to undo by accident (cache saves on PRs, disk purges, worker counts).
+      - name: Verify CI speed guards
+        run: |
+          source env/bin/activate
+          python -m pytest .github/scripts/tests/test_ci_speed_*.py -q
 
       # Add back linting once we have 10/10 on main
       - name: Code style check
