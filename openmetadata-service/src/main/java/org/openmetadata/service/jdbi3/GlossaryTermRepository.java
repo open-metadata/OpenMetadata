@@ -146,6 +146,7 @@ import org.openmetadata.service.security.ChangeActor;
 import org.openmetadata.service.security.PatchRequester;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1774,7 +1775,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     // displayName change
     if (!Objects.equals(original.getFullyQualifiedName(), updated.getFullyQualifiedName())
         || !Objects.equals(original.getDisplayName(), updated.getDisplayName())) {
-      updateAssetIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName());
+      updateAssetIndexes(original.getFullyQualifiedName(), updated.getFullyQualifiedName(), false);
     }
   }
 
@@ -2161,12 +2162,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
     }
   }
 
-  private void updateAssetIndexes(String oldFqn, String newFqn) {
-    searchRepository.deferIfFlushScopeActive(
+  // A reviewer accepting a held move or rename does not wait for the tagged assets to be
+  // rewritten: an update-by-query across every index can outlast the request on a large cluster,
+  // which is why an unheld move already runs as a background job. It still starts after commit.
+  private void updateAssetIndexes(String oldFqn, String newFqn, boolean inBackground) {
+    Runnable rewrite =
         () ->
             searchRepository
                 .getSearchClient()
-                .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN),
+                .updateGlossaryTermByFqnPrefix(GLOBAL_SEARCH_ALIAS, oldFqn, newFqn, TAGS_FQN);
+    searchRepository.deferIfFlushScopeActive(
+        inBackground ? () -> AsyncService.getInstance().execute(rewrite) : rewrite,
         "updateGlossaryTermByFqnPrefix",
         null,
         newFqn,
@@ -2729,7 +2735,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
 
       if (parentChanged || glossaryChanged || nameChanged) {
         invalidateTerm(updated.getId());
-        updateAssetIndexes(oldFqn, newFqn);
+        updateAssetIndexes(oldFqn, newFqn, isApprovedChange());
       }
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
@@ -2797,7 +2803,7 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             "parent", original.getParent(), updated.getParent(), true, entityReferenceMatch);
         invalidateTerm(updated.getId());
       }
-      updateAssetIndexes(oldFqn, newFqn);
+      updateAssetIndexes(oldFqn, newFqn, isApprovedChange());
 
       EntityRepository.finishInvalidateCacheForRenameCascade(Entity.GLOSSARY_TERM, renamedTerms);
       reindexRenamedDescendants(Entity.GLOSSARY_TERM, renamedTerms, newFqn);
