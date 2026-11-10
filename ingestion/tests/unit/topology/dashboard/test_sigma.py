@@ -1712,6 +1712,21 @@ def test_sql_lineage_uses_sql_to_disambiguate_labeled_columns(lineage_source):
             "SELECT CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS; SELECT ORDER_STATUS FROM SALES.PUBLIC.ORDERS",
             {"CUSTOMERS": [], "ORDERS": []},
         ),
+        (
+            "SELECT CUSTOMER_ID FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [], "ORDERS": []},
+        ),
+        (
+            "SELECT CUSTOMER_NAME, ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_NAME", "Customer Name")], "ORDERS": [("ORDER_STATUS", "Order Status")]},
+        ),
+        # Parsed paths cannot tell this from an unqualified CUSTOMER_ID, so it is withheld too
+        (
+            "SELECT CONCAT(c.CUSTOMER_ID, o.CUSTOMER_ID) AS ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [], "ORDERS": []},
+        ),
     ],
     ids=[
         "constant",
@@ -1725,6 +1740,9 @@ def test_sql_lineage_uses_sql_to_disambiguate_labeled_columns(lineage_source):
         "cte",
         "insert",
         "multiple-statements",
+        "unqualified-join-column-in-both",
+        "unqualified-join-column-in-one",
+        "same-column-of-both-tables",
     ],
 )
 def test_sql_lineage_uses_query_column_provenance(lineage_source, sql, expected):
@@ -1878,6 +1896,28 @@ def test_a_source_table_missing_from_openmetadata_keeps_proven_column_lineage(li
             (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
         ]
     }
+
+
+def test_an_unqualified_column_is_not_linked_when_a_missing_table_could_hold_it(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[
+            WorkbookQuery(
+                elementId="amountByCustomer",
+                sql="SELECT CUSTOMER_NAME, o.ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS c "
+                "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            )
+        ]
+    )
+    search = lineage_source.metadata.search_in_any_service
+    lineage_source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **kwargs: (
+        None
+        if fqn_search_string.lower().endswith(".orders")
+        else search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+    )
+
+    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, "mock_mysql"))
+
+    assert column_links(results) == {CUSTOMERS.fullyQualifiedName.root: []}
 
 
 def test_dashboard_records_when_the_workbook_was_created_and_updated(sigma_over_http, routes):

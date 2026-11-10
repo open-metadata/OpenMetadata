@@ -525,6 +525,23 @@ class SigmaSource(DashboardServiceSource):
         return [path for path in explicit_paths + wildcard_paths if normalize_column_name(path[2]) not in ambiguous]
 
     @staticmethod
+    def _omit_ambiguous_sql_columns(
+        column_paths: list[tuple[str, str, str]], resolved_tables: dict[str, Table]
+    ) -> list[tuple[str, str, str]]:
+        """
+        Omit outputs whose source column more than one table could hold. The parser gives an unqualified column a
+        path from every table it reads, which looks the same as an expression over that column of two tables.
+        """
+        tables_by_source: dict[tuple[str, str], set[str]] = {}
+        for table, column, output in column_paths:
+            table_entity = resolved_tables.get(table)
+            # A table missing from OpenMetadata, or without known columns, could hold the column too
+            if not (table_entity and table_entity.columns) or get_column_fqn(table_entity=table_entity, column=column):
+                tables_by_source.setdefault((normalize_column_name(output), column.lower()), set()).add(table)
+        ambiguous = {output for (output, _), tables in tables_by_source.items() if len(tables) > 1}
+        return [path for path in column_paths if normalize_column_name(path[2]) not in ambiguous]
+
+    @staticmethod
     def _get_sql_column_lineage(
         column_paths: list[tuple[str, str, str]],
         source_table: str,
@@ -630,7 +647,9 @@ class SigmaSource(DashboardServiceSource):
                         continue
                     if isinstance(table_entity, Table):
                         resolved_tables[source_table] = table_entity
-                column_paths = self._expand_sql_wildcards(column_paths, resolved_tables)
+                column_paths = self._omit_ambiguous_sql_columns(
+                    self._expand_sql_wildcards(column_paths, resolved_tables), resolved_tables
+                )
                 for source_table, table_entity in resolved_tables.items():
                     yield self._get_add_lineage_request(
                         to_entity=data_model_entity,
