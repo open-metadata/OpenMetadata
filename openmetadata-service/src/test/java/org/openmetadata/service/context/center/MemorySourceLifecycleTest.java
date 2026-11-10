@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
@@ -1121,6 +1122,51 @@ class MemorySourceLifecycleTest {
     assertEquals(Set.of(created.getFirst().getId()), edges.mentionedBy(restored));
     assertEquals(Set.of(memory.getId()), edges.mentionedBy(orgWide), "kept for its restore");
     verifyArchived(memories, memory.getId());
+  }
+
+  /**
+   * Restoring the private document of a memory a person anchored on a table, its only document,
+   * would show that document to the table's readers. It takes the copy, and the memory stays live on
+   * its table with no document link: a restore never deletes the memory it brought back.
+   */
+  @Test
+  void restoringTheOnlyDocumentOfAnAssetAnchoredMemoryKeepsTheMemoryLiveBesideTheCopy() {
+    EntityReference restored = contextFile("Private document");
+    EntityReference table = table("orders");
+    ContextMemory memory =
+        anchoredMemory(table).withEntityStatus(ContextMemoryStatus.DRAFT).withDeleted(true);
+    Edges edges = new Edges();
+    edges.anchor(table, memory.getId());
+    edges.mention(restored, memory.getId());
+    Map<UUID, ContextMemory> stored = storedAs(memory);
+    marked(memory);
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        deletesRecorded(
+            restoresRecorded(
+                createsKept(writesKept(spy(repository), stored, edges), created, edges)));
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+      resolveReferences(entities, restored, table, memory.getEntityReference().withDeleted(true));
+      storedFile(entities, restored, MemoryVisibility.PRIVATE, user("owner"));
+
+      new MemorySourceLifecycle(memories)
+          .restoreExtractedMemories(restored.getId(), restored.getType());
+    }
+
+    verify(memories).restoreEntity(Entity.ADMIN_USER_NAME, memory.getId());
+    verify(memories, never()).delete(any(), eq(memory.getId()), anyBoolean(), anyBoolean());
+    assertEquals(1, created.size());
+    assertEquals(ContextMemoryStatus.DRAFT, created.getFirst().getEntityStatus());
+    assertEquals(Set.of(created.getFirst().getId()), edges.mentionedBy(restored));
+    assertEquals(ContextMemoryStatus.DRAFT, stored.get(memory.getId()).getEntityStatus());
+    verify(dispatcher, atLeastOnce())
+        .onEntityUpdated(
+            argThat((EntityReference ref) -> memory.getId().equals(ref.getId())), isNull());
   }
 
   /**

@@ -232,22 +232,24 @@ public class MemorySourceLifecycle {
 
   /**
    * Once copies took documents from the live memory, one that only archived documents still state
-   * waits in the Archive with them and one that none states is deleted; any other is refreshed.
+   * waits in the Archive with them. Any other stays live where it is anchored, and is refreshed,
+   * even with no document left: an archive or a restore never deletes a memory.
    */
   private void settle(UUID memoryId) {
     List<EntityReference> documents = sources(memoryId);
-    if (documents.stream().anyMatch(document -> !isArchived(document))) {
-      memories.refreshSearchDocument(memoryId);
+    if (!documents.isEmpty() && documents.stream().allMatch(MemorySourceLifecycle::isArchived)) {
+      archive(memoryId);
     } else {
-      retire(memoryId, documents.isEmpty());
+      memories.refreshSearchDocument(memoryId);
     }
   }
 
-  private void retire(UUID memoryId, boolean unstated) {
-    if (unstated) {
+  /** As {@link #settle}, but a release deletes a memory no document states any more. */
+  private void settleReleased(UUID memoryId) {
+    if (sources(memoryId).isEmpty()) {
       memories.delete(Entity.ADMIN_USER_NAME, memoryId, false, true);
     } else {
-      archive(memoryId);
+      settle(memoryId);
     }
   }
 
@@ -332,7 +334,7 @@ public class MemorySourceLifecycle {
     deleteSourceLinks(memoryId, source, links);
     if (staysLive) {
       copyForTheSourcesItWouldShow(memoryId);
-      settle(memoryId);
+      settleReleased(memoryId);
     }
   }
 
