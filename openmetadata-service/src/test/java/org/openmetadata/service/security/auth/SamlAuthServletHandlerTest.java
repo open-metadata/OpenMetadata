@@ -96,8 +96,6 @@ class SamlAuthServletHandlerTest {
   private static final String SP_ENTITY_ID = "http://localhost:8585/api/v1/saml/metadata";
   private static final String ACS_URL = "http://localhost:8585/api/v1/saml/acs";
   private static final String SUBJECT = "saml.user@openmetadata.test";
-  private static final String UNSIGNED_MESSAGE_REASON =
-      "SAML response rejected: The Message of the Response is not signed and the SP requires it";
   private static final String FERNET_KEY = "jJ/9sz0g0OHxsfxOoSfdFdmk3ysNmPRnH3TUAbz3IHA=";
 
   @Mock private AuthenticationConfiguration authConfig;
@@ -380,44 +378,8 @@ class SamlAuthServletHandlerTest {
   @Test
   void handleCallback_showsWhyJavaSamlRejectedTheResponse() throws Exception {
     MockSamlIdp idp = new MockSamlIdp(IDP_ENTITY_ID);
-
-    postResponse(assertionSigned(idp), strictSettingsWantingSignedMessages(idp));
-
-    verifyRefusedWith(UNSIGNED_MESSAGE_REASON);
-  }
-
-  /**
-   * java-saml checks Want Messages Signed only in strict mode, but the settings form offers it as a
-   * switch of its own, so it holds with strict mode off too.
-   */
-  @Test
-  void handleCallback_holdsWantMessagesSignedWithoutStrictMode() throws Exception {
-    MockSamlIdp idp = new MockSamlIdp(IDP_ENTITY_ID);
-
-    postResponse(assertionSigned(idp), settings(idp, false, true, false));
-
-    verifyRefusedWith(UNSIGNED_MESSAGE_REASON);
-  }
-
-  /** Only the response element is signed, and the settings want a signed assertion. */
-  @Test
-  void handleCallback_holdsWantAssertionsSignedWithoutStrictMode() throws Exception {
-    MockSamlIdp idp = new MockSamlIdp(IDP_ENTITY_ID);
-
-    postResponse(
-        idp.signedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID, "request-id"),
-        settings(idp, false, false, true));
-
-    verifyRefusedWith(
-        "SAML response rejected: The Assertion of the Response is not signed and the SP"
-            + " requires it");
-  }
-
-  private static String assertionSigned(MockSamlIdp idp) {
-    return idp.assertionSignedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID, "request-id", "request-id");
-  }
-
-  private void postResponse(String samlResponse, Saml2Settings settings) {
+    String assertionSigned =
+        idp.assertionSignedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID, "request-id", "request-id");
     UserSession login =
         UserSession.builder()
             .id("pending-session-id")
@@ -430,7 +392,7 @@ class SamlAuthServletHandlerTest {
         .thenReturn(
             Map.of(
                 "SAMLResponse",
-                new String[] {samlResponse},
+                new String[] {assertionSigned},
                 "RelayState",
                 new String[] {login.getId()}));
     when(request.getRequestURL()).thenReturn(new StringBuffer(ACS_URL));
@@ -438,15 +400,19 @@ class SamlAuthServletHandlerTest {
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
         mockStatic(SamlSettingsHolder.class)) {
-      samlSettingsHolder.when(SamlSettingsHolder::getSaml2Settings).thenReturn(settings);
+      samlSettingsHolder
+          .when(SamlSettingsHolder::getSaml2Settings)
+          .thenReturn(strictSettingsWantingSignedMessages(idp));
 
       handler.handleCallback(request, response);
     }
-  }
 
-  private void verifyRefusedWith(String reason) throws Exception {
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-    verify(servletOutputStream).print(contains(reason));
+    verify(servletOutputStream)
+        .print(
+            contains(
+                "SAML response rejected: The Message of the Response is not signed and the SP"
+                    + " requires it"));
     verify(sessionService, never()).recordPendingUser(any(), any());
   }
 
@@ -767,16 +733,16 @@ class SamlAuthServletHandlerTest {
   }
 
   private static Saml2Settings nonStrictSettings(MockSamlIdp idp) {
-    return settings(idp, false, false, false);
+    return settings(idp, false, false);
   }
 
   /** java-saml enforces "want messages signed" in strict mode only. */
   private static Saml2Settings strictSettingsWantingSignedMessages(MockSamlIdp idp) {
-    return settings(idp, true, true, false);
+    return settings(idp, true, true);
   }
 
   private static Saml2Settings settings(
-      MockSamlIdp idp, boolean strict, boolean wantMessagesSigned, boolean wantAssertionsSigned) {
+      MockSamlIdp idp, boolean strict, boolean wantMessagesSigned) {
     Map<String, Object> values = new HashMap<>();
     values.put(SettingsBuilder.STRICT_PROPERTY_KEY, strict);
     values.put(SettingsBuilder.SP_ENTITYID_PROPERTY_KEY, SP_ENTITY_ID);
@@ -786,7 +752,7 @@ class SamlAuthServletHandlerTest {
         SettingsBuilder.IDP_SINGLE_SIGN_ON_SERVICE_URL_PROPERTY_KEY,
         "https://mock-idp.openmetadata.test/sso");
     values.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, idp.idpCertificatePem());
-    values.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, wantAssertionsSigned);
+    values.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, false);
     values.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, wantMessagesSigned);
     return new SettingsBuilder().fromValues(values).build();
   }

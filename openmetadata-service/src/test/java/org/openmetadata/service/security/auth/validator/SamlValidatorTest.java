@@ -908,9 +908,13 @@ class SamlValidatorTest {
     }
   }
 
+  /**
+   * 2.0 has no outbound URL policy in front of the check, so the SSO Login URL may name a server
+   * that is not an identity provider; its page text must not come back to the caller.
+   */
   @Test
-  void validateIdpConnectivityReportsSamlClientErrorsWithTheIdpReason() throws Exception {
-    try (TestSsoServer server = TestSsoServer.start(400, "invalid saml request")) {
+  void validateIdpConnectivityKeepsAnotherServersPageOutOfTheFieldError() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(400, "internal-only page text")) {
       FieldError error =
           invokePrivate(
               "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig(server.url()));
@@ -918,7 +922,9 @@ class SamlValidatorTest {
       assertNotNull(error);
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
       assertEquals(
-          "The identity provider rejected the SAML sign-in request (HTTP 400): invalid saml request",
+          "The identity provider rejected the SAML sign-in request (HTTP 400). Please verify the"
+              + " SSO Login URL and this application's SAML settings at the identity provider."
+              + " Its response is in the server log.",
           error.getError());
     }
   }
@@ -941,7 +947,8 @@ class SamlValidatorTest {
       assertNotNull(serverErrorField);
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, serverErrorField.getField());
       assertEquals(
-          "SSO URL is not accessible (HTTP 503): unavailable", serverErrorField.getError());
+          "SSO URL is not accessible (HTTP 503). Its response is in the server log.",
+          serverErrorField.getError());
     }
   }
 

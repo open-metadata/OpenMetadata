@@ -116,6 +116,17 @@ class IdpErrorResponseTest {
   }
 
   @Test
+  void entraReasonOfReadsOnlyEntraErrorPages() {
+    assertEquals(
+        Optional.of(ENTRA_UNSIGNED_REQUEST_REASON),
+        IdpErrorResponse.entraReasonOf(ENTRA_UNSIGNED_REQUEST_PAGE));
+    assertEquals(
+        Optional.empty(),
+        IdpErrorResponse.entraReasonOf("<html><body><p>internal-only page</p></body></html>"));
+    assertEquals(Optional.empty(), IdpErrorResponse.entraReasonOf(null));
+  }
+
+  @Test
   void reasonOfIsEmptyForBlankBodies() {
     assertEquals(Optional.empty(), IdpErrorResponse.reasonOf(null));
     assertEquals(Optional.empty(), IdpErrorResponse.reasonOf(""));

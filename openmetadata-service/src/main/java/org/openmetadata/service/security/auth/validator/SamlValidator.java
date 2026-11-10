@@ -19,6 +19,7 @@ import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.Date;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.catalog.security.client.SamlSSOClientConfig;
 import org.openmetadata.catalog.type.IdentityProviderConfig;
@@ -400,6 +401,11 @@ public class SamlValidator {
     return error;
   }
 
+  /**
+   * Nothing on 2.0 vets the SSO Login URL against an outbound URL policy, so it can name any address
+   * this server reaches. Only a reason in Microsoft Entra's own error format goes back in the field
+   * error; the text of any other page goes to the server log, never to the caller.
+   */
   private static FieldError rejectionError(int responseCode, String responseBody) {
     boolean isClientError =
         responseCode >= HttpURLConnection.HTTP_BAD_REQUEST
@@ -408,18 +414,36 @@ public class SamlValidator {
         isClientError
             ? "The identity provider rejected the SAML sign-in request (HTTP " + responseCode + ")"
             : "SSO URL is not accessible (HTTP " + responseCode + ")";
-    String fallback =
-        isClientError
-            ? outcome
-                + ". Please verify the SSO Login URL and this application's SAML settings at the"
-                + " identity provider."
-            : outcome;
     String message =
-        IdpErrorResponse.reasonOf(responseBody)
+        IdpErrorResponse.entraReasonOf(responseBody)
             .map(reason -> outcome + ": " + reason)
-            .orElse(fallback);
+            .orElseGet(
+                () ->
+                    fallbackMessage(
+                        outcome, isClientError, logIdpResponse(responseCode, responseBody)));
     LOG.warn("SAML configuration check failed: {}", message);
     return ssoUrlError(message);
+  }
+
+  /** Logs the text of the identity provider's page, and says whether there was any. */
+  private static boolean logIdpResponse(int responseCode, String responseBody) {
+    Optional<String> pageText = IdpErrorResponse.reasonOf(responseBody);
+    pageText.ifPresent(
+        text ->
+            LOG.warn(
+                "The identity provider answered the SAML configuration check with HTTP {}: {}",
+                responseCode,
+                text));
+    return pageText.isPresent();
+  }
+
+  private static String fallbackMessage(String outcome, boolean isClientError, boolean isLogged) {
+    String advice =
+        isClientError
+            ? ". Please verify the SSO Login URL and this application's SAML settings at the"
+                + " identity provider."
+            : ".";
+    return outcome + advice + (isLogged ? " Its response is in the server log." : "");
   }
 
   private static FieldError ssoUrlError(String message) {

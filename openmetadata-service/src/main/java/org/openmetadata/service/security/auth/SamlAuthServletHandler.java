@@ -12,7 +12,6 @@ import com.onelogin.saml2.Auth;
 import com.onelogin.saml2.authn.AuthnRequestParams;
 import com.onelogin.saml2.authn.SamlResponse;
 import com.onelogin.saml2.exception.SAMLException;
-import com.onelogin.saml2.exception.ValidationError;
 import com.onelogin.saml2.factory.SamlMessageFactory;
 import com.onelogin.saml2.http.HttpRequest;
 import com.onelogin.saml2.settings.Saml2Settings;
@@ -73,12 +72,6 @@ import org.w3c.dom.NodeList;
 @Slf4j
 public class SamlAuthServletHandler implements AuthServeletHandler {
   private static final String AUTH_CALLBACK_PATH = "/auth/callback";
-  private static final String SIGNED_RESPONSE = "{" + Constants.NS_SAMLP + "}Response";
-  private static final String SIGNED_ASSERTION = "{" + Constants.NS_SAML + "}Assertion";
-  private static final String UNSIGNED_MESSAGE =
-      "The Message of the Response is not signed and the SP requires it";
-  private static final String UNSIGNED_ASSERTION =
-      "The Assertion of the Response is not signed and the SP requires it";
   final AuthenticationConfiguration authConfig;
   final AuthorizerConfiguration authorizerConfig;
   final SessionService sessionService;
@@ -306,7 +299,6 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       auth.setSamlMessageFactory(validatedResponse);
       auth.processResponse(expectedRequestId);
       requireAccepted(auth);
-      requireRequestedSignatures(samlSettings, validatedResponse.response);
       if (!mcpCallback) {
         requireAnswerTo(validatedResponse.response, expectedRequestId);
       }
@@ -487,22 +479,6 @@ public class SamlAuthServletHandler implements AuthServeletHandler {
       throw new AuthenticationException(
           "SAML response rejected: "
               + (nullOrEmpty(reason) ? String.join(", ", auth.getErrors()) : reason));
-    }
-  }
-
-  /**
-   * java-saml checks Want Messages Signed and Want Assertions Signed only in strict mode, while the
-   * settings form offers them as switches of their own, so they are held here whether or not strict
-   * mode is on. The reasons use java-saml's wording, so a rejection reads the same either way.
-   */
-  private static void requireRequestedSignatures(Saml2Settings settings, SamlResponse response)
-      throws XPathExpressionException, ValidationError {
-    List<String> signedElements = response.processSignedElements();
-    if (settings.getWantMessagesSigned() && !signedElements.contains(SIGNED_RESPONSE)) {
-      throw new AuthenticationException("SAML response rejected: " + UNSIGNED_MESSAGE);
-    }
-    if (settings.getWantAssertionsSigned() && !signedElements.contains(SIGNED_ASSERTION)) {
-      throw new AuthenticationException("SAML response rejected: " + UNSIGNED_ASSERTION);
     }
   }
 

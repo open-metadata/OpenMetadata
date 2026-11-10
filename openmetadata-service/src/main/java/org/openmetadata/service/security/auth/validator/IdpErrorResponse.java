@@ -38,6 +38,13 @@ final class IdpErrorResponse {
         .flatMap(text -> entraReason(text).or(() -> visibleText(text)));
   }
 
+  /** Only a reason in Entra's error format, for callers that must not pass on a page's text. */
+  static Optional<String> entraReasonOf(String body) {
+    return Optional.ofNullable(body)
+        .filter(text -> !text.isBlank())
+        .flatMap(IdpErrorResponse::entraReason);
+  }
+
   private static Optional<String> entraReason(String body) {
     Matcher matcher = ENTRA_SERVICE_EXCEPTION.matcher(body);
     return matcher.find()
