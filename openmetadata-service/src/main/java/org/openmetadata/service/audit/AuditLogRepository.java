@@ -16,7 +16,9 @@ import java.util.Set;
 import java.util.StringJoiner;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
@@ -669,6 +671,17 @@ public class AuditLogRepository {
         .summary(computeSummary(changeEvent, record))
         .rawEventJson(masked ? maskedEventJson(changeEvent) : record.getEventJson())
         .build();
+  }
+
+  /** Keep the structured event, raw fallback and summary on the same memory projection. */
+  public void projectMemoryEntries(
+      ResultList<AuditLogEntry> entries, UnaryOperator<ContextMemory> redaction) {
+    for (AuditLogEntry entry : entries.getData()) {
+      final ChangeEvent projected = MemoryAuditProjection.apply(entry.getChangeEvent(), redaction);
+      entry.setChangeEvent(projected);
+      entry.setRawEventJson(maskedEventJson(projected));
+      entry.setSummary(projected == null ? entry.getEventType() : computeSummary(projected, null));
+    }
   }
 
   // A raw event that did not parse is withheld rather than returned unmasked.

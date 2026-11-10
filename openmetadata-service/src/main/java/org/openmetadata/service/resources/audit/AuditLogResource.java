@@ -25,9 +25,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.StreamingOutput;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
@@ -41,6 +43,8 @@ import org.openmetadata.service.csv.CsvAsyncJobManager;
 import org.openmetadata.service.csv.CsvExportPayload;
 import org.openmetadata.service.csv.CsvExportSpool;
 import org.openmetadata.service.resources.Collection;
+import org.openmetadata.service.resources.context.ContextMemoryDocumentAccess;
+import org.openmetadata.service.resources.context.ContextMemoryEvidenceAccess;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -138,20 +142,36 @@ public class AuditLogResource {
     // Authorization: service-level, entity-level, or global based on filters provided
     authorizeAuditLogAccess(securityContext, serviceName, entityType, entityFqn);
 
-    return repository.list(
-        userName,
-        actorType,
-        serviceName,
-        entityType,
-        entityFqn,
-        eventType,
-        startTs,
-        endTs,
-        searchTerm,
-        limit,
-        before,
-        after,
-        readsUserEmails(securityContext));
+    ResultList<AuditLogEntry> entries =
+        repository.list(
+            userName,
+            actorType,
+            serviceName,
+            entityType,
+            entityFqn,
+            eventType,
+            startTs,
+            endTs,
+            searchTerm,
+            limit,
+            before,
+            after,
+            readsUserEmails(securityContext));
+    return redactMemoryEntries(entries, entityType, securityContext);
+  }
+
+  private ResultList<AuditLogEntry> redactMemoryEntries(
+      ResultList<AuditLogEntry> entries, String type, SecurityContext context) {
+    if (Entity.CONTEXT_MEMORY.equals(type) && !AuditLogEntityAccess.readsAll(context)) {
+      final UnaryOperator<ContextMemory> documents =
+          ContextMemoryDocumentAccess.versionRedaction(context);
+      repository.projectMemoryEntries(
+          entries,
+          memory ->
+              documents.apply(
+                  ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, context)));
+    }
+    return entries;
   }
 
   private static boolean readsUserEmails(SecurityContext securityContext) {
@@ -233,6 +253,7 @@ public class AuditLogResource {
     OperationContext operationContext =
         new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
     authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+    authorizer.authorizeAdminOrBot(securityContext);
 
     // Validate required parameters
     if (startTs == null || endTs == null) {
@@ -293,6 +314,7 @@ public class AuditLogResource {
     OperationContext operationContext =
         new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
     authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+    authorizer.authorizeAdminOrBot(securityContext);
     CsvAsyncJob job = CsvAsyncJobManager.getInstance().getAuditExportJob(jobId);
     if (job == null) {
       throw new NotFoundException("Audit export job not found: " + jobId);
@@ -321,6 +343,7 @@ public class AuditLogResource {
     OperationContext operationContext =
         new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
     authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+    authorizer.authorizeAdminOrBot(securityContext);
     Response response;
     if (isLegacySpoolJobId(jobId)) {
       response = streamLegacySpoolFile(jobId);
@@ -407,25 +430,25 @@ public class AuditLogResource {
    * <p>Authorization model (checked in order):
    *
    * <ul>
-   *   <li>If entityFQN AND entityType are provided: Check VIEW_BASIC on the specific entity
-   *   <li>If serviceName AND entityType are provided: Check VIEW_BASIC on the service
+   *   <li>If entityFQN AND entityType are provided: Apply the entity's current read rules
+   *   <li>If serviceName AND entityType are provided: Check VIEW_BASIC on the service; types with
+   *       per-entity visibility require an admin or bot
    *   <li>Otherwise: Require global AUDIT_LOGS permission (admin-only)
    * </ul>
    */
   private void authorizeAuditLogAccess(
       SecurityContext securityContext, String serviceName, String entityType, String entityFqn) {
     if (!nullOrEmpty(entityFqn) && !nullOrEmpty(entityType)) {
-      // Entity-level authorization: user needs VIEW_BASIC on the specific entity
-      ResourceContext<?> entityContext = new ResourceContext<>(entityType, null, entityFqn);
-      OperationContext viewOp = new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-      authorizer.authorize(securityContext, viewOp, entityContext);
+      AuditLogEntityAccess.authorizeEntity(authorizer, securityContext, entityType, entityFqn);
     } else if (!nullOrEmpty(serviceName) && !nullOrEmpty(entityType)) {
+      AuditLogEntityAccess.authorizeCollection(authorizer, securityContext, entityType);
       // Service-level authorization: user needs VIEW_BASIC on the service
       String serviceType = Entity.getServiceType(entityType);
       ResourceContext<?> serviceContext = new ResourceContext<>(serviceType, null, serviceName);
       OperationContext viewOp = new OperationContext(serviceType, MetadataOperation.VIEW_BASIC);
       authorizer.authorize(securityContext, viewOp, serviceContext);
     } else {
+      AuditLogEntityAccess.authorizeCollection(authorizer, securityContext, entityType);
       // Global audit log access: requires AUDIT_LOGS permission (admin-only)
       OperationContext operationContext =
           new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
