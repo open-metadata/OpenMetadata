@@ -323,7 +323,8 @@ public class ContextFileProcessingService {
     } else {
       LOG.error("Failed to extract text for file {} content {}", fileId, contentId, failure);
     }
-    applyFailure(fileId, contentId, stopped ? INTERRUPTED_BY_STOP : describeFailure(failure));
+    applyFailure(
+        fileId, contentId, stopped ? INTERRUPTED_BY_STOP : describeFailure(failure), true, stopped);
     return ProcessingStatus.Failed;
   }
 
@@ -348,6 +349,7 @@ public class ContextFileProcessingService {
             fileId,
             contentId,
             "Unable to queue knowledge pill extraction. Please retry later.",
+            false,
             false);
       } catch (ConditionalUpdateExhaustedException exhausted) {
         LOG.warn("Unable to mark rejected knowledge pill extraction failed for file {}", fileId);
@@ -401,7 +403,7 @@ public class ContextFileProcessingService {
           ExceptionUtils.getRootCauseMessage(failure));
     } else {
       LOG.error("Knowledge pill extraction failed for file {}", fileId, failure);
-      applyFailure(fileId, contentId, describeFailure(failure), false);
+      applyFailure(fileId, contentId, describeFailure(failure), false, false);
     }
   }
 
@@ -504,7 +506,7 @@ public class ContextFileProcessingService {
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {
-    applyFailure(fileId, contentId, reason, true);
+    applyFailure(fileId, contentId, reason, true, false);
   }
 
   /**
@@ -513,10 +515,17 @@ public class ContextFileProcessingService {
    * already-extracted text survives for indexing and retries.
    */
   private void applyFailure(
-      UUID fileId, UUID contentId, String reason, boolean clearExtractedText) {
+      UUID fileId,
+      UUID contentId,
+      String reason,
+      boolean clearExtractedText,
+      boolean onlyAnalyzing) {
     if (!updateContent(
         contentId,
         current -> {
+          if (onlyAnalyzing && current.getProcessingStatus() != ProcessingStatus.Analyzing) {
+            return null;
+          }
           ContextFileContent updated = JsonUtils.deepCopy(current, ContextFileContent.class);
           updated.setProcessingStatus(ProcessingStatus.Failed);
           updated.setProcessingError(reason);
@@ -531,7 +540,8 @@ public class ContextFileProcessingService {
     updateFile(
         fileId,
         current -> {
-          if (!contentId.toString().equals(current.getHeadContentId())) {
+          if (!contentId.toString().equals(current.getHeadContentId())
+              || (onlyAnalyzing && current.getProcessingStatus() != ProcessingStatus.Analyzing)) {
             return null;
           }
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);

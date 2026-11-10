@@ -37,6 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
@@ -536,6 +537,8 @@ class ContextFileProcessingServiceTest {
   /** The read ran on another thread, so only the failure's cause records the interrupt. */
   @Test
   void anInterruptedTextStageIsFailedAsInterruptedByAStop() {
+    file.setProcessingStatus(ProcessingStatus.Analyzing);
+    content.setProcessingStatus(ProcessingStatus.Analyzing);
     when(assetService.read(asset))
         .thenReturn(
             CompletableFuture.failedFuture(
@@ -547,9 +550,55 @@ class ContextFileProcessingServiceTest {
     verifyNoMemoryJob();
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = ProcessingStatus.class,
+      names = {"Processed", "ExtractingContext"})
+  void aStoppedTextRunPreservesAResultAnotherRunFinished(ProcessingStatus peerStatus) {
+    AtomicReference<ContextFile> storedFile = new AtomicReference<>(file);
+    AtomicReference<ContextFileContent> storedContent = new AtomicReference<>(content);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(ignored -> storedFile.get());
+    when(contentRepository.getById(contentId)).thenAnswer(ignored -> storedContent.get());
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedFile.set(invocation.getArgument(2));
+              return null;
+            });
+    when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedContent.set(invocation.getArgument(2));
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenAnswer(
+            ignored -> {
+              storedContent.set(
+                  JsonUtils.deepCopy(storedContent.get(), ContextFileContent.class)
+                      .withProcessingStatus(peerStatus)
+                      .withExtractedText("Peer result"));
+              storedFile.set(
+                  JsonUtils.deepCopy(storedFile.get(), ContextFile.class)
+                      .withProcessingStatus(peerStatus)
+                      .withExtractedText("Peer result"));
+              return CompletableFuture.failedFuture(new InterruptedException("Server is stopping"));
+            });
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    assertEquals(peerStatus, storedFile.get().getProcessingStatus());
+    assertEquals(peerStatus, storedContent.get().getProcessingStatus());
+    assertEquals("Peer result", storedFile.get().getExtractedText());
+    assertEquals("Peer result", storedContent.get().getExtractedText());
+  }
+
   /** The asset service's own shutdown hook closes object storage under running text extraction. */
   @Test
   void theAssetServiceClosingDuringAServerStopFailsTheFileAsInterrupted() {
+    file.setProcessingStatus(ProcessingStatus.Analyzing);
+    content.setProcessingStatus(ProcessingStatus.Analyzing);
     ServerStopping.set(true);
 
     service(Runnable::run, closedAssetService(), true).process(fileId, contentId);
