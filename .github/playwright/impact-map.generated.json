@@ -918,7 +918,6 @@
         "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/TableAliases.spec.ts",
@@ -1931,7 +1930,6 @@
         "playwright/e2e/Pages/Lineage/LineageTempTables.spec.ts",
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
@@ -3389,7 +3387,6 @@
         "playwright/e2e/Pages/Lineage/DataAssetLineage.spec.ts",
         "playwright/e2e/Pages/Lineage/LineageInteraction.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/ProfilerConfigurationPage.spec.ts",
         "playwright/e2e/Pages/SearchSettings.spec.ts",
@@ -3539,7 +3536,6 @@
         "playwright/e2e/Pages/DataInsight.spec.ts",
         "playwright/e2e/Pages/ExplorePageRightPanel.spec.ts",
         "playwright/e2e/Pages/Glossary.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/TableSharding.spec.ts",
         "playwright/e2e/Pages/TaskComments.spec.ts",
         "playwright/e2e/Search/ExploreSearchCounts.spec.ts"
@@ -4016,7 +4012,6 @@
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
@@ -4162,7 +4157,6 @@
         "playwright/e2e/Pages/DataContractInheritance.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts"
       ]
     },
@@ -6573,7 +6567,6 @@
         "playwright/e2e/Pages/DataContractSchemaContract.spec.ts",
         "playwright/e2e/Pages/DataContracts.spec.ts",
         "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts"
       ]
@@ -10833,14 +10826,6 @@
     },
     {
       "sources": [
-        "openmetadata-ui/src/main/resources/ui/src/components/data-contract/ODCSExportModal/ODCSExportModal.tsx"
-      ],
-      "specs": [
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts"
-      ]
-    },
-    {
-      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/data-contract/ODCSImportReport/ODCSImportReport.tsx"
       ],
       "specs": [
@@ -13285,8 +13270,7 @@
       ],
       "specs": [
         "playwright/e2e/Flow/AlertSeveralSources.spec.ts",
-        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts"
+        "playwright/e2e/Flow/ObservabilityAlerts.spec.ts"
       ]
     },
     {
@@ -14132,7 +14116,6 @@
         "playwright/e2e/Pages/Lineage/PlatformLineage.spec.ts",
         "playwright/e2e/Pages/LiveIndexingTab.spec.ts",
         "playwright/e2e/Pages/LogsViewer.spec.ts",
-        "playwright/e2e/Pages/ODCSExportVersions.spec.ts",
         "playwright/e2e/Pages/ODCSImportExport.spec.ts",
         "playwright/e2e/Pages/ODCSImportExportPermissions.spec.ts",
         "playwright/e2e/Pages/OmdURLConfiguration.spec.ts",
