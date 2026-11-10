@@ -1,0 +1,275 @@
+from __future__ import annotations
+
+import importlib.util
+import json
+import os
+import re
+import subprocess
+from pathlib import Path
+
+import pytest
+import yaml
+
+
+ROOT = Path(__file__).parents[3]
+SPEC = importlib.util.spec_from_file_location(
+    "pr_workflow_security", ROOT / ".github/scripts/check_pr_workflow_security.py"
+)
+security = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(security)
+
+
+def workflow(tmp_path, job, *, extra=None):
+    directory = tmp_path / ".github/workflows"
+    directory.mkdir(parents=True, exist_ok=True)
+    document = {
+        "on": {"pull_request": {}, "push": {}},
+        "permissions": {"contents": "read"},
+        "jobs": {"test": {"runs-on": "ubuntu-latest", **job}},
+        **(extra or {}),
+    }
+    path = directory / "pr.yml"
+    path.write_text(yaml.safe_dump(document))
+    return security.check_workflows(tmp_path)
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "${{ secrets.COLLATE_PAT }}",
+        "${{ secrets.GITHUB_TOKEN_EXTRA }}",
+        "${{ secrets['TOKEN'] }}",
+        "${{ secrets[format('{0}_SSO_PASSWORD', matrix.provider)] }}",
+        "${{ toJSON(secrets) }}",
+    ],
+)
+def test_pr_cannot_reference_credentials(tmp_path, expression):
+    errors = workflow(
+        tmp_path, {"steps": [{"run": "make test", "env": {"TOKEN": expression}}]}
+    )
+    assert any("remove secret references" in error for error in errors)
+
+
+def test_same_repository_guard_does_not_authorize_secrets(tmp_path):
+    errors = workflow(
+        tmp_path,
+        {
+            "if": "github.event.pull_request.head.repo.full_name == github.repository",
+            "env": {"TOKEN": "${{ secrets.TOKEN }}"},
+        },
+    )
+    assert any("remove secret references" in error for error in errors)
+
+
+@pytest.mark.parametrize(
+    "permissions", [{"contents": "write"}, {"id-token": "write"}, "write-all"]
+)
+def test_pr_cannot_receive_write_permissions(tmp_path, permissions):
+    assert any(
+        "read-only" in error
+        for error in workflow(tmp_path, {"permissions": permissions})
+    )
+
+
+def test_read_token_and_explicit_non_pr_jobs_are_allowed(tmp_path):
+    assert workflow(tmp_path, {"env": {"TOKEN": "${{ secrets.GITHUB_TOKEN }}"}}) == []
+    assert (
+        workflow(
+            tmp_path,
+            {
+                "if": "${{ !cancelled() && github.event_name != 'pull_request' && needs.changes.outputs.run == 'true' }}",
+                "permissions": {"contents": "write"},
+                "env": {"TOKEN": "${{ secrets.TOKEN }}"},
+            },
+        )
+        == []
+    )
+
+
+def test_or_branch_cannot_bypass_event_exclusion(tmp_path):
+    errors = workflow(
+        tmp_path,
+        {
+            "if": "github.event_name != 'pull_request' || github.actor == 'maintainer'",
+            "env": {"TOKEN": "${{ secrets.TOKEN }}"},
+        },
+    )
+    assert any("remove secret references" in error for error in errors)
+
+
+def test_global_environment_and_job_environment_are_checked(tmp_path):
+    assert any(
+        "remove secret references" in error
+        for error in workflow(
+            tmp_path, {}, extra={"env": {"TOKEN": "${{ secrets.TOKEN }}"}}
+        )
+    )
+    assert any(
+        "remove the environment" in error
+        for error in workflow(tmp_path, {"environment": "test"})
+    )
+
+
+def test_local_reusable_workflows_are_checked_without_secret_forwarding(tmp_path):
+    workflow(tmp_path, {})
+    called = tmp_path / ".github/workflows/shared.yml"
+    called.write_text(
+        yaml.safe_dump(
+            {
+                "on": {"workflow_call": {}},
+                "jobs": {"test": {"env": {"TOKEN": "${{ secrets.TOKEN }}"}}},
+            }
+        )
+    )
+    errors = workflow(
+        tmp_path, {"uses": "./.github/workflows/shared.yml", "secrets": "inherit"}
+    )
+    assert any("remove secrets forwarding" in error for error in errors)
+    assert any(
+        "shared.yml" in error and "remove secret references" in error
+        for error in errors
+    )
+
+
+def test_checkout_does_not_persist_credentials(tmp_path):
+    assert any(
+        "persist-credentials: false" in error
+        for error in workflow(tmp_path, {"steps": [{"uses": "actions/checkout@v7"}]})
+    )
+    assert (
+        workflow(
+            tmp_path,
+            {
+                "steps": [
+                    {
+                        "uses": "actions/checkout@v7",
+                        "with": {"persist-credentials": False},
+                    }
+                ]
+            },
+        )
+        == []
+    )
+
+
+@pytest.mark.parametrize(
+    "condition,excluded",
+    [
+        (
+            "(github.event_name != 'pull_request') && (needs.test.result == 'success')",
+            True,
+        ),
+        (
+            "(github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && always()",
+            True,
+        ),
+        ("(github.event_name != 'pull_request') || (always())", False),
+        ("contains('github.event_name != ''pull_request''', github.actor)", False),
+    ],
+)
+def test_event_exclusion_is_conservative(condition, excluded):
+    assert security.excludes_pull_request(condition) == excluded
+
+
+def test_repository_pr_workflows_are_secret_free():
+    assert security.check_workflows() == []
+
+
+@pytest.mark.parametrize(
+    "filename,job_id,step_name",
+    [
+        (
+            "typescript-type-generation.yml",
+            "generate-types",
+            "Fail workflow when generated sources are stale",
+        ),
+        (
+            "playwright-impact-map-drift.yml",
+            "impact-map-drift",
+            "Report impact-map drift",
+        ),
+    ],
+)
+def test_generation_drift_still_fails_without_auto_push(
+    tmp_path, filename, job_id, step_name
+):
+    document = yaml.load(
+        (ROOT / ".github/workflows" / filename).read_text(), Loader=yaml.BaseLoader
+    )
+    job = document["jobs"][job_id]
+    step = next(step for step in job["steps"] if step.get("name") == step_name)
+    summary = tmp_path / "summary.md"
+    result = subprocess.run(
+        ["bash", "-c", step["run"]],
+        env={
+            **os.environ,
+            "GITHUB_STEP_SUMMARY": str(summary),
+            "DRIFT_SUMMARY": "map changed",
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 1
+    assert "::error" in result.stdout
+    assert "commit" in summary.read_text()
+
+
+def test_security_check_runs_when_its_code_changes():
+    document = yaml.load(
+        (ROOT / ".github/workflows/validate-jsons-yamls.yml").read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    paths = document["on"]["pull_request"]["paths"]
+    assert ".github/scripts/check_pr_workflow_security.py" in paths
+    assert ".github/scripts/tests/test_pr_workflow_security.py" in paths
+    steps = document["jobs"]["validate-json-yaml"]["steps"]
+    check = next(
+        step for step in steps if step.get("name") == "Verify PR workflow security"
+    )
+    assert not check.get("continue-on-error")
+    assert "python .github/scripts/check_pr_workflow_security.py" in check["run"]
+
+
+def test_ui_failure_summary_does_not_write_to_the_pr():
+    document = yaml.load(
+        (ROOT / ".github/workflows/ui-checkstyle.yml").read_text(),
+        Loader=yaml.BaseLoader,
+    )
+    step = next(
+        step
+        for step in document["jobs"]["ui-checkstyle"]["steps"]
+        if step.get("name") == "Write checkstyle summary"
+    )
+
+    def render(match):
+        expression = match.group(1).strip()
+        if expression == "needs.checkstyle.result":
+            return "failure"
+        if expression == "needs.checkstyle.outputs.lint_src_result":
+            return "failure"
+        return '""' if expression.startswith("toJSON(") else "success"
+
+    script = re.sub(r"\$\{\{(.*?)\}\}", render, step["with"]["script"])
+    harness = (
+        """
+let summary = '';
+const core = { summary: { addRaw(text) { summary += text; return this; }, async write() {} } };
+const context = { serverUrl: 'https://github.com', repo: { owner: 'org', repo: 'repo' }, runId: 123 };
+const github = new Proxy({}, { get() { throw new Error('PR API access is forbidden'); } });
+await (async () => {
+"""
+        + script
+        + "\n})();\nprocess.stdout.write(JSON.stringify(summary));\n"
+    )
+    result = subprocess.run(
+        ["node", "--input-type=module", "-"],
+        input=harness,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr
+    summary = json.loads(result.stdout)
+    assert "UI Checkstyle Failed" in summary
+    assert "ESLint" in summary

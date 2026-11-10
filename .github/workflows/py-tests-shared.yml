@@ -36,7 +36,7 @@ on:
         type: boolean
         default: false
       run-coverage:
-        description: Combine coverage and push results to Sonar
+        description: Combine coverage reports
         required: false
         type: boolean
         default: false
@@ -47,13 +47,6 @@ env:
   # Pin the model release and verify its content before installation.
   SPACY_MODEL_VERSION: "3.8.0"
   SPACY_MODEL_SHA256: "5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310"
-  SONAR_OPTS: >-
-    -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-    -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
-    -Dsonar.pullrequest.github.repository=OpenMetadata
-    -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-    -Dsonar.pullrequest.provider=github
-
 jobs:
   # Detect whether relevant paths changed before the matrix fans out.
   changes:
@@ -615,20 +608,3 @@ jobs:
           cd ingestion
           nox --no-venv -s combine-coverage
         shell: bash
-
-      - name: Remove pom.xml
-        run: rm pom.xml
-        shell: bash
-
-      # Fork and Dependabot PRs get no secrets, so the PR analysis skips them.
-      - name: Push Results in PR to Sonar
-        id: push-to-sonar
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-        continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@c7ee0f9df90b7aa20e8dcf9695dcfe2e7da5b4f2 # v7
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-          args: ${{ env.SONAR_OPTS }}

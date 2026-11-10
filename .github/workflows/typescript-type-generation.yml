@@ -31,10 +31,8 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     permissions:
-      # The auto-commit pushes with COLLATE_PAT, so GITHUB_TOKEN only needs to read
-      # the repo and comment on the PR.
       contents: read
-      pull-requests: write
+      pull-requests: read
     steps:
       - name: Get PR details for workflow_dispatch
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
@@ -104,7 +102,7 @@ jobs:
           elif [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request" ]; then
             echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
+            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
             echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
           elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
@@ -171,51 +169,16 @@ jobs:
           done
           git diff --cached --quiet
 
-      - name: Configure Git
+      - name: Fail workflow when generated sources are stale
         if: steps.git-check.outcome != 'success'
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Commit and push changes
-        env:
-          # Not GITHUB_TOKEN: pushes made with it never trigger workflow runs,
-          # so every required check stays pending and the PR can't merge.
-          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
-          HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref || github.event.inputs.branch }}
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && github.event_name != 'merge_group'
-        run: |
-          git commit -m "Update generated TypeScript types and dereferenced schemas"
-          # checkout ran with persist-credentials: false, so re-attach the token to origin.
-          # Pushing to a bare URL instead would break --force-with-lease: it has no
-          # remote-tracking ref to lease against and the push is rejected as "stale info".
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          git push --force-with-lease origin "HEAD:${HEAD_REF}"
-
-      - name: Create PR comment about auto-update
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request' || github.event.inputs.pr_number != '')
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-          body: |
-            ## ✅ Generated Sources Auto-Updated
-
-            The generated TypeScript types (`src/generated/`) and dereferenced JSON
-            schemas (`src/jsons/`, `public/jsons/`) have been automatically updated
-            based on JSON schema changes in this PR.
-
-      # Fork PRs can't be pushed to and get a read-only token, so the instructions go to the
-      # job summary and an error annotation instead of a commit and a comment.
-      - name: Fail workflow for fork PRs with type changes
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'true'
         run: |
           cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
           ## ⚠️ Generated Sources Need Update
 
           **The generated TypeScript types and/or dereferenced JSON schemas are out of sync with the JSON schema changes.**
 
-          Since this pull request comes from a fork or from Dependabot, they cannot be committed automatically.
-          Please generate and commit them manually:
+          CI checks generated sources without pushing changes to PR branches.
+          Generate and commit them locally:
 
           ```bash
           cd openmetadata-ui/src/main/resources/ui

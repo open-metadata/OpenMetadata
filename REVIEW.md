@@ -99,6 +99,9 @@ Every finding carries three parts: the **trigger** (an input or state that occur
 
 ### CI credentials and PR code
 
+ADR:2026-11-10-pr-jobs-never-receive-credentials supersedes the earlier same-repository exception.
+Run `python3 .github/scripts/check_pr_workflow_security.py` after workflow changes.
+
 - **New or modified `pull_request` jobs run without secrets.** This applies to fork, same-repository,
   and Dependabot PRs. Do not expose repository, organization, or environment secrets. The built-in
   `GITHUB_TOKEN` is allowed with read-only permissions. Checkouts of PR code set
