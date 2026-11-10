@@ -62,7 +62,6 @@ public class ContextFileProcessingService {
   private final Supplier<DocumentMemoryExtractor> memoryExtractorSupplier;
   private final Supplier<ExtractionAvailability> availabilitySupplier;
   private final Supplier<FileContextProcessingEngine> fileEngineSupplier;
-  private volatile FileContextProcessingEngine fileEngine;
 
   public ContextFileProcessingService(ContextFileRepository repository) {
     this(
@@ -474,19 +473,9 @@ public class ContextFileProcessingService {
     }
   }
 
+  /** A missing provider or judge can recover between jobs; never cache its unavailable engine. */
   private FileContextProcessingEngine fileEngine() {
-    FileContextProcessingEngine engine = fileEngine;
-    if (engine == null) {
-      engine = buildFileEngine();
-    }
-    return engine;
-  }
-
-  private synchronized FileContextProcessingEngine buildFileEngine() {
-    if (fileEngine == null) {
-      fileEngine = fileEngineSupplier != null ? fileEngineSupplier.get() : defaultFileEngine();
-    }
-    return fileEngine;
+    return fileEngineSupplier != null ? fileEngineSupplier.get() : defaultFileEngine();
   }
 
   private FileContextProcessingEngine defaultFileEngine() {

@@ -453,6 +453,36 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
+  void aLaterJobUsesTheExtractorThatHasSinceRecovered() {
+    AtomicBoolean available = new AtomicBoolean();
+    FileContextProcessingEngine unavailable = mock(FileContextProcessingEngine.class);
+    when(unavailable.runExtraction(fileId))
+        .thenThrow(new IllegalStateException("The AI platform is unavailable"));
+    ContextFileProcessingService service =
+        new ContextFileProcessingService(
+            repository,
+            () -> assetService,
+            Runnable::run,
+            textExtractor,
+            jobDao,
+            () -> memoryExtractor,
+            () -> new ExtractionAvailability().withAvailable(true),
+            () -> available.get() ? fileEngine : unavailable);
+
+    assertThrows(IllegalStateException.class, () -> service.runMemoryExtraction(fileId, contentId));
+    available.set(true);
+    service.runMemoryExtraction(fileId, contentId);
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Failed, updatedFileCaptor.getAllValues().getFirst().getProcessingStatus());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+  }
+
+  @Test
   void memoryJobEnqueueFailureKeepsExtractedText() throws Exception {
     when(assetService.read(asset))
         .thenReturn(
