@@ -17,7 +17,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -26,6 +26,7 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { useEntityPermissions } from '../../../hooks/useEntityPermissions/useEntityPermissions';
 import { LineageData } from '../../../interface/lineage.interface';
 import { EntityData } from '../../../pages/TasksPage/TasksPage.interface';
@@ -87,6 +88,7 @@ import {
   patchStoredProceduresDetails,
 } from '../../../rest/storedProceduresAPI';
 import {
+  getColumnByFQN,
   getTableDetailsByFQN,
   patchTableDetails,
   updateTableColumn,
@@ -117,45 +119,39 @@ import {
 } from './EntitySummaryPanel.interface';
 import LineageTabContent from './LineageTab/LineageTabContent';
 
-type EntityFetchResolution =
-  | { immediate: true }
-  | { immediate: false; promise: Promise<object> | null };
-
 // Picks how to populate the panel for `entityType`: a dedicated fetch-by-fqn
-// call when one is registered, the search-hit data as-is for tableColumn
-// (it has no standalone API), a fields-scoped fetch for knowledge pages, or
+// call when one is registered, the column API for tableColumn (the search hit
+// goes stale after an edit), a fields-scoped fetch for knowledge pages, or
 // the generic `owners,domains,tags,extension` fetch otherwise.
 const resolveEntityFetch = (
   entityType: EntityType,
   fqn: string,
   entityFetchMap: Record<string, (fqn: string) => Promise<object>>
-): EntityFetchResolution => {
+): Promise<object> | null => {
   const fetchFn = entityFetchMap[entityType];
   if (fetchFn) {
-    return { immediate: false, promise: fetchFn(fqn) };
+    return fetchFn(fqn);
   }
   if (entityType === EntityType.TABLE_COLUMN) {
-    return { immediate: true };
+    return getColumnByFQN(fqn, {
+      entityType: EntityType.TABLE,
+      fields: 'tags,extension',
+      include: Include.All,
+    });
   }
   if (entityType === EntityType.KNOWLEDGE_PAGE) {
-    return {
-      immediate: false,
-      promise: entityUtilClassBase.getEntityByFqn(
-        entityType,
-        fqn,
-        'owners,domains,tags'
-      ),
-    };
-  }
-
-  return {
-    immediate: false,
-    promise: entityUtilClassBase.getEntityByFqn(
+    return entityUtilClassBase.getEntityByFqn(
       entityType,
       fqn,
-      'owners,domains,tags,extension'
-    ),
-  };
+      'owners,domains,tags'
+    );
+  }
+
+  return entityUtilClassBase.getEntityByFqn(
+    entityType,
+    fqn,
+    'owners,domains,tags,extension'
+  );
 };
 
 interface FetchedEntityData {
@@ -455,39 +451,49 @@ export default function EntitySummaryPanel({
     };
   }, []);
 
+  const latestFetchFqnRef = useRef<string>();
+
   const fetchEntityData = useCallback(async () => {
     if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
       return;
     }
 
+    const fqn = entityDetails.details.fullyQualifiedName;
+    latestFetchFqnRef.current = fqn;
+    // A slower response for a previously selected entity must not overwrite
+    // the current one; a later edit would be diffed against the wrong data.
+    const isStale = () => latestFetchFqnRef.current !== fqn;
+
     setIsEntityDataLoading(true);
     try {
-      const fqn = entityDetails.details.fullyQualifiedName;
-      const resolution = resolveEntityFetch(entityType, fqn, entityFetchMap);
+      const entityPromise = resolveEntityFetch(entityType, fqn, entityFetchMap);
 
-      if (resolution.immediate) {
+      if (!entityPromise) {
         setEntityData(entityDetails.details as EntityData);
-        setIsEntityDataLoading(false);
 
         return;
       }
 
-      const entityPromise = resolution.promise;
-
-      if (entityPromise) {
-        const data = (await entityPromise) as FetchedEntityData;
-        setEntityData(mergeEntityData(data, entityDetails.details));
-      } else {
-        // For entity types without a dedicated API (like tableColumn),
-        // use the search index data directly. The search index already
-        // contains all necessary fields (service, database, schema, table, etc.)
-        const searchData = entityDetails.details as EntityData;
-        setEntityData(searchData);
+      const data = (await entityPromise) as FetchedEntityData;
+      if (isStale()) {
+        return;
       }
+
+      // The column API returns only the column; the search hit carries its
+      // table/schema/service context, so overlay the fresh column onto it.
+      setEntityData(
+        entityType === EntityType.TABLE_COLUMN
+          ? ({ ...entityDetails.details, ...data } as EntityData)
+          : mergeEntityData(data, entityDetails.details)
+      );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!isStale()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsEntityDataLoading(false);
+      if (!isStale()) {
+        setIsEntityDataLoading(false);
+      }
     }
   }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
 
