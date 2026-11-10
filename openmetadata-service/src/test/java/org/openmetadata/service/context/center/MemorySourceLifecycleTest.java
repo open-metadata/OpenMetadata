@@ -787,9 +787,192 @@ class MemorySourceLifecycleTest {
   }
 
   /**
+   * A memory superseded by one now archived is retired, so restricting its anchor makes no copy for
+   * the other restricted source and never resolves the successor; the share change goes through.
+   */
+  @Test
+  void restrictingTheAnchorOfASupersededMemoryMakesNoCopy() {
+    EntityReference restricted = contextFile("A restricted");
+    EntityReference privateCopy = contextFile("B private copy");
+    ContextMemory memory = supersededByAnArchivedMemory(anchoredMemory(restricted));
+    Edges edges = new Edges();
+    edges.anchor(restricted, memory.getId());
+    edges.mention(restricted, memory.getId());
+    edges.mention(privateCopy, memory.getId());
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), storedAs(memory)), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, restricted, privateCopy, memory.getEntityReference());
+      storedFile(entities, privateCopy, MemoryVisibility.PRIVATE, user("copy-owner"));
+
+      new MemorySourceSharing(memories)
+          .followSourceRestriction(sharing(restricted, MemoryVisibility.PRIVATE));
+    }
+
+    assertTrue(created.isEmpty(), "a retired memory is not copied");
+    assertEquals(Set.of(memory.getId()), edges.mentionedBy(privateCopy));
+  }
+
+  /** Archiving the anchor of a superseded memory moves the anchor and copies nothing. */
+  @Test
+  void archivingTheAnchorOfASupersededMemoryMakesNoCopy() {
+    EntityReference archived = contextFile("A archived").withDeleted(true);
+    EntityReference newAnchor = contextFile("B restricted");
+    EntityReference otherReaders = contextFile("C restricted");
+    ContextMemory memory = supersededByAnArchivedMemory(anchoredMemory(archived));
+    Edges edges = new Edges();
+    edges.anchor(archived, memory.getId());
+    Stream.of(archived, newAnchor, otherReaders)
+        .forEach(source -> edges.mention(source, memory.getId()));
+    Map<UUID, ContextMemory> stored = storedAs(memory);
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), stored), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, archived, newAnchor, otherReaders, memory.getEntityReference());
+      storedFile(entities, newAnchor, MemoryVisibility.PRIVATE, user("owner"));
+      storedFile(entities, otherReaders, MemoryVisibility.PRIVATE, user("stranger"));
+
+      new MemorySourceLifecycle(memories)
+          .archiveExtractedMemories(archived.getId(), archived.getType());
+    }
+
+    assertEquals(newAnchor.getId(), stored.get(memory.getId()).getPrimaryEntity().getId());
+    assertTrue(created.isEmpty(), "a retired memory is not copied");
+    assertEquals(Set.of(memory.getId()), edges.mentionedBy(otherReaders));
+  }
+
+  /** A rejected memory is copied for a restricted source's readers, and stays rejected there. */
+  @Test
+  void aRejectedMemoryIsCopiedWithItsStatus() {
+    EntityReference restricted = contextFile("A restricted");
+    EntityReference privateCopy = contextFile("B private copy");
+    ContextMemory memory =
+        anchoredMemory(restricted)
+            .withEntityStatus(ContextMemoryStatus.REJECTED)
+            .withStatusReason("Not our policy");
+    Edges edges = new Edges();
+    edges.anchor(restricted, memory.getId());
+    edges.mention(restricted, memory.getId());
+    edges.mention(privateCopy, memory.getId());
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), storedAs(memory)), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, restricted, privateCopy, memory.getEntityReference());
+      storedFile(entities, privateCopy, MemoryVisibility.PRIVATE, user("copy-owner"));
+
+      new MemorySourceSharing(memories)
+          .followSourceRestriction(sharing(restricted, MemoryVisibility.PRIVATE));
+    }
+
+    assertEquals(1, created.size());
+    assertEquals(ContextMemoryStatus.REJECTED, created.getFirst().getEntityStatus());
+    assertEquals("Not our policy", created.getFirst().getStatusReason());
+  }
+
+  /**
+   * A memory a person anchored on an asset, whose only document is the file, would go on showing it.
+   * The file takes the memory's copy instead, and the original no longer names it.
+   */
+  @Test
+  void restrictingTheOnlyDocumentOfAnAssetAnchoredMemoryLeavesItToACopy() {
+    EntityReference restricted = contextFile("Restricted");
+    EntityReference table = table("orders");
+    ContextMemory memory = anchoredMemory(table);
+    Edges edges = new Edges();
+    edges.anchor(table, memory.getId());
+    edges.mention(restricted, memory.getId());
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), storedAs(memory)), created, edges);
+
+    EntityReference shown;
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, restricted, table, memory.getEntityReference());
+      storedFile(entities, restricted, MemoryVisibility.ENTITY);
+
+      new MemorySourceSharing(memories)
+          .followSourceRestriction(sharing(restricted, MemoryVisibility.PRIVATE));
+      shown = MemorySourceDisclosure.shownSource(table, documentsOf(memories, memory));
+    }
+
+    assertEquals(1, created.size());
+    assertEquals(restricted.getId(), created.getFirst().getPrimaryEntity().getId());
+    assertEquals(Set.of(created.getFirst().getId()), edges.mentionedBy(restricted));
+    assertNull(shown, "the original shows no source");
+  }
+
+  /** Archiving the document everyone may read leaves the restricted one it would show a copy. */
+  @Test
+  void archivingWhatAnAssetAnchoredMemoryShowsCopiesItForTheRestrictedDocumentNext() {
+    EntityReference archived = contextFile("A org-wide").withDeleted(true);
+    EntityReference restricted = contextFile("B restricted");
+    EntityReference table = table("orders");
+    ContextMemory memory = anchoredMemory(table);
+    Edges edges = new Edges();
+    edges.anchor(table, memory.getId());
+    edges.mention(archived, memory.getId());
+    edges.mention(restricted, memory.getId());
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), storedAs(memory)), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, archived, restricted, table, memory.getEntityReference());
+      storedFile(entities, restricted, MemoryVisibility.PRIVATE, user("owner"));
+
+      new MemorySourceLifecycle(memories)
+          .archiveExtractedMemories(archived.getId(), archived.getType());
+    }
+
+    assertEquals(1, created.size());
+    assertEquals(Set.of(created.getFirst().getId()), edges.mentionedBy(restricted));
+    assertEquals(Set.of(memory.getId()), edges.mentionedBy(archived), "kept for its restore");
+  }
+
+  /** Releasing the document everyone may read leaves the restricted one it would show a copy. */
+  @Test
+  void releasingWhatAnAssetAnchoredMemoryShowsCopiesItForTheRestrictedDocumentNext() {
+    EntityReference released = contextFile("A org-wide");
+    EntityReference restricted = contextFile("B restricted");
+    EntityReference table = table("orders");
+    ContextMemory memory = anchoredMemory(table);
+    Edges edges = new Edges();
+    edges.anchor(table, memory.getId());
+    edges.mention(released, memory.getId());
+    edges.mention(restricted, memory.getId());
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(loads(memory, Include.ALL), storedAs(memory)), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, released, restricted, table, memory.getEntityReference());
+      storedFile(entities, released, MemoryVisibility.ENTITY);
+      storedFile(entities, restricted, MemoryVisibility.PRIVATE, user("owner"));
+
+      new MemorySourceLifecycle(memories).releaseExtractedMemory(memory.getId(), released);
+    }
+
+    assertEquals(1, created.size());
+    assertEquals(Set.of(created.getFirst().getId()), edges.mentionedBy(restricted));
+    assertTrue(edges.mentionedBy(released).isEmpty());
+  }
+
+  /**
    * A copy says what the memory says, in its stage, anchored on and linked to its document alone,
-   * which stops linking the original. Disputes and usage stay behind, and it is created as a
-   * relinking write, so it derives nothing of its own.
+   * which stops linking the original. It takes extraction's defaults, a name that names no
+   * document, and none of the original's owners, sharing, disputes or usage.
    */
   @Test
   void copyForSourceRestatesTheMemoryForItsDocumentAlone() {
@@ -806,7 +989,12 @@ class MemorySourceLifecycleTest {
             .withStatusReason("contradicts: the window differs")
             .withDisputes(List.of(new MemoryDispute().withReason("30 against 45 days")))
             .withUsageCount(4)
-            .withOwners(List.of(user("admin")));
+            .withOwners(List.of(user("a-reader-of-the-original")))
+            .withShareConfig(
+                new MemoryShareConfig()
+                    .withVisibility(MemoryVisibility.SHARED)
+                    .withSharedWith(
+                        List.of(new MemorySharedPrincipal().withPrincipal(user("another")))));
     List<ContextMemory> created = new ArrayList<>();
     ContextMemoryRepository memories = createsKept(spy(repository), created, new Edges());
     EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
@@ -815,12 +1003,12 @@ class MemorySourceLifecycleTest {
     try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
         mockStatic(EntityLifecycleEventDispatcher.class)) {
       lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
-      copy = new MemorySourceLifecycle(memories).copyForSource(memory, source);
+      copy = new MemorySourceLifecycle(memories).copyForSource(memory, source).orElseThrow();
     }
 
     assertEquals(List.of(copy), created);
     assertNotEquals(memory.getId(), copy.getId());
-    assertTrue(copy.getName().startsWith("Private copy-"));
+    assertTrue(copy.getName().matches("memory-[0-9a-f-]{36}"), copy.getName());
     assertEquals(
         List.of(
             memory.getTitle(), memory.getQuestion(), memory.getAnswer(), memory.getStatusReason()),
@@ -829,9 +1017,12 @@ class MemorySourceLifecycleTest {
         List.of(memory.getMemoryType(), memory.getMemoryScope(), memory.getSourceType()),
         List.of(copy.getMemoryType(), copy.getMemoryScope(), copy.getSourceType()));
     assertEquals(ContextMemoryStatus.DRAFT, copy.getEntityStatus());
-    assertEquals(memory.getOwners(), copy.getOwners());
+    assertNull(copy.getOwners(), "its creator owns it, as extraction's memories");
+    assertEquals(
+        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY), copy.getShareConfig());
     assertEquals(List.of(source, source), List.of(copy.getPrimaryEntity(), copy.getSourceEntity()));
     assertNull(copy.getDisputes());
+    assertNull(copy.getSupersededBy());
     assertEquals(0, copy.getUsageCount(), "its own usage, from none");
     assertNull(copy.getRelatedEntities());
     verifyLinkDeleted(inOrder(relationshipDAO), source, memory.getId(), Relationship.MENTIONED_IN);
@@ -1094,6 +1285,7 @@ class MemorySourceLifecycleTest {
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName("mem")
+        .withEntityStatus(ContextMemoryStatus.APPROVED)
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }
 
@@ -1152,6 +1344,37 @@ class MemorySourceLifecycleTest {
                 .map(reader -> new MemorySharedPrincipal().withPrincipal(reader))
                 .toList());
     return shared;
+  }
+
+  /** Superseded by a memory since archived, which a create would refuse to resolve. */
+  private static ContextMemory supersededByAnArchivedMemory(ContextMemory memory) {
+    return memory
+        .withEntityStatus(ContextMemoryStatus.SUPERSEDED)
+        .withSupersededBy(
+            new EntityReference()
+                .withId(UUID.randomUUID())
+                .withType(Entity.CONTEXT_MEMORY)
+                .withDeleted(true));
+  }
+
+  private static EntityReference table(String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE).withName(name);
+  }
+
+  /** The live documents linked to the memory, as its reads list them. */
+  private static List<EntityReference> documentsOf(
+      ContextMemoryRepository memories, ContextMemory memory) {
+    return memories.findFrom(
+        memory.getId(), Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
+  }
+
+  private static MockedStatic<EntityLifecycleEventDispatcher> quietDispatcher() {
+    MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+        mockStatic(EntityLifecycleEventDispatcher.class);
+    lifecycle
+        .when(EntityLifecycleEventDispatcher::getInstance)
+        .thenReturn(mock(EntityLifecycleEventDispatcher.class));
+    return lifecycle;
   }
 
   private static EntityReference user(String name) {

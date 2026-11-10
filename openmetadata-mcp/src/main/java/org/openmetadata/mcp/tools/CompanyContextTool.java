@@ -119,8 +119,8 @@ public class CompanyContextTool implements McpTool {
   }
 
   /**
-   * A {@link ContextMemory} FQN is a single name part, so a file-extracted pill name (e.g. {@code
-   * report.md_<hash>}) carries dots and is stored quoted ({@code "report.md_<hash>"}). MCP clients
+   * A {@link ContextMemory} FQN is a single name part, so a pill name with dots (e.g. one extracted
+   * before 2.1, named after its file: {@code report.md-<uuid>}) is stored quoted. MCP clients
    * routinely hand the value back unquoted; {@link FullyQualifiedName#quoteName(String)} restores
    * the canonical quoting (and is a no-op when the value is already correctly quoted), so the
    * by-name lookup resolves whichever form the client supplies.

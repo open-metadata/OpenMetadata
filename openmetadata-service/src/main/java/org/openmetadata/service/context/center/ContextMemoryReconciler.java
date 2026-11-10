@@ -211,9 +211,18 @@ public class ContextMemoryReconciler {
 
   private void planRelease(
       EntityReference sourceRef, ContextMemory memory, ReconciliationPlan plan) {
-    plan.writes.add(() -> memoryRepository.releaseExtractedMemory(memory.getId(), sourceRef));
+    plan.writes.add(() -> release(memory, sourceRef));
     plan.changingIds.add(memory.getId());
     plan.deleted++;
+  }
+
+  /** Like this run's other conditional writes, a release a decision overtook leaves the link. */
+  private void release(ContextMemory memory, EntityReference sourceRef) {
+    try {
+      memoryRepository.releaseExtractedMemory(memory.getId(), sourceRef);
+    } catch (PreconditionFailedException e) {
+      LOG.info("Memory {} changed while its source was re-extracted; link left", memory.getId());
+    }
   }
 
   private boolean releaseSharedIfChanged(

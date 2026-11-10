@@ -32,7 +32,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class ContextMemoryExtractor implements DocumentMemoryExtractor {
   static final int MAX_PROMPT_CHARS = 60_000;
   static final int MAX_CHUNKS = 8;
-  static final int MAX_NAME_BASE_LENGTH = 200;
+  private static final String MEMORY_NAME_PREFIX = "memory-";
   static final String SYSTEM_PROMPT =
       "You extract reusable company knowledge from a document as a JSON array. Each element is an "
           + "object with keys: title, question, answer, summary, memoryType (one of Faq, Note, "
@@ -205,7 +205,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
 
   private ContextMemory toMemory(
       KnowledgePill pill, EntityReference sourceRef, ContextMemorySourceType sourceType) {
-    String name = memoryName(sourceRef);
+    String name = memoryName();
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName(name)
@@ -225,13 +225,12 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
         .withUpdatedAt(System.currentTimeMillis());
   }
 
-  /** Keeps the generated memory name within the 256-char entityName limit (UUID suffix included). */
-  static String memoryName(EntityReference sourceRef) {
-    String base = sourceRef.getName();
-    if (base.length() > MAX_NAME_BASE_LENGTH) {
-      base = base.substring(0, MAX_NAME_BASE_LENGTH);
-    }
-    return base + "-" + UUID.randomUUID();
+  /**
+   * A generated memory name. A name never changes and is the memory's FQN, so it names no document:
+   * a memory can move to a document whose readers may not read the one it came from.
+   */
+  public static String memoryName() {
+    return MEMORY_NAME_PREFIX + UUID.randomUUID();
   }
 
   private ContextMemoryType parseType(String raw) {

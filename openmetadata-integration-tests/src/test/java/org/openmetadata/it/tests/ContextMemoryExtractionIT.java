@@ -71,6 +71,7 @@ import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.context.center.AiProvider;
 import org.openmetadata.service.context.center.AiProviderHolder;
 import org.openmetadata.service.context.center.ContextMemoryExtractionJobHandler;
+import org.openmetadata.service.context.center.ContextMemoryExtractor;
 import org.openmetadata.service.context.center.ContextMemoryReconciler;
 import org.openmetadata.service.context.center.DocumentMemoryExtractor;
 import org.openmetadata.service.context.center.PageContextProcessingEngine;
@@ -1277,8 +1278,9 @@ class ContextMemoryExtractionIT {
     return (ContextFileRepository) Entity.getEntityRepository(Entity.CONTEXT_FILE);
   }
 
+  /** Named as extraction names a memory, so no check of what a reader sees passes by its naming. */
   private ContextMemory pill(String text, EntityReference source, ContextMemorySourceType type) {
-    String name = "pill-" + UUID.randomUUID();
+    String name = ContextMemoryExtractor.memoryName();
     return new ContextMemory()
         .withId(UUID.randomUUID())
         .withName(name)

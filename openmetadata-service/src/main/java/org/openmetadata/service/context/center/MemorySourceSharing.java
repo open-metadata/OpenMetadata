@@ -53,12 +53,14 @@ public class MemorySourceSharing {
     return lifecycle;
   }
 
+  /** A memory the file does not anchor stops naming it, even as the source it would show. */
   private static void followRestriction(
       MemorySourceLifecycle lifecycle, UUID memoryId, EntityReference restricted) {
     if (lifecycle.isAnchoredOn(memoryId, restricted)) {
       moveAnchorOff(lifecycle, memoryId, restricted);
     } else {
       lifecycle.dropRelatedSource(memoryId, restricted);
+      lifecycle.copyForTheSourcesItWouldShow(memoryId);
     }
   }
 

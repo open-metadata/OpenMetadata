@@ -8,6 +8,7 @@ import static org.openmetadata.service.jdbi3.ContextMemoryRepository.SOURCE_LINK
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -170,17 +171,24 @@ public class MemorySourceLifecycle {
   }
 
   /**
-   * A copy of the memory for {@code source}'s readers: its content and review state, anchored on and
-   * linked to that source, which stops linking the original. Nothing extracts, reconciles or judges
-   * it; it is indexed as it is created.
+   * A copy of the memory for {@code source}'s readers, anchored on and linked to that source, which
+   * stops linking the original; none for a retired memory. Nothing extracts, reconciles or judges it.
    */
-  public ContextMemory copyForSource(ContextMemory memory, EntityReference source) {
-    ContextMemory copy = MemoryCopy.of(memory, source);
-    relinking(copy.getId(), () -> memories.create(null, copy));
-    deleteSourceLink(memory.getId(), source, Relationship.MENTIONED_IN);
-    deleteSourceLink(memory.getId(), source, Relationship.RELATED_TO);
-    memories.refreshSearchDocument(memory.getId());
+  public Optional<ContextMemory> copyForSource(ContextMemory memory, EntityReference source) {
+    Optional<ContextMemory> copy = MemoryCopy.of(memory, source);
+    copy.ifPresent(
+        made -> {
+          relinking(made.getId(), () -> memories.create(null, made));
+          unlinkSource(memory.getId(), source);
+        });
     return copy;
+  }
+
+  /** {@code source} stops linking the memory, which then names it nowhere. */
+  private void unlinkSource(UUID memoryId, EntityReference source) {
+    deleteSourceLink(memoryId, source, Relationship.MENTIONED_IN);
+    deleteSourceLink(memoryId, source, Relationship.RELATED_TO);
+    memories.refreshSearchDocument(memoryId);
   }
 
   private void archiveExtractedMemory(UUID memoryId, EntityReference source) {
@@ -206,6 +214,8 @@ public class MemorySourceLifecycle {
       ContextMemory reanchored = reparented(current, archived, true);
       updateSourceLinks(current, reanchored);
       copyForSourcesTheAnchorHides(memoryId, reanchored.getPrimaryEntity());
+    } else {
+      copyForTheSourcesItWouldShow(memoryId);
     }
     memories.refreshSearchDocument(memoryId);
   }
@@ -227,22 +237,50 @@ public class MemorySourceLifecycle {
   void copyForSourcesTheAnchorHides(UUID memoryId, EntityReference anchor) {
     if (anchor != null && !readableByEveryone(anchor)) {
       Set<UUID> anchorReaders = readers.readersOf(anchor);
-      List<EntityReference> hidden =
+      copyFor(
+          memoryId,
           otherSources(memoryId, anchor).stream()
               .filter(source -> !isArchived(source) && !readableByEveryone(source))
               .filter(source -> !anchorReaders.containsAll(readers.readersOf(source)))
-              .toList();
-      if (!hidden.isEmpty()) {
-        ContextMemory memory =
-            memories.get(
-                null,
-                memoryId,
-                memories.getFields(Entity.FIELD_OWNERS),
-                Include.NON_DELETED,
-                false);
-        hidden.forEach(source -> copyForSource(memory, source));
-      }
+              .toList());
     }
+  }
+
+  private void copyFor(UUID memoryId, List<EntityReference> sources) {
+    if (!sources.isEmpty()) {
+      ContextMemory memory = storedMemory(memoryId);
+      sources.forEach(source -> copyForSource(memory, source));
+    }
+  }
+
+  /**
+   * While the memory would show a document only some may read that is not its anchor, that document
+   * takes a copy of it, or stops linking a retired one, so the memory never names it to its readers.
+   */
+  void copyForTheSourcesItWouldShow(UUID memoryId) {
+    EntityReference shown = restrictedShownSource(memoryId);
+    ContextMemory memory = shown == null ? null : storedMemory(memoryId);
+    while (shown != null) {
+      if (copyForSource(memory, shown).isEmpty()) {
+        unlinkSource(memoryId, shown);
+      }
+      shown = restrictedShownSource(memoryId);
+    }
+  }
+
+  /** The document the memory shows, when it is not its anchor and not everyone may read it. */
+  private EntityReference restrictedShownSource(UUID memoryId) {
+    EntityReference anchor = anchorEdge(memoryId);
+    List<EntityReference> documents =
+        memories.findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
+    EntityReference shown =
+        MemorySourceDisclosure.shownSource(anchor, documents, this::readableByEveryone);
+    boolean named = shown == null || isSameSource(shown, anchor) || readableByEveryone(shown);
+    return named ? null : shown;
+  }
+
+  private ContextMemory storedMemory(UUID memoryId) {
+    return memories.get(null, memoryId, memories.getFields(""), Include.NON_DELETED, false);
   }
 
   /** A live article or org-wide file; a file this write shares differently, as it leaves it. */
@@ -262,6 +300,7 @@ public class MemorySourceLifecycle {
     }
     deleteSourceLinks(memoryId, source, links);
     if (staysLive) {
+      copyForTheSourcesItWouldShow(memoryId);
       memories.refreshSearchDocument(memoryId);
     }
   }
