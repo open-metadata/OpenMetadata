@@ -71,6 +71,8 @@ public class MemorySourceLifecycle {
           source.getType(),
           Entity.CONTEXT_MEMORY,
           Relationship.MENTIONED_IN);
+      // The link write indexed the memory with restricted names withheld; reindex it from storage.
+      memories.refreshSearchDocument(memoryId);
     }
   }
 
@@ -201,7 +203,7 @@ public class MemorySourceLifecycle {
 
   /** The mark goes on after the delete, because every delete's hook clears it. */
   private void archive(UUID memoryId) {
-    memories.delete(Entity.ADMIN_USER_NAME, memoryId, false, false);
+    relinking(memoryId, () -> memories.delete(Entity.ADMIN_USER_NAME, memoryId, false, false));
     archivedWithSources.mark(memoryId);
   }
 
@@ -366,7 +368,7 @@ public class MemorySourceLifecycle {
     boolean archived = latest != null && Boolean.TRUE.equals(latest.getDeleted());
     boolean comesBack = archived && archivedWithSources.isMarked(memoryId);
     if (comesBack) {
-      memories.restoreEntity(Entity.ADMIN_USER_NAME, memoryId);
+      relinking(memoryId, () -> memories.restoreEntity(Entity.ADMIN_USER_NAME, memoryId));
     }
     if (latest != null && (comesBack || !archived)) {
       showAsSourceAgain(memoryId, restored);

@@ -1,9 +1,11 @@
 package org.openmetadata.service.context.center;
 
+import java.util.ArrayList;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Predicate;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
@@ -49,11 +51,17 @@ public final class MemoryRelinking {
   }
 
   /**
-   * Leaves the documents not everyone may read out of what the write records of the memory as it
-   * was, in its change and in the version it stores: they appear by id and type alone.
+   * Leaves the documents not everyone may read out of what the write records of the memory, as it
+   * was and as it leaves it: its change, its event and the version it stores name them by id and
+   * type alone.
    */
-  public static void withholdRestrictedNames(ContextMemory original) {
-    current(original.getId()).ifPresent(relinking -> relinking.withholdNames(original));
+  public static void withholdRestrictedNames(ContextMemory original, ContextMemory updated) {
+    current(original.getId())
+        .ifPresent(
+            relinking -> {
+              relinking.withholdNames(original);
+              relinking.withholdNames(updated);
+            });
   }
 
   private static Optional<MemoryRelinking> current(UUID memoryId) {
@@ -66,7 +74,10 @@ public final class MemoryRelinking {
     memory.setSourceEntity(withheld(memory.getSourceEntity()));
     memory.setSourceFile(withheld(memory.getSourceFile()));
     if (memory.getRelatedEntities() != null) {
-      memory.setRelatedEntities(memory.getRelatedEntities().stream().map(this::withheld).toList());
+      memory.setRelatedEntities(
+          memory.getRelatedEntities().stream()
+              .map(this::withheld)
+              .collect(Collectors.toCollection(ArrayList::new)));
     }
   }
 

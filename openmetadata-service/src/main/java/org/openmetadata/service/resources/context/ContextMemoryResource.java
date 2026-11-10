@@ -327,10 +327,12 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     return ContextMemoryVisibility.filterListed(scanned, securityContext).size();
   }
 
+  /** The Query evidence the caller may view, and the files the last change names they may read. */
   private ResultList<ContextMemory> withVisibleEvidence(
       SecurityContext securityContext, ResultList<ContextMemory> memories) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         memories.getData(), authorizer, securityContext);
+    ContextMemoryDocumentAccess.redactChanges(memories.getData(), securityContext);
     return memories;
   }
 
@@ -343,6 +345,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     if (response.getEntity() instanceof ContextMemory memory) {
       ContextMemory copy =
           ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext);
+      ContextMemoryDocumentAccess.redactChanges(List.of(copy), securityContext);
       visible = Response.fromResponse(response).entity(copy).build();
     }
     return visible;
@@ -351,6 +354,7 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   private ContextMemory withVisibleEvidence(SecurityContext securityContext, ContextMemory memory) {
     ContextMemoryEvidenceAccess.redactUnviewableQueries(
         List.of(memory), authorizer, securityContext);
+    ContextMemoryDocumentAccess.redactChanges(List.of(memory), securityContext);
     return memory;
   }
 
@@ -726,8 +730,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("id")
           UUID id) {
     enforceCurrentVisibility(securityContext, id);
-    return ContextMemoryEvidenceAccess.redactUnviewableQueries(
-        listVersionsInternal(securityContext, id), authorizer, securityContext);
+    return ContextMemoryDocumentAccess.redactVersions(
+        ContextMemoryEvidenceAccess.redactUnviewableQueries(
+            listVersionsInternal(securityContext, id), authorizer, securityContext),
+        securityContext);
   }
 
   @GET
@@ -754,7 +760,10 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("version")
           String version) {
     enforceCurrentVisibility(securityContext, id);
-    return withVisibleEvidence(securityContext, getVersionInternal(securityContext, id, version));
+    return withVisibleEvidence(
+        securityContext,
+        ContextMemoryDocumentAccess.redactVersion(
+            getVersionInternal(securityContext, id, version), securityContext));
   }
 
   /** Current visibility governs every response containing a stored memory. */

@@ -947,7 +947,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      MemoryRelinking.withholdRestrictedNames(original);
+      MemoryRelinking.withholdRestrictedNames(original, updated);
       requireOwnersChangedByPrivilegedWriter();
       requireSourceTypeChangedByPrivilegedWriter();
       flipToManualOnUserEdit();

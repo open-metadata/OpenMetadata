@@ -46,6 +46,7 @@ import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
+import org.mockito.invocation.InvocationOnMock;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryScope;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
@@ -969,6 +970,39 @@ class MemorySourceLifecycleTest {
     assertTrue(edges.mentionedBy(released).isEmpty());
   }
 
+  /** The archive and the restore each store a version of the memory, which withholds names too. */
+  @Test
+  void archivingAndRestoringAMemoryAreRelinkingWrites() {
+    EntityReference live = contextFile("Archived and restored");
+    EntityReference archived = JsonUtils.deepCopy(live, EntityReference.class).withDeleted(true);
+    ContextMemory memory = memory(MemoryVisibility.ENTITY);
+    sourceMentions(live, memory);
+    linkSources(memory.getId(), live);
+    ContextMemoryRepository memories = spy(repository);
+    List<Boolean> relinking = new ArrayList<>();
+    doAnswer(call -> relinked(relinking, call, null))
+        .when(memories)
+        .delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
+    doAnswer(call -> relinked(relinking, call, null))
+        .when(memories)
+        .restoreEntity(any(), any(UUID.class));
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, archived, memory.getEntityReference());
+      new MemorySourceLifecycle(memories).archiveExtractedMemories(live.getId(), live.getType());
+    }
+    committed(JsonUtils.deepCopy(memory, ContextMemory.class).withDeleted(true));
+    marked(memory);
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, live, memory.getEntityReference().withDeleted(true));
+      new MemorySourceLifecycle(memories).restoreExtractedMemories(live.getId(), live.getType());
+    }
+
+    assertEquals(List.of(true, true), relinking, "the archive's delete, then the restore");
+  }
+
   /**
    * A copy says what the memory says, in its stage, anchored on and linked to its document alone,
    * which stops linking the original. It takes extraction's defaults, a name that names no
@@ -1030,36 +1064,28 @@ class MemorySourceLifecycleTest {
   }
 
   /**
-   * What a relinking write records of the memory as it was names the documents everyone may read and
-   * an asset anchor; any other document, the file it restricts included, appears by id and type.
+   * What a relinking write records of the memory, as it was and as it leaves it, names the documents
+   * everyone may read and an asset anchor; any other document appears by id and type.
    */
   @Test
   void aRelinkingWriteRecordsADocumentOnlySomeMayReadByIdAlone() {
     EntityReference restricted = contextFile("Restricted");
+    EntityReference privateCopy = contextFile("Private copy");
     EntityReference orgWide = contextFile("Org-wide");
-    EntityReference table =
-        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE).withName("orders");
-    ContextMemory original =
-        memory(MemoryVisibility.ENTITY)
-            .withPrimaryEntity(restricted)
-            .withSourceEntity(restricted)
-            .withSourceFile(restricted)
-            .withRelatedEntities(List.of(orgWide, table));
+    EntityReference table = table("orders");
+    ContextMemory original = linkedTo(restricted, orgWide, table);
+    ContextMemory updated = linkedTo(privateCopy, orgWide, table).withId(original.getId());
     ContextMemory elsewhere = JsonUtils.deepCopy(original, ContextMemory.class);
 
     MemoryRelinking.run(
         original.getId(),
         document -> orgWide.getId().equals(document.getId()),
-        () -> MemoryRelinking.withholdRestrictedNames(original));
-    MemoryRelinking.withholdRestrictedNames(elsewhere);
+        () -> MemoryRelinking.withholdRestrictedNames(original, updated));
+    MemoryRelinking.withholdRestrictedNames(
+        elsewhere, JsonUtils.deepCopy(elsewhere, ContextMemory.class));
 
-    Stream.of(original.getPrimaryEntity(), original.getSourceEntity(), original.getSourceFile())
-        .forEach(
-            recorded ->
-                assertEquals(
-                    new EntityReference().withId(restricted.getId()).withType(Entity.CONTEXT_FILE),
-                    recorded));
-    assertEquals(List.of(orgWide, table), original.getRelatedEntities());
+    assertRecordedByIdAlone(original, restricted);
+    assertRecordedByIdAlone(updated, privateCopy);
     assertEquals(restricted, elsewhere.getPrimaryEntity(), "only the relinking write is affected");
   }
 
@@ -1324,6 +1350,12 @@ class MemorySourceLifecycleTest {
         .thenReturn(stored);
   }
 
+  /** Records whether the stubbed write ran as the memory's relinking write. */
+  private static Object relinked(List<Boolean> relinking, InvocationOnMock call, Object result) {
+    relinking.add(MemoryRelinking.isRelinking(call.getArgument(1)));
+    return result;
+  }
+
   /** The file shared as {@code visibility}, as the write changing its sharing leaves it. */
   private static ContextFile sharing(
       EntityReference file, MemoryVisibility visibility, EntityReference... owners) {
@@ -1379,6 +1411,25 @@ class MemorySourceLifecycleTest {
 
   private static EntityReference user(String name) {
     return new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName(name);
+  }
+
+  /** Anchored on and showing {@code anchor}, citing {@code related}. */
+  private static ContextMemory linkedTo(EntityReference anchor, EntityReference... related) {
+    return memory(MemoryVisibility.ENTITY)
+        .withPrimaryEntity(anchor)
+        .withSourceEntity(anchor)
+        .withSourceFile(anchor)
+        .withRelatedEntities(List.of(related));
+  }
+
+  private static void assertRecordedByIdAlone(ContextMemory memory, EntityReference document) {
+    EntityReference idAlone =
+        new EntityReference().withId(document.getId()).withType(Entity.CONTEXT_FILE);
+    assertEquals(
+        List.of(idAlone, idAlone, idAlone),
+        List.of(memory.getPrimaryEntity(), memory.getSourceEntity(), memory.getSourceFile()));
+    assertEquals(2, memory.getRelatedEntities().size(), "the cited org-wide file and asset stay");
+    assertTrue(memory.getRelatedEntities().stream().allMatch(cited -> cited.getName() != null));
   }
 
   /** The relationship rows the writes under test read and change, as the database keeps them. */
