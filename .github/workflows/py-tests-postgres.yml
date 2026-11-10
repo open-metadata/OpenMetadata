@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -86,6 +87,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup Openmetadata Test Environment

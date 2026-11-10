@@ -12,10 +12,15 @@
 # This workflow will build a package using Maven and then publish it to GitHub packages when a release is created
 # For more information see: https://github.com/actions/setup-java/blob/main/docs/advanced-usage.md#apache-maven-with-a-settings-path
 
+permissions:
+  contents: read
 name: MySQL Playwright Integration Tests
 on:
-  pull_request_target:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+  push:
+    branches: ["1.13"]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -24,7 +29,7 @@ concurrency:
 jobs:
   playwright-mysql:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ github.event_name != 'pull_request' && (github.ref == 'refs/heads/1.13' || (github.event_name == 'merge_group' && github.event.merge_group.base_ref == 'refs/heads/1.13')) }}
     strategy:
       fail-fast: false
       matrix:
@@ -41,25 +46,10 @@ jobs:
           large-packages: false
           swap-storage: true
           docker-images: false
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true # To not auto approve changes
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
       - name: Cache Maven Dependencies
         id: cache-output

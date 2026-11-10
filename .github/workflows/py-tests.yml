@@ -18,6 +18,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -26,13 +27,6 @@ concurrency:
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
   MAIN_PYTHON_VERSION: "3.10"
-  SONAR_OPTS: >-
-    -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-    -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
-    -Dsonar.pullrequest.github.repository=OpenMetadata
-    -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-    -Dsonar.pullrequest.provider=github
-
 jobs:
   # Detect whether relevant paths changed. When no Python/service/schema files
   # are modified the downstream jobs are skipped via their `if` condition.
@@ -71,6 +65,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup Openmetadata Test Environment
@@ -146,6 +141,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup Openmetadata Test Environment
@@ -199,6 +195,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
@@ -241,36 +238,3 @@ jobs:
           cd ingestion
           nox --no-venv -s combine-coverage
         shell: bash
-
-      - name: Remove pom.xml
-        run: rm pom.xml
-        shell: bash
-
-      # Fork and Dependabot PRs get no secrets, so they skip the PR analysis.
-      - name: Push Results in PR to Sonar
-        id: push-to-sonar
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-        continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v7
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-          args: ${{ env.SONAR_OPTS }}
-
-      # next two steps are for retrying "Push Results in PR to Sonar" step in case it fails
-      - name: Wait to retry 'Push Results in PR to Sonar'
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.push-to-sonar.outcome != 'success' }}
-        run: sleep 20s
-        shell: bash
-
-      - name: Retry 'Push Results in PR to Sonar'
-        uses: SonarSource/sonarqube-scan-action@v7
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' && steps.push-to-sonar.outcome != 'success' }}
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-          args: ${{ env.SONAR_OPTS }}

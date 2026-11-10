@@ -31,7 +31,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     permissions:
-      pull-requests: write
+      pull-requests: read
     env:
       FAILURE_HELP: |
         **The Python checkstyle failed.**
@@ -45,6 +45,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Set up Python 3.10
@@ -74,12 +75,6 @@ jobs:
 
       # Fork and Dependabot PRs get a read-only token, so they get no comment; everyone gets the
       # job summary and the error annotation from the next step.
-      - name: Create a comment in the PR with the instructions
-        if: ${{ steps.style.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-        uses: peter-evans/create-or-update-comment@v1
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ env.FAILURE_HELP }}
 
       - name: Python checkstyle failed
         if: steps.style.outcome != 'success'
