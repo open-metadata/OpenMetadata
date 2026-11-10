@@ -110,7 +110,7 @@ const SignUp = () => {
         name: data.name,
         displayName: data.displayName,
         email: data.email,
-        teams: data.teams?.map((t) => t.id),
+        teams: (data.teams as EntityReference[])?.map((t) => t.id),
         profile: {
           images: getImages(data.picture ?? ''),
         },
