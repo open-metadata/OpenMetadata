@@ -393,6 +393,25 @@ class ODCSVersionedExportTest {
   }
 
   @ParameterizedTest
+  @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0"})
+  void preservedOnlyLegacyRowCountRulesBecomeMetricsAfterMetadataRestoration(String sourceVersion) {
+    DataContract contract = contract();
+    ObjectNode source =
+        (ObjectNode)
+            exporter
+                .export(contract.withOdcsQualityRules(List.of(rowCountRule())), sourceVersion)
+                .requireValid();
+    contract.setOdcsQualityRules(null);
+    ObjectNode baseline = (ObjectNode) ODCSExportService.nativeDocument(contract, List.of());
+    contract.setOdcsPreservedFields(
+        ODCSPreservedFields.capture(
+            ODCSProfiles.adapter(sourceVersion).preservationView(source), baseline, "customers"));
+    JsonNode exported = exporter.export(contract, "v3.1.0").requireValid();
+    assertEquals("rowCount", exported.at("/schema/0/quality/0/metric").asText());
+    assertEquals(1, exported.at("/schema/0/quality/0/mustBeGreaterOrEqualTo").asInt());
+  }
+
+  @ParameterizedTest
   @ValueSource(strings = {"v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
   void preservedOnlyLibraryRulesAreConvertedAfterMetadataRestoration(String version) {
     DataContract contract = contract();

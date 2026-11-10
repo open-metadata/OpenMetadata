@@ -29,6 +29,7 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.DataContract;
+import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
@@ -212,6 +213,14 @@ class ODCSCrossVersionRoundTripTest {
                 .withName("customers")
                 .withFullyQualifiedName("sample_data.ecommerce_db.shopify.customers")
                 .withDescription("Customer records"))
+        .withOdcsQualityRules(
+            List.of(
+                new ODCSQualityRule()
+                    .withName("customers_not_empty")
+                    .withColumn("customers")
+                    .withType(ODCSQualityRule.Type.LIBRARY)
+                    .withMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT)
+                    .withMustBeGreaterOrEqualTo(1.0)))
         .withSchema(
             List.of(
                 new Column()

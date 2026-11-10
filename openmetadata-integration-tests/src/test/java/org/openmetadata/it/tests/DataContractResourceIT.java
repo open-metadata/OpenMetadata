@@ -2232,7 +2232,14 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                               .withColumn("id")
                               .withType(ODCSQualityRule.Type.LIBRARY)
                               .withMetric(ODCSQualityRule.OdcsQualityMetric.NULL_VALUES)
-                              .withMustBe(0.0)));
+                              .withMustBe(0.0),
+                          new ODCSQualityRule()
+                              .withId("table-check-id")
+                              .withName(ns.prefix("versioned_row_count"))
+                              .withColumn(table.getName())
+                              .withType(ODCSQualityRule.Type.LIBRARY)
+                              .withMetric(ODCSQualityRule.OdcsQualityMetric.ROW_COUNT)
+                              .withMustBeGreaterOrEqualTo(1.0)));
           ObjectNode source =
               (ObjectNode)
                   new ODCSExportService(contract -> List.of())
@@ -2294,8 +2301,13 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
           assertEquals("admin", imported.getOwners().getFirst().getName());
           assertEquals(24, imported.getSla().getRefreshFrequency().getInterval());
           assertEquals("A-42", ((Map<?, ?>) imported.getExtension()).get(property));
-          assertEquals("check-id", imported.getOdcsQualityRules().getFirst().getId());
-          assertEquals(1, imported.getQualityExpectations().size());
+          assertEquals(
+              List.of("check-id", "table-check-id"),
+              imported.getOdcsQualityRules().stream()
+                  .map(ODCSQualityRule::getId)
+                  .sorted()
+                  .toList());
+          assertEquals(2, imported.getQualityExpectations().size());
           assertEquals(version, imported.getOdcsPreservedFields().path("sourceVersion").asText());
           for (String mode : List.of("merge", "replace")) {
             RequestOptions upsert =
@@ -2313,8 +2325,14 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                         HttpMethod.PUT, route, yaml ? content : source, DataContract.class, upsert);
             assertEquals(imported.getId(), updated.getId());
             assertEquals(
-                imported.getQualityExpectations().getFirst().getId(),
-                updated.getQualityExpectations().getFirst().getId());
+                imported.getQualityExpectations().stream()
+                    .map(EntityReference::getId)
+                    .sorted()
+                    .toList(),
+                updated.getQualityExpectations().stream()
+                    .map(EntityReference::getId)
+                    .sorted()
+                    .toList());
           }
           for (String targetVersion : ODCSProfiles.supportedVersions()) {
             JsonNode exported =

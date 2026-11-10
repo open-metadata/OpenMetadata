@@ -19,10 +19,13 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
+import org.openmetadata.schema.type.datacontract.odcs.v310.DataQuality;
 
 /** Decodes the compatibility declarations emitted by the older published profiles. */
 final class ODCSImportQuality {
@@ -37,6 +40,10 @@ final class ODCSImportQuality {
           "missingValues",
           "invalidCount",
           "invalidValues");
+  private static final Set<String> PUBLISHED_METRICS =
+      Arrays.stream(DataQuality.Metric.values())
+          .map(DataQuality.Metric::toString)
+          .collect(Collectors.toUnmodifiableSet());
 
   private ODCSImportQuality() {}
 
@@ -81,9 +88,10 @@ final class ODCSImportQuality {
       }
       if (properties.isEmpty()) rule.remove("customProperties");
     }
-    String metric = rule.path("rule").asText();
-    if (!rule.has("metric") && METRICS.containsKey(metric)) {
-      rule.put("metric", METRICS.get(metric));
+    String sourceMetric = rule.path("rule").asText();
+    String metric = METRICS.getOrDefault(sourceMetric, sourceMetric);
+    if (!rule.has("metric") && PUBLISHED_METRICS.contains(metric)) {
+      rule.put("metric", metric);
       rule.remove("rule");
     }
     return rule;

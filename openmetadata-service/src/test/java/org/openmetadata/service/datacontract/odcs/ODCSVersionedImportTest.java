@@ -24,8 +24,11 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSCustomProperty;
@@ -41,6 +44,33 @@ import org.openmetadata.service.util.ODCSConverter;
 class ODCSVersionedImportTest {
   private static final ObjectMapper JSON = new ObjectMapper();
   private final ODCSExportService exporter = new ODCSExportService(contract -> List.of());
+
+  static Stream<Arguments> unchangedLibraryNames() {
+    return Stream.of("v3.0.0", "v3.0.1", "v3.0.2")
+        .flatMap(
+            version ->
+                Stream.of(
+                        "rowCount",
+                        "nullValues",
+                        "duplicateValues",
+                        "missingValues",
+                        "invalidValues")
+                    .map(metric -> Arguments.of(version, metric)));
+  }
+
+  @ParameterizedTest
+  @MethodSource("unchangedLibraryNames")
+  void libraryNamesThatAlreadyMatchPublishedMetricsBecomeNativeMetrics(
+      String version, String metric) {
+    ObjectNode source = (ObjectNode) exporter.export(contract(), version).requireValid();
+    ((ObjectNode) source.at("/schema/0/properties/0/quality/0")).put("rule", metric);
+    DataContract imported = read(source, contract().getEntity());
+    assertEquals(
+        ODCSQualityRule.OdcsQualityMetric.fromValue(metric),
+        imported.getOdcsQualityRules().getFirst().getMetric());
+    JsonNode exported = exporter.export(imported, "v3.1.0").requireValid();
+    assertEquals(metric, exported.at("/schema/0/properties/0/quality/0/metric").asText());
+  }
 
   @ParameterizedTest
   @ValueSource(strings = {"v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0", "v2.2.2", "v2.2.1"})
