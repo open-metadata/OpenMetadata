@@ -75,111 +75,6 @@ source's link and reassigns the primary source when needed; the memory is delete
 last source is released. `extractionStats.pillsCreated` counts newly created memories, not reused
 ones. The file is marked `Processed` only after the extraction and reconciliation path returns.
 
-#### §4 amended 2026-11-10: a document's archive, restore and sharing move its memories
-
-Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclosureTest`,
-`ContextMemoryRepositoryTest`, `ContextMemoryReconcilerTest`, `ContextMemoryExtractorTest` and
-`ContextMemoryExtractionIT`; `ContextFileIT` guards a file's archive, mark and restore.
-
-- **Archive.** Archiving (soft-deleting) a file soft-deletes each memory no other live source
-  states; it keeps its links, so restoring the file can bring it back. A memory another live source
-  states stays live. `hasOtherSources` counts archived sources, so a re-extraction that drops a fact
-  from its last live source archives the memory for an archived copy that still states it. A
-  permanent delete releases the file's links and deletes a memory nothing else states.
-- **Anchor ranking.** When a memory's anchor goes, `chooseAnchor` takes a live source everyone may
-  read (a live article, or a file shared with the whole organization), else a restricted live one,
-  the current anchor first in both, else the first remaining source, so an archived memory keeps an
-  anchor for its restore. An archived memory's anchor moves by its edges alone, because an update
-  would restore it.
-- **The archive mark.** After the soft delete, archiving writes the `entity_extension` row
-  `contextMemory.archivedWithSources`. Every other delete or restore of the memory clears it, so a
-  memory a person deleted stays deleted. The delete and the mark are two writes: a memory archived
-  without its mark stays archived when its file is restored, which fails closed.
-- **Restore.** Restoring the file brings back the same memories, with their ids, stage, approvals,
-  edits and usage, and re-extracts nothing; a shared memory that stayed live names the file again.
-  The anchor rule decides on the current anchor: it gives way to the restored file only when it is
-  a file not everyone may read and everyone may read the restored one, and an archived anchor moves
-  as ranked above. `restoredBy` is not carried; the system restores as admin. Restore runs only
-  inside the restore's transaction and fails outside one. It locks the memory's row, then its mark,
-  so a concurrent delete or restore cannot change its restore-or-skip decision. The reads after
-  those two are not locking and, on MySQL, may see the transaction's earlier snapshot: the
-  serialization covers that decision alone, within one transaction such as a folder's restore.
-- **Accepted races,** each a concurrent action on the same memory in a narrow window:
-  - a re-extraction that read the file's memories before it was archived can release one the archive
-    kept, deleting it or dropping the archived link, so the restore cannot bring it back;
-  - a person's delete that lands inside an archive, between its read and its mark, leaves a mark, and
-    the restore brings that memory back;
-  - a person's re-delete that lands after the restore read the mark is a no-op, because the soft
-    delete is computed from an unlocked read of the archived row; the memory comes back and the
-    person deletes it again;
-  - restoring two copies of one memory in overlapping requests can, on MySQL, fail the second (a
-    retry succeeds) or leave its file showing no source;
-  - archiving copy S2 while copy S is restored can leave S live with its memory archived, because
-    archive decides that every other source is archived from unlocked reads; archiving and restoring
-    S again recovers it;
-  - restoring a file while another archived copy of its memory is permanently deleted moves the
-    memory's anchor by its edges alone, so its stored anchor can keep naming the deleted copy; reads
-    follow the edge.
-- **Content clock.** A lifecycle move of a memory's anchor changes who may read it, not what it
-  says, so `lastContentUpdatedAt` stays
-  (ADR:2026-10-10-memory-content-recency-and-usage-are-independent-of-review-writes). A copy is a
-  new memory with its own clock.
-- **Articles** have no Archive. `page.json` has no `deleted` field, so every article delete is
-  permanent and releases its memories; `PUT /pages/restore` exists but has nothing to restore.
-- **Where a restricted document is named.** Linking and lifecycle writes never add a document not
-  everyone may read to a memory's related entities; a person's own edit can, and is recorded as made.
-  No lifecycle write after this change names such a document in the memory's history: it records it
-  by id and type alone, in its change and in the version it stores. A memory shows it as its source
-  only when it is the memory's anchor, whose readers are the memory's readers, or when no anchor and
-  no document everyone may read is linked (`MemorySourceDisclosure`). History written while a file
-  was org-wide still names it: these conditional writes are never consolidated, so each stores the
-  memory as it was, withheld, as a new version and leaves the earlier ones as they were.
-- **Naming.** An extracted memory, and a copy, is named `memory-<uuid>`. A name is the memory's FQN
-  and never changes, and a memory can move to a document whose readers may not read the one it came
-  from, so a name names no document. Memories extracted before this change keep their
-  `<file>-<uuid>` names; 2.1 is unreleased, so only test environments have them.
-- **Sharing changes.** Only a file's own share setting counts; a folder shares nothing of its own.
-  Inside the write that turns a file from org-wide to restricted, every memory it is linked to stops
-  naming it among its related entities, and one it anchors moves to a live source everyone may read,
-  ranked as above. With none left the anchor stays, and the copy rule below runs. The file keeps its
-  links, so its owners and admins see what they saw. When the file turns org-wide again, every memory
-  it is linked to names it again and a restricted anchor gives way to it, as on restore; copies stay
-  with their documents and nothing merges back. An edit that keeps a file restricted, or org-wide,
-  moves nothing: a restricted copy whose readers such an edit changes is not copied again.
-- **The copy rule.** A memory anchored on a restricted file gets a copy for each other live source
-  not everyone may read, unless every reader of that source reads the anchor too. A file's readers
-  are its user owners and, when it is Shared, the principals it names, matched by id: teams are not
-  expanded, a team owner reads nothing it owns, and a Private file's leftover list names nobody. A
-  wrong call costs a duplicate memory for people who read both files. Separately, when a document
-  leaves those everyone may read (restricted, archived or released) and a memory would then show a
-  restricted document that is not its anchor, such as one a person anchored on an asset whose only
-  document is F, that document takes the memory's copy, or for a retired memory just stops linking it.
-- **What a copy is.** It has the memory's title, summary, description, question, answer, machine
-  representation, type, scope, source type, stage, status reason and last review, and is anchored on
-  and linked to its document alone, which stops linking the original; that move is why restricting
-  the file again makes no second copy. It takes extraction's defaults for the rest: a generated name,
-  its creator as owner and Entity visibility, so no owner or principal of the original reads it
-  through them. It carries no disputes, review tasks, approval history, usage or related entities.
-  Only a memory in use, under review or rejected (Unprocessed, Draft, Approved, Rejected) is copied:
-  Superseded and Deprecated carry a `supersededBy` the copy's readers may not read, and Invalidated
-  and Archived retire a memory without one; such a memory gets no copy and blocks nothing. No
-  extraction, duplicate judge or reconciliation runs for a copy, and no glossary term is derived from
-  it; with vector search on, indexing it embeds its text, as any memory write does.
-- **Sharing limits.** A person's note cites documents through its related entities, and the
-  transitions visit only the memories a document is linked to as a source, so a note citing F keeps
-  naming it: a person's own citation, out of scope. A memory a person deleted is left as it is. A
-  release, a permanent delete that skips the Archive or a re-extraction that drops the fact, moves
-  the anchor by the same ranking but copies only for a document the memory would otherwise show.
-  Two PATCHes restricting the same file at once can each make copies. The share change and its
-  moves commit together, and they run only inside a transaction.
-- **Lifecycle writes are conditional** on the memory as they read it, so a decision written on it
-  meanwhile fails the archive, restore or share change with 412 ("The memory has been modified.
-  Please refresh and retry.") instead of being overwritten, and the person retries. On MySQL's
-  REPEATABLE READ those reads are snapshot reads, so a decision landing anywhere inside that
-  transaction fails it, and the linking write's bounded attempts cannot succeed within one snapshot.
-  A re-extraction's release that a decision overtook leaves the link, as the reconciler's other
-  conditional writes do, and the next extraction reconciles it.
-
 ## Consequences
 
 - An identical new upload can share memory IDs and skip memory extraction, provided a complete,
@@ -219,3 +114,133 @@ v2 (2026-11-03): extraction no longer deduplicates by question alone. It keeps e
 numbers conflict with each kept answer to the same question, and re-extraction matches exact
 question and answer before similarity, never pairing conflicting numbers. See
 ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values.
+
+v3 (2026-11-10): a document's archive, restore and sharing move its memories. This amends §4.
+Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclosureTest`,
+`ContextMemoryRepositoryTest`, `ContextMemoryReconcilerTest`, `ContextMemoryExtractorTest`,
+`ContextMemoryDocumentAccessTest`, `MemoryConflictResolutionTest` and `ContextMemoryExtractionIT`;
+`ContextFileIT` guards a file's archive, mark and restore.
+
+- **Archive.** Archiving (soft-deleting) a file soft-deletes each memory no other live source
+  states; it keeps its links, so restoring the file can bring it back. A memory another live source
+  states stays live. `hasOtherSources` counts archived sources, so a re-extraction that drops a fact
+  from its last live source archives the memory for an archived copy that still states it. A
+  permanent delete releases the file's links and deletes a memory nothing else states.
+- **Anchor ranking.** When a memory's anchor goes, `chooseAnchor` takes a live source everyone may
+  read (a live article, or a file shared with the whole organization), else a restricted live one,
+  the current anchor first in both, else the first remaining source, so an archived memory keeps an
+  anchor for its restore. An archived memory's anchor moves by its edges alone, because an update
+  would restore it.
+- **The archive mark.** After the soft delete, archiving writes the `entity_extension` row
+  `contextMemory.archivedWithSources`. Every other delete or restore of the memory clears it, so a
+  memory a person deleted stays deleted. The delete and the mark are two writes: a memory archived
+  without its mark stays archived when its file is restored, which fails closed.
+- **Restore.** Restoring the file brings back the same memories, with their ids, stage, approvals,
+  edits and usage, and re-extracts nothing. A shared memory that stayed live names the file again
+  among its related entities only when everyone may read the file. The anchor rule decides on the
+  current anchor: a file not everyone may read gives way to the restored document when everyone may
+  read that, or when every reader of the anchor reads it too, by the copy rule's test below;
+  otherwise the copy rule runs, which leaves the restored document a copy unless all its readers read
+  the anchor. An archived anchor moves as ranked above. The shown-source rule then runs, as on
+  archive. `restoredBy` is not carried; the system restores as admin. Restore runs only inside the
+  restore's transaction and fails outside one. It locks the memory's row, then its mark, so a
+  concurrent delete or restore cannot change its restore-or-skip decision. The reads after those two
+  are not locking and, on MySQL, may see the transaction's earlier snapshot: the serialization
+  covers that decision alone, within one transaction such as a folder's restore.
+- **Reviews.** A conflict review cannot be decided while a memory it disputes is archived: deciding
+  it fails cleanly with 409 until a restore of that memory's document brings it back. An approval
+  could not supersede the archived memory, and the restore would bring it back in its old stage
+  beside the reviewed one. A disputed memory that was permanently deleted is gone, and the decision
+  goes on without it.
+- **Accepted races,** each a concurrent action on the same memory in a narrow window:
+  - a re-extraction that read the file's memories before it was archived can release one the archive
+    kept, deleting it or dropping the archived link, so the restore cannot bring it back;
+  - a person's delete that lands inside an archive, between its read and its mark, leaves a mark, and
+    the restore brings that memory back;
+  - a person's re-delete that lands after the restore read the mark is a no-op, because the soft
+    delete is computed from an unlocked read of the archived row; the memory comes back and the
+    person deletes it again;
+  - restoring two copies of one memory in overlapping requests can, on MySQL, fail the second (a
+    retry succeeds) or leave its file showing no source;
+  - archiving copy S2 while copy S is restored can leave S live with its memory archived, because
+    archive decides that every other source is archived from unlocked reads; archiving and restoring
+    S again recovers it;
+  - restoring a file while another archived copy of its memory is permanently deleted moves the
+    memory's anchor by its edges alone, so its stored anchor can keep naming the deleted copy; reads
+    follow the edge;
+  - an upload identical to a file that is restricted meanwhile can reuse that file's memories:
+    `FileContextProcessingEngine.reuseExisting` checks that the prior file is org-wide, then links,
+    so the new file's readers may find the memories anchored on a file they cannot read.
+- **Content clock.** A lifecycle move of a memory's anchor changes who may read it, not what it
+  says, so `lastContentUpdatedAt` stays
+  (ADR:2026-10-10-memory-content-recency-and-usage-are-independent-of-review-writes). A copy is a
+  new memory with its own clock.
+- **Articles** have no Archive. `page.json` has no `deleted` field, so every article delete is
+  permanent and releases its memories; `PUT /pages/restore` exists but has nothing to restore.
+- **Where a restricted document is named.** Linking and lifecycle writes never add a document not
+  everyone may read to a memory's related entities; a person's own edit can, and is recorded as made.
+  Each lifecycle write, the archive's soft delete and the restore included, records such a document
+  by id and type alone, in the memory as it was and as it leaves it: in its change, its change event
+  and the version it stores. A memory shows such a document as its source only when it is the
+  memory's anchor, whose readers are the memory's readers, or when no anchor and no document
+  everyone may read is linked (`MemorySourceDisclosure`). Other writes record what they read, such
+  as a re-extraction's rewrite while a restricted file anchors the memory, and a memory's readers
+  change with its anchor. So every read of a memory's history, its versions and its last change,
+  names a file only to a caller who may read that file now (`ContextMemoryDocumentAccess`); any other
+  caller sees its id and type. An article reads to everyone, and an admin reads every file.
+- **Naming.** An extracted memory, and a copy, is named `memory-<uuid>`. A name is the memory's FQN
+  and never changes, and a memory can move to a document whose readers may not read the one it came
+  from, so a name names no document. Memories extracted before this change keep their
+  `<file>-<uuid>` names; 2.1 is unreleased, so only test environments have them.
+- **Sharing changes.** Only a file's own share setting counts; a folder shares nothing of its own.
+  Inside the write that turns a file from org-wide to restricted, every memory it is linked to stops
+  naming it among its related entities, and one it anchors moves to a live source everyone may read,
+  ranked as above. With none left the anchor stays, and the copy rule below runs. The file keeps its
+  links, so its owners and admins see what they saw. When the file turns org-wide again, every memory
+  it is linked to names it again and a restricted anchor gives way to it, as on restore; copies stay
+  with their documents and nothing merges back. An edit that keeps a file restricted, or org-wide,
+  moves nothing: a restricted copy whose readers such an edit changes is not copied again.
+- **The copy rule.** A memory anchored on a restricted file gets a copy for each other live source
+  not everyone may read, unless every reader of that source reads the anchor too; a share change,
+  an archive and a restore apply it. A file's readers are its user owners and, when it is Shared,
+  the principals it names, matched by id: teams are not expanded, a team owner reads nothing it owns,
+  and a Private file's leftover list names nobody. A wrong call costs a duplicate memory for people
+  who read both files. Separately, when a document leaves those everyone may read (restricted,
+  archived or released) or is restored, and a memory would then show a restricted document that is
+  not its anchor, such as one a person anchored on an asset whose only live document is that one,
+  the document takes the memory's copy, or for a retired memory just stops linking it. A memory
+  those copies leave stated only by archived documents is archived with them, with its mark, and one
+  that no document states any more is deleted, as a memory whose last source is released.
+- **What a copy is.** It has the memory's title, summary, description, question, answer, machine
+  representation, type, scope, source type, stage, status reason and last review, and is anchored on
+  and linked to its document alone, which stops linking the original; that move is why restricting
+  the file again makes no second copy. It takes extraction's defaults for the rest: a generated name,
+  its creator as owner and Entity visibility, so no owner or principal of the original reads it
+  through them. It carries no disputes, review tasks, approval history, usage or related entities.
+  Only a memory in use, under review or rejected (Unprocessed, Draft, Approved, Rejected) is copied:
+  Superseded and Deprecated carry a `supersededBy` the copy's readers may not read, and Invalidated
+  and Archived retire a memory without one; such a memory gets no copy and blocks nothing. No
+  extraction or duplicate judge runs for a copy, and no glossary term is derived from it; with vector
+  search on, indexing it embeds its text, as any memory write does. In Collate, memory reconciliation
+  reviews an Unprocessed copy like any Unprocessed memory in its document: one unbilled judge call,
+  never against its original.
+- **Sharing limits.** A person's note cites documents through its related entities, and the
+  transitions visit only the memories a document is linked to as a source, so a note citing F keeps
+  naming it: a person's own citation, out of scope. A memory a person deleted is left as it is. A
+  release, a permanent delete that skips the Archive or a re-extraction that drops the fact, moves
+  the anchor by the same ranking but copies only for a document the memory would otherwise show; only
+  internal callers can skip the Archive, because a permanent delete through the API archives first.
+  A retired memory is not copied, so archiving the document everyone may read drops a restricted
+  document's link to it, and restoring the archived document does not give that link back. Two
+  PATCHes restricting the same file at once can each make copies. The share change and its moves
+  commit together, and they run only inside a transaction.
+- **Lifecycle writes are conditional** on the memory as they read it, so a decision written on it
+  meanwhile is never overwritten. An archive's moves run after the file's soft delete has committed,
+  outside any transaction, so a refused write would leave some memories moved and others not, with
+  the file already out of the Documents list: each retries on a fresh read, at most three attempts.
+  A restore and a share change run inside their own transaction and fail with 412 ("The memory has
+  been modified. Please refresh and retry."), and the person retries. On MySQL's REPEATABLE READ
+  those reads are snapshot reads, so a decision landing anywhere inside that transaction fails it,
+  and bounded attempts cannot succeed within one snapshot. A re-extraction's release that a decision
+  overtook leaves the link, as the reconciler's other conditional writes do, and the next extraction
+  reconciles it.
