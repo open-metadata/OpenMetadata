@@ -151,11 +151,70 @@ class RdfReasoningContractTest {
             request -> request.remove("ruleBundleDigest"),
             "required"),
         violation(
-            "a CHECK without an ontology",
+            "a request without its ontology releases",
+            "refresh-request",
+            Contract.REQUEST,
+            request -> request.remove("ontologyReleases"),
+            "required"),
+        violation(
+            "the APPROVED/CANDIDATE selection that releases replaced",
+            "refresh-request",
+            Contract.REQUEST,
+            request -> request.put("ontologySelection", "APPROVED"),
+            "additionalProperties"),
+        violation(
+            "a release digest in the store's sha256: form instead of the release's own",
+            "refresh-request",
+            Contract.REQUEST,
+            request ->
+                ((ObjectNode) request.get("ontologyReleases").get(0))
+                    .put(
+                        "contentDigest",
+                        "sha256:0c5f2e8a9b1d3c4e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e"),
+            "pattern"),
+        violation(
+            "a REFRESH without its rules inline",
+            "refresh-request",
+            Contract.REQUEST,
+            request -> request.remove("rules"),
+            "required"),
+        violation(
+            "a REFRESH carrying uploaded RDF",
+            "refresh-request",
+            Contract.REQUEST,
+            request ->
+                request.set(
+                    "releaseRdf", read("check-subsumption-request").get("releaseRdf").deepCopy()),
+            "not"),
+        violation(
+            "a CHECK without its uploaded release",
             "check-subsumption-request",
             Contract.REQUEST,
-            request -> request.remove("ontologyIri"),
+            request -> request.remove("releaseRdf"),
             "required"),
+        violation(
+            "a CHECK over no release",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> ((ArrayNode) request.get("ontologyReleases")).removeAll(),
+            "minItems"),
+        violation(
+            "a CHECK over two releases",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> {
+              final ArrayNode releases = (ArrayNode) request.get("ontologyReleases");
+              releases.add(
+                  ((ObjectNode) releases.get(0).deepCopy())
+                      .put("ontologyId", "6d0e4b2a-9f1c-4a3e-8b7d-5c2a1f0e9d8c"));
+            },
+            "maxItems"),
+        violation(
+            "uploaded RDF in a format the store does not read",
+            "check-subsumption-request",
+            Contract.REQUEST,
+            request -> object(request, "releaseRdf").put("mediaType", "text/turtle"),
+            "enum"),
         violation(
             "a CHECK without a question",
             "check-subsumption-request",
@@ -163,10 +222,10 @@ class RdfReasoningContractTest {
             request -> request.remove("check"),
             "required"),
         violation(
-            "an EXPLAIN without an ontology",
+            "an EXPLAIN without its uploaded release",
             "explain-request",
             Contract.REQUEST,
-            request -> request.remove("ontologyIri"),
+            request -> request.remove("releaseRdf"),
             "required"),
         violation(
             "an EXPLAIN without a statement to justify",
@@ -263,6 +322,18 @@ class RdfReasoningContractTest {
             capabilities -> object(capabilities, "limits").remove("maxClosureAxioms"),
             "required"),
         violation(
+            "an available CHECK without an upload limit",
+            "ready-capabilities",
+            Contract.CAPABILITIES,
+            capabilities -> object(capabilities, "limits").remove("maxUploadBytes"),
+            "required"),
+        violation(
+            "an INPUT_CHANGED problem with a code the protocol does not define",
+            "generation-mismatch-job",
+            Contract.JOB,
+            job -> object(job, "problem").put("code", "INPUT_MISSING"),
+            "enum"),
+        violation(
             "an available REFRESH without a rule-pass limit",
             "ready-capabilities",
             Contract.CAPABILITIES,
@@ -303,6 +374,24 @@ class RdfReasoningContractTest {
     object(capabilities, "limits").put("maxQuerySeconds", 30).put("maxResultRows", 10000);
 
     assertEquals(List.of(), messages(Contract.CAPABILITIES.validate(capabilities)));
+  }
+
+  @Test
+  void aRefreshMayListNoActiveRelease() {
+    final ObjectNode request = (ObjectNode) read("refresh-request");
+    ((ArrayNode) request.get("ontologyReleases")).removeAll();
+
+    assertEquals(List.of(), messages(Contract.REQUEST.validate(request)));
+  }
+
+  @Test
+  void aStoreReportsThatTheInputChanged() {
+    final ObjectNode job = (ObjectNode) read("generation-mismatch-job");
+    object(job, "problem")
+        .put("code", "INPUT_CHANGED")
+        .put("subject", "3b9e1f0a-6c2d-4e8f-9a1b-7d5c3e2f1a0b");
+
+    assertEquals(List.of(), messages(Contract.JOB.validate(job)));
   }
 
   @Test

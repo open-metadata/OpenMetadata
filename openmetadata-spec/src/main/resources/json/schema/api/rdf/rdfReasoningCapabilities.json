@@ -119,7 +119,7 @@
     },
     "limits": {
       "javaType": "org.openmetadata.schema.api.rdf.RdfReasoningLimits",
-      "description": "The admission and execution limits the store enforces; a limit it does not enforce is absent. A job that reaches one stops without publishing a partial result, and a check answers INCOMPLETE. Limits are mandatory per operation, not for readiness: the store reports an operation AVAILABLE only when it enforces every limit that operation needs. REFRESH, CHECK and EXPLAIN need maxQueuedJobs, maxJobSeconds, maxDiskBytes, maxClosureAxioms, maxIndividuals, maxExpressionDepth and maxImports; REFRESH also needs maxDerivedTriples and maxRulePasses; RESULTS and QUERY need maxResultRows, and QUERY also needs maxQuerySeconds.",
+      "description": "The admission and execution limits the store enforces; a limit it does not enforce is absent. A job that reaches one stops without publishing a partial result, and a check answers INCOMPLETE. Limits are mandatory per operation, not for readiness: the store reports an operation AVAILABLE only when it enforces every limit that operation needs. REFRESH, CHECK and EXPLAIN need maxQueuedJobs, maxJobSeconds, maxDiskBytes, maxClosureAxioms, maxIndividuals, maxExpressionDepth and maxImports; REFRESH also needs maxDerivedTriples and maxRulePasses; CHECK and EXPLAIN also need maxUploadBytes; RESULTS and QUERY need maxResultRows, and QUERY also needs maxQuerySeconds.",
       "type": "object",
       "properties": {
         "maxQueuedJobs": {
@@ -176,6 +176,12 @@
           "description": "Rows one snapshot query returns.",
           "type": "integer",
           "minimum": 1
+        },
+        "maxUploadBytes": {
+          "description": "Bytes of one uploaded job input, such as the release a CHECK reads.",
+          "type": "integer",
+          "minimum": 1,
+          "existingJavaType": "java.lang.Long"
         }
       },
       "additionalProperties": false
@@ -324,6 +330,28 @@
       "then": {
         "properties": {
           "limits": { "required": ["maxDerivedTriples", "maxRulePasses"] }
+        },
+        "required": ["limits"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "operations": {
+            "contains": {
+              "properties": {
+                "operation": { "enum": ["CHECK", "EXPLAIN"] },
+                "availability": { "const": "AVAILABLE" }
+              },
+              "required": ["operation", "availability"]
+            }
+          }
+        },
+        "required": ["operations"]
+      },
+      "then": {
+        "properties": {
+          "limits": { "required": ["maxUploadBytes"] }
         },
         "required": ["limits"]
       }

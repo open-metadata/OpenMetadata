@@ -52,16 +52,15 @@ export interface Input {
      */
     engines?: Engine[];
     /**
-     * OpenMetadata's digest of the selected ontology input. Opaque to the store, which only
-     * records it.
+     * The releases the job reasoned over: every active release for a refresh, the one checked
+     * or explained otherwise.
      */
-    ontologyDigest?: string;
+    ontologyReleases: OntologyRelease[];
     /**
-     * Root ontology of the import closure a check or explanation reasoned over. Absent for a
-     * refresh, which covers every selected closure.
+     * The uploaded release a check or explanation read. Absent for a refresh, which reads the
+     * active releases from the serving graph.
      */
-    ontologyIri?:      string;
-    ontologySelection: OntologySelection;
+    releaseRdf?: UploadedInput;
     /**
      * OpenMetadata's digest of the governance rule bundle. Opaque to the store, which only
      * records it.
@@ -89,12 +88,48 @@ export interface Engine {
 }
 
 /**
- * Which ontology axioms take part. APPROVED is the production set and the only one a
- * refresh accepts. CANDIDATE adds draft axioms, to check a change before it is approved.
+ * The releases the job reasoned over: every active release for a refresh, the one checked
+ * or explained otherwise.
+ *
+ * Ontology releases, at most one per ontology. A refresh lists every active release; a
+ * check or explanation lists the one release it reasons over.
+ *
+ * One sealed ontology release, as OpenMetadata identifies it. In the serving graph an
+ * active release is the graph https://open-metadata.org/graph/ontology/{ontologyId}, whose
+ * ontology header states owl:versionIRI <urn:openmetadata:ontology-release:{releaseId}>.
  */
-export enum OntologySelection {
-    Approved = "APPROVED",
-    Candidate = "CANDIDATE",
+export interface OntologyRelease {
+    /**
+     * The release's contentDigest: SHA-256 of its sealed manifest. Opaque to the store, which
+     * only records it.
+     */
+    contentDigest: string;
+    ontologyId:    string;
+    releaseId:     string;
+}
+
+/**
+ * The uploaded release a check or explanation read. Absent for a refresh, which reads the
+ * active releases from the serving graph.
+ *
+ * RDF that OpenMetadata uploaded to the store before submitting the job, addressed by the
+ * SHA-256 of its bytes. The store reads it only if the bytes it holds under that digest
+ * hash to it and are exactly byteSize long.
+ */
+export interface UploadedInput {
+    byteSize: number;
+    digest:   string;
+    /**
+     * RDF-Thrift, the encoding OpenMetadata already sends Fuseki.
+     */
+    mediaType: MediaType;
+}
+
+/**
+ * RDF-Thrift, the encoding OpenMetadata already sends Fuseki.
+ */
+export enum MediaType {
+    ApplicationRDFThrift = "application/rdf+thrift",
 }
 
 /**
@@ -116,8 +151,8 @@ export interface SourceRevision {
 
 /**
  * REFRESH recomputes the deductions from asserted input and publishes them as a new
- * snapshot. CHECK answers one typed question about an import closure. EXPLAIN justifies one
- * statement.
+ * snapshot. CHECK answers one typed question about one ontology release. EXPLAIN justifies
+ * one statement.
  */
 export enum Operation {
     Check = "CHECK",
@@ -152,8 +187,9 @@ export interface Problem {
      */
     step?: string;
     /**
-     * What the problem concerns: the ontology IRI for an import-closure problem, the limit's
-     * name in capabilities for LIMIT_EXCEEDED, or the rule's name for RULE_FAILED.
+     * What the problem concerns: the ontology IRI for an import-closure problem, the ontologyId
+     * or the releaseRdf digest for INPUT_CHANGED, the limit's name in capabilities for
+     * LIMIT_EXCEEDED, or the rule's name for RULE_FAILED.
      */
     subject?: string;
 }
@@ -164,16 +200,19 @@ export interface Problem {
  * of the store cannot perform the operation or one of its steps, which capabilities report
  * as NOT_IMPLEMENTED; retrying cannot succeed until the store is upgraded.
  * GENERATION_MISMATCH: the requested dataset generation no longer serves. SUPERSEDED: a
- * refresh with a later source revision has already published. MISSING_IMPORT,
- * PROFILE_VIOLATION and INCONSISTENT_ONTOLOGY: an import closure is missing an import, is
- * not OWL 2 DL, or has no model. LIMIT_EXCEEDED: a configured limit was reached.
- * MEMORY_BUDGET_EXHAUSTED: the worker ran out of heap. WORKER_LOST: the worker exited
- * without a result. RULE_FAILED: a governance rule failed to evaluate. INTERNAL: any other
- * error.
+ * refresh with a later source revision has already published. INPUT_CHANGED: the store did
+ * not find the input the request names: a release graph's owl:versionIRI names another
+ * release, a listed release has no graph, or no uploaded input matches releaseRdf; read the
+ * current releases, upload again if needed, and resubmit. MISSING_IMPORT, PROFILE_VIOLATION
+ * and INCONSISTENT_ONTOLOGY: an import closure is missing an import, is not OWL 2 DL, or
+ * has no model. LIMIT_EXCEEDED: a configured limit was reached. MEMORY_BUDGET_EXHAUSTED:
+ * the worker ran out of heap. WORKER_LOST: the worker exited without a result. RULE_FAILED:
+ * a governance rule failed to evaluate. INTERNAL: any other error.
  */
 export enum ProblemCode {
     GenerationMismatch = "GENERATION_MISMATCH",
     InconsistentOntology = "INCONSISTENT_ONTOLOGY",
+    InputChanged = "INPUT_CHANGED",
     Internal = "INTERNAL",
     InvalidRequest = "INVALID_REQUEST",
     LimitExceeded = "LIMIT_EXCEEDED",

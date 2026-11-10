@@ -14,9 +14,11 @@ package org.openmetadata.service.rdf.reasoning;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+import java.nio.charset.StandardCharsets;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.api.rdf.RdfOntologySelection;
+import org.openmetadata.schema.api.rdf.RdfOntologyReleaseRef;
 import org.openmetadata.schema.api.rdf.RdfReasoningFreshness;
 import org.openmetadata.schema.api.rdf.RdfReasoningInput;
 import org.openmetadata.schema.api.rdf.RdfSourceRevision;
@@ -24,7 +26,8 @@ import org.openmetadata.service.rdf.reasoning.ReasoningFreshness.Serving;
 
 class ReasoningFreshnessTest {
   private static final UUID GENERATION = UUID.randomUUID();
-  private static final String ONTOLOGY = "sha256:" + "a".repeat(64);
+  private static final UUID FINANCE = UUID.randomUUID();
+  private static final Set<RdfOntologyReleaseRef> ONTOLOGY = Set.of(release(FINANCE, "a"));
   private static final String RULES = "sha256:" + "b".repeat(64);
   private static final RdfReasoningInput READ =
       new RdfReasoningInput()
@@ -32,8 +35,7 @@ class ReasoningFreshnessTest {
               new RdfSourceRevision()
                   .withDatasetGeneration(GENERATION)
                   .withLiveWriteWatermark(18442L))
-          .withOntologySelection(RdfOntologySelection.APPROVED)
-          .withOntologyDigest(ONTOLOGY)
+          .withOntologyReleases(ONTOLOGY)
           .withRuleBundleDigest(RULES);
 
   @Test
@@ -58,11 +60,28 @@ class ReasoningFreshnessTest {
   }
 
   @Test
-  void changedOntologiesMakeItStale() {
+  void activatingAnotherReleaseMakesItStale() {
     assertEquals(
         RdfReasoningFreshness.STALE,
         ReasoningFreshness.of(
-            READ, new Serving(GENERATION, 18442, false, "sha256:" + "c".repeat(64), RULES)));
+            READ, new Serving(GENERATION, 18442, false, Set.of(release(FINANCE, "c")), RULES)));
+  }
+
+  @Test
+  void activatingAnotherOntologyMakesItStale() {
+    final Set<RdfOntologyReleaseRef> both =
+        Set.of(release(FINANCE, "a"), release(UUID.randomUUID(), "d"));
+
+    assertEquals(
+        RdfReasoningFreshness.STALE,
+        ReasoningFreshness.of(READ, new Serving(GENERATION, 18442, false, both, RULES)));
+  }
+
+  @Test
+  void deactivatingTheOnlyOntologyMakesItStale() {
+    assertEquals(
+        RdfReasoningFreshness.STALE,
+        ReasoningFreshness.of(READ, new Serving(GENERATION, 18442, false, Set.of(), RULES)));
   }
 
   @Test
@@ -85,5 +104,13 @@ class ReasoningFreshnessTest {
     assertEquals(
         RdfReasoningFreshness.UNKNOWN,
         ReasoningFreshness.of(READ, new Serving(UUID.randomUUID(), 18500, true, ONTOLOGY, RULES)));
+  }
+
+  private static RdfOntologyReleaseRef release(final UUID ontologyId, final String digit) {
+    return new RdfOntologyReleaseRef()
+        .withOntologyId(ontologyId)
+        .withReleaseId(
+            UUID.nameUUIDFromBytes((ontologyId + digit).getBytes(StandardCharsets.UTF_8)))
+        .withContentDigest(digit.repeat(64));
   }
 }
