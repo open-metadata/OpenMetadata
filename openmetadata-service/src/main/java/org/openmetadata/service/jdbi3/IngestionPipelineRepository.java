@@ -1495,7 +1495,8 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
           "raiseOnError",
           () -> updateRaiseOnError(original.getRaiseOnError(), updated.getRaiseOnError()));
 
-      // Before the flag is compared, because a deploy can change it.
+      // Before the flag is compared, because a deploy can change it
+      // (ADR:2026-11-10-s3-log-storage-drives-streamable-logs).
       deployIfRequired(original, updated);
 
       compareAndUpdate(
@@ -2006,6 +2007,7 @@ public class IngestionPipelineRepository extends EntityRepository<IngestionPipel
   // Default turns the flag on when the server stores logs in S3, and otherwise keeps the pipeline's
   // own value; overrides resolve the pipeline's owning ingestion runner (service / test-suite /
   // application) and derive the flag from it.
+  // ADR:2026-11-10-s3-log-storage-drives-streamable-logs
   protected void applyStreamableLogsConfig(IngestionPipeline ingestionPipeline) {
     if (isS3LogStorageEnabled()) {
       ingestionPipeline.setEnableStreamableLogs(true);

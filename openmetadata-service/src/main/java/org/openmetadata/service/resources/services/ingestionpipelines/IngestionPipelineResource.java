@@ -1681,7 +1681,8 @@ public class IngestionPipelineResource
             new OperationContext(entityType, MetadataOperation.EDIT_ALL), resourceContext));
   }
 
-  // A run ships its logs with the token of its agent's bot, the same one that reports its status.
+  // A run ships its logs with the token of its agent's bot, the same one that reports its status
+  // (ADR:2026-11-10-log-writes-accept-edit-ingestion-pipeline-status).
   private void authorizeLogWrite(SecurityContext securityContext, String fqn) {
     authorizer.authorizeRequests(
         securityContext,
