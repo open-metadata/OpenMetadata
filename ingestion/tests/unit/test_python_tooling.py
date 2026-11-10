@@ -318,6 +318,7 @@ def test_make_coverage_rejects_missing_data(tooling_repo: Path, directory: str, 
     "changed",
     [
         "scripts/generate_ingestion_models.py",
+        "openmetadata-spec/scripts/prepare_model_schemas.py",
         "ingestion/uv.lock",
         "ingestion/pyproject.toml",
         "ingestion/noxfile.py",

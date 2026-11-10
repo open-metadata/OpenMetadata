@@ -29,6 +29,7 @@ import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.datacontract.odcs.ODCSRuleOutcome.TestCaseOutcome;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
@@ -74,7 +75,7 @@ public final class ODCSQualityRuleExporter {
   }
 
   private Set<String> testCasesCreatedFromRules(DataContract contract) {
-    List<ODCSQualityRule> rules = listOrEmpty(contract.getOdcsQualityRules());
+    List<ODCSQualityRule> rules = importedRules(contract);
     return rules.isEmpty()
         ? Set.of()
         : ODCSQualityRuleMapper.map(
@@ -83,6 +84,19 @@ public final class ODCSQualityRuleExporter {
             .filter(TestCaseOutcome.class::isInstance)
             .map(outcome -> key(fullyQualifiedName(((TestCaseOutcome) outcome).testCase())))
             .collect(Collectors.toSet());
+  }
+
+  static List<ODCSQualityRule> importedRules(DataContract contract) {
+    String sourceTable = ODCSPreservedFields.sourceSchemaName(contract.getOdcsPreservedFields());
+    String currentTable =
+        contract.getEntity() == null ? contract.getName() : contract.getEntity().getName();
+    return listOrEmpty(contract.getOdcsQualityRules()).stream()
+        .map(
+            rule ->
+                sourceTable != null && sourceTable.equals(rule.getColumn())
+                    ? JsonUtils.deepCopy(rule, ODCSQualityRule.class).withColumn(currentTable)
+                    : rule)
+        .toList();
   }
 
   private static String fullyQualifiedName(CreateTestCase testCase) {

@@ -413,7 +413,7 @@ class ContextMemoryRepositoryTest {
         .thenReturn(new PatchResponse<>(Response.Status.OK, pill, EventType.ENTITY_UPDATED));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
       entities.when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY)).thenReturn(writes);
-      new ExtractedMemoryApprover(listing)
+      new ExtractedMemoryApprover(listing, pending -> false)
           .approve(
               file,
               List.of(new ComparedMemory().withId(pill.getId()).withContentUpdatedAt(101L)),

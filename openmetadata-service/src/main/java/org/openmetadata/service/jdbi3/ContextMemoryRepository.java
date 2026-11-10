@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
@@ -565,6 +566,10 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     // characters, matching the convention in every other top-level entity repository.
     entity.setFullyQualifiedName(FullyQualifiedName.build(entity.getName()));
   }
+
+  /** The Context Center entities a knowledge pill is extracted from. */
+  private static final Set<String> EXTRACTION_SOURCE_TYPES =
+      Set.of(Entity.CONTEXT_FILE, Entity.PAGE);
 
   private static final Set<String> ALLOWED_SHARED_PRINCIPAL_TYPES =
       Set.of(Entity.USER, Entity.TEAM, Entity.DOMAIN);
@@ -1184,6 +1189,38 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return memories;
   }
 
+  /** Whether {@code reference} is a document memories are extracted from: a file or a page. */
+  public static boolean isExtractionSource(EntityReference reference) {
+    return reference != null && EXTRACTION_SOURCE_TYPES.contains(reference.getType());
+  }
+
+  /** The ids of every source linked to the memory (MENTIONED_IN), read without resolving them. */
+  public Set<UUID> linkedSourceIds(UUID memoryId) {
+    return findFromRecords(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null)
+        .stream()
+        .map(CollectionDAO.EntityRelationshipRecord::getId)
+        .collect(Collectors.toSet());
+  }
+
+  /** The live Context Center sources (files and pages) each knowledge pill is linked to. */
+  public Map<UUID, List<EntityReference>> listExtractedSources(List<UUID> memoryIds) {
+    Map<UUID, List<EntityReference>> sources = new HashMap<>();
+    if (!nullOrEmpty(memoryIds)) {
+      List<CollectionDAO.EntityRelationshipObject> records =
+          daoCollection
+              .relationshipDAO()
+              .findFromBatch(
+                  memoryIds.stream().map(UUID::toString).toList(),
+                  Relationship.MENTIONED_IN.ordinal(),
+                  Include.NON_DELETED)
+              .stream()
+              .filter(record -> EXTRACTION_SOURCE_TYPES.contains(record.getFromEntity()))
+              .toList();
+      groupByMemory(records, resolveReferencesByType(records), sources);
+    }
+    return sources;
+  }
+
   private static void groupByMemory(
       List<CollectionDAO.EntityRelationshipObject> records,
       Map<String, EntityReference> live,
@@ -1201,6 +1238,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   /** Links a memory to another source that states it, as {@link MemorySourceLifecycle} does. */
   public void linkExtractedMemory(UUID memoryId, EntityReference source) {
     new MemorySourceLifecycle(this).linkExtractedMemory(memoryId, source);
+  }
+
+  /** Whether everyone may read the document, as {@link MemorySourceDisclosure} decides it. */
+  public boolean isReadableByEveryone(EntityReference document) {
+    return MemorySourceDisclosure.everyoneMayRead(document);
   }
 
   /**
