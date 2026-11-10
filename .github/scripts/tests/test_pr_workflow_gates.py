@@ -9,6 +9,18 @@ import yaml
 
 
 WORKFLOWS = Path(__file__).parents[2] / "workflows"
+ROOT = WORKFLOWS.parents[1]
+
+
+def test_format_check_and_lint_remain_separate_commands():
+    formatting = subprocess.check_output(
+        ["make", "-n", "py_format_check"], cwd=ROOT, text=True
+    )
+    for formatter in ("pycln", "isort", "black"):
+        assert formatter in formatting
+    assert "pylint" not in formatting
+    lint = subprocess.check_output(["make", "-n", "lint"], cwd=ROOT, text=True)
+    assert "pylint" in lint
 
 
 @pytest.mark.parametrize(
