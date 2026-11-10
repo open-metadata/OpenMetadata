@@ -19,6 +19,7 @@ import com.networknt.schema.Schema;
 import com.networknt.schema.SchemaLocation;
 import com.networknt.schema.SchemaRegistry;
 import com.networknt.schema.SpecificationVersion;
+import com.networknt.schema.path.NodePath;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -72,5 +73,9 @@ public final class ODCSProfiles {
   public static List<Error> validationErrors(String version, JsonNode document) {
     adapter(version);
     return List.copyOf(SCHEMAS.get(version).validate(document));
+  }
+
+  static boolean validFragment(String version, NodePath path, JsonNode value) {
+    return SCHEMAS.get(version).getSubSchema(path).validate(value).isEmpty();
   }
 }

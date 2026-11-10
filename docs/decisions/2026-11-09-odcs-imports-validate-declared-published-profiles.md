@@ -1,7 +1,7 @@
 # ODCS imports validate the declared published profile before native conversion
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial)
+- **Revisions:** v1 2026-11-09 (initial) · v2 2026-11-10 (cross-version metadata transport)
 - **Deciders:** Teddy Crepineau
 - **Guard:** ODCSVersionedImportTest; DataContractResourceIT#testVersionedODCSImportMatrix; DataContractResourceIT#testVersionedODCSInvalidDocumentsHaveNoSideEffects
 - **Related:** [#37202](https://github.com/open-metadata/OpenMetadata/issues/37202); ADR:2026-11-05-odcs-exports-use-versioned-schema-backed-mappers
@@ -67,3 +67,33 @@ encodings are repaired. Adding a published version requires a registered adapter
 and round-trip fixtures; new versions are never accepted solely because the permissive reader can
 parse them. Changing a quality rule's execution can supersede its old source representation, while
 unrelated source metadata remains hidden and preserved.
+
+
+## Amendment — lossless metadata across published export profiles
+
+Preserved source fields can be valid in their original profile and invalid in another: v2 root
+`type`/`datasetName` have no v3 root representation, while v2.2.1 dataset descriptions are arrays
+and the newer profiles require text. Same-version validation alone did not cover these conversions.
+
+Versioned export now normalizes the preserved remainder before overlay, using the pinned canonical
+schema to discover unsupported contract/table/column/item keys. These fields travel in a scoped
+`customProperties` entry named `https://open-metadata.org/odcs/source-metadata`, with a format version
+and generic field/value records. No per-field preservation list or storage/model change is needed.
+The original stored remainder is left intact, so existing contracts benefit without migration.
+
+Description arrays get a text projection and retain their exact original array in the annotation.
+After target serialization, each carried value is checked against that profile's published field
+schema. Representable fields are restored; the rest remain annotated. A projection changed or
+deleted since import cannot resurrect its original value. Native fields and legacy native aliases
+cannot be overwritten by annotations. Ordinary properties sharing the reserved name without the
+annotation shape are retained as user metadata.
+
+The metadata stays attached to its schema element, preserving identity through column reordering
+and deletion. The final complete document still passes the unchanged published validator; this
+transport does not hide malformed native fields or relax import validation. Compatibility helpers
+that expose raw metadata keep their existing behavior. The tradeoff is a visible compatibility
+annotation in exported ODCS when the target has no direct representation for source metadata.
+
+`ODCSCrossVersionRoundTripTest` covers all 36 source/target combinations and reverse imports,
+including arbitrary future metadata, multi-part descriptions, native edits/deletions and annotation
+identity protection. The HTTP matrix validates all six export targets after each versioned import.

@@ -2238,6 +2238,11 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                   new ODCSExportService(contract -> List.of())
                       .export(fixture, version)
                       .requireValid();
+          if (version.equals("v2.2.1"))
+            ((ObjectNode) source.at("/dataset/0"))
+                .putArray("description")
+                .add("First paragraph")
+                .add("Second paragraph");
           source
               .withArray("customProperties")
               .addObject()
@@ -2311,20 +2316,36 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
                 imported.getQualityExpectations().getFirst().getId(),
                 updated.getQualityExpectations().getFirst().getId());
           }
-          JsonNode exported =
-              new YAMLMapper()
-                  .readTree(
-                      client
-                          .getHttpClient()
-                          .executeForString(
-                              HttpMethod.GET,
-                              "/v1/dataContracts/"
-                                  + imported.getId()
-                                  + "/odcs/yaml?odcsVersion="
-                                  + version,
-                              null));
-          assertEquals(List.of(), ODCSProfiles.validate(version, exported));
-          assertTrue(exported.path("customProperties").toString().contains("externalMetadata"));
+          for (String targetVersion : ODCSProfiles.supportedVersions()) {
+            JsonNode exported =
+                new YAMLMapper()
+                    .readTree(
+                        client
+                            .getHttpClient()
+                            .executeForString(
+                                HttpMethod.GET,
+                                "/v1/dataContracts/"
+                                    + imported.getId()
+                                    + "/odcs/yaml?odcsVersion="
+                                    + targetVersion,
+                                null));
+            assertEquals(List.of(), ODCSProfiles.validate(targetVersion, exported));
+            assertTrue(exported.path("customProperties").toString().contains("externalMetadata"));
+            if (version.equals("v2.2.1")) {
+              if (targetVersion.equals("v2.2.1"))
+                assertEquals(
+                    source.at("/dataset/0/description"), exported.at("/dataset/0/description"));
+              else
+                assertEquals(
+                    "First paragraph\nSecond paragraph",
+                    exported
+                        .at(
+                            targetVersion.startsWith("v2")
+                                ? "/dataset/0/description"
+                                : "/schema/0/description")
+                        .asText());
+            }
+          }
           client
               .dataContracts()
               .patch(

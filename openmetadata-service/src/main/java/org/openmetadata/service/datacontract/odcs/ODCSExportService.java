@@ -50,8 +50,9 @@ public final class ODCSExportService {
     ODCSVersionAdapter adapter = ODCSProfiles.adapter(version);
     JsonNode nativeDocument = adapter.write(contract, qualityRules.apply(contract));
     JsonNode restored =
-        ODCSMetadataOverlay.apply(contract, adapter.preservationView(nativeDocument), Set.of());
-    JsonNode document = adapter.materialize(restored, contract);
+        ODCSMetadataOverlay.applyVersioned(contract, adapter.preservationView(nativeDocument));
+    JsonNode document =
+        ODCSVersionMetadata.materialize(adapter.materialize(restored, contract), version);
     List<String> issues = ODCSProfiles.validate(version, document);
     return new Result(version, document, issues);
   }

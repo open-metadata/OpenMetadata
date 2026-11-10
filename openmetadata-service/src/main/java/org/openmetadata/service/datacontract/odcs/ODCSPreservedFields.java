@@ -401,7 +401,7 @@ public final class ODCSPreservedFields {
     return tables.isArray() && tables.size() == 1 ? tables.get(0).path(NAME).asText(null) : null;
   }
 
-  private static JsonNode preservedDocument(JsonNode payload) {
+  static JsonNode preservedDocument(JsonNode payload) {
     JsonNode document = payload.has(DOCUMENT) ? payload.path(DOCUMENT) : payload;
     if (!document.isTextual()) {
       return document;
