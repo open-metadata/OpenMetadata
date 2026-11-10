@@ -971,3 +971,60 @@ WHERE entity_type IN ('user')
 UPDATE entity_extension SET json = json - 'authenticationMechanism'
 WHERE extension LIKE 'user.version.%'
   AND json -> 'authenticationMechanism' IS NOT NULL;
+
+-- Data Insights: keep test case definitions out of the data-asset charts.
+--
+-- testCase is now aliased into di-data-assets-* by dataInsightAliases so a chart can count test
+-- cases and group them by table, suite or definition. Its documents carry entityType "testCase",
+-- so the data-asset filter and the entityType breakdown must exclude it, or total_data_assets
+-- and the breakdown beneath it stop reconciling the way they did in #31478. The test case mapping
+-- lowercase-normalizes entityType.keyword, and a terms aggregation exclude matches the stored
+-- bucket key, so the breakdown excludes the lowercase forms as well.
+--
+-- Both statements are guarded on the stored value, so a deployment that already holds the
+-- corrected definitions is left untouched.
+
+-- Scope every data-asset metric to documents that actually carry an entityType.
+UPDATE di_chart_entity
+SET json = jsonb_set(json, '{chartDetails,metrics,0,filter}', to_jsonb('{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}'::text))
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND jsonb_typeof(json -> 'chartDetails' -> 'metrics') = 'array'
+  AND jsonb_array_length(json -> 'chartDetails' -> 'metrics') = 1
+  AND COALESCE(json -> 'chartDetails' -> 'metrics' -> 0 ->> 'filter', '') <> '{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}';
+
+-- Drop the same governance types from the breakdown that the filter above drops from the card.
+UPDATE di_chart_entity
+SET json = jsonb_set(json, '{chartDetails,excludeGroups}', '["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]'::jsonb)
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND json -> 'chartDetails' ->> 'groupBy' = 'entityType.keyword'
+  AND COALESCE(json -> 'chartDetails' -> 'excludeGroups', 'null'::jsonb) <> '["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]'::jsonb;

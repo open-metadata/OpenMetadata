@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/dataInsight/custom/dataAssetType.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Data Asset Type",
-  "description": "Entity type reachable under the `di-data-assets-*` wildcard. Asset types are ingested by DataInsightsApp and configured in `dataInsights/config.json`. Test results and resolution statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the app must never create or delete data streams for those live-index aliases.",
+  "description": "Entity type reachable under the `di-data-assets-*` wildcard. Asset types are ingested by DataInsightsApp and configured in `dataInsights/config.json`. Test cases, test results and resolution statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the app must never create or delete data streams for those live-index aliases. Test case documents carry no `@timestamp`, so test cases are charted in live mode (`searchIndex: testCase`) rather than over a time window.",
   "type": "string",
   "javaType": "org.openmetadata.schema.dataInsight.custom.DataAssetType",
   "enum": [
@@ -23,6 +23,7 @@
     "tag",
     "metric",
     "apiEndpoint",
+    "testCase",
     "testCaseResult",
     "testCaseResolutionStatus"
   ]
