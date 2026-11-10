@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "Successfully deleted {{count}} {{entity}}s",
     "entity-already-exist": "{{entity}} \"{{name}}\" already exists. Duplicated {{entityPlural}} are not allowed.",
     "entity-already-exist-message-without-name": "A {{entity}} with the given details already exists. Duplicated {{entityPlural}} are not allowed.",
+    "entity-changed-refresh-and-retry": "This asset was changed elsewhere. Refresh the page and try again.",
     "entity-created-success": "{{entity}} created successfully!",
     "entity-creation-error": "Error while creating {{entity}}",
     "entity-deleted-success": "{{entity}} deleted successfully!",

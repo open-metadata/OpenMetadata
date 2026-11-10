@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}} यशस्वीरित्या हटवले",
     "entity-already-exist": "{{entity}} \"{{name}}\" आधीच अस्तित्वात आहे. डुप्लिकेट {{entityPlural}} अनुमत नाहीत.",
     "entity-already-exist-message-without-name": "दिलेल्या तपशीलांसह {{entity}} आधीच अस्तित्वात आहे. डुप्लिकेट {{entityPlural}} अनुमत नाहीत.",
+    "entity-changed-refresh-and-retry": "ही मालमत्ता इतरत्र बदलली गेली आहे. पृष्ठ रीफ्रेश करा आणि पुन्हा प्रयत्न करा.",
     "entity-created-success": "{{entity}} यशस्वीरित्या तयार केले!",
     "entity-creation-error": "{{entity}} तयार करताना त्रुटी",
     "entity-deleted-success": "{{entity}} यशस्वीरित्या हटवले!",

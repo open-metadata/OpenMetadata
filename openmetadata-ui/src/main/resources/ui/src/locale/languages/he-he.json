@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}}s נמחקו בהצלחה",
     "entity-already-exist": "{{entity}} \"{{name}}\" כבר קיים. אין אפשרות ליצור {{entityPlural}} כפולים.",
     "entity-already-exist-message-without-name": "{{entity}} עם הפרטים הנתונים כבר קיים. אין אפשרות ליצור {{entityPlural}} כפולים.",
+    "entity-changed-refresh-and-retry": "נכס זה שונה במקום אחר. רענן את הדף ונסה שוב.",
     "entity-created-success": "{{entity}} נוצר בהצלחה!",
     "entity-creation-error": "שגיאה במהלך יצירת {{entity}}",
     "entity-deleted-success": "{{entity}} נמחק בהצלחה!",

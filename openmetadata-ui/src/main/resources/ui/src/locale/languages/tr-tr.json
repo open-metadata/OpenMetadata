@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}} başarıyla silindi",
     "entity-already-exist": "{{entity}} \"{{name}}\" zaten mevcut. Yinelenen {{entityPlural}} öğelerine izin verilmez.",
     "entity-already-exist-message-without-name": "Verilen ayrıntılara sahip bir {{entity}} zaten mevcut. Yinelenen {{entityPlural}} öğelerine izin verilmez.",
+    "entity-changed-refresh-and-retry": "Bu varlık başka bir yerde değiştirildi. Sayfayı yenileyip tekrar deneyin.",
     "entity-created-success": "{{entity}} başarıyla oluşturuldu!",
     "entity-creation-error": "{{entity}} oluşturulurken hata oluştu",
     "entity-deleted-success": "{{entity}} başarıyla silindi!",

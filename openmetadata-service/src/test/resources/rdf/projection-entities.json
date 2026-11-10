@@ -59,5 +59,16 @@
         "outputs": [{"datasetFQN": "service.db.schema.output"}]
       }
     }
+  },
+  {
+    "type": "dataContract",
+    "fields": {
+      "name": "preserved_odcs_contract",
+      "fullyQualifiedName": "customers.preserved_odcs_contract",
+      "odcsPreservedFields": {
+        "document": "{\"futureField\":{\"enabled\":true}}",
+        "unapplied": []
+      }
+    }
   }
 ]

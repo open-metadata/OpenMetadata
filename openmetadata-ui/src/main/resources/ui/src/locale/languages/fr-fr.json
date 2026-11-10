@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}}s supprimé(e)s avec succès",
     "entity-already-exist": "{{entity}} \"{{name}}\" existe déjà. Les doublons de {{entityPlural}} ne sont pas autorisés.",
     "entity-already-exist-message-without-name": "Un(e) {{entity}} avec les détails fournis existe déjà. Les doublons de {{entityPlural}} ne sont pas autorisés.",
+    "entity-changed-refresh-and-retry": "Cet actif a été modifié ailleurs. Actualisez la page et réessayez.",
     "entity-created-success": "{{entity}} créé avec succès !",
     "entity-creation-error": "Erreur lors de la création de {{entity}}",
     "entity-deleted-success": "{{entity}} supprimé avec succès !",

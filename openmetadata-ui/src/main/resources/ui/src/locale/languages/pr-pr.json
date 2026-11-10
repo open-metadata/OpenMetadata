@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}} با موفقیت حذف شد",
     "entity-already-exist": "{{entity}} \"{{name}}\" قبلاً وجود دارد. {{entityPlural}} تکراری مجاز نیستند.",
     "entity-already-exist-message-without-name": "یک {{entity}} با جزئیات داده شده قبلاً وجود دارد. {{entityPlural}} تکراری مجاز نیستند.",
+    "entity-changed-refresh-and-retry": "این دارایی در جای دیگری تغییر کرده است. صفحه را بازخوانی کنید و دوباره تلاش کنید.",
     "entity-created-success": "{{entity}} با موفقیت ایجاد شد!",
     "entity-creation-error": "خطا در ایجاد {{entity}}",
     "entity-deleted-success": "{{entity}} با موفقیت حذف شد!",

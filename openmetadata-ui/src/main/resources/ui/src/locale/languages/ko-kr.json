@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "{{count}}개의 {{entity}} 삭제 성공",
     "entity-already-exist": "{{entity}} \"{{name}}\"이(가) 이미 존재합니다. 중복된 {{entityPlural}}은(는) 허용되지 않습니다.",
     "entity-already-exist-message-without-name": "주어진 세부 정보를 가진 {{entity}}가 이미 존재합니다. 중복된 {{entityPlural}}은(는) 허용되지 않습니다.",
+    "entity-changed-refresh-and-retry": "이 자산이 다른 곳에서 변경되었습니다. 페이지를 새로 고친 후 다시 시도하세요.",
     "entity-created-success": "{{entity}}이(가) 성공적으로 생성되었습니다!",
     "entity-creation-error": "{{entity}} 생성 중 오류가 발생했습니다",
     "entity-deleted-success": "{{entity}}이(가) 성공적으로 삭제되었습니다!",

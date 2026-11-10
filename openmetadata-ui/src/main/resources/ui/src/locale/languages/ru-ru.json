@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "Успешно удалено {{count}} объектов «{{entity}}»",
     "entity-already-exist": "{{entity}} \"{{name}}\" уже существует. Повторяющиеся {{entityPlural}} не допускаются.",
     "entity-already-exist-message-without-name": "{{entity}} с указанными данными уже существует. Повторяющиеся {{entityPlural}} не допускаются.",
+    "entity-changed-refresh-and-retry": "Этот актив был изменён в другом месте. Обновите страницу и повторите попытку.",
     "entity-created-success": "{{entity}} успешно создан!",
     "entity-creation-error": "Ошибка при создании объекта «{{entity}}»!",
     "entity-deleted-success": "{{entity}} успешно удален!",

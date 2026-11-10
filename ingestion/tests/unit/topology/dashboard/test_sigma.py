@@ -13,18 +13,27 @@
 Test sigma Dashboard using the topology
 """
 
+import json
+from collections import Counter
+from fnmatch import fnmatch
 from types import SimpleNamespace
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
+from urllib.parse import urlparse
+from uuid import NAMESPACE_URL, uuid5
+
+import pytest
+import requests
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
+from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.entity.data.dashboard import (
     Dashboard as LineageDashboard,
 )
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
-from metadata.generated.schema.entity.data.table import Table
+from metadata.generated.schema.entity.data.table import Column, DataType, Table
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
@@ -38,17 +47,32 @@ from metadata.generated.schema.entity.services.databaseService import (
     DatabaseService,
     DatabaseServiceType,
 )
+from metadata.generated.schema.metadataIngestion.dashboardServiceMetadataPipeline import (
+    LineageInformation,
+)
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Markdown
+from metadata.generated.schema.type.basic import EntityExtension, FullyQualifiedEntityName
+from metadata.generated.schema.type.customProperty import PropertyType
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.generated.schema.type.lifeCycle import AccessDetails, LifeCycle
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.models.patch_request import (
+    ALLOWED_COMMON_PATCH_FIELDS,
+    RESTRICT_UPDATE_LIST,
+    build_patch,
+)
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     Elements,
+    ElementsResponse,
     NodeDetails,
+    Workbook,
     WorkbookDetails,
     WorkbookQueriesResponse,
     WorkbookQuery,
@@ -143,9 +167,10 @@ MOCK_DASHBOARD_DETAILS = WorkbookDetails(
     workbookId="1",
     name="test_db",
     description="SAMPLE DESCRIPTION",
-    createdAt="today",
+    createdAt="2026-01-01T00:00:00Z",
     url="http://url.com/to/dashboard",
     isArchived=False,
+    elements=MOCK_CHARTS,
 )
 
 
@@ -158,6 +183,7 @@ EXPECTED_DASHBOARD = [
         charts=[],
         dataModels=[],
         service=FullyQualifiedEntityName("mock_sigma"),
+        lifeCycle=LifeCycle(created=AccessDetails(timestamp=1767225600000)),
     )
 ]
 
@@ -166,25 +192,22 @@ EXPECTED_CHARTS = [
         name="1a",
         displayName="chart1",
         chartType="Table",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=1a",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="2b",
         displayName="chart2",
         chartType="BoxPlot",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=2b",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
     CreateChartRequest(
         name="3c",
         displayName="chart3",
         chartType="Pie",
-        sourceUrl="http://url.com/to/dashboard",
+        sourceUrl="http://url.com/to/dashboard?:nodeId=3c",
         service=FullyQualifiedEntityName("mock_sigma"),
-        description=Markdown("SAMPLE DESCRIPTION"),
     ),
 ]
 
@@ -299,7 +322,6 @@ class SigmaUnitTest(TestCase):
         """
         Function for testing charts
         """
-        self.sigma.client.get_chart_details = lambda *_: MOCK_CHARTS
         chart_list = []
         results = self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS)
         for result in results:
@@ -356,12 +378,18 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks
         self.sigma.client.get_workbook_queries = lambda *_: MOCK_WORKBOOK_QUERIES_RESPONSE
+        self.sigma.client.get_workbook_lineage = lambda *_: []
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
+        self.sigma.source_config.lineageInformation = LineageInformation(dbServicePrefixes=["mock_mysql"])
         self.sigma._get_datamodel = MagicMock(return_value=MOCK_DATA_MODEL)
         self.sigma.metadata.get_by_name = MagicMock(return_value=MOCK_DATABASE_SERVICE)
-        self.sigma.metadata.search_in_any_service = MagicMock(return_value=MOCK_TABLE_ENTITY)
+        self.sigma.metadata.es_search_from_fqn = MagicMock(
+            side_effect=lambda entity_type, **_: [
+                MOCK_DATABASE_SERVICE if entity_type is DatabaseService else MOCK_TABLE_ENTITY
+            ]
+        )
 
         # Execute
         results = list(
@@ -379,7 +407,7 @@ class SigmaUnitTest(TestCase):
         """
         # Setup mocks - no queries available
         self.sigma.client.get_workbook_queries = lambda *_: None
-        self.sigma.client.get_lineage_details = lambda *_: [MOCK_NODE_DETAILS]
+        self.sigma.client.get_lineage_details = lambda *_: ([MOCK_NODE_DETAILS], True)
         self.sigma.data_models = [Elements(elementId="1a", name="chart1", columns=["col1"], vizualizationType="table")]
 
         # Mock metadata methods
@@ -454,9 +482,9 @@ class SigmaUnitTest(TestCase):
         viz_element = Elements(elementId="viz1", name="chart1", vizualizationType="table")
         non_viz_element = Elements(elementId="nv1", name="text_box", columns=[])
 
-        self.sigma.client.get_chart_details = lambda *_: [viz_element, non_viz_element]
+        dashboard_details = MOCK_DASHBOARD_DETAILS.model_copy(update={"elements": [viz_element, non_viz_element]})
 
-        results = [r.right for r in self.sigma.yield_datamodel(MOCK_DASHBOARD_DETAILS) if r.right]
+        results = [r.right for r in self.sigma.yield_datamodel(dashboard_details) if r.right]
         # Only the visualization element should produce a DataModel request
         self.assertEqual(len(results), 1)
         self.assertEqual(str(results[0].name.root), "viz1")
@@ -516,7 +544,6 @@ class SigmaUnitTest(TestCase):
 
     def test_chart_source_state_populated(self):
         """Verify register_record_chart populates chart_source_state after yield_dashboard_chart."""
-        self.sigma.client.get_chart_details = lambda *_: MOCK_CHARTS
         self.sigma.chart_source_state = set()
         list(self.sigma.yield_dashboard_chart(MOCK_DASHBOARD_DETAILS))
         assert len(self.sigma.chart_source_state) == 3
@@ -669,3 +696,1366 @@ class SigmaUnitTest(TestCase):
 
         # Should return empty list or handle gracefully
         assert result == []
+
+
+def sigma_workbook(workbook_id: str, owner_id: str) -> dict:
+    return {
+        "workbookId": workbook_id,
+        "workbookUrlId": f"url-{workbook_id}",
+        "name": f"Sales {workbook_id}",
+        "url": f"https://app.sigmacomputing.com/acme/workbook/{workbook_id}",
+        "path": "Shared/Finance",
+        "latestVersion": 3,
+        "ownerId": owner_id,
+        "createdBy": owner_id,
+        "updatedBy": owner_id,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+        "description": "Quarterly sales by region",
+    }
+
+
+def sigma_member(member_id: str, email: str) -> dict:
+    return {
+        "organizationId": "org-1",
+        "memberId": member_id,
+        "memberType": "admin",
+        "firstName": "Ada",
+        "lastName": "Lovelace",
+        "email": email,
+        "profileImgUrl": None,
+        "createdBy": member_id,
+        "updatedBy": member_id,
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+        "homeFolderId": "folder-1",
+        "userKind": "internal",
+    }
+
+
+SIGMA_WORKBOOKS = [
+    sigma_workbook("wb-1", "member-1"),
+    sigma_workbook("wb-2", "member-1"),
+    sigma_workbook("wb-3", "member-2"),
+]
+
+
+def sigma_routes() -> dict:
+    """Sigma responses valid against its OpenAPI spec, keyed by (method, path)"""
+    routes = {
+        ("POST", "/v2/auth/token"): {"access_token": "token", "token_type": "bearer", "expires_in": 3600},
+        ("GET", "/v2/workbooks"): {"entries": SIGMA_WORKBOOKS, "nextPage": None},
+        ("GET", "/v2/connections"): {"entries": [], "nextPage": None},
+        ("GET", "/v2/members/member-1"): sigma_member("member-1", "ada@example.com"),
+        ("GET", "/v2/members/member-2"): sigma_member("member-2", "grace@example.com"),
+        ("GET", "/v2/files/T1"): {
+            "id": "T1",
+            "urlId": "t1-url",
+            "name": "ORDERS",
+            "type": "table",
+            "parentId": "P1",
+            "parentUrlId": "p1-url",
+            "permission": "view",
+            "path": "Connection Root/ANALYTICS.PUBLIC",
+            "badge": None,
+            "isArchived": False,
+            "createdBy": "member-1",
+            "updatedBy": "member-1",
+            "createdAt": "2026-01-01T00:00:00Z",
+            "updatedAt": "2026-01-02T00:00:00Z",
+        },
+    }
+    for workbook in SIGMA_WORKBOOKS:
+        workbook_path = f"/v2/workbooks/{workbook['workbookId']}"
+        element_id = f"el-{workbook['workbookId']}"
+        routes["GET", workbook_path] = workbook
+        routes["GET", f"{workbook_path}/pages"] = {"entries": [{"pageId": "page-1"}], "nextPage": None}
+        routes["GET", f"{workbook_path}/lineage"] = {"entries": [], "nextPage": None}
+        routes["GET", f"{workbook_path}/pages/page-1/elements"] = {
+            "entries": [{"elementId": element_id, "name": "Revenue", "vizualizationType": "bar"}],
+            "nextPage": None,
+        }
+        routes["GET", f"{workbook_path}/lineage/elements/{element_id}"] = {
+            "dependencies": {},
+            "edges": [{"source": "inode-T1", "target": f"sheet-{element_id}", "type": "source"}],
+        }
+        # A workbook's /files entry has the workbook id; Sigma returns the badge only there
+        routes["GET", f"/v2/files/{workbook['workbookId']}"] = {
+            **routes["GET", "/v2/files/T1"],
+            "id": workbook["workbookId"],
+            "urlId": workbook["workbookUrlId"],
+            "name": workbook["name"],
+            "type": "workbook",
+            "path": workbook["path"],
+        }
+    return routes
+
+
+@pytest.fixture
+def routes() -> dict:
+    return sigma_routes()
+
+
+@pytest.fixture
+def sigma_over_http(routes):
+    """
+    SigmaSource with its real client; HTTP is answered from `routes` and counted per (method, path).
+    A `page` query parameter is part of the route key, and an int route answers with that error status.
+    """
+    calls = Counter()
+
+    def request(method, url, params=None, **_):
+        path = urlparse(str(url)).path
+        calls[method, path] += 1
+        page = (params or {}).get("page")
+        body = routes[(method, path, page) if page else (method, path)]
+        response = requests.Response()
+        response.status_code = body if isinstance(body, int) else 200
+        response._content = b"" if isinstance(body, int) else json.dumps(body).encode()
+        return response
+
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+    source.client = SigmaApiClient(source.service_connection)
+    source.client.client._session.request = request
+    # OpenMetadata's user lookup is the other boundary: no user matches unless a test says so
+    source.metadata.get_reference_by_email = lambda email: None
+    source.client.token_client._session.request = request
+    source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+    return source, calls
+
+
+def badge_tags(source) -> tuple[list[tuple[str, str]], list[str] | None]:
+    """The tag definitions and the dashboard tags the run sends for wb-1"""
+    source.source_config.includeOwners = False
+    # The tag registry only checks that OpenMetadata knows the tag
+    source.metadata.get_by_name = lambda entity, **_: object() if entity is Tag else None
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    definitions = [
+        (either.right.classification_request.name.root, either.right.tag_request.name.root)
+        for either in source.yield_tags(details) or []
+    ]
+    dashboard = next(source.yield_dashboard(details)).right
+    return definitions, [label.tagFQN.root for label in dashboard.tags] if dashboard.tags else None
+
+
+def test_workbook_badge_becomes_a_sigma_badge_tag(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/files/wb-1"] = {**routes["GET", "/v2/files/wb-1"], "badge": "Endorsed"}
+
+    assert badge_tags(source) == ([("SigmaBadge", "Endorsed")], ["SigmaBadge.Endorsed"])
+
+
+@pytest.mark.parametrize("files_answer", [None, 500], ids=["no badge", "failed read"])
+def test_workbook_without_a_readable_badge_is_ingested_without_tags(sigma_over_http, routes, files_answer):
+    source, _ = sigma_over_http
+    if files_answer:
+        routes["GET", "/v2/files/wb-1"] = files_answer
+
+    assert badge_tags(source) == ([], None)
+
+
+def test_badge_is_not_read_when_tags_are_off(sigma_over_http):
+    source, calls = sigma_over_http
+    source.source_config.includeTags = False
+
+    source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    assert calls["GET", "/v2/files/wb-1"] == 0
+
+
+def ingested_projects(source) -> dict[str, str | None]:
+    """The project of each dashboard the run sends, with workbooks read and filtered as the topology does"""
+    source.source_config.includeOwners = False
+    return {
+        dashboard.name.root: dashboard.project
+        for details in source.get_dashboard()
+        for dashboard in [next(source.yield_dashboard(details)).right]
+    }
+
+
+def test_dashboard_project_is_the_workbook_workspace(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-3"] = {**SIGMA_WORKBOOKS[2], "path": "My Documents"}
+
+    assert ingested_projects(source) == {"wb-1": "Shared", "wb-2": "Shared", "wb-3": "My Documents"}
+
+
+@pytest.mark.parametrize(
+    "pattern, kept",
+    [
+        (FilterPattern(includes=["^Shared$"]), {"wb-1": "Shared", "wb-2": "Shared"}),
+        (FilterPattern(excludes=["^Shared$"]), {"wb-3": "My Documents"}),
+    ],
+    ids=["include", "exclude"],
+)
+def test_project_filter_pattern_keeps_or_drops_by_workspace(sigma_over_http, routes, pattern, kept):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-3"] = {**SIGMA_WORKBOOKS[2], "path": "My Documents"}
+    source.source_config.projectFilterPattern = pattern
+
+    assert ingested_projects(source) == kept
+
+
+def test_workbook_listing_is_requested_once(sigma_over_http):
+    source, calls = sigma_over_http
+
+    assert [workbook.workbookId for workbook in source.client.get_dashboards()] == ["wb-1", "wb-2", "wb-3"]
+    assert calls["GET", "/v2/workbooks"] == 1
+    source.client.test_get_dashboards()
+    assert calls["GET", "/v2/workbooks"] == 2
+
+
+def test_each_workbook_reads_its_elements_once(sigma_over_http):
+    source, calls = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [either.right.name.root for either in source.yield_dashboard_chart(details)]
+    data_models = [either.right.name.root for either in source.yield_datamodel(details)]
+
+    assert charts == data_models == ["el-wb-1"]
+    assert calls["GET", "/v2/workbooks/wb-1/pages"] == 1
+    assert calls["GET", "/v2/workbooks/wb-1/pages/page-1/elements"] == 1
+
+
+def owner_emails_for(source, workbook_ids: list[str]) -> list[str]:
+    emails = []
+    source.metadata.get_reference_by_email = emails.append
+    for workbook_id in workbook_ids:
+        source.get_owner_ref(source.client.get_dashboard_detail(workbook_id))
+    return emails
+
+
+def test_owner_is_read_once_for_workbooks_sharing_it(sigma_over_http):
+    source, calls = sigma_over_http
+
+    assert owner_emails_for(source, ["wb-1", "wb-2"]) == ["ada@example.com", "ada@example.com"]
+    assert calls["GET", "/v2/members/member-1"] == 1
+
+
+def test_each_distinct_owner_is_read(sigma_over_http):
+    source, calls = sigma_over_http
+
+    assert owner_emails_for(source, ["wb-1", "wb-3"]) == ["ada@example.com", "grace@example.com"]
+    assert calls["GET", "/v2/members/member-1"] == 1
+    assert calls["GET", "/v2/members/member-2"] == 1
+
+
+def test_table_file_is_read_once_for_elements_sharing_it(sigma_over_http):
+    source, calls = sigma_over_http
+
+    tables = [
+        [node.name for node in source.client.get_lineage_details(workbook_id, f"el-{workbook_id}")[0]]
+        for workbook_id in ("wb-1", "wb-2")
+    ]
+
+    assert tables == [["ORDERS"], ["ORDERS"]]
+    assert calls["GET", "/v2/files/T1"] == 1
+
+
+def warehouse_table(service: str, table: str, database: str = "ANALYTICS") -> Table:
+    name = f"{service}.{database}.PUBLIC.{table}"
+    return Table(id=str(uuid5(NAMESPACE_URL, name)), name=table, fullyQualifiedName=name, columns=[])
+
+
+def warehouse_service(name: str, service_type: DatabaseServiceType) -> DatabaseService:
+    return DatabaseService(id=str(uuid5(NAMESPACE_URL, name)), name=name, serviceType=service_type)
+
+
+def lineage_sources(
+    source,
+    routes,
+    prefixes: list[str],
+    catalog: list[Table],
+    sql: str | None,
+    service_type: DatabaseServiceType = DatabaseServiceType.Snowflake,
+    searches: list[str] | None = None,
+) -> list[str]:
+    """
+    FQNs of the tables wb-1's element is linked to, over every dbServicePrefixes entry as the base class
+    runs it. OpenMetadata's search answers from `catalog` with its wildcard matching; `sql` None takes
+    the fallback path (no queries, element lineage then /files). Table searches are recorded in `searches`.
+    """
+    services = {table.fullyQualifiedName.root.split(".")[0] for table in catalog}
+
+    def es_search_from_fqn(entity_type, fqn_search_string, **_):
+        if entity_type is DatabaseService:
+            return [warehouse_service(fqn_search_string, service_type)] if fqn_search_string in services else []
+        if searches is not None:
+            searches.append(fqn_search_string)
+        return [table for table in catalog if fnmatch(table.fullyQualifiedName.root.lower(), fqn_search_string.lower())]
+
+    def get_by_name(entity, fqn, **_):
+        if entity is DatabaseService:
+            return warehouse_service(fqn, service_type) if fqn in services else None
+        return MOCK_DATA_MODEL if entity is DashboardDataModel else None
+
+    source.metadata.es_search_from_fqn = es_search_from_fqn
+    source.metadata.get_by_name = get_by_name
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=prefixes)
+    # Sigma can leave a query's name out
+    entries = [{"elementId": "el-wb-1", "sql": sql}] if sql else []
+    routes["GET", "/v2/workbooks/wb-1/queries"] = {"entries": entries, "nextPage": None}
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    list(source.yield_datamodel(details))
+    return [
+        either.right.edge.fromEntity.fullyQualifiedName
+        for prefix in prefixes or [None]
+        for either in source.yield_dashboard_lineage_details(details, prefix)
+        if either.right
+    ]
+
+
+SIGMA_SQL = "SELECT * FROM ANALYTICS.PUBLIC.ORDERS"
+
+
+def test_a_table_reference_is_searched_once_per_prefix_in_a_run(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    prefixes = ["wh_a", "wh_b", "wh_c"]
+    searches: list[str] = []
+
+    linked = lineage_sources(
+        source, routes, prefixes, [warehouse_table("wh_a", "ORDERS")], SIGMA_SQL, searches=searches
+    )
+
+    assert linked == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+    # The lineage stage runs once per prefix; the reference is resolved across all of them only once
+    assert len(searches) == len(prefixes)
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_a_table_found_in_one_configured_service_is_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "CUSTOMERS")]
+
+    assert lineage_sources(source, routes, ["wh_a", "wh_b"], catalog, sql) == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_a_table_found_in_two_configured_services_is_not_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "ORDERS")]
+
+    assert lineage_sources(source, routes, ["wh_a", "wh_b"], catalog, sql) == []
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_no_table_is_linked_without_db_service_prefixes(sigma_over_http, routes, sql):
+    source, calls = sigma_over_http
+
+    assert lineage_sources(source, routes, [], [warehouse_table("wh_a", "ORDERS")], sql) == []
+    # Nothing could be linked, so nothing is read
+    assert calls["GET", "/v2/workbooks/wb-1/queries"] == 0
+
+
+def test_a_table_matching_twice_in_one_service_is_not_linked(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_a", "ORDERS", database="SALES")]
+
+    assert lineage_sources(source, routes, ["wh_a"], catalog, "SELECT * FROM PUBLIC.ORDERS") == []
+
+
+def test_a_wildcard_table_the_service_cannot_resolve_is_not_linked(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("bq_sigma", "events_20240101")]
+    sql = "SELECT * FROM `ANALYTICS.PUBLIC.events_2024*`"
+
+    assert lineage_sources(source, routes, ["bq_sigma"], catalog, sql, DatabaseServiceType.BigQuery) == []
+
+
+def test_a_failed_table_search_links_nothing(sigma_over_http, routes):
+    source, _ = sigma_over_http
+
+    def search_down(*_, **__):
+        raise requests.ConnectionError("search is down")
+
+    # A fresh run whose search is down: a reference resolved earlier in the same run would be reused
+    source.metadata.es_search_from_fqn = search_down
+    source.metadata.get_by_name = lambda entity, fqn, **_: MOCK_DATA_MODEL if entity is DashboardDataModel else None
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=["wh_a"])
+    routes["GET", "/v2/workbooks/wb-1/queries"] = {"entries": [], "nextPage": None}
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    list(source.yield_datamodel(details))
+
+    assert list(source.yield_dashboard_lineage_details(details, "wh_a")) == []
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_a_table_outside_the_prefix_database_is_not_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+
+    assert lineage_sources(source, routes, ["wh_a.SALES"], [warehouse_table("wh_a", "ORDERS")], sql) == []
+
+
+def sigma_file(file_id: str, name: str, file_type: str) -> dict:
+    return {
+        **sigma_routes()["GET", "/v2/files/T1"],
+        "id": file_id,
+        "urlId": file_id,
+        "name": name,
+        "type": file_type,
+    }
+
+
+# Sigma's documented example response for the element lineage endpoint (list-lineage): the element's table
+# is a `dependencies` entry, and every edge starts at a `dependencies` key.
+DOCUMENTED_ELEMENT_LINEAGE = {
+    "dependencies": {
+        "2MLjb1f67ldr3FMNI2L6Pf": {"name": "STATIONS", "nodeId": "2MLjb1f67ldr3FMNI2L6Pf", "type": "table"},
+        "4ZJD7G8AR03qf2oySPwoc3": {
+            "elementId": "3fqWi0z9SWwxuilnuq8w34",
+            "name": "Train Stations",
+            "nodeId": "4ZJD7G8AR03qf2oySPwoc3",
+            "type": "sheet",
+        },
+        "Ttd4meevWGks3ZYdVWt8X": {
+            "elementId": "5AbJJlOiPPtgpL3cCk7GqA",
+            "name": "Sum of Dock Count by City",
+            "nodeId": "Ttd4meevWGks3ZYdVWt8X",
+            "type": "sheet",
+        },
+    },
+    "edges": [
+        {"source": "4ZJD7G8AR03qf2oySPwoc3", "target": "Ttd4meevWGks3ZYdVWt8X", "type": "source"},
+        {"source": "2MLjb1f67ldr3FMNI2L6Pf", "target": "4ZJD7G8AR03qf2oySPwoc3", "type": "source"},
+    ],
+}
+
+
+def test_fallback_links_the_table_keyed_in_dependencies(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] = DOCUMENTED_ELEMENT_LINEAGE
+    routes["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] = sigma_file("2MLjb1f67ldr3FMNI2L6Pf", "STATIONS", "table")
+
+    linked = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "STATIONS")], None)
+
+    assert linked == ["wh_a.ANALYTICS.PUBLIC.STATIONS"]
+    # The table is read once; the two sheets are not
+    assert calls["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] == 1
+    assert not [path for _, path in calls if path.endswith(("/4ZJD7G8AR03qf2oySPwoc3", "/Ttd4meevWGks3ZYdVWt8X"))]
+
+
+def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    # DataHub's mocked element lineage for this endpoint: a Sigma dataset keyed as `inode-<urlId>`
+    routes["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] = {
+        "dependencies": {
+            "qrL7BEq8LR": {
+                "nodeId": "qrL7BEq8LR",
+                "type": "sheet",
+                "name": "Count of Profile Id by Status",
+                "elementId": "el-wb-1",
+            },
+            "inode-49HFLTr6xytgrPly3PFsNC": {
+                "nodeId": "inode-49HFLTr6xytgrPly3PFsNC",
+                "type": "dataset",
+                "name": "PETS",
+            },
+        },
+        "edges": [{"source": "inode-49HFLTr6xytgrPly3PFsNC", "target": "qrL7BEq8LR", "type": "source"}],
+    }
+    routes["GET", "/v2/files/49HFLTr6xytgrPly3PFsNC"] = sigma_file("49HFLTr6xytgrPly3PFsNC", "PETS", "dataset")
+
+    assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1")[0]] == ["PETS"]
+
+
+def sigma_connection(connection_id: str, connection_type: str) -> dict:
+    return {
+        "organizationId": "org-1",
+        "connectionId": connection_id,
+        "isSample": False,
+        "isAuditLog": False,
+        "lastActiveAt": "2026-01-02T00:00:00Z",
+        "name": f"Warehouse {connection_id}",
+        "type": connection_type,
+        "useOauth": False,
+        "createdBy": "member-1",
+        "updatedBy": "member-1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+    }
+
+
+def test_each_connection_type_is_read_once(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/connections/conn-sf"] = sigma_connection("conn-sf", "snowflake")
+    routes["GET", "/v2/connections/conn-bq"] = sigma_connection("conn-bq", "bigQuery")
+
+    types = [source.client.get_connection_type(connection) for connection in ("conn-sf", "conn-bq", "conn-sf")]
+
+    assert types == ["snowflake", "bigQuery", "snowflake"]
+    assert (calls["GET", "/v2/connections/conn-sf"], calls["GET", "/v2/connections/conn-bq"]) == (1, 1)
+
+
+def test_a_failed_connection_read_leaves_its_type_unknown_without_rereading(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/connections/conn-sf"] = 500
+
+    assert [source.client.get_connection_type("conn-sf") for _ in range(2)] == [None, None]
+    assert calls["GET", "/v2/connections/conn-sf"] == 1
+
+
+# Parses to the table only in BigQuery's dialect; Snowflake's (the test prefix service's) finds none
+BIGQUERY_ONLY_SQL = "SELECT * EXCEPT (AMOUNT) FROM `ANALYTICS.PUBLIC.ORDERS`"
+
+
+def workbook_on_connections(routes, connection_types: dict[str, str]) -> None:
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = {
+        "entries": [
+            {"type": "table", "connectionId": connection, "name": "ORDERS", "inodeId": f"inode-{connection}"}
+            for connection in connection_types
+        ],
+        "nextPage": None,
+    }
+    for connection, kind in connection_types.items():
+        routes["GET", f"/v2/connections/{connection}"] = sigma_connection(connection, kind)
+
+
+def test_sql_is_parsed_in_the_dialect_of_the_workbook_connection(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    workbook_on_connections(routes, {"conn-bq": "bigQuery"})
+
+    linked = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], BIGQUERY_ONLY_SQL)
+
+    assert linked == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+
+
+def test_a_workbook_on_several_connections_keeps_the_prefix_service_dialect(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    workbook_on_connections(routes, {"conn-bq": "bigQuery", "conn-sf": "snowflake"})
+
+    assert lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], BIGQUERY_ONLY_SQL) == []
+
+
+def test_a_partly_read_workbook_lineage_keeps_the_prefix_service_dialect(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    workbook_on_connections(routes, {"conn-bq": "bigQuery"})
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = {**routes["GET", "/v2/workbooks/wb-1/lineage"], "nextPage": "2"}
+    routes["GET", "/v2/workbooks/wb-1/lineage", "2"] = 500
+
+    assert lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], BIGQUERY_ONLY_SQL) == []
+
+
+def sigma_data_model(data_model_id: str, name: str) -> dict:
+    return {
+        "dataModelId": data_model_id,
+        "dataModelUrlId": f"url-{data_model_id}",
+        "name": name,
+        "url": f"https://app.sigmacomputing.com/acme/data-model/url-{data_model_id}",
+        "path": "Shared/Models",
+        "latestVersion": 4,
+        "ownerId": "member-1",
+        "createdBy": "member-1",
+        "updatedBy": "member-1",
+        "createdAt": "2026-01-01T00:00:00Z",
+        "updatedAt": "2026-01-02T00:00:00Z",
+    }
+
+
+@pytest.fixture
+def sigma_data_models(routes):
+    routes["GET", "/v2/dataModels"] = {"entries": [sigma_data_model("dm-1", "Sales Model")], "nextPage": None}
+    routes["GET", "/v2/dataModels/dm-1/elements"] = {
+        "entries": [
+            {"elementId": "dmEl1", "name": "Orders", "type": "table", "columns": ["Order Id", "Amount"]},
+            {"elementId": "dmEl2", "name": "Customers", "type": "table", "columns": ["Customer Id"]},
+        ],
+        "nextPage": None,
+    }
+    return routes
+
+
+def bulk_data_models(source) -> list:
+    return [either.right for model in source.list_datamodels() for either in source.yield_bulk_datamodel(model)]
+
+
+def test_a_sigma_data_model_is_one_data_model_with_a_table_column_per_element(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+
+    [data_model] = bulk_data_models(source)
+
+    assert (data_model.name.root, data_model.displayName, data_model.dataModelType.value) == (
+        "dm-1",
+        "Sales Model",
+        "SigmaDataModel",
+    )
+    assert data_model.sourceUrl.root == "https://app.sigmacomputing.com/acme/data-model/url-dm-1"
+    assert [
+        (column.name.root, column.displayName, column.dataType.value, [child.displayName for child in column.children])
+        for column in data_model.columns
+    ] == [
+        ("dmEl1", "Orders", "TABLE", ["Order Id", "Amount"]),
+        ("dmEl2", "Customers", "TABLE", ["Customer Id"]),
+    ]
+
+
+def test_sigma_data_models_are_not_read_when_data_models_are_off(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    source.source_config.includeDataModels = False
+
+    assert bulk_data_models(source) == []
+    assert calls["GET", "/v2/dataModels"] == 0
+
+
+def test_a_failed_element_read_keeps_the_existing_data_model(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/elements"] = 500
+    source.datamodel_source_state = set()
+
+    assert bulk_data_models(source) == []
+    assert source.datamodel_source_state == {"mock_sigma.model.dm-1"}
+
+
+def test_data_model_filter_pattern_applies_to_sigma_data_models(sigma_over_http, sigma_data_models):
+    source, calls = sigma_over_http
+    source.source_config.dataModelFilterPattern = FilterPattern(excludes=["^Sales Model$"])
+
+    assert bulk_data_models(source) == []
+    assert calls["GET", "/v2/dataModels/dm-1/elements"] == 0
+
+
+def test_a_sigma_data_model_is_owned_by_its_owner(sigma_over_http, sigma_data_models):
+    source, _ = sigma_over_http
+    # The data model's ownerId is member-1, whose email is ada@example.com
+    source.metadata.get_reference_by_email = lambda email: EntityReferenceList(
+        root=[EntityReference(id=str(uuid5(NAMESPACE_URL, email)), type="user", name=email)]
+    )
+
+    [data_model] = bulk_data_models(source)
+
+    assert [owner.name for owner in data_model.owners.root] == ["ada@example.com"]
+
+
+# Sigma's documented example response for the workbook lineage endpoint (list-lineage-tree): element
+# 3fqWi0z9SWwxuilnuq8w34 lists the data model d5a56ed4-… among its root sources.
+DOCUMENTED_WORKBOOK_LINEAGE = json.loads(
+    """
+{
+  "entries": [
+    {"dataSourceIds": ["QzcnTZrK9y8TjZs0T6OKO/En4r45kOFn"], "elementId": "5AbJJlOiPPtgpL3cCk7GqA",
+     "sourceIds": ["QzcnTZrK9y8TjZs0T6OKO"], "type": "element"},
+    {"dataSourceIds": ["QzcnTZrK9y8TjZs0T6OKO/En4r45kOFn"], "elementId": "5AbJJlOiPPtgpL3cCk7GqA",
+     "sourceIds": ["4ZJD7G8AR03qf2oySPwoc3"], "type": "element"},
+    {"dataSourceIds": ["QzcnTZrK9y8TjZs0T6OKO/En4r45kOFn", "d5a56ed4-16bf-4de3-be32-e0738f31be42"],
+     "elementId": "3fqWi0z9SWwxuilnuq8w34", "sourceIds": ["2MLjb1f67ldr3FMNI2L6Pf", "4ZJD7G8AR03qf2oySPwoc3"],
+     "type": "element"},
+    {"connectionId": "dd76be0a-08bc-4c88-8a79-9956f933e701", "dataModelId": "d5a56ed4-16bf-4de3-be32-e0738f31be42",
+     "name": "Docks data model", "type": "data-model"},
+    {"connectionId": "dd76be0a-08bc-4c88-8a79-9956f933e701", "inodeId": "eef50bc2-16c5-44ee-a913-9ae9d95e5295",
+     "name": "DOCKS", "type": "table"}
+  ],
+  "nextPage": null
+}
+"""
+)
+
+
+def data_model_edges(source) -> list[tuple[str, str]]:
+    """The data model -> data model edges the lineage stage sends for wb-1; every data model is known to OpenMetadata"""
+
+    def get_by_name(entity, fqn, **_):
+        if entity is not DashboardDataModel:
+            return None
+        return DashboardDataModel(
+            id=str(uuid5(NAMESPACE_URL, fqn)),
+            name=fqn.rsplit(".", 1)[-1],
+            fullyQualifiedName=fqn,
+            dataModelType="SigmaDataModel",
+            columns=[],
+        )
+
+    source.metadata.get_by_name = get_by_name
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+    return [
+        (request.edge.fromEntity.fullyQualifiedName, request.edge.toEntity.fullyQualifiedName)
+        for either in source.yield_dashboard_lineage(details)
+        if (request := getattr(either.right, "lineage_request", None))
+        and request.edge.fromEntity.type == "dashboardDataModel"
+    ]
+
+
+def test_a_workbook_element_reading_a_sigma_data_model_gets_lineage_from_it(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = DOCUMENTED_WORKBOOK_LINEAGE
+
+    assert data_model_edges(source) == [
+        ("mock_sigma.model.d5a56ed4-16bf-4de3-be32-e0738f31be42", "mock_sigma.model.3fqWi0z9SWwxuilnuq8w34")
+    ]
+
+
+def test_no_data_model_lineage_is_read_when_data_models_are_off(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage"] = DOCUMENTED_WORKBOOK_LINEAGE
+    source.source_config.includeDataModels = False
+
+    assert data_model_edges(source) == []
+    assert calls["GET", "/v2/workbooks/wb-1/lineage"] == 0
+
+
+def test_chart_links_to_its_element(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1?:nodeId=el-wb-1"
+
+
+def test_chart_does_not_copy_the_workbook_description(sigma_over_http):
+    source, _ = sigma_over_http
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (chart,) = [either.right for either in source.yield_dashboard_chart(details)]
+
+    assert chart.description is None
+
+
+def test_dashboard_keeps_the_workbook_description_and_link(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeOwners = False
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (dashboard,) = [either.right for either in source.yield_dashboard(details)]
+
+    assert dashboard.description.root == "Quarterly sales by region"
+    assert dashboard.sourceUrl.root == "https://app.sigmacomputing.com/acme/workbook/wb-1"
+
+
+TITLED_AND_UNTITLED_ELEMENTS = {
+    "entries": [
+        {"elementId": "el-titled", "name": "Revenue", "vizualizationType": "bar"},
+        {"elementId": "el-untitled", "vizualizationType": "line"},
+    ],
+    "nextPage": None,
+    "total": 2,
+}
+
+
+def chart_names_under_filter(source, chart_filter: FilterPattern | None) -> list[str]:
+    source.source_config.chartFilterPattern = chart_filter
+    elements = ElementsResponse.model_validate(TITLED_AND_UNTITLED_ELEMENTS).entries
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1")).model_copy(update={"elements": elements})
+    return [either.right.displayName for either in source.yield_dashboard_chart(details)]
+
+
+@pytest.mark.parametrize(
+    "chart_filter, charts",
+    [
+        (None, ["Revenue", "Element el-untitled"]),
+        (FilterPattern(includes=["^Revenue$"]), ["Revenue"]),
+        (FilterPattern(excludes=["^Cost$"]), ["Revenue", "Element el-untitled"]),
+        (FilterPattern(excludes=["^Revenue$"]), ["Element el-untitled"]),
+        (FilterPattern(includes=["^Element "]), ["Element el-untitled"]),
+    ],
+    ids=["no-filter", "include-titled", "exclude-other", "exclude-titled", "include-untitled"],
+)
+def test_chart_filter_matches_untitled_elements_by_display_name(sigma_over_http, chart_filter, charts):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, chart_filter) == charts
+
+
+def test_filtered_untitled_element_is_reported_by_display_name(sigma_over_http):
+    source, _ = sigma_over_http
+
+    assert chart_names_under_filter(source, FilterPattern(excludes=["^Element "])) == ["Revenue"]
+    assert source.status.filtered == [{"Element el-untitled": "Chart Pattern not allowed"}]
+
+
+def data_models_and_lineage(source, routes, data_model_filter: FilterPattern) -> tuple[list, list, list]:
+    """Charts, data models and fallback lineage for wb-1, whose element lineage runs through /lineage and /files"""
+    source.source_config.dataModelFilterPattern = data_model_filter
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [either.right.name.root for either in source.yield_dashboard_chart(details)]
+    data_models = [either.right.name.root for either in source.yield_datamodel(details)]
+    lineage = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], None)
+    return charts, data_models, lineage
+
+
+@pytest.mark.parametrize(
+    "data_model_filter",
+    [FilterPattern(excludes=["^Revenue$"]), FilterPattern(includes=["^Cost$"])],
+    ids=["excluded", "not-included"],
+)
+def test_filtered_data_model_gets_no_entity_lineage_or_lineage_calls(sigma_over_http, routes, data_model_filter):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, routes, data_model_filter)
+
+    assert charts == ["el-wb-1"]
+    assert data_models == []
+    assert lineage == []
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 0
+    assert calls["GET", "/v2/files/T1"] == 0
+
+
+def test_data_model_outside_the_filter_keeps_its_entity_and_lineage(sigma_over_http, routes):
+    source, calls = sigma_over_http
+
+    charts, data_models, lineage = data_models_and_lineage(source, routes, FilterPattern(excludes=["^Cost$"]))
+
+    assert charts == data_models == ["el-wb-1"]
+    assert lineage == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+    assert calls["GET", "/v2/workbooks/wb-1/lineage/elements/el-wb-1"] == 1
+    assert calls["GET", "/v2/files/T1"] == 1
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "files"])
+@pytest.mark.parametrize(
+    "element_fields, eligible",
+    [
+        ({"type": "table"}, True),
+        ({"type": "visualization"}, True),
+        # Sigma's element lineage endpoint accepts "a table, pivot table, or visualization"
+        ({"type": "pivot-table", "vizualizationType": "pivot"}, True),
+        ({"vizualizationType": "bar"}, True),
+        ({"type": None, "vizualizationType": "table"}, True),
+        ({"type": "control"}, False),
+        ({"type": "text"}, False),
+        ({"type": "control", "vizualizationType": "bar"}, False),
+        ({}, False),
+    ],
+    ids=[
+        "table",
+        "visualization",
+        "pivot-table",
+        "legacy",
+        "null-type",
+        "control",
+        "text",
+        "control-with-viz",
+        "unknown",
+    ],
+)
+def test_data_element_types_create_charts_models_and_lineage(sigma_over_http, routes, element_fields, eligible, sql):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/pages/page-1/elements"] = {
+        "entries": [{"elementId": "el-wb-1", "name": "Revenue", "columns": ["Amount"], **element_fields}],
+        "nextPage": None,
+    }
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    charts = [result.right.name.root for result in source.yield_dashboard_chart(details) if result.right]
+    models = [result.right.name.root for result in source.yield_datamodel(details) if result.right]
+    lineage = lineage_sources(source, routes, ["wh_a"], [warehouse_table("wh_a", "ORDERS")], sql)
+
+    assert charts == models == (["el-wb-1"] if eligible else [])
+    assert lineage == (["wh_a.ANALYTICS.PUBLIC.ORDERS"] if eligible else [])
+
+
+def sales_table(name: str, columns: list[str]) -> Table:
+    table_fqn = f"warehouse.SALES.PUBLIC.{name}"
+    return Table(
+        id=uuid5(NAMESPACE_URL, table_fqn),
+        name=name,
+        fullyQualifiedName=FullyQualifiedEntityName(table_fqn),
+        columns=[
+            Column(name=column, dataType=DataType.VARCHAR, fullyQualifiedName=f"{table_fqn}.{column}")
+            for column in columns
+        ],
+    )
+
+
+CUSTOMERS = sales_table("CUSTOMERS", ["CUSTOMER_ID", "CUSTOMER_NAME"])
+ORDERS = sales_table("ORDERS", ["ORDER_STATUS", "CUSTOMER_ID"])
+# Sigma labels an element's columns for reading (CUSTOMER_NAME shows as "Customer Name"); "Customer Id"
+# is in both source tables and "Sum of Amount" is a calculated field
+AMOUNT_ELEMENT = Elements(
+    elementId="amountByCustomer",
+    name="Sum of Amount by Customer",
+    vizualizationType="bar",
+    columns=["Customer Name", "Customer Id", "Order Status", "Sum of Amount"],
+)
+AMOUNT_SQL = (
+    "SELECT c.CUSTOMER_NAME, c.CUSTOMER_ID, o.ORDER_STATUS, SUM(o.AMOUNT) "
+    "FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID "
+    "GROUP BY 1, 2, 3"
+)
+AMOUNT_MODEL_FQN = "mock_sigma.model.amountByCustomer"
+EXPECTED_COLUMN_LINKS = {
+    CUSTOMERS.fullyQualifiedName.root: [
+        (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_NAME", f"{AMOUNT_MODEL_FQN}.Customer Name")
+    ],
+    ORDERS.fullyQualifiedName.root: [
+        (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+    ],
+}
+
+
+@pytest.fixture
+def lineage_source():
+    """SigmaSource whose OpenMetadata holds the data model (built from the element's labels) and both tables"""
+    with (
+        patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection"),
+        patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection"),
+    ):
+        config = OpenMetadataWorkflowConfig.model_validate(mock_config)
+        source = SigmaSource.create(mock_config["source"], OpenMetadata(config.workflowConfig.openMetadataServerConfig))
+    source.context.get().__dict__["dashboard_service"] = MOCK_DASHBOARD_SERVICE.fullyQualifiedName.root
+    data_model = DashboardDataModel(
+        id=uuid5(NAMESPACE_URL, AMOUNT_MODEL_FQN),
+        name="amountByCustomer",
+        fullyQualifiedName=AMOUNT_MODEL_FQN,
+        dataModelType="SigmaDataModel",
+        columns=[
+            column.model_copy(
+                update={"fullyQualifiedName": FullyQualifiedEntityName(f"{AMOUNT_MODEL_FQN}.{column.displayName}")}
+            )
+            for column in source.get_column_info(AMOUNT_ELEMENT)
+        ],
+    )
+    source.metadata.get_by_name = lambda entity, fqn, **_: (
+        data_model if entity is DashboardDataModel else MOCK_DATABASE_SERVICE
+    )
+    source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **_: next(
+        (table for table in (CUSTOMERS, ORDERS) if fqn_search_string.lower().endswith(f".{table.name.root.lower()}")),
+        None,
+    )
+    # Tables resolve within the dbServicePrefixes services, through es_search_from_fqn: answer it from the
+    # search_in_any_service stub above, which a test can replace
+    source.source_config.lineageInformation = LineageInformation(dbServicePrefixes=["mock_mysql"])
+    source.metadata.es_search_from_fqn = lambda entity_type, fqn_search_string, **_: (
+        [MOCK_DATABASE_SERVICE]
+        if entity_type is DatabaseService
+        else [table]
+        if (
+            table := source.metadata.search_in_any_service(entity_type=entity_type, fqn_search_string=fqn_search_string)
+        )
+        else []
+    )
+    source.data_models = [AMOUNT_ELEMENT]
+    source.client = SimpleNamespace(get_workbook_lineage=lambda *_: [])
+    return source
+
+
+def column_links(results) -> dict[str, list[tuple[str, str]]]:
+    """For each table edge sent: its (table column, data model column) pairs"""
+    return {
+        either.right.edge.fromEntity.fullyQualifiedName: [
+            (column.fromColumns[0].root, column.toColumn.root)
+            for column in either.right.edge.lineageDetails.columnsLineage or []
+        ]
+        for either in results
+        if either.right
+    }
+
+
+def test_sql_lineage_uses_sql_to_disambiguate_labeled_columns(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
+    )
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    assert column_links(results) == {
+        CUSTOMERS.fullyQualifiedName.root: [
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_ID", f"{AMOUNT_MODEL_FQN}.Customer Id"),
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_NAME", f"{AMOUNT_MODEL_FQN}.Customer Name"),
+        ],
+        ORDERS.fullyQualifiedName.root: [
+            (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+        ],
+    }
+
+
+@pytest.mark.parametrize(
+    "sql, expected",
+    [
+        ("SELECT 0 AS CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS", {"CUSTOMERS": []}),
+        (
+            "SELECT CUSTOMER_ID AS CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Name")]},
+        ),
+        (
+            "SELECT CONCAT(CUSTOMER_NAME, CUSTOMER_ID) AS ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Order Status"), ("CUSTOMER_NAME", "Order Status")]},
+        ),
+        (
+            "SELECT c.CUSTOMER_ID FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id")], "ORDERS": []},
+        ),
+        (
+            "SELECT * FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id"), ("CUSTOMER_NAME", "Customer Name")]},
+        ),
+        (
+            "SELECT * FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_NAME", "Customer Name")], "ORDERS": [("ORDER_STATUS", "Order Status")]},
+        ),
+        (
+            "SELECT c.* FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id"), ("CUSTOMER_NAME", "Customer Name")], "ORDERS": []},
+        ),
+        (
+            "SELECT c.*, o.ORDER_STATUS AS CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Id")], "ORDERS": []},
+        ),
+        (
+            "WITH base AS (SELECT CUSTOMER_ID FROM SALES.PUBLIC.CUSTOMERS) "
+            "SELECT CUSTOMER_ID AS CUSTOMER_NAME FROM base",
+            {"CUSTOMERS": [("CUSTOMER_ID", "Customer Name")]},
+        ),
+        (
+            "INSERT INTO SALES.PUBLIC.RESULT SELECT CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS",
+            {"CUSTOMERS": []},
+        ),
+        (
+            "SELECT CUSTOMER_NAME FROM SALES.PUBLIC.CUSTOMERS; SELECT ORDER_STATUS FROM SALES.PUBLIC.ORDERS",
+            {"CUSTOMERS": [], "ORDERS": []},
+        ),
+        (
+            "SELECT CUSTOMER_ID FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [], "ORDERS": []},
+        ),
+        (
+            "SELECT CUSTOMER_NAME, ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [("CUSTOMER_NAME", "Customer Name")], "ORDERS": [("ORDER_STATUS", "Order Status")]},
+        ),
+        # Parsed paths cannot tell this from an unqualified CUSTOMER_ID, so it is withheld too
+        (
+            "SELECT CONCAT(c.CUSTOMER_ID, o.CUSTOMER_ID) AS ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS c "
+            "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            {"CUSTOMERS": [], "ORDERS": []},
+        ),
+    ],
+    ids=[
+        "constant",
+        "alias",
+        "expression",
+        "join",
+        "wildcard",
+        "wildcard-join",
+        "qualified-wildcard",
+        "wildcard-alias-collision",
+        "cte",
+        "insert",
+        "multiple-statements",
+        "unqualified-join-column-in-both",
+        "unqualified-join-column-in-one",
+        "same-column-of-both-tables",
+    ],
+)
+def test_sql_lineage_uses_query_column_provenance(lineage_source, sql, expected):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", sql=sql)]
+    )
+
+    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, "mock_mysql"))
+    observed = {
+        result.right.edge.fromEntity.fullyQualifiedName.rsplit(".", 1)[-1]: sorted(
+            (source.root.rsplit(".", 1)[-1], column.toColumn.root.rsplit(".", 1)[-1])
+            for column in result.right.edge.lineageDetails.columnsLineage or []
+            for source in column.fromColumns
+        )
+        for result in results
+        if result.right
+    }
+
+    assert not [result.left for result in results if result.left]
+    assert observed == expected
+
+
+@pytest.mark.parametrize("projection", ["*", "c.*", "*, c.CUSTOMER_ID AS ORDER_STATUS"])
+@pytest.mark.parametrize("lookup_state", ["missing", "failed", "no-columns"])
+def test_unresolved_wildcard_sources_keep_table_lineage(lineage_source, projection, lookup_state):
+    sql = (
+        f"SELECT {projection} FROM SALES.PUBLIC.CUSTOMERS c JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID"
+    )
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", sql=sql)]
+    )
+
+    def resolve(entity_type, fqn_search_string, **_):
+        if fqn_search_string.lower().endswith(".customers"):
+            return CUSTOMERS
+        if lookup_state == "failed":
+            raise RuntimeError("search unavailable")
+        if lookup_state == "no-columns":
+            return ORDERS.model_copy(update={"columns": []})
+        return None
+
+    lineage_source.metadata.search_in_any_service = resolve
+    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, "mock_mysql"))
+
+    expected = []
+    if projection == "c.*":
+        expected = [
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_ID", f"{AMOUNT_MODEL_FQN}.Customer Id"),
+            (f"{CUSTOMERS.fullyQualifiedName.root}.CUSTOMER_NAME", f"{AMOUNT_MODEL_FQN}.Customer Name"),
+        ]
+    expected_links = {CUSTOMERS.fullyQualifiedName.root: expected}
+    if lookup_state == "no-columns":
+        expected_links[ORDERS.fullyQualifiedName.root] = []
+    assert column_links(results) == expected_links
+    assert bool([result.left for result in results if result.left]) == (lookup_state == "failed")
+
+
+@pytest.mark.parametrize(
+    "queries",
+    [None, WorkbookQueriesResponse(entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount")], total=1)],
+    ids=["no workbook queries", "element without sql"],
+)
+def test_fallback_lineage_links_labels_that_differ_from_the_column_in_case_and_separators(lineage_source, queries):
+    lineage_source.client.get_workbook_queries = lambda *_: queries
+    lineage_source.client.get_lineage_details = lambda *_: (
+        [
+            NodeDetails(id=table.name.root, name=table.name.root, type="table", path="Snowflake/SALES.PUBLIC")
+            for table in (CUSTOMERS, ORDERS)
+        ],
+        True,
+    )
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    assert column_links(results) == EXPECTED_COLUMN_LINKS
+
+
+def test_fallback_lineage_links_no_column_when_a_source_could_not_be_read(lineage_source):
+    def sigma_get(path):
+        if path.endswith("/lineage/elements/amountByCustomer"):
+            return {
+                "dependencies": {},
+                "edges": [
+                    {"source": f"inode-{node}", "target": "amountByCustomer", "type": "source"}
+                    for node in ("customers", "orders")
+                ],
+            }
+        if path == "/files/customers":
+            return {"id": "customers", "name": "CUSTOMERS", "type": "table", "path": "Snowflake/SALES.PUBLIC"}
+        raise RuntimeError("403 Forbidden")
+
+    client = SigmaApiClient.__new__(SigmaApiClient)
+    client.client = SimpleNamespace(get=sigma_get)
+    client.get_workbook_queries = lambda *_: None
+    client.get_workbook_lineage = lambda *_: []
+    client._file_cache = {}
+    lineage_source.client = client
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    # "Customer Id" looks unique without ORDERS, which is exactly when linking it would guess
+    assert column_links(results) == {CUSTOMERS.fullyQualifiedName.root: []}
+
+
+def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
+    )
+    search = lineage_source.metadata.search_in_any_service
+
+    def search_failing_for_customers(entity_type, fqn_search_string, **kwargs):
+        if fqn_search_string.lower().endswith(".customers"):
+            raise RuntimeError("search unavailable")
+        return search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+
+    lineage_source.metadata.search_in_any_service = search_failing_for_customers
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    assert column_links(results) == {
+        ORDERS.fullyQualifiedName.root: [
+            (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+        ]
+    }
+    assert ["search unavailable" in either.left.error for either in results if either.left] == [True]
+
+
+def test_a_source_table_missing_from_openmetadata_keeps_proven_column_lineage(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[WorkbookQuery(elementId="amountByCustomer", name="Amount", sql=AMOUNT_SQL)], total=1
+    )
+    search = lineage_source.metadata.search_in_any_service
+    lineage_source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **kwargs: (
+        None
+        if fqn_search_string.lower().endswith(".customers")
+        else search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+    )
+
+    results = list(
+        lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, db_service_prefix="mock_mysql")
+    )
+
+    assert column_links(results) == {
+        ORDERS.fullyQualifiedName.root: [
+            (f"{ORDERS.fullyQualifiedName.root}.ORDER_STATUS", f"{AMOUNT_MODEL_FQN}.Order Status")
+        ]
+    }
+
+
+def test_an_unqualified_column_is_not_linked_when_a_missing_table_could_hold_it(lineage_source):
+    lineage_source.client.get_workbook_queries = lambda *_: WorkbookQueriesResponse(
+        entries=[
+            WorkbookQuery(
+                elementId="amountByCustomer",
+                sql="SELECT CUSTOMER_NAME, o.ORDER_STATUS FROM SALES.PUBLIC.CUSTOMERS c "
+                "JOIN SALES.PUBLIC.ORDERS o ON c.CUSTOMER_ID = o.CUSTOMER_ID",
+            )
+        ]
+    )
+    search = lineage_source.metadata.search_in_any_service
+    lineage_source.metadata.search_in_any_service = lambda entity_type, fqn_search_string, **kwargs: (
+        None
+        if fqn_search_string.lower().endswith(".orders")
+        else search(entity_type=entity_type, fqn_search_string=fqn_search_string, **kwargs)
+    )
+
+    results = list(lineage_source.yield_dashboard_lineage_details(MOCK_DASHBOARD_DETAILS, "mock_mysql"))
+
+    assert column_links(results) == {CUSTOMERS.fullyQualifiedName.root: []}
+
+
+def test_dashboard_records_when_the_workbook_was_created_and_updated(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    # The timestamps of DataHub's mocked workbook, whose golden file holds them as 1713188691477 and 1713189117302
+    routes["GET", "/v2/workbooks/wb-1"] = {
+        **SIGMA_WORKBOOKS[0],
+        "createdAt": "2024-04-15T13:44:51.477Z",
+        "updatedAt": "2024-04-15T13:51:57.302Z",
+    }
+    source.source_config.includeOwners = False
+
+    dashboard = next(source.yield_dashboard(source.get_dashboard_details(Workbook(workbookId="wb-1")))).right
+
+    assert dashboard.lifeCycle == LifeCycle(
+        created=AccessDetails(timestamp=1713188691477), updated=AccessDetails(timestamp=1713189117302)
+    )
+
+
+class FakeDashboardProperties:
+    """OpenMetadata's dashboard custom properties and the Sigma dashboard, as the server holds them"""
+
+    def __init__(self, properties=(), extension=None):
+        self.properties = [{"name": name, "propertyType": {"name": data_type}} for name, data_type in properties]
+        self.registered = []
+        self.dashboard = LineageDashboard(
+            id=uuid5(NAMESPACE_URL, "wb-1"),
+            name="wb-1",
+            fullyQualifiedName="mock_sigma.wb-1",
+            service=EntityReference(id=MOCK_DASHBOARD_SERVICE.id, type="dashboardService"),
+            extension=EntityExtension(extension) if extension else None,
+        )
+
+    def serve(self, source):
+        source.metadata.get_entity_custom_properties = lambda entity_type: self.properties
+        source.metadata.get_property_type_ref = lambda data_type: PropertyType(
+            EntityReference(id=uuid5(NAMESPACE_URL, data_type.value), type="type", name=data_type.value)
+        )
+        source.metadata.create_or_update_custom_property = self.register
+        source.metadata.get_by_name = lambda entity, fqn, fields=None: (
+            self.dashboard if fqn == self.dashboard.fullyQualifiedName.root else None
+        )
+
+    def register(self, record):
+        request = record.createCustomPropertyRequest
+        self.registered.append((request.name.root, request.propertyType.root.name))
+        self.properties.append({"name": request.name.root, "propertyType": {"name": request.propertyType.root.name}})
+
+
+def patched_extension(source, workbook_id="wb-1"):
+    """The extension the dashboard holds once the sink applies the workbook's patch"""
+    details = source.get_dashboard_details(Workbook(workbookId=workbook_id))
+    requests_sent = [either.right for either in source.yield_dashboard_extension(details)]
+    if not requests_sent:
+        return None
+    (request,) = requests_sent
+    dashboard_patch = build_patch(
+        source=request.original_entity,
+        destination=request.new_entity,
+        allowed_fields=ALLOWED_COMMON_PATCH_FIELDS,
+        restrict_update_fields=RESTRICT_UPDATE_LIST,
+        override_metadata=request.override_metadata,
+    )
+    assert all(op["path"].startswith("/extension") and op["op"] != "remove" for op in dashboard_patch.patch)
+    return dashboard_patch.apply(request.original_entity.model_dump(mode="json", exclude_none=True))["extension"]
+
+
+@pytest.mark.parametrize("version", [3, 1.1])
+def test_the_workbook_version_is_patched_onto_its_dashboard(sigma_over_http, routes, version):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    routes["GET", "/v2/workbooks/wb-1"] = {**routes["GET", "/v2/workbooks/wb-1"], "latestVersion": version}
+    server = FakeDashboardProperties(extension={"team": "finance", "latestVersion": 2})
+    server.serve(source)
+
+    assert patched_extension(source) == {"team": "finance", "latestVersion": version}
+    assert patched_extension(source, "wb-2") is None
+    assert server.registered == [("latestVersion", "number")]
+
+
+def test_a_latest_version_property_of_another_type_is_left_alone(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties(properties=[("latestVersion", "string")])
+    server.serve(source)
+
+    assert patched_extension(source) is None
+    assert server.registered == []
+
+
+def test_no_workbook_version_is_set_without_custom_properties(sigma_over_http):
+    source, _ = sigma_over_http
+    server = FakeDashboardProperties()
+    server.serve(source)
+
+    assert patched_extension(source) is None
+    assert server.registered == []
+
+
+def test_a_failed_registration_sets_no_version_and_is_not_retried(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties()
+    server.serve(source)
+    attempts = []
+
+    def refuse(record):
+        attempts.append(record.createCustomPropertyRequest.name.root)
+        raise requests.HTTPError("403 Forbidden")
+
+    source.metadata.create_or_update_custom_property = refuse
+
+    assert patched_extension(source) is None
+    assert patched_extension(source, "wb-2") is None
+    assert attempts == ["latestVersion"]
+
+
+def test_a_registered_latest_version_property_is_reused(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    server = FakeDashboardProperties(properties=[("latestVersion", "number")])
+    server.serve(source)
+
+    assert patched_extension(source) == {"latestVersion": 3}
+    assert server.registered == []
+
+
+def test_a_failed_dashboard_read_is_reported_for_the_workbook(sigma_over_http):
+    source, _ = sigma_over_http
+    source.source_config.includeCustomProperties = True
+    FakeDashboardProperties().serve(source)
+
+    def unreachable(entity, fqn, fields=None):
+        raise requests.ConnectionError("OpenMetadata unreachable")
+
+    source.metadata.get_by_name = unreachable
+    details = source.get_dashboard_details(Workbook(workbookId="wb-1"))
+
+    (either,) = source.yield_dashboard_extension(details)
+    assert either.right is None
+    assert "Sigma workbook wb-1: OpenMetadata unreachable" in either.left.error

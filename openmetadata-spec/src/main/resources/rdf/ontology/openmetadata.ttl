@@ -3369,6 +3369,10 @@ om:odcsElementExtensions a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "odcsElementExtensions" .
 
+om:odcsPreservedFields a rdf:Property ;
+    om:projectionStatus om:Stored ;
+    rdfs:label "odcsPreservedFields" .
+
 om:odcsQualityRules a rdf:Property ;
     om:projectionStatus om:Stored ;
     rdfs:label "odcsQualityRules" .

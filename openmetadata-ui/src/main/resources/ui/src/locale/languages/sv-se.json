@@ -6788,6 +6788,7 @@
     "entities-deleted-successfully": "{{count}} {{entity}}s togs bort",
     "entity-already-exist": "{{entity}} \"{{name}}\" finns redan. Duplicerade {{entityPlural}} är inte tillåtna.",
     "entity-already-exist-message-without-name": "En {{entity}} med de angivna uppgifterna finns redan. Duplicerade {{entityPlural}} är inte tillåtna.",
+    "entity-changed-refresh-and-retry": "Den här tillgången har ändrats någon annanstans. Uppdatera sidan och försök igen.",
     "entity-created-success": "{{entity}} skapades!",
     "entity-creation-error": "Fel vid skapande av {{entity}}",
     "entity-deleted-success": "{{entity}} togs bort!",
