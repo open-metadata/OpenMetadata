@@ -19,6 +19,9 @@ on:
       - "**.json"
       - "**.yaml"
       - "**.yml"
+      - ".github/scripts/check_pr_workflow_security.py"
+      - ".github/scripts/tests/test_pr_workflow_security.py"
+      - ".github/scripts/tests/test_release_ci_security.py"
 
 permissions:
   contents: read
@@ -27,7 +30,7 @@ jobs:
   validate-json-yaml:
     runs-on: ubuntu-latest
     permissions:
-      pull-requests: write
+      pull-requests: read
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -47,7 +50,13 @@ jobs:
         run: |
           python3 -m venv env
           source env/bin/activate
-          pip install pyyaml
+          pip install pyyaml==6.0.3 pytest==9.1.1
+
+      - name: Verify PR workflow security
+        run: |
+          source env/bin/activate
+          python .github/scripts/check_pr_workflow_security.py
+          python -m pytest .github/scripts/tests/test_pr_workflow_security.py .github/scripts/tests/test_release_ci_security.py -q
 
       # Add back linting once we have 10/10 on main
       - name: Code style check

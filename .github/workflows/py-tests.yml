@@ -27,13 +27,6 @@ concurrency:
 env:
   # matrix can't use 'env'. When updating it, update it for both jobs.
   MAIN_PYTHON_VERSION: "3.10"
-  SONAR_OPTS: >-
-    -Dsonar.pullrequest.key=${{ github.event.pull_request.number }}
-    -Dsonar.pullrequest.branch=${{ github.event.pull_request.head.ref }}
-    -Dsonar.pullrequest.github.repository=OpenMetadata
-    -Dsonar.scm.revision=${{ github.event.pull_request.head.sha }}
-    -Dsonar.pullrequest.provider=github
-
 jobs:
   # Detect whether relevant paths changed before the matrix fans out.
   changes:
@@ -399,20 +392,3 @@ jobs:
           cd ingestion
           nox --no-venv -s combine-coverage
         shell: bash
-
-      - name: Remove pom.xml
-        run: rm pom.xml
-        shell: bash
-
-      # Fork and Dependabot PRs get no secrets, so the PR analysis runs for the other same-repo PRs only.
-      - name: Push Results in PR to Sonar
-        id: push-to-sonar
-        if: ${{ github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-        continue-on-error: true
-        uses: SonarSource/sonarqube-scan-action@v7
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
-        with:
-          projectBaseDir: ingestion/
-          args: ${{ env.SONAR_OPTS }}

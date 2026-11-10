@@ -21,6 +21,7 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: py-checkstyle-${{ github.event.pull_request.number || github.run_id }}
@@ -31,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     permissions:
-      pull-requests: write
+      pull-requests: read
     env:
       FAILURE_HELP: |
         **The Python checkstyle failed.**
@@ -89,15 +90,6 @@ jobs:
           source env/bin/activate
           make generate
           make py_format_check
-
-      # Fork and Dependabot PRs get a read-only token, so only other same-repo PRs get the
-      # comment; everyone gets the job summary and the error annotation from the next step.
-      - name: Create a comment in the PR with the instructions
-        if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' && github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]' }}
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          issue-number: ${{ github.event.pull_request.number }}
-          body: ${{ env.FAILURE_HELP }}
 
       - name: Python checkstyle failed
         if: ${{ steps.scope.outputs.python == 'true' && steps.style.outcome != 'success' }}
