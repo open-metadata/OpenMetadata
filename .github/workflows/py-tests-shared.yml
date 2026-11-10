@@ -81,9 +81,7 @@ jobs:
               - 'ingestion/**'
               - 'scripts/prepare_classification_models.py'
               - '.github/scripts/classification_model_revisions.py'
-              - '.github/workflows/reusable-prepare-classification-models.yml'
-              - '.github/workflows/reusable-write-classification-models.yml'
-              - '.github/workflows/classification-models-changed.yml'
+              - '.github/actions/prepare-classification-models/**'
               - '.github/workflows/warm-classification-models.yml'
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
@@ -190,12 +188,20 @@ jobs:
           echo "versions=$(jq -c '."python-versions"' <<< "$matrix")" >> "$GITHUB_OUTPUT"
 
   prepare-spacy-model:
+    permissions:
+      contents: read
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' && (inputs.run-unit-tests || needs.changes.outputs.integration == 'true') }}
     cache-mode: read
-    uses: ./.github/workflows/reusable-prepare-classification-models.yml
-    with:
-      revision: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
+      - uses: ./.github/actions/prepare-classification-models
 
   py-unit-tests:
     name: Unit Tests & Static Checks

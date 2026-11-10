@@ -983,6 +983,162 @@ def test_model_warmer_resolves_exact_revisions_and_deduplicates_retained_version
     assert "Expected exact commit SHAs" in result.stderr
 
 
+def fixture_model_metadata(requirements):
+    return (
+        "[dependency-groups]\nclassification-models="
+        + json.dumps(requirements)
+        + '\n[tool.uv]\nrequired-version="==0.13.4"\n'
+        + "\n".join(
+            '[[tool.uv.dependency-metadata]]\nname="' + name + '"\nversion="1.0.0"\nrequires-dist=[]\n'
+            for name in ["fixture-first", "fixture-second"]
+        )
+        + '\n[tool.openmetadata.python-environments]\nsupported-python=["3.10","3.12"]\n'
+    )
+
+
+def sequential_models(tmp_path, records, write, uv_version, save_failure=False):
+    script = tmp_path / "prepare.cjs"
+    script.write_text(
+        """const fs = require('node:fs');
+const path = require('node:path');
+const { prepareModels } = require(process.argv[2]);
+const cache = {
+  async restoreCache([archive], key) {
+    const stored = path.join('stored', key);
+    if (!fs.existsSync(stored)) return undefined;
+    fs.mkdirSync(path.dirname(archive), {recursive: true});
+    fs.copyFileSync(stored, archive);
+    return key;
+  },
+  async saveCache([archive], key) {
+    if (process.argv[7] === 'true') return -1;
+    fs.mkdirSync('stored', {recursive: true});
+    fs.copyFileSync(archive, path.join('stored', key));
+    return 1;
+  }
+};
+prepareModels(JSON.parse(process.argv[4]), {
+  directory: 'artifacts', helper: process.argv[3],
+  write: process.argv[5] === 'true', uvVersion: process.argv[6]
+}, cache).catch(error => { console.error(error); process.exitCode = 1; });
+"""
+    )
+    return run(
+        "node",
+        str(script),
+        str(REPO_ROOT / ".github/actions/prepare-classification-models/prepare.cjs"),
+        str(REPO_ROOT / "scripts/prepare_classification_models.py"),
+        json.dumps(records),
+        str(write).lower(),
+        uv_version,
+        str(save_failure).lower(),
+        cwd=tmp_path,
+    )
+
+
+@pytest.mark.parametrize("write,uv_version", [(True, "0.13.4"), (False, "0.13.4"), (True, "0.13.3")])
+def test_sequential_model_archives_preserve_payloads_and_only_warmer_saves(tmp_path, model_origin, write, uv_version):
+    requirements, state, requests = model_origin
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "pyproject.toml").write_text(fixture_model_metadata(requirements))
+    result = model_helper("discover", "--project", str(project), cwd=tmp_path)
+    assert_success(result)
+    records = json.loads(result.stdout)["include"]
+    assert_success(sequential_models(tmp_path, records, write, uv_version))
+    archives = {p.parent.name: p.read_bytes() for p in (tmp_path / "artifacts").glob("*/model.tar")}
+    stored = {p.name: p.read_bytes() for p in (tmp_path / "stored").glob("*")}
+    assert len(archives) == (0 if write else 2)
+    assert len(stored) == (2 if write else 0)
+    state["status"] = 403
+    requests.clear()
+    result = sequential_models(tmp_path, records, False, uv_version)
+    if write:
+        assert_success(result)
+        assert {p.parent.name: p.read_bytes() for p in (tmp_path / "artifacts").glob("*/model.tar")} == stored
+        assert {p.name: p.read_bytes() for p in (tmp_path / "stored").glob("*")} == stored
+        assert requests == []
+    else:
+        assert result.returncode != 0
+        assert requests
+
+
+def test_sequential_model_hash_failure_publishes_no_archives(tmp_path, model_origin):
+    requirements, _state, requests = model_origin
+    project = tmp_path / "project"
+    project.mkdir()
+    bad = requirements[0].split("#")[0] + "#sha256=" + "0" * 64
+    (project / "pyproject.toml").write_text(fixture_model_metadata([bad]))
+    result = model_helper("discover", "--project", str(project), cwd=tmp_path)
+    assert_success(result)
+    result = sequential_models(tmp_path, json.loads(result.stdout)["include"], True, "0.13.4")
+    assert result.returncode != 0
+    assert "Model preparation failed" in result.stderr
+    assert requests
+    assert not list((tmp_path / "artifacts").glob("*/model.tar"))
+    assert not list((tmp_path / "stored").glob("*"))
+
+
+def test_sequential_model_save_failure_fails_warmer(tmp_path, model_origin):
+    requirements, _state, _requests = model_origin
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / "pyproject.toml").write_text(fixture_model_metadata(requirements))
+    result = model_helper("discover", "--project", str(project), cwd=tmp_path)
+    assert_success(result)
+    result = sequential_models(tmp_path, json.loads(result.stdout)["include"], True, "0.13.4", save_failure=True)
+    assert result.returncode != 0
+    assert "Cache save failed" in result.stderr
+    assert not list((tmp_path / "stored").glob("*"))
+
+
+@pytest.mark.parametrize("unsupported", [False, True])
+def test_model_warmer_discovers_distinct_revision_metadata_with_current_helper(
+    tmp_path, model_origin, monkeypatch, unsupported
+):
+    requirements, _state, _requests = model_origin
+    source = tmp_path / "source"
+    source.mkdir()
+    assert_success(run("git", "init", "--initial-branch=main", cwd=source))
+    assert_success(run("git", "config", "user.name", "Fixture", cwd=source))
+    assert_success(run("git", "config", "user.email", "user@example.com", cwd=source))
+    project = source / "ingestion"
+    project.mkdir()
+    helper = source / "scripts/prepare_classification_models.py"
+    helper.parent.mkdir()
+    helper.write_text('raise RuntimeError("revision helper must not run")\n')
+    selected = []
+    for index, records in enumerate([requirements, [requirements[0].replace("#", "?revision=next#"), requirements[1]]]):
+        metadata = '[project]\nname="fixture"\n' if unsupported and index else fixture_model_metadata(records)
+        (project / "pyproject.toml").write_text(metadata)
+        assert_success(run("git", "add", ".", cwd=source))
+        assert_success(run("git", "commit", "-m", "Fixture metadata", cwd=source))
+        selected.append(run("git", "rev-parse", "HEAD", cwd=source).stdout.strip())
+    checkout = tmp_path / "checkout"
+    assert_success(run("git", "clone", "--depth=1", source.as_uri(), str(checkout), cwd=tmp_path))
+    shutil.copyfile(
+        REPO_ROOT / "scripts/prepare_classification_models.py", checkout / "scripts/prepare_classification_models.py"
+    )
+    monkeypatch.setenv("SUPPORTED_HEADS", "[]")
+    monkeypatch.setenv("RETAINED_REVISIONS", json.dumps([*selected, selected[0]]))
+    monkeypatch.delenv("REQUESTED_REVISION", raising=False)
+    script = REPO_ROOT / ".github/scripts/classification_model_revisions.py"
+    result = run(sys.executable, str(script), "--discover-models", cwd=checkout)
+    if unsupported:
+        assert result.returncode != 0
+        assert "lacks the classification-models layout" in result.stderr
+        return
+    assert_success(result)
+    records = json.loads(result.stdout.split("=", 1)[1])
+    assert len(records) == 3
+    assert sorted(r["name"] for r in records) == ["fixture-first", "fixture-first", "fixture-second"]
+    assert len({r["key"] for r in records}) == 3
+    assert any("?revision=next" in r["url"] for r in records)
+    assert (checkout / "scripts/prepare_classification_models.py").read_bytes() == (
+        REPO_ROOT / "scripts/prepare_classification_models.py"
+    ).read_bytes()
+
+
 def test_model_versions_coexist_in_one_cache_after_parallel_preparation(tmp_path, model_origin, monkeypatch):
     requirements, state, requests = model_origin
     first = requirements[0]

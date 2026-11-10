@@ -1,0 +1,8 @@
+{
+  "name": "prepare-classification-models",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@actions/cache": "4.1.0"
+  }
+}

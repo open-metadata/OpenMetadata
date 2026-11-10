@@ -1,7 +1,7 @@
 # Python classification models use explicit profiles and isolated caches
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-09 (initial)
+- **Revisions:** v1 2026-11-09 (initial); v2 2026-11-10 (direct warming and shared preparation action)
 - **Deciders:** Pablo Takara
 - **Guard:** `ingestion/tests/unit/test_python_tooling.py`; DB2 connection tests; reviewer for workflow ordering and cache ownership
 - **Related:** ADR:2026-10-27-local-python-environments-use-locked-profiles; https://github.com/open-metadata/OpenMetadata/pull/37424
@@ -99,3 +99,29 @@ saved a key, consumer runs may independently download the same model on misses. 
 wheel hash or uv-version changes create new keys without replacing older model versions.
 Persistent saves, default-branch visibility and writer concurrency require hosted acceptance;
 successful consumer tests alone do not establish those properties. No Collate behavior changes.
+
+## Amendment — 2026-11-10: Direct warming and shared preparation
+
+Relevant pushes to `main` trigger the warmer directly with `github.sha`. This replaces the
+notification workflow and its `workflow_run` handoff. Manual exact revisions and the daily
+supported-head/retained-revision sweep remain available. Supporting release-branch notifications
+would require a separate decision; the initial operational scope remains `main`.
+
+The `prepare-classification-models` composite action processes models sequentially in one job,
+using GitHub's official cache toolkit with pinned npm dependencies. Consumer preparation and the
+warmer share this action. The consumer preparation and writer reusable workflows are removed;
+only the warmer remains as an added workflow. The Python test matrices remain unchanged.
+
+Consumer jobs retain `cache-mode: read`. They upload one uncompressed, one-day `classification-models`
+artifact containing `<model-cache-key>/model.tar` for each model. The existing cache identities and
+the cache transport path `model-cache/model.tar` remain unchanged. Only the default-branch warmer
+sets `save-cache: true` and `cache-mode: write`; failed saves fail the warmer.
+
+The warmer resolves exact revisions, reads their project metadata with its default-branch helper,
+and deduplicates model keys before sequential preparation. It uses workflow concurrency group
+`classification-model-warmer`, `queue: single` and `cancel-in-progress: false`: one run executes and
+one may wait. A newer request replaces the pending request, including a pending manual revision.
+Different model versions remain distinct cache entries, but their warming is serialized. Both
+consumer preparation and warming retain a 15-minute whole-job timeout; individual downloads
+remain bounded by the helper. Requested uv pins differing from the current pin are selected with
+`uv run --no-project --with uv==<pin>` on cache misses.
