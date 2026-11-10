@@ -27,6 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
@@ -77,9 +78,11 @@ class ODCSCrossVersionRoundTripTest {
     assertEquals(original, source, "Export must not mutate the uploaded document");
   }
 
-  @Test
-  void editedAndDeletedProjectedDescriptionsDoNotRestoreTheOldArray() {
+  @ParameterizedTest
+  @ValueSource(strings = {"Customer records", "First paragraph\nSecond paragraph"})
+  void editedAndDeletedProjectedDescriptionsDoNotRestoreTheOldArray(String nativeDescription) {
     DataContract nativeContract = fixture();
+    nativeContract.getEntity().setDescription(nativeDescription);
     ObjectNode source = (ObjectNode) exporter.export(nativeContract, "v2.2.1").requireValid();
     enrichLegacyMetadata(source, "v2.2.1");
     JsonNode converted =

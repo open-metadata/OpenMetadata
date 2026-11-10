@@ -117,7 +117,27 @@ final class ODCSVersionMetadata {
       remember(node, DESCRIPTION, original, projection);
       node.set(DESCRIPTION, projection);
     }
+    discardStaleProjections(node, scope);
     visitChildren(node, scope, (child, next) -> canonicalize(child, next));
+  }
+
+  private static void discardStaleProjections(ObjectNode node, Scope scope) {
+    for (JsonNode property : node.path(CUSTOM_PROPERTIES)) {
+      if (!isCarrier(property)) continue;
+      ObjectNode fields = (ObjectNode) property.path(VALUE).path(FIELDS);
+      List<String> stale = new ArrayList<>();
+      fields
+          .fields()
+          .forEachRemaining(
+              field -> {
+                if (field.getValue().has(PROJECTION)
+                    && validEntry(field.getKey(), field.getValue(), scope)
+                    && !projectionUnchanged(node, field.getKey(), field.getValue()))
+                  stale.add(field.getKey());
+              });
+      // Check the stored source before native fallback can make a deleted field look unchanged.
+      fields.remove(stale);
+    }
   }
 
   private static void remember(ObjectNode node, String name, JsonNode value, JsonNode projection) {
