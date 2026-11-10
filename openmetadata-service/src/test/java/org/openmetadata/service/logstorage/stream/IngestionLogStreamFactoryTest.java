@@ -132,15 +132,20 @@ class IngestionLogStreamFactoryTest {
   /**
    * Whether a run's logs are still coming decides where they are tailed from when storage holds
    * nothing yet, so the factory must hand the run's real state to that decision. A run with no
-   * status row yet was most likely just triggered.
+   * status row at all was most likely just triggered, while one missing only from the recent rows
+   * is old, and its own row says whether it finished.
    */
   @ParameterizedTest(name = "{0}")
   @MethodSource("runStatesAndWhetherTheRunIsGoing")
   void aRunIsTailedFromStorageWhenItsStateSaysItsLogsAreThere(
-      String scenario, List<PipelineStatus> recentStatuses, boolean runGoing) {
+      String scenario,
+      List<PipelineStatus> recentStatuses,
+      PipelineStatus ownRow,
+      boolean runGoing) {
     IngestionPipelineRepository repository = mock(IngestionPipelineRepository.class);
     IngestionPipeline pipeline = new IngestionPipeline().withFullyQualifiedName("svc.pipeline");
     when(repository.getRecentPipelineStatuses("svc.pipeline")).thenReturn(recentStatuses);
+    when(repository.getPipelineStatus("svc.pipeline", RUN_ID)).thenReturn(ownRow);
     when(repository.readsRunLogsFromStorage(pipeline, RUN_ID, runGoing)).thenReturn(true);
     IngestionLogStreamFactory factory =
         new IngestionLogStreamFactory(repository, mock(PipelineServiceClientInterface.class));
@@ -152,9 +157,14 @@ class IngestionLogStreamFactoryTest {
 
   private static Stream<Arguments> runStatesAndWhetherTheRunIsGoing() {
     return Stream.of(
-        Arguments.of("running", List.of(status(RUN_ID, PipelineStatusType.RUNNING)), true),
-        Arguments.of("finished", List.of(status(RUN_ID, PipelineStatusType.SUCCESS)), false),
-        Arguments.of("no status row yet", List.of(), true));
+        Arguments.of("running", List.of(status(RUN_ID, PipelineStatusType.RUNNING)), null, true),
+        Arguments.of("finished", List.of(status(RUN_ID, PipelineStatusType.SUCCESS)), null, false),
+        Arguments.of("no status row yet", List.of(), null, true),
+        Arguments.of(
+            "finished and older than the recent rows",
+            List.of(),
+            status(RUN_ID, PipelineStatusType.SUCCESS),
+            false));
   }
 
   private static PipelineStatus status(String runId, PipelineStatusType state) {

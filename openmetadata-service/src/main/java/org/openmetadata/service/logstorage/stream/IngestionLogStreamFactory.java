@@ -80,11 +80,25 @@ public class IngestionLogStreamFactory {
   /**
    * Object storage owns a run's log when the run stored it there, or when the run is still going
    * and its pipeline ships logs there. Otherwise the pipeline service is the only place the log
-   * exists. A run with no status row yet counts as going: it was most likely just triggered.
+   * exists.
    */
   private boolean readsFromLogStorage(IngestionPipeline pipeline, String runId) {
-    final boolean runGoing = runState(pipeline.getFullyQualifiedName(), runId) != RunState.FINISHED;
-    return repository.readsRunLogsFromStorage(pipeline, runId, runGoing);
+    return repository.readsRunLogsFromStorage(
+        pipeline, runId, isRunGoing(pipeline.getFullyQualifiedName(), runId));
+  }
+
+  /**
+   * A run missing from the recent status rows was either just triggered or is old enough to have
+   * left that window, so its own row decides. Only a run with no row at all counts as going.
+   */
+  private boolean isRunGoing(String fqn, String runId) {
+    final RunState state = runState(fqn, runId);
+    return state == RunState.UNKNOWN ? hasNoFinishedRow(fqn, runId) : state == RunState.RUNNING;
+  }
+
+  private boolean hasNoFinishedRow(String fqn, String runId) {
+    final PipelineStatus ownRow = runId == null ? null : repository.getPipelineStatus(fqn, runId);
+    return ownRow == null || IngestionPipelineRepository.isRunGoing(ownRow);
   }
 
   private LogTailSource storageSource(String fqn, String runId, String startCursor) {
