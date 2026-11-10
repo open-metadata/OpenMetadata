@@ -22,6 +22,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -970,6 +971,40 @@ class MemorySourceLifecycleTest {
     assertTrue(edges.mentionedBy(released).isEmpty());
   }
 
+  /**
+   * No transaction spans an archive's hook, so a write landing on the memory between the anchor
+   * move's read and its write fails only that attempt: the next one reads the memory afresh.
+   */
+  @Test
+  void anArchiveMovesTheAnchorOnAFreshReadAfterAWriteLandedMeanwhile() {
+    MovedOffArchived move = anchorMovedOffArchived();
+    doThrow(new PreconditionFailedException("The memory has been modified."))
+        .doAnswer(call -> keep(move.stored(), call.getArgument(2)))
+        .when(move.memories())
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+
+    move.archive().run();
+
+    verify(move.memories(), times(2))
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+    assertSourceLinks(move.stored().get(move.memoryId()), move.orgWide());
+  }
+
+  @Test
+  void anArchiveGivesUpTheAnchorMoveAfterThreeRefusedAttempts() {
+    MovedOffArchived move = anchorMovedOffArchived();
+    doThrow(new PreconditionFailedException("The memory has been modified."))
+        .when(move.memories())
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+
+    PreconditionFailedException failed =
+        assertThrows(PreconditionFailedException.class, move.archive()::run);
+
+    assertTrue(failed.getMessage().contains(move.memoryId().toString()), failed.getMessage());
+    verify(move.memories(), times(3))
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+  }
+
   /** The archive and the restore each store a version of the memory, which withholds names too. */
   @Test
   void archivingAndRestoringAMemoryAreRelinkingWrites() {
@@ -1354,6 +1389,40 @@ class MemorySourceLifecycleTest {
   private static Object relinked(List<Boolean> relinking, InvocationOnMock call, Object result) {
     relinking.add(MemoryRelinking.isRelinking(call.getArgument(1)));
     return result;
+  }
+
+  /**
+   * A memory anchored on an archived file and stated by an org-wide one too; archiving the anchor
+   * moves the anchor onto the org-wide file.
+   */
+  private record MovedOffArchived(
+      UUID memoryId,
+      EntityReference orgWide,
+      Map<UUID, ContextMemory> stored,
+      ContextMemoryRepository memories,
+      Runnable archive) {}
+
+  private MovedOffArchived anchorMovedOffArchived() {
+    EntityReference archived = contextFile("A archived").withDeleted(true);
+    EntityReference orgWide = contextFile("B org-wide");
+    ContextMemory memory = anchoredMemory(archived);
+    Edges edges = new Edges();
+    edges.anchor(archived, memory.getId());
+    edges.mention(archived, memory.getId());
+    edges.mention(orgWide, memory.getId());
+    Map<UUID, ContextMemory> stored = storedAs(memory);
+    ContextMemoryRepository memories = writesKept(spy(repository), stored);
+    Runnable archive =
+        () -> {
+          try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle = quietDispatcher();
+              MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+            resolveReferences(entities, archived, orgWide, memory.getEntityReference());
+            storedFile(entities, orgWide, MemoryVisibility.ENTITY);
+            new MemorySourceLifecycle(memories)
+                .archiveExtractedMemories(archived.getId(), archived.getType());
+          }
+        };
+    return new MovedOffArchived(memory.getId(), orgWide, stored, memories, archive);
   }
 
   /** The file shared as {@code visibility}, as the write changing its sharing leaves it. */
