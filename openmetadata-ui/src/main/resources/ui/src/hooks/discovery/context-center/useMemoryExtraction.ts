@@ -59,7 +59,8 @@ export const useMemoryExtraction = <T>({
   request,
   onUpdate,
 }: MemoryExtractionOptions<T>): MemoryExtraction => {
-  const { currentUser } = useApplicationStore();
+  // Each Documents row runs this hook, so it re-renders on the signed-in user only.
+  const currentUser = useApplicationStore((state) => state.currentUser);
   const queryClient = useQueryClient();
   const [requestingId, setRequestingId] = useState<string>();
   const [refusedId, setRefusedId] = useState<string>();
