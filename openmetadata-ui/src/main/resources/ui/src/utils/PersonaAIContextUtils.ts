@@ -32,7 +32,6 @@ import {
   CacheState,
   PersonaContextStatus,
 } from '../generated/type/personaContextStatus';
-import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import type { TreeNode } from './queryBuilder/url';
@@ -157,24 +156,24 @@ export const getRuleExplorePath = (
   queryFilter?: string
 ): string => {
   const tree = getRuleFilterTree(filterJsonTree, queryFilter);
-  const searchIndex = searchClassBase.getEntityTypeSearchIndexMapping()[
-    entityType
-  ] as ExploreSearchIndex | undefined;
-  const tab = searchIndex
-    ? searchClassBase.getTabsInfo()[searchIndex]?.path
-    : undefined;
-
   // Explore validates the deep-linked tree against its own config and silently resets when a field is unknown.
   const exploreTree = tree
     ? withExploreFieldKeys(tree as unknown as TreeNode, entityType)
     : tree;
 
   return getExplorePath({
-    extraParameters: exploreTree
-      ? { queryFilter: JSON.stringify(exploreTree) }
-      : undefined,
+    extraParameters: {
+      quickFilter: JSON.stringify({
+        query: {
+          bool: {
+            must: [{ bool: { should: [{ term: { entityType } }] } }],
+          },
+        },
+      }),
+      ...(exploreTree ? { queryFilter: JSON.stringify(exploreTree) } : {}),
+    },
     isPersistFilters: false,
-    tab,
+    search: '',
   });
 };
 

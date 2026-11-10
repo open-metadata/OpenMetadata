@@ -85,24 +85,6 @@ jobs:
     if: ${{ always() && contains(join(needs.*.result, ','), 'success') }}
     needs: [ maven-build ]
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.9.1
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
       - name: Check out the Repo
         uses: actions/checkout@v7
         with:

@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.elasticsearch;
 
 import static jakarta.ws.rs.core.Response.Status.OK;
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DOMAIN;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -26,7 +27,9 @@ import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import es.co.elastic.clients.elasticsearch._types.mapping.Property;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
 import es.co.elastic.clients.elasticsearch.core.SearchRequest;
 import es.co.elastic.clients.elasticsearch.core.SearchResponse;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
@@ -88,6 +91,7 @@ import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilder;
 import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -550,11 +554,14 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     if (nullOrEmpty(queryFilter) || EMPTY_JSON_OBJECT.equals(queryFilter)) {
       return;
     }
-    String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
-    Query filterQuery = Query.of(q -> q.withJson(new StringReader(queryDsl)));
+    Query filterQuery = fromJson(QueryFilterShape.requireQueryDsl(queryFilter));
     Query existingQuery = requestBuilder.query();
     requestBuilder.query(
         existingQuery == null ? filterQuery : filteredBy(existingQuery, filterQuery));
+  }
+
+  private static Query fromJson(String queryDsl) {
+    return Query.of(q -> q.withJson(new StringReader(queryDsl)));
   }
 
   private static Query filteredBy(Query existingQuery, Query filterQuery) {
@@ -1505,46 +1512,76 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     ElasticSearchRequestBuilder requestBuilder =
         buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+    return completeResults(requestBuilder.build(request.getIndex()), request.getIndex());
+  }
 
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("Elasticsearch client is not available");
+    }
+    String index = Entity.getSearchRepository().getIndexOrAliasName(Entity.CONTEXT_MEMORY);
+    // The caller's filter decides which memories qualify, so the org-wide-only default stays off.
+    ElasticSearchRequestBuilder requestBuilder =
+        new ElasticSearchRequestBuilder()
+            .query(sharedTermsQuery(text))
+            .filter(fromJson(QueryFilterShape.requireQueryDsl(filterJson)))
+            .fetchSource(ContextMemoryIndex.SIMILARITY_RESULT_FIELDS.toArray(String[]::new), null)
+            .size(size)
+            .timeout("30s")
+            .contextMemoryVisibilityResolved();
+    return completeResults(requestBuilder.build(index), index);
+  }
+
+  private static Query sharedTermsQuery(String text) {
+    return Query.of(
+        q ->
+            q.multiMatch(
+                m ->
+                    m.query(text)
+                        .fields(ContextMemoryIndex.SIMILARITY_FIELDS)
+                        .type(TextQueryType.CrossFields)
+                        .operator(Operator.Or)
+                        .minimumShouldMatch(ContextMemoryIndex.SIMILARITY_MINIMUM_SHOULD_MATCH)));
+  }
+
+  /** A response missing hits, timed out or with a failed shard, fails instead of reading short. */
+  private SearchResultListMapper completeResults(SearchRequest searchRequest, String index)
+      throws IOException {
     try {
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response =
-          searchForCompleteExportResponse(searchRequest, request.getIndex());
-
-      if (response.timedOut() || response.shards().failed().intValue() > 0) {
-        throw new IOException("Incomplete search export for " + request.getIndex());
-      }
-
-      List<Map<String, Object>> results = new ArrayList<>();
-      Object[] lastHitSortValues = null;
-
-      if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
-        List<Hit<JsonData>> hits = response.hits().hits();
-        for (Hit<JsonData> hit : hits) {
-          if (hit.source() != null) {
-            results.add(EsUtils.jsonDataToMap(hit.source()));
-          }
-        }
-        Hit<JsonData> lastHit = hits.getLast();
-        if (lastHit.sort() != null && !lastHit.sort().isEmpty()) {
-          lastHitSortValues =
-              lastHit.sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
-        }
-      }
-
-      long totalHits = 0;
-      if (response.hits().total() != null) {
-        totalHits = response.hits().total().value();
-      }
-
-      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+      return toResultList(searchForCompleteExportResponse(searchRequest, index));
     } catch (ElasticsearchException e) {
       if (e.status() == 404) {
-        throw SearchEngineErrors.indexNotFound(request.getIndex());
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
     }
+  }
+
+  private static SearchResultListMapper toResultList(SearchResponse<JsonData> response) {
+    List<Hit<JsonData>> hits = listOrEmpty(response.hits().hits());
+    long totalHits = response.hits().total() == null ? 0 : response.hits().total().value();
+    return new SearchResultListMapper(sourcesOf(hits), totalHits, lastSortValues(hits));
+  }
+
+  private static List<Map<String, Object>> sourcesOf(List<Hit<JsonData>> hits) {
+    List<Map<String, Object>> results = new ArrayList<>();
+    for (Hit<JsonData> hit : hits) {
+      if (hit.source() != null) {
+        results.add(EsUtils.jsonDataToMap(hit.source()));
+      }
+    }
+    return results;
+  }
+
+  private static Object[] lastSortValues(List<Hit<JsonData>> hits) {
+    Object[] values = null;
+    if (!hits.isEmpty() && !nullOrEmpty(hits.getLast().sort())) {
+      values = hits.getLast().sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
+    }
+    return values;
   }
 
   private SearchResponse<JsonData> searchForCompleteExportResponse(

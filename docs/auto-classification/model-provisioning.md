@@ -64,4 +64,6 @@ Provisioning stops at the first install or verification failure. Models complete
 
 Provisioning downloads exact upstream wheel URLs. Build or install while connected; a private pip index alone does not redirect those URLs. In a disconnected environment, preinstall matching model wheels and dependencies through your own artifact distribution.
 
-At runtime, a missing model keeps the existing behavior: OpenMetadata warns, attempts spaCy's download, and fails the enabled classification workflow if it cannot load the model.
+At runtime, OpenMetadata still attempts spaCy's download when a model is missing locally. If a model cannot load, classification is disabled for the rest of that run. Sampling and configured sample writes continue, then the workflow reports failure. Tags already saved and existing manual tags remain; pending tags for the interrupted entity are discarded. The failure identifies the model and repair command. Repair or provision the model in the runner's Python environment, then rerun the workflow to retry classification.
+
+The status file and pipeline state report failure even when the CLI's explicit `workflowConfig.raiseOnError: false` setting suppresses the final exception.

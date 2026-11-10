@@ -13,6 +13,15 @@ name: SonarCloud Ingestion Nightly
 
 on:
   workflow_dispatch:
+    inputs:
+      unit_test_workers:
+        description: "Number of pytest workers for unit tests"
+        type: choice
+        default: "2"
+        options:
+          - "1"
+          - "2"
+          - "4"
   schedule:
     - cron: "0 2 * * *"
 
@@ -74,7 +83,9 @@ jobs:
         run: |
           source env/bin/activate
           cd ingestion
-          nox --no-venv -s unit-tests
+          nox --no-venv -s unit-tests -- -n "${UNIT_TEST_WORKERS}"
+        env:
+          UNIT_TEST_WORKERS: ${{ inputs.unit_test_workers || '2' }}
         shell: bash
 
       - name: Upload coverage artifact

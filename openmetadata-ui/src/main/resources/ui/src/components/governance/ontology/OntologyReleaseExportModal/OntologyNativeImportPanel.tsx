@@ -513,10 +513,11 @@ const ImportReview = ({
       {summary.skippedStatements && summary.skippedStatements.total > 0 && (
         <OntologyNativeImportSkipped skipped={summary.skippedStatements} />
       )}
-      {items.length > 0 && (
+      {(items.length > 0 || (summary.omittedItems ?? 0) > 0) && (
         <OntologyNativeImportItems
           isDisabled={isDisabled}
           items={items}
+          omittedItems={summary.omittedItems ?? 0}
           selection={selection}
           onSelectionChange={onSelectionChange}
         />
