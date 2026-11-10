@@ -315,10 +315,12 @@ public class SamlValidator {
     }
   }
 
+  /**
+   * Builds the sign-in request before asking the outbound URL policy, because building needs no
+   * network: a configuration the live login cannot turn into a request fails here even when the
+   * policy keeps the server from sending it, as for an identity provider on a private network.
+   */
   private FieldError validateIdpConnectivity(SamlSSOClientConfig samlConfig) {
-    if (!isProbeAllowed(samlConfig.getIdp().getSsoLoginUrl())) {
-      return null;
-    }
     String signInUrl;
     try {
       signInUrl = buildSignInUrl(samlConfig);
@@ -328,7 +330,8 @@ public class SamlValidator {
         | IllegalArgumentException e) {
       return signInRequestError(e);
     }
-    return checkIdpAcceptsSignIn(signInUrl, samlConfig.getIdp().getSsoLoginUrl());
+    String ssoUrl = samlConfig.getIdp().getSsoLoginUrl();
+    return isProbeAllowed(ssoUrl) ? checkIdpAcceptsSignIn(signInUrl, ssoUrl) : null;
   }
 
   /**

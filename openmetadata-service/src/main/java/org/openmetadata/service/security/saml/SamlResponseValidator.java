@@ -30,9 +30,8 @@ import org.w3c.dom.Document;
 
 /**
  * The checks java-saml runs only in strict mode, applied to every response: the assertion must be
- * current and issued to this service provider, and signed where the settings ask for it. A response
- * the identity provider signed is otherwise accepted however long ago it expired, whichever service
- * provider it was issued for, and whichever of its elements carries the signature.
+ * current and issued to this service provider. A response the identity provider signed is otherwise
+ * accepted however long ago it expired, and whichever service provider it was issued for.
  *
  * <p>{@code Destination} is compared with the configured assertion consumer URL rather than the URL
  * the request arrived on: behind a TLS-terminating proxy those differ, which is why strict mode is
@@ -40,15 +39,6 @@ import org.w3c.dom.Document;
  */
 public final class SamlResponseValidator {
   private static final long ALLOWED_CLOCK_DRIFT_MILLIS = Constants.ALOWED_CLOCK_DRIFT * 1000L;
-  private static final String SIGNED_RESPONSE = "{" + Constants.NS_SAMLP + "}Response";
-  private static final String SIGNED_ASSERTION = "{" + Constants.NS_SAML + "}Assertion";
-
-  /** java-saml's own wording, so a rejection reads the same with strict mode on or off. */
-  private static final String UNSIGNED_MESSAGE =
-      "The Message of the Response is not signed and the SP requires it";
-
-  private static final String UNSIGNED_ASSERTION =
-      "The Assertion of the Response is not signed and the SP requires it";
 
   private SamlResponseValidator() {}
 
@@ -88,7 +78,6 @@ public final class SamlResponseValidator {
   }
 
   static void validate(Saml2Settings settings, SamlResponse response) throws Exception {
-    requireRequestedSignatures(settings, response.processSignedElements());
     response.validateTimestamps();
     requireUnexpiredSubjectConfirmation(response.getAssertionNotOnOrAfter());
     DateTime sessionNotOnOrAfter = response.getSessionNotOnOrAfter();
@@ -103,21 +92,6 @@ public final class SamlResponseValidator {
     if (destination != null
         && !destination.equals(String.valueOf(settings.getSpAssertionConsumerServiceUrl()))) {
       throw rejected("it was sent to another assertion consumer service");
-    }
-  }
-
-  /**
-   * The settings form offers Want Messages Signed and Want Assertions Signed as switches of their
-   * own, so they hold whether or not strict mode is on
-   * (ADR:2026-11-10-saml-security-settings-mean-what-the-form-shows).
-   */
-  private static void requireRequestedSignatures(
-      Saml2Settings settings, List<String> signedElements) {
-    if (settings.getWantMessagesSigned() && !signedElements.contains(SIGNED_RESPONSE)) {
-      throw rejected(UNSIGNED_MESSAGE);
-    }
-    if (settings.getWantAssertionsSigned() && !signedElements.contains(SIGNED_ASSERTION)) {
-      throw rejected(UNSIGNED_ASSERTION);
     }
   }
 

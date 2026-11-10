@@ -1089,12 +1089,14 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateIdpConnectivityTreatsMalformedUrlsAsWarnings() throws Exception {
+  void validateSamlConfigurationRejectsMalformedSsoUrlsBeforeTheCheckRequest() {
     FieldError error =
-        invokePrivate(
-            "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig("http://bad host"));
+        validator.validateSamlConfiguration(
+            new AuthenticationConfiguration(), baseConfig("http://bad host"));
 
-    assertNull(error);
+    assertNotNull(error);
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+    assertTrue(error.getError().startsWith("Invalid SAML IdP SSO Login URL"));
   }
 
   @Test
@@ -1172,6 +1174,25 @@ class SamlValidatorTest {
             baseConfig("http://169.254.169.254/latest/meta-data/"));
 
     assertNull(error);
+    verify(validator, never()).openConnection(any(URL.class));
+  }
+
+  /**
+   * An identity provider on a private network is never probed, but the live login still cannot
+   * sign with a key OneLogin cannot load, so the check reports it without sending anything.
+   */
+  @Test
+  void validateIdpConnectivityReportsAnUnusableSpKeyForAnIdpItMayNotProbe() throws Exception {
+    validator = spy(validator);
+    SamlSSOClientConfig samlConfig = baseConfig("http://169.254.169.254/latest/meta-data/");
+    samlConfig.setSecurity(new SamlSecurityConfig().withSendSignedAuthRequest(true));
+    samlConfig.getSp().setSpPrivateKey(pkcs1PrivateKey());
+
+    FieldError error =
+        invokePrivate("validateIdpConnectivity", SamlSSOClientConfig.class, samlConfig);
+
+    assertNotNull(error);
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
     verify(validator, never()).openConnection(any(URL.class));
   }
 

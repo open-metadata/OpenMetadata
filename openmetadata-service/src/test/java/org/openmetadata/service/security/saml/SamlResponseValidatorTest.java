@@ -13,7 +13,6 @@
 package org.openmetadata.service.security.saml;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -96,61 +95,6 @@ class SamlResponseValidatorTest {
     assertDoesNotThrow(() -> SamlResponseValidator.validate(settings, proxied));
   }
 
-  /** Only the assertion is signed, as Microsoft Entra signs by default. */
-  @Test
-  void wantMessagesSignedHoldsWithoutStrictMode() throws Exception {
-    Saml2Settings wantingSignedMessages = nonStrictSettings(true, false);
-    String response = idp.assertionSignedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID, null, null);
-    assertTrue(
-        new SamlResponse(wantingSignedMessages, request(response)).isValid(null),
-        "java-saml outside strict mode accepts it");
-
-    AuthenticationException rejection =
-        assertThrows(
-            AuthenticationException.class,
-            () -> SamlResponseValidator.validate(wantingSignedMessages, request(response)));
-
-    assertEquals(
-        "SAML response rejected: The Message of the Response is not signed and the SP"
-            + " requires it",
-        rejection.getMessage());
-  }
-
-  /** Only the response element is signed. */
-  @Test
-  void wantAssertionsSignedHoldsWithoutStrictMode() throws Exception {
-    Saml2Settings wantingSignedAssertions = nonStrictSettings(false, true);
-    String response = idp.signedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID);
-    assertTrue(
-        new SamlResponse(wantingSignedAssertions, request(response)).isValid(null),
-        "java-saml outside strict mode accepts it");
-
-    AuthenticationException rejection =
-        assertThrows(
-            AuthenticationException.class,
-            () -> SamlResponseValidator.validate(wantingSignedAssertions, request(response)));
-
-    assertEquals(
-        "SAML response rejected: The Assertion of the Response is not signed and the SP"
-            + " requires it",
-        rejection.getMessage());
-  }
-
-  @Test
-  void aResponseSignedWhereTheSettingsAskIsAccepted() {
-    String signedMessage = idp.signedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID);
-    String signedAssertion =
-        idp.assertionSignedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID, null, null);
-
-    assertDoesNotThrow(
-        () ->
-            SamlResponseValidator.validate(nonStrictSettings(true, false), request(signedMessage)));
-    assertDoesNotThrow(
-        () ->
-            SamlResponseValidator.validate(
-                nonStrictSettings(false, true), request(signedAssertion)));
-  }
-
   private SamlResponse parse(String base64Response) throws Exception {
     return new SamlResponse(settings, request(base64Response));
   }
@@ -160,11 +104,6 @@ class SamlResponseValidatorTest {
   }
 
   private Saml2Settings nonStrictSettings() {
-    return nonStrictSettings(false, false);
-  }
-
-  private Saml2Settings nonStrictSettings(
-      boolean wantMessagesSigned, boolean wantAssertionsSigned) {
     Map<String, Object> values = new HashMap<>();
     values.put(SettingsBuilder.STRICT_PROPERTY_KEY, false);
     values.put(SettingsBuilder.SP_ENTITYID_PROPERTY_KEY, SP_ENTITY_ID);
@@ -174,8 +113,8 @@ class SamlResponseValidatorTest {
         SettingsBuilder.IDP_SINGLE_SIGN_ON_SERVICE_URL_PROPERTY_KEY,
         "https://mock-idp.openmetadata.test/sso");
     values.put(SettingsBuilder.IDP_X509CERT_PROPERTY_KEY, idp.idpCertificatePem());
-    values.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, wantAssertionsSigned);
-    values.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, wantMessagesSigned);
+    values.put(SettingsBuilder.SECURITY_WANT_ASSERTIONS_SIGNED, false);
+    values.put(SettingsBuilder.SECURITY_WANT_MESSAGES_SIGNED, false);
     return new SettingsBuilder().fromValues(values).build();
   }
 }

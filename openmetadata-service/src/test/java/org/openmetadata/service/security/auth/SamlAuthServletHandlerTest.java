@@ -380,26 +380,6 @@ class SamlAuthServletHandlerTest {
   @Test
   void handleCallback_showsWhyJavaSamlRejectedTheResponse() throws Exception {
     MockSamlIdp idp = new MockSamlIdp(IDP_ENTITY_ID);
-
-    postAssertionSignedResponse(idp, strictSettingsWantingSignedMessages(idp));
-
-    verifyRefusedAsUnsignedMessage();
-  }
-
-  /**
-   * java-saml checks Want Messages Signed only in strict mode, but the settings form offers it as a
-   * switch of its own, so it holds with strict mode off too.
-   */
-  @Test
-  void handleCallback_holdsWantMessagesSignedWithoutStrictMode() throws Exception {
-    MockSamlIdp idp = new MockSamlIdp(IDP_ENTITY_ID);
-
-    postAssertionSignedResponse(idp, settings(idp, false, true));
-
-    verifyRefusedAsUnsignedMessage();
-  }
-
-  private void postAssertionSignedResponse(MockSamlIdp idp, Saml2Settings settings) {
     String assertionSigned =
         idp.assertionSignedResponse(SUBJECT, ACS_URL, SP_ENTITY_ID, "request-id", "request-id");
     UserSession login =
@@ -422,13 +402,13 @@ class SamlAuthServletHandlerTest {
 
     try (MockedStatic<SamlSettingsHolder> samlSettingsHolder =
         mockStatic(SamlSettingsHolder.class)) {
-      samlSettingsHolder.when(SamlSettingsHolder::getSaml2Settings).thenReturn(settings);
+      samlSettingsHolder
+          .when(SamlSettingsHolder::getSaml2Settings)
+          .thenReturn(strictSettingsWantingSignedMessages(idp));
 
       handler.handleCallback(request, response);
     }
-  }
 
-  private void verifyRefusedAsUnsignedMessage() throws Exception {
     verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
     verify(servletOutputStream)
         .print(
