@@ -20,7 +20,8 @@ and includes soft-deleted entities. A hard-deleted entity of these types has no 
 read decision for an ordinary reader; admins and bots retain their audit access.
 The ordinary reader's query and count are bound to the current entity's id, so reusing a
 deleted entity's name does not make its earlier audit entries part of the new entity's history.
-Entity-type filters use registered canonical names before authorization and querying.
+Entity-type filters use registered canonical names, including the audit-only `lineage` type,
+before authorization and querying.
 
 Collection reads of these types, unfiltered collection reads, and audit exports require an
 admin or bot as well as the existing audit permission. Service-level queries for other types

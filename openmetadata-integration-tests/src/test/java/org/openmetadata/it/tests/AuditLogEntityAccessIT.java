@@ -51,6 +51,7 @@ import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.LineageRepository;
 
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.CONCURRENT)
@@ -80,7 +81,7 @@ class AuditLogEntityAccessIT {
     assertEntriesFor(SdkClients.user1Client(), filters, entity);
     assertEntriesFor(SdkClients.adminClient(), filters, entity);
 
-    request(SdkClients.adminClient(), HttpMethod.DELETE, entityPath + "?hardDelete=true", null);
+    hardDeleteAndAwait(type, entity);
     assertEquals(
         404,
         assertThrows(ApiException.class, () -> get(SdkClients.user1Client(), AUDIT_PATH, filters))
@@ -164,11 +165,7 @@ class AuditLogEntityAccessIT {
     final EntityInterface<?> previous = createPrivateEntity(type, ns);
     final Map<String, String> filters = entityFilters(type, previous);
     awaitEntries(filters);
-    request(
-        SdkClients.adminClient(),
-        HttpMethod.DELETE,
-        entityPath(type) + "/" + previous.getId() + "?hardDelete=true",
-        null);
+    hardDeleteAndAwait(type, previous);
     final EntityInterface<?> current = createPrivateEntity(type, ns);
     request(
         SdkClients.adminClient(),
@@ -201,6 +198,17 @@ class AuditLogEntityAccessIT {
     assertThrows(
         InvalidRequestException.class,
         () -> get(SdkClients.user2Client(), AUDIT_PATH, Map.of("entityType", type)));
+  }
+
+  @Test
+  void lineageAuditFiltersRemainAvailable() {
+    assertTrue(
+        get(
+                SdkClients.adminClient(),
+                AUDIT_PATH,
+                Map.of("entityType", LineageRepository.LINEAGE_ENTITY_TYPE))
+            .path("data")
+            .isArray());
   }
 
   @Test
@@ -387,6 +395,21 @@ class AuditLogEntityAccessIT {
             () ->
                 assertFalse(
                     get(SdkClients.adminClient(), AUDIT_PATH, filters).path("data").isEmpty()));
+  }
+
+  private void hardDeleteAndAwait(String type, EntityInterface<?> entity) {
+    final String path = entityPath(type) + "/" + entity.getId();
+    request(SdkClients.adminClient(), HttpMethod.DELETE, path + "?hardDelete=true", null);
+    await()
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () ->
+                assertEquals(
+                    404,
+                    assertThrows(
+                            ApiException.class,
+                            () -> get(SdkClients.adminClient(), path, Map.of("include", "all")))
+                        .getStatusCode()));
   }
 
   private static Map<String, String> entityFilters(String type, EntityInterface<?> entity) {

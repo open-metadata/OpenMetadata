@@ -32,6 +32,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogRepository;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.LineageRepository;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
@@ -92,6 +93,12 @@ class AuditLogResourceTest {
           .thenReturn(Set.of(Entity.CONTEXT_MEMORY, Entity.CONTEXT_FILE, Entity.ANNOUNCEMENT));
       assertThrows(BadRequestException.class, () -> AuditLogEntityAccess.validateEntityType(type));
     }
+  }
+
+  @Test
+  void lineageRemainsAValidAuditOnlyType() {
+    assertDoesNotThrow(
+        () -> AuditLogEntityAccess.validateEntityType(LineageRepository.LINEAGE_ENTITY_TYPE));
   }
 
   @Test

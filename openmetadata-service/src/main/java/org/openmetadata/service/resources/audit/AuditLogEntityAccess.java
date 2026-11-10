@@ -1,6 +1,7 @@
 package org.openmetadata.service.resources.audit;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+import static org.openmetadata.service.jdbi3.LineageRepository.LINEAGE_ENTITY_TYPE;
 
 import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.core.SecurityContext;
@@ -48,7 +49,9 @@ final class AuditLogEntityAccess {
   }
 
   static void validateEntityType(String type) {
-    if (!nullOrEmpty(type) && !Entity.getEntityList().contains(type)) {
+    if (!nullOrEmpty(type)
+        && !LINEAGE_ENTITY_TYPE.equals(type)
+        && !Entity.getEntityList().contains(type)) {
       throw new BadRequestException("Unknown entity type: " + type);
     }
   }

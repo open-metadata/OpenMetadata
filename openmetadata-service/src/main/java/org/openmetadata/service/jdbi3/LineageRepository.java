@@ -2151,7 +2151,7 @@ public class LineageRepository {
     return resolved;
   }
 
-  private static final String LINEAGE_ENTITY_TYPE = "lineage";
+  public static final String LINEAGE_ENTITY_TYPE = "lineage";
   private static final String LINEAGE_FQN_DELIMITER = "--upstream-->";
 
   private static Optional<EventType> decideEventType(
