@@ -686,6 +686,34 @@ class SemanticMemoryDuplicateFinderTest {
     assertEquals(new DuplicateMatch.Equivalent(extracted), checkedFrom(COPY, extracted));
   }
 
+  /**
+   * A hold links nothing, so it names no document: a person's note showing a private file still
+   * holds a restricted copy's other figure for review, at extraction and at approval alike.
+   */
+  @Test
+  void aDecisionShowingAPrivateFileStillHoldsARestrictedDocumentsOtherFigure() throws Exception {
+    ContextMemory note =
+        noteCiting(PRIVATE_FILE)
+            .withQuestion("When is the customer billed?")
+            .withAnswer("Customers are billed on the 5th of each month.");
+    readByEveryone(PRIVATE_FILE, false);
+    readByEveryone(COPY, false);
+    rankedHits(List.of(note));
+    eligible(note);
+    ContextMemory otherFigure =
+        memory(
+                UUID.randomUUID(),
+                note.getQuestion(),
+                "Customers are billed on the 10th of each month.")
+            .withSourceEntity(COPY);
+
+    assertEquals(
+        new DuplicateMatch.ConflictsWithDecision(note), keywordFinder().findMatch(otherFigure));
+    assertTrue(
+        keywordFinder()
+            .isHeldByADecision(otherFigure.withEntityStatus(ContextMemoryStatus.UNPROCESSED)));
+  }
+
   /** The duplicate check of the same fact, extracted from {@code document}, beside {@code stated}. */
   private DuplicateMatch checkedFrom(EntityReference document, ContextMemory stated)
       throws IOException {

@@ -149,9 +149,24 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
             .collect(
                 Collectors.partitioningBy(
                     candidate -> MemoryReviewHolds.haveConflictingNumbers(candidate, derived)));
-    return findEquivalent(derived, byConflict.get(false))
+    return findEquivalent(derived, linkableFrom(derived, byConflict.get(false)))
         .<DuplicateMatch>map(DuplicateMatch.Equivalent::new)
         .orElseGet(() -> conflictWithDecision(derived, byConflict.get(true)));
+  }
+
+  /**
+   * The memories an equivalent fact may link the derived value's document to without showing it
+   * in their source's place. A hold links nothing, so every decided memory still holds.
+   */
+  private List<ContextMemory> linkableFrom(ContextMemory derived, List<ContextMemory> candidates) {
+    return candidates.stream()
+        .filter(
+            candidate ->
+                MemorySourceDisclosure.mayLink(
+                    derived.getSourceEntity(),
+                    candidate.getSourceEntity(),
+                    repository::isReadableByEveryone))
+        .toList();
   }
 
   /**
@@ -378,17 +393,13 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
 
   /**
    * A memory another document states, in any stage, that readers of the new file can read once
-   * linked, of the same scope and anchored org-wide, which never shows the new file in its place.
+   * linked: of the same scope and anchored org-wide.
    */
   private boolean isCandidate(ContextMemory candidate, StatedValue value) {
     return statesADocumentFact(candidate)
         && candidate.getMemoryScope() == value.memory().getMemoryScope()
         && repository.hasOrgWideAnchor(candidate)
-        && isOfAnotherDocument(candidate, value)
-        && MemorySourceDisclosure.mayLink(
-            value.memory().getSourceEntity(),
-            candidate.getSourceEntity(),
-            repository::isReadableByEveryone);
+        && isOfAnotherDocument(candidate, value);
   }
 
   /** Entity-visible, and from a file or page: extracted from it, or a person's memory citing it. */
