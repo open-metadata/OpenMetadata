@@ -89,6 +89,11 @@ jest.mock('react-aria-components', () => ({
   SubmenuTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+  Text: jest.fn(
+    ({ children, slot }: { children: React.ReactNode; slot?: string }) => (
+      <span data-slot={slot}>{children}</span>
+    )
+  ),
 }));
 
 // A menu hands its onAction to its items, so pressing an item acts as it does in react-aria.
@@ -587,9 +592,13 @@ describe('DocumentsView — Extract and Retry in the row menu', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('offers nothing on a file that was extracted, or a failed one without content', async () => {
-    await renderRow({ ...failedFile, headContentId: undefined });
+  it.each([
+    ['was extracted', { ...notExtractedFile, neverExtracted: false }],
+    ['failed without content', { ...failedFile, headContentId: undefined }],
+  ])('offers nothing on a file that %s', async (_state, file) => {
+    await renderRow(file);
 
+    expect(screen.getByTestId('manage-button')).toBeInTheDocument();
     expect(
       screen.queryByTestId('memory-extraction-menu-btn')
     ).not.toBeInTheDocument();
@@ -621,9 +630,14 @@ describe('DocumentsView — Extract and Retry in the row menu', () => {
 
     await waitFor(() => expect(extractionItem()).toBeDisabled());
 
+    // Shown on the item itself: a disabled menu item takes no hover or keyboard focus.
     expect(
-      within(extractionItem()).getByTitle('message.memory-extraction-off')
-    ).toHaveTextContent('label.extract');
+      within(extractionItem()).getByText('message.memory-extraction-off')
+    ).toHaveAttribute('data-slot', 'description');
+    expect(within(extractionItem()).getByText('label.extract')).toHaveAttribute(
+      'data-slot',
+      'label'
+    );
   });
 
   it('requests the extraction and replaces the row with the file the server returns', async () => {
@@ -645,13 +659,22 @@ describe('DocumentsView — Extract and Retry in the row menu', () => {
   });
 
   it.each([
-    [409, 'This document’s memories are already queued or being extracted.'],
-    [503, 'Unable to queue knowledge pill extraction. Please retry later.'],
+    [
+      409,
+      'This document’s memories are already queued or being extracted.',
+      'message.memory-extraction-cannot-start',
+    ],
+    [
+      503,
+      'Memory extraction could not be queued.',
+      'message.memory-extraction-not-queued',
+    ],
   ])(
-    'shows the server message after a %s and replaces the row with a fresh read',
-    async (status, message) => {
-      const refusal = httpError(status, message);
-      (extractFileMemories as jest.Mock).mockRejectedValue(refusal);
+    'says why after a %s, in the user’s language, and replaces the row with a fresh read',
+    async (status, serverMessage, messageKey) => {
+      (extractFileMemories as jest.Mock).mockRejectedValue(
+        httpError(status, serverMessage)
+      );
       (getContextFileById as jest.Mock).mockResolvedValue(failedFile);
       const onFileRefreshed = jest.fn();
       await renderRow(notExtractedFile, { onFileRefreshed });
@@ -661,8 +684,11 @@ describe('DocumentsView — Extract and Retry in the row menu', () => {
       await waitFor(() =>
         expect(onFileRefreshed).toHaveBeenCalledWith(failedFile)
       );
+      await waitFor(() =>
+        expect(showErrorToast).toHaveBeenCalledWith(messageKey)
+      );
 
-      expect(showErrorToast).toHaveBeenCalledWith(refusal);
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
       expect(getContextFileById).toHaveBeenCalledWith('file-1');
     }
   );
@@ -681,6 +707,9 @@ describe('DocumentsView — Extract and Retry in the row menu', () => {
       ).not.toBeInTheDocument()
     );
 
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.memory-extraction-owners-or-admins-only'
+    );
     expect(getContextFileById).not.toHaveBeenCalled();
   });
 });

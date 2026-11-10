@@ -21,18 +21,21 @@ export interface ExtractionAvailability {
     available: boolean;
     /**
      * Why memories cannot be extracted, present only when available is false.
-     * ExtractionDisabled: the LLM or memory extraction is turned off. ProviderUnavailable: the
-     * AI provider that extracts memories is unavailable.
+     * ExtractionDisabled: the LLM or memory extraction is turned off. ProviderDisabled: the AI
+     * provider that extracts memories is turned off. ProviderUnavailable: the AI provider that
+     * extracts memories is unavailable.
      */
     reason?: Reason;
 }
 
 /**
  * Why memories cannot be extracted, present only when available is false.
- * ExtractionDisabled: the LLM or memory extraction is turned off. ProviderUnavailable: the
- * AI provider that extracts memories is unavailable.
+ * ExtractionDisabled: the LLM or memory extraction is turned off. ProviderDisabled: the AI
+ * provider that extracts memories is turned off. ProviderUnavailable: the AI provider that
+ * extracts memories is unavailable.
  */
 export enum Reason {
     ExtractionDisabled = "ExtractionDisabled",
+    ProviderDisabled = "ProviderDisabled",
     ProviderUnavailable = "ProviderUnavailable",
 }

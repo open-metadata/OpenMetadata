@@ -181,6 +181,8 @@ export const MEMORIES_API = '/api/v1/contextCenter/memories';
 export const MEMORY_EXTRACTION_AVAILABILITY_API = `${MEMORIES_API}/extractionAvailability`;
 export const MEMORY_EXTRACTION_OFF_MESSAGE =
   'Memory extraction is off — ask an admin to turn it on.';
+export const MEMORY_EXTRACTION_CANNOT_START_MESSAGE =
+  "Memory extraction is already queued or can't start for this document now.";
 
 /**
  * The e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what

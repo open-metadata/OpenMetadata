@@ -225,6 +225,16 @@ describe('getExtractionUnavailableMessageKey', () => {
     ).toBe('message.memory-extraction-off');
   });
 
+  // OSS's default provider never answers it; a provider with a platform of its own does.
+  it('says the AI platform is off', () => {
+    expect(
+      getExtractionUnavailableMessageKey({
+        available: false,
+        reason: Reason.ProviderDisabled,
+      })
+    ).toBe('message.memory-extraction-ai-platform-off');
+  });
+
   it('says the AI service is unavailable', () => {
     expect(
       getExtractionUnavailableMessageKey({

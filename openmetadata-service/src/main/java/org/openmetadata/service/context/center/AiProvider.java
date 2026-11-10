@@ -36,7 +36,9 @@ public interface AiProvider {
 
   /**
    * Whether memories can be extracted now, and why not: uploads and article edits extract only
-   * while it is. By default that takes the LLM layer and {@code memoryExtractionEnabled}.
+   * while it is. By default that takes the LLM layer and {@code memoryExtractionEnabled}, and never
+   * answers {@code ProviderDisabled}: only a provider with a platform of its own, such as Collate's,
+   * does, while that platform is switched off.
    *
    * <p>Article prepare and update call it, so an override must be cheap, must never throw or return
    * null, and must answer the same way throughout one request.

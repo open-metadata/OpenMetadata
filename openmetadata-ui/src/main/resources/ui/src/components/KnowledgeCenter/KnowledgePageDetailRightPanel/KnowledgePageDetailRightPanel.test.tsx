@@ -591,13 +591,22 @@ describe('KnowledgePageDetailRightPanel — Extract and Retry', () => {
   });
 
   it.each([
-    [409, 'This document’s memories are already queued or being extracted.'],
-    [503, 'Unable to queue knowledge pill extraction. Please retry later.'],
+    [
+      409,
+      'This document’s memories are already queued or being extracted.',
+      'message.memory-extraction-cannot-start',
+    ],
+    [
+      503,
+      'Memory extraction could not be queued.',
+      'message.memory-extraction-not-queued',
+    ],
   ])(
-    'shows the server message after a %s and hands back a fresh read of the article',
-    async (status, message) => {
-      const refusal = httpError(status, message);
-      (extractPageMemories as jest.Mock).mockRejectedValue(refusal);
+    'says why after a %s, in the user’s language, and hands back a fresh read of the article',
+    async (status, serverMessage, messageKey) => {
+      (extractPageMemories as jest.Mock).mockRejectedValue(
+        httpError(status, serverMessage)
+      );
       (getKnowledgePageByFqn as jest.Mock).mockResolvedValue(failedArticle);
       const onExtractionStateChange = jest.fn();
       await renderExtractionPanel(notExtractedArticle, onExtractionStateChange);
@@ -607,8 +616,11 @@ describe('KnowledgePageDetailRightPanel — Extract and Retry', () => {
       await waitFor(() =>
         expect(onExtractionStateChange).toHaveBeenCalledWith(failedArticle)
       );
+      await waitFor(() =>
+        expect(showErrorToast).toHaveBeenCalledWith(messageKey)
+      );
 
-      expect(showErrorToast).toHaveBeenCalledWith(refusal);
+      expect(showErrorToast).toHaveBeenCalledTimes(1);
       expect(getKnowledgePageByFqn).toHaveBeenCalledWith('gdpr', {
         fields: 'neverExtracted',
       });

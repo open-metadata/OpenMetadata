@@ -48,6 +48,7 @@ export const MEMORY_EXTRACTION_ACTION_LABEL_KEYS: Record<
 
 export const EXTRACTION_UNAVAILABLE_MESSAGE_KEYS: Record<Reason, string> = {
   [Reason.ExtractionDisabled]: 'message.memory-extraction-off',
+  [Reason.ProviderDisabled]: 'message.memory-extraction-ai-platform-off',
   [Reason.ProviderUnavailable]: 'message.memory-extraction-service-unavailable',
 };
 

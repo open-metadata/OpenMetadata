@@ -506,27 +506,51 @@ describe('DocumentPreviewPanel — Extract and Retry', () => {
     expect(extractFileMemories).toHaveBeenCalledWith('file-1');
   });
 
-  it.each([
-    [409, 'Memory extraction is unavailable: ExtractionDisabled'],
-    [503, 'Text extraction queue is full. Please retry later.'],
-  ])(
-    'shows the server message after a %s and refreshes the preview from a fresh read',
-    async (status, message) => {
-      const refusal = httpError(status, message);
-      (extractFileMemories as jest.Mock).mockRejectedValue(refusal);
-      (getContextFileById as jest.Mock).mockResolvedValue(failedFile);
-      const onFileRefreshed = jest.fn();
-      await renderPreview(notExtractedFile, onFileRefreshed);
+  // The page read extraction as available before it was switched off.
+  it('says extraction is off after a 409 that the availability now explains, and refreshes the preview', async () => {
+    (getExtractionAvailability as jest.Mock)
+      .mockResolvedValueOnce({ available: true })
+      .mockResolvedValue({
+        available: false,
+        reason: Reason.ExtractionDisabled,
+      });
+    (extractFileMemories as jest.Mock).mockRejectedValue(
+      httpError(409, 'Memory extraction is unavailable: ExtractionDisabled')
+    );
+    (getContextFileById as jest.Mock).mockResolvedValue(notExtractedFile);
+    const onFileRefreshed = jest.fn();
+    await renderPreview(notExtractedFile, onFileRefreshed);
 
-      fireEvent.click(extractionButton());
+    fireEvent.click(extractionButton());
 
-      await waitFor(() =>
-        expect(onFileRefreshed).toHaveBeenCalledWith(failedFile)
-      );
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'message.memory-extraction-off'
+      )
+    );
 
-      expect(showErrorToast).toHaveBeenCalledWith(refusal);
-      expect(getContextFileById).toHaveBeenCalledWith('file-1');
-      expect(extractionButton()).toBeEnabled();
-    }
-  );
+    expect(onFileRefreshed).toHaveBeenCalledWith(notExtractedFile);
+    expect(extractionButton()).toBeDisabled();
+  });
+
+  it('says the run could not be queued after a 503 and refreshes the preview from a fresh read', async () => {
+    (extractFileMemories as jest.Mock).mockRejectedValue(
+      httpError(503, 'Text extraction queue is full.')
+    );
+    (getContextFileById as jest.Mock).mockResolvedValue(failedFile);
+    const onFileRefreshed = jest.fn();
+    await renderPreview(notExtractedFile, onFileRefreshed);
+
+    fireEvent.click(extractionButton());
+
+    await waitFor(() =>
+      expect(onFileRefreshed).toHaveBeenCalledWith(failedFile)
+    );
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.memory-extraction-not-queued'
+    );
+    expect(getContextFileById).toHaveBeenCalledWith('file-1');
+    expect(extractionButton()).toBeEnabled();
+  });
 });

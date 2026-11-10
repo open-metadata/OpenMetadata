@@ -13,8 +13,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { HTTP_STATUS_CODE } from '../../../constants/Auth.constants';
 import { MemoryExtractionAction } from '../../../constants/ContextCenter.constants';
-import { ClientErrors } from '../../../enums/Axios.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { getExtractionAvailability } from '../../../rest/contextMemoryAPI';
 import { CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY } from '../../../utils/ContextCenterQueryKeys';
@@ -24,6 +25,23 @@ import {
 } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useApplicationStore } from '../../useApplicationStore';
+
+// One read serves the page; a minute later a focus or a new action reads it again.
+const EXTRACTION_AVAILABILITY_STALE_TIME = 60 * 1000;
+
+const CANNOT_START_MESSAGE_KEY = 'message.memory-extraction-cannot-start';
+
+// A refusal is told in the user's language: the server's English text is for API callers.
+const REFUSAL_MESSAGE_KEYS: Partial<Record<number, string>> = {
+  [HTTP_STATUS_CODE.FORBIDDEN]:
+    'message.memory-extraction-owners-or-admins-only',
+  [HTTP_STATUS_CODE.CONFLICT]: CANNOT_START_MESSAGE_KEY,
+  [HTTP_STATUS_CODE.SERVICE_UNAVAILABLE]:
+    'message.memory-extraction-not-queued',
+};
+
+const getRefusalMessageKey = (status?: number) =>
+  status === undefined ? undefined : REFUSAL_MESSAGE_KEYS[status];
 
 export interface MemoryExtractionOptions<T> {
   /** What the document's state offers; none offers nothing. */
@@ -48,8 +66,8 @@ export interface MemoryExtraction {
 }
 
 /**
- * Extract or Retry on one file or article. The availability is read once and shared by every
- * action; a 409 that may say it changed reads it again.
+ * Extract or Retry on one file or article. Every action on a page shares one availability read,
+ * read again once it is a minute old or after a 409, whose message it then decides.
  */
 export const useMemoryExtraction = <T>({
   action,
@@ -59,6 +77,7 @@ export const useMemoryExtraction = <T>({
   request,
   onUpdate,
 }: MemoryExtractionOptions<T>): MemoryExtraction => {
+  const { t } = useTranslation();
   // Each Documents row runs this hook, so it re-renders on the signed-in user only.
   const currentUser = useApplicationStore((state) => state.currentUser);
   const queryClient = useQueryClient();
@@ -72,7 +91,8 @@ export const useMemoryExtraction = <T>({
     queryKey: CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY,
     queryFn: getExtractionAvailability,
     enabled: offeredAction !== undefined,
-    staleTime: Infinity,
+    staleTime: EXTRACTION_AVAILABILITY_STALE_TIME,
+    refetchOnWindowFocus: true,
   });
 
   const reloadDocument = async () => {
@@ -83,21 +103,40 @@ export const useMemoryExtraction = <T>({
     }
   };
 
+  // A 409 can mean extraction went unavailable since it was read: read it again and say why.
+  const readConflictMessageKey = async () => {
+    try {
+      const current = await queryClient.fetchQuery({
+        queryKey: CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY,
+        queryFn: getExtractionAvailability,
+        staleTime: 0,
+      });
+
+      return (
+        getExtractionUnavailableMessageKey(current) ?? CANNOT_START_MESSAGE_KEY
+      );
+    } catch {
+      return CANNOT_START_MESSAGE_KEY;
+    }
+  };
+
+  const notifyRefusal = async (error: AxiosError) => {
+    const status = error.response?.status;
+    const messageKey =
+      status === HTTP_STATUS_CODE.CONFLICT
+        ? await readConflictMessageKey()
+        : getRefusalMessageKey(status);
+    showErrorToast(messageKey ? t(messageKey) : error);
+  };
+
   // A 403 is final for this user; any other refusal means the document the UI showed was stale.
   const handleRefusal = (error: AxiosError) => {
-    showErrorToast(error);
-    const status = error.response?.status;
-    if (status === ClientErrors.FORBIDDEN) {
+    void notifyRefusal(error);
+    if (error.response?.status === HTTP_STATUS_CODE.FORBIDDEN) {
       setRefusedId(documentId);
-
-      return;
+    } else {
+      void reloadDocument();
     }
-    if (status === ClientErrors.CONFLICT) {
-      void queryClient.invalidateQueries({
-        queryKey: CONTEXT_CENTER_EXTRACTION_AVAILABILITY_QUERY_KEY,
-      });
-    }
-    void reloadDocument();
   };
 
   const requestExtraction = async () => {

@@ -51,8 +51,7 @@ import org.openmetadata.service.util.RequestEntityCache;
 @Slf4j
 public class ContextFileProcessingService {
   private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
-  private static final String TEXT_QUEUE_FULL =
-      "Text extraction queue is full. Please retry later.";
+  private static final String TEXT_QUEUE_FULL = "Text extraction queue is full.";
   private static final String CONTENDED_TEXT =
       "Concurrent updates prevented text extraction. Please retry later.";
   private final ContextFileRepository repository;

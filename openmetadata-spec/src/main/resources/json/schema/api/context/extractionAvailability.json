@@ -11,11 +11,12 @@
       "type": "boolean"
     },
     "reason": {
-      "description": "Why memories cannot be extracted, present only when available is false. ExtractionDisabled: the LLM or memory extraction is turned off. ProviderUnavailable: the AI provider that extracts memories is unavailable.",
+      "description": "Why memories cannot be extracted, present only when available is false. ExtractionDisabled: the LLM or memory extraction is turned off. ProviderDisabled: the AI provider that extracts memories is turned off. ProviderUnavailable: the AI provider that extracts memories is unavailable.",
       "type": "string",
-      "enum": ["ExtractionDisabled", "ProviderUnavailable"],
+      "enum": ["ExtractionDisabled", "ProviderDisabled", "ProviderUnavailable"],
       "javaEnums": [
         { "name": "ExtractionDisabled" },
+        { "name": "ProviderDisabled" },
         { "name": "ProviderUnavailable" }
       ]
     }

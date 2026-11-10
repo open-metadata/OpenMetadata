@@ -36,8 +36,8 @@ final class ExtractionRequests {
       "Only a document that failed or whose memories were never extracted can be extracted.";
   static final String CHANGED =
       "The document changed while its extraction was being requested. Please retry.";
-  static final String QUEUE_FAILED =
-      "Unable to queue knowledge pill extraction. Please retry later.";
+  // No retry promise: a document whose failure was not recorded answers 409 until recovered.
+  static final String QUEUE_FAILED = "Memory extraction could not be queued.";
 
   /** Full conditional-write budgets a refused run gets to be recorded: no job is left to do it. */
   static final int FAILURE_RECORD_ROUNDS = 3;

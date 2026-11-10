@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { focusManager } from '@tanstack/react-query';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { MemoryExtractionAction } from '../../../../constants/ContextCenter.constants';
@@ -150,6 +151,7 @@ describe('MemoryExtractionButton', () => {
 
   it.each([
     [Reason.ExtractionDisabled, 'message.memory-extraction-off'],
+    [Reason.ProviderDisabled, 'message.memory-extraction-ai-platform-off'],
     [
       Reason.ProviderUnavailable,
       'message.memory-extraction-service-unavailable',
@@ -184,56 +186,103 @@ describe('MemoryExtractionButton', () => {
     expect(showErrorToast).not.toHaveBeenCalled();
   });
 
-  it('shows the server message after a 409, then reads the document and the availability again', async () => {
-    const refusal = httpError(
-      409,
-      'Memory extraction is unavailable: ExtractionDisabled'
-    );
+  // The server's English text is for API callers: each refusal is told in the user's language.
+  it('after a 409 reads the document and the availability again, and says the run cannot start while it is still available', async () => {
     const reread = { id: 'doc-1', processingStatus: 'Processed' };
-    request.mockRejectedValue(refusal);
+    request.mockRejectedValue(
+      httpError(409, "This document's memories are already queued.")
+    );
     reload.mockResolvedValue(reread);
     await renderButton();
-    await waitFor(() =>
-      expect(getExtractionAvailability).toHaveBeenCalledTimes(1)
-    );
 
     fireEvent.click(button());
 
-    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(reread));
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'message.memory-extraction-cannot-start'
+      )
+    );
 
-    expect(showErrorToast).toHaveBeenCalledWith(refusal);
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
+    expect(getExtractionAvailability).toHaveBeenCalledTimes(2);
+    expect(onUpdate).toHaveBeenCalledWith(reread);
+    expect(button()).toBeEnabled();
+  });
+
+  it.each([
+    [Reason.ExtractionDisabled, 'message.memory-extraction-off'],
+    [Reason.ProviderDisabled, 'message.memory-extraction-ai-platform-off'],
+    [
+      Reason.ProviderUnavailable,
+      'message.memory-extraction-service-unavailable',
+    ],
+  ])(
+    'after a 409 says why extraction became unavailable (%s), and disables the action with that reason',
+    async (reason, message) => {
+      (getExtractionAvailability as jest.Mock)
+        .mockResolvedValueOnce({ available: true })
+        .mockResolvedValue({ available: false, reason });
+      request.mockRejectedValue(
+        httpError(409, `Memory extraction is unavailable: ${reason}`)
+      );
+      reload.mockResolvedValue({ id: 'doc-1', processingStatus: 'Processed' });
+      await renderButton();
+
+      fireEvent.click(button());
+
+      await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(message));
+
+      expect(screen.getByRole('group', { name: message })).toContainElement(
+        button()
+      );
+      expect(button()).toBeDisabled();
+    }
+  );
+
+  it('after a 409 still says the run cannot start when the availability cannot be read', async () => {
+    (getExtractionAvailability as jest.Mock)
+      .mockResolvedValueOnce({ available: true })
+      .mockRejectedValue(new AxiosError('Network Error'));
+    request.mockRejectedValue(httpError(409, 'Already queued.'));
+    reload.mockResolvedValue({ id: 'doc-1', processingStatus: 'Processed' });
+    await renderButton();
+
+    fireEvent.click(button());
 
     await waitFor(() =>
-      expect(getExtractionAvailability).toHaveBeenCalledTimes(2)
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'message.memory-extraction-cannot-start'
+      )
     );
+
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
   });
 
   // A refused queue leaves the document Failed, which the re-read shows with Retry.
-  it('shows the server message after a 503 and reads the document again', async () => {
-    const refusal = httpError(
-      503,
-      'Unable to queue knowledge pill extraction. Please retry later.'
-    );
+  it('after a 503 says the run could not be queued and reads the document again', async () => {
     const failed = { id: 'doc-1', processingStatus: 'Failed' };
-    request.mockRejectedValue(refusal);
+    request.mockRejectedValue(
+      httpError(503, 'Memory extraction could not be queued.')
+    );
     reload.mockResolvedValue(failed);
     await renderButton();
-    await waitFor(() => expect(getExtractionAvailability).toHaveBeenCalled());
 
     fireEvent.click(button());
 
     await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(failed));
 
-    expect(showErrorToast).toHaveBeenCalledWith(refusal);
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.memory-extraction-not-queued'
+    );
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
     expect(getExtractionAvailability).toHaveBeenCalledTimes(1);
     expect(button()).toBeEnabled();
     expect(button()).not.toHaveAttribute('data-loading');
   });
 
   it('reports a re-read that fails too', async () => {
-    const refusal = httpError(503, 'Text extraction queue is full.');
     const lost = new AxiosError('Network Error');
-    request.mockRejectedValue(refusal);
+    request.mockRejectedValue(httpError(503, 'Text extraction queue is full.'));
     reload.mockRejectedValue(lost);
     await renderButton();
 
@@ -241,16 +290,33 @@ describe('MemoryExtractionButton', () => {
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(lost));
 
-    expect(showErrorToast).toHaveBeenCalledWith(refusal);
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.memory-extraction-not-queued'
+    );
     expect(onUpdate).not.toHaveBeenCalled();
   });
 
-  it('hides the action after a 403', async () => {
-    const refusal = httpError(
-      403,
-      "Only the document's owners or an admin can extract its memories."
+  it('reports any other failure as it is and reads the document again', async () => {
+    const lost = new AxiosError('Network Error');
+    const reread = { id: 'doc-1', processingStatus: 'Processed' };
+    request.mockRejectedValue(lost);
+    reload.mockResolvedValue(reread);
+    await renderButton();
+
+    fireEvent.click(button());
+
+    await waitFor(() => expect(onUpdate).toHaveBeenCalledWith(reread));
+
+    expect(showErrorToast).toHaveBeenCalledWith(lost);
+  });
+
+  it('says only owners and admins may extract, and hides the action, after a 403', async () => {
+    request.mockRejectedValue(
+      httpError(
+        403,
+        "Only the document's owners or an admin can extract its memories."
+      )
     );
-    request.mockRejectedValue(refusal);
     await renderButton();
 
     fireEvent.click(button());
@@ -261,7 +327,10 @@ describe('MemoryExtractionButton', () => {
       ).not.toBeInTheDocument()
     );
 
-    expect(showErrorToast).toHaveBeenCalledWith(refusal);
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.memory-extraction-owners-or-admins-only'
+    );
+    expect(showErrorToast).toHaveBeenCalledTimes(1);
     expect(reload).not.toHaveBeenCalled();
     expect(onUpdate).not.toHaveBeenCalled();
   });
@@ -309,5 +378,72 @@ describe('MemoryExtractionButton', () => {
     );
 
     expect(button()).not.toHaveAttribute('data-loading');
+  });
+});
+
+// The availability can change at runtime (Collate's AI platform comes back), so it goes stale.
+describe('MemoryExtractionButton availability', () => {
+  const regainFocus = () =>
+    act(async () => {
+      focusManager.setFocused(false);
+      focusManager.setFocused(true);
+    });
+
+  beforeEach(() => {
+    signIn({});
+    (getExtractionAvailability as jest.Mock).mockResolvedValue({
+      available: true,
+    });
+  });
+
+  afterEach(() => {
+    focusManager.setFocused(undefined);
+    act(() => {
+      useApplicationStore.setState({ currentUser: undefined });
+    });
+  });
+
+  const renderTwoDocuments = () =>
+    act(async () => {
+      renderWithQueryClient(
+        <>
+          {['doc-1', 'doc-2'].map((documentId) => (
+            <MemoryExtractionButton<Document>
+              action={MemoryExtractionAction.Extract}
+              documentId={documentId}
+              key={documentId}
+              owners={OWNERS}
+              reload={reload}
+              request={request}
+              onUpdate={onUpdate}
+            />
+          ))}
+        </>
+      );
+    });
+
+  it('is read once for every action on the page', async () => {
+    await renderTwoDocuments();
+
+    expect(screen.getAllByTestId('memory-extraction-btn')).toHaveLength(2);
+    expect(getExtractionAvailability).toHaveBeenCalledTimes(1);
+  });
+
+  it('is read again, once for the page, when the window regains focus after a minute', async () => {
+    await renderTwoDocuments();
+
+    act(() => {
+      jest.advanceTimersByTime(30_000);
+    });
+    await regainFocus();
+
+    expect(getExtractionAvailability).toHaveBeenCalledTimes(1);
+
+    act(() => {
+      jest.advanceTimersByTime(31_000);
+    });
+    await regainFocus();
+
+    expect(getExtractionAvailability).toHaveBeenCalledTimes(2);
   });
 });

@@ -822,9 +822,10 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
         @ApiResponse(
             responseCode = "503",
             description =
-                "The queue refused the run. The file is left Failed to retry, unless concurrent"
-                    + " writes keep that from being recorded: it then stays in progress, and a"
-                    + " retry gets 409 until a restart resubmits it")
+                "Memory extraction could not be queued, or the text extraction queue is full."
+                    + " The file is left Failed to retry, unless concurrent writes keep that from"
+                    + " being recorded: it then stays in progress, and a retry gets 409 until a"
+                    + " restart resubmits it")
       })
   public ContextFile requestExtraction(
       @Context UriInfo uriInfo,

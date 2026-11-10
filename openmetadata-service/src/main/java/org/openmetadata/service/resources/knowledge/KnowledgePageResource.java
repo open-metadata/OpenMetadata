@@ -845,9 +845,9 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
         @ApiResponse(
             responseCode = "503",
             description =
-                "The queue refused the run. The article is left Failed to retry, unless concurrent"
-                    + " writes keep that from being recorded: it then stays Queued, and a retry"
-                    + " gets 409 until its body is next edited")
+                "Memory extraction could not be queued. The article is left Failed to retry,"
+                    + " unless concurrent writes keep that from being recorded: it then stays"
+                    + " Queued, and a retry gets 409 until its body is next edited")
       })
   public Page requestExtraction(
       @Context UriInfo uriInfo,

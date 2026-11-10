@@ -26,10 +26,12 @@ import { okJson } from '../../utils/apiResponse';
 import {
   clickIgnoringToasts,
   disableEtagConditionalReads,
+  dismissToasts,
   getApiContext,
   redirectToHomePage,
   toastNotification,
   uuid,
+  waitForToastToDisappear,
 } from '../../utils/common';
 import {
   BulkOperationResult,
@@ -46,6 +48,7 @@ import {
   getMemoryStatus,
   MEMORIES_API,
   MEMORY_EXTRACTION_AVAILABILITY_API,
+  MEMORY_EXTRACTION_CANNOT_START_MESSAGE,
   MEMORY_EXTRACTION_OFF_MESSAGE,
   navigateToDocuments,
   parseResponseJson,
@@ -1233,7 +1236,7 @@ test.describe('Context Center - Documents Page', () => {
 
   // ─── Req 5c: Extract and Retry, for a document's owners and admins only ───
 
-  test('a document uploaded while extraction is off offers its owner Extract, disabled with the reason, and offers nobody else anything', async ({
+  test('a document uploaded while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing', async ({
     documentSession,
     page,
     dataConsumerPage,
@@ -1283,8 +1286,12 @@ test.describe('Context Center - Documents Page', () => {
       await expect(row).toBeVisible();
       await row.getByTestId('manage-button').click();
       const item = page.getByTestId('memory-extraction-menu-btn');
-      await expect(item).toHaveText('Extract');
+      await expect(item).toHaveAccessibleName('Extract');
       await expect(item).toHaveAttribute('aria-disabled', 'true');
+      // Keyboard navigation skips a disabled item, so the reason is visible, and its description.
+      await expect(item).toHaveAccessibleDescription(
+        MEMORY_EXTRACTION_OFF_MESSAGE
+      );
       await page.keyboard.press('Escape');
       await expect(item).toHaveCount(0);
     });
@@ -1305,7 +1312,7 @@ test.describe('Context Center - Documents Page', () => {
     });
   });
 
-  test('a failed document offers its owner Retry, which reaches the server and shows why it is refused', async ({
+  test('a failed document offers an admin Retry, which reaches the server and shows why it is refused', async ({
     documentSession,
     page,
   }) => {
@@ -1314,16 +1321,16 @@ test.describe('Context Center - Documents Page', () => {
     const { apiContext } = documentSession;
     await expectMemoryExtractionOff(apiContext);
     // Not a PDF, so its text extraction fails.
+    const fileName = `unreadable-${uuid()}.pdf`;
     const document = await uploadDocument(
       apiContext,
-      `unreadable-${uuid()}.pdf`,
+      fileName,
       Buffer.from('These bytes are not a PDF document')
     );
     await waitForDocumentProcessingComplete(apiContext, document.id);
+    const state = await getExtractionState(apiContext, document.id);
 
-    expect(
-      (await getExtractionState(apiContext, document.id)).processingStatus
-    ).toBe('Failed');
+    expect(state.processingStatus).toBe('Failed');
 
     await page.goto(`${DOCUMENTS_URL}?document=${document.id}`, {
       waitUntil: 'domcontentloaded',
@@ -1338,20 +1345,23 @@ test.describe('Context Center - Documents Page', () => {
       panel.getByRole('group', { name: MEMORY_EXTRACTION_OFF_MESSAGE })
     ).toBeVisible();
 
-    await test.step('a page that read extraction as on before it was switched off shows the server refusing', async () => {
+    const isRetryRequest = (response: Response) =>
+      response.request().method() === 'POST' &&
+      new URL(response.url()).pathname ===
+        `/api/v1/contextCenter/drive/files/${document.id}/extract`;
+    const row = page
+      .getByTestId('documents-view')
+      .getByTestId(`document-row-${document.id}`);
+    const menuRetry = page.getByTestId('memory-extraction-menu-btn');
+
+    await test.step('a page that reads extraction as on gets a 409 and says the document cannot start now', async () => {
+      // Every availability read answers on, the one after the 409 included.
       await page.route(`**${MEMORY_EXTRACTION_AVAILABILITY_API}`, (route) =>
         route.fulfill({ json: { available: true } })
       );
       await page.reload({ waitUntil: 'domcontentloaded' });
       await expect(retry).toBeEnabled();
-      const refusal = waitForResponseWithStatus(
-        page,
-        (response) =>
-          response.request().method() === 'POST' &&
-          new URL(response.url()).pathname ===
-            `/api/v1/contextCenter/drive/files/${document.id}/extract`,
-        409
-      );
+      const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
       await clickIgnoringToasts(retry);
 
       expect(await (await refusal).json()).toMatchObject({
@@ -1359,12 +1369,62 @@ test.describe('Context Center - Documents Page', () => {
         message: 'Memory extraction is unavailable: ExtractionDisabled',
       });
 
-      await toastNotification(
-        page,
-        'Memory extraction is unavailable: ExtractionDisabled'
-      );
+      await toastNotification(page, MEMORY_EXTRACTION_CANNOT_START_MESSAGE);
       await expect(badge).toHaveText('Failed');
       await expect(retry).toBeEnabled();
+    });
+
+    await test.step('the row menu Retry reaches the server and says the same', async () => {
+      // The same text would match the first toast, so it goes first.
+      await dismissToasts(page);
+      await waitForToastToDisappear(
+        page,
+        MEMORY_EXTRACTION_CANNOT_START_MESSAGE
+      );
+      // A search lists the rows from the index, so wait for it to say Failed too.
+      await waitForSearchIndexed(
+        apiContext,
+        state.fullyQualifiedName,
+        'contextFile',
+        {
+          queryFilter: JSON.stringify({
+            query: {
+              bool: { filter: [{ term: { processingStatus: 'Failed' } }] },
+            },
+          }),
+        }
+      );
+      await expect(
+        await searchAndGetDocumentRow(page, fileName, document.id)
+      ).toBeVisible();
+      await row.getByTestId('manage-button').click();
+      await expect(menuRetry).toHaveAccessibleName('Retry');
+      const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+      await clickIgnoringToasts(menuRetry);
+      await refusal;
+
+      await toastNotification(page, MEMORY_EXTRACTION_CANNOT_START_MESSAGE);
+    });
+
+    await test.step('once the read after a 409 reaches the server, it says extraction is off and disables Retry', async () => {
+      // The page keeps the availability it read until a 409 reads it again.
+      await page.unroute(`**${MEMORY_EXTRACTION_AVAILABILITY_API}`);
+      await dismissToasts(page);
+      await waitForToastToDisappear(
+        page,
+        MEMORY_EXTRACTION_CANNOT_START_MESSAGE
+      );
+      await row.getByTestId('manage-button').click();
+      const refusal = waitForResponseWithStatus(page, isRetryRequest, 409);
+      await clickIgnoringToasts(menuRetry);
+      await refusal;
+
+      await toastNotification(page, MEMORY_EXTRACTION_OFF_MESSAGE);
+      await clickIgnoringToasts(row.getByTestId('manage-button'));
+      await expect(menuRetry).toHaveAttribute('aria-disabled', 'true');
+      await expect(menuRetry).toHaveAccessibleDescription(
+        MEMORY_EXTRACTION_OFF_MESSAGE
+      );
     });
   });
 

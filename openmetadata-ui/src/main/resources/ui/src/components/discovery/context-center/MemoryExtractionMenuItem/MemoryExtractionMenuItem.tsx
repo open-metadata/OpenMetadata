@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Tooltip } from '@openmetadata/ui-core-components';
+import { Dropdown } from '@openmetadata/ui-core-components';
 import { RefreshCw01, Stars01 } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
+import { Text } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
   MemoryExtractionAction,
@@ -21,7 +22,10 @@ import {
 } from '../../../../constants/ContextCenter.constants';
 import { MemoryExtraction } from '../../../../hooks/discovery/context-center/useMemoryExtraction';
 
-/** Extract or Retry in a document's menu; it runs its own action, as react-aria items can. */
+/**
+ * Extract or Retry in a document's menu; it runs its own action, as react-aria items can. Keyboard
+ * navigation skips a disabled item, so its reason is a visible line, and the item's description.
+ */
 const MemoryExtractionMenuItem: FC<MemoryExtraction> = ({
   action,
   disabledReasonKey,
@@ -44,12 +48,13 @@ const MemoryExtractionMenuItem: FC<MemoryExtraction> = ({
       isDisabled={Boolean(disabledReasonKey) || isRequesting}
       textValue={label}
       onAction={requestExtraction}>
-      {disabledReasonKey ? (
-        <Tooltip excludeTriggerFromTabOrder title={t(disabledReasonKey)}>
-          <span>{label}</span>
-        </Tooltip>
-      ) : (
-        label
+      <Text slot="label">{label}</Text>
+      {disabledReasonKey && (
+        <Text
+          className="tw:block tw:whitespace-normal tw:text-xs tw:text-tertiary"
+          slot="description">
+          {t(disabledReasonKey)}
+        </Text>
       )}
     </Dropdown.Item>
   );

@@ -479,9 +479,7 @@ class ContextFileProcessingServiceTest {
         .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
     ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
-    assertEquals(
-        "Unable to queue knowledge pill extraction. Please retry later.",
-        failedContent.getProcessingError());
+    assertEquals("Memory extraction could not be queued.", failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
   }
 
@@ -801,8 +799,7 @@ class ContextFileProcessingServiceTest {
   }
 
   private static final String QUEUE_FAILED = ExtractionRequests.QUEUE_FAILED;
-  private static final String TEXT_QUEUE_FULL =
-      "Text extraction queue is full. Please retry later.";
+  private static final String TEXT_QUEUE_FULL = "Text extraction queue is full.";
 
   private void memoryQueueRefuses() {
     doThrow(new IllegalStateException("queue unavailable"))
@@ -916,7 +913,7 @@ class ContextFileProcessingServiceTest {
 
     service(rejectingExecutor, () -> assetService).submit(fileId, contentId);
 
-    verifyImmediateFailureWith("Text extraction queue is full. Please retry later.");
+    verifyImmediateFailureWith(TEXT_QUEUE_FULL);
     verify(assetService, never()).read(any());
   }
 

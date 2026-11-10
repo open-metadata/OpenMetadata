@@ -119,8 +119,7 @@ class ContextMemoryExtractionRequestIT {
       "Only a document that failed or whose memories were never extracted can be extracted.";
   private static final String PARTIAL_RUN =
       "Knowledge pill extraction did not process every source chunk";
-  private static final String QUEUE_FAILED =
-      "Unable to queue knowledge pill extraction. Please retry later.";
+  private static final String QUEUE_FAILED = "Memory extraction could not be queued.";
   private static final Duration SEARCH_TIMEOUT = Duration.ofSeconds(60);
   private static final ExtractionAvailability AVAILABLE =
       new ExtractionAvailability().withAvailable(true);
