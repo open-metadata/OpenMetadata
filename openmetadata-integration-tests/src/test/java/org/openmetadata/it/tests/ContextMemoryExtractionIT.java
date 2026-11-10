@@ -3,6 +3,7 @@ package org.openmetadata.it.tests;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -12,6 +13,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +28,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
@@ -41,6 +44,7 @@ import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.ContextMemoryType;
 import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.Article;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -58,6 +62,7 @@ import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.test.util.RestClient;
@@ -374,7 +379,10 @@ class ContextMemoryExtractionIT {
     assertEquals(copy.getId(), storedAnchor(shared).getId());
   }
 
-  /** A private copy holds the anchor only while no org-wide source is live. */
+  /**
+   * A private copy holds the anchor only while no org-wide source is live, and is never named among
+   * the memory's related entities.
+   */
   @Test
   void restoringAnOrgWideFileTakesTheAnchorBackFromAPrivateCopy(TestNamespace ns) throws Exception {
     String text = "Anchor back " + ns.shortPrefix();
@@ -383,14 +391,15 @@ class ContextMemoryExtractionIT {
     ContextFile copy = file(ns, "private-copy", text, privately());
     runFile(copy);
     ContextMemory shared = extracted(original.getEntityReference()).getFirst();
-    awaitChips(ns, shared, original, Set.of(copy.getId()));
+    awaitChips(ns, shared, original, Set.of());
     RestClient.admin().delete(FILES, original.getId());
     awaitChips(ns, shared, copy, Set.of());
 
     RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
 
-    awaitChips(ns, shared, original, Set.of(copy.getId()));
+    awaitChips(ns, shared, original, Set.of());
     assertEquals(original.getId(), storedAnchor(shared).getId());
+    assertEquals(Set.of(original.getId(), copy.getId()), sourceIds(shared));
   }
 
   /**
@@ -442,7 +451,7 @@ class ContextMemoryExtractionIT {
 
     RestClient.admin().restore(FILES, copy.getId(), ContextFile.class);
 
-    awaitChips(ns, shared, copy, Set.of(privateCopy.getId()));
+    awaitChips(ns, shared, copy, Set.of());
     assertEquals(shared.getId(), readAsAnotherUser(shared).getId());
   }
 
@@ -464,7 +473,7 @@ class ContextMemoryExtractionIT {
     RestClient.admin().delete(FILES, original.getId());
     awaitChips(ns, disputed, privateCopy, Set.of());
     RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
-    awaitChips(ns, disputed, original, Set.of(privateCopy.getId()));
+    awaitChips(ns, disputed, original, Set.of());
 
     Task decided =
         SdkClients.adminClient()
@@ -508,6 +517,79 @@ class ContextMemoryExtractionIT {
             .getPrimaryEntity()
             .getId());
     assertTrue(moved.getLastContentUpdatedAt() > before.getLastContentUpdatedAt());
+  }
+
+  /**
+   * The original turning private moves its memories' anchor to the org-wide copy, whose readers see
+   * nothing naming the original; its admins still see them, and opened again it is a source again.
+   */
+  @Test
+  void aCopyKeepsReusedMemoriesWhenTheOriginalTurnsPrivate(TestNamespace ns) throws Exception {
+    extractor = twoFacts();
+    String text = "Turned private " + ns.shortPrefix();
+    ContextFile original = file(ns, "original-turned-private", text);
+    runFile(original);
+    ContextFile copy = fileOwnedBy(ns, "org-wide-copy", text, null);
+    runFile(copy);
+    List<ContextMemory> shared = extracted(original.getEntityReference());
+    assertEquals(2, shared.size());
+    assertEquals(Set.copyOf(ids(shared)), Set.copyOf(ids(extracted(copy.getEntityReference()))));
+
+    share(original, privately());
+
+    for (OpenMetadataClient reader : List.of(SdkClients.user2Client(), SdkClients.user3Client())) {
+      shared.forEach(memory -> assertReadAnchoredOn(reader, memory, copy, original));
+      assertListedFrom(reader, copy, ids(shared), original);
+      assertEquals(2, memoryCountAs(reader, copy));
+    }
+    assertListedFrom(SdkClients.adminClient(), original, ids(shared), null);
+    assertEquals(2, readFile(original).getMemoryCount());
+    shared.forEach(memory -> assertEquals(copy.getId(), storedAnchor(memory).getId()));
+
+    share(original, orgWide());
+
+    shared.forEach(memory -> awaitChips(ns, memory, copy, Set.of(original.getId())));
+  }
+
+  /**
+   * With no org-wide source left, the private copy gets its own copy of each memory, saying the same
+   * in the same stage; toggling the original makes no more, and a restricted-to-restricted edit none.
+   */
+  @Test
+  void restrictedCopiesGetTheirOwnCopiesWhenNoOrgWideSourceRemains(TestNamespace ns)
+      throws Exception {
+    extractor = twoFacts();
+    String text = "No org-wide source left " + ns.shortPrefix();
+    ContextFile original = file(ns, "original-keeps-its-own", text);
+    runFile(original);
+    ContextFile copy = fileOwnedBy(ns, "private-copy", text, privately());
+    runFile(copy);
+    List<ContextMemory> originals = extracted(original.getEntityReference());
+    assertEquals(Set.copyOf(ids(originals)), Set.copyOf(ids(extracted(copy.getEntityReference()))));
+
+    share(original, privately());
+
+    List<ContextMemory> copies = extracted(copy.getEntityReference());
+    assertCopiesOf(originals, copies, copy);
+    assertEquals(
+        Set.copyOf(ids(originals)), Set.copyOf(ids(extracted(original.getEntityReference()))));
+    copies.forEach(
+        memory -> assertReadAnchoredOn(SdkClients.user2Client(), memory, copy, original));
+    originals.forEach(memory -> assertHiddenFrom(SdkClients.user2Client(), memory));
+    assertEquals(2, readFile(original).getMemoryCount());
+    assertEquals(2, readFile(copy).getMemoryCount());
+    assertEquals(1, calls.get(), "a copy is made without extracting anything");
+
+    share(original, orgWide());
+    share(original, privately());
+    List<Double> versions = versionsOf(originals);
+    share(original, sharedWith(SharedEntities.get().USER3_REF));
+
+    assertEquals(Set.copyOf(ids(copies)), Set.copyOf(ids(extracted(copy.getEntityReference()))));
+    assertEquals(
+        Set.copyOf(ids(originals)), Set.copyOf(ids(extracted(original.getEntityReference()))));
+    assertEquals(
+        versions, versionsOf(originals), "a restricted file shared otherwise moves nothing");
   }
 
   @Test
@@ -777,6 +859,145 @@ class ContextMemoryExtractionIT {
         .execute(HttpMethod.GET, "/" + MEMORIES + "/" + memory.getId(), null, ContextMemory.class);
   }
 
+  private static MemoryShareConfig orgWide() {
+    return new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY);
+  }
+
+  private static MemoryShareConfig sharedWith(EntityReference reader) {
+    return new MemoryShareConfig()
+        .withVisibility(MemoryVisibility.SHARED)
+        .withSharedWith(List.of(new MemorySharedPrincipal().withPrincipal(reader)));
+  }
+
+  private List<Double> versionsOf(List<ContextMemory> memories) throws Exception {
+    List<Double> versions = new ArrayList<>();
+    for (ContextMemory memory : memories) {
+      versions.add(readMemory(memory).getVersion());
+    }
+    return versions;
+  }
+
+  /** Every document states two facts, so a copy shares more than one memory. */
+  private DocumentMemoryExtractor twoFacts() {
+    return (text, source, type) -> {
+      calls.incrementAndGet();
+      List<ContextMemory> pills =
+          List.of(
+              pill(text, source, type),
+              pill(text, source, type).withQuestion("Which other fact does this source state?"));
+      return new DocumentMemoryExtractor.DeriveResult(pills, 1, 1);
+    };
+  }
+
+  /** A file owned by the shared user that {@link SdkClients#user2Client()} signs in as. */
+  private ContextFile fileOwnedBy(
+      TestNamespace ns, String label, String text, MemoryShareConfig shareConfig) throws Exception {
+    return file(ns, label, text, shareConfig, List.of(SharedEntities.get().USER2_REF));
+  }
+
+  /** An admin changes who may read the file, as the share dialog does. */
+  private static void share(ContextFile file, MemoryShareConfig shareConfig) throws Exception {
+    ContextFile current =
+        RestClient.admin().getById(FILES, file.getId(), "owners", ContextFile.class);
+    RestClient.admin()
+        .patch(
+            FILES,
+            file.getId(),
+            JsonUtils.pojoToJson(current),
+            JsonUtils.deepCopy(current, ContextFile.class).withShareConfig(shareConfig),
+            ContextFile.class);
+  }
+
+  /**
+   * The reader may read the memory, anchored on and showing {@code anchor}. Neither the memory, its
+   * latest change nor its latest version names {@code unnamed}; older versions may.
+   */
+  private static void assertReadAnchoredOn(
+      OpenMetadataClient reader, ContextMemory memory, ContextFile anchor, ContextFile unnamed) {
+    String path = "/" + MEMORIES + "/" + memory.getId();
+    String read =
+        reader
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, path + "?fields=sourceEntity,relatedEntities,primaryEntity", null);
+    JsonNode readMemory = JsonUtils.readTree(read);
+    assertEquals(anchor.getId().toString(), readMemory.path("primaryEntity").path("id").asText());
+    assertEquals(anchor.getId().toString(), readMemory.path("sourceEntity").path("id").asText());
+    assertFalse(relatedIds(readMemory).contains(unnamed.getId()));
+    assertFalse(read.contains(unnamed.getName()), "the memory does not name " + unnamed.getName());
+    JsonNode versions =
+        JsonUtils.readTree(
+            reader.getHttpClient().executeForString(HttpMethod.GET, path + "/versions", null));
+    assertFalse(
+        versions.path("versions").get(0).toString().contains(unnamed.getName()),
+        "the latest version does not name " + unnamed.getName());
+  }
+
+  /** The document's memory panel, as the reader lists it, holds exactly {@code expected}. */
+  private static void assertListedFrom(
+      OpenMetadataClient reader, ContextFile document, List<UUID> expected, ContextFile unnamed) {
+    String listed =
+        reader
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/"
+                    + MEMORIES
+                    + "?sourceEntityId="
+                    + document.getId()
+                    + "&fields=owners,sourceEntity,derivedEntities&limit=50",
+                null);
+    Set<UUID> listedIds =
+        StreamSupport.stream(JsonUtils.readTree(listed).path("data").spliterator(), false)
+            .map(memory -> UUID.fromString(memory.path("id").asText()))
+            .collect(Collectors.toSet());
+    assertEquals(Set.copyOf(expected), listedIds);
+    assertTrue(unnamed == null || !listed.contains(unnamed.getName()), "the panel names nothing");
+  }
+
+  private static int memoryCountAs(OpenMetadataClient reader, ContextFile file) {
+    return reader
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/" + FILES + "/" + file.getId() + "?fields=memoryCount",
+            null,
+            ContextFile.class)
+        .getMemoryCount();
+  }
+
+  private static void assertHiddenFrom(OpenMetadataClient reader, ContextMemory memory) {
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                reader
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.GET,
+                        "/" + MEMORIES + "/" + memory.getId(),
+                        null,
+                        ContextMemory.class));
+    assertEquals(403, refused.getStatusCode());
+  }
+
+  /** One new memory per original, saying the same in the same stage, anchored on {@code file}. */
+  private void assertCopiesOf(
+      List<ContextMemory> originals, List<ContextMemory> copies, ContextFile file) {
+    assertEquals(originals.size(), copies.size());
+    for (ContextMemory original : originals) {
+      ContextMemory copy =
+          copies.stream()
+              .filter(candidate -> original.getQuestion().equals(candidate.getQuestion()))
+              .findFirst()
+              .orElseThrow();
+      assertNotEquals(original.getId(), copy.getId());
+      assertEquals(original.getAnswer(), copy.getAnswer());
+      assertEquals(original.getEntityStatus(), copy.getEntityStatus());
+      assertSource(copy, file.getEntityReference(), original.getSourceType());
+    }
+  }
+
   /** A memory held in review for contradicting {@code disputed}, as reconciliation holds one. */
   private ContextMemory heldInReviewAgainst(TestNamespace ns, ContextMemory disputed)
       throws Exception {
@@ -976,6 +1197,16 @@ class ContextMemoryExtractionIT {
 
   private ContextFile file(
       TestNamespace ns, String label, String text, MemoryShareConfig shareConfig) throws Exception {
+    return file(ns, label, text, shareConfig, null);
+  }
+
+  private ContextFile file(
+      TestNamespace ns,
+      String label,
+      String text,
+      MemoryShareConfig shareConfig,
+      List<EntityReference> owners)
+      throws Exception {
     UUID contentId = UUID.randomUUID();
     ContextFile file =
         ns.trackRoot(
@@ -988,6 +1219,7 @@ class ContextMemoryExtractionIT {
                         .withName(ns.prefix(label))
                         .withHeadContentId(contentId.toString())
                         .withShareConfig(shareConfig)
+                        .withOwners(owners)
                         .withProcessingStatus(ProcessingStatus.ExtractingContext)
                         .withUpdatedBy(Entity.ADMIN_USER_NAME)
                         .withUpdatedAt(System.currentTimeMillis())));

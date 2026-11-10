@@ -1,6 +1,8 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -14,6 +16,7 @@ import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.CALLS_REAL_METHODS;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -26,10 +29,14 @@ import static org.mockito.Mockito.when;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import jakarta.ws.rs.core.Response;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -40,9 +47,16 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.context.ContextMemoryScope;
+import org.openmetadata.schema.entity.context.ContextMemorySourceType;
+import org.openmetadata.schema.entity.context.ContextMemoryStatus;
+import org.openmetadata.schema.entity.context.ContextMemoryType;
+import org.openmetadata.schema.entity.context.MemoryDispute;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -50,6 +64,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
@@ -180,7 +195,7 @@ class MemorySourceLifecycleTest {
     ContextMemoryRepository memories = deletesRecorded(loads(stored, Include.NON_DELETED));
     doReturn(new PutResponse<>(Response.Status.OK, stored, EventType.ENTITY_UPDATED))
         .when(memories)
-        .update(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
     EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
 
     try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
@@ -196,7 +211,8 @@ class MemorySourceLifecycleTest {
     }
 
     ArgumentCaptor<ContextMemory> reanchored = ArgumentCaptor.forClass(ContextMemory.class);
-    verify(memories).update(isNull(), eq(stored), reanchored.capture(), eq(Entity.ADMIN_USER_NAME));
+    verify(memories)
+        .updateIfCurrent(isNull(), eq(stored), reanchored.capture(), eq(Entity.ADMIN_USER_NAME));
     assertEquals(orgWide.getId(), reanchored.getValue().getPrimaryEntity().getId());
     assertEquals(List.of(restricted.getId()), ids(reanchored.getValue().getRelatedEntities()));
     assertEquals(restricted.getId(), reanchored.getValue().getSourceEntity().getId());
@@ -232,6 +248,7 @@ class MemorySourceLifecycleTest {
 
     verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), anyBoolean());
     verify(memories, never()).update(any(), any(), any(), any());
+    verify(memories, never()).updateIfCurrent(any(), any(), any(), any());
     verifyLinkAdded(kept, memoryId, Relationship.APPLIED_TO);
     InOrder release = inOrder(relationshipDAO);
     verifyLinkDeleted(release, kept, memoryId, Relationship.RELATED_TO);
@@ -270,6 +287,7 @@ class MemorySourceLifecycleTest {
     verify(extensionDAO).insert(eq(memoryId), eq(ArchivedWithSources.EXTENSION), any(), any());
     verify(memories, never()).delete(any(), any(UUID.class), anyBoolean(), eq(true));
     verify(memories, never()).update(any(), any(), any(), any());
+    verify(memories, never()).updateIfCurrent(any(), any(), any(), any());
     verifyLinkAdded(archivedCopy, memoryId, Relationship.APPLIED_TO);
     InOrder release = inOrder(relationshipDAO);
     verifyLinkDeleted(release, released, memoryId, Relationship.MENTIONED_IN);
@@ -278,9 +296,9 @@ class MemorySourceLifecycleTest {
   }
 
   /**
-   * A restored org-wide file takes the anchor from a private copy, which stays a related source,
-   * whether the file was the anchor or only related. An org-wide copy and an article keep the anchor,
-   * and the restored file is a related source again beside them.
+   * A restored org-wide file takes the anchor from a private copy, whether the file was the anchor or
+   * only related; the private copy keeps its link but is named nowhere. An org-wide copy and an
+   * article keep the anchor, and the restored file is a related source again beside them.
    */
   @Test
   void restoreMovesTheAnchorBackOnlyFromARestrictedAnchor() {
@@ -325,9 +343,9 @@ class MemorySourceLifecycleTest {
           .restoreExtractedMemories(restored.getId(), restored.getType());
     }
 
-    assertSourceLinks(stored.get(onPrivate.getId()), restored, privateCopy);
+    assertSourceLinks(stored.get(onPrivate.getId()), restored);
     assertSourceLinks(stored.get(onOrgWide.getId()), orgWideCopy, restored);
-    assertSourceLinks(stored.get(relatedOnPrivate.getId()), restored, privateCopy);
+    assertSourceLinks(stored.get(relatedOnPrivate.getId()), restored);
     assertSourceLinks(stored.get(onArticle.getId()), article, restored);
     Stream.of(onPrivate, onOrgWide, relatedOnPrivate, onArticle)
         .forEach(memory -> verifyRefreshed(dispatcher, memory.getId()));
@@ -480,6 +498,380 @@ class MemorySourceLifecycleTest {
     verifyRefreshed(dispatcher, memoryId);
   }
 
+  /**
+   * A copy takes its document's link off the original, so restricting the original, opening it and
+   * restricting it again leaves that document one copy of the memory, not one per restriction.
+   */
+  @Test
+  void togglingSharingRepeatedlyNeverGrowsCopies() {
+    EntityReference original = contextFile("Original");
+    EntityReference privateCopy = contextFile("Private copy");
+    ContextMemory memory = anchoredMemory(original);
+    Edges edges = new Edges();
+    edges.anchor(original, memory.getId());
+    edges.mention(original, memory.getId());
+    edges.mention(privateCopy, memory.getId());
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), storedAs(memory)), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle
+          .when(EntityLifecycleEventDispatcher::getInstance)
+          .thenReturn(mock(EntityLifecycleEventDispatcher.class));
+      resolveReferences(entities, original, privateCopy, memory.getEntityReference());
+      storedFile(entities, privateCopy, MemoryVisibility.PRIVATE, user("copy-owner"));
+      MemorySourceSharing sharing = new MemorySourceSharing(memories);
+      sharing.followSourceRestriction(sharing(original, MemoryVisibility.PRIVATE));
+      sharing.followSourceOpening(sharing(original, MemoryVisibility.ENTITY));
+      sharing.followSourceRestriction(sharing(original, MemoryVisibility.PRIVATE));
+    }
+
+    assertEquals(1, created.size(), "one copy per memory per restricted document");
+    assertEquals(Set.of(created.getFirst().getId()), edges.mentionedBy(privateCopy));
+    assertEquals(Set.of(memory.getId()), edges.mentionedBy(original));
+  }
+
+  /**
+   * An opened file rejoins the related entities of a memory anchored on an org-wide copy, which keeps
+   * the anchor. The store still holds the file as private: the write opening it decides by the file.
+   */
+  @Test
+  void openingAFileShowsItAsASourceWithoutMovingTheAnchor() {
+    EntityReference opened = contextFile("Opened");
+    EntityReference orgWideCopy = contextFile("Org-wide copy");
+    ContextMemory memory = anchoredMemory(orgWideCopy).withRelatedEntities(List.of());
+    anchoredOn(memory.getId(), orgWideCopy, opened);
+    sourceMentions(opened, memory);
+    Map<UUID, ContextMemory> stored = storedAs(memory);
+    ContextMemoryRepository memories = writesKept(spy(repository), stored);
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+      resolveReferences(entities, opened, orgWideCopy, memory.getEntityReference());
+      storedFile(entities, opened, MemoryVisibility.PRIVATE);
+      storedFile(entities, orgWideCopy, MemoryVisibility.ENTITY);
+
+      new MemorySourceSharing(memories)
+          .followSourceOpening(sharing(opened, MemoryVisibility.ENTITY));
+    }
+
+    assertSourceLinks(stored.get(memory.getId()), orgWideCopy, opened);
+    verifyRefreshed(dispatcher, memory.getId());
+  }
+
+  /**
+   * A memory the file only relates to stops naming it and keeps its anchor. The store still holds
+   * the file as org-wide: the write restricting it decides by the file.
+   */
+  @Test
+  void restrictingAFileDropsItFromAMemoryItOnlyRelatesTo() {
+    EntityReference restricted = contextFile("Restricted");
+    EntityReference anchor = contextFile("Anchor");
+    ContextMemory memory = anchoredMemory(anchor).withRelatedEntities(List.of(restricted));
+    linkSources(memory.getId(), anchor, restricted);
+    sourceMentions(restricted, memory);
+    Map<UUID, ContextMemory> stored = storedAs(memory);
+    ContextMemoryRepository memories = writesKept(spy(repository), stored);
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+      resolveReferences(entities, restricted, anchor, memory.getEntityReference());
+      storedFile(entities, restricted, MemoryVisibility.ENTITY);
+      storedFile(entities, anchor, MemoryVisibility.ENTITY);
+
+      new MemorySourceSharing(memories)
+          .followSourceRestriction(sharing(restricted, MemoryVisibility.PRIVATE));
+    }
+
+    assertSourceLinks(stored.get(memory.getId()), anchor);
+    verifyRefreshed(dispatcher, memory.getId());
+    verify(relationshipDAO, never())
+        .delete(
+            eq(restricted.getId()),
+            anyString(),
+            eq(memory.getId()),
+            anyString(),
+            eq(Relationship.MENTIONED_IN.ordinal()));
+  }
+
+  /**
+   * A memory anchored on the file moves to its org-wide copy, ranked as archive ranks; the file
+   * becomes neither the anchor nor a related source, and keeps its link for its own readers.
+   */
+  @Test
+  void restrictingTheAnchorMovesItToASourceEveryoneMayRead() {
+    EntityReference restricted = contextFile("A restricted");
+    EntityReference orgWide = contextFile("B org-wide");
+    ContextMemory memory = anchoredMemory(restricted).withRelatedEntities(List.of(orgWide));
+    linkSources(memory.getId(), restricted, orgWide);
+    sourceMentions(restricted, memory);
+    Map<UUID, ContextMemory> stored = storedAs(memory);
+    ContextMemoryRepository memories = writesKept(spy(repository), stored);
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+      resolveReferences(entities, restricted, orgWide, memory.getEntityReference());
+      storedFile(entities, restricted, MemoryVisibility.ENTITY);
+      storedFile(entities, orgWide, MemoryVisibility.ENTITY);
+
+      new MemorySourceSharing(memories)
+          .followSourceRestriction(sharing(restricted, MemoryVisibility.PRIVATE));
+    }
+
+    assertSourceLinks(stored.get(memory.getId()), orgWide);
+    verify(memories, never()).create(any(), any(ContextMemory.class));
+    verify(relationshipDAO, never())
+        .delete(
+            eq(restricted.getId()),
+            anyString(),
+            eq(memory.getId()),
+            anyString(),
+            eq(Relationship.MENTIONED_IN.ordinal()));
+    verifyRefreshed(dispatcher, memory.getId());
+  }
+
+  /**
+   * A sharing move writes on condition that the memory is as it read it, so a decision written
+   * meanwhile fails the share change, which can be retried, instead of being overwritten.
+   */
+  @Test
+  void aSharingMoveFailsRatherThanOverwriteAWriteMadeMeanwhile() {
+    EntityReference restricted = contextFile("A restricted");
+    EntityReference orgWide = contextFile("B org-wide");
+    ContextMemory memory = anchoredMemory(restricted);
+    linkSources(memory.getId(), restricted, orgWide);
+    sourceMentions(restricted, memory);
+    ContextMemoryRepository memories = loads(memory, Include.NON_DELETED);
+    doThrow(new PreconditionFailedException("The memory has been modified."))
+        .when(memories)
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle
+          .when(EntityLifecycleEventDispatcher::getInstance)
+          .thenReturn(mock(EntityLifecycleEventDispatcher.class));
+      resolveReferences(entities, restricted, orgWide, memory.getEntityReference());
+      storedFile(entities, orgWide, MemoryVisibility.ENTITY);
+      MemorySourceSharing sharing = new MemorySourceSharing(memories);
+
+      assertThrows(
+          PreconditionFailedException.class,
+          () -> sharing.followSourceRestriction(sharing(restricted, MemoryVisibility.PRIVATE)));
+    }
+
+    verify(memories, never()).update(any(), any(), any(), any());
+  }
+
+  /**
+   * Restricting the file to the people its private copy is owned by makes no copy: they may still
+   * read the anchor. The store still holds the file as org-wide, shared with nobody.
+   */
+  @Test
+  void aSourceWhoseReadersTheRestrictedFileSharesWithGetsNoCopy() {
+    EntityReference restricted = contextFile("A restricted");
+    EntityReference privateCopy = contextFile("B private copy");
+    EntityReference reader = user("reader");
+    ContextMemory memory = anchoredMemory(restricted);
+    Edges edges = new Edges();
+    edges.anchor(restricted, memory.getId());
+    edges.mention(restricted, memory.getId());
+    edges.mention(privateCopy, memory.getId());
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), storedAs(memory)), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle
+          .when(EntityLifecycleEventDispatcher::getInstance)
+          .thenReturn(mock(EntityLifecycleEventDispatcher.class));
+      resolveReferences(entities, restricted, privateCopy, memory.getEntityReference());
+      storedFile(entities, restricted, MemoryVisibility.ENTITY);
+      storedFile(entities, privateCopy, MemoryVisibility.PRIVATE, reader);
+
+      new MemorySourceSharing(memories).followSourceRestriction(sharedWith(restricted, reader));
+    }
+
+    assertTrue(created.isEmpty(), "the copy's readers may read the anchor");
+    assertEquals(Set.of(memory.getId()), edges.mentionedBy(privateCopy));
+  }
+
+  /**
+   * Archiving the org-wide anchor leaves only restricted sources. The anchor moves to one of them,
+   * and each other source gets a copy unless the new anchor's readers include all of its readers.
+   */
+  @Test
+  void archivingLeavesACopyForEachRestrictedSourceWhoseReadersDiffer() {
+    EntityReference archived = contextFile("A archived").withDeleted(true);
+    EntityReference newAnchor = contextFile("B restricted");
+    EntityReference otherReaders = contextFile("C restricted");
+    EntityReference sameReaders = contextFile("D restricted");
+    EntityReference owner = user("owner");
+    ContextMemory memory = anchoredMemory(archived);
+    Edges edges = new Edges();
+    edges.anchor(archived, memory.getId());
+    Stream.of(archived, newAnchor, otherReaders, sameReaders)
+        .forEach(source -> edges.mention(source, memory.getId()));
+    Map<UUID, ContextMemory> stored = storedAs(memory);
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories =
+        createsKept(writesKept(spy(repository), stored), created, edges);
+
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+            mockStatic(EntityLifecycleEventDispatcher.class);
+        MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      lifecycle
+          .when(EntityLifecycleEventDispatcher::getInstance)
+          .thenReturn(mock(EntityLifecycleEventDispatcher.class));
+      resolveReferences(
+          entities, archived, newAnchor, otherReaders, sameReaders, memory.getEntityReference());
+      storedFile(entities, newAnchor, MemoryVisibility.PRIVATE, owner);
+      storedFile(entities, otherReaders, MemoryVisibility.PRIVATE, user("stranger"));
+      storedFile(entities, sameReaders, MemoryVisibility.PRIVATE, owner);
+
+      new MemorySourceLifecycle(memories)
+          .archiveExtractedMemories(archived.getId(), archived.getType());
+    }
+
+    assertEquals(newAnchor.getId(), stored.get(memory.getId()).getPrimaryEntity().getId());
+    assertEquals(1, created.size());
+    assertEquals(otherReaders.getId(), created.getFirst().getPrimaryEntity().getId());
+    assertEquals(Set.of(created.getFirst().getId()), edges.mentionedBy(otherReaders));
+    assertEquals(Set.of(memory.getId()), edges.mentionedBy(sameReaders));
+  }
+
+  /** A live article is a source everyone may read, so it takes the anchor before a restricted file. */
+  @Test
+  void chooseAnchorCountsALiveArticleAsReadableByEveryone() {
+    EntityReference leaving = contextFile("Leaving").withDeleted(true);
+    EntityReference restrictedFile = contextFile("A restricted file");
+    EntityReference article =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.PAGE).withName("B article");
+    UUID memoryId = UUID.randomUUID();
+    anchoredOn(memoryId, leaving, restrictedFile, article);
+
+    EntityReference chosen;
+    try (MockedStatic<Entity> entities = mockStatic(Entity.class, CALLS_REAL_METHODS)) {
+      resolveReferences(entities, leaving, restrictedFile, article);
+      storedFile(entities, restrictedFile, MemoryVisibility.PRIVATE);
+      entities
+          .when(
+              () ->
+                  Entity.getEntityOrNull(
+                      argThat(
+                          (EntityReference ref) ->
+                              ref != null && article.getId().equals(ref.getId())),
+                      eq(""),
+                      eq(Include.NON_DELETED)))
+          .thenReturn(new Page().withId(article.getId()));
+
+      chosen = new MemorySourceLifecycle(repository).chooseAnchor(memoryId, leaving);
+    }
+
+    assertEquals(article.getId(), chosen.getId());
+  }
+
+  /**
+   * A copy says what the memory says, in its stage, anchored on and linked to its document alone,
+   * which stops linking the original. Disputes and usage stay behind, and it is created as a
+   * relinking write, so it derives nothing of its own.
+   */
+  @Test
+  void copyForSourceRestatesTheMemoryForItsDocumentAlone() {
+    EntityReference source = contextFile("Private copy");
+    ContextMemory memory =
+        anchoredMemory(contextFile("Original"))
+            .withTitle("Refunds")
+            .withQuestion("How long is the refund window?")
+            .withAnswer("30 days")
+            .withMemoryType(ContextMemoryType.NOTE)
+            .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
+            .withSourceType(ContextMemorySourceType.FILE_EXTRACTION)
+            .withEntityStatus(ContextMemoryStatus.DRAFT)
+            .withStatusReason("contradicts: the window differs")
+            .withDisputes(List.of(new MemoryDispute().withReason("30 against 45 days")))
+            .withUsageCount(4)
+            .withOwners(List.of(user("admin")));
+    List<ContextMemory> created = new ArrayList<>();
+    ContextMemoryRepository memories = createsKept(spy(repository), created, new Edges());
+    EntityLifecycleEventDispatcher dispatcher = mock(EntityLifecycleEventDispatcher.class);
+
+    ContextMemory copy;
+    try (MockedStatic<EntityLifecycleEventDispatcher> lifecycle =
+        mockStatic(EntityLifecycleEventDispatcher.class)) {
+      lifecycle.when(EntityLifecycleEventDispatcher::getInstance).thenReturn(dispatcher);
+      copy = new MemorySourceLifecycle(memories).copyForSource(memory, source);
+    }
+
+    assertEquals(List.of(copy), created);
+    assertNotEquals(memory.getId(), copy.getId());
+    assertTrue(copy.getName().startsWith("Private copy-"));
+    assertEquals(
+        List.of(
+            memory.getTitle(), memory.getQuestion(), memory.getAnswer(), memory.getStatusReason()),
+        List.of(copy.getTitle(), copy.getQuestion(), copy.getAnswer(), copy.getStatusReason()));
+    assertEquals(
+        List.of(memory.getMemoryType(), memory.getMemoryScope(), memory.getSourceType()),
+        List.of(copy.getMemoryType(), copy.getMemoryScope(), copy.getSourceType()));
+    assertEquals(ContextMemoryStatus.DRAFT, copy.getEntityStatus());
+    assertEquals(memory.getOwners(), copy.getOwners());
+    assertEquals(List.of(source, source), List.of(copy.getPrimaryEntity(), copy.getSourceEntity()));
+    assertNull(copy.getDisputes());
+    assertEquals(0, copy.getUsageCount(), "its own usage, from none");
+    assertNull(copy.getRelatedEntities());
+    verifyLinkDeleted(inOrder(relationshipDAO), source, memory.getId(), Relationship.MENTIONED_IN);
+    verifyRefreshed(dispatcher, memory.getId());
+  }
+
+  /**
+   * What a relinking write records of the memory as it was names the documents everyone may read and
+   * an asset anchor; any other document, the file it restricts included, appears by id and type.
+   */
+  @Test
+  void aRelinkingWriteRecordsADocumentOnlySomeMayReadByIdAlone() {
+    EntityReference restricted = contextFile("Restricted");
+    EntityReference orgWide = contextFile("Org-wide");
+    EntityReference table =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TABLE).withName("orders");
+    ContextMemory original =
+        memory(MemoryVisibility.ENTITY)
+            .withPrimaryEntity(restricted)
+            .withSourceEntity(restricted)
+            .withSourceFile(restricted)
+            .withRelatedEntities(List.of(orgWide, table));
+    ContextMemory elsewhere = JsonUtils.deepCopy(original, ContextMemory.class);
+
+    MemoryRelinking.run(
+        original.getId(),
+        document -> orgWide.getId().equals(document.getId()),
+        () -> MemoryRelinking.withholdRestrictedNames(original));
+    MemoryRelinking.withholdRestrictedNames(elsewhere);
+
+    Stream.of(original.getPrimaryEntity(), original.getSourceEntity(), original.getSourceFile())
+        .forEach(
+            recorded ->
+                assertEquals(
+                    new EntityReference().withId(restricted.getId()).withType(Entity.CONTEXT_FILE),
+                    recorded));
+    assertEquals(List.of(orgWide, table), original.getRelatedEntities());
+    assertEquals(restricted, elsewhere.getPrimaryEntity(), "only the relinking write is affected");
+  }
+
   /** Every file mentions the memory: the first is its anchor and the rest are related sources. */
   private void linkSources(UUID memoryId, EntityReference anchor, EntityReference... related) {
     when(relationshipDAO.findFrom(
@@ -549,21 +941,22 @@ class MemorySourceLifecycleTest {
     return stored;
   }
 
-  /** A live read returns the memory as the last update stored it, as the database would. */
+  /** A live read returns the memory as the last conditional write stored it, as the database would. */
   private static ContextMemoryRepository writesKept(
       ContextMemoryRepository memories, Map<UUID, ContextMemory> stored) {
     doAnswer(call -> stored.get(call.<UUID>getArgument(1)))
         .when(memories)
         .get(isNull(), any(UUID.class), any(), eq(Include.NON_DELETED), eq(false));
-    doAnswer(
-            call -> {
-              ContextMemory updated = call.getArgument(2);
-              stored.put(updated.getId(), updated);
-              return new PutResponse<>(Response.Status.OK, updated, EventType.ENTITY_UPDATED);
-            })
+    doAnswer(call -> keep(stored, call.getArgument(2)))
         .when(memories)
-        .update(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
     return memories;
+  }
+
+  private static PutResponse<ContextMemory> keep(
+      Map<UUID, ContextMemory> stored, ContextMemory updated) {
+    stored.put(updated.getId(), updated);
+    return new PutResponse<>(Response.Status.OK, updated, EventType.ENTITY_UPDATED);
   }
 
   /** Restores are recorded, not run: the restore pipeline itself is covered by the ITs. */
@@ -652,7 +1045,7 @@ class MemorySourceLifecycleTest {
     ContextMemoryRepository memories = loads(reloaded, Include.ALL);
     doReturn(new PutResponse<>(Response.Status.OK, reloaded, EventType.ENTITY_NO_CHANGE))
         .when(memories)
-        .update(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+        .updateIfCurrent(isNull(), any(), any(), eq(Entity.ADMIN_USER_NAME));
     return memories;
   }
 
@@ -702,5 +1095,154 @@ class MemorySourceLifecycleTest {
         .withId(UUID.randomUUID())
         .withName("mem")
         .withShareConfig(new MemoryShareConfig().withVisibility(visibility));
+  }
+
+  /** A create keeps the copy and writes the anchor and source edges a real create would. */
+  private static ContextMemoryRepository createsKept(
+      ContextMemoryRepository memories, List<ContextMemory> created, Edges edges) {
+    doAnswer(
+            call -> {
+              ContextMemory copy = call.getArgument(1);
+              assertTrue(MemoryRelinking.isRelinking(copy.getId()), "created as a relinking write");
+              created.add(copy);
+              edges.anchor(copy.getPrimaryEntity(), copy.getId());
+              edges.mention(copy.getSourceEntity(), copy.getId());
+              return copy;
+            })
+        .when(memories)
+        .create(isNull(), any(ContextMemory.class));
+    return memories;
+  }
+
+  /** The file as stored, shared as {@code visibility} and owned by {@code owners}. */
+  private static void storedFile(
+      MockedStatic<Entity> entities,
+      EntityReference file,
+      MemoryVisibility visibility,
+      EntityReference... owners) {
+    ContextFile stored = sharing(file, visibility, owners);
+    entities
+        .when(
+            () ->
+                Entity.getEntity(
+                    argThat(
+                        (EntityReference ref) -> ref != null && file.getId().equals(ref.getId())),
+                    anyString(),
+                    eq(Include.NON_DELETED)))
+        .thenReturn(stored);
+  }
+
+  /** The file shared as {@code visibility}, as the write changing its sharing leaves it. */
+  private static ContextFile sharing(
+      EntityReference file, MemoryVisibility visibility, EntityReference... owners) {
+    return new ContextFile()
+        .withId(file.getId())
+        .withName(file.getName())
+        .withShareConfig(new MemoryShareConfig().withVisibility(visibility))
+        .withOwners(List.of(owners));
+  }
+
+  /** The file shared with exactly {@code readers}. */
+  private static ContextFile sharedWith(EntityReference file, EntityReference... readers) {
+    ContextFile shared = sharing(file, MemoryVisibility.SHARED);
+    shared
+        .getShareConfig()
+        .setSharedWith(
+            Stream.of(readers)
+                .map(reader -> new MemorySharedPrincipal().withPrincipal(reader))
+                .toList());
+    return shared;
+  }
+
+  private static EntityReference user(String name) {
+    return new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName(name);
+  }
+
+  /** The relationship rows the writes under test read and change, as the database keeps them. */
+  private final class Edges {
+    private final Set<Edge> rows = new LinkedHashSet<>();
+
+    private record Edge(UUID fromId, String fromType, UUID toId, int relation) {}
+
+    Edges() {
+      when(relationshipDAO.findFrom(any(UUID.class), eq(Entity.CONTEXT_MEMORY), anyInt()))
+          .thenAnswer(call -> into(call.getArgument(0), call.getArgument(2), null));
+      when(relationshipDAO.findFrom(
+              any(UUID.class), eq(Entity.CONTEXT_MEMORY), anyInt(), anyString()))
+          .thenAnswer(call -> into(call.getArgument(0), call.getArgument(2), call.getArgument(3)));
+      when(relationshipDAO.findTo(
+              any(UUID.class), anyString(), anyInt(), eq(Entity.CONTEXT_MEMORY)))
+          .thenAnswer(call -> outOf(call.getArgument(0), call.getArgument(2)));
+      doAnswer(
+              call ->
+                  rows.add(
+                      new Edge(
+                          call.getArgument(0),
+                          call.getArgument(2),
+                          call.getArgument(1),
+                          call.getArgument(4))))
+          .when(relationshipDAO)
+          .insert(
+              any(UUID.class),
+              any(UUID.class),
+              anyString(),
+              anyString(),
+              anyInt(),
+              anyString(),
+              any());
+      doAnswer(
+              call ->
+                  rows.remove(
+                          new Edge(
+                              call.getArgument(0),
+                              call.getArgument(1),
+                              call.getArgument(2),
+                              call.getArgument(4)))
+                      ? 1
+                      : 0)
+          .when(relationshipDAO)
+          .delete(any(UUID.class), anyString(), any(UUID.class), anyString(), anyInt());
+    }
+
+    void anchor(EntityReference source, UUID memoryId) {
+      rows.add(edge(source, memoryId, Relationship.APPLIED_TO));
+    }
+
+    void mention(EntityReference source, UUID memoryId) {
+      rows.add(edge(source, memoryId, Relationship.MENTIONED_IN));
+    }
+
+    /** The memories {@code source} is linked to as a source. */
+    Set<UUID> mentionedBy(EntityReference source) {
+      return rows.stream()
+          .filter(row -> row.fromId().equals(source.getId()))
+          .filter(row -> row.relation() == Relationship.MENTIONED_IN.ordinal())
+          .map(Edge::toId)
+          .collect(Collectors.toSet());
+    }
+
+    private static Edge edge(EntityReference source, UUID memoryId, Relationship relation) {
+      return new Edge(source.getId(), source.getType(), memoryId, relation.ordinal());
+    }
+
+    private List<CollectionDAO.EntityRelationshipRecord> into(
+        UUID memoryId, int relation, String fromType) {
+      return rows.stream()
+          .filter(row -> row.toId().equals(memoryId) && row.relation() == relation)
+          .filter(row -> fromType == null || fromType.equals(row.fromType()))
+          .map(row -> record(row.fromId(), row.fromType()))
+          .toList();
+    }
+
+    private List<CollectionDAO.EntityRelationshipRecord> outOf(UUID sourceId, int relation) {
+      return rows.stream()
+          .filter(row -> row.fromId().equals(sourceId) && row.relation() == relation)
+          .map(row -> record(row.toId(), Entity.CONTEXT_MEMORY))
+          .toList();
+    }
+
+    private static CollectionDAO.EntityRelationshipRecord record(UUID id, String type) {
+      return CollectionDAO.EntityRelationshipRecord.builder().id(id).type(type).build();
+    }
   }
 }

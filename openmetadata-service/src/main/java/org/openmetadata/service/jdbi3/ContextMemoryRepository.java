@@ -40,6 +40,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.ArchivedWithSources;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationQueue;
+import org.openmetadata.service.context.center.MemoryRelinking;
+import org.openmetadata.service.context.center.MemorySourceDisclosure;
 import org.openmetadata.service.context.center.MemorySourceLifecycle;
 import org.openmetadata.service.context.review.MemoryConflictReviewTasks;
 import org.openmetadata.service.context.review.MemoryEvidenceHolds;
@@ -50,7 +52,6 @@ import org.openmetadata.service.governance.EntityLifecycle;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
 import org.openmetadata.service.resources.context.ContextMemoryWriteAccess;
-import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.search.vector.ContextMemoryBodyTextContributor;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -190,10 +191,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
         reviewRequired ? ContextMemoryStatus.UNPROCESSED : ContextMemoryStatus.APPROVED;
   }
 
+  /** A copy restates a memory for another document's readers, so it derives no term of its own. */
   @Override
   protected void postCreate(ContextMemory memory) {
     super.postCreate(memory);
-    glossaryDerivationQueue().enqueue(memory, memory.getUpdatedBy());
+    if (!MemoryRelinking.isRelinking(memory.getId())) {
+      glossaryDerivationQueue().enqueue(memory, memory.getUpdatedBy());
+    }
     MemoryConflictReviewTasks.afterWrite(null, memory);
   }
 
@@ -484,11 +488,15 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
                 derivedById.getOrDefault(memory.getId(), Collections.emptyList())));
   }
 
-  /** The single Context Center source (file or page) a memory was extracted from, via MENTIONED_IN. */
+  /**
+   * The source a memory shows among the documents linked to it (MENTIONED_IN), as {@link
+   * MemorySourceDisclosure} chooses; the anchor is read only when there is a choice to make.
+   */
   private EntityReference getSourceEntity(ContextMemory entity) {
-    List<EntityReference> refs =
+    List<EntityReference> sources =
         findFrom(entity.getId(), Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, null);
-    return nullOrEmpty(refs) ? null : refs.getFirst();
+    EntityReference anchor = sources.size() < 2 ? null : getPrimaryEntity(entity);
+    return MemorySourceDisclosure.shownSource(anchor, sources);
   }
 
   /** Back-compat view: the deprecated sourceFile is the source only when it is a ContextFile. */
@@ -512,8 +520,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     }
   }
 
+  /** Each memory's shown source, chosen as the single read path chooses it. */
   private Map<UUID, EntityReference> batchFetchSources(List<ContextMemory> entities) {
-    Map<UUID, List<EntityReference>> sourcesById = new HashMap<>();
     List<CollectionDAO.EntityRelationshipObject> records =
         daoCollection
             .relationshipDAO()
@@ -521,22 +529,28 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
                 entityListToStrings(entities),
                 Relationship.MENTIONED_IN.ordinal(),
                 Include.NON_DELETED);
-    Map<String, EntityReference> refById = resolveReferencesByType(records);
-    for (CollectionDAO.EntityRelationshipObject record : records) {
-      EntityReference ref = refById.get(record.getFromId());
-      if (ref != null) {
-        sourcesById
-            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
-            .add(ref);
-      }
-    }
+    Map<UUID, List<EntityReference>> sourcesById = new HashMap<>();
+    groupByMemory(records, resolveReferencesByType(records), sourcesById);
+    sourcesById.values().forEach(refs -> refs.sort(EntityUtil.compareEntityReference));
+    Map<UUID, EntityReference> anchors = anchorsOfSharedMemories(entities, sourcesById);
     Map<UUID, EntityReference> sourceById = new HashMap<>();
     sourcesById.forEach(
-        (id, refs) -> {
-          refs.sort(EntityUtil.compareEntityReference);
-          sourceById.put(id, refs.getFirst());
-        });
+        (id, refs) ->
+            sourceById.put(id, MemorySourceDisclosure.shownSource(anchors.get(id), refs)));
     return sourceById;
+  }
+
+  /** The anchors of the memories with several sources to choose from, as getPrimaryEntity reads. */
+  private Map<UUID, EntityReference> anchorsOfSharedMemories(
+      List<ContextMemory> entities, Map<UUID, List<EntityReference>> sourcesById) {
+    List<ContextMemory> shared =
+        entities.stream()
+            .filter(memory -> sourcesById.getOrDefault(memory.getId(), List.of()).size() > 1)
+            .toList();
+    Map<UUID, EntityReference> anchors =
+        shared.isEmpty() ? new HashMap<>() : new HashMap<>(batchFetchPrimaryEntities(shared));
+    shared.forEach(memory -> anchors.putIfAbsent(memory.getId(), memory.getPrimaryEntity()));
+    return anchors;
   }
 
   @Override
@@ -933,6 +947,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
+      MemoryRelinking.withholdRestrictedNames(original);
       requireOwnersChangedByPrivilegedWriter();
       requireSourceTypeChangedByPrivilegedWriter();
       flipToManualOnUserEdit();
@@ -1141,7 +1156,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
   /** A source-lifecycle anchor move changes who may read the memory, not what it says. */
   private static boolean anchorMovedAsContent(ContextMemory before, ContextMemory after) {
     return !sameAnchor(before.getPrimaryEntity(), after.getPrimaryEntity())
-        && !MemorySourceLifecycle.isRelinking(after.getId());
+        && !MemoryRelinking.isRelinking(after.getId());
   }
 
   private static boolean extractionManagedFieldChanged(
@@ -1169,6 +1184,20 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return memories;
   }
 
+  private static void groupByMemory(
+      List<CollectionDAO.EntityRelationshipObject> records,
+      Map<String, EntityReference> live,
+      Map<UUID, List<EntityReference>> sources) {
+    for (CollectionDAO.EntityRelationshipObject record : records) {
+      EntityReference source = live.get(record.getFromId());
+      if (source != null) {
+        sources
+            .computeIfAbsent(UUID.fromString(record.getToId()), id -> new ArrayList<>())
+            .add(source);
+      }
+    }
+  }
+
   /** Links a memory to another source that states it, as {@link MemorySourceLifecycle} does. */
   public void linkExtractedMemory(UUID memoryId, EntityReference source) {
     new MemorySourceLifecycle(this).linkExtractedMemory(memoryId, source);
@@ -1180,7 +1209,9 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
    */
   public boolean hasOrgWideAnchor(ContextMemory memory) {
     EntityReference anchor = getPrimaryEntity(memory);
-    return anchor == null || isOrgWideSource(anchor);
+    return anchor == null
+        || (Entity.CONTEXT_FILE.equals(anchor.getType())
+            && MemorySourceDisclosure.everyoneMayRead(anchor));
   }
 
   /**
@@ -1191,28 +1222,7 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
    */
   public boolean isAnchoredForPublication(ContextMemory memory) {
     EntityReference anchor = getPrimaryEntity(memory);
-    return anchor == null
-        || (Entity.PAGE.equals(anchor.getType()) && isLive(anchor))
-        || (Entity.CONTEXT_FILE.equals(anchor.getType()) && isOrgWideFile(anchor));
-  }
-
-  private static boolean isLive(EntityReference anchor) {
-    return Entity.getEntityOrNull(anchor, "", Include.NON_DELETED) != null;
-  }
-
-  /** A source every reader may read: only a file can be shared with the whole organization. */
-  public static boolean isOrgWideSource(EntityReference source) {
-    return Entity.CONTEXT_FILE.equals(source.getType()) && isOrgWideFile(source);
-  }
-
-  private static boolean isOrgWideFile(EntityReference file) {
-    boolean orgWide;
-    try {
-      orgWide = ContextFileVisibility.isOrgWide(Entity.getEntity(file, "", Include.NON_DELETED));
-    } catch (EntityNotFoundException e) {
-      orgWide = false;
-    }
-    return orgWide;
+    return anchor == null || MemorySourceDisclosure.everyoneMayRead(anchor);
   }
 
   /** Whether another source, archived ones included, still states the memory. */

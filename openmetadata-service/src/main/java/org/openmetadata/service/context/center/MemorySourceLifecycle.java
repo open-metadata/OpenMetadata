@@ -1,6 +1,8 @@
 package org.openmetadata.service.context.center;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.service.jdbi3.ContextMemoryRepository.FIELD_PRIMARY_ENTITY;
+import static org.openmetadata.service.jdbi3.ContextMemoryRepository.FIELD_RELATED_ENTITIES;
 import static org.openmetadata.service.jdbi3.ContextMemoryRepository.SOURCE_LINK_FIELDS;
 
 import java.util.ArrayList;
@@ -11,57 +13,71 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.openmetadata.schema.entity.context.ContextMemory;
+import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
+import org.openmetadata.service.util.FreshReadScope;
 
 /**
- * What a memory does when one of its source documents is linked, archived, restored or permanently
- * deleted. Archiving keeps the memory's links so a restore can bring it back; a permanent delete
- * releases them.
+ * What a memory does when one of its source documents is linked, archived, restored, permanently
+ * deleted or shared differently (ADR:2026-09-29-context-file-memory-reuse).
  */
 public class MemorySourceLifecycle {
-  /** The memory whose source links this thread is writing. */
-  private static final ThreadLocal<UUID> RELINKING = new ThreadLocal<>();
+  /** What a lifecycle write reads: without the source, so the write keeps the stored one. */
+  private static final String LINK_FIELDS = FIELD_PRIMARY_ENTITY + "," + FIELD_RELATED_ENTITIES;
+
+  private static final int MAX_LINK_ATTEMPTS = 3;
+  private static final String KEPT_CHANGING_WHILE_LINKED =
+      "Memory %s kept changing while another document was linked to it";
 
   private final ContextMemoryRepository memories;
   private final ArchivedWithSources archivedWithSources;
+  private final SourceReaders readers;
 
   public MemorySourceLifecycle(ContextMemoryRepository memories) {
+    this(memories, new SourceReaders());
+  }
+
+  private MemorySourceLifecycle(ContextMemoryRepository memories, SourceReaders readers) {
     this.memories = memories;
     this.archivedWithSources =
         new ArchivedWithSources(memories.getDaoCollection().entityExtensionDAO());
+    this.readers = readers;
+  }
+
+  /** This lifecycle, deciding who may read {@code file} by its sharing as given, not as stored. */
+  MemorySourceLifecycle withSharingOf(ContextFile file) {
+    return new MemorySourceLifecycle(memories, readers.withSharingOf(file));
   }
 
   /**
-   * Whether this thread is writing the memory's source links. An anchor those writes move changes
-   * who may read the memory, not what it says, so its content clock stays.
+   * Links another document that states the memory. Only one everyone may read joins its related
+   * entities, so a restricted copy is linked by its source edge alone and never appears in them or
+   * in the memory's history ({@link MemorySourceDisclosure}).
    */
-  public static boolean isRelinking(UUID memoryId) {
-    return memoryId != null && memoryId.equals(RELINKING.get());
+  public void linkExtractedMemory(UUID memoryId, EntityReference source) {
+    if (!isLinkedTo(memoryId, source)) {
+      addRelatedSource(memoryId, source);
+      memories.addRelationship(
+          source.getId(),
+          memoryId,
+          source.getType(),
+          Entity.CONTEXT_MEMORY,
+          Relationship.MENTIONED_IN);
+    }
   }
 
-  /** Links a memory to another source that states it, which joins its related entities. */
-  public void linkExtractedMemory(UUID memoryId, EntityReference source) {
-    boolean alreadyLinked =
-        memories
-            .findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, source.getType())
-            .stream()
-            .anyMatch(existing -> source.getId().equals(existing.getId()));
-    if (alreadyLinked) {
-      return;
-    }
-    addRelatedSource(memoryId, source);
-    memories.addRelationship(
-        source.getId(),
-        memoryId,
-        source.getType(),
-        Entity.CONTEXT_MEMORY,
-        Relationship.MENTIONED_IN);
+  private boolean isLinkedTo(UUID memoryId, EntityReference source) {
+    return memories
+        .findFrom(memoryId, Entity.CONTEXT_MEMORY, Relationship.MENTIONED_IN, source.getType())
+        .stream()
+        .anyMatch(existing -> source.getId().equals(existing.getId()));
   }
 
   /**
@@ -103,11 +119,19 @@ public class MemorySourceLifecycle {
     }
   }
 
-  /** Restore locks each memory's row and mark, and those locks hold only inside a transaction. */
-  private void requireOpenTransaction() {
+  /**
+   * These moves lock rows or must commit with the source's own change, so they need a transaction.
+   */
+  void requireOpenTransaction() {
     if (!memories.getDaoCollection().isInTransaction()) {
-      throw new IllegalStateException("A source's memories are restored inside its restore");
+      throw new IllegalStateException("A source's memories follow it only inside its own write");
     }
+  }
+
+  /** The live memories the source states. */
+  List<EntityReference> linkedMemories(EntityReference source) {
+    return memories.findTo(
+        source.getId(), source.getType(), Relationship.MENTIONED_IN, Entity.CONTEXT_MEMORY);
   }
 
   /**
@@ -138,11 +162,25 @@ public class MemorySourceLifecycle {
     List<EntityReference> live =
         currentAnchorFirst(memoryId, remaining.stream().filter(other -> !isArchived(other)));
     return live.stream()
-        .filter(ContextMemoryRepository::isOrgWideSource)
+        .filter(this::readableByEveryone)
         .findFirst()
         .or(() -> live.stream().findFirst())
         .or(() -> remaining.stream().findFirst())
         .orElse(null);
+  }
+
+  /**
+   * A copy of the memory for {@code source}'s readers: its content and review state, anchored on and
+   * linked to that source, which stops linking the original. Nothing extracts, reconciles or judges
+   * it; it is indexed as it is created.
+   */
+  public ContextMemory copyForSource(ContextMemory memory, EntityReference source) {
+    ContextMemory copy = MemoryCopy.of(memory, source);
+    relinking(copy.getId(), () -> memories.create(null, copy));
+    deleteSourceLink(memory.getId(), source, Relationship.MENTIONED_IN);
+    deleteSourceLink(memory.getId(), source, Relationship.RELATED_TO);
+    memories.refreshSearchDocument(memory.getId());
+    return copy;
   }
 
   private void archiveExtractedMemory(UUID memoryId, EntityReference source) {
@@ -165,9 +203,51 @@ public class MemorySourceLifecycle {
       ContextMemory current =
           memories.get(
               null, memoryId, memories.getFields(SOURCE_LINK_FIELDS), Include.NON_DELETED, false);
-      updateSourceLinks(current, reparented(current, archived, true));
+      ContextMemory reanchored = reparented(current, archived, true);
+      updateSourceLinks(current, reanchored);
+      copyForSourcesTheAnchorHides(memoryId, reanchored.getPrimaryEntity());
     }
     memories.refreshSearchDocument(memoryId);
+  }
+
+  /** No longer names {@code source} among the memory's related entities; its links stay. */
+  void dropRelatedSource(UUID memoryId, EntityReference source) {
+    if (hasSourceRelationship(memoryId, source, Relationship.RELATED_TO)) {
+      ContextMemory current = linksOf(memoryId);
+      ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
+      updated.setRelatedEntities(relatedWithout(current.getRelatedEntities(), source, null));
+      updateSourceLinks(current, updated);
+    }
+  }
+
+  /**
+   * Copies the memory for each of its live sources that not everyone may read and whose readers are
+   * not all readers of its restricted anchor, so none of them loses it.
+   */
+  void copyForSourcesTheAnchorHides(UUID memoryId, EntityReference anchor) {
+    if (anchor != null && !readableByEveryone(anchor)) {
+      Set<UUID> anchorReaders = readers.readersOf(anchor);
+      List<EntityReference> hidden =
+          otherSources(memoryId, anchor).stream()
+              .filter(source -> !isArchived(source) && !readableByEveryone(source))
+              .filter(source -> !anchorReaders.containsAll(readers.readersOf(source)))
+              .toList();
+      if (!hidden.isEmpty()) {
+        ContextMemory memory =
+            memories.get(
+                null,
+                memoryId,
+                memories.getFields(Entity.FIELD_OWNERS),
+                Include.NON_DELETED,
+                false);
+        hidden.forEach(source -> copyForSource(memory, source));
+      }
+    }
+  }
+
+  /** A live article or org-wide file; a file this write shares differently, as it leaves it. */
+  boolean readableByEveryone(EntityReference document) {
+    return readers.everyoneMayRead(document);
   }
 
   private void detachSource(UUID memoryId, EntityReference source, boolean liveSourceRemains) {
@@ -238,8 +318,9 @@ public class MemorySourceLifecycle {
   }
 
   /**
-   * Decided on the memory as last committed, so a concurrent delete or restore of it is serialized
-   * with this one: it comes back only if its sources took it to the Archive.
+   * Decided on the memory's row as last committed, read with a lock, so a concurrent delete or
+   * restore of the same memory cannot change that decision until this restore ends. The reads after
+   * it are not locking: on MySQL they may see the transaction's earlier snapshot.
    */
   private void restoreExtractedMemory(UUID memoryId, EntityReference restored) {
     ContextMemory latest = lockedMemory(memoryId);
@@ -266,13 +347,31 @@ public class MemorySourceLifecycle {
   private void showAsSourceAgain(UUID memoryId, EntityReference restored) {
     EntityReference anchor = anchorEdge(memoryId);
     if (isAnotherSource(memoryId, anchor, restored)) {
-      EntityReference target = anchorAfterRestore(memoryId, anchor, restored);
-      if (!isSameSource(target, anchor)) {
-        reanchor(memoryId, anchor, target);
-      }
+      giveAnchorBackIfDue(memoryId, anchor, restored);
       addRelatedSource(memoryId, restored);
     }
     memories.refreshSearchDocument(memoryId);
+  }
+
+  /**
+   * Shows a file everyone may read again as a source of the live memory: it rejoins the related
+   * entities unless it anchors them, and a restricted anchor among its sources gives way to it.
+   */
+  void showAsSourceOnceOpened(UUID memoryId, EntityReference opened) {
+    EntityReference anchor = anchorEdge(memoryId);
+    if (isAnotherSource(memoryId, anchor, opened)) {
+      giveAnchorBackIfDue(memoryId, anchor, opened);
+    }
+    addRelatedSource(memoryId, opened);
+    memories.refreshSearchDocument(memoryId);
+  }
+
+  private void giveAnchorBackIfDue(
+      UUID memoryId, EntityReference anchor, EntityReference document) {
+    EntityReference target = anchorAfterRestore(memoryId, anchor, document);
+    if (!isSameSource(target, anchor)) {
+      reanchor(memoryId, anchor, target);
+    }
   }
 
   /** The anchor its edge names, a live one first: the stored anchor can be stale in the Archive. */
@@ -290,30 +389,30 @@ public class MemorySourceLifecycle {
   }
 
   /**
-   * Where the anchor belongs once {@code restored} is live again. An archived anchor moves to a live
-   * source; a file only some may read gives way to the restored file when everyone may read that.
+   * Where the anchor belongs once {@code restored} is live, or readable by everyone, again. An
+   * archived anchor moves to a live source; a file only some may read gives way to the restored
+   * file when everyone may read that.
    */
   private EntityReference anchorAfterRestore(
       UUID memoryId, EntityReference anchor, EntityReference restored) {
     if (isArchived(anchor)) {
       return chooseAnchor(memoryId, anchor);
     }
-    boolean takesTheAnchor =
-        isRestrictedFile(anchor) && ContextMemoryRepository.isOrgWideSource(restored);
+    boolean takesTheAnchor = isRestrictedFile(anchor) && readableByEveryone(restored);
     return takesTheAnchor ? restored : anchor;
   }
 
   /** A file shared with only some people; an article or an asset anchor is never one. */
-  private static boolean isRestrictedFile(EntityReference anchor) {
-    return Entity.CONTEXT_FILE.equals(anchor.getType())
-        && !ContextMemoryRepository.isOrgWideSource(anchor);
+  private boolean isRestrictedFile(EntityReference anchor) {
+    return Entity.CONTEXT_FILE.equals(anchor.getType()) && !readableByEveryone(anchor);
   }
 
-  /** Anchors the live memory on {@code anchor}; a live previous anchor stays a related source. */
-  private void reanchor(UUID memoryId, EntityReference previous, EntityReference anchor) {
-    ContextMemory current =
-        memories.get(
-            null, memoryId, memories.getFields(SOURCE_LINK_FIELDS), Include.NON_DELETED, false);
+  /**
+   * Anchors the live memory on {@code anchor}. A live previous anchor everyone may read becomes a
+   * related source; one only some may read is linked by its source edge alone.
+   */
+  void reanchor(UUID memoryId, EntityReference previous, EntityReference anchor) {
+    ContextMemory current = linksOf(memoryId);
     updateSourceLinks(current, reanchored(current, previous, anchor));
     if (isArchived(previous)) {
       // The update diffs from the stored anchor, which an edge-only move left naming another file.
@@ -321,11 +420,11 @@ public class MemorySourceLifecycle {
     }
   }
 
-  private static ContextMemory reanchored(
+  private ContextMemory reanchored(
       ContextMemory current, EntityReference previous, EntityReference anchor) {
     List<EntityReference> related =
         new ArrayList<>(relatedWithout(current.getRelatedEntities(), anchor, previous));
-    if (!isArchived(previous)) {
+    if (!isArchived(previous) && readableByEveryone(previous)) {
       related.add(previous);
     }
     ContextMemory updated =
@@ -334,33 +433,68 @@ public class MemorySourceLifecycle {
     return updated;
   }
 
-  /** Lists {@code source} among the memory's related entities unless it anchors or relates already. */
+  /** Names {@code source} among the memory's related entities, when everyone may read it. */
   private void addRelatedSource(UUID memoryId, EntityReference source) {
-    ContextMemory current =
-        memories.get(
-            null, memoryId, memories.getFields(SOURCE_LINK_FIELDS), Include.NON_DELETED, false);
-    boolean isPrimary =
-        current.getPrimaryEntity() != null
-            && source.getId().equals(current.getPrimaryEntity().getId());
-    boolean isRelated =
-        listOrEmpty(current.getRelatedEntities()).stream()
-            .anyMatch(related -> source.getId().equals(related.getId()));
-    if (!isPrimary && !isRelated) {
-      ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
-      List<EntityReference> related = new ArrayList<>(listOrEmpty(current.getRelatedEntities()));
-      related.add(source);
-      updated.setRelatedEntities(related);
-      updateSourceLinks(current, updated);
+    if (readableByEveryone(source)) {
+      relateLinkedSource(memoryId, source);
     }
   }
 
-  private void updateSourceLinks(ContextMemory current, ContextMemory updated) {
-    RELINKING.set(current.getId());
-    try {
-      memories.update(null, current, updated, Entity.ADMIN_USER_NAME);
-    } finally {
-      RELINKING.remove();
+  /** Conditional on the memory as read, so a decision written meanwhile is read again, not lost. */
+  private void relateLinkedSource(UUID memoryId, EntityReference source) {
+    for (int attempt = 1; !tryRelatingLinkedSource(memoryId, source); attempt++) {
+      if (attempt == MAX_LINK_ATTEMPTS) {
+        throw new PreconditionFailedException(String.format(KEPT_CHANGING_WHILE_LINKED, memoryId));
+      }
     }
+  }
+
+  /** False when the memory changed between this read and the write. */
+  private boolean tryRelatingLinkedSource(UUID memoryId, EntityReference source) {
+    boolean written = true;
+    try (var ignored = FreshReadScope.enter()) {
+      ContextMemory current = linksOf(memoryId);
+      if (!namesDocument(current, source)) {
+        ContextMemory updated = withRelated(current, source);
+        relinking(
+            memoryId,
+            () -> memories.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME));
+      }
+    } catch (PreconditionFailedException changedMeanwhile) {
+      written = false;
+    }
+    return written;
+  }
+
+  private static boolean namesDocument(ContextMemory memory, EntityReference document) {
+    return isSameSource(memory.getPrimaryEntity(), document)
+        || listOrEmpty(memory.getRelatedEntities()).stream()
+            .anyMatch(related -> document.getId().equals(related.getId()));
+  }
+
+  /** The write keeps the stored source: a partial update preserves the one it omits. */
+  private static ContextMemory withRelated(ContextMemory current, EntityReference document) {
+    ContextMemory updated = JsonUtils.deepCopy(current, ContextMemory.class);
+    List<EntityReference> related = new ArrayList<>(listOrEmpty(current.getRelatedEntities()));
+    related.add(document);
+    return updated.withRelatedEntities(related);
+  }
+
+  /** The live memory with its anchor and related entities, and without its source. */
+  private ContextMemory linksOf(UUID memoryId) {
+    return memories.get(
+        null, memoryId, memories.getFields(LINK_FIELDS), Include.NON_DELETED, false);
+  }
+
+  /** Conditional on the memory as read: a write landing meanwhile fails this one, never lost. */
+  private void updateSourceLinks(ContextMemory current, ContextMemory updated) {
+    relinking(
+        current.getId(),
+        () -> memories.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME));
+  }
+
+  private void relinking(UUID memoryId, Runnable write) {
+    MemoryRelinking.run(memoryId, this::readableByEveryone, write);
   }
 
   private List<EntityReference> currentAnchorFirst(UUID memoryId, Stream<EntityReference> sources) {
@@ -402,6 +536,11 @@ public class MemorySourceLifecycle {
     return new SourceLinks(
         hasSourceRelationship(memoryId, source, Relationship.APPLIED_TO),
         hasSourceRelationship(memoryId, source, Relationship.RELATED_TO));
+  }
+
+  /** Whether {@code source} anchors the memory, archived or not. */
+  boolean isAnchoredOn(UUID memoryId, EntityReference source) {
+    return hasSourceRelationship(memoryId, source, Relationship.APPLIED_TO);
   }
 
   private boolean hasSourceRelationship(

@@ -226,7 +226,7 @@ public class ContextMemoryExtractor implements DocumentMemoryExtractor {
   }
 
   /** Keeps the generated memory name within the 256-char entityName limit (UUID suffix included). */
-  private String memoryName(EntityReference sourceRef) {
+  static String memoryName(EntityReference sourceRef) {
     String base = sourceRef.getName();
     if (base.length() > MAX_NAME_BASE_LENGTH) {
       base = base.substring(0, MAX_NAME_BASE_LENGTH);

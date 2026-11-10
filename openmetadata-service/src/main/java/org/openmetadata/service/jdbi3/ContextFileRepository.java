@@ -31,10 +31,12 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.context.center.MemorySourceLifecycle;
+import org.openmetadata.service.context.center.MemorySourceSharing;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
 import org.openmetadata.service.resources.drive.ContextFileResource;
+import org.openmetadata.service.resources.drive.ContextFileVisibility;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -230,8 +232,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   private MemorySourceLifecycle memorySourceLifecycle() {
-    return new MemorySourceLifecycle(
-        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY));
+    return new MemorySourceLifecycle(memoryRepository());
+  }
+
+  private static ContextMemoryRepository memoryRepository() {
+    return (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
   }
 
   @Override
@@ -308,6 +313,11 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   public class ContextFileUpdater extends EntityUpdater {
+    // Captured before consolidation can rebase original or hand a pass the previous version.
+    private final ContextFile requested;
+    private final boolean wasOrgWide;
+    private boolean sharingFollowed;
+
     public ContextFileUpdater(ContextFile original, ContextFile updated, Operation operation) {
       super(original, updated, operation);
       keepStoredContent(original, updated);
@@ -315,11 +325,18 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       if (original.getUpdatedAt() != null && updated.getUpdatedAt() != null) {
         updated.setUpdatedAt(Math.max(updated.getUpdatedAt(), original.getUpdatedAt() + 1));
       }
+      requested = updated;
+      wasOrgWide = ContextFileVisibility.isOrgWide(original);
     }
 
     private static void keepStoredContent(ContextFile original, ContextFile updated) {
       updated.setAssetId(original.getAssetId());
       updated.setHeadContentId(original.getHeadContentId());
+    }
+
+    @Override
+    protected void resetForRetryAttempt() {
+      sharingFollowed = false;
     }
 
     @Override
@@ -333,7 +350,25 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
       recordChange("extractedText", original.getExtractedText(), updated.getExtractedText());
       recordChange("pageCount", original.getPageCount(), updated.getPageCount());
       recordChange("shareConfig", original.getShareConfig(), updated.getShareConfig(), true);
+      followSharing();
       updateFolder();
+    }
+
+    /**
+     * Once per attempt, inside this write: when the file turns restricted or org-wide, its memories
+     * follow (ADR:2026-09-29-context-file-memory-reuse). Other share edits leave them as they are.
+     */
+    private void followSharing() {
+      boolean orgWide = ContextFileVisibility.isOrgWide(requested);
+      if (!sharingFollowed && orgWide != wasOrgWide) {
+        sharingFollowed = true;
+        MemorySourceSharing sharing = new MemorySourceSharing(memoryRepository());
+        if (orgWide) {
+          sharing.followSourceOpening(requested);
+        } else {
+          sharing.followSourceRestriction(requested);
+        }
+      }
     }
 
     private void updateFolder() {
