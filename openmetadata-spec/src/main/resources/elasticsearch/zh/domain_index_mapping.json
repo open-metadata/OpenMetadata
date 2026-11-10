@@ -131,6 +131,9 @@
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
       },
+      "fqnParts": {
+        "type": "keyword"
+      },
       "displayName": {
         "type": "text",
         "analyzer": "ik_max_word",
@@ -316,6 +319,72 @@
       "entityStatus": {
         "type": "keyword",
         "normalizer": "lowercase_normalizer"
+      },
+      "descriptionSources": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Ingested": {
+            "type": "integer"
+          },
+          "Suggested": {
+            "type": "integer"
+          }
+        }
+      },
+      "tagSources": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
+      },
+      "tierSources": {
+        "type": "object",
+        "dynamic": false,
+        "properties": {
+          "Manual": {
+            "type": "integer"
+          },
+          "Propagated": {
+            "type": "integer"
+          },
+          "Automated": {
+            "type": "integer"
+          },
+          "Derived": {
+            "type": "integer"
+          },
+          "Generated": {
+            "type": "integer"
+          }
+        }
       },
       "extension": {
         "type": "object",
