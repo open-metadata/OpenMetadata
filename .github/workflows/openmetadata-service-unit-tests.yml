@@ -22,8 +22,7 @@ on:
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
   group: openmetadata-service-unit-tests-${{ github.event.pull_request.number || github.run_id }}
@@ -46,7 +45,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         if: ${{ github.event_name != 'workflow_dispatch' }}
-
+        with:
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
         if: ${{ github.event_name != 'workflow_dispatch' }}
@@ -98,6 +98,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies
@@ -184,15 +185,6 @@ jobs:
           name: openmetadata-service-surefire-reports
           path: openmetadata-service/target/surefire-reports/
 
-      - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
-          check_name: "Test Report"
-
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -202,6 +194,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies
@@ -242,15 +235,6 @@ jobs:
           name: k8s-operator-surefire-reports
           path: openmetadata-k8s-operator/target/surefire-reports/
 
-      - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
-          check_name: "K8s Operator Test Report"
-
   # The server image is distroless: no package manager, a non-root uid, a shell
   # that exists only because busybox is deliberately kept, and the glibc
   # libraries the JNI natives link against. Every one of those is a way for the
@@ -265,6 +249,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies

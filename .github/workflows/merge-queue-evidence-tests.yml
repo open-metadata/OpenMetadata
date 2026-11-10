@@ -23,4 +23,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - run: python3 -m unittest discover -s .github/scripts -p test_merge_queue_evidence.py -v

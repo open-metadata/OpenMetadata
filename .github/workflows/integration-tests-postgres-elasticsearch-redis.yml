@@ -51,7 +51,8 @@ on:
 
 permissions:
   contents: read
-  checks: write
+  checks: read
+  pull-requests: read
 
 concurrency:
   # Merge-queue, push and dispatch runs key on the run id, so they never cancel each other.
@@ -467,16 +468,6 @@ jobs:
           docker compose down --remove-orphans
           sudo rm -rf "${PWD}/docker-volume"
 
-      - name: Publish Test Report
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: ScalableCapital/action-surefire-report@v2
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          check_name: Integration Test Report (postgres-elasticsearch-redis, ${{ matrix.lane.name }})
-          fail_on_test_failures: false
-          fail_if_no_tests: false
-          report_paths: 'openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml'
 
   integration-tests-postgres-elasticsearch-redis:
     name: integration-tests-postgres-elasticsearch-redis

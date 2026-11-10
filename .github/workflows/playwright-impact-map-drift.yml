@@ -19,33 +19,9 @@
 # a spec, a shared helper, or a `data-testid` string changed and the
 # author did not regenerate.
 #
-# Behaviour:
-#
-#   * Same-repo PR (head_repo == base_repo): the workflow
-#     regenerates, commits the refreshed file to the PR branch, posts
-#     a comment explaining what happened, and passes. Push retriggers
-#     PR CI so subsequent checks run against the fresh map.
-#
-#   * Fork PR (head_repo != base_repo):
-#     no-op. The bot cannot push into the fork, and asking every
-#     external contributor to install Python and regenerate the map
-#     locally is friction disproportionate to the coverage risk (a
-#     stale map on a fork PR still routes to the same specs a
-#     properly-generated map would, just via `select_playwright_tests`'s
-#     "unmapped code → full" fallback — see PR #32809). The check
-#     records a green skip on forks so branch protection is satisfied
-#     without pushing work onto external contributors.
-#
-# We deliberately do NOT run on `merge_group`. The merge queue's
-# tentative merge ref is read-only (`gh-readonly-queue/*`) — the bot
-# cannot push a refreshed map there, so a drift detection would leave
-# the queue with nothing it can act on. Same-repo PRs auto-refresh
-# before they enter the queue, and fork PRs fall back to the unmapped-
-# code → full-suite path in `select_playwright_tests`, so a merge_group
-# gate would only fire on race conditions the queue itself cannot fix.
-#
-# Trigger paths are the code the map is a function of: specs, UI src,
-# and the generator itself. Anything else cannot change the output.
+# Same-repository PRs regenerate and report drift without writing to the branch.
+# Forks retain the planner's unmapped-code fallback to the full suite.
+# The merge queue does not regenerate this map because its refs are read-only.
 
 name: Playwright impact-map drift
 
@@ -59,11 +35,6 @@ on:
       - '.github/scripts/generate_playwright_impact_map.py'
       - '.github/playwright/impact-map.generated.json'
   workflow_dispatch:
-    inputs:
-      pr_number:
-        description: 'PR number to refresh the impact map for (optional)'
-        required: false
-        type: string
 
 concurrency:
   group: playwright-impact-map-drift-${{ github.event.pull_request.number || github.run_id }}
@@ -74,109 +45,27 @@ jobs:
     name: Playwright impact-map drift
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) }}
     permissions:
-      # The auto-commit pushes with COLLATE_PAT, so GITHUB_TOKEN only needs to read
-      # the repo and comment on the PR.
       contents: read
-      pull-requests: write
 
     steps:
-      - name: Get PR details for workflow_dispatch
-        if: github.event_name == 'workflow_dispatch' && github.event.inputs.pr_number != ''
-        id: pr-details
-        env:
-          PR_NUMBER: ${{ github.event.inputs.pr_number }}
-          BASE_REPO: ${{ github.repository }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          PR_DATA=$(gh pr view "$PR_NUMBER" --json headRepository,headRefName,headRepositoryOwner,headRefOid --repo "$BASE_REPO")
-          echo "head_ref=$(echo "$PR_DATA" | jq -r '.headRefName')" >> $GITHUB_OUTPUT
-          echo "head_sha=$(echo "$PR_DATA" | jq -r '.headRefOid')" >> $GITHUB_OUTPUT
-          echo "full_repo=$(echo "$PR_DATA" | jq -r '.headRepositoryOwner.login + "/" + .headRepository.name')" >> $GITHUB_OUTPUT
-
-      - name: Classify fork vs same-repo
-        id: check-fork
-        env:
-          EVENT_NAME: ${{ github.event_name }}
-          FULL_REPO: ${{ steps.pr-details.outputs.full_repo }}
-          HEAD_REPO_FULL_NAME: ${{ github.event.pull_request.head.repo.full_name }}
-          BASE_REPO: ${{ github.repository }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          if [ "$EVENT_NAME" == "workflow_dispatch" ] && [ -n "$FULL_REPO" ]; then
-            if [ "$FULL_REPO" != "$BASE_REPO" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
-            else
-              echo "is_fork=false" >> $GITHUB_OUTPUT
-            fi
-          elif [ "$EVENT_NAME" == "pull_request" ]; then
-            # Dependabot runs get no secrets either, so they are handled like a fork.
-            if [ "$HEAD_REPO_FULL_NAME" != "$BASE_REPO" ] || [ "$ACTOR" == "dependabot[bot]" ]; then
-              echo "is_fork=true" >> $GITHUB_OUTPUT
-            else
-              echo "is_fork=false" >> $GITHUB_OUTPUT
-            fi
-          else
-            echo "is_fork=false" >> $GITHUB_OUTPUT
-          fi
-
-      # Fork PRs are a no-op past this point — see the header docstring
-      # for the rationale. The step below records the reason in the log so
-      # a reviewer looking at the run can see why nothing else fired.
-      - name: Skip on fork PRs
-        if: steps.check-fork.outputs.is_fork == 'true'
-        run: |
-          echo "Fork PR detected — impact-map drift is a no-op on forks."
-          echo "The 'unmapped code → full' fallback in select_playwright_tests still"
-          echo "runs the specs a stale map would have routed to (see PR #32809)."
-
-      - name: Determine checkout ref
-        if: steps.check-fork.outputs.is_fork != 'true'
-        id: checkout-ref
-        env:
-          IS_FORK: ${{ steps.check-fork.outputs.is_fork }}
-          EVENT_NAME: ${{ github.event_name }}
-          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-          PR_HEAD_REF: ${{ github.event.pull_request.head.ref }}
-          PR_DETAILS_HEAD_SHA: ${{ steps.pr-details.outputs.head_sha }}
-          PR_DETAILS_HEAD_REF: ${{ steps.pr-details.outputs.head_ref }}
-          GITHUB_SHA_VAL: ${{ github.sha }}
-        run: |
-          if [ "$IS_FORK" == "true" ] && [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "ref=$PR_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ "$EVENT_NAME" == "pull_request" ]; then
-            echo "ref=$PR_HEAD_REF" >> $GITHUB_OUTPUT
-          elif [ "$IS_FORK" == "true" ] && [ -n "$PR_DETAILS_HEAD_SHA" ]; then
-            echo "ref=$PR_DETAILS_HEAD_SHA" >> $GITHUB_OUTPUT
-          elif [ -n "$PR_DETAILS_HEAD_REF" ]; then
-            echo "ref=$PR_DETAILS_HEAD_REF" >> $GITHUB_OUTPUT
-          else
-            echo "ref=$GITHUB_SHA_VAL" >> $GITHUB_OUTPUT
-          fi
-
       - name: Checkout
-        if: steps.check-fork.outputs.is_fork != 'true'
         uses: actions/checkout@v7
         with:
-          repository: ${{ steps.pr-details.outputs.full_repo || github.repository }}
-          ref: ${{ steps.checkout-ref.outputs.ref }}
-          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Setup Python
-        if: steps.check-fork.outputs.is_fork != 'true'
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
 
       - name: Regenerate impact map
-        if: steps.check-fork.outputs.is_fork != 'true'
         run: python3 .github/scripts/generate_playwright_impact_map.py
 
       - name: Check for drift
         id: git-check
-        if: steps.check-fork.outputs.is_fork != 'true'
         continue-on-error: true
         run: |
           git add .github/playwright/impact-map.generated.json
@@ -184,12 +73,9 @@ jobs:
 
       - name: Summarise the diff
         id: summarise
-        # `git-check` is skipped on forks, and a skipped step's outcome is
-        # 'skipped' (!= 'success'), so without the fork guard this ran `git show`
-        # in a workspace that was never checked out and failed the job.
-        if: steps.check-fork.outputs.is_fork != 'true' && steps.git-check.outcome != 'success'
+        if: steps.git-check.outcome != 'success'
         run: |
-          # Cap the summary at what fits comfortably in a PR comment. The full
+          # Cap the job summary so it stays readable. The full
           # file is a single JSON line — a raw diff would be unreadable — so
           # count the affected entries semantically instead.
           python3 - <<'PY' > "$RUNNER_TEMP/summary.txt"
@@ -226,51 +112,14 @@ jobs:
             echo 'SUMMARY_EOF'
           } >> "$GITHUB_OUTPUT"
 
-      - name: Configure git
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
-        run: |
-          git config --global user.name 'github-actions[bot]'
-          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
-
-      - name: Auto-commit + push (same-repo PRs only)
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref) != ''
+      - name: Report impact-map drift
+        if: steps.git-check.outcome != 'success'
         env:
-          # Not GITHUB_TOKEN: pushes made with it never trigger workflow runs,
-          # so every required check stays pending and the PR can't merge.
-          GH_TOKEN: ${{ secrets.COLLATE_PAT }}
-          HEAD_REF: ${{ steps.pr-details.outputs.head_ref || github.event.pull_request.head.ref }}
+          DRIFT_SUMMARY: ${{ steps.summarise.outputs.summary }}
         run: |
-          git commit -m "chore(playwright): auto-refresh impact-map.generated.json"
-          # persist-credentials: false above, so re-attach the token to origin.
-          # Bare URL would break --force-with-lease (no remote-tracking ref to
-          # lease against).
-          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${{ github.repository }}.git"
-          git push --force-with-lease origin "HEAD:${HEAD_REF}"
-
-      - name: Comment on same-repo PR after auto-commit
-        if: steps.git-check.outcome != 'success' && steps.check-fork.outputs.is_fork == 'false' && (github.event_name == 'pull_request' || github.event.inputs.pr_number != '')
-        uses: peter-evans/create-or-update-comment@v5
-        with:
-          issue-number: ${{ github.event.pull_request.number || github.event.inputs.pr_number }}
-          body: |
-            ## 🔄 Playwright impact map auto-refreshed
-
-            This PR touched specs or UI source that changed the source→spec routing map. I regenerated `.github/playwright/impact-map.generated.json` and pushed the diff to this branch.
-
-            ```
-            ${{ steps.summarise.outputs.summary }}
-            ```
-
-            **What is this file?** It is the auto-generated half of Playwright's PR planner. It routes "if source X changes, run specs Y" by walking spec imports and cross-referencing `getByTestId` strings. Hand-authored routing in `impact-map.json` always wins on conflict.
-
-            **What if I want to regenerate locally instead?** Run this before pushing your next change to skip the bot commit:
-
-            ```bash
-            python3 .github/scripts/generate_playwright_impact_map.py
-            git add .github/playwright/impact-map.generated.json
-            git commit --amend --no-edit  # or a separate commit
-            ```
-
-      # No fork-PR comment. External contributors are not asked to install
-      # Python and regenerate the map locally — the "unmapped code → full"
-      # fallback still routes the specs a fresh map would have.
+          echo "$DRIFT_SUMMARY" >> "$GITHUB_STEP_SUMMARY"
+          cat >> "$GITHUB_STEP_SUMMARY" <<'EOF'
+          Run `python3 .github/scripts/generate_playwright_impact_map.py` and commit the refreshed map.
+          EOF
+          echo "::error::Playwright impact map is stale. Regenerate it locally and commit the result."
+          exit 1

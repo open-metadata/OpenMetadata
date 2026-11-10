@@ -13,9 +13,22 @@ name: Workflows and Data Access Request E2E tests
 
 on:
   workflow_dispatch:
+  push:
+    branches: ["2.1"]
+    paths:
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/TaskResource.java'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/TaskRepository.java'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/feeds/FeedResource.java'
+      - 'openmetadata-service/src/main/java/org/openmetadata/service/governance/workflows/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/components/WorkflowDefinitions/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/pages/WorkflowDefinitions/**'
+      - 'openmetadata-ui/src/main/resources/ui/src/constants/WorkflowBuilder.constants.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/interface/WorkflowBuilder.interface.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/utils/WorkflowBuilderUtils.ts'
+      - 'openmetadata-ui/src/main/resources/ui/src/generated/governance/workflows/**'
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
-  # Only for fork and Dependabot PRs, which skipped the PR-time run (see the job's `if:`).
+  # PR jobs never dispatch credential-backed checks, so every relevant merge group runs them.
   merge_group:
 
 permissions:
@@ -31,11 +44,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       dar: ${{ steps.filter.outputs.dar }}
-      queued_pr_skipped: ${{ steps.queued-pr.outputs.skipped }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
-        if: ${{ github.event_name == 'merge_group' }}
+        if: ${{ github.event_name != 'pull_request' }}
         with:
           fetch-depth: 0
           filter: blob:none
@@ -43,7 +55,7 @@ jobs:
       - uses: dorny/paths-filter@v4
         id: filter
         with:
-          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          base: ${{ github.event.merge_group.base_sha || github.event.before || '' }}
           filters: |
             dar:
               - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/tasks/TaskResource.java'
@@ -56,36 +68,13 @@ jobs:
               - 'openmetadata-ui/src/main/resources/ui/src/interface/WorkflowBuilder.interface.ts'
               - 'openmetadata-ui/src/main/resources/ui/src/utils/WorkflowBuilderUtils.ts'
               - 'openmetadata-ui/src/main/resources/ui/src/generated/governance/workflows/**'
-      # The merge group's ref names the PR at its tip: gh-readonly-queue/<base>/pr-<number>-<sha>.
-      # Fork and Dependabot PRs got no COLLATE_PAT at PR time, so their Collate run happens here.
-      - name: Check whether the queued PR skipped its PR-time Collate run
-        id: queued-pr
-        if: ${{ github.event_name == 'merge_group' }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_REF: ${{ github.event.merge_group.head_ref }}
-          REPO: ${{ github.repository }}
-        run: |
-          pr=$(sed -nE 's#.*/pr-([0-9]+)-[0-9a-f]+$#\1#p' <<<"$HEAD_REF")
-          if [ -z "$pr" ]; then
-            echo "::warning::No PR number in merge group ref $HEAD_REF"
-            echo "skipped=false" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-          skipped=$(gh api "repos/$REPO/pulls/$pr" \
-            --jq '.head.repo.full_name != .base.repo.full_name or .user.login == "dependabot[bot]"')
-          echo "skipped=$skipped" >> "$GITHUB_OUTPUT"
-
   data-access-request-e2e:
     needs: check-changes
     runs-on: ubuntu-latest
-    # Fork and Dependabot PRs get no COLLATE_PAT to dispatch the Collate run with, so they skip it
-    # at PR time and run it in the merge queue instead; every other PR runs it at PR time only.
     if: |
-      !github.event.pull_request.draft &&
-      (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.dar == 'true') &&
-      (github.event_name != 'pull_request' || (github.event.pull_request.head.repo.full_name == github.repository && github.actor != 'dependabot[bot]')) &&
-      (github.event_name != 'merge_group' || needs.check-changes.outputs.queued_pr_skipped == 'true')
+      github.event_name != 'pull_request' &&
+      (github.event_name != 'workflow_dispatch' || github.ref == 'refs/heads/2.1') &&
+      (github.event_name == 'workflow_dispatch' || needs.check-changes.outputs.dar == 'true')
     steps:
       # Dispatched by file name straight to the REST endpoint, not through
       # benc-uk/workflow-dispatch: that action finds the workflow by paging through the list of
@@ -99,15 +88,21 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.COLLATE_PAT }}
           COLLATE_REPO: open-metadata/openmetadata-collate
-          SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+          SHA: ${{ github.sha }}
           EVENT: ${{ github.event_name }}
           # The Collate job caps itself at timeout-minutes: 90, so waiting past that point is
           # what guarantees we report its real conclusion instead of giving up first. Successful
           # runs are 48-60 min today, already at the edge of the previous 61-min budget.
           WAIT_SECONDS: 5700
         run: |
+          # Collate's push mode follows the branch tip instead of inputs.sha.
+          # Its dispatched-run mode pins the supplied immutable OpenMetadata SHA.
+          dispatch_event="$EVENT"
+          if [ "$dispatch_event" = push ]; then
+            dispatch_event=workflow_dispatch
+          fi
           run_id=$(gh api -X POST "repos/$COLLATE_REPO/actions/workflows/data-access-request-e2e.yml/dispatches" \
-            -f ref=main -f "inputs[sha]=$SHA" -f "inputs[event]=$EVENT" \
+            -f ref=2.1 -f "inputs[sha]=$SHA" -f "inputs[event]=$dispatch_event" \
             -F return_run_details=true --jq .workflow_run_id)
           if [ -z "$run_id" ]; then
             echo "::error::The dispatch returned no run id; find the run at https://github.com/$COLLATE_REPO/actions/workflows/data-access-request-e2e.yml"
