@@ -1,0 +1,523 @@
+{
+  "$schema": "https://json-schema.org/draft/2019-09/schema",
+  "title": "Open Data Contract Standard (OCDS)",
+  "description": "An open data contract specification to establish agreement between data producers and consumers.",
+  "type": "object",
+  "properties": {
+    "version": {
+      "type": "string",
+      "description": "Current version of the data contract."
+    },
+    "kind": {
+      "type": "string",
+      "default": "DataContract",
+      "description": "The kind of file this is. Valid value is `DataContract`.",
+      "enum": ["DataContract"]
+    },
+    "apiVersion": {
+      "type": "string",
+      "default": "v2.3.0",
+      "description": "Version of the standard used to build data contract. Default value is v2.3.0.",
+      "pattern": "^v[0-9]+\\.[0-9]+\\.[0-9]+"
+    },
+    "uuid": {
+      "type": "string",
+      "description": "A unique identifier used to reduce the risk of dataset name collisions; initially the UUID will be created using a UUID generator tool ([example](https://www.uuidgenerator.net/)). However, we may want to develop a method that accepts a seed value using a combination of fields–such as name, kind and source–to create a repeatable value."
+    },
+    "datasetKind": {
+      "type": "string",
+      "description": "The kind of dataset being cataloged; Expected values are `virtualDataset` or `managedDataset`.",
+      "examples": ["virtualDataset", "managedDataset"]
+    },
+    "userConsumptionMode": {
+      "type": "string",
+      "description": "List of data modes for which the dataset may be used.  Expected sample values might be `analytical` or `operational`. <br/>Note: in the future, this will probably be replaced by ports.",
+      "examples": ["analytical", "operational"]
+    },
+    "type": {
+      "type": "string",
+      "description": "Identifies the types of objects in the dataset. For BigQuery or any other database, the expected value would be Tables.",
+      "examples": ["Tables"]
+    },
+    "tenant": {
+      "type": "string",
+      "description": "Indicates the property the data is primarily associated with. Value is case insensitive."
+    },
+    "tags": {
+      "type": "array",
+      "description": "A list of tags that may be assigned to the dataset, table or column; the `tags` keyword may appear at any level.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "status": {
+      "type": "string",
+      "description": "Current status of the dataset. Valid values are `production`, `test`, or `development`.",
+      "examples": ["production", "test", "development"]
+    },
+    "sourceSystem": {
+      "type": "string",
+      "description": "The system where the dataset resides. Expected value can be BigQuery.",
+      "examples": ["BigQuery"]
+    },
+    "sourcePlatform": {
+      "type": "string",
+      "description": "The platform where the dataset resides. Expected value is GoogleCloudPlatform, IBMCloud, Azure...",
+      "examples": ["GoogleCloudPlatform", "IBMCloud", "Azure", "AWS"]
+    },
+    "server": {
+      "type": "string",
+      "description": "The server where the dataset resides."
+    },
+    "quantumName": {
+      "type": "string",
+      "description": "The name of the data quantum or data product."
+    },
+    "productSlackChannel": {
+      "type": "string",
+      "description": "Slack channel of the team responsible for maintaining the dataset."
+    },
+    "productFeedbackUrl": {
+      "type": "string",
+      "description": "The URL for submitting feedback to the team responsible for maintaining the dataset."
+    },
+    "productDl": {
+      "type": "string",
+      "description": "The email distribution list (DL) of the persons or team responsible for maintaining the dataset."
+    },
+    "username": {
+      "type": "string",
+      "description": "User credentials for connecting to the dataset; how the credentials will be stored/passed is outside of the scope of the contract."
+    },
+    "password": {
+      "type": "string",
+      "description": "User credentials for connecting to the dataset; how the credentials will be stored/passed is out of the scope of this contract."
+    },
+    "driverVersion": {
+      "type": "string",
+      "description": "The version of the connection driver to be used to connect to the dataset."
+    },
+    "driver": {
+      "type": "string",
+      "description": "The connection driver required to connect to the dataset."
+    },
+    "description": {
+      "type": "object",
+      "description": "High level description of the dataset.",
+      "properties": {
+        "usage": {
+          "type": "string",
+          "description": "Intended usage of the dataset."
+        },
+        "purpose": {
+          "type": "string",
+          "description": "Purpose of the dataset."
+        },
+        "limitations": {
+          "type": "string",
+          "description": "Limitations of the dataset."
+        }
+      }
+    },
+    "project": {
+      "type": "string",
+      "description": "Associated project name, can be used for billing or administrative purpose. Used to be datasetProject."
+    },
+    "datasetName": {
+      "type": "string",
+      "description": "May be required in cloud instance like GCP BigQuery dataset name."
+    },
+    "datasetDomain": {
+      "type": "string",
+      "description": "Name of the logical domain dataset the contract describes. This field is only required for output data contracts.",
+      "examples": ["imdb_ds_aggregate", "receiver_profile_out", "transaction_profile_out"]
+    },
+    "database": {
+      "type": "string",
+      "description": "The database where the dataset resides."
+    },
+    "dataset": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Dataset"
+      }
+    },
+    "price": {
+      "$ref": "#/$defs/Pricing"
+    },
+    "stakeholders": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Stakeholder"
+      }
+    },
+    "roles": {
+      "type": "array",
+      "description": "A list of roles that will provide user access to the dataset.",
+      "items": {
+        "$ref": "#/$defs/Role"
+      }
+    },
+    "slaDefaultColumn": {
+      "type": "string",
+      "description": "Columns (using the Table.Column notation) to do the checks on. By default, it is the partition column."
+    },
+    "slaProperties": {
+      "type": "array",
+      "description": "A list of key/value pairs for SLA specific properties. There is no limit on the type of properties (more details to come).",
+      "items": {
+        "$ref": "#/$defs/ServiceLevelAgreementProperty"
+      }
+    }
+  },
+  "required": ["version", "kind", "uuid", "type", "status", "dataset", "datasetName", "quantumName"],
+  "$defs": {
+    "Dataset": {
+      "type": "object",
+      "properties": {
+        "table": {
+          "type": "string",
+          "description": "Name of the table being cataloged; the value should only contain the table name. Do not include the project or dataset name in the value."
+        },
+        "physicalName": {
+          "type": "string",
+          "description": "Physical name of the table, default value is table name + version separated by underscores, as `table_1_2_0`.",
+          "examples": ["table_1_2_0"]
+        },
+        "priorTableName": {
+          "type": "string",
+          "description": "Name of the previous version of the dataset, if applicable."
+        },
+        "description": {
+          "type": "array",
+          "description": "List of links to sources that provide more detail on column logic or values; examples would be URL to a GitHub repo, Collibra, on another tool.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "authoritativeDefinitions": {
+          "$ref": "#/$defs/AuthoritativeDefinitions"
+        },
+        "dataGranularity": {
+          "type": "string",
+          "description": "Granular level of the data in the table. Example would be `pmt_txn_id`.",
+          "examples": ["pmt_txn_id"]
+        },
+        "columns": {
+          "type": "array",
+          "description": "Array. A list of columns in the table.",
+          "items": {
+            "$ref": "#/$defs/Column"
+          }
+        },
+        "quality": {
+          "type": "array",
+          "description": "Data quality rules with all the relevant information for rule setup and execution.",
+          "items": {
+            "$ref": "#/$defs/DataQuality"
+          }
+        }
+      },
+      "required": ["table"]
+    },
+    "Column": {
+      "type": "object",
+      "properties": {
+        "column": {
+          "type": "string",
+          "description": "The name of the column."
+        },
+        "isPrimaryKey": {
+          "type": "string",
+          "description": "Boolean value specifying whether the column is primary or not. Default is false."
+        },
+        "primaryKeyPosition": {
+          "type": "integer",
+          "default": -1,
+          "description": "If column is a primary key, the position of the primary key column. Starts from 1. Example of `account_id, name` being primary key columns, `account_id` has primaryKeyPosition 1 and `name` primaryKeyPosition 2. Default to -1."
+        },
+        "businessName": {
+          "type": "string",
+          "description": "The business name of the column."
+        },
+        "logicalType": {
+          "type": "string",
+          "description": "The logical column datatype."
+        },
+        "physicalType": {
+          "type": "string",
+          "description": "The physical column datatype."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the column."
+        },
+        "isNullable": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indicates if the column may contain Null values; possible values are true and false. Default is false."
+        },
+        "isUnique": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indicates if the column contains unique values; possible values are true and false. Default is false."
+        },
+        "partitionStatus": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indicates if the column is partitioned; possible values are true and false."
+        },
+        "partitionKeyPosition": {
+          "type": "integer",
+          "default": -1,
+          "description": "If column is used for partitioning, the position of the partition column. Starts from 1. Example of `country, year` being partition columns, `country` has partitionKeyPosition 1 and `year` partitionKeyPosition 2. Default to -1."
+        },
+        "clusterStatus": {
+          "type": "boolean",
+          "default": false,
+          "description": "Indicates of the column is clustered; possible values are true and false."
+        },
+        "clusterKeyPosition": {
+          "type": "integer",
+          "default": -1,
+          "description": "If column is used for clustering, the position of the cluster column. Starts from 1. Example of `year, date` being cluster columns, `year` has clusterKeyPosition 1 and `date` clusterKeyPosition 2. Default to -1."
+        },
+        "classification": {
+          "type": "string",
+          "description": "Can be anything, like confidential, restricted, and public to more advanced categorization. Some companies like PayPal, use data classification indicating the class of data in the column; expected values are 1, 2, 3, 4, or 5.",
+          "examples": ["confidential", "restricted", "public"]
+        },
+        "authoritativeDefinitions": {
+          "$ref": "#/$defs/AuthoritativeDefinitions"
+        },
+        "encryptedColumnName": {
+          "type": "string",
+          "description": "The column name within the table that contains the encrypted column value. For example, unencrypted column `email_address` might have an encryptedColumnName of `email_address_encrypt`."
+        },
+        "transformSourceTables": {
+          "type": "array",
+          "description": "List of sources used in column transformation.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "transformLogic": {
+          "type": "string",
+          "description": "Logic used in the column transformation."
+        },
+        "transformDescription": {
+          "type": "string",
+          "description": "Describes the transform logic in very simple terms."
+        },
+        "sampleValues": {
+          "type": "array",
+          "description": "List of sample column values.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "criticalDataElementStatus": {
+          "type": "boolean",
+          "default": false,
+          "description": "True or false indicator; If element is considered a critical data element (CDE) then true else false."
+        },
+        "tags": {
+          "type": "array",
+          "description": "A list of tags that may be assigned to the dataset, table or column; the tags keyword may appear at any level.",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": ["column", "logicalType", "physicalType"]
+    },
+    "DataQuality": {
+      "type": "object",
+      "properties": {
+        "code": {
+          "type": "string",
+          "description": "The Rosewall data quality code(s) indicating which quality checks need to be performed at the dataset, table or column level; The quality keyword may appear at any level; Some quality checks require parameters such so the check can be completed (eg, list of fields used to identify a distinct row) therefore some quality checks may be followed by a single value or an array; See appendix for link to quality checks."
+        },
+        "templateName": {
+          "type": "string",
+          "description": "The template name which indicates what is the equivalent template from the tool."
+        },
+        "description": {
+          "type": "string",
+          "description": "Describe the quality check to be completed."
+        },
+        "toolName": {
+          "type": "string",
+          "description": "Name of the tool used to complete the quality check; Most will be Elevate initially."
+        },
+        "toolRuleName": {
+          "type": "string",
+          "description": "Name of the quality tool's rule created to complete the quality check."
+        },
+        "dimension": {
+          "type": "string",
+          "description": "The key performance indicator (KPI) or dimension for data quality."
+        },
+        "columns": {
+          "type": "string",
+          "description": "List of columns to be used in the quality check."
+        },
+        "column": {
+          "type": "string",
+          "description": "To be used in lieu of quality.columns when only a single column is required for the quality check."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of quality check."
+        },
+        "severity": {
+          "type": "string",
+          "description": "The severance of the quality rule."
+        },
+        "businessImpact": {
+          "type": "string",
+          "description": "Consequences of the rule failure."
+        },
+        "scheduleCronExpression": {
+          "type": "string",
+          "description": "Rule execution schedule details."
+        },
+        "customProperties": {
+          "type": "array",
+          "description": "Additional properties required for rule execution.",
+          "items": {
+            "$ref": "#/$defs/CustomProperty"
+          }
+        }
+      },
+      "required": ["templateName", "toolName"]
+    },
+    "AuthoritativeDefinitions": {
+      "type": "array",
+      "description": "List of links to sources that provide more details on the table; examples would be a link to an external definition, a training video, a GitHub repo, Collibra, or another tool. Authoritative definitions follow the same structure in the standard.",
+      "items": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "URL to the authority."
+          },
+          "type": {
+            "type": "string",
+            "description": "Type of definition for authority: v2.3 adds standard values: `businessDefinition`, `transformationImplementation`, `videoTutorial`, `tutorial`, and `implementation`.",
+            "examples": ["businessDefinition", "transformationImplementation", "videoTutorial", "tutorial", "implementation"]
+          }
+        },
+        "required": ["url", "type"]
+      }
+    },
+    "Pricing": {
+      "type": "object",
+      "properties": {
+        "priceAmount": {
+          "type": "string",
+          "description": "Subscription price per unit of measure in `priceUnit`."
+        },
+        "priceCurrency": {
+          "type": "string",
+          "description": "Currency of the subscription price in `price.priceAmount`."
+        },
+        "priceUnit": {
+          "type": "string",
+          "description": "The unit of measure for calculating cost. Examples megabyte, gigabyte."
+        }
+      }
+    },
+    "Stakeholder": {
+      "type": "object",
+      "properties": {
+        "username": {
+          "type": "string",
+          "description": "The stakeholder's username or email."
+        },
+        "role": {
+          "type": "string",
+          "description": "The stakeholder's job role; Examples might be owner, data steward. There is no limit on the role."
+        },
+        "dateIn": {
+          "type": "string",
+          "description": "The date when the user became a stakeholder."
+        },
+        "dateOut": {
+          "type": "string",
+          "description": "The date when the user ceased to be a stakeholder"
+        },
+        "replacedByUsername": {
+          "type": "string",
+          "description": "The username of the user who replaced the stakeholder"
+        }
+      }
+    },
+    "Role": {
+      "type": "object",
+      "properties": {
+        "role": {
+          "type": "string",
+          "description": "Name of the IAM role that provides access to the dataset; the value will generally come directly from the \"BQ dataset to IAM roles mapping\" document."
+        },
+        "access": {
+          "type": "string",
+          "description": "The type of access provided by the IAM role; the value will generally come directly from the \"BQ dataset to IAM roles mapping\" document."
+        },
+        "firstLevelApprovers": {
+          "type": "string",
+          "description": "The name(s) of the first level approver(s) of the role; the value will generally come directly from the \"BQ dataset to IAM roles mapping\" document."
+        },
+        "secondLevelApprovers": {
+          "type": "string",
+          "description": "The name(s) of the second level approver(s) of the role; the value will generally come directly from the \"BQ dataset to IAM roles mapping\" document."
+        }
+      },
+      "required": ["role", "access"]
+    },
+    "ServiceLevelAgreementProperty": {
+      "type": "object",
+      "properties": {
+        "property": {
+          "type": "string",
+          "description": "Specific property in SLA, check the periodic table. May requires units (more details to come)."
+        },
+        "value": {
+          "type": "string",
+          "description": "Agreement value. The label will change based on the property itself."
+        },
+        "valueExt": {
+          "type": "string",
+          "description": "Extended agreement value. The label will change based on the property itself."
+        },
+        "unit": {
+          "type": "string",
+          "description": "**d**, day, days for days; **y**, yr, years for years, etc. Units use the ISO standard."
+        },
+        "column": {
+          "type": "string",
+          "description": "Column(s) to check on. Multiple columns should be extremely rare and, if so, separated by commas."
+        },
+        "driver": {
+          "type": "string",
+          "description": "Describes the importance of the SLA from the list of: `regulatory`, `analytics`, or `operational`.",
+          "examples": ["regulatory", "analytics", "operational"]
+        }
+      },
+      "required": ["property", "value"]
+    },
+    "CustomProperty": {
+      "type": "object",
+      "properties": {
+        "property": {
+          "type": "string",
+          "description": "The name of the key. Names should be in camel case–the same as if they were permanent properties in the contract."
+        },
+        "value": {
+          "type": "object",
+          "description": "The value of the key."
+        }
+      }
+    }
+  }
+}

@@ -244,6 +244,20 @@ class DestinationSecretsTest {
   }
 
   @Test
+  void decryptedOrAsStored_opensWhatItCanAndKeepsWhatItCannot() {
+    SubscriptionDestination stored = oauth2Destination();
+    Map<String, Object> plainAuth = new LinkedHashMap<>(authTypeOf(stored));
+    DestinationSecrets.encrypt(List.of(stored));
+    SubscriptionDestination notWrittenForIt =
+        buildOAuth2Destination("client", Fernet.getInstance().encrypt("a value held elsewhere"));
+
+    assertEquals(plainAuth, authTypeOf(DestinationSecrets.decryptedOrAsStored(stored)));
+    assertEquals(
+        authTypeOf(notWrittenForIt),
+        authTypeOf(DestinationSecrets.decryptedOrAsStored(notWrittenForIt)));
+  }
+
+  @Test
   void mask_hidesEverySecretOfTheAlertAndItsHistory_onACopy() {
     SubscriptionDestination stored = incomingWebhook(SubscriptionType.WEBHOOK);
     stored.withConfig(withBearer(configOf(stored), "hmac-key"));

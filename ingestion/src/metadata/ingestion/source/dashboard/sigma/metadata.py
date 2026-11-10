@@ -15,17 +15,22 @@ from collections.abc import Iterable
 from datetime import datetime
 from functools import cached_property
 
+import sqlparse
 from cachetools import LRUCache
 
 from metadata.domain.table_reference import TableReference
 from metadata.entity_resolution.table_binding import TableLookup, UnsupportedTableReferenceError
 from metadata.entity_resolution.table_search import get_table_binding_resolution
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
+from metadata.generated.schema.api.data.createCustomProperty import (
+    CreateCustomPropertyRequest,
+)
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
 from metadata.generated.schema.api.data.createDashboardDataModel import (
     CreateDashboardDataModelRequest,
 )
 from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import (
     DashboardDataModel,
     DataModelType,
@@ -42,6 +47,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.generated.schema.type.basic import (
+    EntityExtension,
     EntityName,
     FullyQualifiedEntityName,
     Markdown,
@@ -55,7 +61,14 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.custom_properties import (
+    CustomPropertyDataTypes,
+    OMetaCustomProperties,
+)
+from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.ometa_lineage import OMetaLineageRequest
+from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
@@ -80,8 +93,15 @@ from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
 
+# Stable: tags already applied keep this name (ADR:2026-11-07-sigma-badges-are-tags-in-the-sigmabadge-classification)
+SIGMA_BADGE_CLASSIFICATION = "SigmaBadge"
+
+
 # Distinct table references resolved per run; past it a reference is searched again
 MAX_RESOLVED_TABLES = 1_000
+
+# A SELECT needs an output table for the parser to expose its column mappings.
+COLUMN_LINEAGE_TARGET = "sigma_query_output"
 
 # Sigma connection types, lower-cased, as the spec names them for the warehouses OpenMetadata parses
 SIGMA_CONNECTION_DIALECTS = {
@@ -98,6 +118,12 @@ SIGMA_CONNECTION_DIALECTS = {
 
 def _access_details(moment: datetime | None) -> AccessDetails | None:
     return AccessDetails(timestamp=Timestamp(datetime_to_timestamp(moment, milliseconds=True))) if moment else None
+
+
+# Dashboard custom property set from the workbook (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
+# The spec types it number(double), so it is not registered as an integer
+# (ADR:2026-11-07-sigma-latest-version-is-a-number-dashboard-custom-property).
+LATEST_VERSION = "latestVersion"
 
 
 class SigmaSource(DashboardServiceSource):
@@ -144,14 +170,33 @@ class SigmaSource(DashboardServiceSource):
         """
         return dashboard.name
 
+    def get_project_name(self, dashboard_details: WorkbookDetails) -> str | None:
+        """
+        The workspace: Sigma's path starts with it and continues with the folders
+        (ADR:2026-11-07-a-sigma-dashboard-project-is-the-workbook-workspace)
+        """
+        return dashboard_details.path.split("/")[0] if dashboard_details.path else None
+
     def get_dashboard_details(self, dashboard: Workbook) -> WorkbookDetails | None:
         """
         get dashboard details
         """
         dashboard_details = self.client.get_dashboard_detail(dashboard.workbookId)
+        if dashboard_details and self.source_config.includeTags:
+            dashboard_details.badge = self.client.get_badge(dashboard.workbookId)
         if dashboard_details:
             dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
         return dashboard_details
+
+    def yield_tags(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaTagAndClassification]]:
+        """The workbook's certification badge (Endorsed, Warning, Deprecated) as a tag"""
+        if dashboard_details and dashboard_details.badge:
+            yield from self.yield_tag_definitions(
+                tags=[dashboard_details.badge],
+                classification_name=SIGMA_BADGE_CLASSIFICATION,
+                classification_description="Certification badges of Sigma documents",
+                tag_description="Sigma certification badge",
+            )
 
     def yield_dashboard(self, dashboard_details: WorkbookDetails) -> Iterable[Either[CreateDashboardRequest]]:
         """
@@ -192,6 +237,12 @@ class SigmaSource(DashboardServiceSource):
                 else None,
                 service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 sourceUrl=SourceUrl(dashboard_details.url),
+                tags=self.get_tag_labels(
+                    entity_fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.workbookId),
+                    tags=[dashboard_details.badge] if dashboard_details.badge else None,
+                    classification_name=SIGMA_BADGE_CLASSIFICATION,
+                ),
+                project=self.get_project_name(dashboard_details=dashboard_details),
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
                 lifeCycle=LifeCycle(
                     created=_access_details(dashboard_details.createdAt),
@@ -218,6 +269,8 @@ class SigmaSource(DashboardServiceSource):
             return
 
         for chart in dashboard_details.elements:
+            if not chart.is_data_element:
+                continue
             try:
                 display_name = chart.name or f"Element {chart.elementId}"
                 if filter_by_chart(self.source_config.chartFilterPattern, display_name):
@@ -341,8 +394,7 @@ class SigmaSource(DashboardServiceSource):
         Yield lineage using file-based API (fallback method)
         """
         for data_model in self.data_models or []:
-            # Skip non-visualization elements to avoid Sigma API 500 errors.
-            if data_model.vizualizationType:
+            if data_model.is_data_element:
                 yield from self._yield_lineage_from_files_for_element(dashboard_details, data_model, db_service_prefix)
 
     def _yield_lineage_from_files_for_element(
@@ -416,6 +468,107 @@ class SigmaSource(DashboardServiceSource):
                 column_lineage=column_lineage.get(str(table.id.root), []),
             )
 
+    def _parse_sql_lineage(self, query: str, dialect: Dialect) -> tuple[list[str], list[tuple[str, str, str]]]:
+        """Source tables and output-column paths for a single SELECT."""
+        try:
+            statements = [statement for statement in sqlparse.parse(query) if str(statement).strip()]
+            single_select = len(statements) == 1 and statements[0].get_type() == "SELECT"
+        except Exception:
+            single_select = False
+
+        parser_type = self.get_query_parser_type()
+        if single_select:
+            parser = LineageParser(f"INSERT INTO {COLUMN_LINEAGE_TARGET} {query}", dialect, parser_type=parser_type)
+            # LineageParser's third-party cached properties lack iterable type annotations.
+            source_tables = [str(table) for table in parser.source_tables or []]  # pyright: ignore[reportGeneralTypeIssues]
+            if source_tables:
+                try:
+                    column_paths = [
+                        (str(path[0].parent), path[0].raw_name, path[-1].raw_name)
+                        for path in parser.column_lineage or []  # pyright: ignore[reportGeneralTypeIssues]
+                        if str(path[-1].parent).rsplit(".", 1)[-1] == COLUMN_LINEAGE_TARGET
+                    ]
+                except Exception as exc:
+                    logger.debug("Could not read Sigma SQL column lineage: %s", exc)
+                    column_paths = []
+                return source_tables, column_paths
+
+        parser = LineageParser(query, dialect, parser_type=parser_type)
+        return [str(table) for table in parser.source_tables or []], []  # pyright: ignore[reportGeneralTypeIssues]
+
+    @staticmethod
+    def _expand_sql_wildcards(
+        column_paths: list[tuple[str, str, str]], resolved_tables: dict[str, Table]
+    ) -> list[tuple[str, str, str]]:
+        """Expand fully resolved wildcards, excluding ambiguous output names."""
+        wildcard_tables = {table for table, column, _ in column_paths if column == "*"}
+        if not wildcard_tables:
+            return column_paths
+        explicit_paths = [path for path in column_paths if path[1] != "*"]
+        if any(table not in resolved_tables or not resolved_tables[table].columns for table in wildcard_tables):
+            # The parser can also materialize concrete paths from an unresolved star.
+            return []
+
+        wildcard_paths = [
+            (table, model_str(column.name), model_str(column.name))
+            for table in wildcard_tables
+            for column in resolved_tables[table].columns or []
+        ]
+        wildcard_names = {normalize_column_name(output) for _, _, output in wildcard_paths}
+        sources_by_output: dict[str, set[tuple[str, str]]] = {}
+        for table, column, output in explicit_paths + wildcard_paths:
+            sources_by_output.setdefault(normalize_column_name(output), set()).add((table, column))
+        ambiguous = {name for name in wildcard_names if len(sources_by_output[name]) > 1}
+        return [path for path in explicit_paths + wildcard_paths if normalize_column_name(path[2]) not in ambiguous]
+
+    @staticmethod
+    def _omit_ambiguous_sql_columns(
+        column_paths: list[tuple[str, str, str]], resolved_tables: dict[str, Table]
+    ) -> list[tuple[str, str, str]]:
+        """
+        Omit outputs whose source column more than one table could hold. The parser gives an unqualified column a
+        path from every table it reads, which looks the same as an expression over that column of two tables.
+        """
+        tables_by_source: dict[tuple[str, str], set[str]] = {}
+        for table, column, output in column_paths:
+            table_entity = resolved_tables.get(table)
+            # A table missing from OpenMetadata, or without known columns, could hold the column too
+            if not (table_entity and table_entity.columns) or get_column_fqn(table_entity=table_entity, column=column):
+                tables_by_source.setdefault((normalize_column_name(output), column.lower()), set()).add(table)
+        ambiguous = {output for (output, _), tables in tables_by_source.items() if len(tables) > 1}
+        return [path for path in column_paths if normalize_column_name(path[2]) not in ambiguous]
+
+    @staticmethod
+    def _get_sql_column_lineage(
+        column_paths: list[tuple[str, str, str]],
+        source_table: str,
+        table: Table,
+        data_model: DashboardDataModel,
+    ) -> list[ColumnLineage]:
+        """Map parsed SQL output columns to the element's display columns."""
+        from_names_by_target: dict[str, list[str]] = {}
+        for path_table, source_column, output_column in column_paths:
+            if path_table != source_table:
+                continue
+            from_names_by_target.setdefault(output_column, []).append(source_column)
+
+        lineage = []
+        for output_column, source_columns in from_names_by_target.items():
+            targets = [
+                column
+                for column in data_model.columns or []
+                if normalize_column_name(column.displayName or model_str(column.name))
+                == normalize_column_name(output_column)
+            ]
+            from_columns = [
+                FullyQualifiedEntityName(column_fqn)
+                for source_column in dict.fromkeys(source_columns)
+                if (column_fqn := get_column_fqn(table_entity=table, column=source_column))
+            ]
+            if len(targets) == 1 and targets[0].fullyQualifiedName and from_columns:
+                lineage.append(ColumnLineage(fromColumns=from_columns, toColumn=targets[0].fullyQualifiedName))
+        return lineage
+
     def yield_dashboard_lineage_details(
         self,
         dashboard_details: WorkbookDetails,
@@ -444,10 +597,7 @@ class SigmaSource(DashboardServiceSource):
 
         for data_model in self.data_models or []:
             try:
-                # Skip non-visualization elements (text boxes, dividers,
-                # buttons, controls) to avoid Sigma API 500 errors on elements
-                # that carry no upstream lineage.
-                if not data_model.vizualizationType:
+                if not data_model.is_data_element:
                     continue
 
                 data_model_entity = self._get_datamodel(datamodel_id=data_model.elementId)
@@ -471,11 +621,8 @@ class SigmaSource(DashboardServiceSource):
                         else Dialect.ANSI
                     )
                 )
-                lineage_parser = LineageParser(query_obj.sql, dialect, parser_type=self.get_query_parser_type())
-
-                tables: list[Table] = []
-                # LineageParser's third-party cached_property carries no type
-                source_tables: list = lineage_parser.source_tables or []  # pyright: ignore[reportAssignmentType]
+                source_tables, column_paths = self._parse_sql_lineage(query_obj.sql, dialect)
+                resolved_tables: dict[str, Table] = {}
                 for source_table in source_tables:
                     try:
                         database_schema_table = fqn.split_table_name(str(source_table))
@@ -496,10 +643,18 @@ class SigmaSource(DashboardServiceSource):
                         )
                         continue
                     if isinstance(table_entity, Table):
-                        tables.append(table_entity)
-                yield from self._yield_table_and_column_lineage(
-                    tables, data_model_entity, data_model.columns, all_sources_found=len(tables) == len(source_tables)
+                        resolved_tables[source_table] = table_entity
+                column_paths = self._omit_ambiguous_sql_columns(
+                    self._expand_sql_wildcards(column_paths, resolved_tables), resolved_tables
                 )
+                for source_table, table_entity in resolved_tables.items():
+                    yield self._get_add_lineage_request(
+                        to_entity=data_model_entity,
+                        from_entity=table_entity,
+                        column_lineage=self._get_sql_column_lineage(
+                            column_paths, source_table, table_entity, data_model_entity
+                        ),
+                    )
 
             except Exception as exc:
                 yield Either(
@@ -549,6 +704,85 @@ class SigmaSource(DashboardServiceSource):
                     self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
                 )
 
+    def yield_dashboard_extension(self, dashboard_details: WorkbookDetails) -> Iterable[Either[PatchRequest]]:
+        """The workbook's latest published version, which changes each time the workbook is published"""
+        if not (
+            dashboard_details
+            and self.source_config.includeCustomProperties
+            and dashboard_details.latestVersion is not None
+        ):
+            return
+        try:
+            if not self._latest_version_defined:
+                return
+            dashboard = self.metadata.get_by_name(
+                entity=Dashboard,
+                fqn=fqn._build(vars(self.context.get())["dashboard_service"], dashboard_details.workbookId),
+                fields=["extension"],
+            )
+            if not dashboard:
+                return
+            stored = dashboard.extension.root if dashboard.extension else {}
+            # The properties a user set on the dashboard are sent back as they are, so the patch only touches this one
+            yield Either(
+                left=None,
+                right=PatchRequest(
+                    original_entity=dashboard,
+                    new_entity=dashboard.model_copy(
+                        update={
+                            "extension": EntityExtension({**stored, LATEST_VERSION: dashboard_details.latestVersion})
+                        }
+                    ),
+                    override_metadata=True,
+                ),
+            )
+        except Exception as exc:
+            yield Either(
+                left=StackTraceError(
+                    name=f"{dashboard_details.name} Custom Properties",
+                    error=f"Error setting the latest version of Sigma workbook {dashboard_details.workbookId}: {exc}",
+                    stackTrace=traceback.format_exc(),
+                ),
+                right=None,
+            )
+
+    @cached_property
+    def _latest_version_defined(self) -> bool:
+        """
+        Whether dashboards hold LATEST_VERSION as a number, registering it once per run. A property of that name
+        with another type is left alone: changing its type would invalidate the value every dashboard holds.
+        """
+        defined = {
+            prop.get("name"): (prop.get("propertyType") or {}).get("name")
+            for prop in self.metadata.get_entity_custom_properties(entity_type=Dashboard) or []
+        }
+        if LATEST_VERSION in defined:
+            if defined[LATEST_VERSION] == CustomPropertyDataTypes.NUMBER.value:
+                return True
+            logger.warning(
+                "Dashboard custom property %s exists as %s, not %s; Sigma won't set it",
+                LATEST_VERSION,
+                defined[LATEST_VERSION],
+                CustomPropertyDataTypes.NUMBER.value,
+            )
+            return False
+        try:
+            self.metadata.create_or_update_custom_property(
+                OMetaCustomProperties(
+                    entity_type=Dashboard,
+                    createCustomPropertyRequest=CreateCustomPropertyRequest(
+                        name=EntityName(LATEST_VERSION),
+                        description=Markdown("The most recently published version of the Sigma workbook"),
+                        propertyType=self.metadata.get_property_type_ref(CustomPropertyDataTypes.NUMBER),
+                    ),
+                )
+            )
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not register dashboard custom property %s: %s", LATEST_VERSION, exc)
+            return False
+        return True
+
     def get_column_info(self, element: Elements) -> list[Column] | None:
         """Build data model columns"""
         datamodel_columns = []
@@ -577,9 +811,7 @@ class SigmaSource(DashboardServiceSource):
         if self.source_config.includeDataModels:
             self.data_models = []
             for data_model in dashboard_details.elements:
-                # Skip non-visualization elements (text boxes, dividers, buttons, controls)
-                # to avoid creating DataModel entries for elements that have no data source.
-                if not data_model.vizualizationType:
+                if not data_model.is_data_element:
                     continue
                 display_name = data_model.name or f"Element {data_model.elementId}"
                 if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):

@@ -268,3 +268,50 @@ def test_table_file_is_read_once_for_elements_sharing_it(sigma_client_over_http)
 
     assert tables == [["ORDERS"], ["ORDERS"]]
     assert calls["GET", "/v2/files/T1"] == 1
+
+
+@pytest.mark.parametrize("page_token", ["2", "opaque-next-page"])
+@pytest.mark.parametrize("listing", ["workbooks", "pages", "queries"])
+def test_paginated_listings_keep_entries_from_every_page(page_token, listing):
+    client = SigmaApiClient(
+        SigmaConnection(
+            hostPort="https://api.sigmacomputing.com",
+            clientId="test-client",
+            clientSecret="test-secret",
+        )
+    )
+    routes = sigma_routes()
+    path = "/v2/workbooks" if listing == "workbooks" else f"/v2/workbooks/wb-1/{listing}"
+    if listing == "workbooks":
+        entries = [sigma_workbook("wb-1", "member-1"), sigma_workbook("wb-2", "member-1")]
+    elif listing == "pages":
+        entries = [{"pageId": "page-1"}, {"pageId": "page-2"}]
+        for index in (1, 2):
+            routes["GET", f"{path}/page-{index}/elements"] = {
+                "entries": [{"elementId": f"el-{index}"}],
+                "nextPage": None,
+            }
+    else:
+        entries = [{"elementId": "el-1", "sql": "SELECT 1"}, {"elementId": "el-2", "sql": "SELECT 2"}]
+    routes["GET", path] = {"entries": entries[:1], "nextPage": page_token}
+    routes["GET", path, page_token] = {"entries": entries[1:], "nextPage": None}
+
+    def answer(method, url, params=None, **_):
+        request_path = urlparse(str(url)).path
+        page = (params or {}).get("page")
+        key = (method, request_path, str(page)) if page is not None else (method, request_path)
+        response = requests.Response()
+        response.status_code = 200
+        response._content = json.dumps(routes[key]).encode()
+        return response
+
+    client.client._session.request = answer
+    client.token_client._session.request = answer
+    if listing == "workbooks":
+        assert [workbook.workbookId for workbook in client.get_dashboards()] == ["wb-1", "wb-2"]
+    elif listing == "pages":
+        assert [element.elementId for element in client.get_chart_details("wb-1")] == ["el-1", "el-2"]
+    else:
+        result = client.get_workbook_queries("wb-1")
+        assert result is not None
+        assert [query.sql for query in result.entries] == ["SELECT 1", "SELECT 2"]

@@ -55,6 +55,7 @@ import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMig
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
@@ -70,6 +71,7 @@ public class Migration extends MigrationProcessImpl {
     // First, so no later step loads an entity still typed DeltaLake:
     // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, POSTGRES, getPipelineServiceClient());
+    ODCSCustomPropertiesMigration.migrate(handle, POSTGRES);
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationReferenceMigration.migrate(handle, POSTGRES);
     refreshConversationNotificationTemplates();
