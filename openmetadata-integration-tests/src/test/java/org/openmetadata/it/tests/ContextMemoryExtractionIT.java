@@ -737,18 +737,10 @@ class ContextMemoryExtractionIT {
             privately(),
             List.of(SharedEntities.get().USER2_REF));
     ContextMemory memory =
-        memories(SdkClients.user1Client())
-            .create(
-                new CreateContextMemory()
-                    .withName(ns.prefix("owned-note"))
-                    .withQuestion("What is the refund window?")
-                    .withAnswer("Thirty days.")
-                    .withSourceType(ContextMemorySourceType.MANUAL)
-                    .withMemoryScope(ContextMemoryScope.ENTITY_SCOPED)
-                    .withShareConfig(
-                        new MemoryShareConfig().withVisibility(MemoryVisibility.ENTITY))
-                    .withPrimaryEntity(original.getEntityReference())
-                    .withSourceEntity(original.getEntityReference()));
+        pill("Thirty days.", original.getEntityReference(), ContextMemorySourceType.MANUAL)
+            .withQuestion("What is the refund window?")
+            .withOwners(List.of(SharedEntities.get().USER1_REF));
+    memoryRepository().create(null, memory);
     namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
     memoryRepository().linkExtractedMemory(memory.getId(), privateCopy.getEntityReference());
 
@@ -769,6 +761,27 @@ class ContextMemoryExtractionIT {
     assertTrue(response.contains(memory.getName()), response);
     assertTrue(response.contains(privateCopy.getId().toString()), response);
     assertFalse(response.contains(privateCopy.getName()), response);
+    assertSearchKeepsThePrivateAnchorUnnamed(memory, privateCopy);
+  }
+
+  private static void assertSearchKeepsThePrivateAnchorUnnamed(
+      ContextMemory memory, ContextFile privateCopy) {
+    String byId = "{\"query\":{\"term\":{\"id.keyword\":\"" + memory.getId() + "\"}}}";
+    Awaitility.await("the owner's search result has the new anchor")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              String hit =
+                  SdkClients.user1Client()
+                      .search()
+                      .query("*")
+                      .index("context_memory_search_index")
+                      .queryFilter(byId)
+                      .execute();
+              assertTrue(hit.contains(memory.getId().toString()), hit);
+              assertTrue(hit.contains(privateCopy.getId().toString()), hit);
+              assertFalse(hit.contains(privateCopy.getName()), hit);
+            });
   }
 
   /** The org-wide copy that took the anchor keeps it, and the restored file is a source again. */

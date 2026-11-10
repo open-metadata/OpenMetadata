@@ -266,19 +266,17 @@ Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclo
   permanent and releases its memories; `PUT /pages/restore` exists but has nothing to restore.
 - **Where a restricted document is named.** Linking and lifecycle writes never add a document not
   everyone may read to a memory's related entities; a person's own edit can, and is recorded as made.
-  Each lifecycle write, the archive's soft delete and the restore included, records such a document
+  A lifecycle link update records such a document
   by id and type alone, in the memory as it was and as it leaves it: in its change, its change event
   and the version it stores. A memory shows such a document as its source only when it is the
-  memory's anchor, whose readers are the memory's readers, or when no anchor and no document
+  memory's anchor, or when no anchor and no document
   everyone may read is linked (`MemorySourceDisclosure`). Other writes record what they read, such
   as a re-extraction's rewrite while a restricted file anchors the memory, and a memory's readers
-  change with its anchor. So every read of a memory's history, its versions and its last change,
-  names a file only to a caller who may read that file now (`ContextMemoryDocumentAccess`): the
-  version list, one version, the `/history` endpoint, which all take the resource's snapshot
-  redaction, and the last change of every memory a read returns. Any other caller sees the file's id
-  and type. An article reads to everyone, and an admin reads every file. An archived memory keeps
-  the id and type its archive wrote for a restricted link, in its row and its search document, until
-  it is restored.
+  change with its anchor. Owning a memory does not grant access to the files it cites.
+  `ContextMemoryDocumentAccess` checks file access on current REST and MCP reads, the version list,
+  a single version, and `/history`. A reader who cannot access a file sees its id and type.
+  The search index keeps only the id and type for restricted file references, including on reindex.
+  An article reads to everyone, and an admin reads every file.
 - **Naming.** An extracted memory, and a copy, is named `memory-<uuid>`. A name is the memory's FQN
   and never changes, and a memory can move to a document whose readers may not read the one it came
   from, so a name names no document. Memories extracted before this change keep their
