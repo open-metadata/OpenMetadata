@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-10 (initial)
 - **Deciders:** Adrià Manero
-- **Guard:** `IngestionPipelineRepositoryTest.deployFollowsTheServerLogStorageSetting`; `IngestionPipelineRepositoryTest.redeployBeforeUpdateKeepsTheFlagTheDeployDecided`
+- **Guard:** `IngestionPipelineRepositoryTest.deployFollowsTheServerLogStorageSetting`; `IngestionPipelineRepositoryTest.redeployBeforeUpdateKeepsTheFlagTheDeployDecided`; `IngestionPipelineRepositoryTest.editThatRedeploysRecordsTheFlagTheDeployDecided`
 - **Related:** #37287; #36568; PR #28741
 
 ## Context

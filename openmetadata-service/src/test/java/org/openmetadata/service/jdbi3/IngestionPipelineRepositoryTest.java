@@ -45,7 +45,9 @@ import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.security.secrets.SecretsManagerConfiguration;
 import org.openmetadata.schema.security.secrets.SecretsManagerProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.sdk.RunOptions;
@@ -429,11 +431,44 @@ class IngestionPipelineRepositoryTest {
 
   @Test
   void redeployBeforeUpdateKeepsTheFlagTheDeployDecided() {
-    IngestionPipeline pipeline =
-        createBasicPipeline()
-            .withSourceConfig(
-                new SourceConfig().withConfig(new HashMap<>(Map.of("type", "DatabaseMetadata"))))
-            .withEnableStreamableLogs(false);
+    IngestionPipeline pipeline = deployedPipelineScheduledAt("0 * * * *");
+    IngestionPipelineRepository deploymentRepository = repositoryDeployingWithS3LogStorage();
+
+    runDeploy(() -> deploymentRepository.deployPipelineBeforeUpdate(pipeline));
+
+    assertTrue(pipeline.getEnableStreamableLogs());
+  }
+
+  @Test
+  void editThatRedeploysRecordsTheFlagTheDeployDecided() {
+    IngestionPipeline original = deployedPipelineScheduledAt("0 * * * *");
+    IngestionPipeline updated = deployedPipelineScheduledAt("0 0 * * *");
+    IngestionPipelineRepository.IngestionPipelineUpdater updater =
+        repositoryDeployingWithS3LogStorage()
+        .new IngestionPipelineUpdater(original, updated, EntityRepository.Operation.PUT);
+    updater.changeDescription = new ChangeDescription();
+
+    runDeploy(() -> updater.entitySpecificUpdate(false));
+
+    assertTrue(updated.getEnableStreamableLogs());
+    assertEquals(
+        List.of(true),
+        updater.changeDescription.getFieldsUpdated().stream()
+            .filter(change -> "enableStreamableLogs".equals(change.getName()))
+            .map(FieldChange::getNewValue)
+            .toList());
+  }
+
+  private static IngestionPipeline deployedPipelineScheduledAt(String schedule) {
+    return createBasicPipeline()
+        .withUpdatedBy("admin")
+        .withAirflowConfig(new AirflowConfig().withScheduleInterval(schedule))
+        .withSourceConfig(
+            new SourceConfig().withConfig(new HashMap<>(Map.of("type", "DatabaseMetadata"))))
+        .withEnableStreamableLogs(false);
+  }
+
+  private IngestionPipelineRepository repositoryDeployingWithS3LogStorage() {
     PipelineServiceClientInterface pipelineServiceClient =
         mock(PipelineServiceClientInterface.class);
     when(pipelineServiceClient.deployPipeline(any(), any()))
@@ -444,7 +479,10 @@ class IngestionPipelineRepositoryTest {
         new LogStorageConfiguration()
             .withType(LogStorageConfiguration.Type.S_3)
             .withBucketName("logs"));
+    return deploymentRepository;
+  }
 
+  private static void runDeploy(Runnable deploy) {
     try (MockedConstruction<OpenMetadataConnectionBuilder> connectionBuilder =
             Mockito.mockConstruction(
                 OpenMetadataConnectionBuilder.class,
@@ -455,10 +493,8 @@ class IngestionPipelineRepositoryTest {
           .when(() -> Entity.getEntity(any(EntityReference.class), any(), any(Include.class)))
           .thenReturn(mock(ServiceEntityInterface.class));
 
-      deploymentRepository.deployPipelineBeforeUpdate(pipeline);
+      deploy.run();
     }
-
-    assertTrue(pipeline.getEnableStreamableLogs());
   }
 
   @Test
