@@ -602,6 +602,8 @@ export enum AuthProvider {
  * Regex to only include/exclude node and relationship properties (columns) that match the
  * pattern, e.g. properties written back by graph algorithms.
  *
+ * Regex to only include/exclude node and edge properties (columns) that match the pattern.
+ *
  * Regex to only fetch subjects/streams that match the pattern.
  *
  * Regex to only include/exclude domains that match the pattern.
@@ -3193,6 +3195,11 @@ export interface DBTPrefixConfig {
  *
  * AWS credentials required to access the S3 file.
  *
+ * AWS credentials used to sign (SigV4) requests to the Neptune data API. Leave the keys
+ * blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity
+ * needs `neptune-db:ReadDataViaQuery`, and also `neptune-db:WriteDataViaQuery` when
+ * `computeSchemaIfMissing` is enabled.
+ *
  * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
@@ -4073,6 +4080,8 @@ export interface ServiceConnection {
  *
  * Neo4j Connection Config
  *
+ * Amazon Neptune (openCypher property graph) Connection Config
+ *
  * Kafka Connection Config
  *
  * Redpanda Connection Config
@@ -4479,6 +4488,10 @@ export interface AirflowConnectionObject {
      *
      * Host and port of the Neo4j server, e.g. `localhost:7687`. The port can be omitted to use
      * 7687.
+     *
+     * Neptune cluster or instance endpoint, e.g.
+     * `my-cluster.cluster-abc.us-east-1.neptune.amazonaws.com:8182`. The port can be omitted to
+     * use 8182.
      *
      * Pub/Sub APIs URL. For local testing with the emulator, use http://localhost:8085.
      *
@@ -4948,7 +4961,13 @@ export interface AirflowConnectionObject {
      * AWS Account ID
      */
     awsAccountId?: string;
-    awsConfig?:    AWSCredentials;
+    /**
+     * AWS credentials used to sign (SigV4) requests to the Neptune data API. Leave the keys
+     * blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity
+     * needs `neptune-db:ReadDataViaQuery`, and also `neptune-db:WriteDataViaQuery` when
+     * `computeSchemaIfMissing` is enabled.
+     */
+    awsConfig?: AWSCredentials;
     /**
      * The authentication method that the user uses to sign in.
      */
@@ -5163,7 +5182,10 @@ export interface AirflowConnectionObject {
      * Optional name to give to the database in OpenMetadata. If left blank, we will use 'epic'
      * as the database name.
      *
-     * Neo4j database to extract metadata from. If left blank, the user's home database is used.
+     * Neo4j database to extract metadata from. If left blank, the user's home database is
+     * used.
+     *
+     * Optional name to give to the database in OpenMetadata. If left blank, `default` is used.
      */
     databaseName?: string;
     /**
@@ -5780,13 +5802,30 @@ export interface AirflowConnectionObject {
     /**
      * Also ingest relationship types as tables in the `relationships` schema, with their
      * properties as columns.
+     *
+     * Also ingest edge labels as tables in the `relationships` schema, with their properties as
+     * columns.
      */
     includeRelationships?: boolean;
     /**
      * Regex to only include/exclude node and relationship properties (columns) that match the
      * pattern, e.g. properties written back by graph algorithms.
+     *
+     * Regex to only include/exclude node and edge properties (columns) that match the pattern.
      */
     propertyFilterPattern?: FilterPattern;
+    /**
+     * When Neptune has no computed property graph schema yet, start `CALL
+     * neptune.graph.pg_schema.compute()` and wait for it to finish. This requires write
+     * permission (`neptune-db:WriteDataViaQuery`) in addition to read. If disabled, ingestion
+     * fails when the schema is missing.
+     */
+    computeSchemaIfMissing?: boolean;
+    /**
+     * Maximum time to wait for Neptune to finish computing the property graph schema before
+     * failing.
+     */
+    schemaComputeTimeoutSeconds?: number;
     /**
      * basic.auth.user.info schema registry config property, Client HTTP credentials in the form
      * of username:password.
@@ -6571,6 +6610,11 @@ export enum AuthMechanismEnum {
  *
  * AWS credentials required to access the S3 file.
  *
+ * AWS credentials used to sign (SigV4) requests to the Neptune data API. Leave the keys
+ * blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity
+ * needs `neptune-db:ReadDataViaQuery`, and also `neptune-db:WriteDataViaQuery` when
+ * `computeSchemaIfMissing` is enabled.
+ *
  * AWS credentials for generating MWAA CLI token.
  *
  * AWS credentials configuration.
@@ -6824,6 +6868,11 @@ export enum AuthType {
  * AWS credentials configs.
  *
  * AWS credentials required to access the S3 file.
+ *
+ * AWS credentials used to sign (SigV4) requests to the Neptune data API. Leave the keys
+ * blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity
+ * needs `neptune-db:ReadDataViaQuery`, and also `neptune-db:WriteDataViaQuery` when
+ * `computeSchemaIfMissing` is enabled.
  *
  * AWS credentials for generating MWAA CLI token.
  *
@@ -8818,6 +8867,7 @@ export enum AirflowConnectionType {
     Mysql = "Mysql",
     Nats = "Nats",
     Neo4J = "Neo4j",
+    Neptune = "Neptune",
     Nifi = "Nifi",
     Omni = "Omni",
     OpenLineage = "OpenLineage",

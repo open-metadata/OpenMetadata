@@ -1,0 +1,203 @@
+{
+  "title": "NeptuneConnection",
+  "description": "Amazon Neptune (openCypher property graph) Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.NeptuneConnection",
+  "definitions": {
+    "neptuneType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": [
+        "Neptune"
+      ],
+      "default": "Neptune"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "default": "Neptune",
+      "type": "string",
+      "enum": [
+        "Neptune"
+      ]
+    },
+    "awsConfig": {
+      "title": "AWS Credentials Configuration",
+      "description": "AWS credentials used to sign (SigV4) requests to the Neptune data API. Leave the keys blank to use the standard AWS credential provider chain, e.g. an IAM role. The identity needs `neptune-db:ReadDataViaQuery`, and also `neptune-db:WriteDataViaQuery` when `computeSchemaIfMissing` is enabled.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.security.credentials.AWSCredentials",
+      "properties": {
+        "enabled": {
+          "title": "Enable IAM Auth",
+          "description": "Enable AWS IAM authentication. When enabled, uses the default credential provider chain (environment variables, instance profile, etc.). Defaults to false for backward compatibility.",
+          "type": "boolean",
+          "default": false
+        },
+        "awsAccessKeyId": {
+          "title": "AWS Access Key ID",
+          "description": "AWS Access key ID.",
+          "type": "string"
+        },
+        "awsSecretAccessKey": {
+          "title": "AWS Secret Access Key",
+          "description": "AWS Secret Access Key.",
+          "type": "string",
+          "format": "password"
+        },
+        "awsRegion": {
+          "title": "AWS Region",
+          "description": "AWS Region",
+          "type": "string"
+        },
+        "awsSessionToken": {
+          "title": "AWS Session Token",
+          "description": "AWS Session Token.",
+          "type": "string",
+          "format": "password"
+        },
+        "endPointURL": {
+          "title": "Endpoint URL",
+          "description": "EndPoint URL for the AWS",
+          "type": "string",
+          "format": "uri"
+        },
+        "profileName": {
+          "title": "Profile Name",
+          "description": "The name of a profile to use with the boto session.",
+          "type": "string"
+        },
+        "assumeRoleArn": {
+          "title": "Role Arn for Assume Role",
+          "description": "The Amazon Resource Name (ARN) of the role to assume. Required Field in case of Assume Role",
+          "type": "string"
+        },
+        "assumeRoleSessionName": {
+          "title": "Role Session Name for Assume Role",
+          "description": "An identifier for the assumed role session. Use the role session name to uniquely identify a session when the same role is assumed by different principals or for different reasons. Required Field in case of Assume Role",
+          "type": "string",
+          "default": "OpenMetadataSession"
+        },
+        "assumeRoleSourceIdentity": {
+          "title": "Source Identity for Assume Role",
+          "description": "The Amazon Resource Name (ARN) of the role to assume. Optional Field in case of Assume Role",
+          "type": "string"
+        }
+      },
+      "additionalProperties": false,
+      "required": [
+        "awsRegion"
+      ]
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "Neptune cluster or instance endpoint, e.g. `my-cluster.cluster-abc.us-east-1.neptune.amazonaws.com:8182`. The port can be omitted to use 8182.",
+      "type": "string"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, `default` is used.",
+      "type": "string"
+    },
+    "includeRelationships": {
+      "title": "Include Relationships",
+      "description": "Also ingest edge labels as tables in the `relationships` schema, with their properties as columns.",
+      "type": "boolean",
+      "default": true
+    },
+    "computeSchemaIfMissing": {
+      "title": "Compute Schema If Missing",
+      "description": "When Neptune has no computed property graph schema yet, start `CALL neptune.graph.pg_schema.compute()` and wait for it to finish. This requires write permission (`neptune-db:WriteDataViaQuery`) in addition to read. If disabled, ingestion fails when the schema is missing.",
+      "type": "boolean",
+      "default": true
+    },
+    "schemaComputeTimeoutSeconds": {
+      "title": "Schema Compute Timeout (seconds)",
+      "description": "Maximum time to wait for Neptune to finish computing the property graph schema before failing.",
+      "type": "integer",
+      "default": 900,
+      "minimum": 1
+    },
+    "propertyFilterPattern": {
+      "title": "Property Filter Pattern",
+      "description": "Regex to only include/exclude node and edge properties (columns) that match the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex to only include/exclude tables that matches the pattern.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+      "properties": {
+        "includes": {
+          "description": "List of strings/regex patterns to match and include only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "excludes": {
+          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "description": "Supports Metadata Extraction.",
+      "type": "boolean",
+      "default": true
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "awsConfig",
+    "hostPort"
+  ]
+}

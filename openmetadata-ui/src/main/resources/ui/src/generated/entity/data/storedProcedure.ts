@@ -603,6 +603,7 @@ export enum DatabaseServiceType {
     Mssql = "Mssql",
     Mysql = "Mysql",
     Neo4J = "Neo4j",
+    Neptune = "Neptune",
     Oracle = "Oracle",
     PinotDB = "PinotDB",
     Postgres = "Postgres",
