@@ -17,12 +17,13 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare, Operation as FastJsonPatchOperation } from 'fast-json-patch';
 import { get, isEmpty, isUndefined } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
 import { DataProduct } from '../../../generated/entity/domains/dataProduct';
+import { Include } from '../../../generated/type/include';
 import { EntityReference, Type } from '../../../generated/entity/type';
 import { PipelineViewMode } from '../../../generated/settings/settings';
 import { TagLabel } from '../../../generated/tests/testCase';
@@ -135,6 +136,7 @@ const resolveEntityFetch = (
     return getColumnByFQN(fqn, {
       entityType: EntityType.TABLE,
       fields: 'tags,extension',
+      include: Include.All,
     });
   }
   if (entityType === EntityType.KNOWLEDGE_PAGE) {
@@ -449,14 +451,21 @@ export default function EntitySummaryPanel({
     };
   }, []);
 
+  const latestFetchFqnRef = useRef<string>();
+
   const fetchEntityData = useCallback(async () => {
     if (!entityDetails?.details?.fullyQualifiedName || !entityType) {
       return;
     }
 
+    const fqn = entityDetails.details.fullyQualifiedName;
+    latestFetchFqnRef.current = fqn;
+    // A slower response for a previously selected entity must not overwrite
+    // the current one; a later edit would be diffed against the wrong data.
+    const isStale = () => latestFetchFqnRef.current !== fqn;
+
     setIsEntityDataLoading(true);
     try {
-      const fqn = entityDetails.details.fullyQualifiedName;
       const entityPromise = resolveEntityFetch(entityType, fqn, entityFetchMap);
 
       if (!entityPromise) {
@@ -466,6 +475,9 @@ export default function EntitySummaryPanel({
       }
 
       const data = (await entityPromise) as FetchedEntityData;
+      if (isStale()) {
+        return;
+      }
 
       // The column API returns only the column; the search hit carries its
       // table/schema/service context, so overlay the fresh column onto it.
@@ -475,9 +487,13 @@ export default function EntitySummaryPanel({
           : mergeEntityData(data, entityDetails.details)
       );
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (!isStale()) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsEntityDataLoading(false);
+      if (!isStale()) {
+        setIsEntityDataLoading(false);
+      }
     }
   }, [entityDetails?.details?.fullyQualifiedName, entityType, entityFetchMap]);
 

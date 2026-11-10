@@ -21,6 +21,7 @@ import {
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../../../enums/entity.enum';
 import { ResourceEntity } from '../../../enums/permissions.enum';
+import { Include } from '../../../generated/type/include';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import searchClassBase from '../../../utils/SearchClassBase';
@@ -1365,7 +1366,71 @@ describe('EntitySummaryPanel component tests', () => {
 
       expect(mockGetColumnByFQN).toHaveBeenCalledWith(
         columnHit.fullyQualifiedName,
-        { entityType: EntityType.TABLE, fields: 'tags,extension' }
+        {
+          entityType: EntityType.TABLE,
+          fields: 'tags,extension',
+          include: Include.All,
+        }
+      );
+    });
+
+    it('ignores a late response for a previously selected column', async () => {
+      const columnHit = (fqn: string) => ({
+        ...mockTableEntityDetails,
+        id: fqn,
+        fullyQualifiedName: fqn,
+        entityType: EntityType.TABLE_COLUMN,
+        table: { id: 'parent-table-id' },
+        extension: {},
+      });
+      let resolveFirst: (value: object) => void = jest.fn();
+      mockGetColumnByFQN
+        .mockImplementationOnce(
+          () => new Promise((resolve) => (resolveFirst = resolve))
+        )
+        .mockResolvedValueOnce({ extension: { owner: 'second' } });
+
+      (
+        searchClassBase.getEntitySummaryPanelComponents as jest.Mock
+      ).mockReturnValue({
+        [EntityType.TABLE_COLUMN]: (props: {
+          dataAsset?: { extension?: object };
+        }) => (
+          <div data-testid="captured-column">
+            {JSON.stringify(props.dataAsset?.extension)}
+          </div>
+        ),
+      });
+
+      const { rerender } = render(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.first') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+      rerender(
+        <EntitySummaryPanel
+          entityDetails={{
+            details: columnHit('svc.db.schema.t.second') as unknown as never,
+          }}
+          handleClosePanel={mockHandleClosePanel}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByTestId('captured-column')).toHaveTextContent(
+          JSON.stringify({ owner: 'second' })
+        );
+      });
+
+      await act(async () => {
+        resolveFirst({ extension: { owner: 'first' } });
+      });
+
+      expect(screen.getByTestId('captured-column')).toHaveTextContent(
+        JSON.stringify({ owner: 'second' })
       );
     });
 
