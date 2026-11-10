@@ -23,13 +23,13 @@ import com.google.common.cache.CacheBuilder;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.UnaryOperator;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.type.ChangeDescription;
-import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
@@ -50,17 +50,8 @@ public final class ContextMemoryDocumentAccess {
   /** Distinct files one response decides on; a memory links few, and its history repeats them. */
   private static final int MAX_FILE_DECISIONS = 500;
 
-  private static final String RELATED_ENTITIES = "relatedEntities";
-  private static final List<String> SINGLE_LINKS =
-      List.of("primaryEntity", "sourceEntity", "sourceFile");
   private static final List<String> LINKS =
-      Stream.concat(SINGLE_LINKS.stream(), Stream.of(RELATED_ENTITIES)).toList();
-  private static final String NAME = "name";
-  private static final List<String> CHANGE_DESCRIPTIONS =
-      List.of("changeDescription", "incrementalChangeDescription");
-  private static final List<String> CHANGE_LISTS =
-      List.of("fieldsAdded", "fieldsUpdated", "fieldsDeleted");
-  private static final List<String> VALUES = List.of("oldValue", "newValue");
+      List.of("primaryEntity", "relatedEntities", "sourceEntity", "sourceFile");
 
   @FunctionalInterface
   interface FileAccess {
@@ -69,18 +60,12 @@ public final class ContextMemoryDocumentAccess {
 
   private ContextMemoryDocumentAccess() {}
 
-  /** Every version as the caller may read it now: its links and the changes it recorded. */
-  public static EntityHistory redactVersions(
-      EntityHistory history, SecurityContext securityContext) {
-    return history.withVersions(
-        redactVersions(history.getVersions(), callerAccess(securityContext)));
-  }
-
-  /** One version as the caller may read it now. */
-  public static ContextMemory redactVersion(
-      ContextMemory version, SecurityContext securityContext) {
-    return JsonUtils.readValue(
-        redactVersion(version, callerAccess(securityContext)), ContextMemory.class);
+  /**
+   * Redacts a stored version as the caller may read it now: its links and the changes it recorded.
+   * One operator serves one response, so it decides each file once.
+   */
+  public static UnaryOperator<ContextMemory> versionRedaction(SecurityContext securityContext) {
+    return versionRedaction(callerAccess(securityContext));
   }
 
   /**
@@ -91,21 +76,21 @@ public final class ContextMemoryDocumentAccess {
     redactChanges(memories, callerAccess(securityContext));
   }
 
-  static List<Object> redactVersions(List<Object> versions, FileAccess access) {
-    return listOrEmpty(versions).stream()
-        .map(version -> (Object) redactVersion(version, access))
-        .toList();
+  static UnaryOperator<ContextMemory> versionRedaction(FileAccess access) {
+    return version -> redactVersion(version, access);
   }
 
-  static String redactVersion(Object version, FileAccess access) {
-    JsonNode memory =
-        JsonUtils.readTree(version instanceof String json ? json : JsonUtils.pojoToJson(version));
-    if (memory instanceof ObjectNode links) {
-      SINGLE_LINKS.forEach(field -> redactAt(links, field, access));
-      redactAt(links, RELATED_ENTITIES, access);
-      CHANGE_DESCRIPTIONS.forEach(change -> redactChangeNode(links.get(change), access));
+  /** In place: each history read redacts the copy it read for this response. */
+  private static ContextMemory redactVersion(ContextMemory version, FileAccess access) {
+    version.setPrimaryEntity(visible(version.getPrimaryEntity(), access));
+    version.setSourceEntity(visible(version.getSourceEntity(), access));
+    version.setSourceFile(visible(version.getSourceFile(), access));
+    if (version.getRelatedEntities() != null) {
+      version.setRelatedEntities(
+          version.getRelatedEntities().stream().map(related -> visible(related, access)).toList());
     }
-    return JsonUtils.pojoToJson(memory);
+    redactChanges(List.of(version), access);
+    return version;
   }
 
   static void redactChanges(List<ContextMemory> memories, FileAccess access) {
@@ -134,26 +119,6 @@ public final class ContextMemoryDocumentAccess {
     return field != null && LINKS.stream().anyMatch(field::startsWith);
   }
 
-  private static void redactChangeNode(JsonNode change, FileAccess access) {
-    if (change instanceof ObjectNode) {
-      for (String fields : CHANGE_LISTS) {
-        for (JsonNode field : change.path(fields)) {
-          if (field instanceof ObjectNode entry && isLinkChange(entry.path(NAME).asText(null))) {
-            VALUES.forEach(value -> redactValueNode(entry, value, access));
-          }
-        }
-      }
-    }
-  }
-
-  private static void redactValueNode(ObjectNode entry, String key, FileAccess access) {
-    JsonNode value = entry.get(key);
-    if (value != null && !value.isNull()) {
-      Object redacted = redactValue(value.isTextual() ? value.asText() : value, access);
-      entry.set(key, JsonUtils.valueToTree(redacted));
-    }
-  }
-
   /** A link change records a reference, or a list of them, usually serialized. */
   private static Object redactValue(Object value, FileAccess access) {
     JsonNode references = asJson(value);
@@ -178,13 +143,6 @@ public final class ContextMemoryDocumentAccess {
     return node;
   }
 
-  private static void redactAt(ObjectNode memory, String field, FileAccess access) {
-    JsonNode links = memory.get(field);
-    if (links != null && !links.isNull()) {
-      memory.set(field, redacted(links, access));
-    }
-  }
-
   /** The reference, or each in a list, cut to its id and type when the caller may not read it. */
   private static JsonNode redacted(JsonNode node, FileAccess access) {
     if (node instanceof ArrayNode references) {
@@ -197,6 +155,10 @@ public final class ContextMemoryDocumentAccess {
             ? JsonUtils.convertValueLenient(node, EntityReference.class)
             : null;
     return isHidden(reference, access) ? JsonUtils.valueToTree(idOnly(reference)) : node;
+  }
+
+  private static EntityReference visible(EntityReference reference, FileAccess access) {
+    return isHidden(reference, access) ? idOnly(reference) : reference;
   }
 
   private static boolean isHidden(EntityReference reference, FileAccess access) {

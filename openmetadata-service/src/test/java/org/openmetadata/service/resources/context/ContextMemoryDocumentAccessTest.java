@@ -20,7 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.StreamSupport;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -52,7 +52,8 @@ class ContextMemoryDocumentAccessTest {
             .withRelatedEntities(List.of(readable, article))
             .withChangeDescription(anchorMovedTo(hidden));
 
-    String redacted = ContextMemoryDocumentAccess.redactVersion(version, access);
+    String redacted =
+        JsonUtils.pojoToJson(ContextMemoryDocumentAccess.versionRedaction(access).apply(version));
 
     assertFalse(redacted.contains(hidden.getName()), redacted);
     JsonNode links = JsonUtils.readTree(redacted);
@@ -68,27 +69,22 @@ class ContextMemoryDocumentAccessTest {
   void aHiddenRelatedFileKeepsItsPlaceAsIdAndType() {
     ContextMemory version = memory().withRelatedEntities(List.of(hidden, article, readable));
 
-    JsonNode related =
-        JsonUtils.readTree(ContextMemoryDocumentAccess.redactVersion(version, access))
-            .get("relatedEntities");
+    List<EntityReference> related =
+        ContextMemoryDocumentAccess.versionRedaction(access).apply(version).getRelatedEntities();
 
-    List<EntityReference> listed =
-        StreamSupport.stream(related.spliterator(), false)
-            .map(node -> JsonUtils.convertValue(node, EntityReference.class))
-            .toList();
-    assertEquals(List.of(idOnly(hidden), article, readable), listed);
+    assertEquals(List.of(idOnly(hidden), article, readable), related);
   }
 
+  /** One operator redacts every version a history read returns. */
   @Test
   void everyVersionOfTheHistoryIsRedacted() {
-    String older = JsonUtils.pojoToJson(memory().withPrimaryEntity(hidden));
+    ContextMemory older = memory().withPrimaryEntity(hidden);
     ContextMemory latest = memory().withChangeDescription(anchorMovedTo(readable));
 
-    List<Object> redacted =
-        ContextMemoryDocumentAccess.redactVersions(List.<Object>of(latest, older), access);
-
-    redacted.forEach(
-        version -> assertFalse(((String) version).contains(hidden.getName()), (String) version));
+    Stream.of(older, latest)
+        .map(ContextMemoryDocumentAccess.versionRedaction(access))
+        .map(JsonUtils::pojoToJson)
+        .forEach(version -> assertFalse(version.contains(hidden.getName()), version));
   }
 
   /**

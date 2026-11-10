@@ -12,6 +12,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.Response;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -492,6 +494,38 @@ class ContextMemoryExtractionIT {
       String changes = JsonUtils.readTree(version).path("changeDescription").toString();
       assertFalse(changes.contains(copy.getName()), changes);
     }
+  }
+
+  /**
+   * An admin's edit right after the archive moved the anchor to the private copy consolidates with
+   * that move, so its stored change names the copy as the edit read it. Once the org-wide file
+   * anchors the memory again, the history endpoint names the copy to no reader it is hidden from.
+   */
+  @Test
+  void theHistoryEndpointNamesThePrivateCopyToNoReaderItIsHiddenFrom(TestNamespace ns)
+      throws Exception {
+    long startTs = System.currentTimeMillis();
+    String text = "History endpoint " + ns.shortPrefix();
+    ContextFile original = file(ns, "org-wide-original", text);
+    runFile(original);
+    ContextFile copy = file(ns, "private-copy", text, privately());
+    runFile(copy);
+    ContextMemory shared = extracted(original.getEntityReference()).getFirst();
+    RestClient.admin().delete(FILES, original.getId());
+    awaitChips(ns, shared, copy, Set.of());
+    editAnswer(shared, "Edited while the private copy anchors it " + ns.shortPrefix());
+    assertTrue(lastChangeAsAdmin(shared).contains(copy.getName()), "the edit's change names it");
+
+    RestClient.admin().restore(FILES, original.getId(), ContextFile.class);
+
+    awaitChips(ns, shared, original, Set.of());
+    List<String> asRead = historyAsRead(SdkClients.user2Client(), shared, startTs);
+    assertFalse(asRead.isEmpty(), "the reader reads the memory's history");
+    asRead.forEach(snapshot -> assertFalse(snapshot.contains(copy.getName()), snapshot));
+    assertTrue(
+        historyAsRead(SdkClients.adminClient(), shared, startTs).stream()
+            .anyMatch(snapshot -> snapshot.contains(copy.getName())),
+        "an admin reads every file");
   }
 
   /**
@@ -1033,6 +1067,45 @@ class ContextMemoryExtractionIT {
           reader.getHttpClient().executeForString(HttpMethod.GET, path + "/" + number, null));
     }
     return versions;
+  }
+
+  /** The memory's snapshots the history endpoint lists to {@code reader}, every page of them. */
+  private static List<String> historyAsRead(
+      OpenMetadataClient reader, ContextMemory memory, long startTs) {
+    long endTs = System.currentTimeMillis() + 1000;
+    List<String> snapshots = new ArrayList<>();
+    String after = null;
+    do {
+      String path =
+          "/"
+              + MEMORIES
+              + "/history?limit=500&startTs="
+              + startTs
+              + "&endTs="
+              + endTs
+              + (after == null ? "" : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8));
+      JsonNode page =
+          JsonUtils.readTree(reader.getHttpClient().executeForString(HttpMethod.GET, path, null));
+      page.path("data").forEach(snapshot -> keepIfOf(memory, snapshot, snapshots));
+      JsonNode next = page.path("paging").path("after");
+      after = next.isTextual() ? next.asText() : null;
+    } while (after != null);
+    return snapshots;
+  }
+
+  private static void keepIfOf(ContextMemory memory, JsonNode snapshot, List<String> snapshots) {
+    if (memory.getId().toString().equals(snapshot.path("id").asText())) {
+      snapshots.add(snapshot.toString());
+    }
+  }
+
+  /** The change the memory's last write recorded, as an admin reads it. */
+  private static String lastChangeAsAdmin(ContextMemory memory) {
+    String read =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .executeForString(HttpMethod.GET, "/" + MEMORIES + "/" + memory.getId(), null);
+    return JsonUtils.readTree(read).path("changeDescription").toString();
   }
 
   private static Task approve(UUID review) {

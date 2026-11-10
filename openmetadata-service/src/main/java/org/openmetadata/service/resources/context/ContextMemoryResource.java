@@ -50,9 +50,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.IntSupplier;
+import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.context.ApproveExtractedMemories;
@@ -730,10 +732,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("id")
           UUID id) {
     enforceCurrentVisibility(securityContext, id);
-    return ContextMemoryDocumentAccess.redactVersions(
-        ContextMemoryEvidenceAccess.redactUnviewableQueries(
-            listVersionsInternal(securityContext, id), authorizer, securityContext),
-        securityContext);
+    return ContextMemoryEvidenceAccess.redactUnviewableQueries(
+        listVersionsInternal(securityContext, id), authorizer, securityContext);
   }
 
   @GET
@@ -760,10 +760,18 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           @PathParam("version")
           String version) {
     enforceCurrentVisibility(securityContext, id);
-    return withVisibleEvidence(
-        securityContext,
-        ContextMemoryDocumentAccess.redactVersion(
-            getVersionInternal(securityContext, id, version), securityContext));
+    return withVisibleEvidence(securityContext, getVersionInternal(securityContext, id, version));
+  }
+
+  /**
+   * Every stored version, wherever the base class serves it (the versions, one version or the
+   * history), names a file only to a caller who may read it now
+   * (ADR:2026-09-29-context-file-memory-reuse).
+   */
+  @Override
+  protected Optional<UnaryOperator<ContextMemory>> snapshotRedaction(
+      SecurityContext securityContext) {
+    return Optional.of(ContextMemoryDocumentAccess.versionRedaction(securityContext));
   }
 
   /** Current visibility governs every response containing a stored memory. */
