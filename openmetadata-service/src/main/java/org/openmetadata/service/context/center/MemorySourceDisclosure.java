@@ -27,7 +27,8 @@ import org.openmetadata.service.resources.drive.ContextFileVisibility;
  * Which of the documents stating a memory its readers are told about: a document shared with only
  * some people is never named to the others (ADR:2026-09-29-context-file-memory-reuse). A linked
  * document joins the memory's related entities only when everyone may read it, and the memory's
- * source is its anchor, else a document everyone may read, else a restricted one.
+ * source is its anchor, else a document everyone may read, else a restricted one, which is why a
+ * restricted document links only to a memory already showing one everyone may read.
  */
 public final class MemorySourceDisclosure {
   private MemorySourceDisclosure() {}
@@ -56,6 +57,24 @@ public final class MemorySourceDisclosure {
         : anchorAmong(anchor, documents)
             .or(() -> documents.stream().filter(readableByEveryone).findFirst())
             .orElse(documents.getFirst());
+  }
+
+  /**
+   * Whether {@code document} may be linked to a memory showing {@code shownSource} without being
+   * shown in its place: one everyone may read always may; a restricted one only beside a shown
+   * source everyone may read, which then stays the one shown.
+   */
+  public static boolean mayLink(
+      EntityReference document,
+      EntityReference shownSource,
+      Predicate<EntityReference> readableByEveryone) {
+    return isReadByEveryone(document, readableByEveryone)
+        || isReadByEveryone(shownSource, readableByEveryone);
+  }
+
+  private static boolean isReadByEveryone(
+      EntityReference document, Predicate<EntityReference> readableByEveryone) {
+    return document != null && readableByEveryone.test(document);
   }
 
   private static Optional<EntityReference> anchorAmong(

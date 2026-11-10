@@ -103,4 +103,5 @@ depend on the memory search index: when it cannot be read they answer 503 and ap
 rather than approve without the check. Rejecting stays with admins
 (ADR:2026-11-03-extracted-memories-can-await-review-and-keep-conflicting-values, v3). Another
 user's private copy never blocks an owner's approval, which is written as that owner: a restricted
-copy is linked by its source edge alone and never named on the memory, its source included.
+copy is linked by its source edge alone, and only to a memory whose shown source everyone may
+read, so it is never named on the memory, its source included.

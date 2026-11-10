@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -68,6 +69,12 @@ class SemanticMemoryDuplicateFinderTest {
 
   private static final EntityReference HANDBOOK =
       new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_FILE);
+
+  /** Unless a test says otherwise, everyone may read every document. */
+  @BeforeEach
+  void everyDocumentIsReadByEveryone() {
+    lenient().when(repository.isReadableByEveryone(any())).thenReturn(true);
+  }
 
   private ContextMemory memory(UUID id, String question, String answer) {
     return new ContextMemory()
@@ -639,6 +646,73 @@ class SemanticMemoryDuplicateFinderTest {
                     UUID.randomUUID(),
                     rejected.getQuestion(),
                     "Customers are billed on the 10th of each month.")));
+  }
+
+  private static final EntityReference PRIVATE_FILE = document("x-private-file");
+  private static final EntityReference COPY = document("y-copy");
+  private static final EntityReference ORG_WIDE_FILE = document("a-org-wide-file");
+
+  /**
+   * A person's unanchored note citing only a private file shows that file: a restricted copy
+   * linked to it could be shown in its place, so the copy keeps a memory of its own.
+   */
+  @Test
+  void aRestrictedDocumentNeverJoinsAMemoryShowingAPrivateFile() throws Exception {
+    ContextMemory note = noteCiting(PRIVATE_FILE);
+    readByEveryone(PRIVATE_FILE, false);
+    readByEveryone(COPY, false);
+
+    assertEquals(new DuplicateMatch.None(), checkedFrom(COPY, note));
+  }
+
+  /** A document everyone may read joins such a note: it is the one the note then shows. */
+  @Test
+  void aDocumentEveryoneMayReadJoinsAMemoryShowingAPrivateFile() throws Exception {
+    ContextMemory note = noteCiting(PRIVATE_FILE);
+    readByEveryone(PRIVATE_FILE, false);
+
+    assertEquals(new DuplicateMatch.Equivalent(note), checkedFrom(COPY, note));
+  }
+
+  /** A restricted copy joins a memory anchored to a file everyone may read, which stays shown. */
+  @Test
+  void aRestrictedDocumentJoinsAMemoryShowingAFileEveryoneMayRead() throws Exception {
+    ContextMemory extracted =
+        memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.")
+            .withSourceEntity(ORG_WIDE_FILE)
+            .withPrimaryEntity(ORG_WIDE_FILE);
+    readByEveryone(COPY, false);
+
+    assertEquals(new DuplicateMatch.Equivalent(extracted), checkedFrom(COPY, extracted));
+  }
+
+  /** The duplicate check of the same fact, extracted from {@code document}, beside {@code stated}. */
+  private DuplicateMatch checkedFrom(EntityReference document, ContextMemory stated)
+      throws IOException {
+    rankedHits(List.of(stated));
+    eligible(stated);
+    return keywordFinder()
+        .findMatch(
+            memory(UUID.randomUUID(), stated.getQuestion(), stated.getAnswer())
+                .withSourceEntity(document));
+  }
+
+  /** A person's note with no anchor whose only document is {@code cited}. */
+  private ContextMemory noteCiting(EntityReference cited) {
+    return memory(UUID.randomUUID(), "What is churn?", "Churn is the share of customers lost.")
+        .withSourceType(ContextMemorySourceType.MANUAL)
+        .withSourceEntity(cited);
+  }
+
+  private void readByEveryone(EntityReference document, boolean readable) {
+    lenient().when(repository.isReadableByEveryone(document)).thenReturn(readable);
+  }
+
+  private static EntityReference document(String name) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(Entity.CONTEXT_FILE)
+        .withName(name);
   }
 
   /** A document's own memory is never its duplicate: its re-extraction matches or keeps both. */

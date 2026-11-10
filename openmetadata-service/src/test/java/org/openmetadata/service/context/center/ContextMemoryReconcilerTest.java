@@ -1248,6 +1248,7 @@ class ContextMemoryReconcilerTest {
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
     when(searchClient.searchSimilarContextMemories(anyString(), anyString(), anyInt()))
         .thenReturn(new SearchResultListMapper(hits, hits.size()));
+    lenient().when(memoryRepository.isReadableByEveryone(any())).thenReturn(true);
     for (ContextMemory memory : indexed) {
       lenient()
           .when(

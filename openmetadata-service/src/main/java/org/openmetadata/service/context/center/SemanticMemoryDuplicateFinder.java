@@ -378,13 +378,17 @@ public final class SemanticMemoryDuplicateFinder implements DuplicateFinder {
 
   /**
    * A memory another document states, in any stage, that readers of the new file can read once
-   * linked: of the same scope and anchored org-wide.
+   * linked, of the same scope and anchored org-wide, which never shows the new file in its place.
    */
   private boolean isCandidate(ContextMemory candidate, StatedValue value) {
     return statesADocumentFact(candidate)
         && candidate.getMemoryScope() == value.memory().getMemoryScope()
         && repository.hasOrgWideAnchor(candidate)
-        && isOfAnotherDocument(candidate, value);
+        && isOfAnotherDocument(candidate, value)
+        && MemorySourceDisclosure.mayLink(
+            value.memory().getSourceEntity(),
+            candidate.getSourceEntity(),
+            repository::isReadableByEveryone);
   }
 
   /** Entity-visible, and from a file or page: extracted from it, or a person's memory citing it. */

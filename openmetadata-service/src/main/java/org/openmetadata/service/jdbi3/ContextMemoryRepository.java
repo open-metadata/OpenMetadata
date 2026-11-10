@@ -1227,8 +1227,8 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
 
   /**
    * Links another document that states the memory. Only one everyone may read joins its related
-   * entities, so a restricted copy is linked by its source edge alone and never named on the
-   * memory or in its history ({@link MemorySourceDisclosure}).
+   * entities, so a restricted copy is linked by its source edge alone and never appears in them or
+   * in the memory's history ({@link MemorySourceDisclosure}).
    */
   public void linkExtractedMemory(UUID memoryId, EntityReference source) {
     if (!isLinkedTo(memoryId, source)) {
@@ -1286,6 +1286,11 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     List<EntityReference> related = new ArrayList<>(listOrEmpty(current.getRelatedEntities()));
     related.add(document);
     return updated.withRelatedEntities(related);
+  }
+
+  /** Whether everyone may read the document, as {@link MemorySourceDisclosure} decides it. */
+  public boolean isReadableByEveryone(EntityReference document) {
+    return MemorySourceDisclosure.everyoneMayRead(document);
   }
 
   /**

@@ -14,7 +14,9 @@
 package org.openmetadata.service.context.center;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.UUID;
@@ -87,6 +89,24 @@ class MemorySourceDisclosureTest {
         PRIVATE_COPY,
         MemorySourceDisclosure.shownSource(
             OTHER_PRIVATE_COPY, List.of(PRIVATE_COPY, ORIGINAL), document -> false));
+  }
+
+  /** A document everyone may read may join any memory: it is never a name to keep from anyone. */
+  @Test
+  void aDocumentEveryoneMayReadJoinsAnyMemory() {
+    assertTrue(MemorySourceDisclosure.mayLink(ORIGINAL, PRIVATE_COPY, ONLY_THE_ORIGINAL));
+    assertTrue(MemorySourceDisclosure.mayLink(ORIGINAL, null, ONLY_THE_ORIGINAL));
+  }
+
+  /** A restricted document joins only beside a source everyone may read, which stays shown. */
+  @Test
+  void aRestrictedDocumentJoinsOnlyAMemoryShowingADocumentEveryoneMayRead() {
+    assertTrue(MemorySourceDisclosure.mayLink(PRIVATE_COPY, ORIGINAL, ONLY_THE_ORIGINAL));
+    assertFalse(
+        MemorySourceDisclosure.mayLink(PRIVATE_COPY, OTHER_PRIVATE_COPY, ONLY_THE_ORIGINAL),
+        "the memory would show the first restricted document by name");
+    assertFalse(MemorySourceDisclosure.mayLink(PRIVATE_COPY, null, ONLY_THE_ORIGINAL));
+    assertFalse(MemorySourceDisclosure.mayLink(null, OTHER_PRIVATE_COPY, ONLY_THE_ORIGINAL));
   }
 
   private static EntityReference file(String name) {
