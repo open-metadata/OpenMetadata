@@ -188,9 +188,12 @@ a memory covers every document that states its fact.
   document everyone may read, which stays the one shown (`MemorySourceDisclosure.mayLink`); its
   equivalent fact beside any other memory becomes a memory of its own. The rule governs linking
   only: a hold links nothing and names no document on the memory, so holds still follow the
-  decision, and a decided memory holds a restricted document's other value whatever it shows. An
-  identical upload's earlier file is one everyone may read and states every memory it lends, so a
-  restricted copy is never the source shown there either. A link names a document with a write
-  conditional on the memory as read, so a decision written meanwhile is read again, never reverted.
+  decision, and a decided memory holds a restricted document's other value whatever it shows. One
+  case is left: a restricted document restating exactly a rejected memory it may not link to keeps
+  its own memory in its derived stage. Only a person's unanchored note citing a file not everyone
+  may read meets it, since an extracted memory is anchored to its document. An identical upload's
+  earlier file is one everyone may read and states every memory it lends, so a restricted copy is
+  never the source shown there either. A link names a document with a write conditional on the
+  memory as read, so a decision written meanwhile is read again, never reverted.
 - Stop words count toward the 30%, so most new facts find some candidate: expect about one small
   judge call per new fact that has candidates, and none for a verbatim fact or an identical file.
