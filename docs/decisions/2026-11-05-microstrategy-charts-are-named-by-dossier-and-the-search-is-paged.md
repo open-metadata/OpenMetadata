@@ -1,9 +1,9 @@
 # MicroStrategy charts are named by dossier, and the dossier search is paged and project-scoped
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path)
 - **Deciders:** OpenMetadata ingestion maintainers
-- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`)
+- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`)
 - **Related:** ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing
 
 ## Context
@@ -56,3 +56,19 @@ also asked for every result in one response (`limit=-1`).
   certification and manually drawn lineage stay on the soft-deleted chart.
 - A server that keeps failing to render some definitions keeps stale data models until it renders
   them. Reverting that needs a per-dossier stale scope, which `deleteStale` does not have.
+
+## Amendment: v2 2026-11-12, configurable Library path
+The connector appended a hardcoded `MicroStrategyLibrary` to `hostPort`. A Library web app deployed
+under another name, or a second Library deployment on the same server, could not be ingested:
+putting its path in `hostPort` produced `<path>/MicroStrategyLibrary/api` and a 404.
+
+- `hostPort` is the MicroStrategy server root, with no path.
+- `libraryPath` names the Library web app. It defaults to `MicroStrategyLibrary`; surrounding
+  slashes are stripped, and an empty value falls back to the default (`DEFAULT_LIBRARY_PATH`).
+- The connector calls `<hostPort>/<libraryPath>/api` for login and every REST call, and builds
+  dashboard source URLs as `<hostPort>/<libraryPath>/app/<projectId>/<dossierId>`.
+- A login that answers 404 says to check Host Port and Library Path, not the credentials.
+
+A saved connection without `libraryPath` resolves to the URLs it used before, so no migration is
+needed. A `hostPort` that still carries a Library path is not rewritten: guessing whether a trailing
+path segment is a Library app would misread servers mounted under a path of their own.

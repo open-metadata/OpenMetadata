@@ -45,6 +45,7 @@ if TYPE_CHECKING:
 
 logger = ingestion_logger()
 
+# ADR:2026-11-05-microstrategy-charts-are-named-by-dossier-and-the-search-is-paged (v2: Library path)
 DEFAULT_LIBRARY_PATH = "MicroStrategyLibrary"
 AUTH_TOKEN_HEADER = "X-MSTR-AuthToken"
 PROJECT_HEADER = "X-MSTR-ProjectID"
