@@ -17,6 +17,7 @@ import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
+import { openOntologyTransfer } from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -40,8 +41,7 @@ const csvOf = (namespace: string, label = 'Shop CSV') =>
 
 const openImportTab = async (page: Page) => {
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-  await page.getByTestId('ontology-import-export-trigger').click();
-  await page.getByTestId('ontology-native-import-tab').click();
+  await openOntologyTransfer(page, 'import');
 };
 
 const chooseFile = (page: Page, name: string, content: string) =>

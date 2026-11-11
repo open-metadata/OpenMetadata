@@ -37,7 +37,9 @@ import {
 import { MEMORIES_API } from '../../utils/ContextCenterUtil';
 import {
   findOntologyInScopeMenu,
+  openOntologyTransfer,
   readNodePositions,
+  releaseNameContaining,
 } from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
@@ -155,7 +157,11 @@ const activateRelease = async (
   expect(state.activationRevision).toBe(expectedRevision + 1);
   await expect(
     page.getByTestId('ontology-release-history-trigger')
-  ).toContainText(release.semanticVersion ?? String(release.releaseRevision));
+  ).toHaveAccessibleName(
+    releaseNameContaining(
+      release.semanticVersion ?? String(release.releaseRevision)
+    )
+  );
   if (action === 'publish') {
     await expect(page.getByTestId('ontology-release-stage')).toContainText(
       'Published'
@@ -973,7 +979,7 @@ test.describe(
               url.searchParams.get('format') === card
             );
           });
-          await author.getByTestId('ontology-import-export-trigger').click();
+          await openOntologyTransfer(author);
           const formatButton = author.getByTestId(
             `ontology-release-format-${card}`
           );
@@ -1577,7 +1583,7 @@ test.describe(
         ).toHaveCount(0);
         await expect(
           author.getByTestId('ontology-release-history-trigger')
-        ).toContainText('v0.1.0');
+        ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
         await author.getByTestId('ontology-version-published').click();
         await expect(author).toHaveURL(/version=published/);
         await expect(
@@ -1585,7 +1591,7 @@ test.describe(
         ).toHaveAttribute('aria-pressed', 'true');
         await expect(
           author.getByTestId('ontology-release-history-trigger')
-        ).toContainText('v0.1.0');
+        ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
         expect(loads).toBe(0);
         await g6Shot(author, testInfo, 'published');
       } finally {
@@ -2098,7 +2104,8 @@ test.describe(
           await expect(publish).toBeDisabled();
           const reason = page.getByTestId('ontology-publication-reason');
 
-          await expect(reason).toBeVisible();
+          // The reason is the button's description and tooltip, not visible text.
+          await expect(reason).toBeAttached();
           await expect(reason).toHaveText('Choose an ontology to publish');
           await expect(publish).toHaveAccessibleDescription(
             'Choose an ontology to publish'

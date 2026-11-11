@@ -22,13 +22,12 @@ import {
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
 import { keyBy } from 'lodash';
-import { Fragment, ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Layer } from '../../../../generated/api/data/createOntology';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { patchOntology } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
@@ -79,15 +78,17 @@ interface OntologyCreateFormProps {
   canEdit: boolean;
   ontology: Ontology;
   onSaved: (ontology: Ontology) => void;
+  /** `stacked` puts each label above its field, for a narrow dialog. */
+  layout?: 'rows' | 'stacked';
 }
 
 const OntologyCreateForm = ({
   canEdit,
   ontology,
   onSaved,
+  layout = 'rows',
 }: OntologyCreateFormProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const owners = useUserTeamOptions();
   const reviewers = useUserTeamOptions();
   const form = useForm<OntologyFormValues>({
@@ -156,17 +157,33 @@ const OntologyCreateForm = ({
         data-testid="ontology-create-form"
         form={form}
         onSubmit={form.handleSubmit(save)}>
-        <Box direction="col">
-          {AI_FIELD_ORDER.map((name) => (
-            <SettingsRow
-              key={name}
-              label={fields[name].label}
-              required={fields[name].required}>
-              {name === 'layer'
-                ? renderLayer(fields[name])
-                : getField(unlabelled(fields[name]))}
-            </SettingsRow>
-          ))}
+        <Box direction="col" gap={layout === 'stacked' ? 4 : 0}>
+          {AI_FIELD_ORDER.map((name) =>
+            layout === 'stacked' ? (
+              <Box direction="col" gap={1} key={name}>
+                {name === 'layer' ? (
+                  <>
+                    <FormItemLabel
+                      label={fields[name].label}
+                      required={fields[name].required}
+                    />
+                    {renderLayer(fields[name])}
+                  </>
+                ) : (
+                  getField(fields[name])
+                )}
+              </Box>
+            ) : (
+              <SettingsRow
+                key={name}
+                label={fields[name].label}
+                required={fields[name].required}>
+                {name === 'layer'
+                  ? renderLayer(fields[name])
+                  : getField(unlabelled(fields[name]))}
+              </SettingsRow>
+            )
+          )}
           <Box
             className="tw:border-t tw:border-secondary tw:pt-4"
             justify="end">
@@ -184,31 +201,7 @@ const OntologyCreateForm = ({
     );
   };
 
-  if (isAiMode) {
-    return renderAiForm();
-  }
-
-  return (
-    <HookForm
-      data-testid="ontology-create-form"
-      form={form}
-      onSubmit={form.handleSubmit(save)}>
-      <Box direction="col" gap={4}>
-        {ontologyFormFields(
-          t,
-          owners,
-          reviewers,
-          !canEdit || isSaving,
-          true
-        ).map((field) => (
-          <Fragment key={field.name}>{getField(field)}</Fragment>
-        ))}
-        <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
-          {t('label.save')}
-        </Button>
-      </Box>
-    </HookForm>
-  );
+  return renderAiForm();
 };
 
 export default OntologyCreateForm;

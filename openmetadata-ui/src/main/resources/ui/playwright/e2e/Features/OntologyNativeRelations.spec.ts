@@ -880,6 +880,7 @@ test.describe(
 
         await openStudio(page, fixture.ontology, true);
         await clickGraphNode(page, parent.id);
+        await page.getByTestId('ontology-concept-more').click();
         await page.getByTestId('ontology-concept-delete').click();
 
         const dialog = page.getByTestId('ontology-concept-delete-dialog');
@@ -948,6 +949,7 @@ test.describe(
 
         await openStudio(page, fixture.ontology, true);
         await clickGraphNode(page, customer.id);
+        await page.getByTestId('ontology-concept-more').click();
         await page.getByTestId('ontology-concept-delete').click();
         await page.getByTestId('ontology-concept-delete-confirm').click();
         await expect(

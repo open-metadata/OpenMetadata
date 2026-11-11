@@ -298,7 +298,7 @@ const AllOntologiesGraphView = ({
   };
 
   const renderSearch = () => {
-    if (isAiMode && searchSlot) {
+    if (searchSlot) {
       return createPortal(
         <Input
           aria-label={t('label.find-concept')}
@@ -394,6 +394,9 @@ const AllOntologiesGraphView = ({
         {renderSearch()}
         {renderGraphMode()}
         {renderSurface()}
+        {!selected && surface === 'graph' && graphMode === 'model' ? (
+          <OntologyHealthPanel isRaised health={health} onConnect={openOwner} />
+        ) : null}
       </div>
       {selected && model ? (
         <OntologyConceptInspector
@@ -412,13 +415,7 @@ const AllOntologiesGraphView = ({
           }}
           onSelectConcept={selectNode}
         />
-      ) : (
-        <OntologyHealthPanel
-          health={health}
-          placement="sidebar"
-          onConnect={openOwner}
-        />
-      )}
+      ) : null}
     </Box>
   );
 };

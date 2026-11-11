@@ -27,6 +27,7 @@ import {
   OntologyModelRelation,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyRelationControls from './OntologyRelationControls';
 
 interface OntologyRelationDetailProps {
@@ -87,9 +88,7 @@ const OntologyRelationDetail = ({
   );
 
   return (
-    <aside
-      className="tw:flex tw:h-full tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
-      data-testid="ontology-relation-detail">
+    <OntologyStudioDrawer testId="ontology-relation-detail">
       <Box
         align="center"
         className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
@@ -153,7 +152,7 @@ const OntologyRelationDetail = ({
           </Box>
         ) : null}
       </Box>
-    </aside>
+    </OntologyStudioDrawer>
   );
 };
 

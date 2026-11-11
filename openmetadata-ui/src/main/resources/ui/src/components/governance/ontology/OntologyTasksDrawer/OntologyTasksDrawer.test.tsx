@@ -457,6 +457,24 @@ it('rejects a direct review with another task identity', async () => {
   expect(screen.queryByTestId('ontology-task-detail')).not.toBeInTheDocument();
 });
 
+it('says there are no tasks yet when the queue is empty', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url === '/ontologies/reviews' && config.params.limit === 25
+      ? Promise.resolve({ data: { data: [], paging: { total: 0 } } })
+      : read?.(url, config)
+  );
+  renderWithQueryClient(<Harness />);
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+
+  expect(await screen.findByTestId('ontology-tasks-empty')).toHaveTextContent(
+    'message.ontology-no-tasks-yet'
+  );
+  expect(screen.getByTestId('ontology-tasks-empty')).toHaveTextContent(
+    'message.ontology-tasks-assigned-empty'
+  );
+});
+
 it('replaces after-only queue pages and resets the cursor when changing tabs', async () => {
   const read = get.getMockImplementation();
   get.mockImplementation((url, config) => {

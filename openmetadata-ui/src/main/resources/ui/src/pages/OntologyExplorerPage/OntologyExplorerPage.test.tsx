@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosResponse } from 'axios';
 import { Profiler, ReactNode, useEffect, useState } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
@@ -427,16 +428,13 @@ jest.mock(
 
 jest.mock(
   '../../components/governance/ontology/OntologyConceptEditor/OntologyConceptEditor',
-  () => ({
-    __esModule: true,
-    default: ({
-      concept,
-      onSaved,
-    }: {
+  () => {
+    interface MockEditorInput {
       concept: { displayName?: string };
       onSaved: (saved: unknown) => void;
-    }) => (
-      <div data-testid="ontology-concept-editor">
+    }
+    const MockEditorFields = ({ concept, onSaved }: MockEditorInput) => (
+      <div>
         <span>{concept.displayName}</span>
         <button
           type="button"
@@ -446,8 +444,34 @@ jest.mock(
           Save mock concept
         </button>
       </div>
-    ),
-  })
+    );
+
+    return {
+      __esModule: true,
+      default: (input: MockEditorInput) => (
+        <div data-testid="ontology-concept-editor">
+          {MockEditorFields(input)}
+        </div>
+      ),
+      useOntologyConceptEditor: (input: MockEditorInput) => ({
+        ...input,
+        isDirty: false,
+        reset: () => undefined,
+      }),
+      ConceptEditorProvider: ({ children }: { children: ReactNode }) => (
+        <div data-testid="ontology-concept-editor">{children}</div>
+      ),
+      ConceptEditorFields: ({
+        editor,
+        names,
+      }: {
+        editor: MockEditorInput;
+        names: string[];
+      }) => (names.includes('displayName') ? MockEditorFields(editor) : null),
+      ConceptEditorMappings: () => null,
+      ConceptEditorFooter: () => null,
+    };
+  }
 );
 
 jest.mock(
@@ -1075,12 +1099,9 @@ describe('OntologyExplorerPage', () => {
       },
     });
 
-    const chip = await screen.findByRole('button', { name: 'v1.2.0' });
+    const chip = await screen.findByTestId('ontology-release-history-trigger');
 
-    expect(chip).toHaveAttribute(
-      'data-testid',
-      'ontology-release-history-trigger'
-    );
+    expect(chip).toHaveAccessibleName(/v1\.2\.0/);
 
     fireEvent.keyDown(document.body, { key: 'Tab' });
     act(() => chip.focus());
@@ -2794,7 +2815,9 @@ describe('OntologyExplorerPage', () => {
       'message.query-choose-ontology-title'
     );
 
-    fireEvent.click(
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.type(screen.getByRole('combobox'), 'Nat');
+    await user.click(
       await screen.findByTestId(
         `ontology-query-picker-option-${nativeOntology.id}`
       )
