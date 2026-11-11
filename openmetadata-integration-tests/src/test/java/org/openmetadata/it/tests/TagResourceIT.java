@@ -55,6 +55,7 @@ import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
 
 /**
@@ -1964,20 +1965,24 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         SdkClients.adminClient().tags().get(systemTag.getId().toString()).getFullyQualifiedName());
   }
 
-  @Test
-  void patch_recognizerWithoutSupportedLanguage_rejected(TestNamespace ns) {
-    // The ingestion client cannot parse a pattern recognizer without supportedLanguage, and one
-    // such recognizer drops the whole classification from auto-classification.
+  private Tag createTagWithPatternRecognizer(TestNamespace ns, String name) {
     Map<String, Object> config = new LinkedHashMap<>();
     config.put("type", "pattern");
     config.put("patterns", List.of(Map.of("name", "id", "regex", "^id$", "score", 0.8)));
     config.put("regexFlags", Map.of("dotAll", true, "multiline", true, "ignoreCase", true));
     config.put("supportedLanguage", "any");
     CreateTag request =
-        tagIn(ns.shortPrefix("recognized"), createClassification(ns))
+        tagIn(ns.shortPrefix(name), createClassification(ns))
             .withRecognizers(
                 List.of(new Recognizer().withName("Government_ID").withRecognizerConfig(config)));
-    Tag tag = createEntity(request);
+    return createEntity(request);
+  }
+
+  @Test
+  void patch_recognizerWithoutSupportedLanguage_rejected(TestNamespace ns) {
+    // The ingestion client cannot parse a pattern recognizer without supportedLanguage, so
+    // auto-classification would skip the tag while the run still passes.
+    Tag tag = createTagWithPatternRecognizer(ns, "recognized");
 
     JsonNode dropLanguage =
         JsonUtils.valueToTree(
@@ -1993,6 +1998,29 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         JsonUtils.convertValue(
             reloaded.getRecognizers().getFirst().getRecognizerConfig(), Map.class);
     assertEquals("any", storedConfig.get("supportedLanguage"));
+  }
+
+  @Test
+  void patch_tagStoredWithoutSupportedLanguage_staysEditable(TestNamespace ns) {
+    // A recognizer stored before the language rule must not block unrelated edits to its tag.
+    Tag created = createTagWithPatternRecognizer(ns, "legacy");
+    Tag legacy = getEntityWithFields(created.getId().toString(), "recognizers");
+    Map<String, Object> legacyConfig =
+        new LinkedHashMap<>(
+            JsonUtils.convertValue(
+                legacy.getRecognizers().getFirst().getRecognizerConfig(), Map.class));
+    legacyConfig.remove("supportedLanguage");
+    legacy.getRecognizers().getFirst().setRecognizerConfig(legacyConfig);
+    Entity.getCollectionDAO().tagDAO().update(legacy);
+    EntityRepository.invalidateCacheForEntity(
+        Entity.TAG, legacy.getId(), legacy.getFullyQualifiedName());
+
+    JsonNode newDescription =
+        JsonUtils.valueToTree(
+            List.of(Map.of("op", "replace", "path", "/description", "value", "edited")));
+    Tag patched = SdkClients.adminClient().tags().patch(legacy.getId(), newDescription);
+
+    assertEquals("edited", patched.getDescription());
   }
 
   @Test

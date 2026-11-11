@@ -460,6 +460,19 @@ public class TagRepositoryUnitTest {
   }
 
   @Test
+  void test_validateSupportedLanguage_rejectsUnknownLanguage() {
+    for (String language : List.of("", "english")) {
+      Recognizer recognizer =
+          recognizerWithConfig(Map.of("type", "pattern", "supportedLanguage", language));
+
+      assertThrows(
+          IllegalArgumentException.class,
+          () -> TagRepository.validateSupportedLanguage(recognizer),
+          language);
+    }
+  }
+
+  @Test
   void test_validateSupportedLanguage_acceptsConfigsTheIngestionClientCanParse() {
     Map<String, Object> pattern = Map.of("type", "pattern", "supportedLanguage", "any");
     Map<String, Object> predefined = Map.of("type", "predefined", "name", "EmailRecognizer");
