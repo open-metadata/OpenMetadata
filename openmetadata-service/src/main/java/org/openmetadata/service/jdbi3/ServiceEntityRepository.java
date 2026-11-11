@@ -41,6 +41,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -155,15 +156,15 @@ public abstract class ServiceEntityRepository<
   @Override
   public void prepare(T service, boolean update) {
     if (service.getConnection() != null) {
-      service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .encryptServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+      Object config =
+          SecretsManagerFactory.getSecretsManager()
+              .encryptServiceConnectionConfig(
+                  service.getConnection().getConfig(),
+                  service.getServiceType().value(),
+                  service.getName(),
+                  serviceType);
+      SecretsUtil.validateSslConfig(config, service.getServiceType().value());
+      service.getConnection().setConfig(config);
     }
   }
 
