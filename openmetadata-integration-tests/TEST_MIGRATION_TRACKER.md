@@ -231,7 +231,7 @@ GitHub workflows run on every PR:
 - `integration-tests-mysql-elasticsearch.yml` - MySQL + Elasticsearch
 - `integration-tests-postgres-opensearch.yml` - PostgreSQL + OpenSearch
 
-Tests require the "safe to test" label on PRs (uses `pull_request_target`).
+They run in the merge queue; on a PR they only report their required check names (as skipped).
 
 ---
 

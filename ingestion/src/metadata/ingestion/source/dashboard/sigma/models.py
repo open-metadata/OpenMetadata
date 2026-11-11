@@ -73,8 +73,16 @@ class WorkBookPageResponse(BaseModel):
 class Elements(BaseModel):
     elementId: str  # noqa: N815
     name: str | None = None
+    type: str | None = Field(default=None)
     vizualizationType: str | None = None  # noqa: N815
     columns: list[str] | None = []
+
+    @property
+    def is_data_element(self) -> bool:
+        """Whether the element supports data models and lineage."""
+        if self.type is not None:
+            return self.type in ("table", "pivot-table", "visualization")
+        return bool(self.vizualizationType)
 
 
 class ElementsResponse(BaseModel):
