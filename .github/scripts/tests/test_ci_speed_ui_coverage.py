@@ -80,3 +80,13 @@ def test_workflow_triggers_and_required_gate_are_unchanged() -> None:
     gate = document["jobs"]["ui-coverage"]
     assert gate["if"] == "always()"
     assert gate["needs"] == ["ui-coverage-tests"]
+
+
+def test_editing_this_workflow_runs_its_tests() -> None:
+    # Otherwise a change to the Jest command merges without one real run.
+    steps = load_workflow()["jobs"]["check-changes"]["steps"]
+    [paths_filter] = [s for s in steps if s.get("id") == "filter"]
+    assert (
+        ".github/workflows/yarn-coverage.yml"
+        in yaml.safe_load(paths_filter["with"]["filters"])["ui"]
+    )

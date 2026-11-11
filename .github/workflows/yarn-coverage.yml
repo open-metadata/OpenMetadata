@@ -42,6 +42,7 @@ jobs:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
             ui:
+              - '.github/workflows/yarn-coverage.yml'
               - 'openmetadata-ui/src/main/resources/ui/src/**'
               - 'openmetadata-ui/src/main/resources/ui/jest.config.js'
               - 'openmetadata-ui/src/main/resources/ui/package.json'
