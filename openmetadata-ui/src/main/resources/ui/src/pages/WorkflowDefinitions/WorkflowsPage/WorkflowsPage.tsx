@@ -459,6 +459,7 @@ const WorkflowsPage = () => {
               <div className="tw:flex tw:flex-col tw:gap-5">
                 <Input
                   isRequired
+                  autoComplete="off"
                   data-testid="workflow-name"
                   hint={
                     nameError ||
@@ -477,6 +478,7 @@ const WorkflowsPage = () => {
                   }}
                 />
                 <Input
+                  autoComplete="off"
                   data-testid="workflow-display-name"
                   isDisabled={isSubmitting}
                   label={t('label.display-name')}

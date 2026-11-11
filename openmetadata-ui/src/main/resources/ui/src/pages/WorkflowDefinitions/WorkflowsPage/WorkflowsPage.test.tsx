@@ -350,6 +350,16 @@ describe('WorkflowsPage create form', () => {
     );
   });
 
+  it('turns browser autocomplete off on the name fields', async () => {
+    await openCreateForm();
+
+    expect(textbox('workflow-name')).toHaveAttribute('autocomplete', 'off');
+    expect(textbox('workflow-display-name')).toHaveAttribute(
+      'autocomplete',
+      'off'
+    );
+  });
+
   it('uses the name as the display name when none is given', async () => {
     (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
     await openCreateForm();
