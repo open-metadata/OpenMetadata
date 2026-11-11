@@ -182,7 +182,9 @@ class IngestionPipelineMigrationEntryPointTest {
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
       lineageEdgeCleanup.verify(
-          () -> LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(collectionDAO));
+          () ->
+              LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(
+                  handle, connectionType));
     }
   }
 
