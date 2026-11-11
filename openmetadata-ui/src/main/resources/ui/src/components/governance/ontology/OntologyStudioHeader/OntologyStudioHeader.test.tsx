@@ -51,6 +51,9 @@ describe('OntologyStudioHeader', () => {
       expect(screen.getByTestId('header-scope')).toBeInTheDocument();
       expect(screen.getByTestId('header-action')).toBeInTheDocument();
       expect(screen.getByTestId('header-breadcrumb')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('ontology-studio-beta-badge')
+      ).toHaveTextContent('label.beta');
 
       modes.forEach(({ id }) =>
         expect(screen.getByTestId(`mode-tab-${id}`)).toBeInTheDocument()
