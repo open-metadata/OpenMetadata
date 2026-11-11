@@ -335,6 +335,9 @@ describe('WorkflowsPage create form', () => {
 
     expect(textbox('workflow-name-derived')).toHaveValue('Test-lifecycle');
     expect(textbox('workflow-name-derived')).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
+      'Test-lifecycle'
+    );
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('submit-workflow-button'));

@@ -468,6 +468,7 @@ const WorkflowsPage = () => {
                   </Typography>
                   <Input
                     isDisabled
+                    aria-label={t('label.name')}
                     data-testid="workflow-name-derived"
                     value={workflowName}
                   />
