@@ -1062,6 +1062,14 @@
       <artifactId>jena-shacl</artifactId>
       <version>${jena.version}</version>
     </dependency>
+    <!-- Tests only: the TDB2 store Fuseki runs, so graph-replacement tests exercise its indexes.
+         jena-tdb2 does not pull jena-tdb1, whose static initialisation the note above avoids. -->
+    <dependency>
+      <groupId>org.apache.jena</groupId>
+      <artifactId>jena-tdb2</artifactId>
+      <version>${jena.version}</version>
+      <scope>test</scope>
+    </dependency>
 
     <!-- Apache Calcite for SQL parsing -->
     <dependency>

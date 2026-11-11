@@ -35,12 +35,14 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.data.OntologyPackInstallPlan;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyChangeSet;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyPackModuleInstallation;
+import org.openmetadata.schema.type.OntologyPackSlice;
 import org.openmetadata.schema.type.OntologyPackSource;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
@@ -48,12 +50,16 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
+import org.openmetadata.service.ontology.OntologyPackInstallations.PlanLedger;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot.Entry;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot.Snapshot;
 import org.openmetadata.service.rdf.NativeOntologyRdfImporter;
 import org.openmetadata.service.rdf.RdfSerializationFormat;
 
 class OntologyPackInstallationsTest {
+  private static final Set<String> PACKS_FOR_THE_INSTALL_JOB =
+      Set.of("brick", "dpv", "fhir", "fibo", "gs1", "iof");
+
   @BeforeAll
   static void registerOntologyType() {
     EntityInterface.CANONICAL_ENTITY_NAME_MAP.put(Entity.ONTOLOGY, Entity.ONTOLOGY);
@@ -73,7 +79,7 @@ class OntologyPackInstallationsTest {
   @Test
   void rejectsAnEmptyStampedPlanBeforePreparingAnInstallation() {
     final OntologyChangeSet empty =
-        changeSet("fhir", List.of("core")).withOperations(List.of()).withUndoCursor(0);
+        changeSet("sosa-ssn", List.of("sosa")).withOperations(List.of()).withUndoCursor(0);
 
     assertThrows(
         PreconditionFailedException.class,
@@ -82,7 +88,7 @@ class OntologyPackInstallationsTest {
 
   @Test
   void validatesDependencyExpandedSourceAndStampsCatalogProvenance() {
-    final OntologyChangeSet changeSet = plan("fhir", List.of("clinical"), emptySnapshot);
+    final OntologyChangeSet changeSet = plan("sosa-ssn", List.of("ssn"), emptySnapshot);
 
     OntologyPackInstallations.requireCurrent(catalog, changeSet);
     final var prepared =
@@ -90,16 +96,16 @@ class OntologyPackInstallationsTest {
 
     assertEquals(changeSet.getOntology().getId(), prepared.ontologyId());
     assertEquals(
-        List.of("core", "clinical"),
+        List.of("sosa", "ssn"),
         prepared.installation().getModules().stream()
             .map(OntologyPackModuleInstallation::getModuleId)
             .toList());
     assertEquals(
-        catalog.require("fhir").getModules().getFirst().getSha256(),
+        catalog.require("sosa-ssn").getModules().getFirst().getSha256(),
         prepared.installation().getModules().getFirst().getSha256());
     assertEquals(123L, prepared.installation().getInstalledAt());
     assertEquals("steward", prepared.installation().getInstalledBy());
-    assertEquals(catalog.require("fhir").getLicense(), prepared.installation().getLicense());
+    assertEquals(catalog.require("sosa-ssn").getLicense(), prepared.installation().getLicense());
   }
 
   @Test
@@ -108,8 +114,8 @@ class OntologyPackInstallationsTest {
         BadRequestException.class,
         () ->
             OntologyPackInstallations.requireCurrent(
-                catalog, changeSet("fhir", List.of("clinical"))));
-    final OntologyChangeSet glossary = changeSet("fhir", List.of("core"));
+                catalog, changeSet("sosa-ssn", List.of("ssn"))));
+    final OntologyChangeSet glossary = changeSet("sosa-ssn", List.of("sosa"));
     glossary.setOntology(null);
     assertThrows(
         BadRequestException.class,
@@ -118,22 +124,21 @@ class OntologyPackInstallationsTest {
 
   @Test
   void mergesModulesOfTheSamePackWithoutMutatingPreviousRecord() {
-    final OntologyPackInstallation first = installation("fhir", "core", "clinical");
-    final OntologyPackInstallation second = installation("fhir", "core", "workflow");
+    final OntologyPackInstallation first = installation("sosa-ssn", "sosa");
+    final OntologyPackInstallation second = installation("sosa-ssn", "sosa", "ssn");
 
     final List<OntologyPackInstallation> merged =
-        OntologyPackInstallations.record(
-            List.of(first), second, List.of("core", "clinical", "workflow"));
+        OntologyPackInstallations.record(List.of(first), second, List.of("sosa", "ssn"));
 
     assertEquals(1, merged.size());
     assertNotSame(first, merged.getFirst());
     assertEquals(
-        List.of("core", "clinical", "workflow"),
+        List.of("sosa", "ssn"),
         merged.getFirst().getModules().stream()
             .map(OntologyPackModuleInstallation::getModuleId)
             .toList());
     assertEquals(
-        List.of("core", "clinical"),
+        List.of("sosa"),
         first.getModules().stream().map(OntologyPackModuleInstallation::getModuleId).toList());
   }
 
@@ -141,13 +146,13 @@ class OntologyPackInstallationsTest {
   void stampsTheVerifiedDependencyExpandedSelection() {
     final var selected =
         new OntologyPackContentLoader(getClass().getClassLoader())
-            .loadSelected(catalog, "fhir", List.of("clinical"));
+            .loadSelected(catalog, "sosa-ssn", List.of("ssn"));
 
     final OntologyPackSource source = OntologyPackInstallations.sourcePack(selected);
 
-    assertEquals("fhir", source.getPackId());
+    assertEquals("sosa-ssn", source.getPackId());
     assertEquals(selected.manifest().getVersion(), source.getVersion());
-    assertEquals(List.of("core", "clinical"), new ArrayList<>(source.getModuleIds()));
+    assertEquals(List.of("sosa", "ssn"), new ArrayList<>(source.getModuleIds()));
   }
 
   @Test
@@ -157,20 +162,20 @@ class OntologyPackInstallationsTest {
             .withId(UUID.randomUUID())
             .withName("Zed")
             .withFullyQualifiedName("Zed")
-            .withInstalledPacks(List.of(installation("fhir", "core")));
+            .withInstalledPacks(List.of(installation("sosa-ssn", "sosa")));
     final Ontology alpha =
         new Ontology()
             .withId(UUID.randomUUID())
             .withName("Alpha")
             .withFullyQualifiedName("Alpha")
             .withInstalledPacks(
-                List.of(installation("fhir", "core"), installation("fibo", "foundations")));
+                List.of(installation("sosa-ssn", "sosa"), installation("dcat", "dcat")));
     final Ontology empty = new Ontology().withId(UUID.randomUUID()).withName("Empty");
 
     final var records = OntologyPackInstallations.records(List.of(zed, empty, alpha));
 
     assertEquals(
-        List.of("fhir:Alpha", "fhir:Zed", "fibo:Alpha"),
+        List.of("dcat:Alpha", "sosa-ssn:Alpha", "sosa-ssn:Zed"),
         records.stream()
             .map(
                 record ->
@@ -182,21 +187,20 @@ class OntologyPackInstallationsTest {
 
   @Test
   void replacesAnotherPackVersionAndRejectsStaleSourceAtApply() {
-    final OntologyPackInstallation first = installation("fhir", "core");
-    final OntologyPackInstallation newer = installation("fhir", "core").withVersion("2");
-    final OntologyPackInstallation unrelated = installation("fibo", "foundations");
+    final OntologyPackInstallation first = installation("sosa-ssn", "sosa");
+    final OntologyPackInstallation newer = installation("sosa-ssn", "sosa").withVersion("2");
+    final OntologyPackInstallation unrelated = installation("dcat", "dcat");
 
     assertEquals(
         List.of(newer, unrelated),
-        OntologyPackInstallations.record(
-            List.of(first, unrelated), newer, List.of("core", "clinical", "workflow")));
-    assertEquals(List.of(newer), OntologyPackInstallations.record(null, newer, List.of("core")));
+        OntologyPackInstallations.record(List.of(first, unrelated), newer, List.of("sosa", "ssn")));
+    assertEquals(List.of(newer), OntologyPackInstallations.record(null, newer, List.of("sosa")));
 
     final OntologyChangeSet unstamped = new OntologyChangeSet();
     OntologyPackInstallations.requireCurrent(catalog, unstamped);
     assertNull(OntologyPackInstallations.prepare(catalog, null, unstamped, "steward", 123L));
 
-    final OntologyChangeSet stale = changeSet("fhir", List.of("core"));
+    final OntologyChangeSet stale = changeSet("sosa-ssn", List.of("sosa"));
     stale.getSourcePack().setVersion("old-version");
     assertThrows(
         BadRequestException.class, () -> OntologyPackInstallations.requireCurrent(catalog, stale));
@@ -207,8 +211,8 @@ class OntologyPackInstallationsTest {
 
   @Test
   void acceptsIndependentReconciliationsAndRetriesWithoutChangingTheirIdsOrPayloads() {
-    final var first = plan("fhir", List.of("clinical"), emptySnapshot);
-    final var second = plan("fhir", List.of("clinical"), emptySnapshot);
+    final var first = plan("sosa-ssn", List.of("ssn"), emptySnapshot);
+    final var second = plan("sosa-ssn", List.of("ssn"), emptySnapshot);
     assertNotEquals(
         first.getOperations().getFirst().getId(), second.getOperations().getFirst().getId());
     assertNotEquals(
@@ -226,9 +230,9 @@ class OntologyPackInstallationsTest {
   }
 
   @Test
-  void acceptsEveryBundledPackSelection() {
+  void acceptsEveryBundledPackSelectionThatFitsOneInteractiveImport() {
     for (final var manifest : catalog.list()) {
-      if (Boolean.TRUE.equals(manifest.getBundled())) {
+      if (!PACKS_FOR_THE_INSTALL_JOB.contains(manifest.getId())) {
         for (final var module : manifest.getModules()) {
           final var draft = plan(manifest.getId(), List.of(module.getId()), emptySnapshot);
           final var prepared =
@@ -241,23 +245,23 @@ class OntologyPackInstallationsTest {
 
   @Test
   void rejectsMissingExtraUnrelatedAndDuplicateOperations() {
-    final var missing = plan("fhir", List.of("core"), emptySnapshot);
+    final var missing = plan("sosa-ssn", List.of("sosa"), emptySnapshot);
     missing.getOperations().removeLast();
     missing.setUndoCursor(missing.getOperations().size());
     assertRejected(missing, emptySnapshot);
 
-    final var extra = plan("fhir", List.of("core"), emptySnapshot);
+    final var extra = plan("sosa-ssn", List.of("sosa"), emptySnapshot);
     extra
         .getOperations()
-        .add(plan("fibo", List.of("foundations"), emptySnapshot).getOperations().getFirst());
+        .add(plan("dcat", List.of("dcat"), emptySnapshot).getOperations().getFirst());
     extra.setUndoCursor(extra.getOperations().size());
     assertRejected(extra, emptySnapshot);
 
-    final var unrelated = plan("fibo", List.of("foundations"), emptySnapshot);
-    unrelated.setSourcePack(changeSet("fhir", List.of("core")).getSourcePack());
+    final var unrelated = plan("dcat", List.of("dcat"), emptySnapshot);
+    unrelated.setSourcePack(changeSet("sosa-ssn", List.of("sosa")).getSourcePack());
     assertRejected(unrelated, emptySnapshot);
 
-    final var duplicate = plan("fhir", List.of("core"), emptySnapshot);
+    final var duplicate = plan("sosa-ssn", List.of("sosa"), emptySnapshot);
     final var repeated =
         JsonUtils.deepCopy(duplicate.getOperations().getFirst(), OntologyChangeOperation.class);
     repeated.setId(UUID.randomUUID());
@@ -271,7 +275,7 @@ class OntologyPackInstallationsTest {
   @MethodSource("conceptAlterations")
   void rejectsAlteredConceptPayloadOrAttribution(
       final Consumer<OntologyChangeOperation> alteration) {
-    final var draft = plan("fhir", List.of("core"), emptySnapshot);
+    final var draft = plan("sosa-ssn", List.of("sosa"), emptySnapshot);
     alteration.accept(draft.getOperations().getFirst());
     assertRejected(draft, emptySnapshot);
   }
@@ -295,7 +299,7 @@ class OntologyPackInstallationsTest {
 
   @Test
   void rejectsChangedRelationEndpointsAndWorkingRevision() {
-    final var draft = plan("fhir", List.of("clinical"), emptySnapshot);
+    final var draft = plan("sosa-ssn", List.of("ssn"), emptySnapshot);
     draft.getOperations().stream()
         .filter(operation -> operation.getAxiom() != null)
         .findFirst()
@@ -303,20 +307,20 @@ class OntologyPackInstallationsTest {
         .getAxiom()
         .setSubjectIri(URI.create("https://example.org/changed"));
     assertRejected(draft, emptySnapshot);
-    final var stale = plan("fhir", List.of("core"), emptySnapshot).withBaseWorkingRevision(1L);
+    final var stale = plan("sosa-ssn", List.of("sosa"), emptySnapshot).withBaseWorkingRevision(1L);
     assertRejected(stale, emptySnapshot);
   }
 
   @Test
   void requiresFullRedoAndLeavesUnmarkedDraftHandlingUnchanged() {
-    final var draft = plan("fhir", List.of("core"), emptySnapshot);
+    final var draft = plan("sosa-ssn", List.of("sosa"), emptySnapshot);
     draft.setUndoCursor(draft.getOperations().size() - 1);
     OntologyChangeSetValidator.normalizeAndValidate(draft);
     assertRejected(draft, emptySnapshot);
     draft.setUndoCursor(draft.getOperations().size());
     OntologyChangeSetValidator.normalizeAndValidate(draft);
     assertEquals(
-        "fhir",
+        "sosa-ssn",
         OntologyPackInstallations.prepare(catalog, emptySnapshot, draft, "steward", 123L)
             .installation()
             .getPackId());
@@ -327,33 +331,33 @@ class OntologyPackInstallationsTest {
 
   @Test
   void validatesPartialReinstallAndRetainsModuleUnionButRejectsNoOpStamp() {
-    final var first = plan("fhir", List.of("clinical"), emptySnapshot);
+    final var first = plan("sosa-ssn", List.of("sosa"), emptySnapshot);
     final var installed =
         OntologyPackInstallations.prepare(catalog, emptySnapshot, first, "steward", 123L);
     final Snapshot populated = populated(first);
-    final var second = plan("fhir", List.of("workflow"), populated);
+    final var second = plan("sosa-ssn", List.of("ssn"), populated);
     assertTrue(
         second.getOperations().size()
-            < plan("fhir", List.of("workflow"), emptySnapshot).getOperations().size());
+            < plan("sosa-ssn", List.of("ssn"), emptySnapshot).getOperations().size());
     final var next = OntologyPackInstallations.prepare(catalog, populated, second, "steward", 124L);
     final var union =
         OntologyPackInstallations.record(
             List.of(installed.installation()), next.installation(), next.moduleOrder());
     assertEquals(
-        List.of("core", "clinical", "workflow"),
+        List.of("sosa", "ssn"),
         union.getFirst().getModules().stream()
             .map(OntologyPackModuleInstallation::getModuleId)
             .toList());
-    final var noOp = plan("fhir", List.of("clinical"), populated);
+    final var noOp = plan("sosa-ssn", List.of("sosa"), populated);
     assertTrue(noOp.getOperations().isEmpty());
     assertRejected(noOp, populated);
   }
 
   @Test
   void preservesUpdateTargetAndBaseVersionIdentity() {
-    final Snapshot existing = populated(plan("fhir", List.of("core"), emptySnapshot));
+    final Snapshot existing = populated(plan("sosa-ssn", List.of("sosa"), emptySnapshot));
     existing.entries().get(1).definition().setDisplayName("Old label");
-    final var update = plan("fhir", List.of("core"), existing);
+    final var update = plan("sosa-ssn", List.of("sosa"), existing);
     assertEquals(1, update.getOperations().size());
     final var operation = update.getOperations().getFirst();
     assertEquals(existing.entries().get(1).definition().getId(), operation.getTargetId());
@@ -376,8 +380,8 @@ class OntologyPackInstallationsTest {
         ex:brother a owl:ObjectProperty .
         ex:uncle a owl:ObjectProperty ; owl:propertyChainAxiom (ex:parent ex:brother) .
         """;
-    final var expected = reconcile(rdf, emptySnapshot);
-    final var actual = reconcile(rdf, emptySnapshot);
+    final var expected = reconcile(rdf, RdfSerializationFormat.TURTLE, emptySnapshot);
+    final var actual = reconcile(rdf, RdfSerializationFormat.TURTLE, emptySnapshot);
     OntologyPackInstallations.requireMatchingOperations(expected, actual);
     final var chain =
         actual.stream()
@@ -399,14 +403,103 @@ class OntologyPackInstallationsTest {
         @prefix ex: <https://example.org/> .
         ex:knows a owl:ObjectProperty .
         """;
-    final var expected = reconcile(rdf, emptySnapshot);
-    final var stored = reconcile(rdf, emptySnapshot);
+    final var expected = reconcile(rdf, RdfSerializationFormat.TURTLE, emptySnapshot);
+    final var stored = reconcile(rdf, RdfSerializationFormat.TURTLE, emptySnapshot);
     stored.stream()
         .map(OntologyChangeOperation::getProperty)
         .filter(Objects::nonNull)
         .forEach(property -> property.setOwners(new ArrayList<>()));
 
     OntologyPackInstallations.requireMatchingOperations(expected, stored);
+  }
+
+  @Test
+  void aSliceIsVerifiedAgainstTheJobsRecordedPlanAndOnlyTheLastRecordsTheInstallation() {
+    final var draft = plan("sosa-ssn", List.of("ssn", "sosa"), emptySnapshot);
+    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 40, "ab".repeat(32));
+    assertEquals(4, slicePlan.slices().size());
+    final PlanLedger ledger = ledgerOf(slicePlan);
+
+    final List<Boolean> recordsInstallation =
+        slicePlan.slices().stream()
+            .map(
+                slice ->
+                    OntologyPackInstallations.prepareSlice(
+                            catalog, ledger, sliceChangeSet(draft, slicePlan, slice), "steward", 5L)
+                        != null)
+            .toList();
+
+    assertEquals(List.of(false, false, false, true), recordsInstallation);
+  }
+
+  @Test
+  void rejectsASliceWhoseOperationsDifferFromThePlanOrWhoseStampIsForeign() {
+    final var draft = plan("sosa-ssn", List.of("ssn", "sosa"), emptySnapshot);
+    final var slicePlan = OntologyPackSlicePlan.of(draft.getOperations(), 40, "ab".repeat(32));
+    final PlanLedger ledger = ledgerOf(slicePlan);
+    final var first = slicePlan.slices().getFirst();
+
+    final var altered = sliceChangeSet(draft, slicePlan, first);
+    altered.getOperations().getFirst().getConcept().setDisplayName("Changed label");
+    assertSliceRejected(ledger, altered);
+
+    final var swapped = sliceChangeSet(draft, slicePlan, first);
+    swapped.getSourcePack().getSlice().setIndex(1);
+    assertSliceRejected(ledger, swapped);
+
+    final var otherJob = sliceChangeSet(draft, slicePlan, first);
+    otherJob.getSourcePack().getSlice().setJobId(8L);
+    assertSliceRejected(ledger, otherJob);
+
+    final var otherPlan = sliceChangeSet(draft, slicePlan, first);
+    otherPlan.getSourcePack().getSlice().setPlanDigest("cd".repeat(32));
+    assertSliceRejected(ledger, otherPlan);
+
+    final var otherOntology = sliceChangeSet(draft, slicePlan, first);
+    otherOntology.setOntology(new EntityReference().withId(UUID.randomUUID()).withType("ontology"));
+    assertSliceRejected(ledger, otherOntology);
+
+    final var partial = sliceChangeSet(draft, slicePlan, first);
+    partial.setUndoCursor(partial.getOperations().size() - 1);
+    assertSliceRejected(ledger, partial);
+  }
+
+  private void assertSliceRejected(final PlanLedger ledger, final OntologyChangeSet changeSet) {
+    assertThrows(
+        PreconditionFailedException.class,
+        () -> OntologyPackInstallations.prepareSlice(catalog, ledger, changeSet, "steward", 5L));
+  }
+
+  private PlanLedger ledgerOf(final OntologyPackSlicePlan slicePlan) {
+    final OntologyPackInstallPlan recorded =
+        new OntologyPackInstallPlan()
+            .withPlanDigest(slicePlan.planDigest())
+            .withSliceDigests(slicePlan.sliceDigests())
+            .withMemberCount(slicePlan.memberCount())
+            .withMembersApplied(0);
+    return (jobId, ontologyId) -> jobId == 7L && ontologyId.equals(root.getId()) ? recorded : null;
+  }
+
+  private OntologyChangeSet sliceChangeSet(
+      final OntologyChangeSet draft,
+      final OntologyPackSlicePlan slicePlan,
+      final OntologyPackSlicePlan.Slice slice) {
+    final List<OntologyChangeOperation> operations =
+        JsonUtils.readObjects(
+            JsonUtils.pojoToJson(slice.operations()), OntologyChangeOperation.class);
+    return new OntologyChangeSet()
+        .withOntology(root.getEntityReference())
+        .withBaseWorkingRevision(0L)
+        .withOperations(new ArrayList<>(operations))
+        .withUndoCursor(operations.size())
+        .withSourcePack(
+            JsonUtils.deepCopy(draft.getSourcePack(), OntologyPackSource.class)
+                .withSlice(
+                    new OntologyPackSlice()
+                        .withJobId(7L)
+                        .withIndex(slice.index())
+                        .withCount(slicePlan.slices().size())
+                        .withPlanDigest(slicePlan.planDigest())));
   }
 
   private void assertRejected(final OntologyChangeSet draft, final Snapshot snapshot) {
@@ -418,7 +511,8 @@ class OntologyPackInstallationsTest {
   private OntologyChangeSet plan(
       final String packId, final List<String> modules, final Snapshot snapshot) {
     final var selected = catalog.loadSelected(packId, modules);
-    final var operations = reconcile(selected.body(), snapshot);
+    final var operations =
+        reconcile(selected.body(), RdfSerializationFormat.parse(selected.format()), snapshot);
     final var draft =
         new OntologyChangeSet()
             .withOntology(root.getEntityReference())
@@ -431,9 +525,10 @@ class OntologyPackInstallationsTest {
     return draft;
   }
 
-  private List<OntologyChangeOperation> reconcile(final String rdf, final Snapshot snapshot) {
+  private List<OntologyChangeOperation> reconcile(
+      final String rdf, final RdfSerializationFormat format, final Snapshot snapshot) {
     final var importer = new NativeOntologyRdfImporter();
-    final var model = importer.parse(rdf, RdfSerializationFormat.TURTLE);
+    final var model = importer.parse(rdf, format);
     try {
       return new ArrayList<>(importer.reconcile(model, snapshot).getOperations());
     } finally {
