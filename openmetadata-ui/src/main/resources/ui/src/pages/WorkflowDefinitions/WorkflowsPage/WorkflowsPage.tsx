@@ -62,12 +62,7 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
-import {
-  getWorkflowNameFromDisplayName,
-  WORKFLOW_NAME_MAX_LENGTH,
-  WORKFLOW_NAME_MIN_LENGTH,
-  WORKFLOW_NAME_REGEX,
-} from '../../../utils/WorkflowValidationUtils';
+import { getWorkflowNameFromDisplayName } from '../../../utils/WorkflowValidationUtils';
 import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interface';
 import WorkflowList, { WorkflowListItem } from './WorkflowList';
 import WorkflowsPageSection from './WorkflowsPageSection';
@@ -119,30 +114,6 @@ const WorkflowsPage = () => {
         description: t('message.sit-back-description'),
       },
     ],
-    [t]
-  );
-
-  const validateWorkflowName = useCallback(
-    (value: string): string => {
-      if (!value) {
-        return t('label.workflow-name-is-required');
-      }
-      if (!WORKFLOW_NAME_REGEX.test(value)) {
-        return t('message.workflow-name-invalid-characters');
-      }
-      if (value.length < WORKFLOW_NAME_MIN_LENGTH) {
-        return t('message.workflow-name-min-length', {
-          count: WORKFLOW_NAME_MIN_LENGTH,
-        });
-      }
-      if (value.length > WORKFLOW_NAME_MAX_LENGTH) {
-        return t('message.workflow-name-max-length', {
-          count: WORKFLOW_NAME_MAX_LENGTH,
-        });
-      }
-
-      return '';
-    },
     [t]
   );
 
@@ -229,11 +200,11 @@ const WorkflowsPage = () => {
       return;
     }
 
-    const error = workflowDisplayName.trim()
-      ? validateWorkflowName(workflowName)
-      : t('label.field-required', { field: t('label.display-name') });
-    if (error) {
-      setNameError(error);
+    // The derived name always satisfies the name rules; only a blank display name can fail.
+    if (!workflowName) {
+      setNameError(
+        t('label.field-required', { field: t('label.display-name') })
+      );
 
       return;
     }
@@ -280,7 +251,6 @@ const WorkflowsPage = () => {
     workflowName,
     workflowDisplayName,
     description,
-    validateWorkflowName,
     resetForm,
     navigate,
     t,
@@ -472,7 +442,7 @@ const WorkflowsPage = () => {
                     data-testid="workflow-name"
                     isDisabled={isSubmitting}
                     isInvalid={!!nameError}
-                    placeholder={t('label.workflow-name-placeholder')}
+                    placeholder={t('message.enter-display-name')}
                     value={workflowDisplayName}
                     onChange={(value) => {
                       setWorkflowDisplayName(value);
@@ -496,7 +466,6 @@ const WorkflowsPage = () => {
                     className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
                     {t('label.name')}
                   </Typography>
-                  {/* The name is the workflow's FQN, so it is derived, never typed. */}
                   <Input
                     isDisabled
                     data-testid="workflow-name-derived"

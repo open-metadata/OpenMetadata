@@ -16,7 +16,6 @@ export const WORKFLOW_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 export const WORKFLOW_NAME_MIN_LENGTH = 3;
 export const WORKFLOW_NAME_MAX_LENGTH = 50;
 
-// A stable short code for a display name, so the same text always yields the same name.
 const hashDisplayName = (displayName: string): string => {
   let hash = 5381;
   for (const char of displayName) {
