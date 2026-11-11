@@ -31,8 +31,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.service.migration.utils.v207.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
+import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -254,7 +254,7 @@ class McpGrantRevocationSqlTest {
       jdbi.useHandle(handle -> statements.forEach(handle::execute));
     }
     if (MYSQL.equals(dialect)) {
-      jdbi.useHandle(MigrationUtil::addMcpConsentColumnsOnMySql);
+      jdbi.useHandle(McpConsentColumns::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
     }
