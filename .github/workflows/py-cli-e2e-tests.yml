@@ -18,9 +18,9 @@ on:
         required: true
         type: string
       connectors:
-        description: Connector names as a JSON array; empty selects all connectors
+        description: Connector names as a JSON array
+        required: true
         type: string
-        default: ''
 
 permissions:
   id-token: write
@@ -32,7 +32,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        e2e-test: ${{ fromJSON(inputs.connectors || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]') }}
+        e2e-test: ${{ fromJSON(inputs.connectors) }}
     # Snowflake drops and recreates the E2E database that the v2 Snowflake job also uses, so both
     # workflows put their Snowflake jobs in one group that runs one at a time. A newer pending job
     # replaces an older one.

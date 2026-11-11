@@ -184,7 +184,12 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
         ("py-cli-e2e-tests.yml", "py-cli-e2e-tests", "e2e-test"),
     ):
         job = yaml.safe_load((root / ".github/workflows" / workflow_file).read_text())["jobs"][job_id]
-        assert "snowflake" in job["strategy"]["matrix"][matrix_key]
+        if workflow_file == "py-cli-e2e-tests.yml":
+            entrypoint = yaml.load((root / ".github/workflows/py-tests.yml").read_text(), Loader=yaml.BaseLoader)
+            connectors = json.loads(entrypoint["on"]["workflow_dispatch"]["inputs"]["connectors"]["default"])
+        else:
+            connectors = job["strategy"]["matrix"][matrix_key]
+        assert "snowflake" in connectors
         assert job["concurrency"]["cancel-in-progress"] is False
         match = _SNOWFLAKE_CONCURRENCY_GROUP.match(job["concurrency"]["group"])
         assert match, job["concurrency"]["group"]

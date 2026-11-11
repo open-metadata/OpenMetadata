@@ -25,9 +25,9 @@ on:
         options: [pull-request, merge-queue, nightly]
         default: nightly
       connectors:
-        description: CLI E2E connectors as a JSON array; leave empty for all connectors (nightly mode)
+        description: CLI E2E connectors as a JSON array (nightly mode)
         type: string
-        default: ''
+        default: '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]'
 
 permissions:
   contents: read
@@ -189,7 +189,7 @@ jobs:
     secrets: inherit
     with:
       python-version: ${{ needs.changes.outputs.latest-version }}
-      connectors: ${{ inputs.connectors || '' }}
+      connectors: ${{ inputs.connectors || '["bigquery", "dbt_redshift", "metabase", "mssql", "mysql", "redash", "snowflake", "tableau", "redshift", "quicksight", "datalake_s3", "postgres", "oracle", "athena", "bigquery_multiple_project", "exasol", "powerbi"]' }}
 
   py-tests-status:
     name: py-tests-status
