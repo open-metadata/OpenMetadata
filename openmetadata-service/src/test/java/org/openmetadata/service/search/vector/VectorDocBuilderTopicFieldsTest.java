@@ -6,8 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
@@ -37,8 +39,7 @@ class VectorDocBuilderTopicFieldsTest {
         "event_id (Unique event identifier), payload, payload.ratio (Ratio of the stock split,"
             + " e.g. 2:1), payload.effective_date";
     assertEquals(
-        "topic Corporate Actions (corporate_actions). Corporate action events. Schema fields"
-            + " include "
+        "topic Corporate Actions (corporate_actions). Corporate action events. Fields include "
             + expectedFields,
         chunk.get("textToEmbed"));
     String llmContext = (String) chunk.get("textToLLMContext");
@@ -88,15 +89,33 @@ class VectorDocBuilderTopicFieldsTest {
     List<Map<String, Object>> chunks = VectorDocBuilder.fromEntity(topic, MOCK_CLIENT);
 
     assertTrue(chunks.size() > 1, "a schema with 300 described fields must be chunked");
-    String allEmbedded =
-        String.join(" ", chunks.stream().map(c -> (String) c.get("textToEmbed")).toList());
-    String allContext =
-        String.join(" ", chunks.stream().map(c -> (String) c.get("textToLLMContext")).toList());
-    assertTrue(allEmbedded.contains("field_0 (Description of field number 0)"));
-    assertTrue(allEmbedded.contains("field_299 (Description of field number 299)"));
-    assertTrue(allContext.contains("field_299 (Description of field number 299)"));
+    // Chunks split on words, so a description may straddle two chunks; every field name must land.
+    Set<String> embedded = wordsOf(chunks, "textToEmbed");
+    Set<String> context = wordsOf(chunks, "textToLLMContext");
+    for (Field field : fields) {
+      assertTrue(embedded.contains(field.getName()), field.getName() + " is not embedded");
+      assertTrue(context.contains(field.getName()), field.getName() + " is not in the LLM context");
+    }
     for (Map<String, Object> chunk : chunks) {
       assertEquals(chunks.size(), chunk.get("chunkCount"));
+    }
+  }
+
+  @Test
+  void everyFieldIsEmbeddedWhenTheContextBodyEndsExactlyOnAChunkBoundary() {
+    // "description: Events; columns:" is 3 words, so 377 bare fields make a 380-word context body:
+    // exactly one chunk doc. The embedded text must still carry every field.
+    List<Field> fields = new ArrayList<>();
+    for (int i = 0; i < 377; i++) {
+      fields.add(field("field_" + i, null));
+    }
+    Topic topic = topic("Events", new MessageSchema().withSchemaFields(fields));
+
+    List<Map<String, Object>> chunks = VectorDocBuilder.fromEntity(topic, MOCK_CLIENT);
+
+    Set<String> embedded = wordsOf(chunks, "textToEmbed");
+    for (Field field : fields) {
+      assertTrue(embedded.contains(field.getName()), field.getName() + " is not embedded");
     }
   }
 
@@ -104,6 +123,14 @@ class VectorDocBuilderTopicFieldsTest {
   void schemaFieldsText_isEmptyForEntitiesThatAreNotTopics() {
     assertFalse(VectorDocBuilder.schemaFieldsText(corporateActionsTopic()).isEmpty());
     assertEquals("", VectorDocBuilder.schemaFieldsText(new Table()));
+  }
+
+  private static Set<String> wordsOf(List<Map<String, Object>> chunks, String textKey) {
+    Set<String> words = new HashSet<>();
+    for (Map<String, Object> chunk : chunks) {
+      words.addAll(List.of(((String) chunk.get(textKey)).split("[\\s,]+")));
+    }
+    return words;
   }
 
   private static Topic corporateActionsTopic() {

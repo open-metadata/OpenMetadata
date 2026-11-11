@@ -280,8 +280,7 @@ public class VectorDocBuilder {
   private static Map<String, Object> buildChunkDoc(
       ChunkContext ctx, int index, ChunkEmbeddingSource embeddingSource) {
     int chunkCount = ctx.chunks().size();
-    String semanticChunk =
-        index < ctx.semanticChunks().size() ? ctx.semanticChunks().get(index) : "";
+    String semanticChunk = semanticChunkFor(ctx.chunks(), ctx.semanticChunks(), index);
     String textToEmbed = joinSemanticParts(ctx.semanticMetaLight(), semanticChunk);
     String textToLLMContext =
         String.format(
@@ -296,6 +295,20 @@ public class VectorDocBuilder {
     fields.put("parentId", ctx.parentId());
     fields.put("fingerprint", ctx.fingerprint());
     return fields;
+  }
+
+  /**
+   * The embedded body for chunk doc {@code index}. One doc is written per context chunk, but the
+   * semantic body is chunked on its own and can need one more chunk than the context body (its
+   * labels and child-name phrase differ in length). The last doc carries that overflow so no
+   * semantic text is silently left out of the embedding.
+   */
+  static String semanticChunkFor(List<String> chunks, List<String> semanticChunks, int index) {
+    if (index >= semanticChunks.size()) {
+      return "";
+    }
+    int end = index == chunks.size() - 1 ? semanticChunks.size() : index + 1;
+    return String.join(" ", semanticChunks.subList(index, end));
   }
 
   /**
@@ -578,7 +591,7 @@ public class VectorDocBuilder {
     String contTag = "";
     String textToLLMContext =
         String.format("%s%s%s | chunk %d/%d", metaLight, contTag, chunks.get(0), 1, chunkCount);
-    String semanticBodyChunk = semanticChunks.get(0);
+    String semanticBodyChunk = semanticChunkFor(chunks, semanticChunks, 0);
     String textToEmbed = joinSemanticParts(semanticMetaLight, semanticBodyChunk);
 
     float[] embedding = embeddingClient.embed(textToEmbed);
@@ -761,6 +774,7 @@ public class VectorDocBuilder {
     // Topics reuse the "columns:" label so consumers that parse a hit's column section (CAIP's
     // HybridSearchTool keeps it when trimming a long context) read schema fields the same way.
     // A topic without fields gets no section, keeping its fingerprint (and embedding) unchanged.
+    // ADR:2026-11-11-chunk-llm-context-lists-child-fields-under-columns
     String schemaFields = schemaFieldsText(entity);
     if (!schemaFields.isEmpty()) {
       bodyParts.add("columns: " + schemaFields);
@@ -945,7 +959,7 @@ public class VectorDocBuilder {
     }
     String schemaFields = schemaFieldsText(entity);
     if (!schemaFields.isEmpty()) {
-      bodyParts.add("Schema fields include " + schemaFields);
+      bodyParts.add("Fields include " + schemaFields);
     }
 
     String childContext = buildChildContextPhrase(entity, entityType);
