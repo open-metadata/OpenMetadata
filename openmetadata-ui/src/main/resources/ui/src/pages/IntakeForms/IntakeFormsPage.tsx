@@ -12,23 +12,23 @@
  */
 
 import {
-  Alert,
-  Box,
-  Button,
-  Dialog,
-  Dropdown,
-  Modal,
-  ModalOverlay,
-  Tooltip,
-  Typography,
+    Box,
+    Button,
+    Dialog,
+    Dropdown,
+    Modal,
+    ModalOverlay,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  ChevronDown,
-  FileCheck02,
+    ChevronDown,
+    FileCheck02
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import CreatePlaceholder from '../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
@@ -36,15 +36,15 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
 import {
-  IntakeForm,
-  TargetEntityType,
+    IntakeForm,
+    TargetEntityType
 } from '../../generated/governance/intakeForm';
 import {
-  createIntakeForm,
-  createOrUpdateIntakeForm,
-  deleteIntakeForm,
-  listIntakeForms,
-  patchIntakeForm,
+    createIntakeForm,
+    createOrUpdateIntakeForm,
+    deleteIntakeForm,
+    listIntakeForms,
+    patchIntakeForm
 } from '../../rest/intakeFormsAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { ENTITY_TYPE_LABEL_KEYS } from '../../utils/IntakeFormUtils';
@@ -238,6 +238,12 @@ const IntakeFormsPage = () => {
   const headerBar = (
     <Box align="center" justify="between">
       <PageHeader
+        badge={
+          <DeprecatedFeatureBadge
+            description={t('message.intake-form-deprecated')}
+            featureName={t('label.intake-form-plural')}
+          />
+        }
         data={{
           header: t('label.intake-form-plural'),
           subHeader: t('message.intake-form-plural-description'),
@@ -252,11 +258,6 @@ const IntakeFormsPage = () => {
       <Box direction="col" gap={4}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
         {headerBar}
-        <Alert
-          data-testid="intake-forms-deprecated-alert"
-          title={t('message.intake-form-deprecated')}
-          variant="warning"
-        />
 
         {!loading && forms.length === 0 ? (
           <div className="tw:relative tw:min-h-90">

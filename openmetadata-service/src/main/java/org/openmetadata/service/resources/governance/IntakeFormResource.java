@@ -58,6 +58,7 @@ import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 
+// Deprecated, removed next release: ADR:2026-11-11-intake-forms-are-deprecated
 @Slf4j
 @Path("/v1/governance/intakeForms")
 @Tag(
