@@ -127,9 +127,14 @@ public final class ContextFileVisibility {
     String userName = callerName(securityContext);
     boolean admin = isAdmin(securityContext);
     // ResultList.filter rebuilds the paging for an offset read and leaves the cursors out.
-    return files
-        .filter(file -> isVisibleToUser(file, userName, admin))
-        .setPaging(files.getPaging());
+    ResultList<ContextFile> visible =
+        files.filter(file -> isVisibleToUser(file, userName, admin)).setPaging(files.getPaging());
+    // The total leaves out the files dropped from this page.
+    if (visible.getPaging() != null && visible.getPaging().getTotal() != null) {
+      int dropped = files.getData().size() - visible.getData().size();
+      visible.getPaging().setTotal(visible.getPaging().getTotal() - dropped);
+    }
+    return visible;
   }
 
   /** Drops the files this caller may not see from an unpaged list, such as a folder's children. */

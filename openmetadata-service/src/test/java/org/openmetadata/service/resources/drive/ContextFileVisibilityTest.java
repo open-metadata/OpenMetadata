@@ -44,7 +44,7 @@ class ContextFileVisibilityTest {
   private static final int TOTAL = 7;
 
   @Test
-  void aFilteredPageKeepsItsCursorsAndTotal() {
+  void aFilteredPageKeepsItsCursorsAndCountsOnlyWhatItShows() {
     ResultList<ContextFile> page =
         new ResultList<>(
             List.of(fileOwnedBy(ALICE, MemoryVisibility.PRIVATE), fileOwnedBy(BOB, null)),
@@ -59,7 +59,7 @@ class ContextFileVisibilityTest {
     assertNotNull(page.getPaging().getAfter());
     assertEquals(page.getPaging().getBefore(), visible.getPaging().getBefore());
     assertEquals(page.getPaging().getAfter(), visible.getPaging().getAfter());
-    assertEquals(TOTAL, visible.getPaging().getTotal());
+    assertEquals(TOTAL - 1, visible.getPaging().getTotal());
   }
 
   @Test
@@ -72,6 +72,7 @@ class ContextFileVisibilityTest {
 
     assertEquals(1, visible.getData().size());
     assertEquals(page.getPaging().getAfter(), visible.getPaging().getAfter());
+    assertEquals(TOTAL, visible.getPaging().getTotal());
   }
 
   @Test
