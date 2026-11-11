@@ -65,9 +65,15 @@ old embedding forever:
   a renamed tag, or a test case's latest result change the fingerprint without changing the
   entity's `updatedAt`. Each affected entity costs one call at the next reindex; OpenSearch chunks
   already paid it.
-- **The same-text rendering change re-embeds a few entities once**: those whose custom properties
-  a reindex stored in an order other than sorted (entity-reference properties come first; database
-  collation may order case differently), and metrics with related metrics.
+- **The new custom-property rendering re-embeds every entity with custom properties once**, on
+  the first reindex after this change (the entity doc, and on OpenSearch its chunks). The only
+  exception is an entity whose last write was a reindex with its keys already in sorted order. A
+  live-path write stored a fingerprint built from `Map.toString` (`{k=v}`), which is now JSON. A
+  reindex that stored keys out of sorted order changes too: entity-reference properties come
+  first, and database collation may order case differently. Metrics with related metrics also
+  re-embed once. After that first reindex the fingerprint is stable.
+- **`textToLLMContext` shows custom properties as JSON** (`{"k":"v"}`) for live-path writes too;
+  they used to show as `{k=v}`.
 - **CPU.** Every entity with a stored doc has its fingerprint text built and hashed whenever the
   bulk sink writes it: on reindex, on live bulk writes and in the retry worker. On OpenSearch the
   chunk backfill already did this for every reused entity. Not measured.
