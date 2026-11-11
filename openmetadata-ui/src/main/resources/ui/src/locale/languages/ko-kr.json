@@ -6734,7 +6734,7 @@
     "workflow-empty-description": "무언가 변경되는 순간 반응하는 이벤트 기반 또는 예약된 워크플로를 구축하세요. 한 번만 설정하면 나머지는 OpenMetadata가 처리합니다.",
     "workflow-fqn-required": "워크플로우 FQN이 필요합니다",
     "workflow-id-required": "워크플로우 ID가 필요합니다",
-    "workflow-name-derived-from-display-name": "이름은 표시 이름에서 생성되며 변경할 수 없습니다.",
+    "workflow-name-cannot-change-after-create": "이름은 워크플로의 고유 식별자이며 생성 후에는 변경할 수 없습니다.",
     "workflow-name-invalid-characters": "워크플로 이름은 영숫자, 하이픈, 밑줄만 포함할 수 있습니다",
     "workflow-name-max-length": "워크플로 이름은 최대 {{count}}자여야 합니다",
     "workflow-name-min-length": "워크플로 이름은 최소 {{count}}자여야 합니다",

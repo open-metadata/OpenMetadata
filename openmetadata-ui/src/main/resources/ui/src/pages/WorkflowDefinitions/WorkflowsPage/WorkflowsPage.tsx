@@ -62,7 +62,12 @@ import {
 import { showErrorToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
-import { getWorkflowNameFromDisplayName } from '../../../utils/WorkflowValidationUtils';
+import {
+  getWorkflowNameFromDisplayName,
+  WORKFLOW_NAME_MAX_LENGTH,
+  WORKFLOW_NAME_MIN_LENGTH,
+  WORKFLOW_NAME_REGEX,
+} from '../../../utils/WorkflowValidationUtils';
 import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interface';
 import WorkflowList, { WorkflowListItem } from './WorkflowList';
 import WorkflowsPageSection from './WorkflowsPageSection';
@@ -83,6 +88,9 @@ const WorkflowsPage = () => {
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workflowDisplayName, setWorkflowDisplayName] = useState('');
+  const [workflowName, setWorkflowName] = useState('');
+  // The name follows the display name until the user types their own.
+  const [isNameEdited, setIsNameEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -117,10 +125,34 @@ const WorkflowsPage = () => {
     [t]
   );
 
-  const workflowName = getWorkflowNameFromDisplayName(workflowDisplayName);
+  const validateWorkflowName = useCallback(
+    (value: string): string => {
+      if (!value) {
+        return t('label.workflow-name-is-required');
+      }
+      if (!WORKFLOW_NAME_REGEX.test(value)) {
+        return t('message.workflow-name-invalid-characters');
+      }
+      if (value.length < WORKFLOW_NAME_MIN_LENGTH) {
+        return t('message.workflow-name-min-length', {
+          count: WORKFLOW_NAME_MIN_LENGTH,
+        });
+      }
+      if (value.length > WORKFLOW_NAME_MAX_LENGTH) {
+        return t('message.workflow-name-max-length', {
+          count: WORKFLOW_NAME_MAX_LENGTH,
+        });
+      }
+
+      return '';
+    },
+    [t]
+  );
 
   const resetForm = useCallback(() => {
     setWorkflowDisplayName('');
+    setWorkflowName('');
+    setIsNameEdited(false);
     setDescription('');
     setNameError('');
   }, []);
@@ -200,11 +232,9 @@ const WorkflowsPage = () => {
       return;
     }
 
-    // The derived name always satisfies the name rules; only a blank display name can fail.
-    if (!workflowName) {
-      setNameError(
-        t('label.field-required', { field: t('label.display-name') })
-      );
+    const error = validateWorkflowName(workflowName);
+    if (error) {
+      setNameError(error);
 
       return;
     }
@@ -213,7 +243,7 @@ const WorkflowsPage = () => {
     try {
       const workflowData = {
         description: description || '',
-        displayName: workflowDisplayName.trim(),
+        displayName: workflowDisplayName.trim() || workflowName,
         edges: [],
         name: workflowName,
         nodes: [],
@@ -251,6 +281,7 @@ const WorkflowsPage = () => {
     workflowName,
     workflowDisplayName,
     description,
+    validateWorkflowName,
     resetForm,
     navigate,
     t,
@@ -431,26 +462,54 @@ const WorkflowsPage = () => {
             <SlideoutMenu.Content>
               <div className="tw:flex tw:flex-col tw:gap-5">
                 <div>
-                  <div className="tw:flex tw:items-center tw:gap-0.5 tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    <Typography as="span">{t('label.display-name')}</Typography>
-                    <Typography as="span" className="tw:text-error-primary">
-                      *
-                    </Typography>
-                  </div>
-                  {/* Keeps the workflow-name test id: downstream E2E helpers type the workflow's name here. */}
+                  <Typography
+                    as="p"
+                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
+                    {t('label.display-name')}
+                  </Typography>
                   <Input
-                    data-testid="workflow-name"
+                    data-testid="workflow-display-name"
                     isDisabled={isSubmitting}
-                    isInvalid={!!nameError}
                     placeholder={t('message.enter-display-name')}
                     value={workflowDisplayName}
                     onChange={(value) => {
                       setWorkflowDisplayName(value);
+                      if (!isNameEdited) {
+                        setWorkflowName(getWorkflowNameFromDisplayName(value));
+                        setNameError('');
+                      }
+                    }}
+                  />
+                </div>
+                <div>
+                  <div className="tw:flex tw:items-center tw:gap-0.5 tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
+                    <Typography as="span">
+                      {t('label.workflow-name')}
+                    </Typography>
+                    <Typography as="span" className="tw:text-error-primary">
+                      *
+                    </Typography>
+                  </div>
+                  <Input
+                    data-testid="workflow-name"
+                    isDisabled={isSubmitting}
+                    isInvalid={!!nameError}
+                    placeholder={t('label.workflow-name-placeholder')}
+                    value={workflowName}
+                    onChange={(value) => {
+                      setWorkflowName(value);
+                      setIsNameEdited(true);
                       if (nameError) {
                         setNameError('');
                       }
                     }}
                   />
+                  <Typography
+                    as="p"
+                    className="tw:m-0 tw:mt-1 tw:text-tertiary"
+                    size="text-xs">
+                    {t('message.workflow-name-cannot-change-after-create')}
+                  </Typography>
                   {nameError && (
                     <Typography
                       as="p"
@@ -459,25 +518,6 @@ const WorkflowsPage = () => {
                       {nameError}
                     </Typography>
                   )}
-                </div>
-                <div>
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    {t('label.name')}
-                  </Typography>
-                  <Input
-                    isDisabled
-                    aria-label={t('label.name')}
-                    data-testid="workflow-name-derived"
-                    value={workflowName}
-                  />
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mt-1 tw:text-tertiary"
-                    size="text-xs">
-                    {t('message.workflow-name-derived-from-display-name')}
-                  </Typography>
                 </div>
                 <div>
                   <Typography

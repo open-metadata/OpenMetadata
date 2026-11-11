@@ -6734,7 +6734,7 @@
     "workflow-empty-description": "构建基于事件或计划的工作流，在发生变化的那一刻做出响应。设置一次，其余的交给 OpenMetadata 处理。",
     "workflow-fqn-required": "工作流FQN是必填项",
     "workflow-id-required": "工作流ID是必填项",
-    "workflow-name-derived-from-display-name": "名称由显示名称生成，无法更改。",
+    "workflow-name-cannot-change-after-create": "名称是工作流的唯一标识符，创建后无法更改。",
     "workflow-name-invalid-characters": "工作流名称只能包含字母数字字符、连字符和下划线",
     "workflow-name-max-length": "工作流名称最多 {{count}} 个字符",
     "workflow-name-min-length": "工作流名称至少 {{count}} 个字符",

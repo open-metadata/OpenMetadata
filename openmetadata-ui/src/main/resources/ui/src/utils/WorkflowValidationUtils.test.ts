@@ -31,12 +31,8 @@ describe('getWorkflowNameFromDisplayName', () => {
     expect(getWorkflowNameFromDisplayName('   ')).toBe('');
   });
 
-  it('falls back to a stable generated name for a non-Latin display name', () => {
-    const name = getWorkflowNameFromDisplayName('用户审批');
-
-    expect(name).toMatch(/^workflow-[a-z0-9]+$/);
-    expect(getWorkflowNameFromDisplayName('用户审批')).toBe(name);
-    expect(getWorkflowNameFromDisplayName('术语审批')).not.toBe(name);
+  it('is empty when the display name has no characters a name can hold', () => {
+    expect(getWorkflowNameFromDisplayName('用户审批')).toBe('');
   });
 
   it('caps the name at the maximum length without a trailing hyphen', () => {

@@ -325,19 +325,15 @@ describe('WorkflowsPage create form', () => {
     mockNavigate.mockReset();
   });
 
-  it('derives a read-only name from the display name and sends both', async () => {
+  it('fills the name from the display name and sends both', async () => {
     (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
     await openCreateForm();
 
-    fireEvent.change(textbox('workflow-name'), {
+    fireEvent.change(textbox('workflow-display-name'), {
       target: { value: 'Test lifecycle' },
     });
 
-    expect(textbox('workflow-name-derived')).toHaveValue('Test-lifecycle');
-    expect(textbox('workflow-name-derived')).toBeDisabled();
-    expect(screen.getByRole('textbox', { name: 'label.name' })).toHaveValue(
-      'Test-lifecycle'
-    );
+    expect(textbox('workflow-name')).toHaveValue('Test-lifecycle');
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('submit-workflow-button'));
@@ -351,14 +347,51 @@ describe('WorkflowsPage create form', () => {
     );
   });
 
-  it('requires a display name before creating', async () => {
+  it('keeps a name the user typed when the display name changes', async () => {
     await openCreateForm();
 
+    fireEvent.change(textbox('workflow-name'), {
+      target: { value: 'lifecycle_v2' },
+    });
+    fireEvent.change(textbox('workflow-display-name'), {
+      target: { value: 'Lifecycle version two' },
+    });
+
+    expect(textbox('workflow-name')).toHaveValue('lifecycle_v2');
+  });
+
+  it('uses the name as the display name when none is given', async () => {
+    (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
+    await openCreateForm();
+
+    fireEvent.change(textbox('workflow-name'), {
+      target: { value: 'pw-workflow' },
+    });
     await act(async () => {
       fireEvent.click(screen.getByTestId('submit-workflow-button'));
     });
 
-    expect(screen.getByText('label.field-required')).toBeInTheDocument();
+    expect(createWorkflowDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: 'pw-workflow',
+        name: 'pw-workflow',
+      })
+    );
+  });
+
+  it('still validates the name against the server rules', async () => {
+    await openCreateForm();
+
+    fireEvent.change(textbox('workflow-name'), {
+      target: { value: 'Test lifecycle' },
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-workflow-button'));
+    });
+
+    expect(
+      screen.getByText('message.workflow-name-invalid-characters')
+    ).toBeInTheDocument();
     expect(createWorkflowDefinition).not.toHaveBeenCalled();
   });
 });
