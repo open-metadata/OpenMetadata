@@ -12,7 +12,9 @@
  */
 
 import { DateTime } from 'luxon';
+import type { UseFormReturn } from 'react-hook-form';
 import { AnnouncementType } from '../../../generated/entity/feed/announcement';
+import { DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR } from '../../../utils/AnnouncementsUtils';
 import {
   AnnouncementFormValues,
   EditableAnnouncement,
@@ -56,6 +58,29 @@ export const fromCalendarValue = (
   return boundary === 'end'
     ? DateTime.fromMillis(startOfDay).endOf('day').toMillis()
     : startOfDay;
+};
+
+/**
+ * Applies a type pick to the form, for the asset dialog and the settings form
+ * alike. Leaving Custom drops its colour and name requirements, so their errors
+ * go too. Entering it with no colour selects the default one, which is the
+ * colour the banner already draws an unpicked Custom in, so the swatch never
+ * shows nothing picked.
+ */
+export const applyAnnouncementTypeChange = (
+  form: UseFormReturn<AnnouncementFormValues>,
+  type: AnnouncementType
+) => {
+  if (type !== AnnouncementType.Custom) {
+    form.clearErrors(['color', 'customTypeName']);
+
+    return;
+  }
+  if (!form.getValues('color')) {
+    form.setValue('color', DEFAULT_CUSTOM_ANNOUNCEMENT_COLOR, {
+      shouldValidate: true,
+    });
+  }
 };
 
 /**

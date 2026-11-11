@@ -250,7 +250,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'relative/concept' },
       }
@@ -263,7 +263,7 @@ describe('OntologyConceptEditor', () => {
     expect(patch).not.toHaveBeenCalled();
 
     fireEvent.change(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: ' https://example.org/Customer ' },
       }
@@ -389,7 +389,7 @@ describe('OntologyConceptEditor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'label.add-mapping' }));
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
     fireEvent.change(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ }),
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ }),
       {
         target: { value: 'urn:external:Customer' },
       }
@@ -405,7 +405,7 @@ describe('OntologyConceptEditor', () => {
 
     expect(saved).not.toHaveBeenCalled();
     expect(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ })
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ })
     ).toHaveValue('urn:external:Customer');
     expect(
       mapping.getByRole('button', { name: /label\.mapping-type$/ })
@@ -469,7 +469,7 @@ describe('OntologyConceptEditor', () => {
     const mapping = within(screen.getByTestId('ontology-concept-mapping'));
 
     expect(
-      mapping.getByRole('textbox', { name: /^label\.concept-iri/ })
+      mapping.getByRole('combobox', { name: /^label\.concept-iri/ })
     ).toBeDisabled();
     expect(
       mapping.getByRole('textbox', { name: 'label.scheme-iri' })

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { listOntologyConcepts } from '../../../../rest/ontologyAPI';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
@@ -32,8 +32,9 @@ const toOption = (concept: OntologyConcept): OntologyIriOption => ({
  */
 export const useReadableConceptOptions = (
   enabled: boolean
-): OntologyIriOption[] => {
+): { options: OntologyIriOption[]; isLoading: boolean } => {
   const [options, setOptions] = useState<OntologyIriOption[]>([]);
+  const [isSettled, setIsSettled] = useState(false);
 
   useEffect(() => {
     if (!enabled) {
@@ -56,10 +57,40 @@ export const useReadableConceptOptions = (
       }
       setOptions(loaded);
     };
-    load().catch(() => undefined);
+    load()
+      .catch(() => undefined)
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsSettled(true);
+        }
+      });
 
     return () => controller.abort();
   }, [enabled]);
 
-  return options;
+  return { options, isLoading: enabled && !isSettled };
+};
+
+/**
+ * Targets for a mapping row: the concepts the caller already holds first, then
+ * every other readable concept, so a mapping can point into another ontology
+ * by label. Anything not listed is still accepted as a pasted absolute IRI.
+ */
+export const useMappingTargetOptions = (
+  local: ReadonlyArray<OntologyIriOption> | undefined,
+  enabled: boolean
+): { options: OntologyIriOption[]; isLoading: boolean } => {
+  const { options: readable, isLoading } = useReadableConceptOptions(enabled);
+
+  return useMemo(() => {
+    const held = new Set((local ?? []).map((option) => option.iri));
+
+    return {
+      options: [
+        ...(local ?? []),
+        ...readable.filter((option) => !held.has(option.iri)),
+      ],
+      isLoading,
+    };
+  }, [local, readable, isLoading]);
 };

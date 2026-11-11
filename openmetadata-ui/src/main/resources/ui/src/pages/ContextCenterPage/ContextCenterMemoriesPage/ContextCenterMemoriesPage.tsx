@@ -18,6 +18,7 @@ import {
   Input,
   PageLayout,
   PaginationCardMinimal,
+  selectedTriggerClassName,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -35,6 +36,7 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -52,6 +54,7 @@ import {
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import ApprovePendingMemoriesButton from '../../../components/discovery/context-center/ApprovePendingMemoriesButton/ApprovePendingMemoriesButton';
 import MemoryConflictReviews from '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
@@ -161,6 +164,25 @@ const searchOutsideReview = (
 const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
   !isLoading && count === 0;
 
+/** One picked status shows its name; several show how many are picked. */
+const getStatusFilterValue = (
+  selectedStatuses: ContextMemoryStatus[],
+  t: TFunction
+): string => {
+  if (selectedStatuses.length !== 1) {
+    return `${selectedStatuses.length} ${t('label.status-plural')}`;
+  }
+  const labelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
+
+  return labelKey ? t(labelKey) : selectedStatuses[0];
+};
+
+const isStatusFilterChanged = (selectedStatuses: ContextMemoryStatus[]) =>
+  selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
+  DEFAULT_MEMORY_LIST_STATUSES.some(
+    (status) => !selectedStatuses.includes(status)
+  );
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
@@ -183,12 +205,7 @@ const getMemoriesViewFlags = ({
   reviewCount: number;
 }) => {
   const hasActiveFilters = Boolean(
-    selectedAsset ||
-      selectedAuthor ||
-      selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
-      DEFAULT_MEMORY_LIST_STATUSES.some(
-        (status) => !selectedStatuses.includes(status)
-      )
+    selectedAsset || selectedAuthor || isStatusFilterChanged(selectedStatuses)
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -716,6 +733,15 @@ const ContextCenterMemoriesPage: FC = () => {
     }
   }, [memoryToDelete, fetchMemories, fetchMemoryCounts, t]);
 
+  const handlePendingApproved = useCallback(async () => {
+    void queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+    });
+    void refreshMemoryReviews();
+    await fetchMemories();
+    await fetchMemoryCounts();
+  }, [fetchMemories, fetchMemoryCounts]);
+
   const fetchCompleteMemory = useCallback(async (memory: ContextMemory) => {
     try {
       return await getContextMemoryById(memory.id, MEMORY_FIELDS);
@@ -849,10 +875,6 @@ const ContextCenterMemoriesPage: FC = () => {
     entity: t('label.asset-plural'),
   });
   const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
-  const selectedStatusLabelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
-  const selectedStatusLabel = selectedStatusLabelKey
-    ? t(selectedStatusLabelKey)
-    : selectedStatuses[0];
 
   const headerActions = (
     <Button
@@ -1006,6 +1028,11 @@ const ContextCenterMemoriesPage: FC = () => {
                   gap={2}>
                   <Dropdown.Root>
                     <Button
+                      className={
+                        isStatusFilterChanged(selectedStatuses)
+                          ? selectedTriggerClassName(true)
+                          : undefined
+                      }
                       color="secondary"
                       data-testid="memory-status-filter"
                       iconLeading={
@@ -1014,11 +1041,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       iconTrailing={ChevronDown}
                       size="md">
                       {t('label.status')}:{' '}
-                      {selectedStatuses.length === 1
-                        ? selectedStatusLabel
-                        : `${selectedStatuses.length} ${t(
-                            'label.status-plural'
-                          )}`}
+                      {getStatusFilterValue(selectedStatuses, t)}
                     </Button>
                     <Dropdown.Popover className="tw:w-56">
                       <Dropdown.Menu
@@ -1185,6 +1208,12 @@ const ContextCenterMemoriesPage: FC = () => {
                     'tw:hidden': isReviewing,
                   })}
                   gap={4}>
+                  <ApprovePendingMemoriesButton
+                    isAdmin={currentUser?.isAdmin}
+                    isLoading={isMemoriesLoading}
+                    memories={memories}
+                    onApproved={handlePendingApproved}
+                  />
                   {hasActiveFilters && (
                     <Button
                       color="link-color"

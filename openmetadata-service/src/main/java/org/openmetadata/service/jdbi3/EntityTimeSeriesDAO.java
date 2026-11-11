@@ -332,28 +332,6 @@ public interface EntityTimeSeriesDAO {
         getTimeSeriesTableName(), filter.getQueryParams(), filter.getCondition(), offset);
   }
 
-  @ConnectionAwareSqlUpdate(
-      value =
-          "UPDATE <table> set json = :json where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json -> '$.operation' = :operation",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlUpdate(
-      value =
-          "UPDATE <table> set json = (:json :: jsonb) where entityFQNHash=:entityFQNHash and extension=:extension and timestamp=:timestamp and json #>>'{operation}' = :operation",
-      connectionType = POSTGRES)
-  void updateExtensionByOperation(
-      @Define("table") String table,
-      @BindFQN("entityFQNHash") String entityFQNHash,
-      @Bind("extension") String extension,
-      @BindJson("json") String json,
-      @Bind("timestamp") Long timestamp,
-      @Bind("operation") String operation);
-
-  default void updateExtensionByOperation(
-      String entityFQNHash, String extension, String json, Long timestamp, String operation) {
-    updateExtensionByOperation(
-        getTimeSeriesTableName(), entityFQNHash, extension, json, timestamp, operation);
-  }
-
   @SqlQuery(
       "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension")
   String getExtension(
@@ -502,27 +480,6 @@ public interface EntityTimeSeriesDAO {
 
   default String getExtensionAtTimestamp(String entityFQNHash, String extension, long timestamp) {
     return getExtensionAtTimestamp(getTimeSeriesTableName(), entityFQNHash, extension, timestamp);
-  }
-
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json -> '$.operation' = :operation",
-      connectionType = MYSQL)
-  @ConnectionAwareSqlQuery(
-      value =
-          "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension AND timestamp = :timestamp AND json #>>'{operation}' = :operation",
-      connectionType = POSTGRES)
-  String getExtensionAtTimestampWithOperation(
-      @Define("table") String table,
-      @BindFQN("entityFQNHash") String entityFQNHash,
-      @Bind("extension") String extension,
-      @Bind("timestamp") long timestamp,
-      @Bind("operation") String operation);
-
-  default String getExtensionAtTimestampWithOperation(
-      String entityFQNHash, String extension, long timestamp, String operation) {
-    return getExtensionAtTimestampWithOperation(
-        getTimeSeriesTableName(), entityFQNHash, extension, timestamp, operation);
   }
 
   @SqlQuery(
@@ -734,6 +691,20 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery(
+      "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+          + "AND timestamp IN (<timestamps>)")
+  List<String> listAtTimestamps(
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("extension") String extension,
+      @BindList("timestamps") List<Long> timestamps);
+
+  default List<String> listAtTimestamps(
+      String entityFQNHash, String extension, List<Long> timestamps) {
+    return listAtTimestamps(getTimeSeriesTableName(), entityFQNHash, extension, timestamps);
+  }
+
+  @SqlQuery(
       "SELECT json FROM <table> where entityFQNHash = :entityFQNHash and extension = :extension "
           + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp <orderBy>")
   List<String> listBetweenTimestampsByOrder(
@@ -866,21 +837,6 @@ public interface EntityTimeSeriesDAO {
     String psqlCond = String.format("AND json->>'%s' = :value", key);
     return getLatestExtensionByKeyInternal(
         getTimeSeriesTableName(), value, entityFQN, extension, mysqlCond, psqlCond);
-  }
-
-  default void storeTimeSeriesWithOperation(
-      String fqn,
-      String extension,
-      String jsonSchema,
-      String entityJson,
-      Long timestamp,
-      String operation,
-      boolean update) {
-    if (update) {
-      updateExtensionByOperation(fqn, extension, entityJson, timestamp, operation);
-    } else {
-      insert(fqn, extension, jsonSchema, entityJson);
-    }
   }
 
   @ConnectionAwareSqlUpdate(

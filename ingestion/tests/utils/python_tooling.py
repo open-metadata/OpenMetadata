@@ -39,6 +39,7 @@ def prepare_locked_tooling(root, monkeypatch):
     config = project / "pyproject.toml"
     sections = re.split(r"(?m)(?=^\[)", config.read_text())
     tools = "".join(s for s in sections if s.startswith(("[tool.pytest", "[tool.coverage", "[tool.ruff")))
+    environment_policy = "".join(s for s in sections if s.startswith("[tool.openmetadata.python-environments]"))
     requirements = {
         name: f"{name}=={importlib.metadata.version(name)}"
         for name in [
@@ -82,13 +83,14 @@ dev = [{include-group = "style"}, "'''
 test = [{include-group = "dev"}, {include-group = "coverage"}, """
         + ", ".join('"' + requirements[n] + '"' for n in ["pytest", "pytest-cov", "pytest-xdist", "pytest-timeout"])
         + "]\n"
+        + environment_policy
         + "\n".join(
             f'''[tool.openmetadata.python-environments.profiles.{name}]
-groups = ["{"bootstrap" if name == "runtime" else name}"]
+groups = ["{"bootstrap" if name == "runtime" else "test" if name == "test-classification" else name}"]
 extras = []
-install-project = {str(name in ("runtime", "dev", "test")).lower()}
+install-project = {str(name in ("runtime", "dev", "test", "test-classification")).lower()}
 '''
-            for name in ["runtime", "style", "generation", "coverage", "dev", "test"]
+            for name in ["runtime", "style", "generation", "coverage", "dev", "test", "test-classification"]
         )
         + tools
     )
@@ -96,6 +98,8 @@ install-project = {str(name in ("runtime", "dev", "test")).lower()}
         "scripts/check_generated_models.py",
         "scripts/generate_ingestion_models.py",
         "scripts/datamodel_generation.py",
+        "scripts/prepare_classification_models.py",
+        "openmetadata-spec/scripts/prepare_model_schemas.py",
     ]:
         target = root / name
         target.parent.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,7 @@ import {
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
+import { ReviewVoteDecision } from '../../../../generated/entity/tasks/task';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -1497,6 +1498,117 @@ describe('TaskTabNew Component', () => {
     fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
 
     expect(resolveTask).not.toHaveBeenCalled();
+  });
+
+  describe('multi-approver vote', () => {
+    const APPROVE_TRANSITION = {
+      id: 'approve',
+      label: 'Approve',
+      resolutionType: TaskResolutionType.Approved,
+      targetStageId: 'approved',
+      targetTaskStatus: TaskEntityStatus.Approved,
+    };
+
+    const STEWARDS = { id: 'stewards-id', type: 'team', name: 'stewards' };
+    const OTHER = { id: 'other-id', type: 'user', name: 'other' };
+
+    const renderApproval = async (
+      reviewVotes: Task['reviewVotes'],
+      availableTransitions: Task['availableTransitions'] = [APPROVE_TRANSITION],
+      assignees: Task['assignees'] = [
+        { id: 'test-user-id', type: 'user', name: 'test-user' },
+        OTHER,
+      ]
+    ) => {
+      const { useAuth } = require('../../../../hooks/authHooks');
+      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+      useAuth.mockReturnValue({ isAdminUser: false });
+      isTagsTaskType.mockReturnValue(false);
+      const task: Task = {
+        ...MOCK_TASK,
+        type: TaskEntityType.RequestApproval,
+        category: TaskCategory.Approval,
+        about: { id: 'dp-id', type: 'dataProduct' },
+        workflowStageId: 'review',
+        assignees,
+        availableTransitions,
+        reviewVotes,
+      };
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TaskTabNew {...mockProps} task={task} />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    const vote = (stage: string) => ({
+      voter: { id: 'test-user-id', type: 'user', name: 'test-user' },
+      assignee: { id: 'test-user-id', type: 'user', name: 'test-user' },
+      decision: ReviewVoteDecision.Approved,
+      stage,
+      timestamp: 1,
+    });
+
+    it('offers Approve to an assignee who has not voted in this stage', async () => {
+      await renderApproval([vote('draft')]);
+
+      expect(
+        screen.getByTestId('workflow-task-action-primary')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('task-review-votes')).not.toBeInTheDocument();
+    });
+
+    it("keeps the stage's other transitions for a team member who voted", async () => {
+      const {
+        useApplicationStore,
+      } = require('../../../../hooks/useApplicationStore');
+      useApplicationStore.mockImplementation(() => ({
+        currentUser: {
+          id: 'test-user-id',
+          name: 'test-user',
+          teams: [STEWARDS],
+        },
+      }));
+      await renderApproval(
+        [vote('review')],
+        [
+          APPROVE_TRANSITION,
+          {
+            id: 'reassign',
+            label: 'Reassign',
+            targetStageId: 'assigned',
+            targetTaskStatus: TaskEntityStatus.Open,
+          },
+        ],
+        // A team entry survives the vote; only the voter's own entry is dropped.
+        [STEWARDS, OTHER]
+      );
+
+      expect(
+        screen.getByTestId('workflow-task-action-primary')
+      ).toHaveTextContent('Reassign');
+
+      useApplicationStore.mockImplementation(() => ({
+        currentUser: { id: 'test-user-id', name: 'test-user', teams: [] },
+      }));
+    });
+
+    it('shows the counted vote instead of Approve once the assignee voted', async () => {
+      // The server drops the voter's own assignee entry after a non-final vote.
+      await renderApproval([vote('review')], [APPROVE_TRANSITION], [OTHER]);
+
+      expect(
+        screen.queryByTestId('workflow-task-action-primary')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-review-votes')).toHaveTextContent(
+        'message.user-approved-task'
+      );
+      expect(
+        screen.getByTestId('task-review-votes-waiting')
+      ).toBeInTheDocument();
+    });
   });
 
   it('does not fall back to legacy approval while a native workflow is starting', async () => {

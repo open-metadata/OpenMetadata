@@ -36,6 +36,7 @@ export enum Code {
     PropertyChainRegularity = "PROPERTY_CHAIN_REGULARITY",
     ReservedSubjectIRI = "RESERVED_SUBJECT_IRI",
     SubclassCycle = "SUBCLASS_CYCLE",
+    SubpropertyCycle = "SUBPROPERTY_CYCLE",
     TransitiveCardinality = "TRANSITIVE_CARDINALITY",
     UndeclaredClass = "UNDECLARED_CLASS",
     UndeclaredProperty = "UNDECLARED_PROPERTY",

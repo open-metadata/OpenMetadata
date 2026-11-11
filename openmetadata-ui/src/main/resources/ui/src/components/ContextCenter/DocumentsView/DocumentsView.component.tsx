@@ -819,6 +819,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onBulkDelete,
   onBulkDownload,
   onBulkMove,
+  onClearSelection,
   onDeleteFile,
   onDownload,
   onFileMoved,
@@ -834,6 +835,11 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   const selectedCount = selectedIds?.size ?? 0;
 
   const handleClear = () => {
+    if (onClearSelection) {
+      onClearSelection();
+
+      return;
+    }
     data.forEach((file) => {
       if (selectedIds?.has(file.id)) {
         onSelectFile?.(file.id);

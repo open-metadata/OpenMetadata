@@ -40,6 +40,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -53,8 +54,10 @@ import org.openmetadata.service.migration.utils.v210.DestinationIdMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationUtil;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
+import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
+import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
@@ -89,6 +92,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(OntologyConceptBindingMigration.class);
         MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
             mockStatic(DataContractEntityReferenceMigration.class);
+        MockedStatic<ODCSCustomPropertiesMigration> odcsCustomPropertiesMigration =
+            mockStatic(ODCSCustomPropertiesMigration.class);
         MockedStatic<CustomPropertyReferenceMigration> referenceMigration =
             mockStatic(CustomPropertyReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
@@ -118,15 +123,15 @@ class IngestionPipelineMigrationEntryPointTest {
         MockedStatic<WorkflowHandler> workflowHandler = mockStatic(WorkflowHandler.class);
         MockedStatic<McpGrantUserNameIndexes> grantUserNameIndexes =
             mockStatic(McpGrantUserNameIndexes.class);
+        MockedStatic<McpConsentColumns> consentColumns = mockStatic(McpConsentColumns.class);
         MockedStatic<DataProductDomainContainmentRepair> containmentRepair =
             mockStatic(DataProductDomainContainmentRepair.class);
-        // v206, v207 and v210 each have a MigrationUtil; the v210 one is imported above.
+        MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
+            mockStatic(EntityExtensionCollationAlignment.class);
+        // v206 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
-                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class);
-        MockedStatic<org.openmetadata.service.migration.utils.v207.MigrationUtil>
-            v207MigrationUtil =
-                mockStatic(org.openmetadata.service.migration.utils.v207.MigrationUtil.class)) {
+                mockStatic(org.openmetadata.service.migration.utils.v206.MigrationUtil.class)) {
       migration.runDataMigration();
 
       deltaLakeRetirement.verify(
@@ -163,18 +168,19 @@ class IngestionPipelineMigrationEntryPointTest {
               org.openmetadata.service.migration.utils.v206.MigrationUtil
                   .addContractAndStatusToActivityFeedAlert(handle));
       if (connectionType == ConnectionType.MYSQL) {
-        v207MigrationUtil.verify(
-            () ->
-                org.openmetadata.service.migration.utils.v207.MigrationUtil
-                    .addMcpConsentColumnsOnMySql(handle));
+        consentColumns.verify(() -> McpConsentColumns.addOnMySql(handle));
         grantUserNameIndexes.verify(() -> McpGrantUserNameIndexes.addOnMySql(handle));
+        // A database that recorded 2.0.8 before this step existed does not run it there.
+        collationAlignment.verify(() -> EntityExtensionCollationAlignment.alignOnMySql(handle));
       }
       // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));
       glossaryAutomationReview.verify(
           GlossaryAutomationReviewMigration::sendAutomationProposalsToPeople);
       lineageEdgeCleanup.verify(
-          () -> LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(collectionDAO));
+          () ->
+              LineageEdgePipelineCleanupMigration.clearNonPipelineEdgePipelines(
+                  handle, connectionType));
     }
   }
 

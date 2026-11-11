@@ -258,7 +258,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                   "Failed Processing Raw Cost Analysis Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
+      accumulateWorkflowStats(
           createReportdataProcessor.getName(), createReportdataProcessor.getStats());
     }
 
@@ -276,7 +276,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                 String.format("Failed Sinking Raw Cost Analysis Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+        accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
       }
     }
 
@@ -306,7 +306,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
               String.format("Failed Aggregating Cost Analysis Report Data: %s", ex.getMessage()));
       workflowStats.addFailure(error.get());
     } finally {
-      updateWorkflowStats(
+      accumulateWorkflowStats(
           aggregatedCostAnalysisReportDataAggregator.getName(),
           aggregatedCostAnalysisReportDataAggregator.getStats());
     }
@@ -331,7 +331,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                     "Failed Processing Aggregated Cost Analysis Report Data: %s", ex.getMessage()));
         workflowStats.addFailure(error.get());
       } finally {
-        updateWorkflowStats(
+        accumulateWorkflowStats(
             createReportdataProcessor.getName(), createReportdataProcessor.getStats());
       }
 
@@ -350,7 +350,7 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
                       "Failed Sinking Aggregated Cost Analysis Report Data: %s", ex.getMessage()));
           workflowStats.addFailure(error.get());
         } finally {
-          updateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
+          accumulateWorkflowStats(reportDataSink.getName(), reportDataSink.getStats());
         }
       }
     }
@@ -385,6 +385,12 @@ public class CostAnalysisWorkflow implements DataInsightsWorkflow {
   private void deleteReportDataRecords(ReportData.ReportDataType reportDataType) {
     ((ReportDataRepository) Entity.getEntityTimeSeriesRepository(Entity.ENTITY_REPORT_DATA))
         .deleteReportData(reportDataType);
+  }
+
+  private void accumulateWorkflowStats(String stepName, StepStats completedStepStats) {
+    workflowStats.accumulateWorkflowStepStats(stepName, completedStepStats);
+    workflowStats.updateWorkflowStats(
+        completedStepStats.getSuccessRecords(), completedStepStats.getFailedRecords());
   }
 
   private void updateWorkflowStats(String stepName, StepStats newStepStats) {
