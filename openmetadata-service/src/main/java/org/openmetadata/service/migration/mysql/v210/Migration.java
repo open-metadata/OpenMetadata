@@ -17,8 +17,6 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.DataMigrationStep.runOnce;
 import static org.openmetadata.service.migration.utils.v206.MigrationUtil.ACTIVITY_FEED_ALERT_STEP;
 import static org.openmetadata.service.migration.utils.v206.MigrationUtil.addContractAndStatusToActivityFeedAlert;
-import static org.openmetadata.service.migration.utils.v207.MigrationUtil.MCP_CONSENT_COLUMNS_STEP;
-import static org.openmetadata.service.migration.utils.v207.MigrationUtil.addMcpConsentColumnsOnMySql;
 import static org.openmetadata.service.migration.utils.v210.AlertBacklogMigration.skipBacklogOfAlertsThePreviousReleaseCouldNotSend;
 import static org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets;
 import static org.openmetadata.service.migration.utils.v210.CreationAuditMigration.backfillCreationAudit;
@@ -59,6 +57,7 @@ import org.openmetadata.service.migration.utils.v210.FirstTimeUserMigration;
 import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMigration;
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
+import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
@@ -195,13 +194,13 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
-    // Same for the 2.0.7 MCP consent columns. The step adds only missing columns, so running it
-    // after 2.0.7 already did is harmless.
+    // The MCP consent columns ship in 2.1.0, so every database upgrading to 2.1 adds them here. The
+    // step adds only missing columns, so a database that already has them is left as it is.
     runOnce(
         migrationDAO,
         getVersion(),
-        MCP_CONSENT_COLUMNS_STEP,
-        () -> addMcpConsentColumnsOnMySql(handle));
+        McpConsentColumns.STEP_NAME,
+        () -> McpConsentColumns.addOnMySql(handle));
     // Same for the 2.0.8 MCP user-name indexes, on a database that recorded 2.0.8 before they were
     // added to it.
     runOnce(
