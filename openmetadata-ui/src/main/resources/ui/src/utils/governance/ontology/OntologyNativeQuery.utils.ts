@@ -44,6 +44,7 @@ export const getNativeQueryRelations = (relations: OntologyModelRelation[]) => {
   });
 };
 
+// ADR:2026-11-12-ontology-visual-builder-extends-the-existing-query-shape
 export const QUERY_LIMITS = [10, 50, 100, 500];
 
 export const DEFAULT_QUERY_LIMIT = 100;
@@ -127,9 +128,7 @@ const buildConceptPattern = (
 
 /**
  * Concepts matching every condition (ANDed), each condition against its own target.
- * One condition at the default limit is byte for byte the query the Java contract test runs
- * (openmetadata-service/src/test/resources/ontology/native-visual-queries.json), so the
- * shape must stay as it is; more conditions and other limits only extend it.
+ * ADR:2026-11-12-ontology-visual-builder-extends-the-existing-query-shape
  */
 export const buildNativeVisualSparqlQuery = (
   conditions: NativeConceptCondition[],
