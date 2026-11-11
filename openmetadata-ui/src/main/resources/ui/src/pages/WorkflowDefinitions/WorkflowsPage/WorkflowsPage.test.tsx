@@ -325,7 +325,7 @@ describe('WorkflowsPage create form', () => {
     mockNavigate.mockReset();
   });
 
-  it('fills the name from the display name and sends both', async () => {
+  it('sends the display name and the name exactly as typed', async () => {
     (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
     await openCreateForm();
 
@@ -333,8 +333,11 @@ describe('WorkflowsPage create form', () => {
       target: { value: 'Test lifecycle' },
     });
 
-    expect(textbox('workflow-name')).toHaveValue('Test-lifecycle');
+    expect(textbox('workflow-name')).toHaveValue('');
 
+    fireEvent.change(textbox('workflow-name'), {
+      target: { value: 'lifecycle_v2' },
+    });
     await act(async () => {
       fireEvent.click(screen.getByTestId('submit-workflow-button'));
     });
@@ -342,22 +345,9 @@ describe('WorkflowsPage create form', () => {
     expect(createWorkflowDefinition).toHaveBeenCalledWith(
       expect.objectContaining({
         displayName: 'Test lifecycle',
-        name: 'Test-lifecycle',
+        name: 'lifecycle_v2',
       })
     );
-  });
-
-  it('keeps a name the user typed when the display name changes', async () => {
-    await openCreateForm();
-
-    fireEvent.change(textbox('workflow-name'), {
-      target: { value: 'lifecycle_v2' },
-    });
-    fireEvent.change(textbox('workflow-display-name'), {
-      target: { value: 'Lifecycle version two' },
-    });
-
-    expect(textbox('workflow-name')).toHaveValue('lifecycle_v2');
   });
 
   it('uses the name as the display name when none is given', async () => {

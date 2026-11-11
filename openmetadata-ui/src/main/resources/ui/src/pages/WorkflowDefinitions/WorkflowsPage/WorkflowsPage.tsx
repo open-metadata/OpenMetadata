@@ -63,7 +63,6 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
 import {
-  getWorkflowNameFromDisplayName,
   WORKFLOW_NAME_MAX_LENGTH,
   WORKFLOW_NAME_MIN_LENGTH,
   WORKFLOW_NAME_REGEX,
@@ -89,8 +88,6 @@ const WorkflowsPage = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workflowDisplayName, setWorkflowDisplayName] = useState('');
   const [workflowName, setWorkflowName] = useState('');
-  // The name follows the display name until the user types their own.
-  const [isNameEdited, setIsNameEdited] = useState(false);
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -152,7 +149,6 @@ const WorkflowsPage = () => {
   const resetForm = useCallback(() => {
     setWorkflowDisplayName('');
     setWorkflowName('');
-    setIsNameEdited(false);
     setDescription('');
     setNameError('');
   }, []);
@@ -472,13 +468,7 @@ const WorkflowsPage = () => {
                     isDisabled={isSubmitting}
                     placeholder={t('message.enter-display-name')}
                     value={workflowDisplayName}
-                    onChange={(value) => {
-                      setWorkflowDisplayName(value);
-                      if (!isNameEdited) {
-                        setWorkflowName(getWorkflowNameFromDisplayName(value));
-                        setNameError('');
-                      }
-                    }}
+                    onChange={setWorkflowDisplayName}
                   />
                 </div>
                 <div>
@@ -498,7 +488,6 @@ const WorkflowsPage = () => {
                     value={workflowName}
                     onChange={(value) => {
                       setWorkflowName(value);
-                      setIsNameEdited(true);
                       if (nameError) {
                         setNameError('');
                       }

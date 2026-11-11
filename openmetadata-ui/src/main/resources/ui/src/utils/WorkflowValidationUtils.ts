@@ -17,17 +17,6 @@ export const WORKFLOW_NAME_MIN_LENGTH = 3;
 export const WORKFLOW_NAME_MAX_LENGTH = 50;
 
 /**
- * A suggested workflow name for a display name: runs of characters a name
- * cannot hold become a single hyphen. The user can still edit it.
- */
-export const getWorkflowNameFromDisplayName = (displayName: string): string =>
-  displayName
-    .trim()
-    .replace(/[^a-zA-Z0-9_-]+/g, '-')
-    .slice(0, WORKFLOW_NAME_MAX_LENGTH)
-    .replace(/^-+|-+$/g, '');
-
-/**
  * Gets validation rules for Ant Design Form
  * @returns Array of validation rules
  */
