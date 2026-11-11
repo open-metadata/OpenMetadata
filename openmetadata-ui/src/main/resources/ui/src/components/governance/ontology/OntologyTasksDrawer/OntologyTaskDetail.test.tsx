@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { EntityStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -168,4 +168,85 @@ it('tells a caller who cannot publish that only an author or owner can, instead 
   ).not.toBeInTheDocument();
 
   useKeyEchoTranslations();
+});
+
+it('confirms before withdrawing and only offers it to the requester of an open review', () => {
+  const onWithdraw = jest.fn();
+  const { rerender } = renderWithQueryClient(
+    <OntologyTaskDetail {...props} onWithdraw={onWithdraw} />
+  );
+
+  expect(
+    screen.queryByTestId('ontology-task-withdraw')
+  ).not.toBeInTheDocument();
+
+  rerender(
+    <OntologyTaskDetail
+      {...props}
+      isRequester
+      review={{ ...review, callerCanVote: false }}
+      onWithdraw={onWithdraw}
+    />
+  );
+  fireEvent.click(screen.getByTestId('ontology-task-withdraw'));
+  fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+  expect(onWithdraw).not.toHaveBeenCalled();
+  expect(
+    screen.queryByTestId('ontology-task-withdraw-confirm')
+  ).not.toBeInTheDocument();
+
+  fireEvent.click(screen.getByTestId('ontology-task-withdraw'));
+  fireEvent.click(screen.getByTestId('ontology-task-withdraw-submit'));
+
+  expect(onWithdraw).toHaveBeenCalledTimes(1);
+
+  rerender(
+    <OntologyTaskDetail
+      {...props}
+      isRequester
+      review={{ ...review, status: EntityStatus.Approved }}
+      onWithdraw={onWithdraw}
+    />
+  );
+
+  expect(
+    screen.queryByTestId('ontology-task-withdraw')
+  ).not.toBeInTheDocument();
+});
+
+it('summarises the release against its base version', async () => {
+  (APIClient.get as jest.Mock).mockImplementation(async (url: string) => {
+    if (url.endsWith('/diff')) {
+      return { data: { data: [], paging: { total: 0 } } };
+    }
+
+    return {
+      data: url.includes('base-release')
+        ? { ...release, id: 'base-release', semanticVersion: '1.3.2' }
+        : release,
+    };
+  });
+  renderWithQueryClient(
+    <OntologyTaskDetail
+      {...props}
+      release={{
+        ...release,
+        baseReleaseId: 'base-release',
+        releaseNotes: 'Adds orders',
+        changeSummary: { added: 3, changed: 1, removed: 0, deprecated: 1 },
+      }}
+    />
+  );
+  const card = screen.getByTestId('ontology-task-release-card');
+
+  expect(await within(card).findByText('label.minor')).toBeInTheDocument();
+  expect(card).toHaveTextContent('v1.3.2 → v1.4.0');
+  expect(card).toHaveTextContent('+3~2−0');
+  expect(screen.getByTestId('ontology-task-release-notes')).toHaveTextContent(
+    'Adds orders'
+  );
+  expect(screen.getByTestId('ontology-task-requested')).toHaveTextContent(
+    'message.ontology-task-requested-review'
+  );
 });

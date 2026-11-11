@@ -14,12 +14,14 @@
 import {
   Badge,
   Box,
+  Button,
   Checkbox,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  Kind,
   NativeOntologyImportItem,
   Status,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
@@ -34,6 +36,8 @@ import {
 } from './OntologyNativeImportPanel.utils';
 
 interface OntologyNativeImportItemsProps {
+  /** The import dialog shows these counts in its file card and footer instead. */
+  readonly hasSummary?: boolean;
   readonly isDisabled: boolean;
   readonly items: readonly NativeOntologyImportItem[];
   readonly omittedItems: number;
@@ -149,6 +153,7 @@ const ImportItemRow = ({
   return (
     <Box
       align="start"
+      className="tw:p-4"
       data-testid={`ontology-native-import-item-${item.id}`}
       gap={3}>
       <Checkbox
@@ -161,7 +166,12 @@ const ImportItemRow = ({
         onChange={onToggle}
       />
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Typography className="tw:break-words">{item.label}</Typography>
+        <Typography
+          className="tw:break-words"
+          color={isSelectableItem(item) ? undefined : 'secondary'}
+          weight="medium">
+          {item.label}
+        </Typography>
         <ItemNotes blockedBy={blockedBy} item={item} />
       </Box>
       <Badge
@@ -173,7 +183,75 @@ const ImportItemRow = ({
   );
 };
 
+const ImportGroup = ({
+  isDisabled,
+  items,
+  kind,
+  labelKey,
+  selection,
+  onChange,
+}: {
+  readonly isDisabled: boolean;
+  readonly items: readonly NativeOntologyImportItem[];
+  readonly kind: Kind;
+  readonly labelKey: string;
+  readonly selection: ReadonlySet<string>;
+  readonly onChange: (ids: readonly string[], isSelected: boolean) => void;
+}) => {
+  const { t } = useTranslation();
+  const group = itemsOfKind(items, kind);
+  if (group.length === 0) {
+    return null;
+  }
+  const groupIds = group
+    .filter(
+      (item) =>
+        isSelectableItem(item) && !unmetRequirement(items, selection, item)
+    )
+    .map(({ id }) => id);
+  const isAllPicked =
+    groupIds.length > 0 && groupIds.every((id) => selection.has(id));
+
+  return (
+    <Box
+      data-testid={`ontology-native-import-group-${kind}`}
+      direction="col"
+      gap={2}>
+      <Box align="center" gap={2}>
+        <Typography weight="medium">{t(labelKey)}</Typography>
+        <Badge color="gray" size="sm" type="pill-color">
+          {group.length}
+        </Badge>
+        <Button
+          className="tw:ml-auto"
+          color="link-color"
+          data-testid={`ontology-native-import-group-check-${kind}`}
+          isDisabled={isDisabled || groupIds.length === 0}
+          size="sm"
+          onPress={() => onChange(groupIds, !isAllPicked)}>
+          {isAllPicked ? t('label.deselect-all') : t('label.select-all')}
+        </Button>
+      </Box>
+      <Box
+        className="tw:divide-y tw:divide-secondary tw:rounded-xl tw:border tw:border-secondary"
+        direction="col">
+        {group.map((item) => (
+          <ImportItemRow
+            blockedBy={unmetRequirement(items, selection, item)}
+            isDisabled={isDisabled}
+            isSelected={selection.has(item.id)}
+            item={item}
+            key={item.id}
+            onToggle={(isSelected) => onChange([item.id], isSelected)}
+          />
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
 const OntologyNativeImportItems = ({
+  hasSummary = true,
   isDisabled,
   items,
   omittedItems,
@@ -197,8 +275,8 @@ const OntologyNativeImportItems = ({
   };
 
   return (
-    <Box data-testid="ontology-native-import-items" direction="col" gap={4}>
-      {items.length > 0 && (
+    <Box data-testid="ontology-native-import-items" direction="col" gap={5}>
+      {hasSummary && items.length > 0 && (
         <Typography
           color="secondary"
           data-testid="ontology-native-import-items-found"
@@ -217,49 +295,17 @@ const OntologyNativeImportItems = ({
           {t('message.native-import-items-omitted', { count: omittedItems })}
         </Typography>
       )}
-      <Box className="tw:max-h-96 tw:overflow-y-auto" direction="col" gap={4}>
-        {NATIVE_IMPORT_ITEM_GROUPS.map(({ kind, labelKey }) => {
-          const group = itemsOfKind(items, kind);
-          if (group.length === 0) {
-            return null;
-          }
-          const groupIds = group
-            .filter(
-              (item) =>
-                isSelectableItem(item) &&
-                !unmetRequirement(items, selection, item)
-            )
-            .map(({ id }) => id);
-          const picked = groupIds.filter((id) => selection.has(id)).length;
-
-          return (
-            <Box
-              data-testid={`ontology-native-import-group-${kind}`}
-              direction="col"
-              gap={2}
-              key={kind}>
-              <Checkbox
-                data-testid={`ontology-native-import-group-check-${kind}`}
-                isDisabled={isDisabled || groupIds.length === 0}
-                isIndeterminate={picked > 0 && picked < groupIds.length}
-                isSelected={groupIds.length > 0 && picked === groupIds.length}
-                label={`${t(labelKey)} (${group.length})`}
-                onChange={(isSelected) => change(groupIds, isSelected)}
-              />
-              {group.map((item) => (
-                <ImportItemRow
-                  blockedBy={unmetRequirement(items, selection, item)}
-                  isDisabled={isDisabled}
-                  isSelected={selection.has(item.id)}
-                  item={item}
-                  key={item.id}
-                  onToggle={(isSelected) => change([item.id], isSelected)}
-                />
-              ))}
-            </Box>
-          );
-        })}
-      </Box>
+      {NATIVE_IMPORT_ITEM_GROUPS.map(({ kind, labelKey }) => (
+        <ImportGroup
+          isDisabled={isDisabled}
+          items={items}
+          key={kind}
+          kind={kind}
+          labelKey={labelKey}
+          selection={selection}
+          onChange={change}
+        />
+      ))}
       {notices.length > 0 && (
         <Box
           data-testid="ontology-native-import-unticked-notice"
@@ -273,15 +319,17 @@ const OntologyNativeImportItems = ({
           ))}
         </Box>
       )}
-      <Typography
-        color="secondary"
-        data-testid="ontology-native-import-selection-summary"
-        size="text-sm">
-        {t('message.native-import-selection-summary', {
-          selected: chosen,
-          total: selectable.length,
-        })}
-      </Typography>
+      {hasSummary && (
+        <Typography
+          color="secondary"
+          data-testid="ontology-native-import-selection-summary"
+          size="text-sm">
+          {t('message.native-import-selection-summary', {
+            selected: chosen,
+            total: selectable.length,
+          })}
+        </Typography>
+      )}
     </Box>
   );
 };

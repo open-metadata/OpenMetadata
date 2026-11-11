@@ -94,15 +94,17 @@ const firstPage = (overrides: Parameters<typeof pageFixture>[0] = {}) =>
     ...overrides,
   });
 
+// The rest of an eight-asset Funds Transfer: past the six a collapsed graph shows.
 const lastTransferRows = () =>
   pageFixture({
     bindings: {
-      assets: [
-        { id: 'a5', name: 'table_5', serviceType: 'Snowflake' },
-        { id: 'a6', name: 'table_6', serviceType: 'Snowflake' },
-      ],
+      assets: [5, 6, 7, 8].map((n) => ({
+        id: `a${n}`,
+        name: `table_${n}`,
+        serviceType: 'Snowflake',
+      })),
     },
-    loaded: [prefixFixture('transfer', 'a6'), prefixFixture('account')],
+    loaded: [prefixFixture('transfer', 'a8'), prefixFixture('account')],
   });
 
 const Location = () => (
@@ -128,7 +130,7 @@ const BindingWriter = () => {
 
 const CONCEPTS = [
   { id: 'transfer', name: 'Funds Transfer' },
-  { id: 'account', name: 'Account' },
+  { id: 'account', name: 'Account', parentName: 'Party' },
   { id: 'ledger', name: 'Ledger' },
   { id: 'unused', name: 'Unused' },
 ];
@@ -235,32 +237,29 @@ it('shows every returned cluster with its visible total once the first page arri
 
 it('reaches a visible asset that follows an empty page with a non-null cursor', async () => {
   fetchPage
-    .mockResolvedValueOnce(firstPage())
+    .mockResolvedValueOnce(
+      firstPage({ clusters: clustersWithTransferTotal(8) })
+    )
     .mockResolvedValueOnce(
       pageFixture({
         bindings: { assets: [], after: 'cursor-after-hidden' },
         loaded: [prefixFixture('transfer', 'hidden'), prefixFixture('account')],
       })
     )
-    .mockResolvedValueOnce(
-      pageFixture({
-        bindings: {
-          assets: [
-            { id: 'a5', name: 'table_5', serviceType: 'Snowflake' },
-            { id: 'a6', name: 'table_6', serviceType: 'Snowflake' },
-          ],
-        },
-        loaded: [prefixFixture('transfer', 'a6'), prefixFixture('account')],
-      })
-    );
+    .mockResolvedValueOnce(lastTransferRows());
   renderMode();
   await screen.findByTestId('ontology-data-cluster-transfer');
 
   fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
 
-  await waitFor(() => expect(rows('transfer')).toHaveLength(6));
+  await waitFor(() => expect(rows('transfer')).toHaveLength(8));
 
-  expect(rows('transfer').slice(4)).toEqual(['table_5', 'table_6']);
+  expect(rows('transfer').slice(4)).toEqual([
+    'table_5',
+    'table_6',
+    'table_7',
+    'table_8',
+  ]);
   expect(fetchPage.mock.calls.map(([, request]) => request.page)).toEqual([
     { kind: 'clusters', limit: 12, offset: 0 },
     { kind: 'bindings', conceptId: 'transfer', after: 'cursor-4', limit: 25 },
@@ -301,6 +300,9 @@ it('selects the concept from its header, opens an asset in a panel that stays in
   expect(
     within(panel).getByTestId('ontology-data-asset-panel-fqn')
   ).toHaveTextContent('svc.db.schema.table_1');
+  expect(
+    await within(panel).findByTestId('ontology-data-asset-panel-no-columns')
+  ).toHaveTextContent('message.ontology-asset-no-bound-columns');
   expect(screen.getByTestId('location')).toHaveTextContent(/^\/$/);
 
   fireEvent.click(within(panel).getByTestId('ontology-data-asset-open'));
@@ -390,7 +392,7 @@ it('explains that the picked concept has no data, offers Link Asset, and shows n
   expect(empty).toHaveTextContent('message.ontology-data-empty-title');
   expect(empty).toHaveTextContent('message.ontology-data-empty-hint');
   expect(
-    within(empty).getByRole('button', { name: 'label.link-asset' })
+    within(empty).getByRole('button', { name: 'label.link-data-asset' })
   ).toBeVisible();
   expect(screen.queryByTestId('ontology-data-graph')).not.toBeInTheDocument();
   expect(
@@ -418,6 +420,14 @@ it('shows only the error, and no empty graph, when the first load fails', async 
     await screen.findByTestId('ontology-native-data-error')
   ).toHaveTextContent('message.ontology-data-graph-unavailable');
   expect(screen.queryByTestId('ontology-data-graph')).not.toBeInTheDocument();
+  // The concept stays on screen as the root the failed load hangs from.
+  expect(screen.getByText('label.root')).toBeInTheDocument();
+  expect(
+    within(screen.getByTestId('ontology-native-data-error')).getByRole(
+      'button',
+      { name: 'label.retry' }
+    )
+  ).toBeVisible();
   expect(
     screen.queryByTestId('ontology-data-graph-empty')
   ).not.toBeInTheDocument();
@@ -455,9 +465,10 @@ describe('a graph that went stale', () => {
 
     expect(screen.getByText('label.loading')).toHaveAttribute('role', 'status');
     expect(clusterCount('transfer')).toHaveTextContent('· 6');
-    expect(
-      screen.getByTestId('ontology-data-cluster-transfer').className
-    ).toMatch(/border-brand/);
+    expect(screen.getByTestId('ontology-data-root-transfer')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
 
     await act(async () =>
       answerReload(firstPage({ clusters: clustersWithTransferTotal(9) }))
@@ -468,20 +479,22 @@ describe('a graph that went stale', () => {
   });
 
   it('keeps an expanded cluster expanded through the reload', async () => {
+    const eightTransfers = () =>
+      firstPage({ clusters: clustersWithTransferTotal(8) });
     fetchPage
-      .mockResolvedValueOnce(firstPage())
+      .mockResolvedValueOnce(eightTransfers())
       .mockResolvedValueOnce(lastTransferRows())
-      .mockResolvedValueOnce(firstPage())
+      .mockResolvedValueOnce(eightTransfers())
       .mockResolvedValueOnce(lastTransferRows());
     const { changeModel } = renderMode();
     await screen.findByTestId('ontology-data-cluster-transfer');
     fireEvent.click(screen.getByTestId('ontology-load-more-assets-transfer'));
-    await waitFor(() => expect(rows('transfer')).toHaveLength(6));
+    await waitFor(() => expect(rows('transfer')).toHaveLength(8));
 
     changeModel(1);
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(4));
 
-    await waitFor(() => expect(rows('transfer')).toHaveLength(6));
+    await waitFor(() => expect(rows('transfer')).toHaveLength(8));
 
     expect(
       screen.getByTestId('ontology-show-less-assets-transfer')
@@ -549,9 +562,10 @@ describe('a graph that went stale', () => {
       'ledger_5',
       'ledger_6',
     ]);
-    expect(
-      screen.getByTestId('ontology-data-cluster-ledger').className
-    ).toMatch(/border-brand/);
+    expect(screen.getByTestId('ontology-data-root-ledger')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     expect(fetchPage.mock.calls.map(([, request]) => request.page)).toEqual([
       { kind: 'clusters', limit: 12, offset: 0 },
       { kind: 'clusters', limit: 12, offset: 12 },
@@ -599,11 +613,14 @@ describe('the concept picker', () => {
     expect(
       await screen.findByText('message.ontology-data-pick-title')
     ).toBeVisible();
+    expect(screen.queryByRole('option')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-data-concept-picker-trigger'));
 
     await waitFor(() =>
       expect(optionNames()).toEqual([
         'Funds Transferlabel.count-asset',
-        'Accountlabel.count-asset',
+        'AccountPartylabel.count-asset',
         'Ledgerlabel.no-data',
         'Unusedlabel.no-data',
       ])
@@ -617,6 +634,9 @@ describe('the concept picker', () => {
     const { onSelectConcept, unmount } = renderMode(jest.fn(), {
       initialConceptId: NO_CONCEPT,
     });
+    fireEvent.click(
+      await screen.findByTestId('ontology-data-concept-picker-trigger')
+    );
     fireEvent.click(
       await screen.findByTestId('ontology-data-concept-option-account')
     );
@@ -677,6 +697,40 @@ describe('the concept picker', () => {
     expect(
       await screen.findByTestId('ontology-data-cluster-account')
     ).toBeVisible();
+  });
+
+  it('marks the shown concept in the switcher and links data to it from there', async () => {
+    fetchPage.mockResolvedValue(firstPage());
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: { total: { value: 0 }, hits: [] },
+    });
+    renderMode(jest.fn(), { canEditBindings: true });
+    await screen.findByTestId('ontology-data-cluster-transfer');
+
+    fireEvent.click(screen.getByTestId('ontology-data-concept-change'));
+    const shown = await screen.findByTestId(
+      'ontology-data-concept-option-transfer'
+    );
+
+    expect(shown.querySelector('svg')).not.toBeNull();
+    expect(
+      screen
+        .getByTestId('ontology-data-concept-option-account')
+        .querySelector('svg')
+    ).toBeNull();
+
+    const link = await screen.findByTestId('ontology-data-concept-link-data');
+
+    expect(link).toHaveTextContent('label.link-data-to-entity');
+
+    fireEvent.click(link);
+
+    expect(
+      await screen.findByTestId('ontology-data-link-dialog')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-concept-picker')
+    ).not.toBeInTheDocument();
   });
 });
 

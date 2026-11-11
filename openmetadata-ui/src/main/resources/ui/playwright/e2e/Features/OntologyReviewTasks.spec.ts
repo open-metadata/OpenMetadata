@@ -236,6 +236,9 @@ test.describe(
               await expect(
                 detail.getByRole('button', { name: 'Reject', exact: true })
               ).toHaveCount(0);
+              await expect(
+                detail.getByTestId('ontology-task-withdraw')
+              ).toBeVisible();
               await authorPage.getByTestId('ontology-tasks-close').click();
               await expect(authorPage).toHaveURL(/source=review-test/);
               await expect(authorPage).not.toHaveURL(/[?&]task=/);
@@ -272,7 +275,10 @@ test.describe(
                     .getByTestId('ontology-task-detail')
                     .getByText('Approved', { exact: true })
                 ).toHaveCount(2);
-                await first.page.getByTestId('ontology-tasks-close').click();
+                // The approval toast can sit over the dialog's close button.
+                await clickIgnoringToasts(
+                  first.page.getByTestId('ontology-tasks-close')
+                );
                 await expect(
                   first.page.getByTestId('ontology-review-banner')
                 ).toHaveCount(0);

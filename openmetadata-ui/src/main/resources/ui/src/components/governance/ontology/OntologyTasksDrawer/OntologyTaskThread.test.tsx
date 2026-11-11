@@ -94,6 +94,9 @@ it('orders records stably, preserves repeated comments and coalesces a later com
 
   expect(screen.getAllByText('Repeated')).toHaveLength(2);
   expect(
+    within(screen.getByTestId('ontology-task-activity')).getByText('5')
+  ).toBeInTheDocument();
+  expect(
     within(screen.getByTestId('event:captured'))
       .getByText('label.captured')
       .closest('[class*="tw:size-max"]')

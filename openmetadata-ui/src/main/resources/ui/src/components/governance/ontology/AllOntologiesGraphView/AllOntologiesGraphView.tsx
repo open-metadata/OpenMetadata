@@ -160,14 +160,18 @@ const AllOntologiesGraphView = ({
   const model = models.find((candidate) =>
     candidate.concepts.some((concept) => concept.id === selectedConceptId)
   );
-  const dataConcepts = useMemo(
-    () =>
-      (model?.concepts ?? []).map((concept) => ({
-        id: concept.id,
-        name: getEntityName(concept),
-      })),
-    [model?.concepts]
-  );
+  const dataConcepts = useMemo(() => {
+    const concepts = model?.concepts ?? [];
+    const nameByIri = new Map(
+      concepts.map((concept) => [concept.iri, getEntityName(concept)])
+    );
+
+    return concepts.map((concept) => ({
+      id: concept.id,
+      name: getEntityName(concept),
+      parentName: nameByIri.get(concept.superClasses?.[0] ?? ''),
+    }));
+  }, [model?.concepts]);
   const selected = model?.concepts.find(
     (concept) => concept.id === selectedConceptId
   );

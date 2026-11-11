@@ -28,7 +28,13 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyTasksDrawer from './OntologyTasksDrawer';
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../../utils/ToastUtils'),
+  showSuccessToast: jest.fn(),
+}));
 
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
@@ -313,7 +319,11 @@ it('keeps committed approval when activation conflicts and retries activation wi
   expect(
     await screen.findByText('message.ontology-review-activation-failed')
   ).toBeInTheDocument();
-  expect(screen.getByText('label.approved')).toBeInTheDocument();
+  expect(
+    within(screen.getByTestId('ontology-task-release-card')).getByText(
+      'label.approved'
+    )
+  ).toBeInTheDocument();
 
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'label.publish' })).toBeEnabled()
@@ -387,7 +397,11 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   );
   fireEvent.click(screen.getByRole('button', { name: 'label.approve' }));
 
-  expect(await screen.findByText('label.approved')).toBeInTheDocument();
+  expect(
+    await within(
+      await screen.findByTestId('ontology-task-release-card')
+    ).findByText('label.approved')
+  ).toBeInTheDocument();
   expect(
     await screen.findByText('message.ontology-review-unavailable')
   ).toBeInTheDocument();
@@ -400,6 +414,68 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   expect(
     screen.getByTestId('ontology-only-author-publishes')
   ).toHaveTextContent('message.ontology-publication-only-author-publishes');
+  expect(showSuccessToast).toHaveBeenCalledWith(
+    'message.ontology-task-approved'
+  );
+});
+
+it('lets the requester withdraw an open review after confirming', async () => {
+  useApplicationStore.setState({
+    currentUser: { id: 'author', name: 'author', email: 'a@example.test' },
+  });
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url.endsWith('/review')
+      ? Promise.resolve({ data: { ...review, callerCanVote: false } })
+      : read?.(url, config)
+  );
+  post.mockResolvedValue({ data: { ...task, status: 'Cancelled' } });
+  const { queryClient } = renderWithQueryClient(
+    <Harness initialTask="task-a" />
+  );
+  const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
+
+  fireEvent.click(await screen.findByTestId('ontology-task-withdraw'));
+
+  expect(post).not.toHaveBeenCalled();
+
+  fireEvent.click(screen.getByTestId('ontology-task-withdraw-submit'));
+
+  await waitFor(() =>
+    expect(post).toHaveBeenCalledWith(
+      '/tasks/task-a/close',
+      {},
+      {
+        params: { comment: undefined },
+      }
+    )
+  );
+  await waitFor(() =>
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'message.ontology-publication-withdrawn'
+    )
+  );
+
+  // The publish button, release history and unpublished count refresh as after a withdraw from the release panel.
+  for (const key of [
+    'ontology-publication',
+    'ontology-release',
+    'ontology-release-review',
+    'ontology-state',
+    'ontology-release-history',
+    'ontology-working-diff',
+  ]) {
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: [key] });
+  }
+});
+
+it('offers no withdraw to a reviewer who did not request the review', async () => {
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+
+  expect(await screen.findByText('Review Commerce')).toBeInTheDocument();
+  expect(
+    screen.queryByTestId('ontology-task-withdraw')
+  ).not.toBeInTheDocument();
 });
 
 it('keeps writes disabled after an ambiguous outcome until an authoritative read succeeds', async () => {

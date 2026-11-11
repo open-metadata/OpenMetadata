@@ -12,7 +12,10 @@
  */
 
 import { Operation } from 'fast-json-patch';
-import { RelationTypeOptionGroup } from '../../../components/OntologyExplorer/RelationshipTypePicker.interface';
+import {
+  RelationTypeOption,
+  RelationTypeOptionGroup,
+} from '../../../components/OntologyExplorer/RelationshipTypePicker.interface';
 import {
   AxiomType as CreateAxiomType,
   CreateOntologyAxiom,
@@ -42,6 +45,7 @@ import {
 } from '../../../generated/entity/data/relationshipType';
 import {
   buildSubClassAxiomRequest,
+  DataPropertyInput,
   getAvailableName,
   getPropertyLabel,
   humanizeName,
@@ -105,6 +109,12 @@ export interface NativeRelationType extends NativeRelationPartner {
   readonly paletteKey: PaletteKey;
   /** A symmetric type names itself. */
   readonly inverse?: NativeRelationPartner;
+  readonly description?: string;
+  /** Concept ids the declared property's domain allows; empty or absent allows any. */
+  readonly domain?: readonly string[];
+  readonly range?: readonly string[];
+  /** "Domain → Range" in concept names, for a type that only fits some concepts. */
+  readonly scopeLabel?: string;
 }
 
 export type NativeRelationStep =
@@ -169,6 +179,7 @@ export const toNativeRelationType = (
 
   return {
     ...partnerOf(type),
+    description: type.description,
     group: type.category === Category.Custom ? 'custom' : 'core',
     inverse: inverse ? partnerOf(inverse) : undefined,
     kind: kindOf(type.rdfPredicate),
@@ -212,6 +223,7 @@ const ownRelationType = (
   registry: ReadonlyMap<string, NativeRelationType>
 ): NativeRelationType => ({
   ...partnerOfProperty(property),
+  description: property.description,
   group: 'custom',
   inverse: inverseOfOwnProperty(property, model, registry),
   kind: 'objectProperty',
@@ -222,6 +234,51 @@ const HIERARCHY_KINDS: readonly NativeRelationKind[] = [
   'subClassOf',
   'superClassOf',
 ];
+
+type DeclaredProperty = (iri: string) => OntologyProperty | undefined;
+
+/** The live object property that holds each predicate, indexed once so a whole catalog plans in linear time. */
+const declaredProperties = (model: OntologyStudioModel): DeclaredProperty => {
+  const byIri = new Map(
+    model.properties
+      .filter(isLiveObjectProperty)
+      .map((property) => [property.iri, property])
+  );
+
+  return (iri) => byIri.get(iri);
+};
+
+/** Adds the domain and range the ontology declares for an object property, as concept ids. */
+const scopeOf = (model: OntologyStudioModel) => {
+  const concepts = new Map(
+    model.concepts.map((concept) => [concept.iri, concept])
+  );
+  const declared = declaredProperties(model);
+  const idsOf = (iris: readonly string[] = []) =>
+    iris.map((iri) => concepts.get(iri)?.id ?? iri);
+  const namesOf = (iris: readonly string[] = []) =>
+    iris
+      .map((iri) => {
+        const concept = concepts.get(iri);
+
+        return concept ? concept.displayName || concept.name : iri;
+      })
+      .join(', ') || '…';
+
+  return (type: NativeRelationType): NativeRelationType => {
+    const property = declared(type.id);
+    if (!property?.domain?.length && !property?.range?.length) {
+      return type;
+    }
+
+    return {
+      ...type,
+      domain: idsOf(property.domain),
+      range: idsOf(property.range),
+      scopeLabel: `${namesOf(property.domain)} → ${namesOf(property.range)}`,
+    };
+  };
+};
 
 /**
  * Every relation a native ontology can author: the registry's types except annotation
@@ -255,30 +312,106 @@ export const buildNativeRelationCatalog = (
     )
     .map((property) => ownRelationType(property, model, byPredicate));
 
+  const withScope = scopeOf(model);
+
   return [
     ...hierarchy,
     ...registry.filter((type) => HIERARCHY_KINDS.includes(type.kind)),
-    ...registry.filter((type) => !HIERARCHY_KINDS.includes(type.kind)),
-    ...own,
+    ...registry
+      .filter((type) => !HIERARCHY_KINDS.includes(type.kind))
+      .map(withScope),
+    ...own.map(withScope),
   ];
 };
 
 export const buildNativeRelationGroups = (
   catalog: readonly NativeRelationType[],
-  titles: { readonly core: string; readonly custom: string }
+  titles: { readonly hierarchy: string; readonly relationships: string }
 ): RelationTypeOptionGroup[] =>
-  (['core', 'custom'] as const).map((group) => ({
+  (['hierarchy', 'relationships'] as const).map((group) => ({
     id: group,
     options: catalog
-      .filter((type) => type.group === group)
+      .filter(
+        (type) =>
+          HIERARCHY_KINDS.includes(type.kind) === (group === 'hierarchy')
+      )
       .map((type) => ({
+        description: type.description,
+        domain: type.domain,
         id: type.id,
         inverseLabel: type.inverse?.label,
         label: type.label,
         paletteKey: type.paletteKey,
+        range: type.range,
+        scopeLabel: type.scopeLabel,
       })),
     title: titles[group],
   }));
+
+const allows = (allowed: readonly string[] | undefined, id?: string) =>
+  !allowed?.length || !id || allowed.includes(id);
+
+const fitsPair = (
+  option: RelationTypeOption,
+  sourceId?: string,
+  targetId?: string
+) => allows(option.domain, sourceId) && allows(option.range, targetId);
+
+/**
+ * Moves the options whose declared domain or range leaves out the source or target into a
+ * trailing group the picker shows disabled, so the user sees why a link is not offered.
+ */
+export const splitUnfitRelationOptions = (
+  groups: readonly RelationTypeOptionGroup[],
+  ends: { readonly sourceId?: string; readonly targetId?: string },
+  otherTitle: string
+): RelationTypeOptionGroup[] => {
+  const unfit = groups.flatMap((group) =>
+    group.options.filter(
+      (option) => !fitsPair(option, ends.sourceId, ends.targetId)
+    )
+  );
+  if (unfit.length === 0) {
+    return [...groups];
+  }
+
+  return [
+    ...groups.map((group) => ({
+      ...group,
+      options: group.options.filter((option) => !unfit.includes(option)),
+    })),
+    {
+      id: 'other',
+      options: unfit.map((option) => ({ ...option, isDisabled: true })),
+      title: otherTitle,
+    },
+  ];
+};
+
+/** A synonym that reads like a relation phrase ("part of Order") is better modelled as a relationship. */
+const RELATION_LIKE_SYNONYM =
+  /^(part of|is a|has|broader|narrower|disjoint)\b/i;
+
+export const getRelationPhrase = (synonym: string): string | undefined =>
+  RELATION_LIKE_SYNONYM.exec(synonym.trim())?.[1].toLowerCase();
+
+export interface ObjectPropertyInput {
+  readonly kind: 'object';
+  readonly name: string;
+  readonly rangeIri: string;
+}
+
+export const buildObjectPropertyRequest = (
+  model: OntologyStudioModel,
+  concept: OntologyConcept,
+  input: ObjectPropertyInput
+): CreateOntologyProperty => ({
+  domain: [concept.iri],
+  kind: CreatePropertyKind.Object,
+  name: input.name.trim(),
+  ontology: model.ontology.fullyQualifiedName,
+  range: [input.rangeIri],
+});
 
 /** The entry a typed label names, so the picker reuses a type instead of registering it twice. */
 export const findNativeRelationTypeByLabel = (
@@ -289,6 +422,14 @@ export const findNativeRelationTypeByLabel = (
 
   return catalog.find((type) => type.label.toLowerCase() === wanted);
 };
+
+/** The catalog entry a relation phrase names: the exact label, else the first label it starts. */
+export const findNativeRelationTypeByPhrase = (
+  catalog: readonly NativeRelationType[],
+  phrase: string
+): NativeRelationType | undefined =>
+  findNativeRelationTypeByLabel(catalog, phrase) ??
+  catalog.find((type) => type.label.toLowerCase().startsWith(phrase));
 
 /** The other half of a reciprocal pair; a self-inverse type has none. */
 const otherSideOf = (type: NativeRelationType) =>
@@ -310,19 +451,6 @@ const linkStep = (
     },
   ],
 });
-
-type DeclaredProperty = (iri: string) => OntologyProperty | undefined;
-
-/** The live object property that holds each predicate, indexed once so a whole catalog plans in linear time. */
-const declaredProperties = (model: OntologyStudioModel): DeclaredProperty => {
-  const byIri = new Map(
-    model.properties
-      .filter(isLiveObjectProperty)
-      .map((property) => [property.iri, property])
-  );
-
-  return (iri) => byIri.get(iri);
-};
 
 /** The properties the ontology still lacks for the type, the inverse-less side first so the second can name it. */
 const planProperties = (
@@ -545,3 +673,5 @@ export const getInverseRelationLabel = (
 
   return inverse ? getPropertyLabel(inverse) : undefined;
 };
+
+export type ConceptPropertyInput = DataPropertyInput | ObjectPropertyInput;

@@ -43,7 +43,11 @@ import {
   EntityStatus as ReleaseStatus,
   OntologyRelease,
 } from '../../../../generated/entity/data/ontologyRelease';
-import { Task, TaskType } from '../../../../generated/entity/tasks/task';
+import {
+  Task,
+  TaskStatus,
+  TaskType,
+} from '../../../../generated/entity/tasks/task';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
@@ -59,12 +63,14 @@ import {
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
 import {
   addTaskComment,
+  closeTask,
   getTaskById,
   resolveTask,
 } from '../../../../rest/tasksAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getOperationPermissions } from '../../../../utils/PermissionsUtils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import {
   buildResolveBody,
@@ -73,7 +79,10 @@ import {
 import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
-import { getOpenReviews } from './OntologyTasksDrawer.utils';
+import {
+  getOpenReviews,
+  invalidatePublicationReads,
+} from './OntologyTasksDrawer.utils';
 import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
@@ -89,7 +98,7 @@ type Props = {
 type ReviewWrite =
   | { kind: 'comment'; message: string }
   | { kind: 'reject'; reason: string }
-  | { kind: 'approve' | 'approve-and-publish' | 'publish' };
+  | { kind: 'approve' | 'approve-and-publish' | 'publish' | 'withdraw' };
 type Detail = {
   task: Task;
   review: OntologyReleaseReview;
@@ -445,6 +454,8 @@ const OntologyTasksDrawer = ({
         ].every(Boolean);
       case 'approve':
         return contentReady && current.review.callerCanVote;
+      case 'withdraw':
+        return current.task.status === TaskStatus.Open;
       case combinedApproval:
         return [
           contentReady,
@@ -453,6 +464,21 @@ const OntologyTasksDrawer = ({
           canPublish,
           activationReady,
         ].every(Boolean);
+    }
+  };
+  const announce = (kind: ReviewWrite['kind'], current: Detail) => {
+    const version = 'v' + (current.release.semanticVersion ?? '');
+    const messages: Partial<Record<ReviewWrite['kind'], string>> = {
+      approve: t('message.ontology-task-approved', { version }),
+      [combinedApproval]: t('message.ontology-task-approved-published', {
+        version,
+        ontology: getEntityName(current.review.ontology),
+      }),
+      withdraw: t('message.ontology-publication-withdrawn', { version }),
+    };
+    const message = messages[kind];
+    if (message) {
+      showSuccessToast(message);
     }
   };
   const submit = async (write: ReviewWrite): Promise<boolean> => {
@@ -560,10 +586,16 @@ const OntologyTasksDrawer = ({
           await publishApproved();
 
           break;
+        case 'withdraw':
+          await closeTask(captured.task.id);
+          await invalidatePublicationReads(queryClient);
+
+          break;
         default:
           await resolveVote();
       }
       succeeded = true;
+      announce(write.kind, captured);
       setWriteError((previous) =>
         previous?.selection === capturedSelection ? undefined : previous
       );
@@ -785,7 +817,9 @@ const OntologyTasksDrawer = ({
   );
   const renderSelected = () =>
     detail.isPending ? (
-      <Typography role="status">{t('label.loading')}</Typography>
+      <div className="tw:p-6">
+        <Typography role="status">{t('label.loading')}</Typography>
+      </div>
     ) : (
       selected && (
         <OntologyTaskDetail
@@ -820,6 +854,9 @@ const OntologyTasksDrawer = ({
           }}
           onReject={(reason) => {
             void submit({ kind: 'reject', reason });
+          }}
+          onWithdraw={() => {
+            void submit({ kind: 'withdraw' });
           }}>
           <OntologyTaskThread
             events={events.data?.data ?? []}
@@ -840,28 +877,29 @@ const OntologyTasksDrawer = ({
 
     return (
       <>
-        {' '}
-        {(detail.isError || state.isError || events.isError) && (
-          <Alert variant="error">
-            <Box direction="col" gap={2}>
-              {t('message.ontology-review-unavailable')}
-              <Button
-                color="secondary"
-                isDisabled={writing}
-                onPress={() => {
-                  void refresh();
-                }}>
-                {t('label.retry')}
-              </Button>
-            </Box>
-          </Alert>
-        )}
-        {writeError?.selection === selection &&
-          writeError.kind === 'uncertain' && (
-            <Alert variant="warning">
-              {t('message.ontology-review-write-uncertain')}
+        <div className="tw:flex tw:flex-col tw:gap-2 tw:px-6 tw:pt-4 tw:empty:hidden">
+          {(detail.isError || state.isError || events.isError) && (
+            <Alert variant="error">
+              <Box direction="col" gap={2}>
+                {t('message.ontology-review-unavailable')}
+                <Button
+                  color="secondary"
+                  isDisabled={writing}
+                  onPress={() => {
+                    void refresh();
+                  }}>
+                  {t('label.retry')}
+                </Button>
+              </Box>
             </Alert>
           )}
+          {writeError?.selection === selection &&
+            writeError.kind === 'uncertain' && (
+              <Alert variant="warning">
+                {t('message.ontology-review-write-uncertain')}
+              </Alert>
+            )}
+        </div>
         {renderSelected()}
       </>
     );
@@ -933,7 +971,7 @@ const OntologyTasksDrawer = ({
                   id={view}>
                   {renderQueue()}
                 </Tabs.Panel>
-                <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto tw:p-6">
+                <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto">
                   {taskId ? (
                     renderDetail()
                   ) : (

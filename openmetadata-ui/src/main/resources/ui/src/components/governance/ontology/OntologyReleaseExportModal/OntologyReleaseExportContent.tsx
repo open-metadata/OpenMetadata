@@ -12,21 +12,25 @@
  */
 
 import {
+  Accordion,
+  AccordionHeader,
+  AccordionItem,
+  AccordionPanel,
   Alert,
   Box,
   Button,
   Checkbox,
-  Grid,
   RadioButton,
   RadioGroup,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { OntologyReleaseValidation } from '../../../../generated/api/data/ontologyReleaseValidation';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
+import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
+import { ONTOLOGY_DRAFT_EXPORT_SCOPE } from '../../../../hooks/governance/ontology/useOntologyReleaseExport';
 import { NATIVE_EXPORT_EXTENSIONS } from '../../../../rest/ontologyExport.constants';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   ONTOLOGY_RELEASE_EXPORT_FORMATS,
   ONTOLOGY_RELEASE_PREVIEW_LIMIT,
@@ -40,6 +44,7 @@ import {
 import OntologyReleaseExportShacl from './OntologyReleaseExportShacl';
 
 interface OntologyReleaseExportContentProps {
+  readonly activeRelease?: OntologyRelease;
   readonly isDraft: boolean;
   readonly isShaclRunning: boolean;
   readonly scopeKey: string;
@@ -73,19 +78,13 @@ const ExportPreview = ({
   readonly isLoading?: boolean;
 }) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
 
   return (
     <pre
-      className={classNames(
-        'tw:m-0 tw:min-h-64 tw:max-h-96 tw:flex-1 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary',
-        isAiMode
-          ? 'tw:bg-secondary_alt tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-secondary'
-          : [
-              'tw:bg-primary-solid tw:p-4 tw:font-mono tw:text-xs tw:leading-relaxed',
-              'tw:whitespace-pre-wrap tw:break-words tw:text-primary_on-brand',
-            ]
-      )}
+      className={
+        'tw:m-0 tw:max-h-72 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary_alt tw:p-4 ' +
+        'tw:font-mono tw:text-xs tw:leading-relaxed tw:whitespace-pre-wrap tw:break-words tw:text-secondary'
+      }
       data-testid="ontology-release-export-preview">
       {isLoading
         ? t('label.loading')
@@ -150,7 +149,100 @@ const ExportScopeSelect = ({
   );
 };
 
-const OntologyReleaseExportContent = ({
+const PUBLISHED_CONTENTS = 'published';
+
+const ExportContentsChoice = ({
+  activeRelease,
+  scopeKey,
+  onScopeChange,
+}: Pick<
+  OntologyReleaseExportContentProps,
+  'activeRelease' | 'scopeKey' | 'onScopeChange'
+>) => {
+  const { t } = useTranslation();
+  let value: string | null = null;
+  if (scopeKey === ONTOLOGY_DRAFT_EXPORT_SCOPE) {
+    value = ONTOLOGY_DRAFT_EXPORT_SCOPE;
+  } else if (scopeKey === activeRelease?.id) {
+    value = PUBLISHED_CONTENTS;
+  }
+
+  return (
+    <RadioGroup
+      data-testid="ontology-export-contents"
+      label={t('label.contents')}
+      value={value}
+      onChange={(next) =>
+        onScopeChange(
+          next === PUBLISHED_CONTENTS && activeRelease
+            ? activeRelease.id
+            : ONTOLOGY_DRAFT_EXPORT_SCOPE
+        )
+      }>
+      <RadioButton
+        data-testid="ontology-export-contents-published"
+        hint={
+          activeRelease
+            ? getEntityName(activeRelease)
+            : t('message.ontology-export-no-published-release')
+        }
+        isDisabled={!activeRelease}
+        label={t('label.published-release')}
+        value={PUBLISHED_CONTENTS}
+      />
+      <RadioButton
+        data-testid="ontology-export-contents-draft"
+        hint={t('message.ontology-export-draft-hint')}
+        label={t('label.current-draft')}
+        value={ONTOLOGY_DRAFT_EXPORT_SCOPE}
+      />
+    </RadioGroup>
+  );
+};
+
+const ExportFormatChoice = ({
+  selection,
+  onSelectionChange,
+}: Pick<
+  OntologyReleaseExportContentProps,
+  'selection' | 'onSelectionChange'
+>) => {
+  const { t } = useTranslation();
+
+  return (
+    <RadioGroup
+      label={t('label.format')}
+      value={selection.card}
+      onChange={(value) => onSelectionChange(withCard(selection, value))}>
+      <div className="tw:grid tw:grid-cols-1 tw:gap-3 tw:sm:grid-cols-2">
+        {ONTOLOGY_RELEASE_EXPORT_FORMATS.map((option) => (
+          <RadioButton
+            className="tw:flex-row-reverse"
+            data-testid={`ontology-release-format-${option.format}`}
+            hint={t(option.descriptionKey)}
+            key={option.format}
+            label={
+              <>
+                {t(option.labelKey)}{' '}
+                <span className="tw:font-normal tw:text-tertiary">
+                  {`.${
+                    NATIVE_EXPORT_EXTENSIONS[
+                      resolveExportFormat(option.format, selection.skosXl)
+                    ]
+                  }`}
+                </span>
+              </>
+            }
+            value={option.format}
+            variant="card"
+          />
+        ))}
+      </div>
+    </RadioGroup>
+  );
+};
+
+const ExportAdvanced = ({
   isDraft,
   isShaclRunning,
   scopeKey,
@@ -161,49 +253,28 @@ const OntologyReleaseExportContent = ({
   onRunShacl,
   onScopeChange,
   onSelectionChange,
-}: OntologyReleaseExportContentProps) => {
+}: Omit<OntologyReleaseExportContentProps, 'activeRelease' | 'state'> & {
+  readonly state: Extract<OntologyReleaseExportContentState, { kind: 'ready' }>;
+}) => {
   const { t } = useTranslation();
   const { card, options, skosXl } = selection;
   const setOption = (changes: Partial<typeof options>) =>
     onSelectionChange({ ...selection, options: { ...options, ...changes } });
 
   return (
-    <Box direction="col" gap={5}>
-      <ExportLoadState state={state} />
-
-      {state.kind === 'ready' ? (
-        <Grid className="tw:md:gap-x-5" rowGap="5">
-          <Grid.Item className="tw:min-w-0">
+    <Accordion>
+      <AccordionItem id="advanced">
+        <AccordionHeader data-testid="ontology-export-advanced">
+          {t('label.advanced')}
+        </AccordionHeader>
+        <AccordionPanel>
+          <Box direction="col" gap={4}>
             <ExportScopeSelect
               scopeKey={scopeKey}
               scopes={scopes}
               onScopeChange={onScopeChange}
             />
-          </Grid.Item>
-          <Grid.Item className="tw:min-w-0 tw:md:col-span-13">
-            <RadioGroup
-              label={t('label.format')}
-              value={card}
-              onChange={(value) =>
-                onSelectionChange(withCard(selection, value))
-              }>
-              {ONTOLOGY_RELEASE_EXPORT_FORMATS.map((option) => (
-                <RadioButton
-                  data-testid={`ontology-release-format-${option.format}`}
-                  hint={t(option.descriptionKey)}
-                  key={option.format}
-                  label={t(option.labelKey)}
-                  trailing={`.${
-                    NATIVE_EXPORT_EXTENSIONS[
-                      resolveExportFormat(option.format, skosXl)
-                    ]
-                  }`}
-                  value={option.format}
-                  variant="card"
-                />
-              ))}
-            </RadioGroup>
-            <Box className="tw:mt-4" direction="col" gap={2}>
+            <Box direction="col" gap={2}>
               {card === 'skos' ? (
                 <Checkbox
                   data-testid="ontology-export-skos-xl"
@@ -237,9 +308,7 @@ const OntologyReleaseExportContent = ({
                 onChange={(value) => setOption({ shaclGate: value })}
               />
             </Box>
-          </Grid.Item>
-          <Grid.Item className="tw:min-w-0 tw:md:col-span-11">
-            <Box className="tw:h-full" direction="col" gap={2}>
+            <Box direction="col" gap={2}>
               <Typography color="secondary" size="text-sm" weight="medium">
                 {t('label.preview')}
               </Typography>
@@ -247,16 +316,47 @@ const OntologyReleaseExportContent = ({
                 content={state.content}
                 isLoading={state.isPreviewLoading}
               />
-              {isDraft ? null : (
-                <OntologyReleaseExportShacl
-                  isRunning={isShaclRunning}
-                  report={shaclReport}
-                  onRun={onRunShacl}
-                />
-              )}
             </Box>
-          </Grid.Item>
-        </Grid>
+            {isDraft ? null : (
+              <OntologyReleaseExportShacl
+                isRunning={isShaclRunning}
+                report={shaclReport}
+                onRun={onRunShacl}
+              />
+            )}
+          </Box>
+        </AccordionPanel>
+      </AccordionItem>
+    </Accordion>
+  );
+};
+
+const OntologyReleaseExportContent = ({
+  activeRelease,
+  state,
+  ...props
+}: OntologyReleaseExportContentProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box direction="col" gap={5}>
+      <Typography color="secondary" size="text-sm">
+        {t('message.ontology-export-help')}
+      </Typography>
+      <ExportLoadState state={state} />
+      {state.kind === 'ready' ? (
+        <>
+          <ExportFormatChoice
+            selection={props.selection}
+            onSelectionChange={props.onSelectionChange}
+          />
+          <ExportContentsChoice
+            activeRelease={activeRelease}
+            scopeKey={props.scopeKey}
+            onScopeChange={props.onScopeChange}
+          />
+          <ExportAdvanced {...props} state={state} />
+        </>
       ) : null}
     </Box>
   );

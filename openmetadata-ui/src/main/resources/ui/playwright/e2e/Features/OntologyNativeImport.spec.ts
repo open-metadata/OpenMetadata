@@ -17,7 +17,10 @@ import { OntologyState } from '../../../src/generated/type/ontologyState';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
-import { openOntologyTransfer } from '../../utils/ontologyStudio';
+import {
+  openNewOntologyImport,
+  openOntologyTransfer,
+} from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -113,18 +116,14 @@ const conceptTotal = async (api: APIRequestContext, ontologyName: string) =>
 
 const startNewOntologyImport = async (
   page: Page,
-  fixtureId: string,
+  owner: Ontology,
   csv: string
 ) => {
-  await page.goto(`/governance/ontology?ontology=${fixtureId}`);
-  await openImportTab(page);
+  await openNewOntologyImport(page, owner);
   await chooseFile(page, 'clash.csv', csv);
-  await page.getByTestId('ontology-native-import-target').click();
-  await page.getByRole('option', { name: /new ontology/i }).click();
-  await page.getByTestId('ontology-native-import-parse').click();
   await expect(
-    page.getByTestId('ontology-native-import-count-new-concepts')
-  ).toContainText('2');
+    page.getByTestId('ontology-native-import-summary')
+  ).toContainText('2 new concepts');
 };
 
 test.describe(
@@ -145,11 +144,7 @@ test.describe(
           page.getByTestId('ontology-publication-trigger')
         ).toContainText('(1)');
         await openImportTab(page);
-        await chooseFile(page, 'customer.ttl', CUSTOMER_RDF_XML(namespace));
-        await expect(
-          page.getByTestId('ontology-native-import-format')
-        ).toHaveText('RDF/XML');
-
+        // The dry run starts as soon as the format is known, so its response is awaited from the file choice.
         const preview = page.waitForResponse(
           (response) =>
             response
@@ -157,11 +152,14 @@ test.describe(
               .endsWith(`/ontologies/${ontology.id}/imports/preview`) &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('ontology-native-import-parse').click();
+        await chooseFile(page, 'customer.ttl', CUSTOMER_RDF_XML(namespace));
+        await expect(
+          page.getByTestId('ontology-native-import-format')
+        ).toHaveText('RDF/XML');
         expect((await preview).status()).toBe(200);
         await expect(
-          page.getByTestId('ontology-native-import-count-new-concepts')
-        ).toContainText('2');
+          page.getByTestId('ontology-native-import-summary')
+        ).toContainText('2 new concepts');
         await expect(
           page.getByTestId('ontology-native-import-draft-notice')
         ).toBeVisible();
@@ -232,13 +230,12 @@ test.describe(
         await expect(
           page.getByTestId('ontology-native-import-format')
         ).toHaveText('CSV');
-        await page.getByTestId('ontology-native-import-parse').click();
         await expect(
-          page.getByTestId('ontology-native-import-count-new-concepts')
-        ).toContainText('2');
+          page.getByTestId('ontology-native-import-summary')
+        ).toContainText('2 new concepts');
         await expect(
-          page.getByTestId('ontology-native-import-count-relations')
-        ).toContainText('1');
+          page.getByTestId('ontology-native-import-summary')
+        ).toContainText('1 relationship');
 
         const applied = page.waitForResponse(
           (response) =>
@@ -266,8 +263,7 @@ test.describe(
       const created: string[] = [];
 
       try {
-        await page.goto(`/governance/ontology?ontology=${ontology.id}`);
-        await openImportTab(page);
+        await openNewOntologyImport(page, ontology);
         // The new ontology is named from the file's title, and an ontology left under the same
         // title answers the create with 409, so each run brings its own title.
         await chooseFile(
@@ -275,12 +271,9 @@ test.describe(
           'shop.csv',
           csvOf(namespace, `Shop CSV ${uuid()}`)
         );
-        await page.getByTestId('ontology-native-import-target').click();
-        await page.getByRole('option', { name: /new ontology/i }).click();
-        await page.getByTestId('ontology-native-import-parse').click();
         await expect(
-          page.getByTestId('ontology-native-import-count-new-concepts')
-        ).toContainText('2');
+          page.getByTestId('ontology-native-import-summary')
+        ).toContainText('2 new concepts');
 
         const create = page.waitForResponse(
           (response) =>
@@ -330,11 +323,7 @@ test.describe(
       try {
         // The panel read the names before the holder existed; the stub keeps its list that old.
         await page.route(isIdentityListing, staleNames);
-        await startNewOntologyImport(
-          page,
-          ontology.id,
-          csvOf(namespace, title)
-        );
+        await startNewOntologyImport(page, ontology, csvOf(namespace, title));
 
         const refused = page.waitForResponse(
           (response) =>
@@ -402,11 +391,7 @@ test.describe(
       const created: string[] = [];
 
       try {
-        await startNewOntologyImport(
-          page,
-          ontology.id,
-          csvOf(namespace, title)
-        );
+        await startNewOntologyImport(page, ontology, csvOf(namespace, title));
         const create = page.waitForResponse(
           (response) =>
             response.url().endsWith('/api/v1/ontologies') &&

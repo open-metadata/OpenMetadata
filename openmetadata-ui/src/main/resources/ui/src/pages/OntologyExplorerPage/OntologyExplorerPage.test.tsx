@@ -455,6 +455,12 @@ jest.mock(
       ),
       useOntologyConceptEditor: (input: MockEditorInput) => ({
         ...input,
+        // The panel reads the unsaved synonyms from the form, as the real hook provides it.
+        form: {
+          getValues: () => [],
+          setValue: () => undefined,
+          watch: () => [],
+        },
         isDirty: false,
         reset: () => undefined,
       }),
@@ -2857,6 +2863,21 @@ describe('OntologyExplorerPage', () => {
       expect(mockQueryConsole).toHaveBeenLastCalledWith(
         expect.objectContaining({ selectedOntologyId: nativeOntology.id })
       )
+    );
+  });
+
+  it('opens the ontology choice from the header New query on All ontologies', async () => {
+    renderNativeStudio('');
+    fireEvent.click(screen.getByTestId('mode-tab-query'));
+    fireEvent.click(await screen.findByTestId('ontology-new-query'));
+
+    expect(
+      await screen.findByTestId(
+        `ontology-query-picker-option-${nativeOntology.id}`
+      )
+    ).toBeVisible();
+    expect(mockQueryConsole).not.toHaveBeenCalledWith(
+      expect.objectContaining({ createQueryOnMount: true })
     );
   });
 

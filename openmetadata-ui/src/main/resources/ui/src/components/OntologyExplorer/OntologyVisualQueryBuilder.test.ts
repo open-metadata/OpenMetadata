@@ -31,12 +31,49 @@ describe('buildVisualSparqlQuery', () => {
       glossary: { id: 'glossary-id', type: 'glossary' },
     };
 
-    const query = buildVisualSparqlQuery(relationType, target);
+    const query = buildVisualSparqlQuery([{ relationType, target }]);
 
-    expect(query).toContain('<https://example.com/ontology/governedBy>');
     expect(query).toContain(
-      'om:fullyQualifiedName "Compliance.AntiMoneyLaundering"'
+      '?concept <https://example.com/ontology/governedBy> ?target .'
+    );
+    expect(query).toContain(
+      '?target om:fullyQualifiedName "Compliance.AntiMoneyLaundering"'
     );
     expect(query).toContain('SELECT ?concept ?conceptFqn');
+    expect(query).toContain('?concept a om:GlossaryTerm .');
+    expect(query).toMatch(/\nLIMIT 100$/);
+  });
+
+  it('ANDs every condition against its own target and applies the limit', () => {
+    const governedBy = createRelationshipTypeMock({
+      name: 'governedBy',
+      rdfPredicate: 'https://example.com/ontology/governedBy',
+    });
+    const partOf = createRelationshipTypeMock({
+      name: 'partOf',
+      rdfPredicate: 'https://example.com/ontology/partOf',
+    });
+
+    const query = buildVisualSparqlQuery(
+      [
+        {
+          relationType: governedBy,
+          target: { id: 'a', name: 'A', fullyQualifiedName: 'G.A' },
+        },
+        {
+          relationType: partOf,
+          target: { id: 'b', name: 'B', fullyQualifiedName: 'G."B"' },
+        },
+      ],
+      'any',
+      10
+    );
+
+    expect(query).toContain(
+      '?concept <https://example.com/ontology/partOf> ?target2 .'
+    );
+    expect(query).toContain('?target2 om:fullyQualifiedName "G.\\"B\\"" .');
+    expect(query).not.toContain('om:GlossaryTerm');
+    expect(query).toMatch(/\nLIMIT 10$/);
   });
 });

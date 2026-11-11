@@ -100,13 +100,43 @@ export async function findOntologyInScopeMenu(
 export const releaseNameContaining = (text: string) =>
   new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
-/** One ontology's Import / export button opens a menu; this opens the dialog on the chosen tab. */
+/** The Import / export button opens a menu; this opens the Import or the Export dialog. */
 export async function openOntologyTransfer(
   page: Page,
-  tab: 'import' | 'export' = 'export'
+  dialog: 'import' | 'export' = 'export'
 ) {
   await page.getByTestId('ontology-import-export-trigger').click();
-  await page.getByTestId(`ontology-${tab}-menu-item`).click();
+  await page.getByTestId(`ontology-${dialog}-menu-item`).click();
+}
+
+/** The export scope, options, preview and SHACL check sit in the dialog's collapsed Advanced section. */
+export async function openExportAdvanced(page: Page) {
+  const advanced = page.getByTestId('ontology-export-advanced');
+  if ((await advanced.getAttribute('aria-expanded')) !== 'true') {
+    await advanced.click();
+  }
+  await expect(advanced).toHaveAttribute('aria-expanded', 'true');
+}
+
+/**
+ * Only the All ontologies import offers a new ontology as the target: it asks
+ * for an existing ontology first, then the import can go to a new one instead.
+ */
+export async function openNewOntologyImport(
+  page: Page,
+  owner: Pick<Ontology, 'name'>
+) {
+  await page.goto('/governance/ontology');
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await openOntologyTransfer(page, 'import');
+  await selectOntologyOption(
+    page,
+    page.getByTestId('ontology-import-target-picker').getByRole('button'),
+    owner.name,
+    { replacedOnPick: true }
+  );
+  await page.getByTestId('ontology-native-import-target').click();
+  await page.getByRole('option', { name: /new ontology/i }).click();
 }
 
 /** The ontology chooser is a searchable dropdown; typing the name shows the fixture's option. */

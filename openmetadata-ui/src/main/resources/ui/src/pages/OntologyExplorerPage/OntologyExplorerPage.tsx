@@ -1058,6 +1058,7 @@ const OntologyExplorerContent: React.FC = () => {
   }>();
   const [queryConsoleKey, setQueryConsoleKey] = useState(0);
   const [isNewQueryRequested, setIsNewQueryRequested] = useState(false);
+  const [isQueryPickerOpen, setIsQueryPickerOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
   const [nativeRefresh, setNativeRefresh] = useState(0);
@@ -1719,6 +1720,35 @@ const OntologyExplorerContent: React.FC = () => {
     ) : null;
   }
 
+  function renderNewQueryAction() {
+    // All ontologies only lists native ontologies, which are queried without the RDF store.
+    if (!isNativeOntology && !isAllOntologies && !isRdfEnabled) {
+      return null;
+    }
+
+    return (
+      <Button
+        color="primary"
+        data-testid="ontology-new-query"
+        iconLeading={Plus}
+        size={headerActionSize}
+        onPress={() => {
+          // A query needs one ontology, so on All ontologies this only offers the choice.
+          if (isAllOntologies) {
+            setIsQueryPickerOpen(true);
+
+            return;
+          }
+          setGeneratedQuery(undefined);
+          setIsNewQueryRequested(true);
+          setQuerySurface('console');
+          setQueryConsoleKey((key) => key + 1);
+        }}>
+        {t('label.new-entity', { entity: t('label.query') })}
+      </Button>
+    );
+  }
+
   function renderPrimaryAction() {
     const canAddConcept = (() => {
       if (isAllOntologies) {
@@ -1769,25 +1799,7 @@ const OntologyExplorerContent: React.FC = () => {
       return renderEditOntologyAction();
     }
 
-    if (mode === 'query' && (isNativeOntology || isRdfEnabled)) {
-      return (
-        <Button
-          color="primary"
-          data-testid="ontology-new-query"
-          iconLeading={Plus}
-          size={headerActionSize}
-          onPress={() => {
-            setGeneratedQuery(undefined);
-            setIsNewQueryRequested(true);
-            setQuerySurface('console');
-            setQueryConsoleKey((key) => key + 1);
-          }}>
-          {t('label.new-entity', { entity: t('label.query') })}
-        </Button>
-      );
-    }
-
-    return null;
+    return mode === 'query' ? renderNewQueryAction() : null;
   }
 
   function publicationPendingCount() {
@@ -2539,8 +2551,10 @@ const OntologyExplorerContent: React.FC = () => {
       {renderSubModeNav(tasksAction)}
       {mode === 'query' ? (
         <OntologyQueryPicker
+          isOpen={isQueryPickerOpen}
           ontologies={availableOntologies}
           surface={querySurface}
+          onOpenChange={setIsQueryPickerOpen}
           onSelect={(ontology) => selectOntology(ontology, undefined, mode)}
         />
       ) : null}

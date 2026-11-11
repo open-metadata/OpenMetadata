@@ -19,7 +19,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useLayoutEffect, useRef } from 'react';
-import { useIsAiMode } from '../../hooks/useAppMode';
 import PortOverlay from './PortOverlay.component';
 import {
   OntologyEditNodeClickDetail,
@@ -29,18 +28,15 @@ import {
 } from './PortOverlay.interface';
 import { RelationshipTypePickerProps } from './RelationshipTypePicker.interface';
 
-jest.mock('../../hooks/useAppMode', () => ({
-  ...jest.requireActual('../../hooks/useAppMode'),
-  useIsAiMode: jest.fn().mockReturnValue(false),
-}));
-
 jest.mock(
   './RelationshipTypePicker.component',
   () =>
     function RelationshipTypePickerMock({
       onCancel,
       onSelect,
+      sourceId,
       sourceLabel,
+      targetId,
       targetLabel,
     }: RelationshipTypePickerProps) {
       return (
@@ -51,6 +47,9 @@ jest.mock(
             onClick={() => onSelect('broader')}>
             {sourceLabel} {targetLabel}
           </button>
+          <span data-testid="relationship-type-picker-ends">
+            {sourceId}:{targetId}
+          </span>
           <button
             aria-label="cancel relationship type selection"
             data-testid="relationship-type-picker-cancel"
@@ -156,6 +155,9 @@ describe('PortOverlay', () => {
     expect(screen.getByTestId('relationship-type-picker')).toHaveTextContent(
       'Remittance Settlement'
     );
+    expect(
+      screen.getByTestId('relationship-type-picker-ends')
+    ).toHaveTextContent('source:target');
     expect(screen.getByTestId('ontology-relation-picker-anchor')).toHaveStyle({
       left: '490px',
       top: '100px',
@@ -374,37 +376,27 @@ describe('PortOverlay', () => {
     ).not.toBeInTheDocument();
   });
 
-  describe('in AI mode', () => {
-    beforeEach(() => {
-      (useIsAiMode as jest.Mock).mockReturnValue(true);
+  it('shows the connect pill and cancels the connection from its close button', () => {
+    render(<Harness onCreateRelation={jest.fn()} />);
+
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
     });
 
-    afterEach(() => {
-      (useIsAiMode as jest.Mock).mockReturnValue(false);
-    });
+    expect(
+      screen.getByTestId('ontology-connect-instruction')
+    ).toHaveTextContent('label.esc');
 
-    it('shows the connect pill and cancels the connection from its close button', () => {
-      render(<Harness onCreateRelation={jest.fn()} />);
+    fireEvent.click(screen.getByTestId('ontology-connect-cancel'));
 
-      dispatchNodeClick({
-        clientX: 600,
-        clientY: 180,
-        isPort: true,
-        nodeId: 'source',
-      });
-
-      expect(
-        screen.getByTestId('ontology-connect-instruction')
-      ).toHaveTextContent('label.esc');
-
-      fireEvent.click(screen.getByTestId('ontology-connect-cancel'));
-
-      expect(
-        screen.queryByTestId('ontology-connect-instruction')
-      ).not.toBeInTheDocument();
-      expect(
-        screen.queryByTestId('ontology-connection-line')
-      ).not.toBeInTheDocument();
-    });
+    expect(
+      screen.queryByTestId('ontology-connect-instruction')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-connection-line')
+    ).not.toBeInTheDocument();
   });
 });

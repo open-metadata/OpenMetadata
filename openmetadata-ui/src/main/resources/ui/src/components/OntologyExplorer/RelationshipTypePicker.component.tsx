@@ -28,6 +28,7 @@ import {
 } from '../../generated/entity/data/relationshipType';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
+import { splitUnfitRelationOptions } from '../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import {
   NEW_RELATION_TYPE_PREFIX,
@@ -68,6 +69,68 @@ const toOption = (
   paletteKey: type.paletteKey,
 });
 
+/** The type's own gloss, unless it only repeats the label; else how its inverse reads. */
+const glossOf = (option: RelationTypeOption, inverseLabel: string) => {
+  if (
+    option.description &&
+    option.description.toLowerCase() !== option.label.toLowerCase()
+  ) {
+    return option.description;
+  }
+
+  return option.inverseLabel
+    ? `${inverseLabel}: ${option.inverseLabel}`
+    : undefined;
+};
+
+const renderOption = (
+  option: RelationTypeOption,
+  onSelect: (relationType: string) => void,
+  inverseLabel: string,
+  isAiMode: boolean
+) => {
+  const gloss = option.isDisabled
+    ? option.scopeLabel
+    : glossOf(option, inverseLabel);
+
+  return (
+    <Button
+      noTextPadding
+      className={classNames(
+        'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-primary tw:p-2 tw:text-left hover:tw:bg-primary_hover',
+        'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
+      )}
+      color="tertiary"
+      data-testid={`relation-type-${option.id}`}
+      isDisabled={option.isDisabled}
+      key={option.id}
+      title={gloss}
+      onClick={() => onSelect(option.id)}>
+      <span
+        className={classNames(
+          'tw:size-2.5 tw:shrink-0 tw:rounded-sm',
+          option.isDisabled
+            ? 'tw:bg-quaternary'
+            : RELATION_PALETTE_SWATCH_CLASSES[option.paletteKey]
+        )}
+      />
+      <span
+        className={classNames(
+          'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body',
+          option.isDisabled ? 'tw:text-disabled' : 'tw:text-primary',
+          isAiMode ? 'tw:text-sm' : 'tw:text-xs tw:font-medium'
+        )}>
+        {option.label}
+      </span>
+      {gloss ? (
+        <span className="tw:max-w-36 tw:truncate tw:font-body tw:text-xs tw:font-normal tw:text-tertiary">
+          {gloss}
+        </span>
+      ) : null}
+    </Button>
+  );
+};
+
 const renderGroup = (
   group: RelationTypeOptionGroup,
   onSelect: (relationType: string) => void,
@@ -79,41 +142,12 @@ const renderGroup = (
       className="tw:flex tw:flex-col"
       data-testid={`group-${group.id}`}
       key={group.id}>
-      <span className="tw:px-2 tw:py-2 tw:font-body tw:text-xs tw:font-semibold tw:tracking-wide tw:text-tertiary tw:uppercase">
+      <span className="tw:px-2 tw:pt-2 tw:pb-1 tw:font-body tw:text-xs tw:font-semibold tw:text-secondary">
         {group.title}
       </span>
-      {group.options.map((option) => (
-        <Button
-          noTextPadding
-          className={classNames(
-            'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-primary tw:p-2 tw:text-left hover:tw:bg-primary_hover',
-            'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
-          )}
-          color="tertiary"
-          data-testid={`relation-type-${option.id}`}
-          key={option.id}
-          onClick={() => onSelect(option.id)}>
-          <span
-            className={classNames(
-              'tw:size-2.5 tw:shrink-0 tw:rounded-sm',
-              RELATION_PALETTE_SWATCH_CLASSES[option.paletteKey]
-            )}
-          />
-          <span
-            className={
-              isAiMode
-                ? 'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-sm tw:text-primary'
-                : 'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body tw:text-xs tw:font-medium tw:text-primary'
-            }>
-            {option.label}
-          </span>
-          {option.inverseLabel ? (
-            <span className="tw:max-w-28 tw:truncate tw:font-body tw:text-xs tw:font-normal tw:text-tertiary">
-              {inverseLabel}: {option.inverseLabel}
-            </span>
-          ) : null}
-        </Button>
-      ))}
+      {group.options.map((option) =>
+        renderOption(option, onSelect, inverseLabel, isAiMode)
+      )}
     </div>
   );
 
@@ -165,6 +199,8 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   className,
   sourceLabel,
   targetLabel,
+  sourceId,
+  targetId,
   groups,
   canCreateType = false,
   checkRelation,
@@ -250,7 +286,11 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   const visibleGroups = useMemo(() => {
     const needle = term.toLowerCase();
 
-    return availableGroups.map((group) => ({
+    return splitUnfitRelationOptions(
+      availableGroups,
+      { sourceId, targetId },
+      t('label.other-links-doesnt-fit')
+    ).map((group) => ({
       ...group,
       options: group.options.filter(
         (option) =>
@@ -259,18 +299,9 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
           option.id.toLowerCase().includes(needle)
       ),
     }));
-  }, [availableGroups, term]);
+  }, [availableGroups, sourceId, t, targetId, term]);
 
   const hasResults = visibleGroups.some((group) => group.options.length > 0);
-  const canCreateFromSearch =
-    canCreateType &&
-    term.length > 0 &&
-    !availableGroups.some((group) =>
-      group.options.some(
-        (option) => option.label.toLowerCase() === term.toLowerCase()
-      )
-    );
-
   const renderRelationTypeList = () => {
     if (isLoading) {
       return (
@@ -293,7 +324,7 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
             {t('message.no-data-available')}
           </span>
         )}
-        {canCreateFromSearch ? (
+        {canCreateType ? (
           <Button
             className="tw:mt-1 tw:justify-start"
             color="link-color"
@@ -301,7 +332,12 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
             iconLeading={Plus}
             size="sm"
             onClick={() => select(`${NEW_RELATION_TYPE_PREFIX}${term}`)}>
-            {t('label.new-relationship-type-name', { name: term })}
+            {term
+              ? t('label.new-relationship-type-name', { name: term })
+              : t('label.new-link')}
+            <span className="tw:ml-1 tw:font-normal tw:text-tertiary">
+              {t('message.creates-a-property')}
+            </span>
           </Button>
         ) : null}
       </>

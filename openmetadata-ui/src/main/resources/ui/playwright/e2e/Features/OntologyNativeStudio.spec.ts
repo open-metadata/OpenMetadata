@@ -29,6 +29,7 @@ import {
 import {
   clickGraphNode,
   findOntologyInScopeMenu,
+  openExportAdvanced,
   openOntologyTransfer,
   readGraphEdges,
   readNodePositions,
@@ -540,6 +541,7 @@ test.describe(
           ).not.toBeVisible();
 
           await openOntologyTransfer(page);
+          await openExportAdvanced(page);
           await expect(
             page.getByRole('dialog').getByTestId('ontology-export-scope')
           ).toContainText('Current draft');
@@ -548,7 +550,12 @@ test.describe(
               .getByRole('dialog')
               .getByTestId('ontology-release-export-preview')
           ).toContainText('owl:Ontology');
-          await page.getByTestId('ontology-native-import-tab').click();
+          await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Close', exact: true })
+            .click();
+          await expect(page.getByRole('dialog')).not.toBeVisible();
+          await openOntologyTransfer(page, 'import');
           await expect(
             page.getByTestId('ontology-native-import-file')
           ).toBeVisible();

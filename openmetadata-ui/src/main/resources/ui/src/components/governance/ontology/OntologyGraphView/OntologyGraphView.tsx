@@ -75,7 +75,10 @@ import {
   buildInverseBackLink,
   buildNativeRelationCatalog,
   buildNativeRelationGroups,
+  buildObjectPropertyRequest,
+  ConceptPropertyInput,
   findNativeRelationTypeByLabel,
+  findNativeRelationTypeByPhrase,
   MAX_RELATIONSHIP_TYPE_PAGES,
   NativeRelationStep,
   NativeRelationType,
@@ -96,7 +99,6 @@ import {
   buildDataPropertyRequest,
   buildOntologyStudioGraph,
   buildReusePropertyPatch,
-  DataPropertyInput,
   getBindableConceptProperties,
   OntologyModelRelation,
   OntologyStudioModel,
@@ -130,6 +132,7 @@ import {
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import {
   buildConflictHighlight,
+  conflictEdgeKey,
   ConflictHighlight,
 } from '../../../OntologyExplorer/utils/conflictHighlight';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
@@ -141,7 +144,9 @@ import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
-import OntologyRelationDetail from '../OntologyRelationControls/OntologyRelationDetail';
+import OntologyRelationDetail, {
+  OntologyRelationStatus,
+} from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
 import OntologyConflictsPanel from './OntologyConflictsPanel';
 import OntologyGraphModeTabs from './OntologyGraphModeTabs';
@@ -174,8 +179,13 @@ const NO_VIOLATIONS: OntologyProfileViolation[] = [];
 const writeDataProperty = async (
   model: OntologyStudioModel,
   concept: OntologyConcept,
-  input: DataPropertyInput
+  input: ConceptPropertyInput
 ) => {
+  if (input.kind === 'object') {
+    return createOntologyProperty(
+      buildObjectPropertyRequest(model, concept, input)
+    );
+  }
   if (!input.reusePropertyIri) {
     return createOntologyProperty(
       buildDataPropertyRequest(model, concept, input)
@@ -555,6 +565,9 @@ const OntologyGraphView = ({
     : localSelectedId;
   const [conceptEditor, setConceptEditor] = useState<ConceptEditorRequest>();
   const [selectedEdgeKey, setSelectedEdgeKey] = useState<string>();
+  // The concept a relationship was opened from, so its panel can lead back there.
+  const [relationBackId, setRelationBackId] = useState<string>();
+  const reportedEdgeId = useRef<string>();
   const [isDeletingConcept, setIsDeletingConcept] = useState(false);
   const guard = useOntologyDraftGuard();
   const { runConfirmed } = useContext(OntologyDraftContext);
@@ -794,8 +807,8 @@ const OntologyGraphView = ({
           .filter(({ steps }) => steps.every(canWrite))
           .map(({ type }) => type),
         {
-          core: t('label.core-owl-skos'),
-          custom: t('label.custom-admin-defined'),
+          hierarchy: t('label.hierarchy'),
+          relationships: t('label.relationship-plural'),
         }
       ),
     [canWrite, propertyWrites, t]
@@ -1074,7 +1087,10 @@ const OntologyGraphView = ({
   );
 
   const createDataProperty = useCallback(
-    async (conceptId: string, input: DataPropertyInput): Promise<boolean> => {
+    async (
+      conceptId: string,
+      input: ConceptPropertyInput
+    ): Promise<boolean> => {
       const concept = model?.concepts.find((item) => item.id === conceptId);
       if (!model || !concept || !canCreateProperty) {
         return false;
@@ -1150,14 +1166,26 @@ const OntologyGraphView = ({
     runConfirmed,
   ]);
 
-  const dataConcepts = useMemo(
+  const dataConcepts = useMemo(() => {
+    const concepts = model?.concepts ?? [];
+    const nameByIri = new Map(
+      concepts.map((concept) => [concept.iri, getEntityName(concept)])
+    );
+
+    return concepts.map((concept) => ({
+      id: concept.id,
+      name: getEntityName(concept),
+      parentName: nameByIri.get(concept.superClasses?.[0] ?? ''),
+      synonyms: concept.synonyms,
+    }));
+  }, [model?.concepts]);
+
+  const conceptGhost = useMemo(
     () =>
-      (model?.concepts ?? []).map((concept) => ({
-        id: concept.id,
-        name: getEntityName(concept),
-        synonyms: concept.synonyms,
-      })),
-    [model?.concepts]
+      isEditing && conceptEditor?.position && !conceptEditor.conceptId
+        ? { ...conceptEditor.position, label: t('label.new-concept') }
+        : undefined,
+    [conceptEditor, isEditing, t]
   );
 
   const getConceptProperties = useCallback(
@@ -1203,6 +1231,50 @@ const OntologyGraphView = ({
   const connectNode = ({ id }: { id: string }) => {
     setSelectedId(id);
     onRequestEdit?.();
+  };
+  const openRelationFrom = (
+    conceptId: string,
+    relation: OntologyModelRelation
+  ) =>
+    guard(() => {
+      setConceptEditor(undefined);
+      (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+      setRelationBackId(conceptId);
+      setSelectedEdgeKey(relation.key);
+    });
+  const relationStatusOf = (
+    relation: OntologyModelRelation
+  ): OntologyRelationStatus => {
+    if (
+      conflictHighlight.edgeKeys.has(
+        conflictEdgeKey({ from: relation.from.id, to: relation.to.id })
+      )
+    ) {
+      return 'conflict';
+    }
+
+    return conflictsQuery.data ? 'clear' : 'unchecked';
+  };
+  const saveRelationDescription = async (
+    relation: OntologyModelRelation,
+    description: string
+  ) => {
+    if (!relation.axiom) {
+      return false;
+    }
+    try {
+      await patchOntologyAxiom(relation.axiom.id, [
+        { op: 'add', path: '/description', value: description },
+      ]);
+      noteWorkingChange();
+      await refetch();
+
+      return true;
+    } catch (error) {
+      showWriteError(error);
+
+      return false;
+    }
   };
 
   const renderConceptEditor = () => {
@@ -1266,6 +1338,9 @@ const OntologyGraphView = ({
   const renderRelationDetail = (selectedRelation: OntologyModelRelation) => {
     return (
       <OntologyRelationDetail
+        backConcept={model.concepts.find(
+          (concept) => concept.id === relationBackId
+        )}
         canCreateRelationType={canCreateRelationType}
         canEdit={isEditing && canCreateAxiom}
         checkType={(typeId) =>
@@ -1279,7 +1354,9 @@ const OntologyGraphView = ({
           )
         }
         groups={relationTypeGroups}
+        key={selectedRelation.key}
         relation={selectedRelation}
+        status={relationStatusOf(selectedRelation)}
         onClose={() => {
           setSelectedEdgeKey(undefined);
           graphRef.current?.clearEdgeSelection();
@@ -1301,6 +1378,9 @@ const OntologyGraphView = ({
           return isChanged;
         }}
         onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+        onSaveDescription={(description) =>
+          saveRelationDescription(selectedRelation, description)
+        }
       />
     );
   };
@@ -1334,6 +1414,7 @@ const OntologyGraphView = ({
       <EditableConceptInspector
         canAddProperty={canCreateProperty}
         canAddRelation={canCreateAxiom}
+        canAddRule={canCreateAxiom}
         canCreateRelationType={canCreateRelationType}
         canEditBindings={isEditing && canEditConcept}
         canEditRelations={isEditing && canCreateAxiom}
@@ -1350,6 +1431,9 @@ const OntologyGraphView = ({
         }
         concept={selected}
         editable={getEditable(selected, workingConcept)}
+        findRelationType={(phrase) =>
+          findNativeRelationTypeByPhrase(catalog, phrase)?.id
+        }
         isEditable={Boolean(workingConcept)}
         isEditing={isEditing}
         key={selected.id}
@@ -1374,6 +1458,11 @@ const OntologyGraphView = ({
         onOpenData={() => {
           onRequestGraphSurface();
           changeGraphMode('data');
+        }}
+        onOpenRelation={(relation) => openRelationFrom(selected.id, relation)}
+        onRuleCreated={() => {
+          noteWorkingChange();
+          void refetch();
         }}
         onSelectConcept={(concept) => setSelectedId(concept.id)}
       />
@@ -1566,6 +1655,7 @@ const OntologyGraphView = ({
               conflictEdgeKeys={conflictHighlight.edgeKeys}
               edges={scope.graph.edges}
               focusNodeId={selectedId}
+              ghostNode={conceptGhost}
               glossaries={[]}
               glossaryColorMap={{}}
               graphSearchHighlight={searchHighlight}
@@ -1584,10 +1674,17 @@ const OntologyGraphView = ({
                 await createRelation(fromId, toId, relationType);
               }}
               onEdgeClick={(edge) => {
+                // The graph reports its edge selection on every render; only a change is a click,
+                // so a relationship opened from the concept panel is not closed by the next report.
+                if (edge?.id === reportedEdgeId.current) {
+                  return;
+                }
+                reportedEdgeId.current = edge?.id;
                 if (edge?.id) {
                   runConfirmed(() =>
                     (onSelectedConceptChange ?? setLocalSelectedId)(undefined)
                   );
+                  setRelationBackId(undefined);
                   setSelectedEdgeKey(edge.id);
                 } else {
                   setSelectedEdgeKey(undefined);

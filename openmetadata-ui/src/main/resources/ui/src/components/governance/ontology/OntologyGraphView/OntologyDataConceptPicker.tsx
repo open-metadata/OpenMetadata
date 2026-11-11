@@ -12,25 +12,48 @@
  */
 import {
   Box,
+  Button,
   ButtonUtility,
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search, XClose } from '@openmetadata/ui-core-components/icons';
-import { KeyboardEvent, useEffect, useId, useMemo, useState } from 'react';
+import {
+  Check,
+  ChevronDown,
+  Plus,
+  Search,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import classNames from 'classnames';
+import {
+  KeyboardEvent,
+  RefObject,
+  useEffect,
+  useId,
+  useMemo,
+  useState,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   buildDataPickerGroups,
   DataPickerConcept,
 } from '../../../../utils/governance/ontology/OntologyDataConceptPick.utils';
 
+export type DataPickerOption = DataPickerConcept & {
+  /** The first superclass, shown beside the name to tell same-named concepts apart. */
+  parentName?: string;
+};
+
 interface OntologyDataConceptPickerProps {
-  readonly concepts: DataPickerConcept[];
+  readonly concepts: DataPickerOption[];
   readonly recentIds: string[];
   /** Asset counts are only known once every cluster page has loaded. */
   readonly isCountPending: boolean;
+  readonly selectedId?: string;
   readonly onPick: (conceptId: string) => void;
   readonly onClose?: () => void;
+  /** Offered as a pinned row when the person may link data to the selected concept. */
+  readonly onLinkData?: () => void;
 }
 
 const MOVE_KEYS: Record<string, number> = { ArrowDown: 1, ArrowUp: -1 };
@@ -40,8 +63,10 @@ const OntologyDataConceptPicker = ({
   concepts,
   recentIds,
   isCountPending,
+  selectedId,
   onPick,
   onClose,
+  onLinkData,
 }: OntologyDataConceptPickerProps) => {
   const { t } = useTranslation();
   const listId = useId();
@@ -51,6 +76,11 @@ const OntologyDataConceptPicker = ({
     () => buildDataPickerGroups(concepts, recentIds, query),
     [concepts, recentIds, query]
   );
+  const parentById = useMemo(
+    () => new Map(concepts.map((item) => [item.id, item.parentName])),
+    [concepts]
+  );
+  const selectedName = concepts.find((item) => item.id === selectedId)?.name;
   const sections = [
     { key: 'recent', label: t('label.recent'), items: groups.recent },
     {
@@ -96,32 +126,90 @@ const OntologyDataConceptPicker = ({
       : t('label.no-data');
   };
 
+  const renderOption = (concept: DataPickerConcept, position: number) => {
+    const hasData = (concept.assetCount ?? 0) > 0;
+    const parentName = parentById.get(concept.id);
+
+    return (
+      // Keyboard users act through the input; the option is a pointer shortcut.
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events
+      <div
+        aria-selected={position === active}
+        className={classNames(
+          'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:px-3 tw:py-2',
+          position === active ? 'tw:bg-active' : 'tw:hover:bg-primary_hover'
+        )}
+        data-testid={`ontology-data-concept-option-${concept.id}`}
+        id={`${listId}-${concept.id}`}
+        key={concept.id}
+        role="option"
+        tabIndex={-1}
+        onClick={() => onPick(concept.id)}
+        onMouseDown={(event) => event.preventDefault()}>
+        <span
+          aria-hidden="true"
+          className={classNames(
+            'tw:size-1.5 tw:shrink-0 tw:rounded-full',
+            hasData ? 'tw:bg-utility-blue-500' : 'tw:bg-quaternary'
+          )}
+        />
+        <Typography
+          ellipsis
+          className={hasData ? 'tw:text-primary' : 'tw:text-tertiary'}
+          size="text-sm"
+          weight="semibold">
+          {concept.name}
+        </Typography>
+        {parentName ? (
+          <Typography ellipsis color="secondary" size="text-xs">
+            {parentName}
+          </Typography>
+        ) : null}
+        <Typography
+          className="tw:ml-auto tw:shrink-0"
+          color="secondary"
+          size="text-xs">
+          {describe(concept)}
+        </Typography>
+        {concept.id === selectedId ? (
+          <Check
+            aria-hidden="true"
+            className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
+          />
+        ) : null}
+      </div>
+    );
+  };
+
   return (
     // The wrapper only listens for keys bubbling up from the input.
     // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
-      className="tw:flex tw:w-full tw:flex-col tw:gap-2"
+      className="tw:flex tw:w-full tw:flex-col"
       data-testid="ontology-data-concept-picker"
       onKeyDown={handleKeyDown}>
-      <Input
-        // eslint-disable-next-line jsx-a11y/no-autofocus -- the picker opens on the user's own click, to be typed into
-        autoFocus
-        aria-activedescendant={
-          options[active] ? `${listId}-${options[active].id}` : undefined
-        }
-        aria-controls={listId}
-        aria-expanded="true"
-        aria-label={t('label.find-concept')}
-        icon={Search}
-        inputDataTestId="ontology-data-concept-search"
-        placeholder={`${t('label.find-concept')}…`}
-        size="sm"
-        value={query}
-        onChange={setQuery}
-      />
+      <div className="tw:border-b tw:border-secondary tw:p-2">
+        <Input
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- opened by the user's own click, to type into
+          autoFocus
+          aria-activedescendant={
+            options[active] ? `${listId}-${options[active].id}` : undefined
+          }
+          aria-controls={listId}
+          aria-expanded="true"
+          aria-label={t('label.find-concept')}
+          autoComplete="off"
+          icon={Search}
+          inputDataTestId="ontology-data-concept-search"
+          placeholder={`${t('label.find-concept')}…`}
+          size="sm"
+          value={query}
+          onChange={setQuery}
+        />
+      </div>
       <div
         aria-label={t('label.concept-plural')}
-        className="tw:max-h-72 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1"
+        className="tw:max-h-72 tw:overflow-auto tw:p-1"
         id={listId}
         role="listbox">
         {options.length === 0 ? (
@@ -132,51 +220,52 @@ const OntologyDataConceptPicker = ({
             {t('message.ontology-find-no-match')}
           </Typography>
         ) : null}
-        {sections.flatMap((section) => [
+        {sections.flatMap((section, index) => [
           <Typography
             aria-hidden="true"
-            className="tw:px-3 tw:pt-2 tw:pb-1 tw:uppercase"
+            className={classNames(
+              'tw:px-3 tw:pt-2 tw:pb-1',
+              index > 0 && 'tw:mt-1 tw:border-t tw:border-secondary'
+            )}
             color="secondary"
             key={`caption-${section.key}`}
             role="presentation"
             size="text-xs"
-            weight="semibold">
+            weight="medium">
             {section.label}
           </Typography>,
-          ...section.items.map((concept) => {
-            const position = options.indexOf(concept);
-
-            return (
-              // Keyboard users act through the input; the option is a pointer shortcut.
-              // eslint-disable-next-line jsx-a11y/click-events-have-key-events
-              <div
-                aria-selected={position === active}
-                className={`tw:flex tw:cursor-pointer tw:items-center tw:justify-between tw:gap-3 tw:rounded-md tw:px-3 tw:py-2 ${
-                  position === active
-                    ? 'tw:bg-active'
-                    : 'tw:hover:bg-primary_hover'
-                }`}
-                data-testid={`ontology-data-concept-option-${concept.id}`}
-                id={`${listId}-${concept.id}`}
-                key={concept.id}
-                role="option"
-                tabIndex={-1}
-                onClick={() => onPick(concept.id)}
-                onMouseDown={(event) => event.preventDefault()}>
-                <Typography ellipsis size="text-sm" weight="medium">
-                  {concept.name}
-                </Typography>
-                <Typography
-                  className="tw:shrink-0"
-                  color="secondary"
-                  size="text-xs">
-                  {describe(concept)}
-                </Typography>
-              </div>
-            );
-          }),
+          ...section.items.map((concept) =>
+            renderOption(concept, options.indexOf(concept))
+          ),
         ])}
       </div>
+      {onLinkData && selectedName ? (
+        <div className="tw:border-t tw:border-secondary tw:p-1">
+          <Button
+            className="tw:w-full tw:justify-start"
+            color="link-color"
+            data-testid="ontology-data-concept-link-data"
+            iconLeading={Plus}
+            size="sm"
+            onPress={onLinkData}>
+            {t('label.link-data-to-entity', { entity: selectedName })}
+          </Button>
+        </div>
+      ) : null}
+      <Box
+        aria-hidden="true"
+        className="tw:border-t tw:border-secondary tw:px-3 tw:py-2"
+        gap={4}>
+        <Typography color="secondary" size="text-xs">
+          {t('label.ontology-key-move')}
+        </Typography>
+        <Typography color="secondary" size="text-xs">
+          {t('label.ontology-key-select')}
+        </Typography>
+        <Typography color="secondary" size="text-xs">
+          {t('label.ontology-key-close')}
+        </Typography>
+      </Box>
     </div>
   );
 };
@@ -186,6 +275,8 @@ export default OntologyDataConceptPicker;
 interface OntologyDataConceptChipProps {
   readonly name: string;
   readonly summary: string;
+  readonly isOpen: boolean;
+  readonly triggerRef: RefObject<HTMLButtonElement>;
   readonly onChange: () => void;
   readonly onClear: () => void;
 }
@@ -193,6 +284,8 @@ interface OntologyDataConceptChipProps {
 export const OntologyDataConceptChip = ({
   name,
   summary,
+  isOpen,
+  triggerRef,
   onChange,
   onClear,
 }: OntologyDataConceptChipProps) => {
@@ -201,23 +294,34 @@ export const OntologyDataConceptChip = ({
   return (
     <Box
       align="center"
-      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:py-1 tw:pr-1 tw:pl-3"
+      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:py-1 tw:pr-1 tw:pl-3 tw:shadow-xs"
       data-testid="ontology-data-concept-chip"
       gap={2}>
       <button
-        className="tw:flex tw:min-w-0 tw:cursor-pointer tw:items-baseline tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
+        className="tw:flex tw:min-w-0 tw:cursor-pointer tw:items-center tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
         data-testid="ontology-data-concept-change"
+        ref={triggerRef}
         type="button"
         onClick={onChange}>
+        <span
+          aria-hidden="true"
+          className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-utility-blue-500"
+        />
         <Typography ellipsis size="text-sm" weight="semibold">
           {name}
         </Typography>
+        <ChevronDown
+          aria-hidden="true"
+          className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
+        />
         <Typography
           className="tw:shrink-0"
           color="secondary"
           data-testid="ontology-data-concept-summary"
           size="text-xs">
-          {summary}
+          {`· ${summary}`}
         </Typography>
       </button>
       <ButtonUtility

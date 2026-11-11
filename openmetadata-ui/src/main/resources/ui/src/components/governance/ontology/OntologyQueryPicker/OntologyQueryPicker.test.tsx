@@ -158,4 +158,33 @@ describe('OntologyQueryPicker', () => {
       screen.queryByTestId('ontology-query-picker-option-o-1')
     ).not.toBeInTheDocument();
   });
+
+  it('opens the ontology list when asked to and reports when it closes', async () => {
+    const onOpenChange = jest.fn();
+    const { rerender } = render(
+      <OntologyQueryPicker
+        isOpen={false}
+        ontologies={[CLINICAL, RETAIL]}
+        surface="console"
+        onOpenChange={onOpenChange}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+    rerender(
+      <OntologyQueryPicker
+        isOpen
+        ontologies={[CLINICAL, RETAIL]}
+        surface="console"
+        onOpenChange={onOpenChange}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(await screen.findByRole('listbox')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toHaveFocus();
+    expect(onOpenChange).toHaveBeenLastCalledWith(true, expect.anything());
+  });
 });

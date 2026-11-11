@@ -30,12 +30,16 @@ import {
   buildInverseBackLink,
   buildNativeRelationCatalog,
   buildNativeRelationGroups,
+  buildObjectPropertyRequest,
   CUSTOM_PREDICATE_NAMESPACE,
   findNativeRelationTypeByLabel,
+  findNativeRelationTypeByPhrase,
   getInverseRelationLabel,
+  getRelationPhrase,
   NativeRelationType,
   planNativeRelation,
   planRelationshipType,
+  splitUnfitRelationOptions,
   SUBCLASS_OF_PREDICATE,
   SUPERCLASS_OF_PREDICATE,
   toNativeRelationType,
@@ -189,62 +193,74 @@ const native = (type: RelationshipType): NativeRelationType =>
   toNativeRelationType(type, types);
 
 describe('OntologyNativeRelation.utils', () => {
-  it('groups the registry hierarchy first, skips annotation predicates and adds own properties', () => {
+  it('groups the hierarchy apart from the relationships, skips annotation predicates and adds own properties', () => {
     const catalog = buildNativeRelationCatalog(model, types, labels);
 
     expect(
-      buildNativeRelationGroups(catalog, { core: 'Core', custom: 'Custom' })
+      buildNativeRelationGroups(catalog, {
+        hierarchy: 'Hierarchy',
+        relationships: 'Relationships',
+      })
     ).toEqual([
       {
-        id: 'core',
+        id: 'hierarchy',
         options: [
           {
+            description: 'Subclass Of',
             id: SUBCLASS_OF_PREDICATE,
             inverseLabel: 'Superclass Of',
             label: 'Subclass Of',
             paletteKey: PaletteKey.Teal,
           },
           {
+            description: 'Superclass Of',
             id: SUPERCLASS_OF_PREDICATE,
             inverseLabel: 'Subclass Of',
             label: 'Superclass Of',
             paletteKey: PaletteKey.Purple,
           },
+        ],
+        title: 'Hierarchy',
+      },
+      {
+        id: 'relationships',
+        options: [
           {
+            description: 'Related To',
             id: RELATED_TO,
             inverseLabel: 'Related To',
             label: 'Related To',
             paletteKey: PaletteKey.Teal,
           },
           {
+            description: 'Part Of',
             id: PART_OF,
             inverseLabel: 'Has Part',
             label: 'Part Of',
             paletteKey: PaletteKey.Teal,
           },
           {
+            description: 'Has Part',
             id: HAS_PART,
             inverseLabel: 'Part Of',
             label: 'Has Part',
             paletteKey: PaletteKey.Blue,
           },
-        ],
-        title: 'Core',
-      },
-      {
-        id: 'custom',
-        options: [
           {
+            description: 'Governed By',
             id: GOVERNED_BY,
             inverseLabel: undefined,
             label: 'Governed By',
             paletteKey: PaletteKey.Violet,
           },
           {
+            domain: [account.id],
             id: servedBy.iri,
             inverseLabel: 'serves',
             label: 'served by',
             paletteKey: PaletteKey.Blue,
+            range: [customer.id],
+            scopeLabel: 'Account → Customer',
           },
           {
             id: serves.iri,
@@ -253,9 +269,63 @@ describe('OntologyNativeRelation.utils', () => {
             paletteKey: PaletteKey.Blue,
           },
         ],
-        title: 'Custom',
+        title: 'Relationships',
       },
     ]);
+  });
+
+  it('moves the relations whose domain or range leaves out an end into disabled other links', () => {
+    const groups = buildNativeRelationGroups(
+      buildNativeRelationCatalog(model, types, labels),
+      { hierarchy: 'Hierarchy', relationships: 'Relationships' }
+    );
+    const idsOf = (ends: { sourceId?: string; targetId?: string }) =>
+      splitUnfitRelationOptions(groups, ends, 'Other').map((group) => [
+        group.id,
+        group.options.map((option) => [option.id, Boolean(option.isDisabled)]),
+      ]);
+
+    expect(
+      idsOf({ sourceId: account.id, targetId: customer.id })
+    ).not.toContainEqual(expect.arrayContaining(['other']));
+    expect(
+      idsOf({ sourceId: customer.id, targetId: account.id })
+    ).toContainEqual(['other', [[servedBy.iri, true]]]);
+    expect(
+      idsOf({ sourceId: account.id, targetId: account.id })
+    ).toContainEqual(['other', [[servedBy.iri, true]]]);
+    // An unknown target only checks the domain, as in the panel before a target is chosen.
+    expect(idsOf({ sourceId: account.id })).toHaveLength(2);
+  });
+
+  it('reads relation phrases from synonyms and finds their type', () => {
+    const catalog = buildNativeRelationCatalog(model, types, labels);
+
+    expect(getRelationPhrase('Part of the order')).toBe('part of');
+    expect(getRelationPhrase('IS A customer')).toBe('is a');
+    expect(getRelationPhrase('haste')).toBeUndefined();
+    expect(getRelationPhrase('Shopper')).toBeUndefined();
+    expect(findNativeRelationTypeByPhrase(catalog, 'part of')?.id).toBe(
+      PART_OF
+    );
+    expect(findNativeRelationTypeByPhrase(catalog, 'has')?.id).toBe(HAS_PART);
+    expect(findNativeRelationTypeByPhrase(catalog, 'narrower')).toBeUndefined();
+  });
+
+  it('builds an object property from the concept to the range', () => {
+    expect(
+      buildObjectPropertyRequest(model, account, {
+        kind: 'object',
+        name: ' ownedBy ',
+        rangeIri: customer.iri,
+      })
+    ).toEqual({
+      domain: [account.iri],
+      kind: 'OBJECT',
+      name: 'ownedBy',
+      ontology: 'RetailCommerce',
+      range: [customer.iri],
+    });
   });
 
   it('lists a property backed by a registry predicate once and synthesizes Subclass Of without a registry', () => {
@@ -291,6 +361,7 @@ describe('OntologyNativeRelation.utils', () => {
         paletteKey: PaletteKey.Blue,
       },
       {
+        domain: [account.id],
         group: 'custom',
         id: servedBy.iri,
         inverse: undefined,
@@ -298,6 +369,8 @@ describe('OntologyNativeRelation.utils', () => {
         label: 'served by',
         name: 'servedBy',
         paletteKey: PaletteKey.Blue,
+        range: [customer.id],
+        scopeLabel: 'Account → Customer',
       },
     ]);
   });

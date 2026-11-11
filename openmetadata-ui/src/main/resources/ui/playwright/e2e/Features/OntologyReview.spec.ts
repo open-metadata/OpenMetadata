@@ -37,6 +37,7 @@ import {
 import { MEMORIES_API } from '../../utils/ContextCenterUtil';
 import {
   findOntologyInScopeMenu,
+  openExportAdvanced,
   openOntologyTransfer,
   readNodePositions,
   releaseNameContaining,
@@ -984,9 +985,8 @@ test.describe(
             `ontology-release-format-${card}`
           );
           await expect(formatButton).toBeVisible();
-          if (card !== 'rdfxml') {
-            await formatButton.click();
-          }
+          await formatButton.click();
+          await openExportAdvanced(author);
           const preview = await previewed;
           expect(preview.ok()).toBeTruthy();
           expect(await preview.text()).toContain('First published definition');

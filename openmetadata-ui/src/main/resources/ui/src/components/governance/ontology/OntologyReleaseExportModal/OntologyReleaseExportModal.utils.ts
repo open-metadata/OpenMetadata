@@ -104,3 +104,16 @@ export const resolveScopeOptions = (
         : labels.releaseName(release),
   })),
 ];
+
+/** The draft and each release download under their own name, so one scope never overwrites another's file. */
+export const resolveExportFileName = (
+  ontologyName: string,
+  extension: string,
+  release?: Pick<OntologyRelease, 'releaseRevision'>
+) => {
+  const safeName = ontologyName.replaceAll(/[^a-zA-Z0-9-_]/g, '_');
+
+  return release
+    ? `${safeName}-release-${release.releaseRevision}.${extension}`
+    : `${safeName}-draft.${extension}`;
+};

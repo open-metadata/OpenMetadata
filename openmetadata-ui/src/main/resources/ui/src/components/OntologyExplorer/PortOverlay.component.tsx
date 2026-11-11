@@ -12,11 +12,10 @@
  */
 
 import { ButtonUtility } from '@openmetadata/ui-core-components';
-import { Check, Link01, XClose } from '@openmetadata/ui-core-components/icons';
+import { Link01, XClose } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useIsAiMode } from '../../hooks/useAppMode';
 import { Point, useOntologyGraphEdit } from './hooks/useOntologyGraphEdit';
 import {
   OntologyEditNodeClickDetail,
@@ -74,7 +73,6 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
   checkRelation,
 }) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const warnRelation = useRelationWarning();
   const overlayRef = useRef<HTMLDivElement>(null);
 
@@ -239,7 +237,7 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
 
   const getNodeLabel = (nodeId: string) => nodeLabels[nodeId] ?? nodeId;
 
-  const renderAiInstruction = (fromId: string) => (
+  const renderInstruction = (fromId: string) => (
     <div
       className={classNames(
         'tw:absolute tw:top-4 tw:left-4 tw:z-10 tw:flex tw:h-10 tw:items-center tw:gap-2.5',
@@ -272,28 +270,6 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
       />
     </div>
   );
-
-  const renderInstruction = (fromId: string) =>
-    isAiMode ? (
-      renderAiInstruction(fromId)
-    ) : (
-      <div
-        className={classNames(
-          'tw:absolute tw:left-1/2 tw:top-3.5 tw:z-10 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2',
-          'tw:rounded-full tw:border tw:border-brand tw:bg-brand-primary tw:px-4 tw:py-2',
-          'tw:font-body tw:text-xs tw:leading-normal tw:font-semibold tw:text-brand-secondary tw:shadow-sm'
-        )}
-        data-testid="ontology-connect-instruction">
-        <span className="tw:grid tw:size-3.5 tw:place-items-center tw:rounded tw:border tw:border-brand">
-          <Check aria-hidden="true" className="tw:size-2.5" />
-        </span>
-        <span>
-          {t('message.click-another-term-to-draw-connection', {
-            term: getNodeLabel(fromId),
-          })}
-        </span>
-      </div>
-    );
 
   const lineStart = pendingRelation?.from ?? armedAt;
   const lineEnd = pendingRelation?.to ?? cursor;
@@ -342,7 +318,9 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
               )
             }
             groups={relationTypeGroups}
+            sourceId={pendingRelation.fromId}
             sourceLabel={getNodeLabel(pendingRelation.fromId)}
+            targetId={pendingRelation.toId}
             targetLabel={getNodeLabel(pendingRelation.toId)}
             warnRelation={(relationType) =>
               warnRelation?.(

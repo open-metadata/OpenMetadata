@@ -16,7 +16,10 @@ import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../generated/entity/data/ontologyConcept';
-import { buildNativeVisualSparqlQuery } from './OntologyNativeQuery.utils';
+import {
+  buildNativePropertyQuery,
+  buildNativeVisualSparqlQuery,
+} from './OntologyNativeQuery.utils';
 import {
   OntologyModelRelation,
   OntologyRelationKind,
@@ -84,7 +87,9 @@ it.each(relations)(
     const fixture = fixtures.find((item) => item.name === relation.key);
 
     expect(fixture).toBeDefined();
-    expect(buildNativeVisualSparqlQuery(relation, target)).toBe(fixture?.query);
+    expect(buildNativeVisualSparqlQuery([{ relation, target }])).toBe(
+      fixture?.query
+    );
     expect(fixture?.query).not.toContain('GlossaryTerm');
     expect(fixture?.query).not.toContain('fullyQualifiedName');
   }
@@ -92,9 +97,52 @@ it.each(relations)(
 
 it('rejects an IRI that could escape the target value', () => {
   expect(() =>
-    buildNativeVisualSparqlQuery(relations[0], {
-      ...target,
-      iri: 'urn:target> } UNION { ?x ?y ?z',
-    })
+    buildNativeVisualSparqlQuery([
+      {
+        relation: relations[0],
+        target: { ...target, iri: 'urn:target> } UNION { ?x ?y ?z' },
+      },
+    ])
   ).toThrow('Invalid semantic IRI');
+});
+
+it('ANDs every condition, each against its own target, under the chosen limit', () => {
+  const query = buildNativeVisualSparqlQuery(
+    [
+      { relation: relations[0], target },
+      { relation: relations[2], target: source },
+    ],
+    10
+  );
+
+  expect(query).toContain('VALUES ?target { <urn:visual:target> }');
+  expect(query).toContain('VALUES ?target2 { <urn:visual:source> }');
+  expect(query).toContain('?concept rdfs:subClassOf ?target .');
+  expect(query).toContain('?concept owl:disjointWith ?target2 .');
+  expect(query).toMatch(/\nLIMIT 10$/);
+});
+
+it('lists every concept with its parent when no condition is complete', () => {
+  const query = buildNativeVisualSparqlQuery([]);
+
+  expect(query).not.toContain('VALUES ?target');
+  expect(query).toContain('?concept rdfs:subClassOf ?superClass .');
+  expect(query).toMatch(/\nLIMIT 100$/);
+});
+
+it('lists properties by domain and range', () => {
+  const query = buildNativePropertyQuery(
+    [
+      { kind: 'domain', target },
+      { kind: 'range', target: source },
+    ],
+    50
+  );
+
+  expect(query).toContain('?property rdfs:domain ?target .');
+  expect(query).toContain('?property rdfs:range ?target2 .');
+  expect(query).toContain(
+    'VALUES ?propertyType { owl:ObjectProperty owl:DatatypeProperty }'
+  );
+  expect(query).toMatch(/\nLIMIT 50$/);
 });
