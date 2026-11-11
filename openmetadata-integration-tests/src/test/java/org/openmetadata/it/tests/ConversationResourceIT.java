@@ -40,6 +40,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.TableTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -60,6 +61,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.ConversationFilterType;
 import org.openmetadata.schema.type.ConversationSource;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.ReactionType;
 import org.openmetadata.sdk.client.OpenMetadataClient;
@@ -70,6 +72,7 @@ import org.openmetadata.sdk.fluent.DatabaseSchemas;
 import org.openmetadata.sdk.fluent.Databases;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
 
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
@@ -447,6 +450,30 @@ class ConversationResourceIT {
     assertContainsConversation(mentioned, mentionConversation.getId());
     assertContainsConversation(ownedOrFollowed, ownerConversation.getId());
     assertThrows(InvalidRequestException.class, () -> listWithInvalidFilter(testUser.getId()));
+  }
+
+  @Test
+  void testMentionsListOnlyConversationsAboutViewableEntities(TestNamespace ns) throws Exception {
+    Table table = createTestTable(ns, "mentions-view");
+    User user =
+        DenyPolicyPrincipals.userDeniedWhen(
+            ns.shortPrefix("mention_view"), Entity.TABLE, MetadataOperation.VIEW_BASIC, null);
+    OpenMetadataClient userClient =
+        SdkClients.createClient(user.getName(), user.getEmail(), new String[] {});
+    String mention = "Hello <#E::user::" + user.getName() + ">";
+    Conversation onTable = createConversation(entityLink(table), mention);
+    Conversation onSchema =
+        createConversation(
+            "<#E::databaseSchema::" + table.getDatabaseSchema().getFullyQualifiedName() + ">",
+            mention);
+
+    ConversationList mentioned =
+        listConversations(
+            userClient, null, user.getId(), ConversationFilterType.MENTIONS, 100, null, null, null);
+
+    assertContainsConversation(mentioned, onSchema.getId());
+    assertFalse(containsConversation(mentioned, onTable.getId()));
+    assertEquals(1, mentioned.getPaging().getTotal());
   }
 
   @Test

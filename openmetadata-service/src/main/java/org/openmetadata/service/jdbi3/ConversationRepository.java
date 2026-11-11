@@ -63,6 +63,7 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.AuthorizationLogic;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.ConversationReplyResourceContext;
 import org.openmetadata.service.security.policyevaluator.ConversationResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -148,7 +149,31 @@ public class ConversationRepository {
     conversations.forEach(conversation -> withHref(uriInfo, conversation));
     ConversationFilter.Sql countSql = filter.build(false);
     int total = conversationDAO.count(countSql.condition(), countSql.params());
-    return rootResult(conversations, before, after, hasMore, total);
+    ResultList<Conversation> page = rootResult(conversations, before, after, hasMore, total);
+    return nullOrEmpty(entityLink) ? viewableOnly(securityContext, authorizer, page) : page;
+  }
+
+  /**
+   * A listing that spans entities (e.g. a user's mentions) keeps only conversations about entities
+   * the caller may view, as the activity feeds do. The cursors are taken from the full page so
+   * paging still walks every row.
+   */
+  private static ResultList<Conversation> viewableOnly(
+      SecurityContext securityContext, Authorizer authorizer, ResultList<Conversation> page) {
+    if (getSubjectContext(securityContext).isAdmin()) {
+      return page;
+    }
+    List<EntityReference> targets =
+        page.getData().stream().map(Conversation::getEntityRef).filter(Objects::nonNull).toList();
+    Set<UUID> viewable = new ViewPermissionFilter(authorizer).viewableIds(securityContext, targets);
+    List<Conversation> visible =
+        page.getData().stream()
+            .filter(c -> c.getEntityRef() == null || viewable.contains(c.getEntityRef().getId()))
+            .toList();
+    page.getPaging()
+        .setTotal(page.getPaging().getTotal() - (page.getData().size() - visible.size()));
+    page.setData(visible);
+    return page;
   }
 
   public Conversation create(
