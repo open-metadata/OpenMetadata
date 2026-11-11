@@ -29,7 +29,7 @@ $$
 $$section
 ### Library Path $(id="libraryPath")
 
-Name of the MicroStrategy Library web app on the server. It defaults to `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrarySTD` for a second Library deployment. The connector calls `<Host Port>/<Library Path>/api` and builds dashboard links from `<Host Port>/<Library Path>/app`.
+Name of the MicroStrategy Library web app on the server. It defaults to `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2` for a second Library deployment. The connector calls `<Host Port>/<Library Path>/api` and builds dashboard links from `<Host Port>/<Library Path>/app`.
 $$
 
 $$section

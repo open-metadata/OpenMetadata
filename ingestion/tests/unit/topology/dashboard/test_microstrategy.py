@@ -389,14 +389,14 @@ class TestClient:
 
         assert server.calls[0].body == {"loginMode": 8, "applicationType": 35}
 
-    @pytest.mark.parametrize("library_path", ["MicroStrategyLibrarySTD", "/MicroStrategyLibrarySTD/"])
+    @pytest.mark.parametrize("library_path", ["MicroStrategyLibrary2", "/MicroStrategyLibrary2/"])
     def test_a_custom_library_path_replaces_the_default(self, server, library_path):
-        server.api = "/MicroStrategyLibrarySTD/api"
+        server.api = "/MicroStrategyLibrary2/api"
         client = MicroStrategyClient(_connection(libraryPath=library_path))
 
         assert [project.id for project in client.get_projects_list()] == [TUTORIAL["id"], MOBILE["id"]]
-        assert server.calls[0].path == "/MicroStrategyLibrarySTD/api/auth/login"
-        assert client.library_url == "https://mstr.example.com/MicroStrategyLibrarySTD"
+        assert server.calls[0].path == "/MicroStrategyLibrary2/api/auth/login"
+        assert client.library_url == "https://mstr.example.com/MicroStrategyLibrary2"
 
     @pytest.mark.parametrize("library_path", [None, "", "/"])
     def test_an_empty_library_path_falls_back_to_the_default(self, server, library_path):
@@ -624,12 +624,12 @@ class TestSource:
         source.metadata.get_reference_by_email.assert_called_once_with("owner@example.com")
 
     def test_dashboard_url_uses_the_library_path(self, server):
-        server.api = "/MicroStrategyLibrarySTD/api"
-        source = _source(MicroStrategyClient(_connection(libraryPath="MicroStrategyLibrarySTD")))
+        server.api = "/MicroStrategyLibrary2/api"
+        source = _source(MicroStrategyClient(_connection(libraryPath="MicroStrategyLibrary2")))
 
         dashboard = next(iter(source.yield_dashboard(_details(source, OFFICE_ROYALE)))).right
 
-        assert dashboard.sourceUrl.root.startswith("https://mstr.example.com/MicroStrategyLibrarySTD/app/")
+        assert dashboard.sourceUrl.root.startswith("https://mstr.example.com/MicroStrategyLibrary2/app/")
 
     def test_a_dossier_whose_definition_fails_is_still_ingested(self, server, client):
         source = _source(client)

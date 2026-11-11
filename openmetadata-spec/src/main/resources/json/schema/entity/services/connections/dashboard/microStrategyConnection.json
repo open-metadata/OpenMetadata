@@ -40,7 +40,7 @@
     },
     "libraryPath": {
       "title": "Library Path",
-      "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrarySTD`.",
+      "description": "Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2`.",
       "type": "string",
       "default": "MicroStrategyLibrary"
     },
