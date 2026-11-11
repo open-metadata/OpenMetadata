@@ -16,7 +16,9 @@ package org.openmetadata.service.datacontract.odcs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.Comparator;
 import java.util.List;
+import java.util.stream.StreamSupport;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.odcs.ODCSQualityRule;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -26,6 +28,8 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
   private final String version;
   private final Class<?> model;
   private final JsonNode schema;
+
+  private record LegacyColumn(JsonNode source, List<String> path) {}
 
   public ODCSV22Mapper(String version) {
     this.version = version;
@@ -112,9 +116,8 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
 
       rename(table, "dataGranularity", "dataGranularityDescription");
       ArrayNode columns = ODCSExportModelWriter.JSON.createArrayNode();
-      for (JsonNode valueColumn : table.path("columns")) {
-        ObjectNode column = valueColumn.deepCopy();
-        String path = column.path("column").asText();
+      for (LegacyColumn valueColumn : orderedColumns(table)) {
+        ObjectNode column = valueColumn.source().deepCopy();
         rename(column, "column", "name");
         rename(column, "isPrimaryKey", "primaryKey");
         rename(column, "isUnique", "unique");
@@ -126,7 +129,7 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
         if (!column.has("isNullable")) column.put("isNullable", false);
         if (column.has("isNullable"))
           column.put("required", !column.remove("isNullable").asBoolean());
-        insert(columns, column, List.of(FullyQualifiedName.split(path)));
+        insert(columns, column, valueColumn.path());
       }
       table.remove("columns");
       table.set("properties", columns);
@@ -136,6 +139,17 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
     view.remove("dataset");
     view.set("schema", tables);
     return view;
+  }
+
+  private static List<LegacyColumn> orderedColumns(JsonNode table) {
+    // An ARRAY declaration must exist before descendants choose between properties and items.
+    return StreamSupport.stream(table.path("columns").spliterator(), false)
+        .map(
+            column ->
+                new LegacyColumn(
+                    column, List.of(FullyQualifiedName.split(column.path("column").asText()))))
+        .sorted(Comparator.comparingInt(column -> column.path().size()))
+        .toList();
   }
 
   private static void restoreQualityScopes(ObjectNode table) {
@@ -277,15 +291,21 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
       if (target == null) {
         target = siblings.addObject().put("name", name).put("logicalType", "object");
       }
-      ObjectNode parent = target;
-      if ("array".equals(target.path("logicalType").asText())) {
-        if (!target.path("items").isObject())
-          target.set(
-              "items", ODCSExportModelWriter.JSON.createObjectNode().put("logicalType", "object"));
-        parent = (ObjectNode) target.path("items");
-      }
+      ObjectNode parent =
+          "array".equals(target.path("logicalType").asText()) ? objectItems(target) : target;
       insert(parent.withArray("properties"), value, path.subList(1, path.size()));
     }
+  }
+
+  private static ObjectNode objectItems(ObjectNode array) {
+    if (!array.path("items").isObject()) {
+      array.set("items", ODCSExportModelWriter.JSON.createObjectNode());
+    }
+    ObjectNode items = (ObjectNode) array.path("items");
+    if (!items.hasNonNull("logicalType")) {
+      items.put("logicalType", "object");
+    }
+    return items;
   }
 
   private static void rename(ObjectNode object, String from, String to) {

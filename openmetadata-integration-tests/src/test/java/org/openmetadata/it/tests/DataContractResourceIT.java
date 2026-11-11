@@ -11,6 +11,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.dataformat.yaml.YAMLMapper;
 import jakarta.json.Json;
@@ -2695,6 +2696,105 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
     DataContract stored = client.dataContracts().get(contract.getId().toString(), "schema");
     assertEquals(ColumnDataType.VARCHAR, stored.getSchema().getFirst().getDataType());
     assertEquals("child", stored.getSchema().getFirst().getChildren().getFirst().getName());
+  }
+
+  @Test
+  void testLegacyODCSChildBeforeParentArraysRetainNativeTypes(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DataContract fixture = nestedArrayODCSFixture(ns);
+    YAMLMapper mapper = new YAMLMapper();
+    for (String version : List.of("v2.2.2", "v2.2.1")) {
+      for (boolean yaml : List.of(false, true)) {
+        ObjectNode source =
+            (ObjectNode)
+                new ODCSExportService(ignored -> List.of()).export(fixture, version).requireValid();
+        ArrayNode columns = (ArrayNode) source.at("/dataset/0/columns");
+        for (JsonNode column : columns) {
+          if (column.path("logicalType").asText().equals("array")) {
+            ((ObjectNode) column)
+                .withObject("/items")
+                .withArray("customProperties")
+                .addObject()
+                .put("property", "itemMarker")
+                .put("value", column.path("column").asText());
+          }
+        }
+        ArrayNode reversed = mapper.createArrayNode();
+        for (int index = columns.size() - 1; index >= 0; index--) reversed.add(columns.get(index));
+        ((ObjectNode) source.at("/dataset/0")).set("columns", reversed);
+        RequestOptions options =
+            RequestOptions.builder()
+                .queryParam("entityId", fixture.getEntity().getId().toString())
+                .queryParam("entityType", "table")
+                .queryParam("createTestCases", "false")
+                .queryParam("mode", "replace")
+                .header("Content-Type", yaml ? "application/yaml" : "application/json")
+                .build();
+        DataContract imported =
+            client
+                .getHttpClient()
+                .execute(
+                    HttpMethod.PUT,
+                    "/v1/dataContracts/odcs" + (yaml ? "/yaml" : ""),
+                    yaml ? mapper.writeValueAsString(source) : source,
+                    DataContract.class,
+                    options);
+        assertNativeNestedArraySchema(imported);
+        assertNativeNestedArraySchema(
+            client.dataContracts().get(imported.getId().toString(), "schema"));
+        for (String target : ODCSProfiles.supportedVersions()) {
+          JsonNode exported =
+              mapper.readTree(
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET,
+                          "/v1/dataContracts/"
+                              + imported.getId()
+                              + "/odcs/yaml?odcsVersion="
+                              + target,
+                          null));
+          assertEquals(List.of(), ODCSProfiles.validate(target, exported));
+          assertTrue(exported.toString().contains("itemMarker"));
+        }
+      }
+    }
+  }
+
+  private DataContract nestedArrayODCSFixture(TestNamespace ns) {
+    Column leaf =
+        new Column().withName("sku.code").withDataType(ColumnDataType.VARCHAR).withDataLength(30);
+    Column nested =
+        new Column()
+            .withName("nested")
+            .withDataType(ColumnDataType.ARRAY)
+            .withArrayDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(leaf));
+    Column outer =
+        new Column()
+            .withName("items")
+            .withDataType(ColumnDataType.ARRAY)
+            .withArrayDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(nested));
+    Table table = createTestTable(ns, List.of(outer));
+    return new DataContract()
+        .withId(UUID.randomUUID())
+        .withName(ns.prefix("legacy_nested_arrays"))
+        .withEntity(table.getEntityReference())
+        .withSchema(table.getColumns());
+  }
+
+  private static void assertNativeNestedArraySchema(DataContract contract) {
+    Column outer = contract.getSchema().getFirst();
+    Column nested = outer.getChildren().getFirst();
+    assertEquals("items", outer.getName());
+    assertEquals(ColumnDataType.ARRAY, outer.getDataType());
+    assertEquals(ColumnDataType.STRUCT, outer.getArrayDataType());
+    assertEquals("nested", nested.getName());
+    assertEquals(ColumnDataType.ARRAY, nested.getDataType());
+    assertEquals(ColumnDataType.STRUCT, nested.getArrayDataType());
+    assertEquals("sku.code", nested.getChildren().getFirst().getName());
+    assertEquals(ColumnDataType.VARCHAR, nested.getChildren().getFirst().getDataType());
   }
 
   @Test

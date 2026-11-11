@@ -119,10 +119,91 @@ class ODCSVersionedImportTest {
     ((ObjectNode) columns.get(0)).remove("isNullable");
     DataContract imported = read(source, nativeContract.getEntity());
     assertEquals(ColumnDataType.ARRAY, imported.getSchema().getFirst().getDataType());
+    assertEquals(ColumnDataType.STRUCT, imported.getSchema().getFirst().getArrayDataType());
     Column child = imported.getSchema().getFirst().getChildren().getFirst();
     assertEquals("sku.code", child.getName());
     assertEquals(ColumnConstraint.NOT_NULL, child.getConstraint());
     assertTrue(exporter.export(imported, version).valid());
+  }
+
+  static Stream<Arguments> legacyNestedArrayOrders() {
+    return Stream.of("v2.2.2", "v2.2.1")
+        .flatMap(
+            version ->
+                Stream.of(false, true)
+                    .flatMap(
+                        itemMetadata ->
+                            Stream.of(
+                                    List.of(0, 1, 2),
+                                    List.of(0, 2, 1),
+                                    List.of(1, 0, 2),
+                                    List.of(1, 2, 0),
+                                    List.of(2, 0, 1),
+                                    List.of(2, 1, 0))
+                                .map(order -> Arguments.of(version, itemMetadata, order))));
+  }
+
+  @ParameterizedTest
+  @MethodSource("legacyNestedArrayOrders")
+  void legacyNestedArrayTypesAndItemMetadataDoNotDependOnColumnOrder(
+      String version, boolean itemMetadata, List<Integer> order) {
+    Column nested =
+        new Column()
+            .withName("nested")
+            .withDataType(ColumnDataType.ARRAY)
+            .withArrayDataType(ColumnDataType.STRUCT)
+            .withChildren(
+                List.of(new Column().withName("sku.code").withDataType(ColumnDataType.VARCHAR)));
+    DataContract fixture =
+        contract()
+            .withOdcsQualityRules(null)
+            .withSchema(
+                List.of(
+                    new Column()
+                        .withName("items")
+                        .withDataType(ColumnDataType.ARRAY)
+                        .withArrayDataType(ColumnDataType.STRUCT)
+                        .withChildren(List.of(nested))));
+    ObjectNode source = (ObjectNode) exporter.export(fixture, version).requireValid();
+    ArrayNode columns = (ArrayNode) source.at("/dataset/0/columns");
+    if (itemMetadata) {
+      for (int index : List.of(0, 1)) {
+        ((ObjectNode) columns.get(index))
+            .withObject("/items")
+            .withArray("customProperties")
+            .addObject()
+            .put("property", "itemMarker")
+            .put("value", "array-item-" + index);
+      }
+    }
+    ArrayNode reordered = JSON.createArrayNode();
+    order.forEach(index -> reordered.add(columns.get(index)));
+    ((ObjectNode) source.at("/dataset/0")).set("columns", reordered);
+    JsonNode before = source.deepCopy();
+    DataContract imported = read(source, fixture.getEntity());
+    assertNestedArrayTypes(imported);
+    assertEquals(before, source);
+    for (String target : ODCSProfiles.supportedVersions()) {
+      JsonNode exported = exporter.export(imported, target).requireValid();
+      assertNestedArrayTypes(read(exported, fixture.getEntity()));
+      if (itemMetadata) {
+        assertTrue(exported.toString().contains("array-item-0"));
+        assertTrue(exported.toString().contains("array-item-1"));
+      }
+    }
+  }
+
+  private static void assertNestedArrayTypes(DataContract contract) {
+    Column outer = contract.getSchema().getFirst();
+    Column nested = outer.getChildren().getFirst();
+    assertEquals("items", outer.getName());
+    assertEquals(ColumnDataType.ARRAY, outer.getDataType());
+    assertEquals(ColumnDataType.STRUCT, outer.getArrayDataType());
+    assertEquals("nested", nested.getName());
+    assertEquals(ColumnDataType.ARRAY, nested.getDataType());
+    assertEquals(ColumnDataType.STRUCT, nested.getArrayDataType());
+    assertEquals("sku.code", nested.getChildren().getFirst().getName());
+    assertEquals(ColumnDataType.VARCHAR, nested.getChildren().getFirst().getDataType());
   }
 
   @ParameterizedTest
