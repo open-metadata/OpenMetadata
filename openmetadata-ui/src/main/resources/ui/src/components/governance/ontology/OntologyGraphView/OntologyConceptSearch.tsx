@@ -21,6 +21,8 @@ interface OntologyConceptSearchProps {
   readonly onOpen: (node: OntologyNode) => void;
   readonly results: readonly OntologyNode[];
   readonly value: string;
+  /** In the canvas's bottom toolbar the list opens upward, so the canvas edge never cuts it off. */
+  readonly opensUpward?: boolean;
 }
 
 const MOVE_KEYS: Record<string, number> = { ArrowDown: 1, ArrowUp: -1 };
@@ -36,6 +38,7 @@ const OntologyConceptSearch = ({
   onOpen,
   results,
   value,
+  opensUpward = false,
 }: OntologyConceptSearchProps) => {
   const { t } = useTranslation();
   const listId = useId();
@@ -87,7 +90,9 @@ const OntologyConceptSearch = ({
       {isListed ? (
         <div
           aria-label={t('label.search-result-plural')}
-          className="tw:absolute tw:top-full tw:left-0 tw:z-20 tw:mt-1 tw:max-h-72 tw:min-w-full tw:w-72 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1 tw:shadow-lg"
+          className={`tw:absolute tw:left-0 tw:z-20 tw:max-h-72 tw:min-w-full tw:w-72 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:p-1 tw:shadow-lg ${
+            opensUpward ? 'tw:bottom-full tw:mb-1' : 'tw:top-full tw:mt-1'
+          }`}
           data-testid="ontology-graph-search-results"
           id={listId}
           role="listbox">

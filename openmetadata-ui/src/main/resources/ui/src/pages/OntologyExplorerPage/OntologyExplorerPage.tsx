@@ -16,6 +16,7 @@ import {
   Box,
   Button,
   Divider,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -540,6 +541,11 @@ function getShellClassName(isFullScreen: boolean) {
     // Full screen covers the app shell; dialogs (z-50) still open above it.
     isFullScreen ? 'tw:fixed tw:inset-0 tw:z-40' : 'tw:relative'
   );
+}
+
+// Graph and Tree both mount the graph view, which opens New concept (Tree switches to Graph).
+function mountsGraphView(surface: string) {
+  return surface === 'graph' || surface === 'tree';
 }
 
 function offersOntologySurfaces(scope: ReturnType<typeof getStudioScope>) {
@@ -1733,7 +1739,7 @@ const OntologyExplorerContent: React.FC = () => {
       return isNativeOntology
         ? canCreateNativeClass &&
             canEditNativeOntology &&
-            editSurface === 'graph'
+            mountsGraphView(editSurface)
         : canCreateConcept;
     })();
 
@@ -1846,24 +1852,24 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <>
-        <Button
-          aria-describedby={isAllOntologies ? publishReasonId : undefined}
-          color="primary"
-          data-testid="ontology-publication-trigger"
-          iconLeading={GitBranch01}
-          isDisabled={isAllOntologies}
-          size={headerActionSize}
-          tooltip={
-            isAllOntologies
-              ? t('message.ontology-choose-ontology-to-publish')
-              : undefined
-          }
-          onPress={() => {
-            setPublicationTab('changes');
-            setIsPublicationOpen(true);
-          }}>
-          {renderPublicationLabel()}
-        </Button>
+        {/* Tooltip, not the Button prop: it keeps hover working while the button is disabled. */}
+        <Tooltip
+          isDisabled={!isAllOntologies}
+          title={t('message.ontology-choose-ontology-to-publish')}>
+          <Button
+            aria-describedby={isAllOntologies ? publishReasonId : undefined}
+            color="primary"
+            data-testid="ontology-publication-trigger"
+            iconLeading={GitBranch01}
+            isDisabled={isAllOntologies}
+            size={headerActionSize}
+            onPress={() => {
+              setPublicationTab('changes');
+              setIsPublicationOpen(true);
+            }}>
+            {renderPublicationLabel()}
+          </Button>
+        </Tooltip>
         {isAllOntologies && (
           <span
             className="tw:sr-only"
