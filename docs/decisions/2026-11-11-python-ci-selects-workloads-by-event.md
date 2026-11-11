@@ -33,7 +33,7 @@ For relevant changes, select these workloads:
 | Nightly | Full supported matrix | Full supported matrix | Highest supported Python | Lowest supported Python |
 
 `py-tests.yml` owns event triggers, path selection and the required `py-tests-status` check.
-The nightly runs at 03:00 UTC. Manual dispatch selects `pull-request`, `merge-queue` or `nightly`
+The nightly runs at 01:00 UTC. Manual dispatch selects `pull-request`, `merge-queue` or `nightly`
 workloads, defaulting to `nightly`; it bypasses path filtering and does not simulate a merge-group
 commit. Relevant offline E2E framework meta-tests continue to run with unit tests on PRs and
 merge-queue runs; they are distinct from connector E2E execution.

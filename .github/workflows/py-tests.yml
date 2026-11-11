@@ -16,7 +16,7 @@ on:
     types: [opened, synchronize, reopened, ready_for_review]
   merge_group:
   schedule:
-    - cron: "0 3 * * *"
+    - cron: "0 1 * * *"
   workflow_dispatch:
     inputs:
       mode:
