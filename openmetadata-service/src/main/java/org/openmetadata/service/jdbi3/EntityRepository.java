@@ -10985,7 +10985,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
     // Set when the update applies a change request a reviewer approved: its stage change was
     // decided by the review, so only the lifecycle's moves still apply to it.
-    @Getter @Setter private boolean approvedChange;
+    @Setter private boolean approvedChange;
 
     // When set (bulk path with overrideMetadata=true), bot updates are allowed to overwrite
     // user-curated metadata that PUT-as-bot would otherwise preserve (description, displayName).
