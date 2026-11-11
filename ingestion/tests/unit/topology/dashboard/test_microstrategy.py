@@ -24,6 +24,8 @@ from urllib.parse import urlparse
 
 import pytest
 import requests
+from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
+from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
@@ -34,10 +36,13 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import SourceListing
+from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.source.dashboard.microstrategy.client import (
     MicroStrategyApiError,
     MicroStrategyClient,
+    strip_engine_steps,
 )
 from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource
 from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard
@@ -169,7 +174,7 @@ DEFINITION_ERROR = {
     "com.microstrategy.rest.impl.model.dossier.Page",
     "ticketId": "e441694720c84451b419f529045336c2",
 }
-CUBE_SQL = """select\t`a16`.`CATEGORY_ID`  `CATEGORY_ID`,
+CUBE_STATEMENT = """select\t`a16`.`CATEGORY_ID`  `CATEGORY_ID`,
 \tmax(`a111`.`CATEGORY_DESC`)  `CATEGORY0`,
 \tsum(`a11`.`qty_sold`)  `WJXBFS1`
 from\t`order_detail`\t`a11`
@@ -177,10 +182,15 @@ from\t`order_detail`\t`a11`
 \t  on \t(`a11`.`ITEM_ID` = `a16`.`ITEM_ID`)
 \tjoin\t`tutorial_wh`.`lu_category`\t`a111`
 \t  on \t(`a16`.`CATEGORY_ID` = `a111`.`CATEGORY_ID`)
-group by\t`a16`.`CATEGORY_ID`
+group by\t`a16`.`CATEGORY_ID`"""
+CUBE_SQL = (
+    CUBE_STATEMENT
+    + """
 
 [Analytical engine calculation steps:
+\t1.  Perform cross-tabbing
 ]"""
+)
 
 
 class FakeMicroStrategy:
@@ -379,13 +389,34 @@ class TestClient:
         assert server.calls[0].body == {"loginMode": 8, "applicationType": 35}
 
     def test_cube_sql_is_read_once_per_cube_and_failures_are_cached(self, server, client):
-        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_SQL
-        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_SQL
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
+        assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
         server.overrides["/v2/cubes/C2/sqlView"] = lambda: (400, {"code": "ERR010", "message": "local file"})
         assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
         assert client.get_cube_sql_details(TUTORIAL["id"], "C2") is None
 
         assert len(server.requests_to("/v2/cubes/")) == 2
+
+    @pytest.mark.parametrize(
+        "sql, expected",
+        [
+            (CUBE_SQL, CUBE_STATEMENT),
+            (CUBE_STATEMENT + "\n\n[Analytical engine calculation steps:\n]", CUBE_STATEMENT),
+            (CUBE_STATEMENT, CUBE_STATEMENT),
+            (None, None),
+            ("", ""),
+        ],
+    )
+    def test_engine_steps_are_stripped_from_the_cube_sql(self, sql, expected):
+        assert strip_engine_steps(sql) == expected
+
+    @pytest.mark.parametrize(
+        "sql, analyzer",
+        [(CUBE_SQL, SqlParseLineageAnalyzer), (strip_engine_steps(CUBE_SQL), SqlGlotLineageAnalyzer)],
+    )
+    def test_only_the_stripped_cube_sql_is_parsed_by_sqlglot(self, sql, analyzer):
+        parser = LineageParser(sql, dialect=Dialect.BIGQUERY)
+        assert isinstance(parser.parser._analyzer, analyzer)
 
     def test_owner_email_is_the_default_address(self, client):
         assert client.get_owner_email(OWNER_ID) == "owner@example.com"

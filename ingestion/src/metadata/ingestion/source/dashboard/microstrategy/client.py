@@ -17,6 +17,7 @@ failure means, and an empty list read as "nothing exists" would drive stale dele
 
 from __future__ import annotations
 
+import re
 import traceback
 from collections import OrderedDict
 from typing import TYPE_CHECKING, Any, TypeVar
@@ -53,8 +54,16 @@ DOSSIER_TYPE = 55
 SEARCH_PAGE_SIZE = 500
 CACHE_SIZE = 512
 LOGIN_TIMEOUT = (10, 60)
+# The sqlView endpoint appends this block, which is not SQL, after the statement. Left in, it
+# fails SqlGlot and SqlFluff, and the parser falls back to SqlParse.
+ENGINE_STEPS_TRAILER = re.compile(r"^\[Analytical engine calculation steps:.*", re.MULTILINE | re.DOTALL)
 
 T = TypeVar("T")
+
+
+def strip_engine_steps(sql: str | None) -> str | None:
+    """The cube SQL without the Analytical engine calculation steps that follow the statement"""
+    return ENGINE_STEPS_TRAILER.sub("", sql).rstrip() if sql else sql
 
 
 class MicroStrategyApiError(Exception):
@@ -226,7 +235,9 @@ class MicroStrategyClient:
         return self._cached(
             self._cube_sql,
             cube_id,
-            lambda: self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id).get("sqlStatement"),
+            lambda: strip_engine_steps(
+                self._get(f"/v2/cubes/{cube_id}/sqlView", project_id=project_id).get("sqlStatement")
+            ),
             f"the SQL of cube {cube_id}",
         )
 
