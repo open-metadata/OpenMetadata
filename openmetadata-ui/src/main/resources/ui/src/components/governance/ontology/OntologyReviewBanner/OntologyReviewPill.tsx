@@ -16,9 +16,9 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ClipboardCheck, XClose } from '@openmetadata/ui-core-components/icons';
-import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 import { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
 
 export type OntologyReviewPillTone = 'brand' | 'error' | 'success' | 'warning';
 

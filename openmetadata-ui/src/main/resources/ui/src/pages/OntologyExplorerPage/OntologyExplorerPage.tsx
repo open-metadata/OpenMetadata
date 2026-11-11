@@ -78,6 +78,7 @@ import { getOntologyHealthSummary } from '../../components/OntologyExplorer/Onto
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import OntologyDraftProvider from '../../context/OntologyDraft/OntologyDraftProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -88,7 +89,6 @@ import { Ontology } from '../../generated/entity/data/ontology';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
 import { Operation } from '../../generated/entity/policies/policy';
 import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicationStatus';
-import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import { useAuth } from '../../hooks/authHooks';
 import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
