@@ -447,6 +447,10 @@ const useDraftConcept = (
   });
 };
 
+/** Graph and Tree both float the conflicts and health cards, so Validate all stays reachable from either. */
+const showsCanvasCards = (graphMode: string, openPanels: unknown[]) =>
+  graphMode !== 'data' && !openPanels.some(Boolean);
+
 /** The concept whose working copy loads: one being authored, else the selection. */
 const getDraftRequest = (
   editor: ConceptEditorRequest | undefined,
@@ -1393,12 +1397,14 @@ const OntologyGraphView = ({
   };
 
   // Conflicts float top-right under Model / Data; health floats bottom-right.
+  const hasCanvasCards = showsCanvasCards(graphMode, [
+    selected,
+    selectedRelation,
+    conceptEditor,
+  ]);
+
   const renderCanvasCards = () => {
-    const isPanelOpen = [selected, selectedRelation, conceptEditor].some(
-      Boolean
-    );
-    // Graph and Tree both float the cards, so Validate all stays reachable from either.
-    if (graphMode === 'data' || isPanelOpen) {
+    if (!hasCanvasCards) {
       return null;
     }
 
@@ -1413,6 +1419,7 @@ const OntologyGraphView = ({
 
               return concept ? getEntityName(concept) : undefined;
             }}
+            hasResult={Boolean(conflictsQuery.data)}
             isChecking={conflictsQuery.isFetching}
             isFailed={conflictsQuery.isError}
             violations={conflictViolations}
@@ -1515,21 +1522,24 @@ const OntologyGraphView = ({
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        <OntologyTreeView
-          density="compact"
-          emptyMessage={t('label.no-entity-found', {
-            entity: t('label.concept-plural'),
-          })}
-          metrics={metrics}
-          selectedNodeId={selectedId}
-          source={{
-            kind: 'native',
-            index: treeIndex,
-            title: getEntityName(ontology),
-          }}
-          onConnect={canEditOntology ? connectNode : undefined}
-          onSelect={selectNode}
-        />
+        // Leaves room on the right for the floating cards so they never cover a row.
+        <div className={hasCanvasCards ? 'tw:h-full tw:pr-92' : 'tw:h-full'}>
+          <OntologyTreeView
+            density="compact"
+            emptyMessage={t('label.no-entity-found', {
+              entity: t('label.concept-plural'),
+            })}
+            metrics={metrics}
+            selectedNodeId={selectedId}
+            source={{
+              kind: 'native',
+              index: treeIndex,
+              title: getEntityName(ontology),
+            }}
+            onConnect={canEditOntology ? connectNode : undefined}
+            onSelect={selectNode}
+          />
+        </div>
       );
     }
     if (graphMode === 'data') {

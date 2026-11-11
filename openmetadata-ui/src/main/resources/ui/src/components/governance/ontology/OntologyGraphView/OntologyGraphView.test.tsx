@@ -2811,6 +2811,44 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  it('never calls the draft clean before validation answers', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockReturnValue(
+      new Promise(() => undefined)
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('ontology-conflicts-toggle'));
+
+    expect(
+      screen.queryByText('message.ontology-validate-all-clean')
+    ).not.toBeInTheDocument();
+  });
+
+  it('keeps the conflicts and health cards on the Tree surface', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="tree"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByTestId('ontology-conflicts-panel')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
+  });
+
   it('goes from loading to loaded and opens Data without a hook-order error', async () => {
     const consoleError = jest.spyOn(console, 'error').mockImplementation();
     (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
