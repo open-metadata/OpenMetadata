@@ -27,9 +27,16 @@ export interface MicroStrategyConnection {
      */
     dataModelFilterPattern?: FilterPattern;
     /**
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      */
     hostPort: string;
+    /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrarySTD`.
+     */
+    libraryPath?: string;
     /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
      * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be

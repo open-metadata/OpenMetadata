@@ -77,7 +77,7 @@ from metadata.utils.filters import (
     filter_by_datamodel,
     filter_by_project,
 )
-from metadata.utils.helpers import clean_uri, get_standard_chart_type
+from metadata.utils.helpers import get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -242,10 +242,7 @@ class MicrostrategySource(DashboardServiceSource):
             self.dashboard_source_state.add(self._fqn(Dashboard, dashboard_name=dashboard_details.id))
             return
         try:
-            dashboard_url = (
-                f"{clean_uri(str(self.service_connection.hostPort))}/MicroStrategyLibrary/app/"
-                f"{dashboard_details.projectId}/{dashboard_details.id}"
-            )
+            dashboard_url = f"{self.client.library_url}/app/{dashboard_details.projectId}/{dashboard_details.id}"
             dashboard_request = CreateDashboardRequest(
                 name=EntityName(dashboard_details.id),
                 displayName=dashboard_details.name,

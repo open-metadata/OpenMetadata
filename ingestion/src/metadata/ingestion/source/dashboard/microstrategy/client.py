@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 
 logger = ingestion_logger()
 
-API_VERSION = "MicroStrategyLibrary/api"
+DEFAULT_LIBRARY_PATH = "MicroStrategyLibrary"
 AUTH_TOKEN_HEADER = "X-MSTR-AuthToken"
 PROJECT_HEADER = "X-MSTR-ProjectID"
 APPLICATION_TYPE = 35
@@ -85,6 +85,11 @@ class MicroStrategyClient:
         self._verify = verify
         self._cert = cert
         self._base_url = clean_uri(str(self.config.hostPort))
+        # The Library web app is usually served at /MicroStrategyLibrary, but a server can run it,
+        # or a second copy of it, under another name.
+        library_path = (self.config.libraryPath or DEFAULT_LIBRARY_PATH).strip("/") or DEFAULT_LIBRARY_PATH
+        self.library_url = f"{self._base_url}/{library_path}"
+        self._api_version = f"{library_path}/api"
         self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
         # Objects dropped for not matching the expected shape. The source reads it to tell a
@@ -107,7 +112,7 @@ class MicroStrategyClient:
         if self.config.password:
             data["password"] = self.config.password.get_secret_value()
         response = requests.post(
-            url=f"{self._base_url}/{API_VERSION}/auth/login",
+            url=f"{self.library_url}/api/auth/login",
             json=data,
             timeout=LOGIN_TIMEOUT,
             verify=self._verify if self._verify is not None else True,
@@ -124,12 +129,12 @@ class MicroStrategyClient:
         if not token:
             raise MicroStrategyApiError(
                 f"Login answered HTTP {response.status_code} without an {AUTH_TOKEN_HEADER} header; "
-                "check that Host Port is the server root the MicroStrategyLibrary app is served from."
+                f"check that Host Port is the server root and Library Path is the app at {self.library_url}."
             )
         return TrackedREST(
             ClientConfig(
                 base_url=self._base_url,
-                api_version=API_VERSION,
+                api_version=self._api_version,
                 extra_headers={AUTH_TOKEN_HEADER: token},
                 cookies=response.cookies,
                 allow_redirects=True,

@@ -206,6 +206,7 @@ class FakeMicroStrategy:
         self.overrides: dict[str, Callable[[], tuple[int, Any]]] = {}
         self.logins = 0
         self.calls: list[SimpleNamespace] = []
+        self.api = API
 
     def login(self, url: str, json: dict, **_: Any) -> requests.Response:
         self.logins += 1
@@ -215,7 +216,7 @@ class FakeMicroStrategy:
         )
 
     def request(self, session: requests.Session, method: str, url: str, **opts: Any) -> requests.Response:
-        path = urlparse(str(url)).path.removeprefix(API)
+        path = urlparse(str(url)).path.removeprefix(self.api)
         headers = opts.get("headers") or {}
         params = opts.get("params") or {}
         self.calls.append(SimpleNamespace(method=method, path=path, params=params, headers=headers, body=None))
@@ -388,6 +389,22 @@ class TestClient:
 
         assert server.calls[0].body == {"loginMode": 8, "applicationType": 35}
 
+    @pytest.mark.parametrize("library_path", ["MicroStrategyLibrarySTD", "/MicroStrategyLibrarySTD/"])
+    def test_a_custom_library_path_replaces_the_default(self, server, library_path):
+        server.api = "/MicroStrategyLibrarySTD/api"
+        client = MicroStrategyClient(_connection(libraryPath=library_path))
+
+        assert [project.id for project in client.get_projects_list()] == [TUTORIAL["id"], MOBILE["id"]]
+        assert server.calls[0].path == "/MicroStrategyLibrarySTD/api/auth/login"
+        assert client.library_url == "https://mstr.example.com/MicroStrategyLibrarySTD"
+
+    @pytest.mark.parametrize("library_path", [None, "", "/"])
+    def test_an_empty_library_path_falls_back_to_the_default(self, server, library_path):
+        client = MicroStrategyClient(_connection(libraryPath=library_path))
+
+        assert server.calls[0].path == "/MicroStrategyLibrary/api/auth/login"
+        assert client.library_url == "https://mstr.example.com/MicroStrategyLibrary"
+
     def test_cube_sql_is_read_once_per_cube_and_failures_are_cached(self, server, client):
         assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
         assert client.get_cube_sql_details(TUTORIAL["id"], "C1") == CUBE_STATEMENT
@@ -413,6 +430,7 @@ class TestClient:
     @pytest.mark.parametrize(
         "sql, analyzer",
         [(CUBE_SQL, SqlParseLineageAnalyzer), (strip_engine_steps(CUBE_SQL), SqlGlotLineageAnalyzer)],
+        ids=["raw", "stripped"],
     )
     def test_only_the_stripped_cube_sql_is_parsed_by_sqlglot(self, sql, analyzer):
         parser = LineageParser(sql, dialect=Dialect.BIGQUERY)
@@ -600,7 +618,18 @@ class TestSource:
         assert dashboard.description.root == "Sales of the Office Royale chain"
         assert dashboard.owners is owners
         assert dashboard.project == TUTORIAL["name"]
+        assert dashboard.sourceUrl.root == (
+            f"https://mstr.example.com/MicroStrategyLibrary/app/{TUTORIAL['id']}/{OFFICE_ROYALE['id']}"
+        )
         source.metadata.get_reference_by_email.assert_called_once_with("owner@example.com")
+
+    def test_dashboard_url_uses_the_library_path(self, server):
+        server.api = "/MicroStrategyLibrarySTD/api"
+        source = _source(MicroStrategyClient(_connection(libraryPath="MicroStrategyLibrarySTD")))
+
+        dashboard = next(iter(source.yield_dashboard(_details(source, OFFICE_ROYALE)))).right
+
+        assert dashboard.sourceUrl.root.startswith("https://mstr.example.com/MicroStrategyLibrarySTD/app/")
 
     def test_a_dossier_whose_definition_fails_is_still_ingested(self, server, client):
         source = _source(client)
