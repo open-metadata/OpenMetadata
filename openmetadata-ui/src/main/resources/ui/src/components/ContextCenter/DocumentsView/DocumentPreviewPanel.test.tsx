@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { Reason } from '../../../generated/api/context/extractionAvailability';
@@ -481,11 +482,15 @@ describe('DocumentPreviewPanel — Extract and Retry', () => {
     });
     await renderPreview(notExtractedFile);
 
-    expect(
-      await screen.findByRole('group', {
-        name: 'message.memory-extraction-service-unavailable',
-      })
-    ).toContainElement(extractionButton());
+    await waitFor(() =>
+      expect(Tooltip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'message.memory-extraction-service-unavailable',
+        }),
+        expect.anything()
+      )
+    );
+
     expect(extractionButton()).toBeDisabled();
   });
 

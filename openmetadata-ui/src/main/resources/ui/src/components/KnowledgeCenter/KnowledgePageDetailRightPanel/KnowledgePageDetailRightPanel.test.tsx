@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import { AxiosError, AxiosResponse } from 'axios';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
@@ -562,11 +563,13 @@ describe('KnowledgePageDetailRightPanel — Extract and Retry', () => {
     });
     await renderExtractionPanel(notExtractedArticle);
 
-    expect(
-      await screen.findByRole('group', {
-        name: 'message.memory-extraction-off',
-      })
-    ).toContainElement(extractionButton());
+    await waitFor(() =>
+      expect(Tooltip).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'message.memory-extraction-off' }),
+        expect.anything()
+      )
+    );
+
     expect(extractionButton()).toBeDisabled();
   });
 
