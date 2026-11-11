@@ -3,7 +3,9 @@ package org.openmetadata.service.search.elasticsearch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -24,6 +26,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.function.Consumer;
 import java.util.function.Function;
+import java.util.stream.IntStream;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 
 class ElasticSearchEntityManagerUpdateByQueryRetryTest {
@@ -122,6 +126,45 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
   }
 
   @Test
+  void aGlossaryPrefixRenameWhoseSearchMissedAShardGoesToTheRetryQueue() throws Exception {
+    matchingIndicesSearch(1);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      retryQueue
+          .when(() -> SearchIndexRetryQueue.failureReason(anyString(), any()))
+          .thenAnswer(call -> call.<Throwable>getArgument(1).getMessage());
+      new ElasticSearchEntityManager(client)
+          .updateGlossaryTermByFqnPrefix("all", "glossary.term", "glossary.moved", "tags.tagFQN");
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  isNull(String.class),
+                  eq("glossary.moved"),
+                  argThat(reason -> reason.contains("failed on 1 shards"))));
+    }
+    verify(client, never()).updateByQuery(any(UpdateByQueryRequest.class));
+  }
+
+  @Test
+  void aGlossaryPrefixRenameMatchingAFullPageOfIndicesRewritesTheWholeAlias() throws Exception {
+    indicesHoldingMatches(
+        IntStream.range(0, ElasticSearchEntityManager.MAX_MATCHING_INDICES)
+            .mapToObj("index_%d"::formatted)
+            .toArray(String[]::new));
+    UpdateByQueryResponse rewritten = response(1, 0);
+    when(client.updateByQuery(any(UpdateByQueryRequest.class))).thenReturn(rewritten);
+
+    new ElasticSearchEntityManager(client)
+        .updateGlossaryTermByFqnPrefix("all", "glossary.term", "glossary.moved", "tags.tagFQN");
+
+    ArgumentCaptor<UpdateByQueryRequest> request =
+        ArgumentCaptor.forClass(UpdateByQueryRequest.class);
+    verify(client).updateByQuery(request.capture());
+    assertEquals(List.of("all"), request.getValue().index());
+  }
+
+  @Test
   void softDeletingChildrenProceedsPastAConflictAndRetriesIt() throws Exception {
     UpdateByQueryResponse conflicted = response(1, 1);
     UpdateByQueryResponse clean = response(1, 0);
@@ -141,6 +184,10 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
   }
 
   private void indicesHoldingMatches(String... names) throws Exception {
+    matchingIndicesSearch(0, names);
+  }
+
+  private void matchingIndicesSearch(int failedShards, String... names) throws Exception {
     List<StringTermsBucket> buckets =
         Arrays.stream(names)
             .map(name -> StringTermsBucket.of(bucket -> bucket.key(name).docCount(1)))
@@ -149,7 +196,7 @@ class ElasticSearchEntityManagerUpdateByQueryRetryTest {
         new SearchResponse.Builder<JsonData>()
             .took(1)
             .timedOut(false)
-            .shards(shards -> shards.total(1).successful(1).failed(0))
+            .shards(shards -> shards.total(2).successful(2 - failedShards).failed(failedShards))
             .hits(hits -> hits.hits(List.of()))
             .aggregations(
                 "matchingIndices",

@@ -96,8 +96,9 @@ import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 @Slf4j
 public class ElasticSearchEntityManager implements EntityManagementClient {
   private static final String MATCHING_INDICES = "matchingIndices";
-  // Above the number of indices behind the global alias, so no index holding a match is left out.
-  private static final int MAX_MATCHING_INDICES = 1000;
+  // A full page may be cut short, so the rewrite then targets the whole alias
+  // (ADR:2026-11-11-a-global-alias-rewrite-targets-only-the-indices-holding-a-match).
+  static final int MAX_MATCHING_INDICES = 1000;
   private final ElasticsearchClient client;
   private final boolean isClientAvailable;
   private final ElasticsearchAsyncClient asyncClient;
@@ -1178,9 +1179,17 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
                         MATCHING_INDICES,
                         a -> a.terms(t -> t.field("_index").size(MAX_MATCHING_INDICES))),
             JsonData.class);
-    return response.aggregations().get(MATCHING_INDICES).sterms().buckets().array().stream()
-        .map(bucket -> bucket.key().stringValue())
-        .toList();
+    // A shard the search could not reach may hold a match, so the rename goes to the retry queue.
+    if (response.shards().failed().intValue() > 0) {
+      throw new IOException(
+          "Search for the indices tagged in '%s' failed on %s shards"
+              .formatted(indexOrAlias, response.shards().failed()));
+    }
+    final List<String> indices =
+        response.aggregations().get(MATCHING_INDICES).sterms().buckets().array().stream()
+            .map(bucket -> bucket.key().stringValue())
+            .toList();
+    return indices.size() < MAX_MATCHING_INDICES ? indices : List.of(indexOrAlias);
   }
 
   @Override
