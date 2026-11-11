@@ -14,6 +14,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
 import jakarta.ws.rs.core.Response;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -54,6 +55,9 @@ import org.openmetadata.service.resources.knowledge.KnowledgePageResource;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.vector.PageBodyTextContributor;
+import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -480,21 +484,34 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
             activeFqn, pageTypeValue, sortFilter, offset, limit, caller);
   }
 
-  public List<PageHierarchy> listHierarchy(ListFilter filter, int limit) {
+  public List<PageHierarchy> listHierarchy(
+      ListFilter filter, int limit, SecurityContext securityContext, Authorizer authorizer) {
     List<PageHierarchy> pageHierarchyList = new ArrayList<>();
     EntityUtil.Fields fields = getFields("parent,children");
 
-    ResultList<Page> resultList = listAfter(null, fields, filter, limit, null);
-    Map<UUID, Page> lookUp =
-        resultList.getData().stream().collect(Collectors.toMap(Page::getId, p -> p));
-    List<Page> topLevelPages =
-        resultList.getData().stream().filter(p -> p.getParent() == null).toList();
+    List<Page> pages =
+        viewablePages(
+            listAfter(null, fields, filter, limit, null).getData(), securityContext, authorizer);
+    Map<UUID, Page> lookUp = pages.stream().collect(Collectors.toMap(Page::getId, p -> p));
+    List<Page> topLevelPages = pages.stream().filter(p -> p.getParent() == null).toList();
 
     for (Page page : topLevelPages) {
       pageHierarchyList.add(getHierarchy(lookUp, page));
     }
 
     return pageHierarchyList;
+  }
+
+  /** Keeps the pages the caller may view, so the tree and its child counts match what opens. */
+  private static List<Page> viewablePages(
+      List<Page> pages, SecurityContext securityContext, Authorizer authorizer) {
+    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
+      return pages;
+    }
+    Set<UUID> viewable =
+        new ViewPermissionFilter(authorizer)
+            .viewableIds(securityContext, pages.stream().map(Page::getEntityReference).toList());
+    return pages.stream().filter(page -> viewable.contains(page.getId())).toList();
   }
 
   public PageHierarchy getHierarchy(Map<UUID, Page> lookUp, Page topLevelPage) {

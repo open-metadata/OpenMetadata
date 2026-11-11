@@ -371,7 +371,8 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
       filter.addQueryParam("pageType", knowledgePageType.value());
     }
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
-    return new ResultList<>(repository.listHierarchy(filter, limitParam));
+    return new ResultList<>(
+        repository.listHierarchy(filter, limitParam, securityContext, authorizer));
   }
 
   @GET
