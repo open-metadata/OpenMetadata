@@ -36,6 +36,7 @@ import {
 interface OntologyNativeImportItemsProps {
   readonly isDisabled: boolean;
   readonly items: readonly NativeOntologyImportItem[];
+  readonly omittedItems: number;
   readonly selection: ReadonlySet<string>;
   readonly onSelectionChange: (selection: ReadonlySet<string>) => void;
 }
@@ -175,6 +176,7 @@ const ImportItemRow = ({
 const OntologyNativeImportItems = ({
   isDisabled,
   items,
+  omittedItems,
   selection,
   onSelectionChange,
 }: OntologyNativeImportItemsProps) => {
@@ -196,15 +198,25 @@ const OntologyNativeImportItems = ({
 
   return (
     <Box data-testid="ontology-native-import-items" direction="col" gap={4}>
-      <Typography
-        color="secondary"
-        data-testid="ontology-native-import-items-found"
-        size="text-sm">
-        {t('message.native-import-items-found', {
-          count: items.length,
-          skipped: items.length - selectable.length,
-        })}
-      </Typography>
+      {items.length > 0 && (
+        <Typography
+          color="secondary"
+          data-testid="ontology-native-import-items-found"
+          size="text-sm">
+          {t('message.native-import-items-found', {
+            count: items.length,
+            skipped: items.length - selectable.length,
+          })}
+        </Typography>
+      )}
+      {omittedItems > 0 && (
+        <Typography
+          color="secondary"
+          data-testid="ontology-native-import-items-omitted"
+          size="text-xs">
+          {t('message.native-import-items-omitted', { count: omittedItems })}
+        </Typography>
+      )}
       <Box className="tw:max-h-96 tw:overflow-y-auto" direction="col" gap={4}>
         {NATIVE_IMPORT_ITEM_GROUPS.map(({ kind, labelKey }) => {
           const group = itemsOfKind(items, kind);

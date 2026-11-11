@@ -1,0 +1,31 @@
+{
+  "abbreviation": "PROV-O",
+  "attribution": "PROV-O: The PROV Ontology, W3C Recommendation 30 April 2013. Copyright W3C (MIT, ERCIM, Keio, Beihang). Used under the W3C Software and Document License. Redistributed without changes.",
+  "bundled": true,
+  "description": "The W3C provenance ontology for describing entities, activities and agents, published verbatim.",
+  "id": "prov-o",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "W3C Software and Document License",
+  "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+  "modules": [
+    {
+      "conceptCount": 31,
+      "dependencies": [],
+      "description": "Entities, activities, agents and the derivation, attribution and usage relations between them.",
+      "format": "turtle",
+      "id": "prov-o",
+      "name": "PROV-O",
+      "relationshipCount": 69,
+      "resourcePath": "rdf/ontology-packs/prov-o/prov-o.ttl",
+      "selectedByDefault": true,
+      "sha256": "7d203989f67b38bca572253942acc5a1bf24ce3ccfece16f072dcb4be2b79a96",
+      "sourceUrl": "https://www.w3.org/ns/prov-o.ttl"
+    }
+  ],
+  "name": "PROV-O",
+  "publisher": "W3C",
+  "sourceUrl": "https://www.w3.org/TR/prov-o/",
+  "standard": "PROV-O: The PROV Ontology",
+  "version": "2013-04-30"
+}

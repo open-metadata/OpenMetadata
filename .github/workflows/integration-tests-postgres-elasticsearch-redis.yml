@@ -38,8 +38,6 @@ on:
       - "pom.xml"
       - "Makefile"
       - "bootstrap/**"
-      - ".github/scripts/merge_queue_evidence.py"
-      - ".github/actions/ci-test-evidence/**"
       - ".github/scripts/classify_test_outcome.py"
       - ".github/workflows/integration-tests-postgres-elasticsearch-redis.yml"
   # PRs trigger this workflow only so that `integration-tests-postgres-elasticsearch-redis` can be
@@ -101,8 +99,6 @@ jobs:
               - 'pom.xml'
               - 'Makefile'
               - 'bootstrap/**'
-              - '.github/scripts/merge_queue_evidence.py'
-              - '.github/actions/ci-test-evidence/**'
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/integration-tests-postgres-elasticsearch-redis.yml'
 
@@ -111,7 +107,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -211,7 +207,7 @@ jobs:
     needs: [changes, integration-test-build]
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -410,15 +406,6 @@ jobs:
                 | tail -c 10485760 > "$diagnostics/docker-${name}.log" || true
             done < <(docker ps -aq)
           fi
-
-      - name: Record test evidence for dequeue attribution
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: ./.github/actions/ci-test-evidence
-        with:
-          check-name: Integration Test Lane (${{ matrix.lane.name }})
-          suite: postgres-elasticsearch-redis:${{ matrix.lane.name }}
-          reports: openmetadata-integration-tests/target/failsafe-reports/TEST-*.xml
 
       - name: Classify Integration Test Outcome
         if: ${{ always() }}
