@@ -76,7 +76,6 @@ const OntologyPackCard = ({
     pack,
     pack.modules.map((module) => module.id)
   );
-  const presentation = PACK_PRESENTATION[pack.id];
 
   let action: ReactNode = null;
   if (pack.bundled) {
@@ -124,7 +123,7 @@ const OntologyPackCard = ({
                   role="heading"
                   size="text-md"
                   weight="semibold">
-                  {presentation ? t(presentation.titleKey) : pack.name}
+                  {pack.name}
                 </Typography>
                 {installed && (
                   <BadgeWithIcon

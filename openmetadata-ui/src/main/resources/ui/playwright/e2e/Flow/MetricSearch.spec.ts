@@ -13,7 +13,12 @@
 import test, { expect } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { MetricClass } from '../../support/entity/MetricClass';
-import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
+import {
+  createNewPage,
+  expectNoErrorToast,
+  redirectToHomePage,
+  uuid,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -108,7 +113,7 @@ test.describe(
           state: 'visible',
         });
 
-        await expect(page.getByTestId('alert-bar')).not.toBeVisible();
+        await expectNoErrorToast(page);
       });
     });
   }

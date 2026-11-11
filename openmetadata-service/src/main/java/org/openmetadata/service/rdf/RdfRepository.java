@@ -212,7 +212,8 @@ public class RdfRepository {
                   Entity.getJdbi(), Clock.systemUTC(), RdfRebuildStore.DEFAULT_LIMITS),
               Clock.systemUTC(),
               name -> RdfStorageFactory.createStorage(config, name),
-              Duration.ofMillis(RdfStorageInterface.resolveRequestTimeoutMs(config)));
+              Duration.ofMillis(RdfStorageInterface.resolveRequestTimeoutMs(config)),
+              releaseId -> OntologyActiveGraph.releaseModel(Entity.getCollectionDAO(), releaseId));
       datasetManager.registerConfiguredStorage(configuredStorage);
       this.delivery = RdfWriteDelivery.DIRECT;
       this.inferenceRuleRepository =
