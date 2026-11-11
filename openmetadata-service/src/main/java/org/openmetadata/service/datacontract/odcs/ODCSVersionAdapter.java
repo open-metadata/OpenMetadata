@@ -26,6 +26,9 @@ public interface ODCSVersionAdapter {
 
   JsonNode write(DataContract contract, List<ODCSQualityRule> nativeRules);
 
+  /** Repairs recognized historical input before the shared pipeline revalidates it. */
+  ODCSNormalizationResult normalizeLegacy(JsonNode source);
+
   /** Adapts a schema-valid wire document without changing its declared source version. */
   default JsonNode read(JsonNode document) {
     return document.deepCopy();

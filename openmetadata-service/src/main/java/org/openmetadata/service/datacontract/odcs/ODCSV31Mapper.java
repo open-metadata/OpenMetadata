@@ -94,6 +94,12 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
   }
 
   @Override
+  public ODCSNormalizationResult normalizeLegacy(JsonNode source) {
+    return ODCSImportCompatibility.projectQualityForValidation(
+        ODCSImportCompatibility.normalizeObjectSchema(source));
+  }
+
+  @Override
   public JsonNode materialize(JsonNode view, DataContract contract) {
     ObjectNode document = view.deepCopy();
     // The metadata overlay can restore source-version rule names after native serialization.

@@ -16,66 +16,41 @@ package org.openmetadata.service.datacontract.odcs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.networknt.schema.Schema;
-import com.networknt.schema.SchemaLocation;
-import com.networknt.schema.SchemaRegistry;
-import com.networknt.schema.SpecificationVersion;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import org.openmetadata.schema.entity.datacontract.odcs.ODCSImportIssueCategory;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /** Only documented legacy OpenMetadata encodings are repaired before profile validation. */
 final class ODCSImportCompatibility {
   private ODCSImportCompatibility() {}
 
-  private static final Set<String> LEGACY_METRICS =
-      Set.of(
-          "freshness",
-          "completeness",
-          "textLength",
-          "valuesBetween",
-          "validValues",
-          "regex",
-          "pattern",
-          "notNull",
-          "nullCount",
-          "duplicateCount",
-          "missingCount",
-          "invalidCount");
-
-  record Normalized(JsonNode wire, JsonNode canonical) {}
-
-  static Normalized normalize(
-      JsonNode source, ODCSVersionAdapter adapter, ODCSImportIssues issues) {
-    if (ODCSProfiles.validate(adapter.version(), source).isEmpty())
-      return new Normalized(source.deepCopy(), source.deepCopy());
+  static ObjectNode normalizeCommonFields(JsonNode source) {
     ObjectNode compatible = source.deepCopy();
     ODCSShapeNormalizer.normalizePreserved(compatible);
     if (compatible.path("contractCreatedTs").isIntegralNumber()
-        && compatible.path("contractCreatedTs").canConvertToLong())
+        && compatible.path("contractCreatedTs").canConvertToLong()) {
       compatible.put(
           "contractCreatedTs",
           Instant.ofEpochMilli(compatible.path("contractCreatedTs").longValue()).toString());
-    if (!adapter.version().startsWith("v2.")) {
-      normalizeLegacyElements(compatible, false);
-      wrapFlatSchema(compatible);
     }
-    if (adapter.version().startsWith("v3.0.") && compatible.path("team").has("members"))
-      compatible.set("team", compatible.path("team").path("members"));
+    return compatible;
+  }
+
+  static ObjectNode normalizeObjectSchema(JsonNode source) {
+    ObjectNode compatible = normalizeCommonFields(source);
+    normalizeLegacyElements(compatible, false);
+    wrapFlatSchema(compatible);
+    return compatible;
+  }
+
+  static ODCSNormalizationResult projectQualityForValidation(ObjectNode compatible) {
     JsonNode canonical = compatible.deepCopy();
-    if (!adapter.version().startsWith("v2.")) projectRootQuality(compatible);
-    if (!source.equals(compatible))
-      issues.info(
-          ODCSImportIssueCategory.DOCUMENT,
-          null,
-          "",
-          "Normalized legacy OpenMetadata field shapes before validating the declared ODCS profile.");
-    return new Normalized(compatible, canonical);
+    projectRootQuality(compatible);
+    return new ODCSNormalizationResult(compatible, canonical);
   }
 
   private static final JsonNode READER_SCHEMA =
@@ -83,13 +58,6 @@ final class ODCSImportCompatibility {
           "/json/schema/entity/datacontract/odcs/odcsDataContract.json");
   private static final JsonNode PUBLISHED_SCHEMA =
       ODCSExportModelWriter.schema(ODCSExportService.DEFAULT_VERSION);
-  private static final Set<String> QUALITY_FIELDS =
-      ODCSExportModelWriter.fields(READER_SCHEMA.at("/definitions/odcsQualityRule"));
-  private static final Schema LEGACY_QUALITY_SCHEMA =
-      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2020_12)
-          .getSchema(
-              SchemaLocation.of(
-                  "classpath:json/schema/entity/datacontract/odcs/odcsDataContract.json#/definitions/odcsQualityRule"));
   private static final Set<String> OPERATORS =
       Set.of(
           "mustBe",
@@ -120,8 +88,8 @@ final class ODCSImportCompatibility {
             && missingComparison
             && "sql".equals(source.path("type").asText())
             && source.path("query").isTextual();
-    if ((!LEGACY_METRICS.contains(metric) && !legacySql && !implicitZero)
-        || !validLegacyQuality(source)) return source.deepCopy();
+    if ((!ODCSLegacyQualityValidator.isLegacyMetric(metric) && !legacySql && !implicitZero)
+        || !ODCSLegacyQualityValidator.isValid(source)) return source.deepCopy();
     if (implicitZero) return source.deepCopy().put("mustBe", 0);
     ObjectNode wrapper = source.objectNode();
     source
@@ -145,17 +113,6 @@ final class ODCSImportCompatibility {
       for (JsonNode child : element.path(collection))
         if (child instanceof ObjectNode object) finalizeQuality(object);
     if (element.path("items") instanceof ObjectNode items) finalizeQuality(items);
-  }
-
-  private static boolean validLegacyQuality(ObjectNode source) {
-    for (var fields = source.fieldNames(); fields.hasNext(); )
-      if (!QUALITY_FIELDS.contains(fields.next())) return false;
-    ObjectNode projection = source.deepCopy();
-    if (LEGACY_METRICS.contains(projection.path("metric").asText()))
-      projection.set("rule", projection.remove("metric"));
-    for (String scalar : List.of("mustBe", "mustNotBe"))
-      if (projection.has(scalar)) projection.put(scalar, 0);
-    return LEGACY_QUALITY_SCHEMA.validate(projection).isEmpty();
   }
 
   private static final Map<String, String> LEGACY_TYPES =
@@ -233,28 +190,21 @@ final class ODCSImportCompatibility {
           .addObject()
           .put("name", root.path("name").asText("contract"))
           .put("logicalType", "object");
-    for (JsonNode rule : rules) {
+    for (JsonNode source : rules) {
+      ObjectNode rule = ODCSLegacyQualityValidator.requireRootRule(source);
       if (schemaAbsent && rule.has("column")) {
-        if (!(rule instanceof ObjectNode object) || !object.path("column").isTextual())
-          throw new IllegalArgumentException(
-              "Legacy root quality rules must be objects with textual column references.");
-        if (!validLegacyQuality(object))
-          throw new IllegalArgumentException(
-              "Legacy root quality rule `" + object.path("name").asText() + "` is malformed.");
-        ObjectNode wrapper = object.objectNode().put("type", "custom").put("engine", "odcs");
-        if (object.has("name")) wrapper.set("name", object.path("name"));
+        ODCSLegacyQualityValidator.requireValid(rule);
+        ObjectNode wrapper = rule.objectNode().put("type", "custom").put("engine", "odcs");
+        if (rule.has("name")) wrapper.set("name", rule.path("name"));
         wrapper.put(
-            "implementation", object.objectNode().set("odcsRule", object.deepCopy()).toString());
+            "implementation", rule.objectNode().set("odcsRule", rule.deepCopy()).toString());
         ((ObjectNode) root.at("/schema/0")).withArray("quality").add(wrapper);
       } else projectRule(root, rule);
     }
     root.remove("quality");
   }
 
-  private static void projectRule(ObjectNode root, JsonNode rule) {
-    if (!(rule instanceof ObjectNode) || rule.has("column") && !rule.path("column").isTextual())
-      throw new IllegalArgumentException(
-          "Legacy root quality rules must be objects with textual column references.");
+  private static void projectRule(ObjectNode root, ObjectNode rule) {
     boolean projected = false;
     String column = rule.path("column").asText("");
     for (JsonNode table : root.path("schema")) {

@@ -41,53 +41,58 @@ public final class ODCSImportService {
 
   public static Optional<Document> read(
       ObjectMapper mapper, JsonNode source, ODCSImportIssues issues) {
-    String version;
+    ODCSProfile profile;
     try {
-      version = declaredVersion(source);
-      ODCSProfiles.adapter(version);
+      profile = ODCSProfiles.resolve(source);
     } catch (IllegalArgumentException exception) {
       issues.blocking(
           ODCSImportIssueCategory.DOCUMENT, "apiVersion", "apiVersion", exception.getMessage());
       return Optional.empty();
     }
     try {
-      return readProfile(mapper, source, version, issues);
+      return readProfile(mapper, source, profile, issues);
     } catch (IllegalArgumentException exception) {
       issues.blocking(ODCSImportIssueCategory.SCHEMA, null, "schema", exception.getMessage());
       return Optional.empty();
     }
   }
 
+  private record Prepared(JsonNode canonical, List<Error> failures) {}
+
   private static Optional<Document> readProfile(
-      ObjectMapper mapper, JsonNode source, String version, ODCSImportIssues issues) {
-    ODCSVersionAdapter adapter = ODCSProfiles.adapter(version);
-    ODCSImportCompatibility.Normalized normalized =
-        ODCSImportCompatibility.normalize(source, adapter, issues);
-    List<Error> failures = ODCSProfiles.validationErrors(version, normalized.wire());
-    if (!failures.isEmpty()) {
-      failures.forEach(
-          failure ->
-              issues.blocking(
-                  ODCSImportIssueCategory.DOCUMENT,
-                  failure.getProperty(),
-                  failure.getInstanceLocation().toString(),
-                  "Invalid ODCS " + version + ": " + failure));
-      return Optional.empty();
-    }
-    JsonNode canonical = adapter.read(normalized.canonical());
-    return ODCSLenientReader.read(mapper, ODCSImportQuality.readerView(canonical, issues), issues)
-        .map(contract -> new Document(contract, canonical, version));
+      ObjectMapper mapper, JsonNode source, ODCSProfile profile, ODCSImportIssues issues) {
+    Prepared prepared = prepare(source, profile, issues);
+    reportFailures(profile, prepared.failures(), issues);
+    return prepared.failures().isEmpty()
+        ? ODCSNativeContractConverter.convert(mapper, profile, prepared.canonical(), issues)
+        : Optional.empty();
   }
 
-  private static String declaredVersion(JsonNode source) {
-    if (source == null || !source.isObject())
-      throw new IllegalArgumentException("An ODCS document must be an object.");
-    JsonNode version = source.get("apiVersion");
-    if (version == null || version.isNull())
-      throw new IllegalArgumentException("Missing required ODCS apiVersion.");
-    if (!version.isTextual() || !version.asText().matches("v[0-9]+\\.[0-9]+\\.[0-9]+"))
-      throw new IllegalArgumentException(
-          "Malformed ODCS apiVersion; expected v<major>.<minor>.<patch>.");
-    return version.asText();
+  private static Prepared prepare(JsonNode source, ODCSProfile profile, ODCSImportIssues issues) {
+    List<Error> failures = ODCSPublishedSchemaValidator.validate(profile, source);
+    if (failures.isEmpty()) {
+      return new Prepared(source, failures);
+    }
+    ODCSNormalizationResult normalized = profile.adapter().normalizeLegacy(source);
+    if (!source.equals(normalized.wire())) {
+      issues.info(
+          ODCSImportIssueCategory.DOCUMENT,
+          null,
+          "",
+          "Normalized legacy OpenMetadata field shapes before validating the declared ODCS profile.");
+    }
+    return new Prepared(
+        normalized.canonical(), ODCSPublishedSchemaValidator.validate(profile, normalized.wire()));
+  }
+
+  private static void reportFailures(
+      ODCSProfile profile, List<Error> failures, ODCSImportIssues issues) {
+    failures.forEach(
+        failure ->
+            issues.blocking(
+                ODCSImportIssueCategory.DOCUMENT,
+                failure.getProperty(),
+                failure.getInstanceLocation().toString(),
+                "Invalid ODCS " + profile.version() + ": " + failure));
   }
 }

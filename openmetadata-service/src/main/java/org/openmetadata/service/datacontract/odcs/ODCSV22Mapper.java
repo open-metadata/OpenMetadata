@@ -77,6 +77,12 @@ public final class ODCSV22Mapper implements ODCSVersionAdapter {
   }
 
   @Override
+  public ODCSNormalizationResult normalizeLegacy(JsonNode source) {
+    ObjectNode compatible = ODCSImportCompatibility.normalizeCommonFields(source);
+    return new ODCSNormalizationResult(compatible, compatible.deepCopy());
+  }
+
+  @Override
   public JsonNode read(JsonNode document) {
     ObjectNode canonical = (ObjectNode) preservationView(document);
     if (!canonical.has("name")) canonical.put("name", document.path("quantumName").asText());

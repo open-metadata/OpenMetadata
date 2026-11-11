@@ -83,6 +83,15 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
   }
 
   @Override
+  public ODCSNormalizationResult normalizeLegacy(JsonNode source) {
+    ObjectNode compatible = ODCSImportCompatibility.normalizeObjectSchema(source);
+    if (compatible.path("team").has("members")) {
+      compatible.set("team", compatible.path("team").path("members"));
+    }
+    return ODCSImportCompatibility.projectQualityForValidation(compatible);
+  }
+
+  @Override
   public JsonNode read(JsonNode document) {
     ObjectNode canonical = (ObjectNode) preservationView(document);
     ODCSImportQuality.normalize(canonical, true);

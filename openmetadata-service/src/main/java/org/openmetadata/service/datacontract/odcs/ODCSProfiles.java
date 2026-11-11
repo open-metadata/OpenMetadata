@@ -15,10 +15,6 @@ package org.openmetadata.service.datacontract.odcs;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.Error;
-import com.networknt.schema.Schema;
-import com.networknt.schema.SchemaLocation;
-import com.networknt.schema.SchemaRegistry;
-import com.networknt.schema.SpecificationVersion;
 import com.networknt.schema.path.NodePath;
 import java.util.List;
 import java.util.Map;
@@ -40,30 +36,50 @@ public final class ODCSProfiles {
           new ODCSV22Mapper("v2.2.2"),
           "v2.2.1",
           new ODCSV22Mapper("v2.2.1"));
-  // Generated POJOs cannot enforce every conditional ODCS constraint, and preserved metadata is
-  // merged as raw JSON after serialization. Validate the complete export against the pinned schema
-  // for its target version; these bundled validators are loaded once and reused.
-  private static final Map<String, Schema> SCHEMAS =
+  private static final String API_VERSION = "apiVersion";
+  private static final Map<String, ODCSProfile> PROFILES =
       ADAPTERS.entrySet().stream()
           .collect(
               Collectors.toUnmodifiableMap(
                   Map.Entry::getKey,
                   entry ->
-                      SchemaRegistry.withDefaultDialect(SpecificationVersion.DRAFT_2019_09)
-                          .getSchema(SchemaLocation.of(entry.getValue().schemaLocation()))));
+                      new ODCSProfile(
+                          entry.getKey(),
+                          ODCSPublishedSchemaValidator.load(entry.getValue().schemaLocation()),
+                          entry.getValue())));
 
   private ODCSProfiles() {}
 
-  public static ODCSVersionAdapter adapter(String version) {
-    ODCSVersionAdapter adapter = ADAPTERS.get(version);
-    if (adapter == null)
+  public static ODCSProfile resolve(JsonNode source) {
+    if (source == null || !source.isObject()) {
+      throw new IllegalArgumentException("An ODCS document must be an object.");
+    }
+    JsonNode version = source.get(API_VERSION);
+    if (version == null || version.isNull()) {
+      throw new IllegalArgumentException("Missing required ODCS apiVersion.");
+    }
+    if (!version.isTextual() || !version.asText().matches("v[0-9]+\\.[0-9]+\\.[0-9]+")) {
+      throw new IllegalArgumentException(
+          "Malformed ODCS apiVersion; expected v<major>.<minor>.<patch>.");
+    }
+    return profile(version.asText());
+  }
+
+  public static ODCSProfile profile(String version) {
+    ODCSProfile profile = PROFILES.get(version);
+    if (profile == null) {
       throw new IllegalArgumentException(
           "Unsupported ODCS version `" + version + "`. Supported versions: " + supportedVersions());
-    return adapter;
+    }
+    return profile;
+  }
+
+  public static ODCSVersionAdapter adapter(String version) {
+    return profile(version).adapter();
   }
 
   public static List<String> supportedVersions() {
-    return ADAPTERS.keySet().stream().sorted().toList();
+    return PROFILES.keySet().stream().sorted().toList();
   }
 
   public static List<String> validate(String version, JsonNode document) {
@@ -71,11 +87,10 @@ public final class ODCSProfiles {
   }
 
   public static List<Error> validationErrors(String version, JsonNode document) {
-    adapter(version);
-    return List.copyOf(SCHEMAS.get(version).validate(document));
+    return ODCSPublishedSchemaValidator.validate(profile(version), document);
   }
 
   static boolean validFragment(String version, NodePath path, JsonNode value) {
-    return SCHEMAS.get(version).getSubSchema(path).validate(value).isEmpty();
+    return ODCSPublishedSchemaValidator.validFragment(profile(version), path, value);
   }
 }
