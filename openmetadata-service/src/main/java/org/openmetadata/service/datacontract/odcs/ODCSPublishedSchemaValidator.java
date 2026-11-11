@@ -31,11 +31,11 @@ final class ODCSPublishedSchemaValidator {
         .getSchema(SchemaLocation.of(location));
   }
 
-  static List<Error> validate(ODCSProfile profile, JsonNode document) {
-    return List.copyOf(profile.publishedSchema().validate(document));
+  static List<Error> validate(Schema schema, JsonNode document) {
+    return List.copyOf(schema.validate(document));
   }
 
-  static boolean validFragment(ODCSProfile profile, NodePath path, JsonNode value) {
-    return profile.publishedSchema().getSubSchema(path).validate(value).isEmpty();
+  static boolean validFragment(Schema schema, NodePath path, JsonNode value) {
+    return schema.getSubSchema(path).validate(value).isEmpty();
   }
 }

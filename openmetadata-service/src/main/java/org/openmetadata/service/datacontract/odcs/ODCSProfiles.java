@@ -15,6 +15,7 @@ package org.openmetadata.service.datacontract.odcs;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.networknt.schema.Error;
+import com.networknt.schema.Schema;
 import com.networknt.schema.path.NodePath;
 import java.util.List;
 import java.util.Map;
@@ -37,20 +38,16 @@ public final class ODCSProfiles {
           "v2.2.1",
           new ODCSV22Mapper("v2.2.1"));
   private static final String API_VERSION = "apiVersion";
-  private static final Map<String, ODCSProfile> PROFILES =
+  private static final Map<String, Schema> SCHEMAS =
       ADAPTERS.entrySet().stream()
           .collect(
               Collectors.toUnmodifiableMap(
                   Map.Entry::getKey,
-                  entry ->
-                      new ODCSProfile(
-                          entry.getKey(),
-                          ODCSPublishedSchemaValidator.load(entry.getValue().schemaLocation()),
-                          entry.getValue())));
+                  entry -> ODCSPublishedSchemaValidator.load(entry.getValue().schemaLocation())));
 
   private ODCSProfiles() {}
 
-  public static ODCSProfile resolve(JsonNode source) {
+  public static ODCSVersionAdapter resolve(JsonNode source) {
     if (source == null || !source.isObject()) {
       throw new IllegalArgumentException("An ODCS document must be an object.");
     }
@@ -62,24 +59,20 @@ public final class ODCSProfiles {
       throw new IllegalArgumentException(
           "Malformed ODCS apiVersion; expected v<major>.<minor>.<patch>.");
     }
-    return profile(version.asText());
-  }
-
-  public static ODCSProfile profile(String version) {
-    ODCSProfile profile = PROFILES.get(version);
-    if (profile == null) {
-      throw new IllegalArgumentException(
-          "Unsupported ODCS version `" + version + "`. Supported versions: " + supportedVersions());
-    }
-    return profile;
+    return adapter(version.asText());
   }
 
   public static ODCSVersionAdapter adapter(String version) {
-    return profile(version).adapter();
+    ODCSVersionAdapter adapter = ADAPTERS.get(version);
+    if (adapter == null) {
+      throw new IllegalArgumentException(
+          "Unsupported ODCS version `" + version + "`. Supported versions: " + supportedVersions());
+    }
+    return adapter;
   }
 
   public static List<String> supportedVersions() {
-    return PROFILES.keySet().stream().sorted().toList();
+    return ADAPTERS.keySet().stream().sorted().toList();
   }
 
   public static List<String> validate(String version, JsonNode document) {
@@ -87,10 +80,15 @@ public final class ODCSProfiles {
   }
 
   public static List<Error> validationErrors(String version, JsonNode document) {
-    return ODCSPublishedSchemaValidator.validate(profile(version), document);
+    return ODCSPublishedSchemaValidator.validate(schema(version), document);
   }
 
   static boolean validFragment(String version, NodePath path, JsonNode value) {
-    return ODCSPublishedSchemaValidator.validFragment(profile(version), path, value);
+    return ODCSPublishedSchemaValidator.validFragment(schema(version), path, value);
+  }
+
+  private static Schema schema(String version) {
+    adapter(version);
+    return SCHEMAS.get(version);
   }
 }

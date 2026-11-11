@@ -22,10 +22,10 @@ final class ODCSNativeContractConverter {
   private ODCSNativeContractConverter() {}
 
   static Optional<ODCSImportService.Document> convert(
-      ObjectMapper mapper, ODCSProfile profile, JsonNode source, ODCSImportIssues issues) {
-    JsonNode canonical = profile.adapter().read(source);
+      ObjectMapper mapper, ODCSVersionAdapter adapter, JsonNode source, ODCSImportIssues issues) {
+    JsonNode canonical = adapter.read(source);
     JsonNode reader = ODCSImportQuality.readerView(canonical, issues);
     return ODCSLenientReader.read(mapper, reader, issues)
-        .map(contract -> new ODCSImportService.Document(contract, canonical, profile.version()));
+        .map(contract -> new ODCSImportService.Document(contract, canonical, adapter.version()));
   }
 }

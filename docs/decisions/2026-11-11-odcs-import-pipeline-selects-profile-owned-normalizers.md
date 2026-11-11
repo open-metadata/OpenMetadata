@@ -1,7 +1,7 @@
 # ODCS imports use one pipeline and profile-owned legacy normalization
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial)
+- **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-11 (direct adapter resolution)
 - **Deciders:** Teddy Crepineau
 - **Guard:** ODCSImportPipelineTest; ODCSVersionedImportTest; ODCSCrossVersionRoundTripTest; DataContractResourceIT#testVersionedODCSImportMatrix
 - **Related:** [#37450](https://github.com/open-metadata/OpenMetadata/pull/37450); ADR:2026-11-09-odcs-imports-validate-declared-published-profiles
@@ -37,3 +37,13 @@ and diagnostic categories remain consistent across JSON/YAML import, parse and p
 inheritance relationship between published versions is implied, and no schema, storage, endpoint
 or accepted-version change is introduced. Existing compatibility transformations and preservation
 semantics remain authoritative; the refactor changes their ownership and execution structure.
+
+
+## Amendment — resolve adapters directly
+
+`ODCSProfiles.resolve` returns the selected `ODCSVersionAdapter` directly. The registry keeps
+its fixed adapter and published-schema mappings internally. The intermediate `ODCSProfile`
+record is removed: its version duplicated `adapter.version()`, while schema access belongs to
+the registry's validation methods. The import pipeline and native converter receive the adapter;
+validation continues to use the schema registered for that adapter's version. Family-specific
+normalization, diagnostic categories and source preservation are unchanged.

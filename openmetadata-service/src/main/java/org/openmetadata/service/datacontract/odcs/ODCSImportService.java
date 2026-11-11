@@ -41,16 +41,16 @@ public final class ODCSImportService {
 
   public static Optional<Document> read(
       ObjectMapper mapper, JsonNode source, ODCSImportIssues issues) {
-    ODCSProfile profile;
+    ODCSVersionAdapter adapter;
     try {
-      profile = ODCSProfiles.resolve(source);
+      adapter = ODCSProfiles.resolve(source);
     } catch (IllegalArgumentException exception) {
       issues.blocking(
           ODCSImportIssueCategory.DOCUMENT, "apiVersion", "apiVersion", exception.getMessage());
       return Optional.empty();
     }
     try {
-      return readProfile(mapper, source, profile, issues);
+      return readProfile(mapper, source, adapter, issues);
     } catch (IllegalArgumentException exception) {
       issues.blocking(ODCSImportIssueCategory.SCHEMA, null, "schema", exception.getMessage());
       return Optional.empty();
@@ -60,20 +60,21 @@ public final class ODCSImportService {
   private record Prepared(JsonNode canonical, List<Error> failures) {}
 
   private static Optional<Document> readProfile(
-      ObjectMapper mapper, JsonNode source, ODCSProfile profile, ODCSImportIssues issues) {
-    Prepared prepared = prepare(source, profile, issues);
-    reportFailures(profile, prepared.failures(), issues);
+      ObjectMapper mapper, JsonNode source, ODCSVersionAdapter adapter, ODCSImportIssues issues) {
+    Prepared prepared = prepare(source, adapter, issues);
+    reportFailures(adapter, prepared.failures(), issues);
     return prepared.failures().isEmpty()
-        ? ODCSNativeContractConverter.convert(mapper, profile, prepared.canonical(), issues)
+        ? ODCSNativeContractConverter.convert(mapper, adapter, prepared.canonical(), issues)
         : Optional.empty();
   }
 
-  private static Prepared prepare(JsonNode source, ODCSProfile profile, ODCSImportIssues issues) {
-    List<Error> failures = ODCSPublishedSchemaValidator.validate(profile, source);
+  private static Prepared prepare(
+      JsonNode source, ODCSVersionAdapter adapter, ODCSImportIssues issues) {
+    List<Error> failures = ODCSProfiles.validationErrors(adapter.version(), source);
     if (failures.isEmpty()) {
       return new Prepared(source, failures);
     }
-    ODCSNormalizationResult normalized = profile.adapter().normalizeLegacy(source);
+    ODCSNormalizationResult normalized = adapter.normalizeLegacy(source);
     if (!source.equals(normalized.wire())) {
       issues.info(
           ODCSImportIssueCategory.DOCUMENT,
@@ -82,17 +83,18 @@ public final class ODCSImportService {
           "Normalized legacy OpenMetadata field shapes before validating the declared ODCS profile.");
     }
     return new Prepared(
-        normalized.canonical(), ODCSPublishedSchemaValidator.validate(profile, normalized.wire()));
+        normalized.canonical(),
+        ODCSProfiles.validationErrors(adapter.version(), normalized.wire()));
   }
 
   private static void reportFailures(
-      ODCSProfile profile, List<Error> failures, ODCSImportIssues issues) {
+      ODCSVersionAdapter adapter, List<Error> failures, ODCSImportIssues issues) {
     failures.forEach(
         failure ->
             issues.blocking(
                 ODCSImportIssueCategory.DOCUMENT,
                 failure.getProperty(),
                 failure.getInstanceLocation().toString(),
-                "Invalid ODCS " + profile.version() + ": " + failure));
+                "Invalid ODCS " + adapter.version() + ": " + failure));
   }
 }
