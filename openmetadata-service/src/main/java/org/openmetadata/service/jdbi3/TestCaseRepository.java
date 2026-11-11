@@ -876,9 +876,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     Table table = validateForWrite(test, update);
     // Create/resolve the basic test suite only after all validations pass.
     // This avoids creating side entities when request validation fails early.
-    // A suite the caller already resolved (CSV row or bundle) is kept.
-    if (test.getTestSuite() == null) {
-      test.setTestSuite(getOrCreateTestSuite(test, table));
+    // PATCH carries the stored suite, so a null check would not re-resolve it after an entityLink
+    // move. Only CSV import restores a row-supplied suite after this shared preparation.
+    test.setTestSuite(getOrCreateTestSuite(test, table));
+  }
+
+  void prepareForImport(TestCase test, boolean isUpdate, EntityReference rowSuite) {
+    prepareInternal(test, isUpdate);
+    if (rowSuite != null) {
+      test.setTestSuite(rowSuite);
     }
   }
 
@@ -2045,6 +2051,14 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       return false;
     }
 
+    // An entityLink patch also changes these relationship-backed fields.
+    @Override
+    protected boolean shouldCompare(String fieldName) {
+      return super.shouldCompare(fieldName)
+          || (("entity".equals(fieldName) || TEST_SUITE_FIELD.equals(fieldName))
+              && super.shouldCompare("entityLink"));
+    }
+
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
@@ -2075,7 +2089,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   TEST_SUITE,
                   original.getTestSuite(),
                   updated.getTestSuite(),
-                  Relationship.HAS,
+                  Relationship.CONTAINS,
                   TEST_CASE,
                   updated.getId()));
       compareAndUpdate(
@@ -2627,20 +2641,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                       ? TestCaseWriteAuthRequests.forUpdate(testCase)
                       : TestCaseWriteAuthRequests.forCreate(testCase));
 
-          // A suite named by the row is kept; otherwise prepare resolves the table's basic suite
+          EntityReference rowSuite = null;
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
             TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
             if (testSuite == null) {
               continue;
             }
-            testCase.withTestSuite(testSuite.getEntityReference());
+            rowSuite = testSuite.getEntityReference();
+            testCase.withTestSuite(rowSuite);
           }
 
           if (importResult.getDryRun()) {
             repository.checkForImport(testCase, isUpdate);
             importSuccess(printer, csvRecord, isUpdate ? ENTITY_UPDATED : ENTITY_CREATED);
           } else {
-            repository.prepareInternal(testCase, isUpdate);
+            repository.prepareForImport(testCase, isUpdate, rowSuite);
             importedTestSuiteIds.putIfAbsent(
                 testCase.getTestSuite().getFullyQualifiedName(), testCase.getTestSuite().getId());
             if (testCase.getId() == null) {

@@ -1365,6 +1365,41 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     assertNull(tableTestSuite(table));
   }
 
+  @Test
+  void csvImport_keepsRowSuppliedTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    Table suiteTable = createTable(ns);
+    createEntity(rowCountRequest(suiteTable, ns.prefix("csv_suite_seed")));
+    EntityReference suppliedSuite = tableTestSuite(suiteTable);
+    String csv =
+        CSV_HEADER
+            + String.join(
+                ",",
+                ns.prefix("csv_supplied_suite_case"),
+                "",
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                suppliedSuite.getFullyQualifiedName(),
+                ROW_COUNT_100,
+                "",
+                "",
+                "",
+                "",
+                "")
+            + "\n";
+
+    assertAllRowsPassed(performImportCsv(ns, csv, false));
+    TestCase imported =
+        SdkClients.adminClient()
+            .testCases()
+            .getByName(
+                table.getFullyQualifiedName() + "." + ns.prefix("csv_supplied_suite_case"),
+                "testSuite");
+
+    assertEquals(suppliedSuite.getId(), imported.getTestSuite().getId());
+  }
+
   private static final String CSV_HEADER =
       "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,"
           + "computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n";
@@ -1753,6 +1788,51 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     TestCase updated = patchEntity(testCase.getId().toString(), testCase);
 
     assertEquals("edited", updated.getDescription());
+  }
+
+  @Test
+  void patch_entityLinkMoveReassignsTestSuiteToNewTable(TestNamespace ns) {
+    Table originalTable = createTable(ns);
+    Table newTable = createTable(ns);
+    TestCase testCase = createEntity(rowCountRequest(originalTable, ns.prefix("patch_suite_move")));
+    EntityReference originalSuite = tableTestSuite(originalTable);
+    createEntity(rowCountRequest(newTable, ns.prefix("patch_suite_target_seed")));
+    EntityReference newTableSuite = tableTestSuite(newTable);
+
+    String entityLink = "<#E::table::" + newTable.getFullyQualifiedName() + ">";
+    var patch = JsonUtils.getObjectMapper().createArrayNode();
+    patch.addObject().put("op", "replace").put("path", "/entityLink").put("value", entityLink);
+    TestCase patched =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PATCH,
+                TestCaseResource.COLLECTION_PATH + testCase.getId(),
+                patch,
+                TestCase.class);
+    TestCase updated =
+        SdkClients.adminClient().testCases().get(testCase.getId().toString(), "testSuite");
+
+    assertEquals(entityLink, patched.getEntityLink());
+    assertEquals(newTableSuite.getId(), updated.getTestSuite().getId());
+    assertNotEquals(originalSuite.getId(), updated.getTestSuite().getId());
+  }
+
+  @Test
+  void patch_suppliedTestSuiteIsReplacedByEntityLinkSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestCase testCase = createEntity(rowCountRequest(table, ns.prefix("patch_supplied_suite")));
+    Table otherTable = createTable(ns);
+    createEntity(rowCountRequest(otherTable, ns.prefix("patch_suite_seed")));
+    EntityReference otherTableSuite = tableTestSuite(otherTable);
+
+    testCase.setTestSuite(otherTableSuite);
+    patchEntity(testCase.getId().toString(), testCase);
+    TestCase updated =
+        SdkClients.adminClient().testCases().get(testCase.getId().toString(), "testSuite");
+
+    assertEquals(tableTestSuite(table).getId(), updated.getTestSuite().getId());
+    assertNotEquals(otherTableSuite.getId(), updated.getTestSuite().getId());
   }
 
   @Test
