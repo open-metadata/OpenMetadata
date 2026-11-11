@@ -105,12 +105,9 @@ export const selectDocumentByName = async (page: Page, fileName: string) => {
   await row.getByTestId('document-checkbox').click();
 };
 
-/**
- * Selects several documents under one search. Changing the search query
- * clears the selection, so searching per file would leave only the last one
- * selected — the names must share `searchTerm`.
- */
-export const selectDocumentsBySearch = async (
+// Changing the search clears the selection, so a multi-select must come from one
+// search whose term matches every file (e.g. a uuid shared by their names).
+export const selectDocumentsBySharedTerm = async (
   page: Page,
   searchTerm: string,
   fileNames: string[]
