@@ -453,7 +453,8 @@ class ConversationResourceIT {
   }
 
   @Test
-  void testMentionsListOnlyConversationsAboutViewableEntities(TestNamespace ns) throws Exception {
+  void testMentionsListAndCountOnlyConversationsAboutViewableEntities(TestNamespace ns)
+      throws Exception {
     Table table = createTestTable(ns, "mentions-view");
     User user =
         DenyPolicyPrincipals.userDeniedWhen(
@@ -474,6 +475,27 @@ class ConversationResourceIT {
     assertContainsConversation(mentioned, onSchema.getId());
     assertFalse(containsConversation(mentioned, onTable.getId()));
     assertEquals(1, mentioned.getPaging().getTotal());
+
+    // One row per page (e.g. an unread badge): every page reports the same total, including the
+    // page that hides nothing itself.
+    String after = null;
+    List<UUID> listed = new ArrayList<>();
+    for (int page = 0; page < 2; page++) {
+      ConversationList onePerPage =
+          listConversations(
+              userClient,
+              null,
+              user.getId(),
+              ConversationFilterType.MENTIONS,
+              1,
+              after,
+              null,
+              null);
+      assertEquals(1, onePerPage.getPaging().getTotal(), "total on page " + page);
+      onePerPage.getData().forEach(conversation -> listed.add(conversation.getId()));
+      after = onePerPage.getPaging().getAfter();
+    }
+    assertEquals(List.of(onSchema.getId()), listed);
   }
 
   @Test

@@ -33,6 +33,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.IntSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
@@ -83,6 +84,10 @@ public class ConversationRepository {
   public static final int MAX_ROOT_PAGE_SIZE = 100;
   public static final int MAX_REPLY_PAGE_SIZE = 100;
   public static final int EMBEDDED_REPLY_LIMIT = 3;
+
+  /** Entities checked to count a listing's viewable total; a bound between cost and accuracy. */
+  static final int MAX_VIEWABLE_COUNT_ENTITIES = 10_000;
+
   static final String ROOT_TARGET = "Root";
   static final String REPLY_TARGET = "Reply";
   private static final String DELETED_USER_NAME = "DeletedUser";
@@ -150,30 +155,72 @@ public class ConversationRepository {
     ConversationFilter.Sql countSql = filter.build(false);
     int total = conversationDAO.count(countSql.condition(), countSql.params());
     ResultList<Conversation> page = rootResult(conversations, before, after, hasMore, total);
-    return nullOrEmpty(entityLink) ? viewableOnly(securityContext, authorizer, page) : page;
+    return nullOrEmpty(entityLink)
+        ? viewableOnly(securityContext, authorizer, page, countSql)
+        : page;
   }
 
   /**
    * A listing that spans entities (e.g. a user's mentions) keeps only conversations about entities
    * the caller may view, as the activity feeds do. The cursors are taken from the full page so
-   * paging still walks every row; the total leaves out the rows hidden on this page.
+   * paging still walks every row, and the total counts only conversations the caller may view
+   * (ADR:2026-11-11-cross-entity-conversation-listings-count-only-viewable-conversations).
    */
-  private static ResultList<Conversation> viewableOnly(
-      SecurityContext securityContext, Authorizer authorizer, ResultList<Conversation> page) {
+  private ResultList<Conversation> viewableOnly(
+      SecurityContext securityContext,
+      Authorizer authorizer,
+      ResultList<Conversation> page,
+      ConversationFilter.Sql countSql) {
     if (getSubjectContext(securityContext).isAdmin()) {
       return page;
     }
+    ViewPermissionFilter viewFilter = new ViewPermissionFilter(authorizer);
     List<EntityReference> targets =
         page.getData().stream().map(Conversation::getEntityRef).filter(Objects::nonNull).toList();
-    Set<UUID> viewable = new ViewPermissionFilter(authorizer).viewableIds(securityContext, targets);
+    Set<UUID> viewable = viewFilter.viewableIds(securityContext, targets);
     List<Conversation> visible =
         page.getData().stream()
             .filter(c -> c.getEntityRef() == null || viewable.contains(c.getEntityRef().getId()))
             .toList();
     page.getPaging()
-        .setTotal(page.getPaging().getTotal() - (page.getData().size() - visible.size()));
+        .setTotal(
+            viewableTotal(
+                page.getPaging().getTotal(),
+                visible.size(),
+                () -> viewableCount(securityContext, viewFilter, countSql)));
     page.setData(visible);
     return page;
+  }
+
+  /**
+   * The stored total stands only when the page shows that many rows; otherwise rows may be hidden
+   * on this page or another, so they are recounted. Never less than the page itself.
+   */
+  static int viewableTotal(int total, int visibleOnPage, IntSupplier recount) {
+    return total > visibleOnPage ? Math.max(recount.getAsInt(), visibleOnPage) : total;
+  }
+
+  /**
+   * Conversations under {@code countSql} about entities the caller may view, counted per entity so
+   * each entity is checked once, over at most {@link #MAX_VIEWABLE_COUNT_ENTITIES} entities: past
+   * that it is a lower bound.
+   */
+  private int viewableCount(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      ConversationFilter.Sql countSql) {
+    List<FeedDAOs.ConversationEntityCount> counts =
+        conversationDAO.countByEntity(
+            countSql.condition(), countSql.params(), MAX_VIEWABLE_COUNT_ENTITIES);
+    List<EntityReference> entities =
+        counts.stream()
+            .map(row -> new EntityReference().withType(row.entityType()).withId(row.entityId()))
+            .toList();
+    Set<UUID> viewable = viewFilter.viewableIds(securityContext, entities);
+    return counts.stream()
+        .filter(row -> viewable.contains(row.entityId()))
+        .mapToInt(FeedDAOs.ConversationEntityCount::conversations)
+        .sum();
   }
 
   public Conversation create(

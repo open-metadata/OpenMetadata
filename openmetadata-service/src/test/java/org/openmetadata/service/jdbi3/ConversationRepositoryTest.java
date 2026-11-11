@@ -154,6 +154,28 @@ class ConversationRepositoryTest {
     assertEquals(List.of(domain), replyContext.getDomains());
   }
 
+  /**
+   * The total counts only conversations the caller may view, on every page: a page that hides
+   * nothing itself still recounts when the database counted more rows than it shows.
+   */
+  @Test
+  void aListTotalIsRecountedWheneverItCountsMoreThanThePageShows() {
+    assertEquals(1, ConversationRepository.viewableTotal(2, 1, () -> 1), "a one-row page");
+    assertEquals(3, ConversationRepository.viewableTotal(5, 0, () -> 3), "every row hidden");
+    assertEquals(
+        40,
+        ConversationRepository.viewableTotal(50_000, 40, () -> 12),
+        "a bounded recount never reports fewer rows than the page returns");
+    assertEquals(
+        4,
+        ConversationRepository.viewableTotal(
+            4,
+            4,
+            () -> {
+              throw new AssertionError("nothing can be hidden, so nothing is recounted");
+            }));
+  }
+
   @Test
   void hydrationQueryCountIsConstantWithPageSize() {
     CollectionDAO.ConversationDAO dao = mock(CollectionDAO.ConversationDAO.class);
