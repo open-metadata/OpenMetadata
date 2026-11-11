@@ -48,6 +48,7 @@ import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.BackgroundJobException;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyPackCatalog;
 import org.openmetadata.service.ontology.OntologyPackContentLoader;
@@ -411,7 +412,7 @@ public class NativeOntologyPackInstallJobIT extends BaseOntologyApprovalIT {
             .withPackDigest(OntologyPackInstallations.packDigest(source, modules));
     return Entity.getJobDAO()
         .insertTrackedJobInternal(
-            BackgroundJob.JobType.ONTOLOGY_PACK_INSTALL.name(),
+            BackgroundJobTypes.ONTOLOGY_PACK_INSTALL,
             OntologyPackInstallJobManager.HANDLER_NAME,
             JsonUtils.pojoToJson(arguments),
             "admin",

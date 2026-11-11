@@ -31,11 +31,11 @@ import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
 import org.openmetadata.schema.entity.data.PageProcessingStatus;
-import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.jobs.BackgroundJobTypes;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.util.EntityUtil;
@@ -98,7 +98,7 @@ class PageContextProcessingEngineTest {
 
     verify(jobDao)
         .cancelPendingPageMemoryJobs(
-            eq(BackgroundJob.JobType.CONTEXT_MEMORY_EXTRACTION.name()),
+            eq(BackgroundJobTypes.CONTEXT_MEMORY_EXTRACTION),
             eq(ContextMemoryExtractionJobHandler.class.getSimpleName()),
             eq(ContextMemoryExtractionJobHandler.Args.page(pageId).jobKey()),
             anyLong());
