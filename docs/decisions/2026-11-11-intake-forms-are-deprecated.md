@@ -16,7 +16,7 @@ now cover the same need, and keeping two ways to enforce required fields confuse
 - Intake forms (the `IntakeForm` entity, `/v1/governance/intakeForms` API and the settings UI) are
   deprecated as of this release and removed in the next one.
 - Until removal they keep working: existing intake forms are still enforced at the API layer.
-- The API marks every intake-form operation `deprecated` in the OpenAPI spec. The UI shows the
+- The notice is UI-only; the API is unchanged until removal. The UI shows the
   shared *Deprecated* badge (`DeprecatedFeatureBadge`, as on Column Bulk Operations) in the Intake
   Forms headers only (the classic settings page and designer, and the AI-mode Governance panel);
   no banner repeats it.
