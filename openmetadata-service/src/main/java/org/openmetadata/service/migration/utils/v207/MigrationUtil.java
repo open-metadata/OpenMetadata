@@ -26,11 +26,12 @@ import org.jdbi.v3.core.Handle;
  * includes an interrupted CONCURRENTLY build, which leaves an INVALID index that IF NOT EXISTS
  * alone would skip forever; it is dropped and rebuilt instead.
  *
- * <p>Also adds the MCP consent columns to mcp_pending_auth_requests on MySQL, under the same rule.
- * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+ * <p>Also holds the step that adds the MCP consent columns to mcp_pending_auth_requests on MySQL,
+ * under the same rule. 2.0.7 shipped without the consent feature, so only the 2.1.0 migration runs
+ * it. ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
  */
 public final class MigrationUtil {
-  /** Marker for re-running the consent column step from 2.1.0 (see mysql/v210/Migration). */
+  /** Marker for the consent column step, run from 2.1.0 (see mysql/v210/Migration). */
   public static final String MCP_CONSENT_COLUMNS_STEP = "mcpPendingAuthConsentColumns";
 
   private static final String COLUMN_EXISTS =

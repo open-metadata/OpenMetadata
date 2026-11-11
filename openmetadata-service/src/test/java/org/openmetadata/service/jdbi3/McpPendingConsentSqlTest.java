@@ -33,8 +33,9 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises the MCP consent SQL on the shipped migrations: a consent is stored once per request,
- * claimed once with its token hash and never after the request expires. On MySQL the columns come
- * from the 2.0.7 Java migration step, run twice to show a rerun is harmless.
+ * claimed once with its token hash and never after the request expires. The columns come from
+ * 2.1.0: its schemaChanges.sql on PostgreSQL, its Java migration step on MySQL, run twice to show a
+ * rerun is harmless. 2.0.7 is applied as it shipped, without them.
  * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
  */
 @Testcontainers(disabledWithoutDocker = true)
@@ -44,7 +45,7 @@ class McpPendingConsentSqlTest {
   private static final String PASSWORD = "mcp-consent-test";
   private static final String TABLE = "mcp_pending_auth_requests";
   private static final String MYSQL = "mysql";
-  private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7");
+  private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7", "2.1.0");
   private static final long NOW = 1_000_000L;
   private static final long LATER = NOW + 600_000L;
 
