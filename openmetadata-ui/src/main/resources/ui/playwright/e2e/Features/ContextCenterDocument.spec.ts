@@ -48,7 +48,7 @@ import {
   scrollUntilResponse,
   searchAndGetDocumentRow,
   selectDocumentByName,
-  selectDocumentsBySearch,
+  selectDocumentsBySharedTerm,
   selectFolderInSidebar,
   uploadDocument as uploadDocumentToApi,
   waitForDocumentProcessingComplete,
@@ -1256,9 +1256,9 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     const folderName = `bulk-move-folder-${uuid()}`;
-    const filePrefix = `bulk-move-${uuid()}`;
-    const firstFileName = `${filePrefix}-one.txt`;
-    const secondFileName = `${filePrefix}-two.txt`;
+    const fileId = uuid();
+    const firstFileName = `bulk-move-one-${fileId}.txt`;
+    const secondFileName = `bulk-move-two-${fileId}.txt`;
 
     const { apiContext } = documentSession;
     const firstDocument = await uploadDocument(
@@ -1291,7 +1291,7 @@ test.describe('Context Center - Documents Page', () => {
     contextFolderIdsToCleanup.add(targetFolder.id);
 
     await revealFolderRow(page, folderName);
-    await selectDocumentsBySearch(page, filePrefix, [
+    await selectDocumentsBySharedTerm(page, fileId, [
       firstFileName,
       secondFileName,
     ]);
@@ -1333,9 +1333,9 @@ test.describe('Context Center - Documents Page', () => {
     documentSession,
     page,
   }) => {
-    const filePrefix = `bulk-del-archive-${uuid()}`;
-    const firstName = `${filePrefix}-one.txt`;
-    const secondName = `${filePrefix}-two.txt`;
+    const fileId = uuid();
+    const firstName = `bulk-del-archive-one-${fileId}.txt`;
+    const secondName = `bulk-del-archive-two-${fileId}.txt`;
 
     const { apiContext } = documentSession;
     const doc1 = await uploadDocument(
@@ -1351,7 +1351,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    await selectDocumentsBySearch(page, filePrefix, [firstName, secondName]);
+    await selectDocumentsBySharedTerm(page, fileId, [firstName, secondName]);
     await expectSelectedCount(page, 2);
 
     await page.getByTestId('bulk-delete-btn').click();

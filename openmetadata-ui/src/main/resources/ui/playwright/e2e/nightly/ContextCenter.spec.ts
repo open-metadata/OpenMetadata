@@ -33,7 +33,7 @@ import {
   navigateToDocuments,
   responseMatchesRequestPath,
   searchAndGetDocumentRow,
-  selectDocumentsBySearch,
+  selectDocumentsBySharedTerm,
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
@@ -114,9 +114,9 @@ test.describe('Context Center - Download', () => {
     browser,
     page,
   }) => {
-    const filePrefix = `bulk-download-${uuid()}`;
-    const firstFileName = `${filePrefix}-one.txt`;
-    const secondFileName = `${filePrefix}-two.txt`;
+    const fileId = uuid();
+    const firstFileName = `bulk-download-one-${fileId}.txt`;
+    const secondFileName = `bulk-download-two-${fileId}.txt`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const firstDocument = await uploadAndTrack(
       apiContext,
@@ -132,7 +132,7 @@ test.describe('Context Center - Download', () => {
 
     await navigateToDocuments(page);
 
-    await selectDocumentsBySearch(page, filePrefix, [
+    await selectDocumentsBySharedTerm(page, fileId, [
       firstFileName,
       secondFileName,
     ]);
