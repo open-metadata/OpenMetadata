@@ -20,6 +20,7 @@ import {
 import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { EntityType } from '../../../../enums/entity.enum';
+import { ReviewVoteDecision } from '../../../../generated/entity/tasks/task';
 import { AccessType } from '../../../../generated/type/dataAccessRequestPayload';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -1497,6 +1498,74 @@ describe('TaskTabNew Component', () => {
     fireEvent.click(screen.getByTestId('workflow-task-action-primary'));
 
     expect(resolveTask).not.toHaveBeenCalled();
+  });
+
+  describe('multi-approver vote', () => {
+    const renderApproval = async (reviewVotes: Task['reviewVotes']) => {
+      const { useAuth } = require('../../../../hooks/authHooks');
+      const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
+      useAuth.mockReturnValue({ isAdminUser: false });
+      isTagsTaskType.mockReturnValue(false);
+      const task: Task = {
+        ...MOCK_TASK,
+        type: TaskEntityType.RequestApproval,
+        category: TaskCategory.Approval,
+        about: { id: 'dp-id', type: 'dataProduct' },
+        workflowStageId: 'review',
+        assignees: [
+          { id: 'test-user-id', type: 'user', name: 'test-user' },
+          { id: 'other-id', type: 'user', name: 'other' },
+        ],
+        availableTransitions: [
+          {
+            id: 'approve',
+            label: 'Approve',
+            resolutionType: TaskResolutionType.Approved,
+            targetStageId: 'approved',
+            targetTaskStatus: TaskEntityStatus.Approved,
+          },
+        ],
+        reviewVotes,
+      };
+      await act(async () => {
+        renderWithQueryClient(
+          <MemoryRouter>
+            <TaskTabNew {...mockProps} task={task} />
+          </MemoryRouter>
+        );
+      });
+    };
+
+    const vote = (stage: string) => ({
+      voter: { id: 'test-user-id', type: 'user', name: 'test-user' },
+      assignee: { id: 'test-user-id', type: 'user', name: 'test-user' },
+      decision: ReviewVoteDecision.Approved,
+      stage,
+      timestamp: 1,
+    });
+
+    it('offers Approve to an assignee who has not voted in this stage', async () => {
+      await renderApproval([vote('draft')]);
+
+      expect(
+        screen.getByTestId('workflow-task-action-primary')
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('task-review-votes')).not.toBeInTheDocument();
+    });
+
+    it('shows the counted vote instead of Approve once the assignee voted', async () => {
+      await renderApproval([vote('review')]);
+
+      expect(
+        screen.queryByTestId('workflow-task-action-primary')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('task-review-votes')).toHaveTextContent(
+        'message.user-approved-task'
+      );
+      expect(
+        screen.getByTestId('task-review-votes-waiting')
+      ).toBeInTheDocument();
+    });
   });
 
   it('does not fall back to legacy approval while a native workflow is starting', async () => {

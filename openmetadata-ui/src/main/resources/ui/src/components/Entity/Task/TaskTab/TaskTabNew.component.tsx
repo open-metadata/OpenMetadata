@@ -136,6 +136,7 @@ import {
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
+  hasVotedInCurrentStage,
   isTaskPendingFurtherApproval,
   isTaskTerminalStatus,
 } from '../../../../utils/TaskNavigationUtils';
@@ -158,6 +159,7 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
+import TaskReviewVotes from '../TaskReviewVotes/TaskReviewVotes';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
 import {
   getTaskTypeMessageKey,
@@ -1930,7 +1932,13 @@ export const TaskTabNew = ({
 
   const renderActionRequiredSection = () => {
     // A Revise and resubmit task is completed by editing the asset; it has no action of its own.
-    if (!isTaskActionable || rest.isOpenInDrawer || isRevisionRequest(task)) {
+    // A voter waits for the other approvers; the server ignores a second vote in the same stage.
+    if (
+      !isTaskActionable ||
+      rest.isOpenInDrawer ||
+      isRevisionRequest(task) ||
+      hasVotedInCurrentStage(task, currentUser)
+    ) {
       return null;
     }
 
@@ -2159,6 +2167,7 @@ export const TaskTabNew = ({
       ) : (
         renderProposedChangesSection()
       )}
+      <TaskReviewVotes currentUserId={currentUser?.id} task={task} />
       <div>
         {renderFeedbackOrTaskPayload()}
         {renderActionRequiredSection()}

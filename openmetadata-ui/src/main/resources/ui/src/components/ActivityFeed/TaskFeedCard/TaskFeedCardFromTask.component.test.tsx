@@ -19,6 +19,7 @@ import {
 } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
+import { ReviewVoteDecision } from '../../../generated/entity/tasks/task';
 import {
   resolveTask,
   Task,
@@ -310,6 +311,38 @@ describe('TaskFeedCardFromTask', () => {
 
     expect(showTaskDrawer).toHaveBeenCalledWith(MOCK_TASK);
     expect(onTaskClick).toHaveBeenCalledWith(MOCK_TASK);
+  });
+
+  it('drops quick Approve/Reject once the assignee voted in the current stage', async () => {
+    const votedTask: Task = {
+      ...MOCK_TASK,
+      workflowStageId: 'review',
+      assignees: [
+        { id: 'current-user-id', type: 'user', name: 'current-user' },
+        { id: 'other-id', type: 'user', name: 'other' },
+      ],
+      reviewVotes: [
+        {
+          voter: { id: 'current-user-id', type: 'user', name: 'current-user' },
+          assignee: {
+            id: 'current-user-id',
+            type: 'user',
+            name: 'current-user',
+          },
+          decision: ReviewVoteDecision.Approved,
+          stage: 'review',
+          timestamp: 1,
+        },
+      ],
+    };
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={votedTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
   });
 
   it('approves and rejects an assigned task through the Task V2 API', async () => {

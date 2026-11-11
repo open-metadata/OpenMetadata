@@ -68,6 +68,7 @@ import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
+  hasVotedInCurrentStage,
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
@@ -109,20 +110,23 @@ const getHasTaskEditAccess = ({
   isAssignee,
   isPartOfAssigneeTeam,
   isCreator,
+  hasVoted,
 }: {
   isAdminUser?: boolean;
   isTaskApprovalRequest: boolean;
   isAssignee?: boolean;
   isPartOfAssigneeTeam?: boolean;
   isCreator: boolean;
+  hasVoted: boolean;
 }): boolean => {
   const isAdminNonApproval = isAdminUser && !isTaskApprovalRequest;
-
-  return (
+  const canAct =
     isAdminNonApproval ||
     Boolean(isAssignee) ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator)
-  );
+    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+
+  // A voter waits for the other approvers; the server ignores a second vote in the same stage.
+  return canAct && !hasVoted;
 };
 
 interface TaskFeedCardFromTaskProps {
@@ -344,6 +348,7 @@ const TaskFeedCardFromTask = ({
     isAssignee,
     isPartOfAssigneeTeam,
     isCreator,
+    hasVoted: hasVotedInCurrentStage(task, currentUser),
   });
 
   const showReplies = useCallback(() => {
