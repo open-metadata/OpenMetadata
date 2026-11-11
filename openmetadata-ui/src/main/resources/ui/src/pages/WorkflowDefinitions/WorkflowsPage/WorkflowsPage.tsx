@@ -457,72 +457,42 @@ const WorkflowsPage = () => {
             </SlideoutMenu.Header>
             <SlideoutMenu.Content>
               <div className="tw:flex tw:flex-col tw:gap-5">
-                <div>
-                  <div className="tw:flex tw:items-center tw:gap-0.5 tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    <Typography as="span">
-                      {t('label.workflow-name')}
-                    </Typography>
-                    <Typography as="span" className="tw:text-error-primary">
-                      *
-                    </Typography>
-                  </div>
-                  <Input
-                    data-testid="workflow-name"
-                    isDisabled={isSubmitting}
-                    isInvalid={!!nameError}
-                    placeholder={t('label.workflow-name-placeholder')}
-                    value={workflowName}
-                    onChange={(value) => {
-                      setWorkflowName(value);
-                      if (nameError) {
-                        setNameError('');
-                      }
-                    }}
-                  />
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mt-1 tw:text-tertiary"
-                    size="text-xs">
-                    {t('message.workflow-name-cannot-change-after-create')}
-                  </Typography>
-                  {nameError && (
-                    <Typography
-                      as="p"
-                      className="tw:m-0 tw:mt-1 tw:text-error-primary"
-                      size="text-xs">
-                      {nameError}
-                    </Typography>
-                  )}
-                </div>
-                <div>
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    {t('label.display-name')}
-                  </Typography>
-                  <Input
-                    data-testid="workflow-display-name"
-                    isDisabled={isSubmitting}
-                    placeholder={t('message.enter-display-name')}
-                    value={workflowDisplayName}
-                    onChange={setWorkflowDisplayName}
-                  />
-                </div>
-                <div>
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    {t('label.description')}
-                  </Typography>
-                  <TextArea
-                    data-testid="workflow-description"
-                    isDisabled={isSubmitting}
-                    placeholder={t('label.description')}
-                    rows={4}
-                    value={description}
-                    onChange={setDescription}
-                  />
-                </div>
+                <Input
+                  isRequired
+                  data-testid="workflow-name"
+                  hint={
+                    nameError ||
+                    t('message.workflow-name-cannot-change-after-create')
+                  }
+                  isDisabled={isSubmitting}
+                  isInvalid={!!nameError}
+                  label={t('label.workflow-name')}
+                  placeholder={t('label.workflow-name-placeholder')}
+                  value={workflowName}
+                  onChange={(value) => {
+                    setWorkflowName(value);
+                    if (nameError) {
+                      setNameError('');
+                    }
+                  }}
+                />
+                <Input
+                  data-testid="workflow-display-name"
+                  isDisabled={isSubmitting}
+                  label={t('label.display-name')}
+                  placeholder={t('message.enter-display-name')}
+                  value={workflowDisplayName}
+                  onChange={setWorkflowDisplayName}
+                />
+                <TextArea
+                  data-testid="workflow-description"
+                  isDisabled={isSubmitting}
+                  label={t('label.description')}
+                  placeholder={t('label.description')}
+                  rows={4}
+                  value={description}
+                  onChange={setDescription}
+                />
               </div>
             </SlideoutMenu.Content>
             <SlideoutMenu.Footer className="tw:shadow-none tw:p-0">
