@@ -60,7 +60,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO.QueryDAO;
+import org.openmetadata.service.jdbi3.EntityDataDAOs.QueryDAO;
 import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;

@@ -276,6 +276,10 @@ Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclo
   `ContextMemoryDocumentAccess` checks file access on current REST and MCP reads, the version list,
   a single version, and `/history`. A reader who cannot access a file sees its id and type.
   The search index keeps only the id and type for restricted file references, including on reindex.
+  A sharing change refreshes memories that cite or are anchored on the file as well as those it
+  states. Refreshes run after the sharing transaction commits and remove source fields that no
+  longer apply. Pre-release instances reindex `contextMemory` after upgrading to refresh older
+  source metadata.
   An article reads to everyone, and an admin reads every file.
 - **Naming.** An extracted memory, and a copy, is named `memory-<uuid>`. A name is the memory's FQN
   and never changes, and a memory can move to a document whose readers may not read the one it came

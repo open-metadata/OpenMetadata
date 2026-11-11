@@ -1,8 +1,13 @@
 package org.openmetadata.service.context.center;
 
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
@@ -25,10 +30,12 @@ public class MemorySourceSharing {
   public void followSourceRestriction(ContextFile file) {
     MemorySourceLifecycle lifecycle = lifecycleSharing(file);
     EntityReference restricted = referenceTo(file);
-    for (EntityReference memory : lifecycle.linkedMemories(restricted)) {
+    List<EntityReference> stated = lifecycle.linkedMemories(restricted);
+    for (EntityReference memory : stated) {
       followRestriction(lifecycle, memory.getId(), restricted);
       memories.refreshSearchDocument(memory.getId());
     }
+    refreshReferencingMemories(restricted, stated);
   }
 
   /**
@@ -38,9 +45,25 @@ public class MemorySourceSharing {
   public void followSourceOpening(ContextFile file) {
     MemorySourceLifecycle lifecycle = lifecycleSharing(file);
     EntityReference opened = referenceTo(file);
-    for (EntityReference memory : lifecycle.linkedMemories(opened)) {
+    List<EntityReference> stated = lifecycle.linkedMemories(opened);
+    for (EntityReference memory : stated) {
       lifecycle.showAsSourceOnceOpened(memory.getId(), opened);
     }
+    refreshReferencingMemories(opened, stated);
+  }
+
+  private void refreshReferencingMemories(EntityReference file, List<EntityReference> stated) {
+    Set<UUID> refreshed = stated.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    Stream.of(Relationship.APPLIED_TO, Relationship.RELATED_TO)
+        .flatMap(
+            relation ->
+                memories
+                    .findTo(file.getId(), file.getType(), relation, Entity.CONTEXT_MEMORY)
+                    .stream())
+        .map(EntityReference::getId)
+        .distinct()
+        .filter(id -> !refreshed.contains(id))
+        .forEach(memories::refreshSearchDocument);
   }
 
   private static EntityReference referenceTo(ContextFile file) {

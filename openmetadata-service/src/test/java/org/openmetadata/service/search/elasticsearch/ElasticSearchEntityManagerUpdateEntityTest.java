@@ -12,6 +12,9 @@ import java.io.StringWriter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.StreamSupport;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.utils.JsonUtils;
 
@@ -55,7 +58,27 @@ class ElasticSearchEntityManagerUpdateEntityTest {
     assertFalse(upsert.has("fieldsToRemove"), "script instructions are not document data");
   }
 
+  @Test
+  void absentMemoryReferencesAreRemovedFromExistingDocuments() {
+    Set<String> fields = Set.of("primaryEntity", "sourceEntity", "sourceFile");
+    Map<String, Object> doc = new HashMap<>();
+    doc.put("name", "memory");
+    fields.forEach(field -> doc.put(field, null));
+
+    JsonNode removal = serializeRequest(doc).path("script").path("params").path("fieldsToRemove");
+
+    assertEquals(
+        fields,
+        StreamSupport.stream(removal.spliterator(), false)
+            .map(JsonNode::asText)
+            .collect(Collectors.toSet()));
+  }
+
   private JsonNode serializeUpsert(Map<String, Object> doc) {
+    return serializeRequest(doc).path("upsert");
+  }
+
+  private JsonNode serializeRequest(Map<String, Object> doc) {
     UpdateRequest<Map, Map> request =
         entityManager.buildUpdateEntityRequest("test_suite_search_index", "id", doc, "script");
     JacksonJsonpMapper mapper = new JacksonJsonpMapper();
@@ -63,6 +86,6 @@ class ElasticSearchEntityManagerUpdateEntityTest {
     try (JsonGenerator generator = mapper.jsonProvider().createGenerator(writer)) {
       request.serialize(generator, mapper);
     }
-    return JsonUtils.readTree(writer.toString()).path("upsert");
+    return JsonUtils.readTree(writer.toString());
   }
 }

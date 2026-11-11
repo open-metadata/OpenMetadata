@@ -37,6 +37,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -778,10 +780,85 @@ class ContextMemoryExtractionIT {
                       .index("context_memory_search_index")
                       .queryFilter(byId)
                       .execute();
-              assertTrue(hit.contains(memory.getId().toString()), hit);
-              assertTrue(hit.contains(privateCopy.getId().toString()), hit);
+              JsonNode source = searchMemorySource(hit, memory);
+              for (String field : List.of("primaryEntity", "sourceEntity", "sourceFile")) {
+                assertEquals(idOnlyFile(privateCopy), source.path(field), hit);
+              }
               assertFalse(hit.contains(privateCopy.getName()), hit);
             });
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = Relationship.class,
+      names = {"APPLIED_TO", "RELATED_TO", "MENTIONED_IN"})
+  void restrictingAFileRefreshesEveryMemoryReferenceInSearch(
+      Relationship relation, TestNamespace ns) throws Exception {
+    ContextFile document =
+        fileOwnedBy(ns, "public-reference", "Refund policy " + ns.shortPrefix(), null);
+    ContextMemory memory =
+        pill("Thirty days.", document.getEntityReference(), ContextMemorySourceType.MANUAL)
+            .withOwners(List.of(SharedEntities.get().USER1_REF))
+            .withPrimaryEntity(null)
+            .withSourceEntity(null);
+    switch (relation) {
+      case APPLIED_TO -> memory.setPrimaryEntity(document.getEntityReference());
+      case RELATED_TO -> memory.setRelatedEntities(List.of(document.getEntityReference()));
+      case MENTIONED_IN -> memory
+          .withPrimaryEntity(document.getEntityReference())
+          .withSourceEntity(document.getEntityReference());
+      default -> throw new IllegalArgumentException(relation.name());
+    }
+    memoryRepository().create(null, memory);
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
+    Awaitility.await("the public document is named in search")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertTrue(searchMemoryAsOwner(memory).contains(document.getName())));
+
+    share(document, privately());
+
+    Awaitility.await("the private document is no longer named in search")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              String result = searchMemoryAsOwner(memory);
+              JsonNode source = searchMemorySource(result, memory);
+              assertFalse(result.contains(document.getName()), result);
+              JsonNode reference =
+                  switch (relation) {
+                    case APPLIED_TO, MENTIONED_IN -> source.path("primaryEntity");
+                    case RELATED_TO -> source.path("relatedEntities").get(0);
+                    default -> throw new IllegalArgumentException(relation.name());
+                  };
+              assertEquals(idOnlyFile(document), reference, result);
+              if (relation == Relationship.MENTIONED_IN) {
+                assertEquals(idOnlyFile(document), source.path("sourceEntity"), result);
+                assertEquals(idOnlyFile(document), source.path("sourceFile"), result);
+              }
+            });
+  }
+
+  private static String searchMemoryAsOwner(ContextMemory memory) {
+    String byId = "{\"query\":{\"term\":{\"id.keyword\":\"" + memory.getId() + "\"}}}";
+    return SdkClients.user1Client()
+        .search()
+        .query("*")
+        .index("context_memory_search_index")
+        .queryFilter(byId)
+        .execute();
+  }
+
+  private static JsonNode searchMemorySource(String response, ContextMemory memory) {
+    JsonNode hits = JsonUtils.readTree(response).path("hits").path("hits");
+    assertEquals(1, hits.size(), response);
+    JsonNode source = hits.get(0).path("_source");
+    assertEquals(memory.getId().toString(), source.path("id").asText(), response);
+    return source;
+  }
+
+  private static JsonNode idOnlyFile(ContextFile file) {
+    return JsonUtils.valueToTree(
+        new EntityReference().withId(file.getId()).withType(Entity.CONTEXT_FILE));
   }
 
   /** The org-wide copy that took the anchor keeps it, and the restored file is a source again. */
