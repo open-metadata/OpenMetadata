@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import {
+  Badge,
   Box,
   Divider,
   FeaturedIcon,
@@ -51,6 +52,16 @@ const OntologyStudioHeader = <M extends string>({
     }
   };
 
+  const betaBadge = (
+    <Badge
+      color="blue-light"
+      data-testid="ontology-studio-beta-badge"
+      size="sm"
+      type="pill-color">
+      {t('label.beta')}
+    </Badge>
+  );
+
   const modeItems = modes.map((tab) => (
     <Tabs.Item data-testid={`mode-tab-${tab.id}`} id={tab.id} key={tab.id}>
       {tab.label}
@@ -64,6 +75,7 @@ const OntologyStudioHeader = <M extends string>({
         data-testid="ontology-studio-header"
         data-tour-step="ontology-studio">
         <PageHeader
+          badge={betaBadge}
           breadcrumb={breadcrumb}
           data-testid="ontology-studio-page-header"
           // PageHeader's actions slot never shrinks or wraps, so beside the AI
@@ -120,6 +132,7 @@ const OntologyStudioHeader = <M extends string>({
             weight="bold">
             {t('label.ontology-studio')}
           </Typography>
+          {betaBadge}
         </Box>
         <Divider className="tw:h-5.5 tw:self-center" orientation="vertical" />
         <Box className="tw:min-w-18 tw:max-w-48 tw:shrink">{scopeMenu}</Box>
