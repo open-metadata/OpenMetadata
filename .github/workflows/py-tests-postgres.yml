@@ -25,8 +25,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Integration tests only, so PR runs skip everything (merge queue runs the suite);
-  # the unit-test and coverage jobs run in py-tests.yml.
+  # Keeps the required check context; integration tests run in py-tests-nightly.yml.
   python:
     uses: ./.github/workflows/py-tests-shared.yml
     with:

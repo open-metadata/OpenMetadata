@@ -11,7 +11,7 @@
 
 name: py-tests-shared
 
-# Shared job graph for py-tests.yml (MySQL) and py-tests-postgres.yml (PostgreSQL).
+# Shared job graph for PR checks and nightly MySQL/PostgreSQL tests.
 # Callers own their `py-tests-status` job: moving it here renames the required check
 # context and breaks the ruleset.
 
@@ -31,7 +31,12 @@ on:
         required: true
         type: string
       run-unit-tests:
-        description: Run the unit-test and static-check matrix
+        description: Run unit tests and static checks
+        required: false
+        type: boolean
+        default: false
+      full-suite:
+        description: Run all supported Python versions and integration tests
         required: false
         type: boolean
         default: false
@@ -41,9 +46,6 @@ on:
         type: boolean
         default: false
 
-env:
-  # Coverage and static checks run on the lowest supported interpreter.
-  MAIN_PYTHON_VERSION: "3.10"
 jobs:
   # Detect whether relevant paths changed before the matrix fans out.
   changes:
@@ -51,10 +53,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     outputs:
-      python: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.python }}
-      e2e: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.e2e }}
-      # PRs run unit tests only; the integration suite runs in the merge queue (and on dispatch).
-      integration: ${{ github.event_name == 'workflow_dispatch' && 'true' || github.event_name == 'merge_group' && steps.filter.outputs.python || 'false' }}
+      python: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.python }}
+      e2e: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.e2e }}
+      integration: ${{ inputs.full-suite && 'true' || 'false' }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -72,11 +73,14 @@ jobs:
             python:
               - 'ingestion/**'
               - 'scripts/prepare_classification_models.py'
+              - 'scripts/tests/test_python_ci_matrix.py'
               - '.github/actions/prepare-classification-models/**'
               - '.github/actions/prepare-classification-model/**'
               - '.github/workflows/warm-classification-models.yml'
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-tests-postgres.yml'
+              - '.github/workflows/py-tests-nightly.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
               - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
@@ -93,6 +97,8 @@ jobs:
               - 'openmetadata-spec/src/main/resources/json/schema/**'
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-tests-postgres.yml'
+              - '.github/workflows/py-tests-nightly.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
               - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
@@ -108,7 +114,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
 
       - name: Setup JDK 21
@@ -137,7 +143,7 @@ jobs:
       - name: Upload backend distribution
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: openmetadata-backend-distribution
+          name: ${{ inputs.artifact-prefix }}-backend-distribution
           path: openmetadata-dist/target/openmetadata-*.tar.gz
           if-no-files-found: error
           compression-level: 0
@@ -149,15 +155,26 @@ jobs:
     runs-on: ubuntu-24.04
     outputs:
       versions: ${{ steps.matrix.outputs.versions }}
+      unit-versions: ${{ steps.matrix.outputs.unit-versions }}
+      static-version: ${{ steps.matrix.outputs.static-version }}
+      coverage-version: ${{ steps.matrix.outputs.coverage-version }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
+      - name: Validate Python CI selection
+        run: python3 -m unittest discover -s scripts/tests -p test_python_ci_matrix.py -v
       - id: matrix
+        env:
+          FULL_SUITE: ${{ inputs.full-suite }}
         run: |
-          matrix=$(python3 scripts/prepare_classification_models.py matrix --project ingestion)
-          echo "versions=$(jq -c '."python-versions"' <<< "$matrix")" >> "$GITHUB_OUTPUT"
+          args=()
+          if [ "$FULL_SUITE" = "true" ]; then
+            args+=(--full-suite)
+          fi
+          python3 scripts/prepare_classification_models.py test-matrix --project ingestion "${args[@]}" \
+            | jq -r 'to_entries[] | "\(.key)=\(.value | if type == "array" then tojson else . end)"' >> "$GITHUB_OUTPUT"
 
   prepare-spacy-model:
     permissions:
@@ -173,9 +190,44 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - uses: ./.github/actions/prepare-classification-models
+        with:
+          artifact-name: ${{ inputs.artifact-prefix }}-classification-models
+
+  py-static-checks:
+    name: Static Checks
+    needs: [changes, python-matrix, prepare-spacy-model]
+    if: ${{ inputs.run-unit-tests && needs.changes.outputs.python == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: ${{ needs.python-matrix.outputs.static-version }}
+          classification-models: 'true'
+          classification-models-artifact: ${{ inputs.artifact-prefix }}-classification-models
+          install-server: 'false'
+      - name: Run Static Checks
+        run: |
+          set -o pipefail
+          source env/bin/activate
+          cd ingestion
+          nox --no-venv -s static-checks 2>&1 | tee static-checks-run.log
+        shell: bash
+      - name: Upload static check log
+        if: ${{ always() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ inputs.artifact-prefix }}-static-checks
+          path: ingestion/static-checks-run.log
+          if-no-files-found: warn
+          retention-days: 14
 
   py-unit-tests:
-    name: Unit Tests & Static Checks
+    name: Unit Tests
     needs: [changes, python-matrix, prepare-spacy-model]
     if: ${{ inputs.run-unit-tests && needs.changes.outputs.python == 'true' }}
     timeout-minutes: 60
@@ -183,42 +235,30 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        py-version: ${{ fromJSON(needs.python-matrix.outputs.versions) }}
+        py-version: ${{ fromJSON(needs.python-matrix.outputs.unit-versions) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ matrix.py-version }}
           classification-models: 'true'
+          classification-models-artifact: ${{ inputs.artifact-prefix }}-classification-models
           install-server: 'false'
 
       # The job checks out the PR head, which can predate the cli_e2e_v2 framework,
       # so skip when the suite isn't checked out.
       - name: Run offline E2E framework tests
-        if: ${{ matrix.py-version == '3.10' && needs.changes.outputs.e2e == 'true' && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
+        if: ${{ matrix.py-version == needs.python-matrix.outputs.coverage-version && needs.changes.outputs.e2e == 'true' && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
         run: |
           source env/bin/activate
           cd ingestion
           env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
             python -m pytest tests/cli_e2e_v2/meta -q
-        shell: bash
-
-      - name: Run Static Checks
-        # basedpyright is configured with `pythonVersion = "3.10"` (the lowest
-        # supported version) so type-checking results are identical across the
-        # 3.10/3.11/3.12 matrix. Run on the lowest version only to avoid
-        # redundant work and keep the baseline file deterministic.
-        if: matrix.py-version == '3.10'
-        run: |
-          set -o pipefail
-          source env/bin/activate
-          cd ingestion
-          nox --no-venv -s static-checks 2>&1 | tee static-checks-run.log
         shell: bash
 
       - name: Run Unit Tests
@@ -250,7 +290,6 @@ jobs:
             --exit-code "$test_exit_code" \
             --report-glob 'ingestion/junit/test-results-*.xml' \
             --diagnostic-glob 'ingestion/*-test-run.log' \
-            --diagnostic-glob 'ingestion/static-checks-run.log' \
             --output ingestion/ci-diagnostics/outcome.json
 
       - name: Upload test results
@@ -263,14 +302,13 @@ jobs:
             ingestion/junit/
             ingestion/ci-diagnostics/outcome.json
             ingestion/*-test-run.log
-            ingestion/static-checks-run.log
             ingestion/unit-test-exit-code.txt
           if-no-files-found: warn
           retention-days: 14
           compression-level: 1
 
       - name: Upload coverage artifact
-        if: ${{ matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
+        if: ${{ inputs.run-coverage && matrix.py-version == needs.python-matrix.outputs.coverage-version && !cancelled() }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -342,7 +380,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
           persist-credentials: false
       - name: Use runner data disk for Docker
         if: matrix.shard.needs-disk
@@ -352,7 +390,7 @@ jobs:
       - name: Download backend distribution
         uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
-          name: openmetadata-backend-distribution
+          name: ${{ inputs.artifact-prefix }}-backend-distribution
           path: openmetadata-dist/target
 
       - name: Setup Openmetadata Test Environment
@@ -360,6 +398,7 @@ jobs:
         with:
           python-version: ${{ matrix.py-version}}
           classification-models: 'true'
+          classification-models-artifact: ${{ inputs.artifact-prefix }}-classification-models
           args: ${{ inputs.compose-args }}
 
       - name: Reclaim unused disk for the Exasol shard
@@ -406,7 +445,7 @@ jobs:
             --output ingestion/ci-diagnostics/outcome.json
 
       - name: Upload coverage artifact
-        if: ${{ inputs.run-coverage && matrix.py-version == env.MAIN_PYTHON_VERSION && !cancelled() }}
+        if: ${{ inputs.run-coverage && matrix.py-version == needs.python-matrix.outputs.coverage-version && !cancelled() }}
         continue-on-error: true
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -476,7 +515,7 @@ jobs:
   # Cross-checks that the jobs which were supposed to run actually ran.
   verify:
     name: Verify Expected Jobs
-    needs: [changes, build-distribution, py-unit-tests, py-integration-tests]
+    needs: [changes, build-distribution, py-unit-tests, py-static-checks, py-integration-tests]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
@@ -487,6 +526,7 @@ jobs:
           RUN_INTEGRATION: ${{ needs.changes.outputs.integration }}
           BUILD_RESULT: ${{ needs.build-distribution.result }}
           UNIT_RESULT: ${{ needs.py-unit-tests.result }}
+          STATIC_RESULT: ${{ needs.py-static-checks.result }}
           INTEGRATION_RESULT: ${{ needs.py-integration-tests.result }}
           RUN_UNIT_TESTS: ${{ inputs.run-unit-tests }}
         run: |
@@ -507,14 +547,14 @@ jobs:
 
           if [ "$PYTHON_CHANGED" = "true" ]; then
             if [ "$BUILD_RESULT" != "$expected_integration" ] || [ "$INTEGRATION_RESULT" != "$expected_integration" ] \
-               || [ "$UNIT_RESULT" != "$expected_unit" ]; then
-              echo "Expected Python jobs did not succeed: build=$BUILD_RESULT integration=$INTEGRATION_RESULT (expected $expected_integration) unit=$UNIT_RESULT (expected $expected_unit)"
+               || [ "$UNIT_RESULT" != "$expected_unit" ] || [ "$STATIC_RESULT" != "$expected_unit" ]; then
+              echo "Expected Python jobs did not succeed: build=$BUILD_RESULT integration=$INTEGRATION_RESULT (expected $expected_integration) unit=$UNIT_RESULT static=$STATIC_RESULT (expected $expected_unit)"
               exit 1
             fi
           elif [ "$PYTHON_CHANGED" = "false" ]; then
-            if [ "$BUILD_RESULT" != "skipped" ] || [ "$UNIT_RESULT" != "skipped" ] \
+            if [ "$BUILD_RESULT" != "skipped" ] || [ "$UNIT_RESULT" != "skipped" ] || [ "$STATIC_RESULT" != "skipped" ] \
                || [ "$INTEGRATION_RESULT" != "skipped" ]; then
-              echo "Unexpected Python job result for an unchanged tree: build=$BUILD_RESULT unit=$UNIT_RESULT integration=$INTEGRATION_RESULT"
+              echo "Unexpected Python job result for an unchanged tree: build=$BUILD_RESULT unit=$UNIT_RESULT static=$STATIC_RESULT integration=$INTEGRATION_RESULT"
               exit 1
             fi
           else
@@ -524,7 +564,7 @@ jobs:
         shell: bash
 
   py-combine-coverage:
-    needs: [changes, py-unit-tests, py-integration-tests]
+    needs: [changes, python-matrix, py-unit-tests, py-integration-tests]
     if: ${{ always() && inputs.run-coverage && needs.changes.outputs.python == 'true' && needs.py-unit-tests.result == 'success' && contains(fromJSON('["success", "skipped"]'), needs.py-integration-tests.result) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -533,14 +573,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 0
           filter: blob:none
           persist-credentials: false
       - name: Setup Python
         uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
-          python-version: ${{ env.MAIN_PYTHON_VERSION }}
+          python-version: ${{ needs.python-matrix.outputs.coverage-version }}
 
       - name: Install uv
         run: pip install uv

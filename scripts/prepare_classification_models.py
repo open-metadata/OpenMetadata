@@ -75,6 +75,20 @@ def python_matrix(project):
     }
 
 
+def test_matrix(project, full_suite):
+    """Select unit, static-check and coverage interpreters from supported versions."""
+    matrix = python_matrix(project)
+    versions = matrix["python-versions"]
+    lowest = min(versions, key=lambda v: tuple(map(int, v.split("."))))
+    highest = matrix["discovery-python"]
+    return {
+        "versions": versions,
+        "unit-versions": versions if full_suite else [highest],
+        "static-version": lowest,
+        "coverage-version": lowest if full_suite else highest,
+    }
+
+
 def discover(project):
     """Read model requirements and matching static metadata without application imports."""
     config = read_project(project)
@@ -184,6 +198,9 @@ def main():
     commands = parser.add_subparsers(dest="command", required=True)
     matrix = commands.add_parser("matrix")
     matrix.add_argument("--project", type=Path, required=True)
+    tests = commands.add_parser("test-matrix")
+    tests.add_argument("--project", type=Path, required=True)
+    tests.add_argument("--full-suite", action="store_true")
     discovery = commands.add_parser("discover")
     discovery.add_argument("--project", type=Path, required=True)
     verification = commands.add_parser("verify")
@@ -200,6 +217,8 @@ def main():
     args = parser.parse_args()
     if args.command == "matrix":
         sys.stdout.write(json.dumps(python_matrix(args.project)) + "\n")
+    elif args.command == "test-matrix":
+        sys.stdout.write(json.dumps(test_matrix(args.project, args.full_suite)) + "\n")
     elif args.command == "discover":
         sys.stdout.write(json.dumps(discover(args.project)) + "\n")
     elif args.command == "prepare":
