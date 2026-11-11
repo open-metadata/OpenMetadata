@@ -144,6 +144,8 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
    * Builds the entity URL. When {@code view} is set ("tasks" or "all"), returns the deep link to
    * that entity's task / conversation feed. Test cases are special: incidents live on the flat
    * "issues" tab and the route has no activity_feed sub-route, so a generic feed suffix would 404.
+   * Tasks have no page at {@code /task/{fqn}} and their own page has no feed tabs, so they always
+   * link to {@code /tasks/{taskId}}.
    */
   private String buildEntityUrl(
       String entityType, String fqn, Map<String, Object> entityMap, String view) {
@@ -162,6 +164,9 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           case Entity.TEST_CASE ->
           // TEST_CASE: /test-case/{fqn}/test-case-results
           buildUrl(baseUrl, "test-case", fqn, "test-case-results");
+          case Entity.TASK ->
+          // TASK: /tasks/{taskId}
+          buildUrl(baseUrl, "tasks", fqn, "");
           case Entity.TEST_SUITE ->
           // TEST_SUITE: /test-suites/{fqn}
           buildUrl(baseUrl, "test-suites", fqn, "");
@@ -218,7 +223,7 @@ public class BuildEntityUrlHelper implements HandlebarsHelper {
           buildUrl(baseUrl, entityType, fqn, "");
         };
 
-    if (!nullOrEmpty(view) && !nullOrEmpty(url)) {
+    if (!nullOrEmpty(view) && !nullOrEmpty(url) && !Entity.TASK.equals(entityType)) {
       String feed = "tasks".equals(view) ? "tasks" : "all";
       url = String.format("%s/activity_feed/%s", url, feed);
     }

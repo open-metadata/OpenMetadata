@@ -248,6 +248,26 @@ class BuildEntityUrlHelperTest {
   }
 
   @Test
+  void task_linksToTaskPage() throws IOException {
+    Map<String, Object> entity =
+        Map.of(
+            "id", UUID.randomUUID().toString(),
+            "fullyQualifiedName", "TASK-00761",
+            "name", "Approval required for ClaimEventFeature");
+
+    String url = extractHref(render(Entity.TASK, entity));
+
+    assertEquals(BASE_URL + "/tasks/TASK-00761", url);
+  }
+
+  @Test
+  void taskLink_withView_staysOnTaskPage() throws IOException {
+    String url = extractHref(renderFeedLink(Entity.TASK, "TASK-00761", "tasks"));
+
+    assertEquals(BASE_URL + "/tasks/TASK-00761", url);
+  }
+
+  @Test
   void testCaseResultLink_keepsResultsTabWithoutView() throws IOException {
     Map<String, Object> entity =
         Map.of(
