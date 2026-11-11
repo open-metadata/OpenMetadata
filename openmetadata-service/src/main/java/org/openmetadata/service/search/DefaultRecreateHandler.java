@@ -627,9 +627,18 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     if (live == null || live.getNumberOfShards() == null) {
       return mappingContent;
     }
+    requirePositiveShards(live);
     ObjectNode root = (ObjectNode) JsonUtils.readTree(mappingContent);
     root.withObject("/settings/index").put("number_of_shards", live.getNumberOfShards());
     return JsonUtils.pojoToJson(root);
+  }
+
+  // The trigger payload skips the schema minimum, so a bad value must fail the run here.
+  public static void requirePositiveShards(IndexSettings settings) {
+    Integer shards = settings == null ? null : settings.getNumberOfShards();
+    if (shards != null && shards < 1) {
+      throw new IllegalArgumentException("numberOfShards must be at least 1, got " + shards);
+    }
   }
 
   private String buildStagedIndexName(String originalIndexName) {

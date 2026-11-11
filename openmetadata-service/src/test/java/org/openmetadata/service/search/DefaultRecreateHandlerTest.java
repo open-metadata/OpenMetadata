@@ -3,6 +3,7 @@ package org.openmetadata.service.search;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
@@ -1703,6 +1704,21 @@ class DefaultRecreateHandlerTest {
           JsonUtils.readTree(createStagedIndexBody(job))
               .at("/settings/index/number_of_shards")
               .asInt());
+    }
+
+    @Test
+    @DisplayName("Nonpositive numberOfShards fails before the staged index is created")
+    void nonpositiveShardsAreRejected() {
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              DefaultRecreateHandler.withNumberOfShards(
+                  MAPPING, new IndexSettings().withNumberOfShards(0)));
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              DefaultRecreateHandler.withNumberOfShards(
+                  MAPPING, new IndexSettings().withNumberOfShards(-1)));
     }
 
     private String createStagedIndexBody(EventPublisherJob job) {
