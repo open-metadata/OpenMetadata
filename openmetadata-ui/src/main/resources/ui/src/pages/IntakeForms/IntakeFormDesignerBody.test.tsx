@@ -14,13 +14,13 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { createRef } from 'react';
 import { CustomProperty } from '../../generated/entity/type';
 import {
-    FieldKind,
-    IntakeForm,
-    TargetEntityType
+  FieldKind,
+  IntakeForm,
+  TargetEntityType,
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
 import IntakeFormDesignerBody, {
-    IntakeFormDesignerBodyHandle
+  IntakeFormDesignerBodyHandle,
 } from './IntakeFormDesignerBody';
 
 jest.mock('../../rest/metadataTypeAPI', () => ({

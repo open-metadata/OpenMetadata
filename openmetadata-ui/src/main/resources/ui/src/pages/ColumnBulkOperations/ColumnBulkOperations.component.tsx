@@ -16,8 +16,8 @@ import { useTranslation } from 'react-i18next';
 import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import {
-    getGlossaryHomeCrumb,
-    getHomeCrumb
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
 } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useIsAiMode } from '../../hooks/useAppMode';

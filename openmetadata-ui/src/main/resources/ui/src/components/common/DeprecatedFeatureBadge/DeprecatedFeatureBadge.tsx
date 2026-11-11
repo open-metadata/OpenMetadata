@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 import {
-    Badge,
-    BadgeWithIcon,
-    Box,
-    Tooltip,
-    Typography
+  Badge,
+  BadgeWithIcon,
+  Box,
+  Tooltip,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { InfoCircle } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';

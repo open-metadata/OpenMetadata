@@ -12,17 +12,17 @@
  */
 
 import {
-    Box,
-    Button,
-    SlideoutMenu,
-    Typography
+  Box,
+  Button,
+  SlideoutMenu,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeprecatedFeatureBadge from '../../components/common/DeprecatedFeatureBadge/DeprecatedFeatureBadge';
 import { ENTITY_TYPE_LABEL_KEYS } from '../../utils/IntakeFormUtils';
 import IntakeFormDesignerBody, {
-    IntakeFormDesignerBodyHandle
+  IntakeFormDesignerBodyHandle,
 } from './IntakeFormDesignerBody';
 import { IntakeFormDesignerModalProps } from './IntakeFormDesignerModal.interface';
 
