@@ -68,6 +68,8 @@ import { getTaskFieldName } from '../../../utils/TaskFieldPathUtils';
 import {
   getTaskDetailPathFromTask,
   getTaskDisplayId,
+  hasVotedInCurrentStage,
+  isAllowedDecider,
   isTaskPendingFurtherApproval,
 } from '../../../utils/TaskNavigationUtils';
 import { getNormalizedTaskPayload } from '../../../utils/TaskPayloadUtils';
@@ -77,6 +79,7 @@ import {
   isOntologyReviewTask,
 } from '../../../utils/TaskUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
+import { useCurrentUserIds } from '../../discovery/personal-space/InboxPage/useCurrentUserIds';
 import { getTaskTypeMessageKey } from '../../Entity/Task/MetadataCompletionTask/MetadataCompletionTask.utils';
 import {
   CARD_CONTAINER_CLASS_NAME,
@@ -109,20 +112,26 @@ const getHasTaskEditAccess = ({
   isAssignee,
   isPartOfAssigneeTeam,
   isCreator,
+  hasVoted,
+  isDecider,
 }: {
   isAdminUser?: boolean;
   isTaskApprovalRequest: boolean;
   isAssignee?: boolean;
   isPartOfAssigneeTeam?: boolean;
   isCreator: boolean;
+  hasVoted: boolean;
+  isDecider: boolean;
 }): boolean => {
   const isAdminNonApproval = isAdminUser && !isTaskApprovalRequest;
-
-  return (
+  const canAct =
     isAdminNonApproval ||
     Boolean(isAssignee) ||
-    (Boolean(isPartOfAssigneeTeam) && !isCreator)
-  );
+    (Boolean(isPartOfAssigneeTeam) && !isCreator);
+
+  // A voter waits for the other approvers; the server ignores a second vote in the same stage.
+  // A workflow approval is decided only by its assignees, admins included.
+  return canAct && isDecider && !hasVoted;
 };
 
 interface TaskFeedCardFromTaskProps {
@@ -148,6 +157,7 @@ const TaskFeedCardFromTask = ({
   const { t } = useTranslation();
   const { setActiveTask, showTaskDrawer } = useActivityFeedProvider();
   const { currentUser } = useApplicationStore();
+  const currentUserIds = useCurrentUserIds();
   const { isAdminUser } = useAuth();
   const isTaskTags = isTagsTaskType(task.type);
   const isTaskDescription = isDescriptionTaskType(task.type);
@@ -344,6 +354,8 @@ const TaskFeedCardFromTask = ({
     isAssignee,
     isPartOfAssigneeTeam,
     isCreator,
+    hasVoted: hasVotedInCurrentStage(task, currentUser),
+    isDecider: isAllowedDecider(task, currentUserIds),
   });
 
   const showReplies = useCallback(() => {
