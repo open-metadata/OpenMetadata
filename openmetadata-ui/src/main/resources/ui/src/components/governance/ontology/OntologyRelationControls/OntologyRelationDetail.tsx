@@ -299,6 +299,7 @@ const OntologyRelationDetail = ({
           aria-label={t('label.edit-entity', {
             entity: t('label.relationship'),
           })}
+          dividers="scroll"
           width={320}
           onClose={() => setIsPicking(false)}>
           <RelationshipTypePicker

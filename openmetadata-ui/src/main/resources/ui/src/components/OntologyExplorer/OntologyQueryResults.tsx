@@ -15,16 +15,11 @@ import {
   Badge,
   Box,
   Button,
-  FeaturedIcon,
   Table,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Copy01,
-  Download01,
-  Table as TableIcon,
-} from '@openmetadata/ui-core-components/icons';
+import { Copy01, Download01 } from '@openmetadata/ui-core-components/icons';
 import {
   Key,
   ReactElement,
@@ -41,6 +36,7 @@ import { SparqlPlaygroundResult } from '../../rest/rdfAPI';
 import { downloadCsv } from '../../utils/Export/ExportUtils';
 import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
+import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
 import { LayoutType } from './OntologyExplorer.constants';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
@@ -401,21 +397,14 @@ export const QueryResultsEmptyState = ({ meta }: { meta?: ReactNode }) => {
         </Typography>
         {meta}
       </Box>
-      <Box
-        align="center"
-        className="tw:min-h-48 tw:text-center"
-        data-testid="ontology-sparql-results-empty"
-        direction="col"
-        gap={2}
-        justify="center">
-        <FeaturedIcon color="gray" icon={TableIcon} size="md" theme="modern" />
-        <Typography size="text-sm" weight="semibold">
-          {t('label.no-results-yet')}
-        </Typography>
-        <Typography color="secondary" size="text-sm">
-          {t('message.run-query-to-see-query-results')}
-        </Typography>
-      </Box>
+      <div
+        className="tw:relative tw:min-h-48"
+        data-testid="ontology-sparql-results-empty">
+        <NoDataPlaceholder
+          description={t('message.run-query-to-see-query-results')}
+          title={t('label.no-results-yet')}
+        />
+      </div>
     </Box>
   );
 };
