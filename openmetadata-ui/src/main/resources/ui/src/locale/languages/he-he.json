@@ -6738,6 +6738,7 @@
     "workflow-empty-description": "בנה זרימות עבודה מבוססות אירועים או מתוזמנות שמגיבות ברגע שמשהו משתנה. הגדר זאת פעם אחת, ו-OpenMetadata מטפל בשאר.",
     "workflow-fqn-required": "FQN של זרימת עבודה נדרש",
     "workflow-id-required": "מזהה זרימת עבודה נדרש",
+    "workflow-name-cannot-change-after-create": "השם הוא המזהה הייחודי של תהליך העבודה ולא ניתן לשנותו לאחר יצירתו.",
     "workflow-name-invalid-characters": "שם תהליך העבודה יכול להכיל רק תווים אלפאנומריים, מקפים וקווים תחתונים",
     "workflow-name-max-length": "שם תהליך העבודה חייב להיות באורך של עד {{count}} תווים",
     "workflow-name-min-length": "שם תהליך העבודה חייב להיות באורך של לפחות {{count}} תווים",
