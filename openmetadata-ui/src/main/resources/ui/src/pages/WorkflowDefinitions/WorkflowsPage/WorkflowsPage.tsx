@@ -467,8 +467,9 @@ const WorkflowsPage = () => {
                       *
                     </Typography>
                   </div>
+                  {/* Keeps the workflow-name test id: downstream E2E helpers type the workflow's name here. */}
                   <Input
-                    data-testid="workflow-display-name"
+                    data-testid="workflow-name"
                     isDisabled={isSubmitting}
                     isInvalid={!!nameError}
                     placeholder={t('label.workflow-name-placeholder')}
@@ -498,7 +499,7 @@ const WorkflowsPage = () => {
                   {/* The name is the workflow's FQN, so it is derived, never typed. */}
                   <Input
                     isDisabled
-                    data-testid="workflow-name"
+                    data-testid="workflow-name-derived"
                     value={workflowName}
                   />
                   <Typography

@@ -329,12 +329,12 @@ describe('WorkflowsPage create form', () => {
     (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
     await openCreateForm();
 
-    fireEvent.change(textbox('workflow-display-name'), {
+    fireEvent.change(textbox('workflow-name'), {
       target: { value: 'Test lifecycle' },
     });
 
-    expect(textbox('workflow-name')).toHaveValue('Test-lifecycle');
-    expect(textbox('workflow-name')).toBeDisabled();
+    expect(textbox('workflow-name-derived')).toHaveValue('Test-lifecycle');
+    expect(textbox('workflow-name-derived')).toBeDisabled();
 
     await act(async () => {
       fireEvent.click(screen.getByTestId('submit-workflow-button'));
