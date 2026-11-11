@@ -239,11 +239,16 @@ const AllOntologiesGraphView = ({
     );
   };
 
+  // Data mode lives on Graph only, so Tree keeps the card even when Graph was left in Data.
+  const showsHealth = !selected && (surface === 'tree' || graphMode !== 'data');
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
         // Leaves room on the right for the floating health card.
-        <div className={selected ? 'tw:h-full' : 'tw:h-full tw:pr-92'}>
+        <div
+          className={showsHealth ? 'tw:h-full tw:pr-92' : 'tw:h-full'}
+          data-testid="ontology-tree-surface">
           <OntologyTreeView
             density="compact"
             selectedNodeId={selectedConceptId}
@@ -397,9 +402,9 @@ const AllOntologiesGraphView = ({
         {renderSearch()}
         {renderGraphMode()}
         {renderSurface()}
-        {selected || graphMode === 'data' ? null : (
+        {showsHealth ? (
           <OntologyHealthPanel isRaised health={health} onConnect={openOwner} />
-        )}
+        ) : null}
       </div>
       {selected && model ? (
         <OntologyConceptInspector
