@@ -522,10 +522,14 @@ def _key_struct_field_parents(column_lineage_map: dict, lineage_parser: LineageP
     read_tables = {str(table) for table in (*source_tables, *intermediate_tables, *target_tables)}
     default_prefix = f"{DEFAULT_SCHEMA_NAME}."
     for sources in column_lineage_map.values():
-        for key in list(sources):
+        struct_keys = [
+            key
+            for key in sources
+            if key.startswith(default_prefix) and "." not in key.removeprefix(default_prefix) and key not in read_tables
+        ]
+        for key in struct_keys:
             name = key.removeprefix(default_prefix)
-            if key.startswith(default_prefix) and "." not in name and key not in read_tables:
-                sources.setdefault(f"{STRUCT_FIELD_PARENT}.{name}", []).extend(sources.pop(key))
+            sources.setdefault(f"{STRUCT_FIELD_PARENT}.{name}", []).extend(sources.pop(key))
 
 
 # pylint: disable=too-many-arguments

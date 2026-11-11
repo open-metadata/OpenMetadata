@@ -186,6 +186,58 @@ def test_nested_fields_resolve_in_other_dialects_with_struct_columns(dialect):
     }
 
 
+def test_nested_fields_map_only_between_the_columns_lineage_pairs():
+    # `email` is a top-level column in t1 and a nested field in t2: each view column maps
+    # only within the column it was selected from, never across tables or levels.
+    t1 = _table("t1", [_column("t1", "id", "INT"), _column("t1", "email")])
+    t2 = _table("t2", [_column("t2", "id", "INT"), _customer("t2")])
+    view = _table("v", [_column("v", "email"), _customer("v")])
+
+    edges = _column_edges(
+        "CREATE VIEW ds.v AS SELECT t1.email AS email, t2.customer AS customer FROM ds.t1 JOIN ds.t2 ON t1.id = t2.id",
+        [t1, t2, view],
+    )
+
+    assert edges == {
+        ("t1.email", "v.email"),
+        ("t2.customer", "v.customer"),
+        ("t2.customer.email", "v.customer.email"),
+        ("t2.customer.address", "v.customer.address"),
+        ("t2.customer.address.zip", "v.customer.address.zip"),
+        ("t2.customer.address.city", "v.customer.address.city"),
+    }
+
+
+def test_struct_selected_as_is_maps_only_the_fields_both_sides_have():
+    partial = _table(
+        "vp",
+        [
+            _column(
+                "vp",
+                "customer",
+                "STRUCT",
+                [
+                    _column("vp", "customer.email"),
+                    _column("vp", "customer.address", "STRUCT", [_column("vp", "customer.address.zip")]),
+                    _column("vp", "customer.phone"),
+                ],
+            )
+        ],
+    )
+    scalar = _table("vs", [_column("vs", "customer")])
+
+    partial_edges = _column_edges("CREATE VIEW ds.vp AS SELECT customer FROM ds.users", [USERS, partial])
+    scalar_edges = _column_edges("CREATE VIEW ds.vs AS SELECT customer FROM ds.users", [USERS, scalar])
+
+    assert partial_edges == {
+        ("users.customer", "vp.customer"),
+        ("users.customer.email", "vp.customer.email"),
+        ("users.customer.address", "vp.customer.address"),
+        ("users.customer.address.zip", "vp.customer.address.zip"),
+    }
+    assert scalar_edges == {("users.customer", "vs.customer")}
+
+
 def test_unqualified_table_name_stays_a_table_next_to_a_struct_path():
     orders = _table(
         "orders",
@@ -288,7 +340,7 @@ def test_a_query_whose_subqueries_cannot_be_read_counts_as_having_them():
     unparsed = LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY)
     unparsed.parser = None
     unreadable = LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY)
-    unreadable.parser._sql_holder = None
+    unreadable.parser = MagicMock(get_column_lineage=MagicMock(side_effect=RuntimeError("unreadable")))
 
     assert unparsed.has_subqueries
     assert unreadable.has_subqueries

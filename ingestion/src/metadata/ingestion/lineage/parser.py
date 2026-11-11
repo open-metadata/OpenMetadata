@@ -167,20 +167,21 @@ class LineageParser:
             return self.retrieve_tables(self.parser.source_tables)
         return []
 
-    # pylint: disable=protected-access
     @cached_property
     def has_subqueries(self) -> bool:
         """
-        Whether the query reads a subquery or a CTE. A query the parser could not read counts
-        as having one, so callers that need there to be none stay conservative.
+        Whether any column lineage in the query runs through a subquery or a CTE, which could
+        rename a column. A query the parser could not read counts as having one, so callers
+        that need there to be none stay conservative.
         """
         if self.parser is None:
             return True
         try:
-            return any(isinstance(node, SubQuery) for node in self.parser._sql_holder.graph.nodes)
+            paths = self.parser.get_column_lineage(exclude_subquery=False)
         except Exception as err:
             logger.debug("[%s] Cannot inspect the query for subqueries: %s", self.query_hash, err)
             return True
+        return any(isinstance(column.parent, SubQuery) for path in paths for column in path)
 
     @cached_property
     def target_tables(self) -> list[Table | Location]:
