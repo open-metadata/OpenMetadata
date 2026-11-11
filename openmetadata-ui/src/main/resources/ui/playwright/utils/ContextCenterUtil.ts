@@ -105,6 +105,22 @@ export const selectDocumentByName = async (page: Page, fileName: string) => {
   await row.getByTestId('document-checkbox').click();
 };
 
+// Changing the search clears the selection, so a multi-select must come from one
+// search whose term matches every file (e.g. a uuid shared by their names).
+export const selectDocumentsBySharedTerm = async (
+  page: Page,
+  searchTerm: string,
+  fileNames: string[]
+) => {
+  await searchAndGetDocumentRow(page, searchTerm);
+  for (const fileName of fileNames) {
+    const row = getDocumentRowByName(page, fileName);
+    await expect(row).toBeVisible();
+    await row.scrollIntoViewIfNeeded();
+    await row.getByTestId('document-checkbox').click();
+  }
+};
+
 export const expectSelectedCount = async (page: Page, count: number) => {
   await expect(
     page.getByText(`${count} selected`, { exact: true })
