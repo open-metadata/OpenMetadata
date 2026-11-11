@@ -14,12 +14,14 @@ A cache saved by a pull_request run is scoped to that PR's merge ref. Only that
 PR's own re-runs can read it, yet it counts against the repo's 10 GB LRU budget
 and evicts the main-scoped Maven, uv and Playwright caches every run restores.
 So no job a pull_request can reach may save a cache, directly or through a
-local composite action or reusable workflow. Writers stay on push / schedule.
+local composite action or reusable workflow. Writers stay on push / schedule
+(ADR:2026-11-11-pull-request-jobs-restore-caches-but-never-save-them).
 """
 
 from __future__ import annotations
 
 import importlib.util
+import re
 import shlex
 from pathlib import Path
 
@@ -106,10 +108,29 @@ def cache_writer(step: dict) -> str | None:
     return None
 
 
-def step_writers(steps: list, root: Path, trail: str, seen: tuple = ()) -> list[str]:
+def off_by_input(condition: str, inputs: dict) -> bool:
+    """True when a top-level `inputs.X == 'true'` term is known to be false."""
+    for term in condition.replace("${{", "").replace("}}", "").split("&&"):
+        name, _, value = term.strip().partition(" == ")
+        known = inputs.get(name.removeprefix("inputs."), "${{")
+        if name.startswith("inputs.") and value == "'true'" and "${{" not in known:
+            return known != "true"
+    return False
+
+
+def resolve_input(value: str, inputs: dict) -> str:
+    """Resolve a bare `${{ inputs.X }}` pass-through from the calling composite."""
+    match = re.fullmatch(r"\$\{\{\s*inputs\.([\w-]+)\s*\}\}", value.strip())
+    return inputs.get(match.group(1), value) if match else value
+
+
+def step_writers(
+    steps: list, root: Path, trail: str, seen: tuple = (), inputs: dict | None = None
+) -> list[str]:
     found = []
     for index, step in enumerate(steps or []):
-        if excludes_pull_request(step.get("if", "")):
+        condition = str(step.get("if", ""))
+        if excludes_pull_request(condition) or off_by_input(condition, inputs or {}):
             continue
         label = f"{trail} > {step.get('name') or step.get('uses') or f'step {index}'}"
         reason = cache_writer(step)
@@ -127,9 +148,20 @@ def step_writers(steps: list, root: Path, trail: str, seen: tuple = ()) -> list[
                 None,
             )
             assert action_file, f"{label}: local action {uses} not found"
-            runs = load(action_file).get("runs", {})
+            action = load(action_file)
+            runs = action.get("runs", {})
             if runs.get("using") == "composite":
-                found += step_writers(runs.get("steps"), root, label, (*seen, uses))
+                given = {
+                    k: resolve_input(str(v), inputs or {})
+                    for k, v in (step.get("with") or {}).items()
+                }
+                child = {
+                    name: given.get(name, str((spec or {}).get("default", "")))
+                    for name, spec in (action.get("inputs") or {}).items()
+                }
+                found += step_writers(
+                    runs.get("steps"), root, label, (*seen, uses), child
+                )
     return found
 
 
@@ -255,6 +287,54 @@ def test_guard_resolves_local_composite_actions(tmp_path: Path) -> None:
     pr_workflow(tmp_path, [{"uses": "./.github/actions/outer"}])
     [writer] = pull_request_cache_writers(tmp_path)[".github/workflows/pr.yml"]
     assert "./.github/actions/inner" in writer
+
+
+@pytest.mark.parametrize(
+    "caller_with,writes",
+    [({}, False), ({"save-cache": "true"}, True), ({"save-cache": "${{ x }}"}, True)],
+)
+def test_guard_honours_composite_inputs_that_gate_a_save(
+    tmp_path: Path, caller_with: dict, writes: bool
+) -> None:
+    # The default-branch warmer opts in; PR callers leave the input at "false".
+    write(
+        tmp_path,
+        ".github/actions/models/action.yml",
+        {
+            "inputs": {"save-cache": {"default": "false"}},
+            "runs": {
+                "using": "composite",
+                "steps": [
+                    {
+                        "if": "inputs.save-cache == 'true' && steps.r.outputs.cache-hit != 'true'",
+                        "uses": "actions/cache/save@v6",
+                    }
+                ],
+            },
+        },
+    )
+    # An outer composite passes its own input through, as the real action does.
+    write(
+        tmp_path,
+        ".github/actions/outer/action.yml",
+        {
+            "inputs": {"save-cache": {"default": "false"}},
+            "runs": {
+                "using": "composite",
+                "steps": [
+                    {
+                        "uses": "./.github/actions/models",
+                        "with": {"save-cache": "${{ inputs.save-cache }}"},
+                    }
+                ],
+            },
+        },
+    )
+    step = {"uses": "./.github/actions/outer"}
+    if caller_with:
+        step["with"] = caller_with
+    pr_workflow(tmp_path, [step])
+    assert bool(pull_request_cache_writers(tmp_path)) == writes
 
 
 def test_guard_follows_reusable_workflows_and_honours_job_gates(tmp_path: Path) -> None:
