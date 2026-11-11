@@ -75,15 +75,16 @@ def python_matrix(project):
     }
 
 
-def test_matrix(project, full_suite):
+def test_matrix(project, event, full_suite):
     """Select unit, static-check and coverage interpreters from supported versions."""
+    full_suite = event == "schedule" or (event == "workflow_dispatch" and full_suite)
     matrix = python_matrix(project)
     versions = matrix["python-versions"]
     lowest = min(versions, key=lambda v: tuple(map(int, v.split("."))))
     highest = matrix["discovery-python"]
     return {
-        "versions": versions,
-        "unit-versions": versions if full_suite else [highest],
+        "versions": versions if full_suite else [highest],
+        "run-integration": event != "pull_request",
         "static-version": lowest,
         "coverage-version": lowest if full_suite else highest,
     }
@@ -201,6 +202,7 @@ def main():
     tests = commands.add_parser("test-matrix")
     tests.add_argument("--project", type=Path, required=True)
     tests.add_argument("--full-suite", action="store_true")
+    tests.add_argument("--event", choices=("pull_request", "merge_group", "schedule", "workflow_dispatch"), required=True)
     discovery = commands.add_parser("discover")
     discovery.add_argument("--project", type=Path, required=True)
     verification = commands.add_parser("verify")
@@ -218,7 +220,7 @@ def main():
     if args.command == "matrix":
         sys.stdout.write(json.dumps(python_matrix(args.project)) + "\n")
     elif args.command == "test-matrix":
-        sys.stdout.write(json.dumps(test_matrix(args.project, args.full_suite)) + "\n")
+        sys.stdout.write(json.dumps(test_matrix(args.project, args.event, args.full_suite)) + "\n")
     elif args.command == "discover":
         sys.stdout.write(json.dumps(discover(args.project)) + "\n")
     elif args.command == "prepare":

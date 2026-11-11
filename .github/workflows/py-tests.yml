@@ -10,47 +10,146 @@
 #  limitations under the License.
 
 name: py-tests
+
 on:
-  merge_group:
-  workflow_dispatch:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
+  merge_group:
+  schedule:
+    - cron: "0 3 * * *"
+  workflow_dispatch:
+    inputs:
+      full-suite:
+        description: Run all supported Python versions instead of the highest only
+        type: boolean
+        default: true
 
 permissions:
   contents: read
   pull-requests: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  # Owns the unit-test and coverage jobs; they are database-independent, so
-  # py-tests-postgres must not also run them.
-  # -s true: distribution comes from the shared build job. -i false: no test needs Airflow.
+  # Detect whether relevant paths changed before the matrix fans out.
+  changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft }}
+    outputs:
+      python: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.python }}
+      e2e: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.e2e }}
+      integration: ${{ steps.matrix.outputs.run-integration }}
+      versions: ${{ steps.matrix.outputs.versions }}
+      static-version: ${{ steps.matrix.outputs.static-version }}
+      coverage-version: ${{ steps.matrix.outputs.coverage-version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: ${{ github.event_name == 'merge_group' && '0' || '1' }}
+          filter: blob:none
+          persist-credentials: false
+      - uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4
+        id: filter
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
+        with:
+          base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
+          filters: |
+            python:
+              - 'ingestion/**'
+              - 'scripts/prepare_classification_models.py'
+              - 'scripts/tests/test_python_ci_matrix.py'
+              - '.github/actions/prepare-classification-models/**'
+              - '.github/actions/prepare-classification-model/**'
+              - '.github/workflows/warm-classification-models.yml'
+              - '.github/workflows/py-tests.yml'
+              - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/workflows/py-cli-e2e-tests.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+              - 'openmetadata-spec/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/resources/**'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
+              - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
+            e2e:
+              - 'ingestion/tests/cli_e2e_v2/**'
+              - 'ingestion/pyproject.toml'
+              - 'ingestion/setup.py'
+              - 'ingestion/src/_openmetadata_testutils/pytest_openmetadata/**'
+              - 'openmetadata-spec/src/main/resources/json/schema/**'
+              - '.github/workflows/py-tests.yml'
+              - '.github/workflows/py-tests-shared.yml'
+              - '.github/workflows/py-cli-e2e-tests-v2.yml'
+              - '.github/workflows/py-cli-e2e-tests.yml'
+              - '.github/actions/setup-openmetadata-test-environment/action.yml'
+
+      - name: Validate Python CI selection
+        run: python3 -m unittest discover -s scripts/tests -p test_python_ci_matrix.py -v
+      - id: matrix
+        env:
+          CI_EVENT: ${{ github.event_name }}
+          FULL_SUITE: ${{ inputs.full-suite }}
+        run: |
+          args=()
+          if [ "$FULL_SUITE" = "true" ]; then
+            args+=(--full-suite)
+          fi
+          python3 scripts/prepare_classification_models.py test-matrix --project ingestion --event "$CI_EVENT" "${args[@]}" \
+            | jq -r 'to_entries[] | "\(.key)=\(.value | if type == "array" or type == "boolean" then tojson else . end)"' >> "$GITHUB_OUTPUT"
+
+  prepare-spacy-model:
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' }}
+    runs-on: ubuntu-24.04
+    cache-mode: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/prepare-classification-models
+
   python:
+    needs: [changes, prepare-spacy-model]
+    if: ${{ needs.changes.outputs.python == 'true' }}
     uses: ./.github/workflows/py-tests-shared.yml
     with:
-      compose-args: "-m no-ui -s true -i false"
-      artifact-prefix: py
-      test-profile: python-integration
-      run-unit-tests: true
-      run-coverage: true
+      python-versions: ${{ needs.changes.outputs.versions }}
+      static-python: ${{ needs.changes.outputs.static-version }}
+      coverage-python: ${{ needs.changes.outputs.coverage-version }}
+      run-integration: ${{ needs.changes.outputs.integration == 'true' }}
+      run-e2e: ${{ needs.changes.outputs.e2e == 'true' }}
 
-  # The sole required check for this workflow. Must stay in the caller: inside
-  # py-tests-shared.yml it would report as "py-tests / python / <job>".
   py-tests-status:
     name: py-tests-status
-    needs: python
+    needs: [changes, prepare-spacy-model, python]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
-      - name: Verify the shared Python pipeline succeeded
+      - name: Verify the selected Python pipeline succeeded
         env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
+          MODELS_RESULT: ${{ needs.prepare-spacy-model.result }}
           PIPELINE_RESULT: ${{ needs.python.result }}
         run: |
-          if [ "$PIPELINE_RESULT" != "success" ]; then
-            echo "Shared Python pipeline did not succeed: $PIPELINE_RESULT"
+          if [ "$CHANGES_RESULT" != "success" ]; then
+            echo "Python selection failed: $CHANGES_RESULT"
+            exit 1
+          fi
+          case "$PYTHON_CHANGED" in
+            true) expected="success" ;;
+            false) expected="skipped" ;;
+            *) echo "Invalid Python change result: $PYTHON_CHANGED"; exit 1 ;;
+          esac
+          if [ "$MODELS_RESULT" != "$expected" ] || [ "$PIPELINE_RESULT" != "$expected" ]; then
+            echo "Expected $expected: models=$MODELS_RESULT pipeline=$PIPELINE_RESULT"
             exit 1
           fi
         shell: bash
