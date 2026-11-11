@@ -10,7 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { suggestColumnForProperty } from './OntologyBindingSuggestion.utils';
+import {
+  suggestColumnForProperty,
+  suggestPropertyForColumn,
+} from './OntologyBindingSuggestion.utils';
 
 const column = (name: string) => ({ id: JSON.stringify([name]) });
 const columns = [
@@ -49,6 +52,44 @@ describe('suggestColumnForProperty', () => {
   it('suggests nothing when no column resembles the property', () => {
     expect(
       suggestColumnForProperty({ label: 'prescriber' }, columns)
+    ).toBeUndefined();
+  });
+});
+
+describe('suggestPropertyForColumn', () => {
+  const properties = [
+    { id: 'p-id', label: 'Patient Key', isIdentifier: true },
+    { id: 'p-dob', label: 'dateOfBirth' },
+    { id: 'p-name', label: 'Patient Name' },
+    { id: 'p-unit', label: 'unit' },
+  ];
+
+  it('maps a column to the property with the same words', () => {
+    expect(suggestPropertyForColumn('date_of_birth', properties)?.id).toBe(
+      'p-dob'
+    );
+    expect(suggestPropertyForColumn('PatientName', properties)?.id).toBe(
+      'p-name'
+    );
+  });
+
+  it('maps an id column to the identifier property', () => {
+    expect(suggestPropertyForColumn('patient_id', properties)?.id).toBe('p-id');
+  });
+
+  it('maps a column whose name holds the property name', () => {
+    expect(suggestPropertyForColumn('dosage_unit', properties)?.id).toBe(
+      'p-unit'
+    );
+  });
+
+  it('suggests nothing for an unmatched column', () => {
+    expect(suggestPropertyForColumn('created_at', properties)).toBeUndefined();
+  });
+
+  it('does not offer an id column to a concept with no identifier property', () => {
+    expect(
+      suggestPropertyForColumn('row_id', [{ id: 'p-name', label: 'Name' }])
     ).toBeUndefined();
   });
 });

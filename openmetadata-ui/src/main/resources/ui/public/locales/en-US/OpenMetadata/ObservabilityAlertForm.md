@@ -155,14 +155,14 @@ Subject and body support Handlebars placeholders, so one template adapts to what
 
 `{{publisherName}}` (the alert's own name) and `{{emailingEntity}}` are also available at the top level.
 
-Helpers cover what a plain value cannot — `{{buildEntityUrl entity}}` for a link back to the asset, `{{formatDate event.timestamp}}` for a readable time, and `{{camelCaseToTitle name}}` to turn a field name into a readable label. Each helper takes an argument — writing one on its own resolves to nothing. Type `{{` in either field to browse the full set.
+Helpers cover what a plain value cannot — `{{buildEntityUrl event.entityType entity}}` for a link back to the asset, `{{formatDate event.timestamp}}` for a readable time, and `{{camelCaseToTitle name}}` to turn a field name into a readable label. Each helper takes an argument — writing one on its own resolves to nothing. Type `{{` in either field to browse the full set.
 
 Use **Validate** before saving. It checks Handlebars *syntax*, not whether a placeholder actually resolves — a misspelt or non-existent one passes validation and renders as empty text in the delivered message.
 
 **Example:**
 
 > Subject: `[{{event.eventType}}] {{entity.displayName}} needs attention`
-> Body: `{{event.entityType}} {{entity.fullyQualifiedName}} changed. View it at {{buildEntityUrl entity}}.`
+> Body: `{{event.entityType}} {{entity.fullyQualifiedName}} changed. View it at {{buildEntityUrl event.entityType entity}}.`
 
 **Guidelines:**
 

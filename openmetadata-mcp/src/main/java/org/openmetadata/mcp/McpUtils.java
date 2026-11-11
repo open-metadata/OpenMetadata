@@ -1,12 +1,13 @@
 package org.openmetadata.mcp;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.modelcontextprotocol.json.McpJsonMapper;
-import io.modelcontextprotocol.json.jackson2.JacksonMcpJsonMapper;
 import io.modelcontextprotocol.spec.McpSchema;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -14,8 +15,10 @@ import org.openmetadata.schema.utils.JsonUtils;
 @Slf4j
 public class McpUtils {
 
-  private static final McpJsonMapper JSON_MAPPER =
-      new JacksonMcpJsonMapper(JsonUtils.getObjectMapper());
+  // tools.json parameters carry a top-level description and examples that clients have never
+  // received. See ADR:2026-11-06-mcp-tool-schemas-leave-out-the-tools-json-doc-keys.
+  private static final Set<String> DOC_ONLY_SCHEMA_KEYS = Set.of("description", "examples");
+  private static final Map<String, Object> NO_ARGUMENTS_SCHEMA = Map.of("type", "object");
 
   @SuppressWarnings("unchecked")
   public static List<Map<String, Object>> loadDefinitionsFromJson(String json) {
@@ -79,13 +82,13 @@ public class McpUtils {
     String name = (String) toolDef.get("name");
     String title = (String) toolDef.get("title");
     String description = (String) toolDef.get("description");
-    Map<String, Object> schema = JsonUtils.getMap(toolDef.get("parameters"));
+    Map<String, Object> schema =
+        new LinkedHashMap<>(
+            Objects.requireNonNullElse(
+                JsonUtils.getMap(toolDef.get("parameters")), NO_ARGUMENTS_SCHEMA));
+    schema.keySet().removeAll(DOC_ONLY_SCHEMA_KEYS);
     McpSchema.Tool.Builder builder =
-        McpSchema.Tool.builder()
-            .name(name)
-            .title(title)
-            .description(description)
-            .inputSchema(JSON_MAPPER, JsonUtils.pojoToJson(schema));
+        McpSchema.Tool.builder(name, schema).title(title).description(description);
     McpSchema.ToolAnnotations annotations = buildToolAnnotations(toolDef, title);
     if (annotations != null) {
       builder.annotations(annotations);
@@ -130,7 +133,10 @@ public class McpUtils {
                 List<McpSchema.PromptArgument> arguments =
                     JsonUtils.readOrConvertValues(
                         promptDef.get("arguments"), McpSchema.PromptArgument.class);
-                return new McpSchema.Prompt(name, description, arguments);
+                return McpSchema.Prompt.builder(name)
+                    .description(description)
+                    .arguments(arguments)
+                    .build();
               })
           .toList();
     } catch (Exception e) {

@@ -321,4 +321,91 @@ describe('DocumentsView', () => {
 
     expect(onOpenPreview).toHaveBeenCalledWith(mockFiles[0]);
   });
+
+  it('shows the bulk-action bar when files are selected', () => {
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        selectedIds={new Set(['file-1', 'file-2'])}
+        totalFileCount={mockFiles.length}
+      />
+    );
+
+    expect(screen.getByTestId('clear-selection-btn')).toBeInTheDocument();
+    expect(screen.getByTestId('bulk-download-btn')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('documents-view-file-count')
+    ).not.toBeInTheDocument();
+  });
+
+  it('calls onClearSelection when the clear button is clicked', () => {
+    const onClearSelection = jest.fn();
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        selectedIds={new Set(['file-1', 'file-2'])}
+        totalFileCount={mockFiles.length}
+        onClearSelection={onClearSelection}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('clear-selection-btn'));
+
+    expect(onClearSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it('calls onClearSelection even when selectedIds has ghost ids not in data', () => {
+    const onClearSelection = jest.fn();
+    render(
+      <DocumentsView
+        data={[mockFiles[0]]}
+        isLoading={false}
+        selectedIds={new Set(['file-1', 'ghost-1', 'ghost-2'])}
+        totalFileCount={1}
+        onClearSelection={onClearSelection}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('clear-selection-btn'));
+
+    expect(onClearSelection).toHaveBeenCalledTimes(1);
+  });
+
+  it('falls back to toggling visible selected ids when onClearSelection is not provided', () => {
+    const onSelectFile = jest.fn();
+    render(
+      <DocumentsView
+        data={mockFiles}
+        isLoading={false}
+        selectedIds={new Set(['file-1', 'file-2'])}
+        totalFileCount={mockFiles.length}
+        onSelectFile={onSelectFile}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('clear-selection-btn'));
+
+    expect(onSelectFile).toHaveBeenCalledWith('file-1');
+    expect(onSelectFile).toHaveBeenCalledWith('file-2');
+  });
+
+  it('without onClearSelection, clear only toggles ids present in data', () => {
+    const onSelectFile = jest.fn();
+    render(
+      <DocumentsView
+        data={[mockFiles[0]]}
+        isLoading={false}
+        selectedIds={new Set(['file-1', 'ghost-1'])}
+        totalFileCount={1}
+        onSelectFile={onSelectFile}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('clear-selection-btn'));
+
+    expect(onSelectFile).toHaveBeenCalledWith('file-1');
+    expect(onSelectFile).not.toHaveBeenCalledWith('ghost-1');
+  });
 });

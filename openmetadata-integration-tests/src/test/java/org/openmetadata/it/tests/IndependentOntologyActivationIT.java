@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -46,6 +47,7 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 @ExtendWith(TestNamespaceExtension.class)
 public class IndependentOntologyActivationIT extends BaseOntologyApprovalIT {
   @Test
+  @ResourceLock("ontology-sparql-worker")
   void nonAdminQueriesOnlyTheActiveRelease(TestNamespace ns) {
     final var client = SdkClients.adminClient();
     final var ontology = createOntology(ns);
@@ -101,6 +103,38 @@ public class IndependentOntologyActivationIT extends BaseOntologyApprovalIT {
                         .withQuery(
                             "SELECT * WHERE { SERVICE <http://localhost:9999/> { ?s ?p ?o } }"),
                     JsonNode.class));
+  }
+
+  @Test
+  @ResourceLock("ontology-sparql-worker")
+  void boundsMemoryForNonAdminActiveReleaseQueries(TestNamespace ns) {
+    final var ontology = createOntology(ns);
+    final var release = capture(ontology);
+    approve(ns, release);
+    activate(SdkClients.adminClient(), ontology, release, 0);
+    final String path = "/v1/ontologies/" + ontology.getId() + "/sparql";
+    final var http = SdkClients.user2Client().getHttpClient();
+    final StringBuilder query = new StringBuilder("SELECT ?s27 WHERE { BIND(\"12345678\" AS ?s0) ");
+    for (int index = 1; index <= 27; index++) {
+      query.append("BIND(CONCAT(?s%d, ?s%d) AS ?s%d) ".formatted(index - 1, index - 1, index));
+    }
+    query.append('}');
+
+    final OpenMetadataException failure =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                http.execute(
+                    HttpMethod.POST,
+                    path,
+                    new SparqlQuery().withQuery(query.toString()),
+                    JsonNode.class));
+
+    assertEquals(400, failure.getStatusCode());
+    assertTrue(failure.getMessage().contains("memory"), failure.getMessage());
+    final JsonNode result =
+        http.execute(HttpMethod.POST, path, new SparqlQuery().withQuery("ASK {}"), JsonNode.class);
+    assertTrue(result.path("boolean").asBoolean());
   }
 
   @Test
@@ -491,6 +525,7 @@ public class IndependentOntologyActivationIT extends BaseOntologyApprovalIT {
   }
 
   @Test
+  @ResourceLock("ontology-sparql-worker")
   void queryReadsTheConceptsOfADirectlyPublishedRelease(TestNamespace ns) {
     final var ontology = unreviewedOntology(ns, "query");
     final var concept =

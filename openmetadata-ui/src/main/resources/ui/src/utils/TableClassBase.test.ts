@@ -142,6 +142,7 @@ describe('TableClassBase', () => {
         viewAllPermission: true,
         viewCustomPropertiesPermission: true,
         viewQueriesPermission: true,
+        viewQueryResourcePermission: true,
         editLineagePermission: true,
         viewProfilerPermission: true,
         viewSampleDataPermission: true,

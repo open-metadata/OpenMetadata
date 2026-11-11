@@ -1,0 +1,22 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/installNativeOntologyPack.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "InstallNativeOntologyPack",
+  "description": "Install selected verified library modules into a native ontology as a background job.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.InstallNativeOntologyPack",
+  "properties": {
+    "moduleIds": {
+      "type": "array",
+      "items": {
+        "$ref": "../../type/ontologyPackModule.json#/properties/id",
+        "maxLength": 128
+      },
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true
+    }
+  },
+  "required": ["moduleIds"],
+  "additionalProperties": false
+}

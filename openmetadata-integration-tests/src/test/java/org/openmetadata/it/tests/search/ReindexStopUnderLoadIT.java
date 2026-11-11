@@ -16,6 +16,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.SeedData;
+import org.openmetadata.it.factories.SizeFactor;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
@@ -30,8 +31,8 @@ import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.service.Entity;
 
 /**
- * Triggers a reindex over a 10k-table cohort, lets it warm up, then sends a stop
- * request and verifies:
+ * Triggers a reindex over a 10k-table cohort ({@link SizeFactor} scales it), lets it warm up,
+ * then sends a stop request and verifies:
  *
  * <ul>
  *   <li>The latest run flips to a terminal status within 30 s of the stop request;
@@ -44,7 +45,7 @@ import org.openmetadata.service.Entity;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexStopUnderLoadIT {
 
-  private static final int SEED_TABLES = 10_000;
+  private static final int SEED_TABLES = SizeFactor.scale(10_000);
   private static final int COLUMNS_PER_TABLE = 3;
   private static final int LOAD_WORKERS = 16;
   private static final Duration WARMUP = Duration.ofSeconds(8);

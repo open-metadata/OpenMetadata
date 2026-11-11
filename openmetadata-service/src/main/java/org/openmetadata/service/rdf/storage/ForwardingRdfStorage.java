@@ -89,8 +89,8 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void replaceGraph(final String graph, final Model model) {
-    delegate().replaceGraph(graph, model);
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
+    delegate().replaceGraph(graph, releaseId, model);
   }
 
   @Override

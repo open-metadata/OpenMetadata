@@ -33,7 +33,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.json.Json;
-import jakarta.json.JsonException;
 import jakarta.json.JsonPatch;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.core.Response;
@@ -61,17 +60,14 @@ import org.openmetadata.schema.type.Permission;
 import org.openmetadata.schema.type.ResourcePermission;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.MetricGroupRepository;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
@@ -367,10 +363,10 @@ class MetricGroupResourceTest {
     MetricGroup metadataOnly = new MetricGroup().withMetrics(List.of(retained, removed));
     MetricGroup membershipUpdate = new MetricGroup().withMetrics(List.of(retained, added));
 
-    assertEquals(List.of(), MetricAuthorization.membershipMutationTargets(original, metadataOnly));
+    assertEquals(List.of(), MetricGroupRepository.membershipChanges(original, metadataOnly));
     assertEquals(
         Set.of(removed.getId(), added.getId()),
-        MetricAuthorization.membershipMutationTargets(original, membershipUpdate).stream()
+        MetricGroupRepository.membershipChanges(original, membershipUpdate).stream()
             .map(EntityReference::getId)
             .collect(java.util.stream.Collectors.toSet()));
   }
@@ -395,118 +391,6 @@ class MetricGroupResourceTest {
       assertEquals(denied, thrown);
       verify(fixture.repository(), never()).get(any(), any(UUID.class), any());
     }
-  }
-
-  @Test
-  void patchAddressingMembersRequiresViewOnEveryMember() {
-    UUID groupId = UUID.randomUUID();
-    SecurityContext securityContext = securityContext("alice");
-    MetricGroup group = groupWithMember(groupId, "kpis");
-    JsonPatch copyMemberDescription =
-        Json.createPatchBuilder().copy("/description", "/metrics/0/description").build();
-    try (ResourceFixture fixture = resourceFixture()) {
-      when(fixture.repository().get(null, groupId, EntityUtil.Fields.EMPTY_FIELDS))
-          .thenReturn(group);
-      doThrow(new AuthorizationException("hidden metric"))
-          .when(fixture.authorizer())
-          .authorize(
-              eq(securityContext),
-              argThat(
-                  context ->
-                      context != null
-                          && Entity.METRIC.equals(context.getResource())
-                          && context.getOperations(null).contains(MetadataOperation.VIEW_BASIC)),
-              any());
-
-      assertThrows(
-          AuthorizationException.class,
-          () -> fixture.resource().patch(null, securityContext, groupId, copyMemberDescription));
-
-      verify(fixture.repository(), never()).prepareInternal(any(), eq(true));
-    }
-  }
-
-  @Test
-  void unapplicablePatchErrorDoesNotQuoteTheGroup() {
-    UUID groupId = UUID.randomUUID();
-    MetricGroup group = groupWithMember(groupId, "kpis").withDescription("board secrets");
-    JsonPatch unapplicable = Json.createPatchBuilder().copy("/description", "/nope/x").build();
-    try (ResourceFixture fixture = resourceFixture()) {
-      when(fixture.repository().get(null, groupId, EntityUtil.Fields.EMPTY_FIELDS))
-          .thenReturn(group);
-
-      IllegalArgumentException thrown =
-          assertThrows(
-              IllegalArgumentException.class,
-              () ->
-                  fixture.resource().patch(null, securityContext("alice"), groupId, unapplicable));
-
-      assertFalse(thrown.getMessage().contains("board secrets"));
-      assertFalse(thrown.getMessage().contains("margin"));
-    }
-  }
-
-  @Test
-  void memberPatchIsPinnedToTheMembersItWasAuthorizedOn() {
-    EntityReference first = metricReference("ad_spend");
-    EntityReference second = metricReference("net_revenue");
-    MetricGroup authorizedOn =
-        new MetricGroup().withName("kpis").withMetrics(List.of(first, second));
-    JsonPatch removeFirst = Json.createPatchBuilder().remove("/metrics/0").build();
-
-    JsonPatch pinned = MetricGroupResource.pinnedToMembers(authorizedOn, removeFirst);
-
-    assertEquals(
-        List.of(second.getId()),
-        JsonUtils.applyPatch(authorizedOn, pinned, MetricGroup.class).getMetrics().stream()
-            .map(EntityReference::getId)
-            .toList());
-    MetricGroup shifted = new MetricGroup().withName("kpis").withMetrics(List.of(second));
-    assertThrows(
-        JsonException.class, () -> JsonUtils.applyPatch(shifted, pinned, MetricGroup.class));
-  }
-
-  @Test
-  void memberPatchReachesTheRepositoryPinnedAndAnsweredWith412OnceMembersShift() {
-    UUID groupId = UUID.randomUUID();
-    MetricGroup group = groupWithMember(groupId, "kpis");
-    JsonPatch removeFirst = Json.createPatchBuilder().remove("/metrics/0").build();
-    try (ResourceFixture fixture = resourceFixture()) {
-      when(fixture.repository().get(null, groupId, EntityUtil.Fields.EMPTY_FIELDS))
-          .thenReturn(group);
-      when(fixture
-              .repository()
-              .patch(any(), eq(groupId), anyString(), any(JsonPatch.class), any(), any(), any()))
-          .thenThrow(new JsonException("test failed"));
-
-      assertThrows(
-          PreconditionFailedException.class,
-          () -> fixture.resource().patch(null, securityContext("alice"), groupId, removeFirst));
-
-      ArgumentCaptor<JsonPatch> applied = ArgumentCaptor.forClass(JsonPatch.class);
-      verify(fixture.repository())
-          .patch(any(), eq(groupId), anyString(), applied.capture(), any(), any(), any());
-      assertEquals("test", applied.getValue().toJsonArray().getJsonObject(0).getString("op"));
-    }
-  }
-
-  @Test
-  void onlyPatchesThatAddressMembersArePinned() {
-    assertTrue(
-        MetricAuthorization.addressesMembers(
-            Json.createPatchBuilder().remove("/metrics/1").build()));
-    assertTrue(
-        MetricAuthorization.addressesMembers(
-            Json.createPatchBuilder().copy("/description", "/metrics/0/name").build()));
-    assertTrue(
-        MetricAuthorization.addressesMembers(
-            Json.createPatchBuilder().add("", Json.createObjectBuilder().build()).build()));
-    assertFalse(
-        MetricAuthorization.addressesMembers(
-            Json.createPatchBuilder().replace("/description", "x").build()));
-    assertFalse(
-        MetricAuthorization.addressesMembers(
-            Json.createPatchBuilder().replace("/metricsNote", "x").build()));
   }
 
   @Test
@@ -600,14 +484,6 @@ class MetricGroupResourceTest {
     return context;
   }
 
-  private EntityReference metricReference(String name) {
-    return new EntityReference()
-        .withId(UUID.randomUUID())
-        .withType(Entity.METRIC)
-        .withName(name)
-        .withFullyQualifiedName(name);
-  }
-
   private MetricGroup groupWithMember(UUID id, String name) {
     EntityReference member =
         new EntityReference()
@@ -636,8 +512,6 @@ class MetricGroupResourceTest {
     Authorizer authorizer = mock(Authorizer.class);
     when(repository.getAllowedFields()).thenReturn(Set.of("id", "metricCount"));
     when(repository.getFields(anyString()))
-        .thenReturn(org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
-    when(repository.getPatchFields())
         .thenReturn(org.openmetadata.service.util.EntityUtil.Fields.EMPTY_FIELDS);
     entity.when(() -> Entity.getEntityRepository(Entity.METRIC_GROUP)).thenReturn(repository);
     entity

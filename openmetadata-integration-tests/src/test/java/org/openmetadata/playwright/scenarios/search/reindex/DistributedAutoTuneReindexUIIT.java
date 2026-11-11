@@ -15,6 +15,7 @@ import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.EntityLoadSummary;
 import org.openmetadata.it.factories.EntityLoader;
+import org.openmetadata.it.factories.SizeFactor;
 import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
 import org.openmetadata.it.search.SearchAssertions;
@@ -44,10 +45,10 @@ class DistributedAutoTuneReindexUIIT {
 
   // Cohort distributed across four entity types — exercises the per-type partitioning
   // logic distributed reindex relies on rather than just a single-type happy path.
-  private static final int TABLES = 1_500;
-  private static final int TOPICS = 800;
-  private static final int DASHBOARDS = 800;
-  private static final int PIPELINES = 800;
+  private static final int TABLES = SizeFactor.scale(1_500);
+  private static final int TOPICS = SizeFactor.scale(800);
+  private static final int DASHBOARDS = SizeFactor.scale(800);
+  private static final int PIPELINES = SizeFactor.scale(800);
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int PARALLEL_INGEST_WORKERS = 16;
 

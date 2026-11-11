@@ -75,6 +75,7 @@ public final class OntologyReferences {
     add(OntologyReferenceRole.INVERSE, property.getInverse());
     add(OntologyReferenceRole.PROPERTY_CHAIN, property.getPropertyChain());
     add(OntologyReferenceRole.DISJOINT_PROPERTY, property.getDisjointWith());
+    add(OntologyReferenceRole.SUPER_PROPERTY, property.getSuperProperties());
     add(OntologyReferenceRole.REPLACED_BY, property.getReplacedBy());
     listOrEmpty(property.getEnumValues()).forEach(this::literal);
   }

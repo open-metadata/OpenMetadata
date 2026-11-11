@@ -24,6 +24,7 @@ import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCardGroup.interface';
+import { AddTestCaseListChangePayload } from '../../AddTestCaseList/AddTestCaseList.interface';
 
 // =============================================
 // COMPONENT PROPS
@@ -125,7 +126,10 @@ export interface FormValues {
   enableDebugLog?: boolean;
   raiseOnError?: boolean;
   selectAllTestCases?: boolean;
-  testCases?: EntityReference[];
+  // The picker (AddTestCaseList) forwards its raw AddTestCaseListChangePayload
+  // on change; on edit prefill it holds the saved name list. Both shapes flow
+  // through normalizeSelectedTestProp/isValidTestCaseSelection on submit.
+  testCases?: EntityReference[] | AddTestCaseListChangePayload;
 }
 
 // =============================================

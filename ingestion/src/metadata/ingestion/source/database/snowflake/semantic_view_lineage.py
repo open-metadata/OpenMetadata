@@ -30,10 +30,12 @@ from metadata.generated.schema.entity.data.metric import Metric
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.semantic_metric_lineage import (
+    SQL_KEYWORDS,
     column_lineage,
     metric_lineage_request,
     view_lineage_request,
 )
+from metadata.ingestion.source.database.semantic_metrics import unquote_name_part
 from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_DATABASES,
     SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB,
@@ -56,12 +58,50 @@ ViewKey = tuple[str, str]
 # is not unique -- Snowflake declares every object as ``<table_alias>.<name>``.
 SemanticKey = tuple[str, str]
 
-# A single identifier segment: a double-quoted name or a bare name.
-_IDENTIFIER = r'"[^"]*"|[A-Za-z_][\w$]*'
+# A comment, a string literal with any type prefix (``DATE '...'``) or a quoted identifier,
+# scanned together so none is read inside another. ``A$$B`` is a name, not a string.
+_LITERAL_OR_QUOTED_RE = re.compile(
+    r"/\*.*?\*/|(?:--|//)[^\n]*"
+    r"|(?:(?<![\w$.])(?i:DATE|TIME|TIMESTAMP(?:_[LNT]?TZ)?)\s*)?'(?:[^'\\]|\\.|'')*'"
+    r"|(?<![\w$])\$\$.*?\$\$|\"(?:[^\"]|\"\")*\"",
+    re.DOTALL,
+)
+# A single identifier segment once each quoted identifier is masked as ``\0<n>\0``.
+# A bare name never starts inside a number, so ``1e5`` offers no ``e5``.
+_IDENTIFIER = r"\x00\d+\x00|(?<![\w$])[A-Za-z_][\w$]*"
 # A dotted chain of two or more identifier segments (e.g. ``orders.amount``,
 # ``"orders"."o amount"``, ``db.schema.orders.amount``).
 _COLUMN_REF_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))+")
 _SEGMENT_RE = re.compile(_IDENTIFIER)
+# A function name, possibly schema-qualified, with its opening parenthesis (``SUM(``).
+_FUNCTION_HEAD_RE = re.compile(rf"(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER}))*\s*\(")
+# The date or time part a date function takes first, such as ``year`` in
+# ``DATE_PART(year, d)`` or ``EXTRACT(year FROM d)``.
+_DATE_PART_RE = re.compile(
+    rf"\b((?:EXTRACT|DATE_PART|DATE_TRUNC|DATEADD|DATEDIFF|TIMEADD|TIMEDIFF|TIMESTAMPADD|TIMESTAMPDIFF)\s*\(\s*)"
+    rf"(?:{_IDENTIFIER})",
+    re.IGNORECASE,
+)
+# Mask interval units before generic casts remove INTERVAL, retaining genuine
+# unit-named columns elsewhere in the expression.
+_INTERVAL_QUALIFIER_RE = re.compile(
+    r"\b(INTERVAL)\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b"
+    r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?"
+    r"(?:\s+TO\s+(?:YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)S?\b"
+    r"(?:\s*\(\s*\d+(?:\s*,\s*\d+)?\s*\))?)?",
+    re.IGNORECASE,
+)
+# A cast target (``::NUMBER(10, 2)``, ``CAST(x AS DOUBLE PRECISION)``) or a
+# semi-structured path (``payload:a.b[0]``). A path needs a left operand; a masked
+# string key in an OBJECT constant leaves only whitespace before its separator.
+# Snowflake's multi-word type names are listed.
+_CAST_OR_PATH_RE = re.compile(
+    rf"(?:::|\bAS\b)\s*(?:{_IDENTIFIER})"
+    r"(?:\s+PRECISION\b|\s+VARYING\b|\s+WITH(?:OUT)?(?:\s+LOCAL)?\s+TIME\s+ZONE\b)?"
+    r"(?:\s*\([^)]*\))?"
+    rf"|(?<=[\w$\x00)\]])\s*:\s*(?:{_IDENTIFIER})(?:\.(?:{_IDENTIFIER})|\[[^\]]*\])*",
+    re.IGNORECASE,
+)
 _MAX_RESOLUTION_DEPTH = 5
 SEMANTIC_COLUMN_CATALOG_VIEWS = (
     "semantic_dimensions",
@@ -75,25 +115,51 @@ def _quote_db(database: str) -> str:
     return database.replace('"', '""')
 
 
-def _unquote_identifier(identifier: str) -> str:
-    """Strip surrounding double quotes from a Snowflake identifier segment."""
-    unquoted = identifier
-    if len(identifier) >= 2 and identifier[0] == '"' and identifier[-1] == '"':
-        unquoted = identifier[1:-1]
-    return unquoted
-
-
-def extract_column_refs(expression: str | None) -> list[tuple[str, str]]:
+def extract_column_refs(expression: str | None) -> list[tuple[str | None, str]]:
     """Extract ``(table, column)`` references from a semantic object's expression.
 
-    Handles bare, double-quoted, and multi-part qualified identifiers, always
-    taking the last two segments of each dotted chain as ``(table, column)``.
+    A dotted chain contributes its last two segments. An unqualified name comes back
+    with table ``None``: it refers to the semantic object's own logical table.
     """
-    refs = []
-    for chain in _COLUMN_REF_RE.findall(expression or ""):
+    quoted: list[str] = []
+
+    def mask(match: re.Match[str]) -> str:
+        token = match.group()
+        if not token.startswith('"'):
+            return " "
+        quoted.append(unquote_name_part(token))
+        return f"\x00{len(quoted) - 1}\x00"
+
+    def name(segment: str) -> str:
+        return quoted[int(segment.strip("\x00"))] if segment.startswith("\x00") else segment
+
+    text = _LITERAL_OR_QUOTED_RE.sub(mask, expression or "")
+    text = _INTERVAL_QUALIFIER_RE.sub(r"\1", text)
+    text = _CAST_OR_PATH_RE.sub(" ", text)
+    text = _DATE_PART_RE.sub(r"\1", text)
+    text = _FUNCTION_HEAD_RE.sub("(", text)
+    refs: list[tuple[str | None, str]] = []
+    for chain in _COLUMN_REF_RE.findall(text):
         segments = _SEGMENT_RE.findall(chain)
-        if len(segments) >= 2:
-            refs.append((_unquote_identifier(segments[-2]), _unquote_identifier(segments[-1])))
+        refs.append((name(segments[-2]), name(segments[-1])))
+    for identifier in _SEGMENT_RE.findall(_COLUMN_REF_RE.sub(" ", text)):
+        if not identifier.startswith("\x00") and (
+            identifier.lower() in SQL_KEYWORDS
+            or identifier.lower()
+            in {
+                "rlike",
+                "regexp",
+                "ilike",
+                "current_date",
+                "current_time",
+                "current_timestamp",
+                "current_user",
+                "localtime",
+                "localtimestamp",
+            }
+        ):
+            continue
+        refs.append((None, name(identifier)))
     return refs
 
 
@@ -147,7 +213,8 @@ def resolve_base_columns(
     results: list[tuple[BaseTable, str]] = []
     info = columns.get(column_key)
     if info is not None and depth <= _MAX_RESOLUTION_DEPTH:
-        for table_ref, column_ref in extract_column_refs(info.get("expression")):
+        for qualifier, column_ref in extract_column_refs(info.get("expression")):
+            table_ref = qualifier or column_key[0]
             matched = match_semantic_name(table_ref, column_ref, columns)
             if matched is not None and matched != column_key:
                 for item in resolve_base_columns(matched, columns, table_map, depth + 1):
