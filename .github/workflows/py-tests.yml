@@ -155,3 +155,22 @@ jobs:
             exit 1
           fi
         shell: bash
+
+  notify:
+    needs: [changes, prepare-spacy-model, python, py-tests-status]
+    if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) && needs.py-tests-status.result == 'failure' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Slack on nightly failure
+        continue-on-error: true
+        uses: slackapi/slack-github-action@dcb1066f776dd043e64d0e8ba94ca15cc7e1875d # v4.0.0
+        with:
+          method: chat.postMessage
+          token: ${{ secrets.COLLATE_BOT_SLACK_TOKEN }}
+          errors: true
+          payload: |
+            {
+              "channel": "C03EYBDDX17",
+              "text": "<!subteam^S0AH093PEQL> 🔥 *Python Tests Nightly* failed on `${{ github.ref_name }}` 🔥\nselection: ${{ needs.changes.result }} · models: ${{ needs.prepare-spacy-model.result }} · tests: ${{ needs.python.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+            }
