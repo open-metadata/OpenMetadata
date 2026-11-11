@@ -193,8 +193,8 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         ACTIVITY_FEED_ALERT_STEP,
         () -> addContractAndStatusToActivityFeedAlert(handle));
-    // Same for the 2.0.7 MCP consent columns. The step adds only missing columns, so running it
-    // after 2.0.7 already did is harmless.
+    // The MCP consent columns ship in 2.1.0, so every database upgrading to 2.1 adds them here. The
+    // step adds only missing columns, so a database that already has them is left as it is.
     runOnce(
         migrationDAO,
         getVersion(),
