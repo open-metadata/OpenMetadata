@@ -6769,6 +6769,7 @@
     "workflow-empty-description": "أنشئ سير عمل مبنياً على الأحداث أو مجدولاً يستجيب في اللحظة التي يتغير فيها شيء ما. اضبطه مرة واحدة، وسيتولى OpenMetadata الباقي.",
     "workflow-fqn-required": "FQN سير العمل مطلوب",
     "workflow-id-required": "معرف سير العمل مطلوب",
+    "workflow-name-cannot-change-after-create": "الاسم هو المعرّف الفريد لسير العمل ولا يمكن تغييره بعد إنشائه.",
     "workflow-name-invalid-characters": "يمكن أن يحتوي اسم سير العمل فقط على أحرف أبجدية رقمية وشرطات وشرطات سفلية",
     "workflow-name-max-length": "يجب ألا يتجاوز اسم سير العمل {{count}} حرفًا",
     "workflow-name-min-length": "يجب أن يتكون اسم سير العمل من {{count}} حرف على الأقل",

@@ -6769,6 +6769,7 @@
     "workflow-empty-description": "建構基於事件或排程的工作流程，在發生變化的那一刻做出回應。設定一次，其餘的交給 OpenMetadata 處理。",
     "workflow-fqn-required": "工作流程FQN為必填項",
     "workflow-id-required": "工作流程ID為必填項",
+    "workflow-name-cannot-change-after-create": "名稱是工作流程的唯一識別碼，建立後無法變更。",
     "workflow-name-invalid-characters": "工作流程名稱只能包含英數字元、連字號與底線",
     "workflow-name-max-length": "工作流程名稱最多 {{count}} 個字元",
     "workflow-name-min-length": "工作流程名稱至少 {{count}} 個字元",
