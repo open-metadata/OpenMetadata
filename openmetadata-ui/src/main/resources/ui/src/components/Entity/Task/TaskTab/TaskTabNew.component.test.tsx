@@ -1509,9 +1509,16 @@ describe('TaskTabNew Component', () => {
       targetTaskStatus: TaskEntityStatus.Approved,
     };
 
+    const STEWARDS = { id: 'stewards-id', type: 'team', name: 'stewards' };
+    const OTHER = { id: 'other-id', type: 'user', name: 'other' };
+
     const renderApproval = async (
       reviewVotes: Task['reviewVotes'],
-      availableTransitions: Task['availableTransitions'] = [APPROVE_TRANSITION]
+      availableTransitions: Task['availableTransitions'] = [APPROVE_TRANSITION],
+      assignees: Task['assignees'] = [
+        { id: 'test-user-id', type: 'user', name: 'test-user' },
+        OTHER,
+      ]
     ) => {
       const { useAuth } = require('../../../../hooks/authHooks');
       const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
@@ -1523,10 +1530,7 @@ describe('TaskTabNew Component', () => {
         category: TaskCategory.Approval,
         about: { id: 'dp-id', type: 'dataProduct' },
         workflowStageId: 'review',
-        assignees: [
-          { id: 'test-user-id', type: 'user', name: 'test-user' },
-          { id: 'other-id', type: 'user', name: 'other' },
-        ],
+        assignees,
         availableTransitions,
         reviewVotes,
       };
@@ -1556,7 +1560,17 @@ describe('TaskTabNew Component', () => {
       expect(screen.queryByTestId('task-review-votes')).not.toBeInTheDocument();
     });
 
-    it("keeps the stage's other transitions for an assignee who voted", async () => {
+    it("keeps the stage's other transitions for a team member who voted", async () => {
+      const {
+        useApplicationStore,
+      } = require('../../../../hooks/useApplicationStore');
+      useApplicationStore.mockImplementation(() => ({
+        currentUser: {
+          id: 'test-user-id',
+          name: 'test-user',
+          teams: [STEWARDS],
+        },
+      }));
       await renderApproval(
         [vote('review')],
         [
@@ -1567,16 +1581,23 @@ describe('TaskTabNew Component', () => {
             targetStageId: 'assigned',
             targetTaskStatus: TaskEntityStatus.Open,
           },
-        ]
+        ],
+        // A team entry survives the vote; only the voter's own entry is dropped.
+        [STEWARDS, OTHER]
       );
 
       expect(
         screen.getByTestId('workflow-task-action-primary')
       ).toHaveTextContent('Reassign');
+
+      useApplicationStore.mockImplementation(() => ({
+        currentUser: { id: 'test-user-id', name: 'test-user', teams: [] },
+      }));
     });
 
     it('shows the counted vote instead of Approve once the assignee voted', async () => {
-      await renderApproval([vote('review')]);
+      // The server drops the voter's own assignee entry after a non-final vote.
+      await renderApproval([vote('review')], [APPROVE_TRANSITION], [OTHER]);
 
       expect(
         screen.queryByTestId('workflow-task-action-primary')

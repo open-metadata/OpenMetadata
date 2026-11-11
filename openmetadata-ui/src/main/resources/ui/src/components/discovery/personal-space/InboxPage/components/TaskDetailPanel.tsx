@@ -522,6 +522,21 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
       descriptor?.actionLabels
     ).filter((action) => !consumedTransitionIdsRef.current.has(action.id));
 
+    // A voter waits for the other approvers; TaskReviewVotes says so. Checked
+    // before the assignee rule: the server drops a voter's own assignee entry
+    // after a vote that does not reach the threshold.
+    if (hasVotedInCurrentStage(task, { id: currentUserId })) {
+      return {
+        actions: effective.filter(
+          (action) =>
+            action.kind !== 'approve' &&
+            action.kind !== 'reject' &&
+            action.id !== 'resolve'
+        ),
+        isResolveDenied: false,
+      };
+    }
+
     // ResolveTask lets a reviewer through, but the server lets only an
     // assignee decide a workflow approval.
     const canDecide = canResolveTask && isAllowedDecider(task, currentUserIds);
@@ -540,16 +555,6 @@ const TaskDetailPanel: React.FC<TaskDetailPanelProps> = ({
         actions: permitted,
         isResolveDenied:
           canResolveTask !== undefined && permitted.length < effective.length,
-      };
-    }
-
-    // A voter waits for the other approvers; TaskReviewVotes says so.
-    if (hasVotedInCurrentStage(task, { id: currentUserId })) {
-      return {
-        actions: effective.filter(
-          (action) => action.kind !== 'approve' && action.kind !== 'reject'
-        ),
-        isResolveDenied: false,
       };
     }
 

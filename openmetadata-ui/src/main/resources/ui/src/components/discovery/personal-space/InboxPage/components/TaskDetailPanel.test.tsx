@@ -1440,6 +1440,8 @@ describe('TaskDetailPanel', () => {
         mockGetTaskById.mockResolvedValue({
           data: {
             ...APPROVAL_TASK,
+            // The server drops the voter's own entry after a non-final vote.
+            assignees: [{ id: 'team-1', name: 'stewards', type: 'team' }],
             reviewVotes: [
               {
                 voter: { id: 'u9', name: 'shailesh', type: 'user' },
@@ -1462,6 +1464,9 @@ describe('TaskDetailPanel', () => {
         expect(
           screen.getByTestId('task-review-votes-waiting')
         ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('task-resolve-denied-hint')
+        ).not.toBeInTheDocument();
       });
 
       it('keeps Approve/Reject when the assignee only voted in an earlier stage', async () => {
