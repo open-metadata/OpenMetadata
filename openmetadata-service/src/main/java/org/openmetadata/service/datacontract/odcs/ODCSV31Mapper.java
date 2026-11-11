@@ -198,7 +198,9 @@ public final class ODCSV31Mapper implements ODCSVersionAdapter {
       property.setLogicalTypeOptions(
           new LogicalTypeOptions().withMaxLength(column.getDataLength()));
     }
-    if (!nullOrEmpty(column.getChildren())) {
+    if (!nullOrEmpty(column.getChildren())
+        && (property.getLogicalType() == SchemaProperty.LogicalType.OBJECT
+            || property.getLogicalType() == SchemaProperty.LogicalType.ARRAY)) {
       List<SchemaProperty> children =
           column.getChildren().stream().map(ODCSV31Mapper::column).toList();
       if (property.getLogicalType() == SchemaProperty.LogicalType.ARRAY) {

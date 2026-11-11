@@ -2656,6 +2656,48 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
   }
 
   @Test
+  void testODCSExportScalarColumnWithChildren(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTestTable(ns);
+    Column scalar =
+        new Column()
+            .withName("name")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(255)
+            .withChildren(List.of(new Column().withName("child").withDataType(ColumnDataType.INT)));
+    DataContract contract =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("odcs_scalar_children"))
+                .withEntity(table.getEntityReference())
+                .withSchema(List.of(scalar)));
+    YAMLMapper mapper = new YAMLMapper();
+    for (String version : List.of("v3.1.0", "v3.0.2", "v3.0.1", "v3.0.0")) {
+      for (String route :
+          List.of(
+              "/v1/dataContracts/" + contract.getId() + "/odcs",
+              "/v1/dataContracts/" + contract.getId() + "/odcs/yaml",
+              "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs",
+              "/v1/dataContracts/name/" + contract.getFullyQualifiedName() + "/odcs/yaml")) {
+        JsonNode document =
+            mapper.readTree(
+                client
+                    .getHttpClient()
+                    .executeForString(HttpMethod.GET, route + "?odcsVersion=" + version, null));
+        assertEquals(List.of(), ODCSProfiles.validate(version, document));
+        JsonNode property = document.at("/schema/0/properties/0");
+        assertEquals("name", property.path("name").asText());
+        assertEquals("string", property.path("logicalType").asText());
+        assertEquals("VARCHAR", property.path("physicalType").asText());
+        assertFalse(property.has("properties"));
+      }
+    }
+    DataContract stored = client.dataContracts().get(contract.getId().toString(), "schema");
+    assertEquals(ColumnDataType.VARCHAR, stored.getSchema().getFirst().getDataType());
+    assertEquals("child", stored.getSchema().getFirst().getChildren().getFirst().getName());
+  }
+
+  @Test
   void testImportDataContractFromODCS(TestNamespace ns) {
     Table table = createTestTable(ns);
 
