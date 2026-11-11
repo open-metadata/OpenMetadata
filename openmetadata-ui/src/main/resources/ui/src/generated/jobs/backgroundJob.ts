@@ -227,6 +227,12 @@ export interface Retype {
  * Type of the job.
  */
 export enum JobType {
+    AdminOpsAppConfig = "ADMIN_OPS_APP_CONFIG",
+    AdminOpsAuthorizerConfig = "ADMIN_OPS_AUTHORIZER_CONFIG",
+    AdminOpsDeployPipelines = "ADMIN_OPS_DEPLOY_PIPELINES",
+    AdminOpsLimitsConfig = "ADMIN_OPS_LIMITS_CONFIG",
+    AdminOpsReindex = "ADMIN_OPS_REINDEX",
+    AdminOpsSsoConfig = "ADMIN_OPS_SSO_CONFIG",
     AuditExport = "AUDIT_EXPORT",
     CSVExport = "CSV_EXPORT",
     CSVImport = "CSV_IMPORT",
