@@ -37,6 +37,7 @@ import static org.openmetadata.service.migration.utils.v210.OntologyConceptBindi
 import static org.openmetadata.service.migration.utils.v210.OntologyMigration.migrateRelationshipTypes;
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
+import static org.openmetadata.service.migration.utils.v210.ServiceLineagePipelineHopRepairMigration.repairPipelineServiceHopRefcounts;
 
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
@@ -57,6 +58,7 @@ import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupM
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
+import org.openmetadata.service.migration.utils.v210.ServiceLineagePipelineHopRepairMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
@@ -144,6 +146,17 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         LineageEdgePipelineCleanupMigration.STEP_NAME,
         () -> clearNonPipelineEdgePipelines(collectionDAO));
+    // The v1126/v1131 backfill wrote pipeline-service hop rows with a hard-coded assetEdges=1
+    // instead of the count of contributing child edges, so the first delete of any one contributor
+    // removed the hop while the other children still needed it. The v2.0.3 repair skipped
+    // pipeline-service pairs, so already-upgraded instances keep the wrong count. Recompute it
+    // from the child edges themselves (a fixed point). DB-agnostic, so it also runs on MySQL.
+    // Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        ServiceLineagePipelineHopRepairMigration.STEP_NAME,
+        () -> repairPipelineServiceHopRefcounts(collectionDAO));
     runOnce(
         migrationDAO,
         getVersion(),
