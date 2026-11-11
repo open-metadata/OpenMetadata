@@ -5,7 +5,9 @@
 - **Deciders:** ulixius9
 - **Guard:** `MetricResourceIT#put_reingestingKeepsParentAndGroupSetInTheUi` fails if re-ingestion
   drops a parent or group or versions the metric; `MetricResourceIT#put_byBotChildOfDeletedParent_restoresItAsARoot`
-  fails if a bot PUT keeps a deleted parent
+  fails if a bot PUT keeps a deleted parent;
+  `MetricResourceIT#put_byBotNamingAGroupMovesARootButNotAChild` fails if a group a bot names is
+  ignored on a root or applied to a child
 - **Related:** ADR:2026-10-27-a-bot-put-never-removes-a-related-metric-edge,
   ADR:2026-11-03-a-metric-is-restored-with-its-parent-never-under-a-deleted-one
 

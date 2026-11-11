@@ -2768,6 +2768,51 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void put_byBotNamingAGroupMovesARootButNotAChild(TestNamespace ns) {
+    String rootName = ns.prefix("bot_group_root");
+    String childName = ns.prefix("bot_group_child");
+    MetricGroup storedGroup = createMetricGroup(ns.prefix("bot_group_stored"));
+    MetricGroup requestedGroup = createMetricGroup(ns.prefix("bot_group_requested"));
+    Metric root =
+        createEntity(
+            createRequest(rootName, ns).withMetricGroup(storedGroup.getFullyQualifiedName()));
+    Metric child = createEntity(createRequest(childName, ns));
+    Metric parentedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    parentedChild.setParent(root.getEntityReference());
+    patchEntity(parentedChild.getId().toString(), parentedChild);
+
+    OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    bot.getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metrics",
+            createRequest(childName, ns).withMetricGroup(requestedGroup.getFullyQualifiedName()),
+            Metric.class);
+    Metric reingestedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    assertEquals(root.getId(), reingestedChild.getParent().getId());
+    assertEquals(storedGroup.getId(), reingestedChild.getMetricGroup().getId());
+
+    bot.getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metrics",
+            createRequest(rootName, ns).withMetricGroup(requestedGroup.getFullyQualifiedName()),
+            Metric.class);
+    Metric reingestedRoot = getEntityWithFields(root.getId().toString(), "parent,metricGroup");
+    assertEquals(requestedGroup.getId(), reingestedRoot.getMetricGroup().getId());
+  }
+
+  private MetricGroup createMetricGroup(String name) {
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(
+            HttpMethod.PUT,
+            "/v1/metricGroups",
+            new CreateMetricGroup().withName(name),
+            MetricGroup.class);
+  }
+
+  @Test
   void put_byUserReplacesRelatedMetrics(TestNamespace ns) {
     String referencedName = ns.prefix("user_put_referenced_metric");
     Metric referenced = createEntity(createRequest(referencedName, ns));
