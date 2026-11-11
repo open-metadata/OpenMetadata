@@ -16,6 +16,34 @@ export const WORKFLOW_NAME_REGEX = /^[a-zA-Z0-9_-]+$/;
 export const WORKFLOW_NAME_MIN_LENGTH = 3;
 export const WORKFLOW_NAME_MAX_LENGTH = 50;
 
+// A stable short code for a display name, so the same text always yields the same name.
+const hashDisplayName = (displayName: string): string => {
+  let hash = 5381;
+  for (const char of displayName) {
+    hash = Math.imul(hash, 33) ^ (char.codePointAt(0) ?? 0);
+  }
+
+  return (hash >>> 0).toString(36);
+};
+
+/**
+ * The workflow's identifier, derived from the display name the user types: the
+ * name is part of the workflow's FQN, so runs of characters it cannot hold
+ * become a single hyphen. A display name with too few of them (e.g. written in
+ * a non-Latin script) gets a "workflow-<code>" name instead.
+ */
+export const getWorkflowNameFromDisplayName = (displayName: string): string => {
+  const trimmed = displayName.trim();
+  const name = trimmed
+    .replace(/[^a-zA-Z0-9_-]+/g, '-')
+    .slice(0, WORKFLOW_NAME_MAX_LENGTH)
+    .replace(/^-+|-+$/g, '');
+
+  return name.length >= WORKFLOW_NAME_MIN_LENGTH || !trimmed
+    ? name
+    : `workflow-${hashDisplayName(trimmed)}`;
+};
+
 /**
  * Gets validation rules for Ant Design Form
  * @returns Array of validation rules

@@ -6734,6 +6734,7 @@
     "workflow-empty-description": "Crie fluxos de trabalho baseados em eventos ou agendados que respondem no momento em que algo muda. Configure uma vez e o OpenMetadata cuida do resto.",
     "workflow-fqn-required": "FQN do fluxo de trabalho é obrigatório",
     "workflow-id-required": "ID do fluxo de trabalho é obrigatório",
+    "workflow-name-derived-from-display-name": "O nome é gerado a partir do nome de exibição e não pode ser alterado.",
     "workflow-name-invalid-characters": "O nome do fluxo de trabalho só pode conter caracteres alfanuméricos, hifens e sublinhados",
     "workflow-name-max-length": "O nome do fluxo de trabalho deve ter no máximo {{count}} caracteres",
     "workflow-name-min-length": "O nome do fluxo de trabalho deve ter no mínimo {{count}} caracteres",

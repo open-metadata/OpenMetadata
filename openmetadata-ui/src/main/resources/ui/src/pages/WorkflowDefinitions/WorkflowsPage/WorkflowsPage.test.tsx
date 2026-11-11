@@ -11,12 +11,15 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import { GRID_PAGE_SIZE_OPTIONS } from '../../../constants/constants';
-import { getWorkflowDefinitions } from '../../../rest/workflowDefinitionsAPI';
+import {
+  createWorkflowDefinition,
+  getWorkflowDefinitions,
+} from '../../../rest/workflowDefinitionsAPI';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import WorkflowsPage from './WorkflowsPage';
 
@@ -299,5 +302,60 @@ describe('WorkflowsPage on OSS', () => {
       }),
       expect.anything()
     );
+  });
+});
+
+describe('WorkflowsPage create form', () => {
+  const openCreateForm = async () => {
+    jest.spyOn(workflowClassBase, 'getCapabilities').mockReturnValue({
+      ...workflowClassBase.getCapabilities(),
+      allowCreateWorkflow: true,
+    });
+    mockGetWorkflowDefinitions.mockResolvedValue(WORKFLOWS);
+    renderPage();
+    fireEvent.click(await screen.findByTestId('create-workflow-button'));
+  };
+
+  const textbox = (testId: string) =>
+    within(screen.getByTestId(testId)).getByRole('textbox');
+
+  afterEach(() => {
+    jest.restoreAllMocks();
+    (createWorkflowDefinition as jest.Mock).mockReset();
+    mockNavigate.mockReset();
+  });
+
+  it('derives a read-only name from the display name and sends both', async () => {
+    (createWorkflowDefinition as jest.Mock).mockResolvedValue({});
+    await openCreateForm();
+
+    fireEvent.change(textbox('workflow-display-name'), {
+      target: { value: 'Test lifecycle' },
+    });
+
+    expect(textbox('workflow-name')).toHaveValue('Test-lifecycle');
+    expect(textbox('workflow-name')).toBeDisabled();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-workflow-button'));
+    });
+
+    expect(createWorkflowDefinition).toHaveBeenCalledWith(
+      expect.objectContaining({
+        displayName: 'Test lifecycle',
+        name: 'Test-lifecycle',
+      })
+    );
+  });
+
+  it('requires a display name before creating', async () => {
+    await openCreateForm();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('submit-workflow-button'));
+    });
+
+    expect(screen.getByText('label.field-required')).toBeInTheDocument();
+    expect(createWorkflowDefinition).not.toHaveBeenCalled();
   });
 });

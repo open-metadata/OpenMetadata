@@ -63,6 +63,7 @@ import { showErrorToast } from '../../../utils/ToastUtils';
 import workflowClassBase from '../../../utils/WorkflowClassBase';
 import { getWorkflowDefinitionDetailPath } from '../../../utils/WorkflowRouterUtils';
 import {
+  getWorkflowNameFromDisplayName,
   WORKFLOW_NAME_MAX_LENGTH,
   WORKFLOW_NAME_MIN_LENGTH,
   WORKFLOW_NAME_REGEX,
@@ -86,7 +87,7 @@ const WorkflowsPage = () => {
     GRID_PAGE_SIZE_OPTIONS
   );
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [workflowName, setWorkflowName] = useState('');
+  const [workflowDisplayName, setWorkflowDisplayName] = useState('');
   const [description, setDescription] = useState('');
   const [nameError, setNameError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -145,8 +146,10 @@ const WorkflowsPage = () => {
     [t]
   );
 
+  const workflowName = getWorkflowNameFromDisplayName(workflowDisplayName);
+
   const resetForm = useCallback(() => {
-    setWorkflowName('');
+    setWorkflowDisplayName('');
     setDescription('');
     setNameError('');
   }, []);
@@ -226,7 +229,9 @@ const WorkflowsPage = () => {
       return;
     }
 
-    const error = validateWorkflowName(workflowName);
+    const error = workflowDisplayName.trim()
+      ? validateWorkflowName(workflowName)
+      : t('label.field-required', { field: t('label.display-name') });
     if (error) {
       setNameError(error);
 
@@ -237,7 +242,7 @@ const WorkflowsPage = () => {
     try {
       const workflowData = {
         description: description || '',
-        displayName: workflowName,
+        displayName: workflowDisplayName.trim(),
         edges: [],
         name: workflowName,
         nodes: [],
@@ -273,6 +278,7 @@ const WorkflowsPage = () => {
   }, [
     isSubmitting,
     workflowName,
+    workflowDisplayName,
     description,
     validateWorkflowName,
     resetForm,
@@ -456,21 +462,19 @@ const WorkflowsPage = () => {
               <div className="tw:flex tw:flex-col tw:gap-5">
                 <div>
                   <div className="tw:flex tw:items-center tw:gap-0.5 tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    <Typography as="span">
-                      {t('label.workflow-name')}
-                    </Typography>
+                    <Typography as="span">{t('label.display-name')}</Typography>
                     <Typography as="span" className="tw:text-error-primary">
                       *
                     </Typography>
                   </div>
                   <Input
-                    data-testid="workflow-name"
+                    data-testid="workflow-display-name"
                     isDisabled={isSubmitting}
                     isInvalid={!!nameError}
                     placeholder={t('label.workflow-name-placeholder')}
-                    value={workflowName}
+                    value={workflowDisplayName}
                     onChange={(value) => {
-                      setWorkflowName(value);
+                      setWorkflowDisplayName(value);
                       if (nameError) {
                         setNameError('');
                       }
@@ -484,6 +488,25 @@ const WorkflowsPage = () => {
                       {nameError}
                     </Typography>
                   )}
+                </div>
+                <div>
+                  <Typography
+                    as="p"
+                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
+                    {t('label.name')}
+                  </Typography>
+                  {/* The name is the workflow's FQN, so it is derived, never typed. */}
+                  <Input
+                    isDisabled
+                    data-testid="workflow-name"
+                    value={workflowName}
+                  />
+                  <Typography
+                    as="p"
+                    className="tw:m-0 tw:mt-1 tw:text-tertiary"
+                    size="text-xs">
+                    {t('message.workflow-name-derived-from-display-name')}
+                  </Typography>
                 </div>
                 <div>
                   <Typography
