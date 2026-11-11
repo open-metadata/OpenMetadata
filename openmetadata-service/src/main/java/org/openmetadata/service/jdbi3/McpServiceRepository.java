@@ -13,12 +13,22 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.services.McpService;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.services.connections.mcp.McpServerConfig;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.McpConnection;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.services.mcp.McpServiceResource;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Repository
@@ -33,5 +43,46 @@ public class McpServiceRepository extends ServiceEntityRepository<McpService, Mc
         "",
         ServiceType.MCP);
     supportsSearch = true;
+  }
+
+  @Override
+  public void prepare(McpService service, boolean update) {
+    List<String> names = serverNames(service);
+    // Checked only when the names change, so an unrelated edit never blocks a stored service. A
+    // PUT reaches here with update=true before the stored id is applied, so look it up by name.
+    McpService stored =
+        update
+            ? findByNameOrNull(FullyQualifiedName.quoteName(service.getName()), Include.ALL)
+            : null;
+    boolean namesChanged = stored == null || !names.equals(serverNames(stored));
+    if (namesChanged) {
+      validateUniqueServerNames(names);
+    }
+    super.prepare(service, update);
+  }
+
+  private static List<String> serverNames(McpService service) {
+    if (service.getConnection() == null || service.getConnection().getConfig() == null) {
+      return List.of();
+    }
+    org.openmetadata.schema.services.connections.mcp.McpConnection config =
+        JsonUtils.convertValue(
+            service.getConnection().getConfig(),
+            org.openmetadata.schema.services.connections.mcp.McpConnection.class);
+    return listOrEmpty(config.getServers()).stream().map(McpServerConfig::getName).toList();
+  }
+
+  /**
+   * Each server's settings are stored and restored by its name, so the name must identify one
+   * server (e.g. two entries named "local" could not be told apart after a reorder).
+   */
+  private static void validateUniqueServerNames(List<String> names) {
+    Set<String> seen = new HashSet<>();
+    for (String name : names) {
+      if (!seen.add(name)) {
+        throw new BadRequestException(
+            String.format("MCP server names must be unique, found [%s] more than once", name));
+      }
+    }
   }
 }

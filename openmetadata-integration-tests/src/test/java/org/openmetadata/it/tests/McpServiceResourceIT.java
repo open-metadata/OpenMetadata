@@ -1,6 +1,7 @@
 package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -22,8 +23,10 @@ import org.openmetadata.schema.services.connections.mcp.McpServerConfig.Transpor
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.McpConnection;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -50,17 +53,23 @@ public class McpServiceResourceIT extends BaseServiceIT<McpService, CreateMcpSer
   }
 
   private static McpConnection directConnection(String apiKey) {
-    McpServerConfig server =
-        new McpServerConfig()
-            .withName("mcp-server")
-            .withTransport(TransportType.StreamableHTTP)
-            .withUrl("http://localhost:9000/mcp")
-            .withApiKey(apiKey);
+    return directConnection(server("mcp-server", apiKey));
+  }
+
+  private static McpConnection directConnection(McpServerConfig... servers) {
     return new McpConnection()
         .withConfig(
             new org.openmetadata.schema.services.connections.mcp.McpConnection()
                 .withDiscoveryMethod(DiscoveryMethod.DirectConnection)
-                .withServers(List.of(server)));
+                .withServers(List.of(servers)));
+  }
+
+  private static McpServerConfig server(String name, String apiKey) {
+    return new McpServerConfig()
+        .withName(name)
+        .withTransport(TransportType.StreamableHTTP)
+        .withUrl("http://localhost:9000/mcp")
+        .withApiKey(apiKey);
   }
 
   private static org.openmetadata.schema.services.connections.mcp.McpConnection configOf(
@@ -207,6 +216,43 @@ public class McpServiceResourceIT extends BaseServiceIT<McpService, CreateMcpSer
     var botView = configOf(SdkClients.ingestionBotClient().mcpServices().get(id));
     assertTrue(Fernet.isTokenized(stored.getServers().getFirst().getApiKey()));
     assertEquals(PasswordEntityMasker.PASSWORD_MASK, adminView.getServers().getFirst().getApiKey());
+    assertEquals(SERVER_API_KEY, botView.getServers().getFirst().getApiKey());
+  }
+
+  @Test
+  void post_mcpServiceWithDuplicateServerNames_400(TestNamespace ns) {
+    CreateMcpService request =
+        createRequest(ns.prefix("duplicate_server_names"), ns)
+            .withConnection(
+                directConnection(server("dup", SERVER_API_KEY), server("dup", "other-key")));
+
+    OpenMetadataException error =
+        assertThrows(OpenMetadataException.class, () -> createEntity(request));
+    assertEquals(400, error.getStatusCode());
+  }
+
+  @Test
+  void put_renamedServerWithMaskedApiKey_400_keepsStoredKey(TestNamespace ns) {
+    CreateMcpService request =
+        createRequest(ns.prefix("renamed_server"), ns)
+            .withConnection(directConnection(SERVER_API_KEY));
+    String id = createEntity(request).getId().toString();
+
+    CreateMcpService renamed =
+        request.withConnection(
+            directConnection(server("mcp-server-renamed", PasswordEntityMasker.PASSWORD_MASK)));
+
+    OpenMetadataException error =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .execute(
+                        HttpMethod.PUT, "/v1/services/mcpServices", renamed, McpService.class));
+    assertEquals(400, error.getStatusCode());
+    var botView = configOf(SdkClients.ingestionBotClient().mcpServices().get(id));
+    assertEquals("mcp-server", botView.getServers().getFirst().getName());
     assertEquals(SERVER_API_KEY, botView.getServers().getFirst().getApiKey());
   }
 }
