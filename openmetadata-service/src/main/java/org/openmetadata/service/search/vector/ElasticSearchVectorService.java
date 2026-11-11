@@ -422,7 +422,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
           fetchSourceByIds(indexName, entityIds, StoredEmbeddingReuse.HEADER_FIELDS).entrySet()) {
         Supplier<String> currentFingerprint = currentFingerprintById.get(entry.getKey());
         if (currentFingerprint != null
-            && StoredEmbeddingReuse.fingerprintMatches(entry.getValue(), currentFingerprint)) {
+            && StoredEmbeddingReuse.fingerprintMatches(
+                entry.getKey(), entry.getValue(), currentFingerprint)) {
           matchingIds.add(entry.getKey());
         }
       }

@@ -1873,7 +1873,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         }
         Supplier<String> currentFingerprint = currentFingerprintById.get(doc.id());
         if (currentFingerprint != null
-            && StoredEmbeddingReuse.fingerprintMatches(header, currentFingerprint)) {
+            && StoredEmbeddingReuse.fingerprintMatches(doc.id(), header, currentFingerprint)) {
           matchingIds.add(doc.id());
         }
       }

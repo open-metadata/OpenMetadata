@@ -14,6 +14,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 class StoredEmbeddingReuseTest {
 
   private static final long UPDATED_AT = 1_700_000_000_000L;
+  private static final String ENTITY_ID = "4f0c1c9e-0000-4000-8000-000000000001";
 
   @ParameterizedTest(name = "stored={0} current={1} -> reuse={2}")
   @CsvSource({
@@ -27,7 +28,9 @@ class StoredEmbeddingReuseTest {
         JsonUtils.readTree(
             "{\"fingerprint\":\"%s\",\"updatedAt\":%d}".formatted(storedFingerprint, UPDATED_AT));
 
-    assertEquals(reused, StoredEmbeddingReuse.fingerprintMatches(header, () -> currentFingerprint));
+    assertEquals(
+        reused,
+        StoredEmbeddingReuse.fingerprintMatches(ENTITY_ID, header, () -> currentFingerprint));
   }
 
   @ParameterizedTest
@@ -43,8 +46,20 @@ class StoredEmbeddingReuseTest {
         };
 
     assertFalse(
-        StoredEmbeddingReuse.fingerprintMatches(JsonUtils.readTree(json), currentFingerprint));
+        StoredEmbeddingReuse.fingerprintMatches(
+            ENTITY_ID, JsonUtils.readTree(json), currentFingerprint));
     assertEquals(0, computations.get());
+  }
+
+  @Test
+  void anEntityThatCannotBeFingerprintedIsReembeddedInsteadOfFailingTheLookup() {
+    JsonNode header = JsonUtils.readTree("{\"fingerprint\":\"fp-current\"}");
+    Supplier<String> failingFingerprint =
+        () -> {
+          throw new IllegalStateException("tag without an FQN");
+        };
+
+    assertFalse(StoredEmbeddingReuse.fingerprintMatches(ENTITY_ID, header, failingFingerprint));
   }
 
   @ParameterizedTest(name = "{0} -> spliceable={1}")

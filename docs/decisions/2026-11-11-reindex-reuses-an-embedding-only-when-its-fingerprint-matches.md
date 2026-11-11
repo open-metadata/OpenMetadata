@@ -3,9 +3,10 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-11 (initial)
 - **Deciders:** Search and AI context maintainers
-- **Guard:** `StoredEmbeddingReuseTest`,
-  `ElasticSearchVectorServiceTest.reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent`,
-  `StoredEmbeddingReuseIT` (OpenSearch and Elasticsearch)
+- **Guard:** `StoredEmbeddingReuseTest`, `reindexReusesOnlyStoredEmbeddingsWhoseFingerprintIsCurrent`
+  in `ElasticSearchVectorServiceTest` and `OpenSearchVectorServiceTest`, `StoredEmbeddingReuseIT`
+  (both engines); live/reindex parity: `VectorDocBuilderTest` (custom properties) and
+  `MetricRepositoryTest.aReindexReadKeepsEveryInputOfTheMetricEmbeddingFingerprint`
 - **Related:** open-metadata/OpenMetadata#37524, open-metadata/OpenMetadata#37522,
   open-metadata/OpenMetadata#28313
 
@@ -38,6 +39,13 @@ old embedding forever:
   `StoredEmbeddingReuse` holds the rule for both engines.
 - **The current fingerprint is computed lazily**, only for entities that have a stored doc, so a
   first-time index does not pay for it.
+- **The live write path and the reindex must build the same fingerprint for the same entity.**
+  Otherwise every entity edited since the last reindex is re-embedded again on the next one. A
+  reindex loads every field the fingerprint reads (`relatedMetrics` for metrics), and custom
+  properties are rendered as JSON with sorted top-level keys, because the live path holds them as a
+  `Map` and the reindex as an `ObjectNode` in database order.
+- **One entity that cannot be fingerprinted is re-embedded on its own**; it does not cost the rest
+  of its batch their reuse.
 - **No embedding-text version stamp.** The fingerprint already changes exactly when the text it
   covers changes. A separate version would need a bump that someone can forget, which is the
   mistake this record fixes.
@@ -45,14 +53,24 @@ old embedding forever:
 ## Consequences
 
 - **Upgrade cost.** The first reindex after a release that changes the fingerprinted text
-  re-embeds exactly the entities whose text changed: one paid call each on Elasticsearch (chunk 0
-  only), and no extra calls on OpenSearch, where the chunks were re-embedded anyway and chunk 0 now
-  also reaches the entity doc. Entities with unchanged text keep their embedding. Upgrade notes
-  for such a release must say which entity types will re-embed.
-- **The first reindex with this rule also refreshes embeddings left stale by earlier releases**,
-  for the same reason: any entity whose stored fingerprint no longer matches its text.
-- **CPU per reindex.** Every entity with a stored doc now has its fingerprint text built and hashed.
-  On OpenSearch the chunk backfill already did this for every reused entity.
+  re-embeds exactly the entities whose text changed. Elasticsearch makes one paid call per entity
+  (chunk 0 only). OpenSearch makes none beyond what it already made, because the chunks were
+  re-embedded anyway and chunk 0 now also reaches the entity doc. Entities with unchanged text keep
+  their embedding. Upgrade notes for such a release must say which entity types will re-embed.
+- **The first reindex with this rule also refreshes embeddings left stale by earlier releases**:
+  any entity whose stored fingerprint no longer matches its text. Their number is unknown. On
+  OpenSearch an entity whose chunks an earlier reindex already refreshed re-embeds every chunk
+  again, because the miss path rebuilds all chunks. This happens once per entity.
+- **Text that changes without an edit now refreshes on Elasticsearch.** Inherited owners or domains,
+  a renamed tag, or a test case's latest result change the fingerprint without changing the
+  entity's `updatedAt`. Each affected entity costs one call at the next reindex; OpenSearch chunks
+  already paid it.
+- **The same-text rendering change re-embeds a few entities once**: those whose custom properties
+  a reindex stored in an order other than sorted (entity-reference properties come first; database
+  collation may order case differently), and metrics with related metrics.
+- **CPU.** Every entity with a stored doc has its fingerprint text built and hashed whenever the
+  bulk sink writes it: on reindex, on live bulk writes and in the retry worker. On OpenSearch the
+  chunk backfill already did this for every reused entity. Not measured.
 - **Only fingerprinted text triggers a refresh.** The fingerprint covers the context text
   (`buildMetaLightText`, `buildBodyText`), not the separately built embedding input
   (`buildSemanticMetaLightText`, `buildSemanticBodyText`). A change that touches only the embedding

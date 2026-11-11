@@ -125,10 +125,12 @@ class ElasticSearchVectorServiceTest {
     // Stand-in for the text an older release built for the same entity: same updatedAt, other text.
     Table textChangedAsLastEmbedded =
         table("payments", "Customer payments", updatedAt).withId(textChanged.getId());
+    Table unfingerprintable = table("refunds", "Refunds issued", updatedAt);
     answerIdSearchesFrom(
         Map.of(
             id(unchanged), storedEntityDoc(unchanged, unchanged),
-            id(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded)));
+            id(textChanged), storedEntityDoc(textChanged, textChangedAsLastEmbedded),
+            id(unfingerprintable), storedEntityDoc(unfingerprintable, unfingerprintable)));
 
     Map<String, JsonNode> reusable =
         vectorService.getExistingEmbeddingsBatch(
@@ -136,6 +138,10 @@ class ElasticSearchVectorServiceTest {
             Map.of(
                 id(unchanged), currentFingerprint(unchanged),
                 id(textChanged), currentFingerprint(textChanged),
+                id(unfingerprintable),
+                    () -> {
+                      throw new IllegalStateException("tag without an FQN");
+                    },
                 UUID.randomUUID().toString(), currentFingerprint(unchanged)));
 
     assertEquals(Set.of(id(unchanged)), reusable.keySet());

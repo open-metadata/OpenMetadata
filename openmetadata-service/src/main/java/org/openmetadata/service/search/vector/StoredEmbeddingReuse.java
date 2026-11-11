@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * When a reindex may copy the embedding stored on an entity search doc into the rebuilt doc instead
@@ -12,6 +13,7 @@ import java.util.function.Supplier;
  * release that changes the embedding text leaves every entity's {@code updatedAt} as it was.
  * ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches
  */
+@Slf4j
 final class StoredEmbeddingReuse {
 
   static final String FINGERPRINT_FIELD = "fingerprint";
@@ -20,9 +22,23 @@ final class StoredEmbeddingReuse {
   private StoredEmbeddingReuse() {}
 
   /** The current fingerprint is computed only for entities that have a stored fingerprint. */
-  static boolean fingerprintMatches(JsonNode header, Supplier<String> currentFingerprint) {
+  static boolean fingerprintMatches(
+      String entityId, JsonNode header, Supplier<String> currentFingerprint) {
     String storedFingerprint = header.path(FINGERPRINT_FIELD).asText(null);
-    return storedFingerprint != null && storedFingerprint.equals(currentFingerprint.get());
+    return storedFingerprint != null
+        && storedFingerprint.equals(currentFingerprintOrNull(entityId, currentFingerprint));
+  }
+
+  // The lookup runs for a whole batch; one entity whose text cannot be built must cost only its
+  // own reuse, not every other entity's in the batch.
+  private static String currentFingerprintOrNull(
+      String entityId, Supplier<String> currentFingerprint) {
+    try {
+      return currentFingerprint.get();
+    } catch (RuntimeException e) {
+      LOG.warn("Cannot fingerprint entity {}; re-embedding it: {}", entityId, e.getMessage());
+      return null;
+    }
   }
 
   /**

@@ -8,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,6 +23,7 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class VectorDocBuilderTest {
@@ -221,6 +224,34 @@ class VectorDocBuilderTest {
     String fp2 = VectorDocBuilder.computeFingerprintForEntity(table);
 
     assertEquals(fp1, fp2);
+  }
+
+  @Test
+  void liveAndReindexReadsOfTheSameCustomPropertiesShareOneFingerprint() {
+    Map<String, Object> asWritten = new LinkedHashMap<>();
+    asWritten.put("region", "emea");
+    asWritten.put("costCenter", "finance");
+    asWritten.put("retentionDays", 30);
+    ObjectNode asReindexed =
+        JsonUtils.getObjectNode().put("costCenter", "finance").put("region", "emea");
+    asReindexed.put("retentionDays", 30);
+
+    Table table = createTestTable("cp_table", null, "Orders");
+    String liveFingerprint =
+        VectorDocBuilder.computeFingerprintForEntity(table.withExtension(asWritten));
+    String reindexFingerprint =
+        VectorDocBuilder.computeFingerprintForEntity(table.withExtension(asReindexed));
+
+    assertEquals(liveFingerprint, reindexFingerprint);
+  }
+
+  @Test
+  void customPropertiesWithSortedKeysRenderAsBeforeSoStoredFingerprintsStillMatch() {
+    ObjectNode sorted =
+        JsonUtils.getObjectNode().put("costCenter", "finance").put("region", "emea");
+
+    assertEquals(String.valueOf(sorted), VectorDocBuilder.customPropertiesText(sorted));
+    assertEquals("[]", VectorDocBuilder.customPropertiesText(null));
   }
 
   @Test
