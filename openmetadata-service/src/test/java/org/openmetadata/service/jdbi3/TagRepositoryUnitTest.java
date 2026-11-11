@@ -461,14 +461,14 @@ public class TagRepositoryUnitTest {
 
   @Test
   void test_validateSupportedLanguage_rejectsUnknownLanguage() {
-    for (String language : List.of("", "english")) {
+    for (String type : List.of("pattern", "predefined")) {
       Recognizer recognizer =
-          recognizerWithConfig(Map.of("type", "pattern", "supportedLanguage", language));
+          recognizerWithConfig(Map.of("type", type, "supportedLanguage", "english"));
 
       assertThrows(
           IllegalArgumentException.class,
           () -> TagRepository.validateSupportedLanguage(recognizer),
-          language);
+          type);
     }
   }
 

@@ -2001,8 +2001,19 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
-  void patch_tagStoredWithoutSupportedLanguage_staysEditable(TestNamespace ns) {
-    // A recognizer stored before the language rule must not block unrelated edits to its tag.
+  void post_recognizerWithoutSupportedLanguage_rejected(TestNamespace ns) {
+    Map<String, Object> config =
+        Map.of("type", "pattern", "patterns", List.of(Map.of("name", "id", "regex", "^id$")));
+    CreateTag request =
+        tagIn(ns.shortPrefix("unlanguaged"), createClassification(ns))
+            .withRecognizers(
+                List.of(new Recognizer().withName("Government_ID").withRecognizerConfig(config)));
+
+    assertThrows(InvalidRequestException.class, () -> createEntity(request));
+  }
+
+  // A tag as stored before the language rule: its recognizer config has no supportedLanguage.
+  private Tag storeTagWithoutSupportedLanguage(TestNamespace ns) {
     Tag created = createTagWithPatternRecognizer(ns, "legacy");
     Tag legacy = getEntityWithFields(created.getId().toString(), "recognizers");
     Map<String, Object> legacyConfig =
@@ -2014,13 +2025,46 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     Entity.getCollectionDAO().tagDAO().update(legacy);
     EntityRepository.invalidateCacheForEntity(
         Entity.TAG, legacy.getId(), legacy.getFullyQualifiedName());
+    return legacy;
+  }
 
+  @Test
+  void patch_tagStoredWithoutSupportedLanguage_staysEditable(TestNamespace ns) {
+    // A recognizer stored before the language rule must not block unrelated edits to its tag.
+    Tag legacy = storeTagWithoutSupportedLanguage(ns);
     JsonNode newDescription =
         JsonUtils.valueToTree(
             List.of(Map.of("op", "replace", "path", "/description", "value", "edited")));
     Tag patched = SdkClients.adminClient().tags().patch(legacy.getId(), newDescription);
 
     assertEquals("edited", patched.getDescription());
+  }
+
+  @Test
+  void put_tagStoredWithoutSupportedLanguage_resentWithoutIds_accepted(TestNamespace ns) {
+    // A PUT may resend the stored recognizers without their ids; unchanged configs still pass.
+    Tag legacy = storeTagWithoutSupportedLanguage(ns);
+    List<Recognizer> resent =
+        legacy.getRecognizers().stream()
+            .map(
+                r ->
+                    new Recognizer()
+                        .withName(r.getName())
+                        .withRecognizerConfig(r.getRecognizerConfig()))
+            .toList();
+    CreateTag putBody =
+        new CreateTag()
+            .withName(legacy.getName())
+            .withClassification(legacy.getClassification().getFullyQualifiedName())
+            .withDescription("edited")
+            .withRecognizers(resent);
+
+    Tag updated =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/tags", putBody, Tag.class);
+
+    assertEquals("edited", updated.getDescription());
   }
 
   @Test

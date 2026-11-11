@@ -245,15 +245,19 @@ public class TagRepository extends EntityRepository<Tag> {
 
   /**
    * The ingestion client's Tag model requires a valid supportedLanguage on every recognizer type
-   * but predefined; a tag it cannot parse is skipped by auto-classification while the run passes.
+   * but predefined, where it may be omitted; a tag it cannot parse is skipped by
+   * auto-classification while the run passes.
    */
   static void validateSupportedLanguage(Recognizer recognizer) {
     JsonNode config = JsonUtils.valueToTree(recognizer.getRecognizerConfig());
-    boolean languageOptional = PREDEFINED_RECOGNIZER_TYPE.equals(config.path("type").asText());
-    String language = config.path(SUPPORTED_LANGUAGE).asText();
+    JsonNode language = config.path(SUPPORTED_LANGUAGE);
+    boolean languageOmitted =
+        PREDEFINED_RECOGNIZER_TYPE.equals(config.path("type").asText())
+            && (language.isMissingNode() || language.isNull());
     boolean languageValid =
-        Arrays.stream(ClassificationLanguage.values()).anyMatch(l -> l.value().equals(language));
-    if (!languageOptional && !languageValid) {
+        Arrays.stream(ClassificationLanguage.values())
+            .anyMatch(l -> l.value().equals(language.asText()));
+    if (!languageOmitted && !languageValid) {
       throw new IllegalArgumentException(
           String.format(
               "Recognizer '%s' must set recognizerConfig.%s to a supported language",
