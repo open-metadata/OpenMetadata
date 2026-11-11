@@ -24,6 +24,7 @@ import {
   Format,
   Kind,
   NativeOntologyImportSummary,
+  SkipReason,
   Status,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
@@ -334,6 +335,78 @@ describe('OntologyNativeImportPanel', () => {
       screen.getByTestId('ontology-native-import-count-new-properties')
     ).toHaveTextContent('5');
     expect(screen.getByTestId('ontology-native-import-apply')).toBeEnabled();
+  });
+
+  it('says how many already-existing definitions the server left unlisted', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: { ...summary, omittedItems: 4_990 },
+      changeSet,
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.getByTestId('ontology-native-import-items-omitted')
+    ).toHaveTextContent('message.native-import-items-omitted');
+  });
+
+  it('lists what the server skipped, grouped by reason and predicate', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: {
+        ...summary,
+        skippedStatements: {
+          total: 3,
+          omittedGroups: 2,
+          groups: [
+            {
+              reason: SkipReason.UnsupportedAnnotation,
+              predicate: 'http://www.w3.org/2000/01/rdf-schema#isDefinedBy',
+              count: 2,
+              subjects: ['https://example.org/A', 'https://example.org/B'],
+            },
+            {
+              reason: SkipReason.Individual,
+              count: 1,
+              subjects: ['https://example.org/i'],
+            },
+          ],
+        },
+      },
+      changeSet,
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    const skipped = screen.getByTestId('ontology-native-import-skipped');
+
+    expect(skipped).toHaveTextContent(
+      'message.native-import-skipped-statements'
+    );
+    expect(skipped).toHaveTextContent(
+      'label.skip-reason-unsupported-annotation'
+    );
+    expect(skipped).toHaveTextContent(
+      'http://www.w3.org/2000/01/rdf-schema#isDefinedBy'
+    );
+    expect(skipped).toHaveTextContent(
+      'https://example.org/A, https://example.org/B'
+    );
+    expect(skipped).toHaveTextContent('label.skip-reason-individual');
+    expect(skipped).toHaveTextContent(
+      'message.native-import-skipped-more-groups'
+    );
+  });
+
+  it('shows no skipped disclosure when the server skipped nothing', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.queryByTestId('ontology-native-import-skipped')
+    ).not.toBeInTheDocument();
   });
 
   it('applies the previewed change set to the existing ontology under its lease', async () => {

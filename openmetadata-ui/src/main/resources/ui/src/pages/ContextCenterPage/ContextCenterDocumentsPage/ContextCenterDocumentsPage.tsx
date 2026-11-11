@@ -401,6 +401,10 @@ const ContextCenterDocumentsPage: FC = () => {
     return () => clearTimeout(id);
   }, [documentSearchQuery]);
 
+  useEffect(() => {
+    setSelectedIds(new Set());
+  }, [selectedFolderId, debouncedSearchQuery]);
+
   const fetchDocuments = useCallback(
     async (after?: string) => {
       if (!after) {
@@ -614,6 +618,12 @@ const ContextCenterDocumentsPage: FC = () => {
       setAllDocuments((prev) =>
         prev.filter((document) => document.id !== fileToDelete.id)
       );
+      setSelectedIds((prev) => {
+        const next = new Set(prev);
+        next.delete(fileToDelete.id);
+
+        return next;
+      });
       setTotalFileCount((prev) => prev - 1);
       setGlobalFileCount((prev) => prev - 1);
       fetchFolders();
@@ -982,6 +992,7 @@ const ContextCenterDocumentsPage: FC = () => {
                     onBulkDelete={handleBulkDelete}
                     onBulkDownload={handleBulkDownload}
                     onBulkMove={handleBulkMove}
+                    onClearSelection={() => setSelectedIds(new Set())}
                     onDeleteFile={handleDeleteFile}
                     onDownload={handleAssetDownload}
                     onFileMoved={handleFileMoved}

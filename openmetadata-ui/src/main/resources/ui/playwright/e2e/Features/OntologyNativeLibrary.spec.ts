@@ -27,44 +27,46 @@ test('filters, previews, and keeps a native pack installed across reload', async
   try {
     await page.goto('/governance/ontology');
     await page.getByTestId('ontology-library-trigger').click();
-    await page.getByTestId('ontology-library-filter-finance').click();
-    await expect(page.getByTestId('ontology-pack-fibo')).toBeVisible();
-    await expect(page.getByTestId('ontology-pack-fhir')).toHaveCount(0);
+    await page.getByTestId('ontology-library-filter-cross-industry').click();
+    await expect(page.getByTestId('ontology-pack-sosa-ssn')).toBeVisible();
+    await expect(page.getByTestId('ontology-pack-sosa-ssn')).toHaveCount(0);
 
     const firstSample = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/ontologyPacks/fibo/sample') &&
+        response.url().includes('/api/v1/ontologyPacks/sosa-ssn/sample') &&
         response.request().method() === 'GET'
     );
-    await page.getByTestId('ontology-pack-fibo').click();
+    await page.getByTestId('ontology-pack-sosa-ssn').click();
     expect((await firstSample).ok()).toBe(true);
     await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-      '8'
+      '27'
     );
     await expect(page.getByTestId('ontology-pack-sample-node-0')).toBeVisible();
     await expect(page.getByTestId('ontology-pack-sample-edge-0')).toBeVisible();
     await expect(page.getByTestId('ontology-pack-detail')).toContainText(
-      'Aligned to FIBO'
+      'Aligned to Semantic Sensor Network Ontology'
     );
 
     const smallerSample = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/v1/ontologyPacks/fibo/sample') &&
-        response.url().includes('moduleIds=foundations') &&
+        response.url().includes('/api/v1/ontologyPacks/sosa-ssn/sample') &&
+        response.url().includes('moduleIds=sosa') &&
         response.request().method() === 'GET'
     );
-    await page.getByTestId('ontology-module-business-entities').click();
+    await page.getByTestId('ontology-module-ssn').click();
     expect((await smallerSample).ok()).toBe(true);
     await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-      '4'
+      '16'
     );
-    await expect(page.getByTestId('ontology-pack-sample-node-3')).toBeVisible();
-    await expect(page.getByTestId('ontology-pack-sample-node-4')).toHaveCount(
+    await expect(
+      page.getByTestId('ontology-pack-sample-node-15')
+    ).toBeVisible();
+    await expect(page.getByTestId('ontology-pack-sample-node-16')).toHaveCount(
       0
     );
-    await page.getByTestId('ontology-module-business-entities').click();
+    await page.getByTestId('ontology-module-ssn').click();
     await expect(page.getByTestId('ontology-pack-concept-count')).toHaveText(
-      '8'
+      '27'
     );
 
     const created = page.waitForResponse(
@@ -73,8 +75,11 @@ test('filters, previews, and keeps a native pack installed across reload', async
         response.request().method() === 'POST'
     );
     await page.getByTestId('ontology-library-native-install').click();
-    installed = await okJson<Ontology>(await created, 'Create FIBO target');
-    await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
+    installed = await okJson<Ontology>(
+      await created,
+      'Create sensor pack target'
+    );
+    await expect(page.getByTestId('ontology-pack-sosa-ssn')).toContainText(
       'Installed'
     );
 
@@ -82,15 +87,15 @@ test('filters, previews, and keeps a native pack installed across reload', async
       await api.get(`/api/v1/ontologies/${installed.id}`),
       'Read installed ontology'
     );
-    expect(stored.layer).toBe('L2');
-    expect(stored.installedPacks?.[0].packId).toBe('fibo');
+    expect(stored.layer).toBe('L1');
+    expect(stored.installedPacks?.[0].packId).toBe('sosa-ssn');
 
     await page.reload();
     await page.getByTestId('ontology-library-trigger').click();
-    await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
+    await expect(page.getByTestId('ontology-pack-sosa-ssn')).toContainText(
       'Installed'
     );
-    await page.getByTestId('ontology-pack-fibo').click();
+    await page.getByTestId('ontology-pack-sosa-ssn').click();
     await expect(
       page.getByTestId(`ontology-library-installed-in-${installed.id}`)
     ).toContainText(installed.displayName ?? installed.name);

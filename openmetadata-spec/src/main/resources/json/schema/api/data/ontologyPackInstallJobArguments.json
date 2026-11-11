@@ -1,0 +1,39 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/ontologyPackInstallJobArguments.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OntologyPackInstallJobArguments",
+  "description": "Typed payload persisted for a library install job. It names the verified pack selection and never carries the pack body.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.OntologyPackInstallJobArguments",
+  "properties": {
+    "ontologyId": {
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "packId": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*$"
+    },
+    "version": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "moduleIds": {
+      "description": "Selected modules with their dependencies, in catalogue order.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "packDigest": {
+      "description": "SHA-256 over the pack id, version and the checksum of each selected module, checked again when the job runs.",
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "required": ["ontologyId", "packId", "version", "moduleIds", "packDigest"],
+  "additionalProperties": false
+}

@@ -1246,6 +1246,18 @@ export const patchMemory = async (
   return res.json();
 };
 
+/** A memory's stage as stored, read by id rather than from the search index the lists read. */
+export const getMemoryStatus = async (
+  apiContext: APIRequestContext,
+  id: string
+): Promise<string> => {
+  const response = await apiContext.get(`${MEMORIES_API}/${id}`);
+  const body = await response.text();
+  expect(response.status(), body).toBe(200);
+
+  return parseResponseJson<{ entityStatus: string }>(body).entityStatus;
+};
+
 /**
  * Sets a memory's outcome counters through the admin-only outcome write, the only write that
  * changes them: a PATCH keeps the stored counts.
@@ -1288,7 +1300,11 @@ export const createMemoryViaApi = async (
   apiContext: APIRequestContext,
   overrides: Record<string, unknown>
 ) => {
-  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  // OSS defaults a new memory to Approved, Collate to Unprocessed (hidden from
+  // non-owners). Pin Approved so fixtures behave the same on both distributions.
+  const res = await apiContext.post(MEMORIES_API, {
+    data: { ...overrides, entityStatus: overrides.entityStatus ?? 'Approved' },
+  });
   expect(res.status()).toBe(201);
 
   return res.json();

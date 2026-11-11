@@ -16,7 +16,6 @@ import {
   BadgeWithDot,
   Box,
   Button,
-  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -32,6 +31,7 @@ import { TFunction } from 'i18next';
 import React, {
   useCallback,
   useEffect,
+  useId,
   useMemo,
   useRef,
   useState,
@@ -1650,6 +1650,8 @@ const OntologyExplorerContent: React.FC = () => {
     });
   }
 
+  const publishReasonId = useId();
+  const addConceptReasonId = useId();
   const headerActionSize = getHeaderActionSize(isAiMode);
 
   function renderPrimaryAction() {
@@ -1666,16 +1668,30 @@ const OntologyExplorerContent: React.FC = () => {
     })();
 
     if (mode === 'edit' && canAddConcept) {
+      const isDraftOpen = !isNativeOntology && Boolean(conceptDraft);
+
       return (
-        <Button
-          color="primary"
-          data-testid="ontology-add-concept"
-          iconLeading={Plus}
-          isDisabled={!isNativeOntology && Boolean(conceptDraft)}
-          size={headerActionSize}
-          onPress={() => guard(handleAddConcept)}>
-          {t('label.add-entity', { entity: t('label.concept') })}
-        </Button>
+        <>
+          <Button
+            aria-describedby={isDraftOpen ? addConceptReasonId : undefined}
+            color="primary"
+            data-testid="ontology-add-concept"
+            iconLeading={Plus}
+            isDisabled={isDraftOpen}
+            size={headerActionSize}
+            onPress={() => guard(handleAddConcept)}>
+            {t('label.add-entity', { entity: t('label.concept') })}
+          </Button>
+          {isDraftOpen && (
+            <Typography
+              as="span"
+              className="tw:font-body tw:text-xs tw:text-tertiary"
+              data-testid="ontology-add-concept-reason"
+              id={addConceptReasonId}>
+              {t('message.ontology-finish-open-concept-first')}
+            </Typography>
+          )}
+        </>
       );
     }
 
@@ -1764,22 +1780,28 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <>
-        <Tooltip
-          isDisabled={!isAllOntologies}
-          title={t('message.ontology-choose-ontology-to-publish')}>
-          <Button
-            color={isAiMode ? 'secondary-brand' : 'primary'}
-            data-testid="ontology-publication-trigger"
-            iconLeading={GitBranch01}
-            isDisabled={isAllOntologies}
-            size={headerActionSize}
-            onPress={() => {
-              setPublicationTab('changes');
-              setIsPublicationOpen(true);
-            }}>
-            {renderPublicationLabel()}
-          </Button>
-        </Tooltip>
+        <Button
+          aria-describedby={isAllOntologies ? publishReasonId : undefined}
+          color={isAiMode ? 'secondary-brand' : 'primary'}
+          data-testid="ontology-publication-trigger"
+          iconLeading={GitBranch01}
+          isDisabled={isAllOntologies}
+          size={headerActionSize}
+          onPress={() => {
+            setPublicationTab('changes');
+            setIsPublicationOpen(true);
+          }}>
+          {renderPublicationLabel()}
+        </Button>
+        {isAllOntologies && (
+          <Typography
+            as="span"
+            className="tw:font-body tw:text-xs tw:text-tertiary"
+            data-testid="ontology-publication-reason"
+            id={publishReasonId}>
+            {t('message.ontology-choose-ontology-to-publish')}
+          </Typography>
+        )}
         {isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
             {isolatedCount} {t('label.isolated')}

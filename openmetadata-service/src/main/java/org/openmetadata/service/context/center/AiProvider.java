@@ -14,6 +14,8 @@
 package org.openmetadata.service.context.center;
 
 import java.util.Optional;
+import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.LLMCompletionClient;
 
 /**
  * Single seam for the platform's AI-backed Context Center steps. OSS ships {@link LlmAiProvider}
@@ -30,5 +32,13 @@ public interface AiProvider {
    */
   default Optional<MemoryGlossaryDeriver> memoryGlossaryDeriver() {
     return Optional.empty();
+  }
+
+  /**
+   * The model that judges whether a reworded fact is one another document already states: the
+   * built-in LLM client unless a provider supplies its own. Without one, only identical facts link.
+   */
+  default Optional<LLMCompletionClient> duplicateJudge() {
+    return Optional.ofNullable(LLMClientHolder.get());
   }
 }

@@ -34,6 +34,7 @@ import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -385,11 +386,13 @@ public class ContextFileProcessingService {
   private FileContextProcessingEngine defaultFileEngine() {
     ContextMemoryRepository memoryRepository =
         (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    Supplier<VectorIndexService> vectors =
+        () -> Entity.getSearchRepository().getVectorIndexService();
     SemanticMemoryDuplicateFinder duplicateFinder =
-        new SemanticMemoryDuplicateFinder(
-            memoryRepository,
-            () -> Entity.getSearchRepository().getVectorIndexService(),
-            LLMClientHolder.get());
+        AiProviderHolder.get()
+            .duplicateJudge()
+            .map(judge -> new SemanticMemoryDuplicateFinder(memoryRepository, vectors, judge))
+            .orElseGet(() -> SemanticMemoryDuplicateFinder.exactOnly(memoryRepository, vectors));
     return new FileContextProcessingEngine(
         repository,
         memoryExtractorSupplier.get(),

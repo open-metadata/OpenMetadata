@@ -18,6 +18,7 @@ import {
   Kind,
   NativeOntologyImportItem,
   NativeOntologyImportSummary,
+  SkipReason,
   Status,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import type { Ontology } from '../../../../generated/entity/data/ontology';
@@ -325,6 +326,20 @@ export const NATIVE_IMPORT_ITEM_GROUPS = [
   { kind: Kind.Relationship, labelKey: 'label.relationship-plural' },
   { kind: Kind.Rule, labelKey: 'label.rule-plural' },
 ] as const satisfies readonly { kind: Kind; labelKey: string }[];
+
+export const NATIVE_IMPORT_SKIP_REASON_LABEL_KEYS: Record<SkipReason, string> =
+  {
+    [SkipReason.ExtraValue]: 'label.skip-reason-extra-value',
+    [SkipReason.Imports]: 'label.skip-reason-imports',
+    [SkipReason.Individual]: 'label.skip-reason-individual',
+    [SkipReason.NonPreferredLanguage]:
+      'label.skip-reason-non-preferred-language',
+    [SkipReason.UndeclaredReference]: 'label.skip-reason-undeclared-reference',
+    [SkipReason.UnsupportedAnnotation]:
+      'label.skip-reason-unsupported-annotation',
+    [SkipReason.UnsupportedStructure]:
+      'label.skip-reason-unsupported-structure',
+  };
 
 export const NATIVE_IMPORT_STATUS_LABEL_KEYS: Record<Status, string> = {
   [Status.AlreadyExists]: 'label.already-exists',

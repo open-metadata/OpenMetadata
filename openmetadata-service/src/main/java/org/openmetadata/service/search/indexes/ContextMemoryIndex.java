@@ -40,6 +40,23 @@ public class ContextMemoryIndex implements TaggableIndex {
   public static final String FIELD_OUTCOMES = "outcomes";
   public static final String UNANCHORED = "unanchored";
 
+  /** What a similar-memory lookup ranks on, and the share of the text's terms a hit must hold. */
+  public static final List<String> SIMILARITY_FIELDS =
+      List.of("question", "answer", "title", "summary");
+
+  public static final String SIMILARITY_MINIMUM_SHOULD_MATCH = "30%";
+
+  /** A hit names its memory by id, or a chunk by the memory it belongs to. */
+  public static final String FIELD_ID = "id";
+
+  public static final String FIELD_PARENT_ID = "parentId";
+
+  /** All a similar-memory lookup reads of a hit, so an embedding a document carries stays behind. */
+  public static final List<String> SIMILARITY_RESULT_FIELDS = List.of(FIELD_ID, FIELD_PARENT_ID);
+
+  /** The file a memory shows as its source; an article source is not indexed. */
+  public static final String FIELD_SOURCE_FILE_ID = "sourceFile.id";
+
   private static final Set<String> REINDEX_RELATIONSHIP_FIELDS =
       Set.of(
           ContextMemoryRepository.FIELD_PRIMARY_ENTITY,
@@ -180,7 +197,14 @@ public class ContextMemoryIndex implements TaggableIndex {
     doc.put("relatedEntities", related);
     doc.put("rootMemory", getEntityWithDisplayName(memory.getRootMemory()));
     doc.put("parentMemory", getEntityWithDisplayName(memory.getParentMemory()));
-    doc.put("sourceFile", getEntityWithDisplayName(memory.getSourceFile()));
+    doc.put("sourceFile", getEntityWithDisplayName(sourceFileOf(memory)));
+  }
+
+  /** A write carries the memory's source as its source entity; a reindex reads the file view. */
+  private static EntityReference sourceFileOf(ContextMemory memory) {
+    EntityReference source =
+        memory.getSourceFile() != null ? memory.getSourceFile() : memory.getSourceEntity();
+    return source != null && Entity.CONTEXT_FILE.equals(source.getType()) ? source : null;
   }
 
   public static Map<String, Float> getFields() {

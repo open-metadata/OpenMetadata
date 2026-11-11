@@ -88,6 +88,9 @@ export interface BackgroundJob {
  * Arguments for enum removal job.
  *
  * Typed payload persisted for an ontology bulk background job.
+ *
+ * Typed payload persisted for a library install job. It names the verified pack selection
+ * and never carries the pack body.
  */
 export interface EnumCleanupArgs {
     /**
@@ -104,6 +107,18 @@ export interface EnumCleanupArgs {
     removedEnumKeys?: string[];
     glossary?:        EntityReference;
     request?:         OntologyBulkRequest;
+    /**
+     * Selected modules with their dependencies, in catalogue order.
+     */
+    moduleIds?:  string[];
+    ontologyId?: string;
+    /**
+     * SHA-256 over the pack id, version and the checksum of each selected module, checked again
+     * when the job runs.
+     */
+    packDigest?: string;
+    packId?:     string;
+    version?:    string;
     [property: string]: any;
 }
 
@@ -221,6 +236,7 @@ export enum JobType {
     DeleteToken = "DELETE_TOKEN",
     MemoryGlossaryDerivation = "MEMORY_GLOSSARY_DERIVATION",
     OntologyBulk = "ONTOLOGY_BULK",
+    OntologyPackInstall = "ONTOLOGY_PACK_INSTALL",
 }
 
 /**

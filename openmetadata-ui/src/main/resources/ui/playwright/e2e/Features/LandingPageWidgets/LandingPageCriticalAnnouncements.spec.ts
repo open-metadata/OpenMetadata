@@ -107,7 +107,7 @@ test.describe('Landing page critical announcements', () => {
     await deleteLandingPageAccount(apiContext, consumer);
   });
 
-  test('a user sees live critical system announcements as a carousel', async ({
+  test('a user sees live criticals as a carousel and other system announcements in the rail', async ({
     browser,
   }) => {
     const page = await openLandingPageAccountPage(browser, consumer);
@@ -128,11 +128,33 @@ test.describe('Landing page critical announcements', () => {
 
       await expect(titleOf(page, NEWEST)).toBeInViewport();
 
-      // Only critical system announcements reach users, and only here: the
-      // notice is nowhere on Home, and the rail never repeats a critical one.
-      await expect(page.getByText(NOTICE)).toHaveCount(0);
+      // The dots page the same rail: the second is the older critical.
+      const dots = page.getByTestId('critical-announcement-dots');
+      await dots.getByLabel('Page 2', { exact: true }).click();
+
+      await expect(titleOf(page, OLDER)).toBeInViewport();
+      await expect(dots.getByLabel('Page 2', { exact: true })).toHaveAttribute(
+        'aria-current',
+        'page'
+      );
+
+      await dots.getByLabel('Page 1', { exact: true }).click();
+
+      await expect(titleOf(page, NEWEST)).toBeInViewport();
+
+      // Every other system announcement is in the rail below; the rail never
+      // repeats a critical the banner already shows.
+      const [newest, older, notice] = seeded;
+      const rail = page.getByTestId('announcement-rail');
+
       await expect(
-        page.getByTestId('announcement-rail').getByText(RUN)
+        rail.getByTestId(`announcement-card-${notice.id}`)
+      ).toHaveCount(1);
+      await expect(
+        rail.getByTestId(`announcement-card-${newest.id}`)
+      ).toHaveCount(0);
+      await expect(
+        rail.getByTestId(`announcement-card-${older.id}`)
       ).toHaveCount(0);
     } finally {
       await page.close();
