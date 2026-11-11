@@ -34,7 +34,7 @@ migrated one-off values until they can be re-expressed.
 | Page background | `--om-color-bg-page` |
 | Main workspace | `--om-color-bg-canvas` |
 | Card / panel / sidebar | `--om-color-bg-surface` |
-| Dropdown / menu / popover | `--om-color-bg-raised` |
+| Dropdown / menu / popover | `--tw-background-color-floating` (`tw:bg-floating`) |
 | Modal / drawer content | `--om-color-bg-overlay-surface` |
 | Status surface | `--om-color-bg-error` / `-warning` / `-success` |
 | Brand surface / solid | `--om-color-bg-brand`, `--om-color-bg-brand-solid` |

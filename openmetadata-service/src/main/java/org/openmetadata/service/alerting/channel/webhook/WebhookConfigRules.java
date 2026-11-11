@@ -66,7 +66,7 @@ public class WebhookConfigRules implements ConfigRules {
 
   @Override
   public Webhook receiversOf(SubscriptionDestination destination) {
-    return stored(destination);
+    return DestinationConfig.stored(destination, Webhook.class);
   }
 
   /** As it can be sent to: the configuration with its secrets decrypted. */

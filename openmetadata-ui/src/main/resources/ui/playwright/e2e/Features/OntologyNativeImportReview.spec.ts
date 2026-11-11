@@ -352,25 +352,32 @@ test.describe(
       }
     });
 
-    test('fails the preview with the datatype reason', async ({
+    test('skips and reports a datatype range it cannot hold, and imports the rest', async ({
       isolatedUserPage: page,
     }) => {
       const { api, ontology } = await createOntology(`pw_review_${uuid()}`);
 
       try {
         await openImport(page, ontology);
-        await chooseFile(
+        await parseFile(
           page,
           'dates.ttl',
           DATE_RANGE_TURTLE(NS(ontology.name))
         );
-        await page.getByTestId('ontology-native-import-parse').click();
 
-        await expect(page.getByRole('alert')).toContainText('XMLSchema#date');
-        await expect(page.getByRole('alert')).toContainText('issuedOn');
+        const skipped = page.getByTestId('ontology-native-import-skipped');
+        await expect(skipped).toContainText('Skipped statements: 1');
+        await skipped.locator('summary').click();
+        await expect(skipped).toContainText('Unsupported structure');
+        await expect(skipped).toContainText('rdf-schema#range');
+        await expect(skipped).toContainText(`${NS(ontology.name)}issuedOn`);
+
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toBeDisabled();
+        ).toHaveText('Import 2 selected');
+        await applyImport(page);
+
+        expect(await conceptNames(api, ontology)).toEqual(['Invoice']);
       } finally {
         await remove(api, ontology.id);
       }
@@ -744,7 +751,7 @@ test.describe(
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
 
         const created = page.waitForResponse(
           (response) =>
@@ -758,7 +765,7 @@ test.describe(
         );
         expect(installed.iri).toMatch(/^https:\/\//);
         expect(installed.name).not.toMatch(/[0-9a-f]{8}-[0-9a-f]{4}/);
-        await expect(page.getByTestId('ontology-pack-fibo')).toContainText(
+        await expect(page.getByTestId('ontology-pack-dcat')).toContainText(
           'Installed'
         );
         await page.keyboard.press('Escape');
@@ -770,7 +777,7 @@ test.describe(
           /\((\d+)\)/.exec((await publish.textContent()) ?? '')?.[1]
         );
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await selectOntologyOption(
           page,
           page.getByTestId('ontology-library-target'),
@@ -789,7 +796,7 @@ test.describe(
         expect((await applied).ok()).toBeTruthy();
         await page.keyboard.press('Escape');
 
-        await expect(publish).toHaveText(`Publish (${before + 14})`);
+        await expect(publish).toHaveText(`Publish (${before + 62})`);
       } finally {
         await remove(api, ontology.id);
         if (installed) {
@@ -810,7 +817,7 @@ test.describe(
         await applyImport(page);
         await page.keyboard.press('Escape');
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await selectOntologyOption(
           page,
           page.getByTestId('ontology-library-target'),
@@ -818,10 +825,10 @@ test.describe(
         );
 
         const review = page.getByTestId('ontology-library-pack-review');
-        await expect(review).toContainText('Financial Instrument');
+        await expect(review).toContainText('Dataset');
         await expect(
           review.locator('[data-testid^="ontology-native-import-item-status-"]')
-        ).toHaveText(Array(14).fill('New'));
+        ).toHaveText(Array(62).fill('New'));
         await expect(
           review.locator(
             '[data-testid^="ontology-native-import-item-warning-"]'
@@ -847,7 +854,7 @@ test.describe(
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-dcat').click();
         await selectOntologyOption(
           page,
           page.getByTestId('ontology-library-target'),
@@ -891,14 +898,14 @@ test.describe(
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
         await page.getByTestId('ontology-library-trigger').click();
-        await page.getByTestId('ontology-pack-details-fibo').click();
+        await page.getByTestId('ontology-pack-details-sosa-ssn').click();
         await expect.poll(() => modules.count()).toBeGreaterThan(1);
-        await page.getByTestId('ontology-module-business-entities').click();
+        await page.getByTestId('ontology-module-ssn').click();
         const initial = await checkedModules();
 
         expect(initial).toEqual([
-          ['ontology-module-foundations', true],
-          ['ontology-module-business-entities', false],
+          ['ontology-module-sosa', true],
+          ['ontology-module-ssn', false],
         ]);
 
         await selectOntologyOption(

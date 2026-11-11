@@ -26,6 +26,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.entity.events.TestDestinationStatus;
@@ -37,18 +38,24 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.security.SecurityUtil;
 
 class WebhookRequestsTest {
+  private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
 
+  // The configuration arrives with its own secrets already decrypted, so whatever else is in it,
+  // ciphertext included, is used as it reads and never decrypted here.
   @Test
-  void decryptWebhookSecretKeyUsesFernetWhenConfigured() {
-    Fernet fernet = mock(Fernet.class);
-    when(fernet.isKeyDefined()).thenReturn(true);
-    when(fernet.decryptIfApplies("encrypted-secret")).thenReturn("plain-secret");
+  void theSigningKeyIsUsedAsGiven() {
+    Fernet.getInstance().setFernetKey(TEST_FERNET_KEY);
+    String ciphertext = Fernet.getInstance().encrypt("a value held elsewhere");
+    Webhook webhook =
+        new Webhook()
+            .withEndpoint(URI.create("https://hooks.example.com/hook"))
+            .withAuthType(Map.of("type", "bearer", "secretKey", ciphertext));
+    Invocation.Builder builder = mock(Invocation.Builder.class);
 
-    try (MockedStatic<Fernet> mockedFernet = mockStatic(Fernet.class)) {
-      mockedFernet.when(Fernet::getInstance).thenReturn(fernet);
+    WebhookRequests.prepareWebhookHeaders(builder, webhook, "{}");
 
-      assertEquals("plain-secret", WebhookRequests.decryptWebhookSecretKey("encrypted-secret"));
-    }
+    verify(builder)
+        .header("X-OM-Signature", "sha256=" + CommonUtil.calculateHMAC(ciphertext, "{}"));
   }
 
   @Test
@@ -204,11 +211,7 @@ class WebhookRequestsTest {
     when(client.target(webhook.getEndpoint())).thenReturn(target);
     when(target.queryParam("env", "test")).thenReturn(target);
 
-    try (MockedStatic<SecurityUtil> mockedSecurity = mockStatic(SecurityUtil.class);
-        MockedStatic<Fernet> mockedFernet = mockStatic(Fernet.class)) {
-      Fernet fernet = mock(Fernet.class);
-      when(fernet.isKeyDefined()).thenReturn(false);
-      mockedFernet.when(Fernet::getInstance).thenReturn(fernet);
+    try (MockedStatic<SecurityUtil> mockedSecurity = mockStatic(SecurityUtil.class)) {
       mockedSecurity
           .when(() -> SecurityUtil.authHeaders("admin@open-metadata.org"))
           .thenReturn(authHeaders);

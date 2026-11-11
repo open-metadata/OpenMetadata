@@ -135,7 +135,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
             Page updated = JsonUtils.deepCopy(current, Page.class);
             updated.setProcessingStatus(status);
             updated.setProcessingError(error);
-            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+            pageRepository.updateIfCurrent(null, current, updated, lastEditorOf(current));
           }
         });
   }
@@ -181,7 +181,7 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
             updated.setExtractionStats(stats);
             updated.setProcessingStatus(PageProcessingStatus.Processed);
             updated.setProcessingError(null);
-            pageRepository.updateIfCurrent(null, current, updated, Entity.ADMIN_USER_NAME);
+            pageRepository.updateIfCurrent(null, current, updated, lastEditorOf(current));
           }
         });
   }

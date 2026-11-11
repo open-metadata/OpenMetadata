@@ -211,10 +211,11 @@ public class ApplicationHandler {
   public App appWithDecryptedAppConfiguration(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     try {
+      final App runtimeApp = JsonUtils.deepCopy(app, App.class);
       Map<String, Object> decryptedAppConfig =
-          runAppInit(app, daoCollection, searchRepository, true)
-              .decryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
-      return app.withAppConfiguration(decryptedAppConfig);
+          runAppInit(runtimeApp, daoCollection, searchRepository, true)
+              .decryptConfiguration(JsonUtils.getMap(runtimeApp.getAppConfiguration()));
+      return app.withAppConfiguration(decryptedAppConfig).withEnabled(runtimeApp.getEnabled());
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException
@@ -232,10 +233,11 @@ public class ApplicationHandler {
   public App appWithEncryptedAppConfiguration(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     try {
+      final App runtimeApp = JsonUtils.deepCopy(app, App.class);
       Map<String, Object> encryptedAppConfig =
-          runAppInit(app, daoCollection, searchRepository, true)
-              .encryptConfiguration(JsonUtils.getMap(app.getAppConfiguration()));
-      return app.withAppConfiguration(encryptedAppConfig);
+          runAppInit(runtimeApp, daoCollection, searchRepository, true)
+              .encryptConfiguration(JsonUtils.getMap(runtimeApp.getAppConfiguration()));
+      return app.withAppConfiguration(encryptedAppConfig).withEnabled(runtimeApp.getEnabled());
     } catch (ClassNotFoundException
         | NoSuchMethodException
         | InvocationTargetException

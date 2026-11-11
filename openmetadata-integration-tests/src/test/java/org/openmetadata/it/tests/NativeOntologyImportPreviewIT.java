@@ -27,6 +27,7 @@ import org.openmetadata.schema.api.data.CreateOntologyConcept;
 import org.openmetadata.schema.api.data.NativeOntologyImportCounts;
 import org.openmetadata.schema.api.data.NativeOntologyImportFormat;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
 import org.openmetadata.schema.api.data.NativeOntologyImportSummary;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
@@ -123,27 +124,27 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
   static PreviewNativeOntologyImport metadataCsv(String baseIri, boolean populated) {
     final var rows = new ArrayList<String>();
     rows.add(
-        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy");
-    final var ontology = new ArrayList<>(Collections.nCopies(27, ""));
+        "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,superProperties,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy");
+    final var ontology = new ArrayList<>(Collections.nCopies(28, ""));
     ontology.set(0, "ONTOLOGY");
     ontology.set(2, "Party model");
     rows.add(String.join(",", ontology));
     for (final String name : List.of("Customer", "Party", "code", "identifier")) {
       final boolean concept = name.equals("Customer") || name.equals("Party");
-      final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+      final var cells = new ArrayList<>(Collections.nCopies(28, ""));
       cells.set(0, concept ? "CONCEPT" : "PROPERTY");
       cells.set(1, baseIri + name);
       cells.set(2, name);
       cells.set(concept ? 4 : 8, concept ? "OWL_CLASS" : "DATA");
       if (populated && name.equals("Customer")) {
-        cells.set(23, "true");
-        cells.set(24, baseIri + "standard");
-        cells.set(25, "true");
-        cells.set(26, baseIri + "Party");
+        cells.set(24, "true");
+        cells.set(25, baseIri + "standard");
+        cells.set(26, "true");
+        cells.set(27, baseIri + "Party");
       }
       if (populated && name.equals("code")) {
-        cells.set(25, "true");
-        cells.set(26, baseIri + "identifier");
+        cells.set(26, "true");
+        cells.set(27, baseIri + "identifier");
       }
       rows.add(String.join(",", cells));
     }
@@ -470,33 +471,54 @@ public class NativeOntologyImportPreviewIT extends BaseOntologyApprovalIT {
   }
 
   @Test
-  void unsupportedOrMalformedRdfDoesNotMutateTheWorkingOntology(TestNamespace ns) {
+  void importsAreSkippedAndReportedWithoutFetching(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     final var client = SdkClients.adminClient();
     final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
-    final String unsupported =
+    final String withImports =
         """
         @prefix owl: <http://www.w3.org/2002/07/owl#> .
         <%s> a owl:Ontology ; owl:imports <https://example.org/remote.ttl> .
         """
             .formatted(ontology.getIri());
-    for (final String data : new String[] {unsupported, "@prefix owl: <broken"}) {
-      assertEquals(
-          400,
-          assertThrows(
-                  OpenMetadataException.class,
-                  () ->
-                      client
-                          .ontologies()
-                          .previewImport(
-                              ontology.getId(),
-                              new PreviewNativeOntologyImport()
-                                  .withFormat(NativeOntologyImportFormat.TURTLE)
-                                  .withData(data)))
-              .getStatusCode());
-      assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
-      assertNull(client.ontologies().state(ontology.getId()).getActiveReleaseId());
-    }
+
+    final NativeOntologyImportPreview preview =
+        client
+            .ontologies()
+            .previewImport(
+                ontology.getId(),
+                new PreviewNativeOntologyImport()
+                    .withFormat(NativeOntologyImportFormat.TURTLE)
+                    .withData(withImports));
+
+    final var groups = preview.getSummary().getSkippedStatements().getGroups();
+    assertEquals(1, groups.size(), groups.toString());
+    assertEquals(NativeOntologyImportSkipReason.IMPORTS, groups.getFirst().getReason());
+    assertEquals(1, groups.getFirst().getCount());
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+  }
+
+  @Test
+  void malformedRdfDoesNotMutateTheWorkingOntology(TestNamespace ns) {
+    final Ontology ontology = createOntology(ns);
+    final var client = SdkClients.adminClient();
+    final long revision = client.ontologies().state(ontology.getId()).getWorkingRevision();
+
+    assertEquals(
+        400,
+        assertThrows(
+                OpenMetadataException.class,
+                () ->
+                    client
+                        .ontologies()
+                        .previewImport(
+                            ontology.getId(),
+                            new PreviewNativeOntologyImport()
+                                .withFormat(NativeOntologyImportFormat.TURTLE)
+                                .withData("@prefix owl: <broken")))
+            .getStatusCode());
+    assertEquals(revision, client.ontologies().state(ontology.getId()).getWorkingRevision());
+    assertNull(client.ontologies().state(ontology.getId()).getActiveReleaseId());
     assertEquals(
         1, client.ontologies().workingDiff(ontology.getId(), 10, null).getPaging().getTotal());
   }

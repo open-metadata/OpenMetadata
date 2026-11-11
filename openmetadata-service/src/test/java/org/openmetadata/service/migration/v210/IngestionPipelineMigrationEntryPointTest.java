@@ -17,6 +17,7 @@ import static org.mockito.Answers.RETURNS_DEEP_STUBS;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
@@ -29,6 +30,7 @@ import org.jdbi.v3.core.Handle;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.mockito.InOrder;
 import org.mockito.MockedStatic;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -38,6 +40,7 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v210.AlertBacklogMigration;
 import org.openmetadata.service.migration.utils.v210.AuthenticationSecretsEncryptionMigration;
@@ -53,10 +56,12 @@ import org.openmetadata.service.migration.utils.v210.IngestionPipelineMigrationU
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
 import org.openmetadata.service.migration.utils.v210.MlFeatureTagBackfill;
+import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyConceptBindingMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair;
+import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 class IngestionPipelineMigrationEntryPointTest {
 
@@ -86,6 +91,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(OntologyConceptBindingMigration.class);
         MockedStatic<DataContractEntityReferenceMigration> dataContractMigration =
             mockStatic(DataContractEntityReferenceMigration.class);
+        MockedStatic<ODCSCustomPropertiesMigration> odcsCustomPropertiesMigration =
+            mockStatic(ODCSCustomPropertiesMigration.class);
         MockedStatic<CustomPropertyReferenceMigration> referenceMigration =
             mockStatic(CustomPropertyReferenceMigration.class);
         MockedStatic<IngestionPipelineMigrationUtil> ingestionPipelineMigration =
@@ -104,6 +111,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(OntologyRolesMigration.class);
         MockedStatic<DestinationIdMigration> destinationIdMigration =
             mockStatic(DestinationIdMigration.class);
+        MockedStatic<WebhookSecretsMigration> webhookSecretsMigration =
+            mockStatic(WebhookSecretsMigration.class);
         MockedStatic<DeltaLakeRetirementMigration> deltaLakeRetirement =
             mockStatic(DeltaLakeRetirementMigration.class);
         MockedStatic<GlossaryAutomationReviewMigration> glossaryAutomationReview =
@@ -115,6 +124,8 @@ class IngestionPipelineMigrationEntryPointTest {
             mockStatic(McpGrantUserNameIndexes.class);
         MockedStatic<DataProductDomainContainmentRepair> containmentRepair =
             mockStatic(DataProductDomainContainmentRepair.class);
+        MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
+            mockStatic(EntityExtensionCollationAlignment.class);
         // v206, v207 and v210 each have a MigrationUtil; the v210 one is imported above.
         MockedStatic<org.openmetadata.service.migration.utils.v206.MigrationUtil>
             v206MigrationUtil =
@@ -141,6 +152,17 @@ class IngestionPipelineMigrationEntryPointTest {
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));
+      // Each destination's id owns its secrets, so ids are settled before secrets are bound.
+      InOrder idsThenSecrets = inOrder(DestinationIdMigration.class, WebhookSecretsMigration.class);
+      idsThenSecrets.verify(
+          destinationIdMigration,
+          () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
+      idsThenSecrets.verify(
+          webhookSecretsMigration,
+          () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, connectionType));
+      idsThenSecrets.verify(
+          webhookSecretsMigration,
+          () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, connectionType));
       // 2.1.0 databases skip 2.0.6's data migration, so 2.1.0 must apply the alert step too.
       v206MigrationUtil.verify(
           () ->
@@ -152,6 +174,8 @@ class IngestionPipelineMigrationEntryPointTest {
                 org.openmetadata.service.migration.utils.v207.MigrationUtil
                     .addMcpConsentColumnsOnMySql(handle));
         grantUserNameIndexes.verify(() -> McpGrantUserNameIndexes.addOnMySql(handle));
+        // A database that recorded 2.0.8 before this step existed does not run it there.
+        collationAlignment.verify(() -> EntityExtensionCollationAlignment.alignOnMySql(handle));
       }
       // `migrate` runs before Flowable starts, so the step that deploys a workflow starts it.
       workflowHandler.verify(() -> WorkflowHandler.initialize(any(), eq(true)));

@@ -1036,6 +1036,53 @@ public interface TimeSeriesDAOs {
         ORDER BY history.timestamp DESC LIMIT :limit
         """;
 
+    /**
+     * The runtime of the run in row {@code eets}, null unless positive. The observability average and
+     * the runtime trend both select it, so the two agree
+     * (ADR:2026-11-06-pipeline-run-runtime-has-one-sql-definition).
+     */
+    String MYSQL_RUN_RUNTIME =
+        """
+        NULLIF(GREATEST(COALESCE(
+          (SELECT MAX(task.endTime) - MIN(task.startTime)
+            FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS (
+              startTime BIGINT PATH '$.startTime',
+              endTime BIGINT PATH '$.endTime'
+            )) task
+            WHERE task.startTime IS NOT NULL AND task.endTime IS NOT NULL),
+          JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp), 0), 0)
+        """;
+
+    String POSTGRES_RUN_RUNTIME =
+        """
+        NULLIF(GREATEST(COALESCE(
+          (SELECT MAX((task.value->>'endTime')::bigint) - MIN((task.value->>'startTime')::bigint)
+            FROM jsonb_array_elements(
+              COALESCE(NULLIF(eets.json->'taskStatus', 'null'::jsonb), '[]'::jsonb)
+            ) task(value)
+            WHERE task.value->>'startTime' IS NOT NULL AND task.value->>'endTime' IS NOT NULL),
+          (eets.json->>'endTime')::bigint - eets.timestamp), 0), 0)
+        """;
+    String PIPELINE_RUNS_BETWEEN =
+        """
+        FROM entity_extension_time_series eets
+        WHERE eets.entityFQNHash = :entityFQNHash
+          AND eets.extension = 'pipeline.pipelineStatus'
+          AND eets.timestamp >= :startTs AND eets.timestamp <= :endTs
+        """;
+
+    /** Null when no run in the range has a runtime. */
+    @ConnectionAwareSqlQuery(
+        value = "SELECT AVG(" + MYSQL_RUN_RUNTIME + ") " + PIPELINE_RUNS_BETWEEN,
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT AVG(" + POSTGRES_RUN_RUNTIME + ") " + PIPELINE_RUNS_BETWEEN,
+        connectionType = POSTGRES)
+    Double averagePipelineRuntime(
+        @BindFQN("entityFQNHash") String fqn,
+        @Bind("startTs") long startTs,
+        @Bind("endTs") long endTs);
+
     @ConnectionAwareSqlQuery(
         value = "SELECT COUNT(*) " + MYSQL_FILTERED_PIPELINE_STATUSES,
         connectionType = MYSQL)
@@ -1148,22 +1195,8 @@ public interface TimeSeriesDAOs {
                 + "  SELECT "
                 + "    eets.*, "
                 + "    pe.fqnHash, "
-                + "    CASE "
-                + "      WHEN JSON_LENGTH(JSON_EXTRACT(eets.json, '$.taskStatus')) > 0 "
-                + "        AND JSON_EXTRACT(eets.json, '$.taskStatus[0].endTime') IS NOT NULL THEN "
-                + "        ( "
-                + "          SELECT MAX(CAST(JSON_EXTRACT(task.value, '$.endTime') AS UNSIGNED)) "
-                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
-                + "          WHERE JSON_EXTRACT(task.value, '$.endTime') IS NOT NULL "
-                + "        ) - ( "
-                + "          SELECT MIN(CAST(JSON_EXTRACT(task.value, '$.startTime') AS UNSIGNED)) "
-                + "          FROM JSON_TABLE(eets.json, '$.taskStatus[*]' COLUMNS(value JSON PATH '$')) AS task "
-                + "          WHERE JSON_EXTRACT(task.value, '$.startTime') IS NOT NULL "
-                + "        ) "
-                + "      WHEN JSON_EXTRACT(eets.json, '$.endTime') IS NOT NULL THEN "
-                + "        JSON_EXTRACT(eets.json, '$.endTime') - eets.timestamp "
-                + "      ELSE NULL "
-                + "    END AS runtime "
+                + MYSQL_RUN_RUNTIME
+                + "    AS runtime "
                 + "  FROM entity_extension_time_series eets "
                 + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
                 + "  WHERE eets.extension = 'pipeline.pipelineStatus' "
@@ -1197,25 +1230,8 @@ public interface TimeSeriesDAOs {
                 + "    eets.timestamp, "
                 + "    eets.json, "
                 + "    pe.fqnHash, "
-                + "    CASE "
-                + "      WHEN jsonb_array_length(COALESCE(eets.json->'taskStatus', '[]'::jsonb)) > 0 "
-                + "        AND EXISTS ( "
-                + "          SELECT 1 FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
-                + "          WHERE task->>'endTime' IS NOT NULL "
-                + "        ) THEN "
-                + "        ( "
-                + "          SELECT MAX((task->>'endTime')::bigint) "
-                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
-                + "          WHERE task->>'endTime' IS NOT NULL "
-                + "        ) - ( "
-                + "          SELECT MIN((task->>'startTime')::bigint) "
-                + "          FROM jsonb_array_elements(eets.json->'taskStatus') AS task "
-                + "          WHERE task->>'startTime' IS NOT NULL "
-                + "        ) "
-                + "      WHEN eets.json->>'endTime' IS NOT NULL THEN "
-                + "        (eets.json->>'endTime')::bigint - eets.timestamp "
-                + "      ELSE NULL "
-                + "    END AS runtime "
+                + POSTGRES_RUN_RUNTIME
+                + "    AS runtime "
                 + "  FROM entity_extension_time_series eets "
                 + "  INNER JOIN pipeline_entity pe ON eets.entityFQNHash = pe.fqnHash "
                 + "  WHERE eets.extension = 'pipeline.pipelineStatus' "

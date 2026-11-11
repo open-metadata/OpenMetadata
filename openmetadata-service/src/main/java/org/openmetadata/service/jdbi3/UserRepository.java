@@ -358,7 +358,7 @@ public class UserRepository extends EntityRepository<User> {
 
   @Override
   protected User createNewEntity(User user) {
-    user.setProfile(ProfileWebhookSecrets.ofANewEntity(user.getProfile()));
+    user.setProfile(ProfileWebhookSecrets.ofANewEntity(holderOf(user), user.getProfile()));
     return super.createNewEntity(user);
   }
 
@@ -401,7 +401,12 @@ public class UserRepository extends EntityRepository<User> {
 
   private static User withNewProfileEncrypted(User user) {
     User stored = JsonUtils.deepCopy(user, User.class);
-    return stored.withProfile(ProfileWebhookSecrets.ofANewEntity(stored.getProfile()));
+    return stored.withProfile(
+        ProfileWebhookSecrets.ofANewEntity(holderOf(stored), stored.getProfile()));
+  }
+
+  private static ProfileWebhookSecrets.Holder holderOf(User user) {
+    return new ProfileWebhookSecrets.Holder(Entity.USER, user.getId());
   }
 
   @Override
@@ -519,13 +524,16 @@ public class UserRepository extends EntityRepository<User> {
   public EntityRepository<User>.EntityUpdater getUpdater(
       User original, User updated, Operation operation, ChangeSource changeSource) {
     // Before the diff, so the change description and the stored row carry ciphertext only.
-    updated.setProfile(ProfileWebhookSecrets.updated(original.getProfile(), updated.getProfile()));
+    updated.setProfile(
+        ProfileWebhookSecrets.updated(
+            holderOf(original), original.getProfile(), updated.getProfile()));
     return new UserUpdater(original, updated, operation);
   }
 
   @Override
   protected void validatePatch(User original, User updated, JsonPatch patch) {
-    ProfileWebhookSecrets.validatePatch(original.getProfile(), updated.getProfile(), patch);
+    ProfileWebhookSecrets.validatePatch(
+        holderOf(original), original.getProfile(), updated.getProfile(), patch);
   }
 
   @Override

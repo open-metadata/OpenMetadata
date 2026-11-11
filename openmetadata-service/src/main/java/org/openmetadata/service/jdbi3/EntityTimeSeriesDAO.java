@@ -734,6 +734,20 @@ public interface EntityTimeSeriesDAO {
   }
 
   @SqlQuery(
+      "SELECT json FROM <table> WHERE entityFQNHash = :entityFQNHash AND extension = :extension "
+          + "AND timestamp IN (<timestamps>)")
+  List<String> listAtTimestamps(
+      @Define("table") String table,
+      @BindFQN("entityFQNHash") String entityFQNHash,
+      @Bind("extension") String extension,
+      @BindList("timestamps") List<Long> timestamps);
+
+  default List<String> listAtTimestamps(
+      String entityFQNHash, String extension, List<Long> timestamps) {
+    return listAtTimestamps(getTimeSeriesTableName(), entityFQNHash, extension, timestamps);
+  }
+
+  @SqlQuery(
       "SELECT json FROM <table> where entityFQNHash = :entityFQNHash and extension = :extension "
           + " AND timestamp >= :startTs and timestamp <= :endTs ORDER BY timestamp <orderBy>")
   List<String> listBetweenTimestampsByOrder(

@@ -31,8 +31,9 @@ export interface PersonaContext {
     searchScope?:     SearchScope;
     sharedKnowledge?: SharedKnowledge;
     /**
-     * Whether at least one selected entity was compacted or omitted, or required knowledge
-     * exceeded the configured budget.
+     * Whether selection stopped before all caller-visible matches were counted, at least one
+     * selected entity was compacted or omitted, or required knowledge exceeded the configured
+     * budget.
      */
     truncated?: boolean;
 }
@@ -112,9 +113,13 @@ export interface EntityReference {
  * Materialization result for one persona context rule.
  */
 export interface RuleResult {
-    entities?:        AIContext[];
-    entityType?:      string;
-    manifestOnly?:    number;
+    entities?:     AIContext[];
+    entityType?:   string;
+    manifestOnly?: number;
+    /**
+     * Total matches visible to the caller. Absent when selection stopped at maxAssets before
+     * all candidates were checked; the document is then truncated.
+     */
     matched?:         number;
     renderedCompact?: number;
     renderedFull?:    number;

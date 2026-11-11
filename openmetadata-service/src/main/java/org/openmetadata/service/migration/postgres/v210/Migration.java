@@ -55,9 +55,11 @@ import org.openmetadata.service.migration.utils.v210.GlossaryAutomationReviewMig
 import org.openmetadata.service.migration.utils.v210.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v210.LineageEdgePipelineCleanupMigration;
 import org.openmetadata.service.migration.utils.v210.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.ODCSCustomPropertiesMigration;
 import org.openmetadata.service.migration.utils.v210.OntologyRolesMigration;
 import org.openmetadata.service.migration.utils.v210.TaskFieldPathMigration;
 import org.openmetadata.service.migration.utils.v210.UnsupportedNotificationTemplates;
+import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 
 public class Migration extends MigrationProcessImpl {
   public Migration(final MigrationFile migrationFile) {
@@ -69,6 +71,7 @@ public class Migration extends MigrationProcessImpl {
     // First, so no later step loads an entity still typed DeltaLake:
     // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, POSTGRES, getPipelineServiceClient());
+    ODCSCustomPropertiesMigration.migrate(handle, POSTGRES);
     ConversationMigration.migrate(handle, POSTGRES);
     ConversationReferenceMigration.migrate(handle, POSTGRES);
     refreshConversationNotificationTemplates();
@@ -165,6 +168,19 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         DestinationIdMigration.STEP_NAME,
         () -> DestinationIdMigration.giveEveryDestinationItsOwnId(collectionDAO));
+    // New writes encrypt each webhook secret for the alert destination or profile webhook that
+    // holds it; this does the same for what is already stored. Each destination's id owns its
+    // secrets, so this runs after the destination id step. Idempotent.
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.PROFILE_STEP_NAME,
+        () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, POSTGRES));
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        WebhookSecretsMigration.ALERT_STEP_NAME,
+        () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, POSTGRES));
     // Databases already at 2.1.0 reprocess 2.0.6 for its SQL only, so its alert step never runs
     // there. The step adds only what is missing, so the 2.0.5 -> 2.1.0 path running it twice is
     // harmless.

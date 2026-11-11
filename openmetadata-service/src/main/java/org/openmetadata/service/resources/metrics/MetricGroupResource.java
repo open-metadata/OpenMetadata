@@ -405,7 +405,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       @Valid CreateMetricGroup create) {
     MetricGroup metricGroup =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    MetricAuthorization.authorizeGroupCreate(authorizer, securityContext, metricGroup);
     return withoutMembers(
         sanitizeMembership(securityContext, create(uriInfo, securityContext, metricGroup)));
   }
@@ -429,14 +428,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
       @Valid CreateMetricGroup create) {
     MetricGroup metricGroup =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
-    repository.prepareInternal(metricGroup, true);
-    MetricGroup original =
-        repository.findByNameOrNull(metricGroup.getFullyQualifiedName(), Include.NON_DELETED);
-    if (original != null) {
-      original = repository.getWithMembers(original.getId(), Include.NON_DELETED);
-    }
-    MetricAuthorization.authorizeMembershipMutation(
-        authorizer, securityContext, original, metricGroup);
     return withoutMembers(
         sanitizeMembership(securityContext, createOrUpdate(uriInfo, securityContext, metricGroup)));
   }
@@ -452,8 +443,6 @@ public class MetricGroupResource extends EntityResource<MetricGroup, MetricGroup
           @PathParam("id")
           UUID id,
       @Valid JsonPatch patch) {
-    MetricAuthorization.authorizeGroupPatch(
-        authorizer, securityContext, repository.get(null, id, repository.getPatchFields()), patch);
     return withoutMembers(patchInternal(uriInfo, securityContext, id, patch));
   }
 

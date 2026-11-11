@@ -368,6 +368,26 @@ class OwnedSecretsTest {
   }
 
   @Test
+  void deleteRemovesASecretTheOwnerHoldsUnderASpellingTheProviderDoesNotDeleteBy() {
+    OwnedSecrets owned = new DeletesByNameOnlyVault().ownedSecrets();
+    String reference = partReference(owned, "held", "a");
+
+    owned.delete(Set.of(DeletesByNameOnlyVault.arnOf(reference)), ALICE);
+
+    assertFalse(owned.exists(reference));
+  }
+
+  @Test
+  void retireRemovesASecretTheWriteStoppedReadingUnderAnotherSpelling() {
+    OwnedSecrets owned = new DeletesByNameOnlyVault().ownedSecrets();
+    String reference = partReference(owned, "dropped", "a");
+
+    owned.retire(Set.of(DeletesByNameOnlyVault.arnOf(reference)), Set.of(), ALICE);
+
+    assertFalse(owned.exists(reference));
+  }
+
+  @Test
   void twoSpellingsOfOneSecretResolveToTheSameName() {
     OwnedSecrets owned = new CaseInsensitiveVault().ownedSecrets();
     String reference = partReference(owned, "password", "a");
@@ -545,6 +565,41 @@ class OwnedSecretsTest {
     @Override
     protected String canonicalSecretName(String secretName) {
       return secretName.toLowerCase(Locale.ROOT);
+    }
+  }
+
+  /**
+   * A provider that, like SSM, reads a secret by its ARN as well as its name, but deletes only by
+   * name: a delete addressed to the ARN finds nothing.
+   */
+  private static final class DeletesByNameOnlyVault extends InMemorySecretsManager {
+    private static final String ARN_PREFIX = "arn:aws:ssm:us-east-1:123456789012:parameter";
+
+    private DeletesByNameOnlyVault() {
+      super(CONFIG);
+    }
+
+    private static String arnOf(String reference) {
+      return SECRET_FIELD_PREFIX + ARN_PREFIX + secretName(reference);
+    }
+
+    @Override
+    String getSecret(String secretName) {
+      return super.getSecret(canonicalSecretName(secretName));
+    }
+
+    @Override
+    protected void deleteSecretInternal(String secretName) {
+      if (!secretName.startsWith(ARN_PREFIX)) {
+        super.deleteSecretInternal(secretName);
+      }
+    }
+
+    @Override
+    protected String canonicalSecretName(String secretName) {
+      return secretName.startsWith(ARN_PREFIX)
+          ? secretName.substring(ARN_PREFIX.length())
+          : secretName;
     }
   }
 

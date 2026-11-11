@@ -231,16 +231,23 @@ const WorkflowHistory = memo(
       if (isEmpty(workflowHistory)) {
         return (
           <WorkflowHistoryContainer
-            className="workflow-history-widget"
+            data-testid="workflow-history-empty"
             isWidget={isWidget}>
-            <div className="tw:relative tw:min-h-24">
+            <Box direction="col" gap={1}>
+              <Typography
+                as="span"
+                color="quaternary"
+                size="text-sm"
+                weight="semibold">
+                {workflowHistoryLabel}
+              </Typography>
               <NoDataPlaceholder
-                title={t('label.no-entity-available', {
+                size="sm"
+                title={t('label.no-entity-found', {
                   entity: workflowHistoryLabel,
                 })}
-                width="100%"
               />
-            </div>
+            </Box>
           </WorkflowHistoryContainer>
         );
       }

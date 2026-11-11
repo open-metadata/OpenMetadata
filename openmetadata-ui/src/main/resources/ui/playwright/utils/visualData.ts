@@ -168,6 +168,14 @@ export const installVisualBootstrap = async (
 
       return;
     }
+    if (url.pathname === '/api/v1/system/mcp/tools') {
+      // Every tool stays enabled, so the names only populate the closed picker's options.
+      await route.fulfill({
+        json: ['search_metadata', 'get_entity_details', 'get_entity_lineage'],
+      });
+
+      return;
+    }
     if (url.pathname === '/api/v1/system/status') {
       await route.fulfill({
         json: {
@@ -1521,6 +1529,12 @@ export const installVisualData = async (
           hits: { hits: [], total: { value: 0, relation: 'eq' } },
         },
       });
+
+      return;
+    }
+    if (path.startsWith('ontologyConcepts/boundTo/')) {
+      // No ontology concept is bound to the fixture assets, so the linked-concepts trace stays hidden.
+      await route.fulfill({ json: { links: [] } });
 
       return;
     }

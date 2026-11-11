@@ -8128,6 +8128,43 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     assertNull(stored.getTablePartition());
   }
 
+  /**
+   * Regression test for #33623.
+   *
+   * <p>Table does not set {@code renameAllowed}, so a PATCH that changes {@code name} must be a
+   * no-op: the table's own name must not change AND every child column's {@code fullyQualifiedName}
+   * must still be prefixed with the <em>original</em> table FQN, not the rejected name.
+   */
+  @Test
+  void test_patchTable_rejectedRenameDoesNotCorruptColumnFQNs(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTable request = createMinimalRequest(ns);
+    Table created = createEntity(request);
+
+    String originalFqn = created.getFullyQualifiedName();
+    String originalName = created.getName();
+
+    Table patch = client.tables().get(created.getId().toString());
+    patch.setName(originalName + "_rejected_rename");
+
+    Table updated = patchEntity(created.getId().toString(), patch);
+
+    assertEquals(
+        originalName, updated.getName(), "Table name must not change when rename is rejected");
+    assertEquals(originalFqn, updated.getFullyQualifiedName(), "Table FQN must not change");
+
+    for (Column col : updated.getColumns()) {
+      assertTrue(
+          col.getFullyQualifiedName().startsWith(originalFqn + "."),
+          "Column FQN '"
+              + col.getFullyQualifiedName()
+              + "' must be prefixed with the original table FQN '"
+              + originalFqn
+              + "'");
+    }
+  }
+
   private Table createAsIngestionBot(
       TestNamespace ns, String name, TableType tableType, String schemaDefinition) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);

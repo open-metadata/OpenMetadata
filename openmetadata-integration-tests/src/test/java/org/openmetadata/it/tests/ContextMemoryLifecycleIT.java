@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.context.ContextMemoryService;
@@ -81,7 +82,7 @@ public class ContextMemoryLifecycleIT {
   @EnumSource(
       value = ContextMemoryStatus.class,
       names = {"DEPRECATED", "SUPERSEDED"})
-  void superseding_storesTheSuccessorAndTheOwnersRestoreClearsIt(
+  void superseding_storesTheSuccessorAndARestoreClearsIt(
       ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory keeper = admin().create(memory(ns, "keeper"));
     ContextMemory duplicate =
@@ -164,7 +165,7 @@ public class ContextMemoryLifecycleIT {
   @EnumSource(
       value = ContextMemoryStatus.class,
       names = {"REJECTED", "INVALIDATED"})
-  void invalidating_keepsTheReasonAndTheOwnersRestoreDropsIt(
+  void invalidating_keepsTheReasonAndARestoreDropsIt(
       ContextMemoryStatus retirementStage, TestNamespace ns) {
     ContextMemory memory =
         admin()
@@ -213,10 +214,10 @@ public class ContextMemoryLifecycleIT {
   }
 
   @Test
-  void creatingWithoutStatus_defaultsToUnprocessed(TestNamespace ns) {
-    ContextMemory memory = admin().create(memory(ns, "default-unprocessed").withEntityStatus(null));
+  void creatingWithoutStatus_defaultsToApproved(TestNamespace ns) {
+    ContextMemory memory = user1().create(memory(ns, "default-approved").withEntityStatus(null));
 
-    assertEquals(ContextMemoryStatus.UNPROCESSED, memory.getEntityStatus());
+    assertEquals(ContextMemoryStatus.APPROVED, memory.getEntityStatus());
   }
 
   @Test
@@ -481,18 +482,18 @@ public class ContextMemoryLifecycleIT {
         assertThrows(
             InvalidRequestException.class,
             () -> user1().patch(idOf(editable), supersede(privateTarget, "Hidden keeper")));
-    InvalidRequestException disputeError =
-        assertThrows(
-            InvalidRequestException.class,
-            () ->
-                user1()
-                    .patch(
-                        idOf(editableDraft),
-                        JsonUtils.readTree(
-                            ADD_DISPUTE.formatted(privateTarget.getId(), "Hidden dispute"))));
+    // Only reconciliation opens a conflict review, so a person's dispute is refused before its
+    // target is even resolved.
+    assertThrows(
+        ForbiddenException.class,
+        () ->
+            user1()
+                .patch(
+                    idOf(editableDraft),
+                    JsonUtils.readTree(
+                        ADD_DISPUTE.formatted(privateTarget.getId(), "Hidden dispute"))));
 
     assertTrue(supersedeError.getMessage().contains("readable, non-deleted"));
-    assertTrue(disputeError.getMessage().contains("readable, non-deleted"));
     ContextMemory unchanged = admin().get(idOf(editable));
     assertEquals(ContextMemoryStatus.APPROVED, unchanged.getEntityStatus());
     assertNull(unchanged.getSupersededBy());

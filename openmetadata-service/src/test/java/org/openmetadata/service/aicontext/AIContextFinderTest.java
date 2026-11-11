@@ -110,34 +110,31 @@ class AIContextFinderTest {
   }
 
   @Test
-  void toKnowledgeItem_filtersDraftGlossaryTerms() {
-    assertNull(
-        AIContextFinder.toKnowledgeItem(
-            Map.of(
-                "entityType", "glossaryTerm",
-                "fullyQualifiedName", "Business.Draft",
-                "name", "Draft",
-                "entityStatus", "Draft")),
-        "non-Approved glossary terms are untrusted as business-rule context");
+  void collectHit_dropsDraftGlossaryTermsButNotDraftArticles() {
+    AIContextFinder finder = new AIContextFinder();
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
+    Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
+    finder.collectHit(
+        Map.of(
+            "entityType", "glossaryTerm",
+            "fullyQualifiedName", "Business.Draft",
+            "name", "Draft",
+            "entityStatus", "Draft"),
+        items,
+        candidates);
+    finder.collectHit(
+        Map.of(
+            "entityType", "page",
+            "fullyQualifiedName", "Article_1",
+            "name", "Guide",
+            "entityStatus", "Draft"),
+        items,
+        candidates);
     assertEquals(
-        KnowledgeItem.Type.GLOSSARY_TERM,
-        AIContextFinder.toKnowledgeItem(
-                Map.of(
-                    "entityType", "glossaryTerm",
-                    "fullyQualifiedName", "Business.Live",
-                    "name", "Live",
-                    "entityStatus", "Approved"))
-            .getType());
-    assertEquals(
-        KnowledgeItem.Type.PAGE,
-        AIContextFinder.toKnowledgeItem(
-                Map.of(
-                    "entityType", "page",
-                    "fullyQualifiedName", "Article_1",
-                    "name", "Guide",
-                    "entityStatus", "Draft"))
-            .getType(),
-        "the Approved filter applies to glossary terms only");
+        List.of("page:Article_1"),
+        List.copyOf(items.keySet()),
+        "non-Approved glossary terms are untrusted as business-rule context; articles keep their"
+            + " rule");
   }
 
   @Test
@@ -158,7 +155,11 @@ class AIContextFinderTest {
     Map<String, KnowledgeItem> items = new LinkedHashMap<>();
     Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
     finder.collectHit(
-        Map.of("entityType", "metric", "fullyQualifiedName", "Revenue", "name", "Revenue"),
+        Map.of(
+            "entityType", "metric",
+            "fullyQualifiedName", "Revenue",
+            "name", "Revenue",
+            "entityStatus", "Approved"),
         items,
         candidates);
     finder.collectHit(
@@ -199,7 +200,8 @@ class AIContextFinderTest {
               "id", hiddenMetricId.toString(),
               "entityType", "metric",
               "fullyQualifiedName", "Finance.Ceiling",
-              "name", "Ceiling"),
+              "name", "Ceiling",
+              "entityStatus", "Approved"),
           items,
           candidates);
       assertTrue(items.isEmpty(), "a hidden hit is not returned");
@@ -232,7 +234,9 @@ class AIContextFinderTest {
             "entityType", "glossaryTerm",
             "fullyQualifiedName", "Business.BounceRate",
             "name", "BounceRate",
-            "description", "Share of visits that leave after a single page.");
+            "description", "Share of visits that leave after a single page.",
+            // Only an Approved term reaches AI context.
+            "entityStatus", "Approved");
     VectorIndexService vectorService = mock(VectorIndexService.class);
     when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
         .thenReturn(new VectorSearchResponse(1L, List.of(hit)));

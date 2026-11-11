@@ -147,6 +147,27 @@ const barSeries = <T extends object>(
 
 const POINT_SIZE = 8;
 const POINT_RING_WIDTH = 2;
+// ECharts' own line symbol size, set explicitly so a re-render that drops the
+// hover symbols restores it (series merge by id).
+const DEFAULT_SYMBOL_SIZE = 6;
+// Hit target of the hidden symbols on a dot-less line/area with hover callbacks.
+const HOVER_SYMBOL_SIZE = 10;
+// ECharts grows a 6px symbol 1.1x on emphasis; shrink the hit target to that
+// dot, so a highlighted point looks as it does without hover callbacks.
+const HOVER_EMPHASIS_SCALE = (DEFAULT_SYMBOL_SIZE * 1.1) / HOVER_SYMBOL_SIZE;
+
+// A dot-less line draws no symbols, so ECharts emits no per-point
+// mouseover/mouseout. With hover callbacks it draws hidden ones to hit-test.
+// `pointStyle` and `showDots` already draw symbols; a lone point shows its own.
+const usesHoverSymbols = <T extends object>(
+  input: CartesianBuildInput<T>,
+  series: ChartSeries
+) =>
+  Boolean(input.hasHover) &&
+  !series.pointStyle &&
+  !series.showDots &&
+  input.data.length !== 1;
+
 // A selected point's ring: 4px out from the dot, 2px wide, at 30% of the
 // dot's colour.
 const SELECTION_RING_GAP = 4;
@@ -238,6 +259,7 @@ const lineSeries = <T extends object>(
   const styles = ctx.input.data.map((datum, index) =>
     series.pointStyle?.(datum as Datum, index)
   );
+  const hoverSymbols = usesHoverSymbols(ctx.input, series);
 
   return {
     type: 'line',
@@ -246,9 +268,16 @@ const lineSeries = <T extends object>(
     showSymbol:
       series.pointStyle || ctx.input.data.length === 1
         ? true
-        : series.showDots ?? false,
+        : hoverSymbols || (series.showDots ?? false),
     lineStyle: { color, width: LINE_WIDTH, cap: 'round', join: 'round' },
-    itemStyle: { color },
+    // Hidden by opacity, not a transparent colour: the colour also feeds the
+    // tooltip marker and the legend icon. Emphasis shows the highlighted one.
+    itemStyle: { color, opacity: hoverSymbols ? 0 : 1 },
+    symbolSize: hoverSymbols ? HOVER_SYMBOL_SIZE : DEFAULT_SYMBOL_SIZE,
+    emphasis: {
+      scale: hoverSymbols ? HOVER_EMPHASIS_SCALE : true,
+      itemStyle: { opacity: 1 },
+    },
     // Always set, so a re-render that drops the fill or the selection clears
     // the old one.
     areaStyle: filled ? { color: areaGradient(color) } : undefined,
@@ -459,13 +488,10 @@ export const buildCartesianOption = <T extends object>(
   const isBand = (s: ChartSeries) => composed && s.type === 'band';
   const bands = input.series.filter(isBand);
   const plain = input.series.filter((s) => !isBand(s));
+  const typeOf = (s: ChartSeries) =>
+    composed ? (s.type as ChartSeriesType) ?? defaultType : defaultType;
   const built = plain.map((series, index) =>
-    buildSeries(
-      ctx,
-      series,
-      index,
-      composed ? (series.type as ChartSeriesType) ?? defaultType : defaultType
-    )
+    buildSeries(ctx, series, index, typeOf(series))
   );
   const bandOptions = bands.flatMap((band) =>
     bandSeries(
@@ -480,7 +506,13 @@ export const buildCartesianOption = <T extends object>(
     ...referenceSeries(input, theme),
   ];
   const names = plain.map((s) => s.name);
-  const legend = legendConfig(names, theme, input.legend);
+  // The legend icon inherits the series opacity, which hides hover symbols.
+  const legendItems = plain.map((s) =>
+    typeOf(s) !== 'bar' && usesHoverSymbols(input, s)
+      ? { name: s.name, itemStyle: { opacity: 1 } }
+      : s.name
+  );
+  const legend = legendConfig(legendItems, theme, input.legend);
   const visiblePoints = input.zoomVisiblePoints ?? DATAZOOM_THRESHOLD;
   const hasZoom =
     input.zoom === true ||

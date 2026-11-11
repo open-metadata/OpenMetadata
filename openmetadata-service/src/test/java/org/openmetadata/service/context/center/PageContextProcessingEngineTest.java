@@ -197,6 +197,40 @@ class PageContextProcessingEngineTest {
     assertEquals("LLM exploded", stamped.getProcessingError());
   }
 
+  /** Extraction bookkeeping must not make the article look last edited by admin. */
+  @Test
+  void extractionKeepsTheArticlesLastEditor() {
+    pageReturns(page("body", "stale-hash").withUpdatedBy("tomas"));
+    when(extractor.derive(eq("body"), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenThrow(new LLMCompletionException("LLM exploded"));
+
+    assertThrows(LLMCompletionException.class, () -> engine().runQueued(pageId));
+
+    verify(pageRepository, atLeastOnce()).updateIfCurrent(isNull(), any(), any(), eq("tomas"));
+    verify(pageRepository, never())
+        .updateIfCurrent(any(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+  }
+
+  /** A finished extraction stamps its stats as bookkeeping too, keeping the article's editor. */
+  @Test
+  void aFinishedExtractionKeepsTheArticlesLastEditor() {
+    String body = "Onboarding runbook body";
+    pageReturns(page(body, "stale-hash").withUpdatedBy("tomas"));
+    when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
+    when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
+        .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 0, 0, 0));
+
+    engine().runQueued(pageId);
+
+    ArgumentCaptor<Page> captor = ArgumentCaptor.forClass(Page.class);
+    verify(pageRepository, atLeastOnce())
+        .updateIfCurrent(isNull(), any(), captor.capture(), eq("tomas"));
+    assertTrue(captor.getAllValues().stream().anyMatch(page -> page.getExtractionStats() != null));
+    verify(pageRepository, never())
+        .updateIfCurrent(any(), any(), any(), eq(Entity.ADMIN_USER_NAME));
+  }
+
   @Test
   void statsContentionQueuesAnotherJobWithoutRepeatingDerivation() {
     pageReturns(page("body", "stale-hash"));

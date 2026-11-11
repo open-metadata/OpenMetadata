@@ -42,4 +42,19 @@ public class WorkflowStats {
   public void updateWorkflowStepStats(String stepName, StepStats newStepStats) {
     workflowStepStats.put(stepName, newStepStats);
   }
+
+  /**
+   * Adds an independent iteration's counters. Cumulative progress snapshots must use {@link
+   * #updateWorkflowStepStats(String, StepStats)} to avoid counting earlier work again.
+   */
+  public void accumulateWorkflowStepStats(String stepName, StepStats completedStepStats) {
+    StepStats accumulatedStats =
+        workflowStepStats.computeIfAbsent(stepName, ignored -> new StepStats());
+    accumulatedStats.setTotalRecords(
+        accumulatedStats.getTotalRecords() + completedStepStats.getTotalRecords());
+    accumulatedStats.setSuccessRecords(
+        accumulatedStats.getSuccessRecords() + completedStepStats.getSuccessRecords());
+    accumulatedStats.setFailedRecords(
+        accumulatedStats.getFailedRecords() + completedStepStats.getFailedRecords());
+  }
 }

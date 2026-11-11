@@ -2078,37 +2078,41 @@ test.describe(
       }
     });
 
-    test('Publish is disabled in All ontologies with the reason and opens no dialog', async ({
-      isolatedUserPage: page,
-    }) => {
-      const api = await getWorkerAdminAPIContext();
-      const { ontology } = await createPublicationFixture(api, 'pw_g6_all', []);
-      try {
-        await page.goto('/governance/ontology');
-        await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-        const publish = page.getByTestId('ontology-publication-trigger');
+    for (const mode of ['ai', 'classic'] as const) {
+      test(`Publish is disabled in All ontologies with the reason and opens no dialog in ${mode} mode`, async ({
+        isolatedUserPage: page,
+        isolatedUser,
+      }) => {
+        const api = await getWorkerAdminAPIContext();
+        await setMode(api, isolatedUser.responseData.id, mode);
+        const { ontology } = await createPublicationFixture(
+          api,
+          'pw_g6_all',
+          []
+        );
+        try {
+          await page.goto('/governance/ontology');
+          await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+          const publish = page.getByTestId('ontology-publication-trigger');
 
-        await expect(publish).toBeDisabled();
-        // The disabled button ignores the pointer, so the Tooltip's wrapper takes the hover. The
-        // header is right-aligned and the isolated-terms badge renders late, shifting the button
-        // left: re-hover on each attempt instead of trusting one early position.
-        const publishTrigger = publish.locator('..');
-        await expect(async () => {
-          await page.mouse.move(10, 10);
-          await publishTrigger.hover();
-          await expect(page.getByRole('tooltip')).toHaveText(
-            'Choose an ontology to publish',
-            { timeout: 2000 }
+          await expect(publish).toBeDisabled();
+          const reason = page.getByTestId('ontology-publication-reason');
+
+          await expect(reason).toBeVisible();
+          await expect(reason).toHaveText('Choose an ontology to publish');
+          await expect(publish).toHaveAccessibleDescription(
+            'Choose an ontology to publish'
           );
-        }).toPass({ timeout: 15000 });
-        await publishTrigger.click();
-        await expect(
-          page.getByTestId('ontology-publication-modal')
-        ).toHaveCount(0);
-      } finally {
-        await removeFixture(api, ontology);
-      }
-    });
+          const box = await publish.boundingBox();
+          await page.mouse.click((box?.x ?? 0) + 20, (box?.y ?? 0) + 10);
+          await expect(
+            page.getByTestId('ontology-publication-modal')
+          ).toHaveCount(0);
+        } finally {
+          await removeFixture(api, ontology);
+        }
+      });
+    }
   }
 );
 

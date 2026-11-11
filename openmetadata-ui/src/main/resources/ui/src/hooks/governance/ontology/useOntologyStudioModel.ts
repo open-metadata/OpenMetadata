@@ -37,7 +37,8 @@ export const WORKING_CONCEPT_FIELDS =
   'conceptMappings,lifecycleStatus,owners,subClasses,superClasses';
 
 const PAGE_SIZE = 1000;
-const MAX_DEFINITIONS = 10000;
+/** Mirrors the server's release member cap (`OntologyReleaseManifest.MAX_MEMBERS`). */
+const MAX_DEFINITIONS = 50_000;
 const MAX_DEFINITION_PAGES = MAX_DEFINITIONS / PAGE_SIZE;
 
 class AggregateCapacityError extends Error {}

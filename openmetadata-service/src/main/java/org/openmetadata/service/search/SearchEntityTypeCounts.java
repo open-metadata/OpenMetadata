@@ -352,8 +352,16 @@ public final class SearchEntityTypeCounts {
     if (body == null || !body.path("hits").isObject() || !body.path("_shards").isObject()) {
       throw new IOException("Invalid search response structure for " + index);
     }
-    if (body.path("timed_out").asBoolean() || body.at("/_shards/failed").asInt() > 0) {
-      throw new IOException("Incomplete search counts for " + index);
+    boolean timedOut = body.path("timed_out").asBoolean();
+    JsonNode shards = body.path("_shards");
+    int failedShards = shards.path("failed").asInt();
+    if (timedOut || failedShards > 0) {
+      // The per-shard reasons are already logged by SearchShardFailures (the shard-failure-aware
+      // clients), and stay out of the API error so engine internals don't reach callers.
+      throw new IOException(
+          String.format(
+              "Incomplete search counts for %s (timed out: %s, failed shards: %d of %d)",
+              index, timedOut, failedShards, shards.path("total").asInt()));
     }
     return body;
   }

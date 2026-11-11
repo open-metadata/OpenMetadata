@@ -7,7 +7,6 @@ import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.APPLICATION;
 import static org.openmetadata.service.Entity.FIELD_OWNERS;
 import static org.openmetadata.service.jdbi3.EntityRepository.getEntitiesFromSeedData;
-import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -101,7 +100,6 @@ import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
 import org.openmetadata.service.util.DeleteEntityResponse;
@@ -921,14 +919,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
       })
   public Response create(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create) {
-    // Only admins can create apps with bot impersonation enabled
-    if (Boolean.TRUE.equals(create.getAllowBotImpersonation())) {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      if (!subjectContext.isAdmin()) {
-        throw new AuthorizationException(
-            "Only admins can create applications with bot impersonation enabled");
-      }
-    }
+    authorizeBotConfiguration(securityContext, create);
     App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     authorizer.authorize(
         securityContext,
@@ -1098,14 +1089,7 @@ public class AppResource extends EntityResource<App, AppRepository> {
   public Response createOrUpdate(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext, @Valid CreateApp create)
       throws SchedulerException {
-    // Only admins can create apps with bot impersonation enabled
-    if (Boolean.TRUE.equals(create.getAllowBotImpersonation())) {
-      SubjectContext subjectContext = getSubjectContext(securityContext);
-      if (!subjectContext.isAdmin()) {
-        throw new AuthorizationException(
-            "Only admins can create applications with bot impersonation enabled");
-      }
-    }
+    authorizeBotConfiguration(securityContext, create);
     App app = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
     // Evaluate exactly what the base createOrUpdate below will evaluate: Create against the
     // incoming entity when the app is new, EditAll against the stored one when it already exists.
@@ -1134,6 +1118,12 @@ public class AppResource extends EntityResource<App, AppRepository> {
     // We don't want to store this information
     unsetAppRuntimeProperties(app);
     return createOrUpdate(uriInfo, securityContext, app);
+  }
+
+  private void authorizeBotConfiguration(SecurityContext securityContext, CreateApp create) {
+    if (!nullOrEmpty(create.getBot()) || Boolean.TRUE.equals(create.getAllowBotImpersonation())) {
+      authorizer.authorizeAdmin(securityContext);
+    }
   }
 
   @DELETE

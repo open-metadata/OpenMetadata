@@ -278,7 +278,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=5),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
@@ -299,7 +299,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=1000),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
