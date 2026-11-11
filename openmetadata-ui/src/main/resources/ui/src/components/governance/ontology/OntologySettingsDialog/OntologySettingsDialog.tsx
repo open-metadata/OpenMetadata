@@ -17,11 +17,14 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
+import { getOntology } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyCreateForm from '../OntologyCreateForm/OntologyCreateForm';
 
 interface OntologySettingsDialogProps {
@@ -30,6 +33,9 @@ interface OntologySettingsDialogProps {
   readonly onSaved: (ontology: Ontology) => void;
 }
 
+// The fields the form edits; the picker's list entry carries none of the owners or reviewers.
+const SETTINGS_FIELDS = 'owners,reviewers,publicationStatus';
+
 /** The ontology's settings from the picker menu, in a dialog over the Studio. */
 const OntologySettingsDialog = ({
   ontology,
@@ -37,6 +43,13 @@ const OntologySettingsDialog = ({
   onSaved,
 }: OntologySettingsDialogProps) => {
   const { t } = useTranslation();
+  // A form seeded without owners or reviewers would save them away, so it waits for the full entity.
+  const full = useQuery({
+    queryKey: ['ontology-settings', ontology.id, ontology.version],
+    queryFn: ({ signal }) => getOntology(ontology.id, SETTINGS_FIELDS, signal),
+    gcTime: 0,
+    retry: false,
+  });
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ontology.id },
@@ -65,13 +78,23 @@ const OntologySettingsDialog = ({
                   name: getEntityName(ontology),
                 })}
               </Typography>
-              <OntologyCreateForm
-                canEdit={canEditAll}
-                key={`${ontology.id}:${ontology.version}`}
-                layout="stacked"
-                ontology={ontology}
-                onSaved={onSaved}
-              />
+              {full.data ? (
+                <OntologyCreateForm
+                  canEdit={canEditAll}
+                  key={`${full.data.id}:${full.data.version}`}
+                  layout="stacked"
+                  ontology={full.data}
+                  onSaved={onSaved}
+                />
+              ) : null}
+              {full.isPending ? <Loader /> : null}
+              {full.isError ? (
+                <Typography color="danger" role="alert" size="text-sm">
+                  {t('server.entity-fetch-error', {
+                    entity: t('label.ontology'),
+                  })}
+                </Typography>
+              ) : null}
             </Box>
           </Dialog.Content>
         </Dialog>
