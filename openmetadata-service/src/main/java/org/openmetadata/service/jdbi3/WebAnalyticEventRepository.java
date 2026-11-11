@@ -22,7 +22,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 public class WebAnalyticEventRepository extends EntityRepository<WebAnalyticEvent> {
-  private static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION =
+  public static final String WEB_ANALYTICS_EVENT_DATA_EXTENSION =
       "webAnalyticEvent.webAnalyticEventData";
 
   public WebAnalyticEventRepository() {

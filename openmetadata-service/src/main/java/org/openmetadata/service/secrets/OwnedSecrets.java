@@ -121,13 +121,15 @@ public final class OwnedSecrets {
 
   /**
    * Deletes the secrets of {@code references} that lie in the owner's namespace; anything else is
-   * left alone. A failed delete is logged and leaves an unused secret behind, so it never fails the
-   * caller's write.
+   * left alone. A secret is deleted by the name the provider resolves, the name its ownership was
+   * decided on, since a provider may read a secret under a spelling it does not delete by. A failed
+   * delete is logged and leaves an unused secret behind, so it never fails the caller's write.
    */
   public void delete(Collection<String> references, SecretOwner owner) {
     references.stream()
         .filter(reference -> isOwnedBy(reference, owner))
-        .map(OwnedSecrets::secretName)
+        .map(this::canonicalName)
+        .distinct()
         .forEach(this::deleteQuietly);
   }
 

@@ -120,8 +120,8 @@ public final class InferenceInvalidatingRdfStorage extends ForwardingRdfStorage 
   }
 
   @Override
-  public void replaceGraph(final String graph, final Model model) {
-    mutate(() -> delegate.replaceGraph(graph, model));
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
+    mutate(() -> delegate.replaceGraph(graph, releaseId, model));
   }
 
   @Override
