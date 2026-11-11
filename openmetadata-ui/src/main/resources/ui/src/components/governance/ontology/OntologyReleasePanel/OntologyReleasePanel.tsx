@@ -41,7 +41,6 @@ import {
   useOntologyPublication,
 } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
@@ -213,7 +212,6 @@ const OntologyReleasePanel = ({
   onOpenTask,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const [editor, setEditor] = useState<VersionEditorState>();
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [cursorRevision, setCursorRevision] = useState<string>();
@@ -879,50 +877,6 @@ const OntologyReleasePanel = ({
       </li>
     ));
 
-  const renderChanges = () => (
-    <Box direction="col" gap={4}>
-      {renderChangesHeading()}
-      {renderChangeStatus()}
-      {hasCoherentPreview && changes.data && (
-        <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
-          {renderConceptGroups()}
-          {visibleMembers.map((change) => (
-            <li key={change.entity.id + ':' + change.memberKind}>
-              <Card size="sm">
-                <Card.Content>
-                  <Box gap={2} justify="between">
-                    <Typography size="text-sm" weight="semibold">
-                      {getEntityName(change.entity)}
-                    </Typography>
-                    <Badge
-                      color={
-                        change.changeType === 'DEPRECATED' ? 'warning' : 'gray'
-                      }>
-                      {t('label.' + change.changeType.toLowerCase())}
-                    </Badge>
-                  </Box>
-                  <Typography color="secondary" size="text-xs">
-                    {t(
-                      'label.ontology-member-' + change.memberKind.toLowerCase()
-                    )}
-                  </Typography>
-                </Card.Content>
-              </Card>
-            </li>
-          ))}
-        </ul>
-      )}
-      {renderChangesPagination()}
-      {renderVersionError()}
-      {versionBase.isSuccess && (
-        <Typography data-testid="ontology-version-preview" size="text-sm">
-          {getVersionPreview()}
-        </Typography>
-      )}
-      {renderVersionEditor()}
-    </Box>
-  );
-
   const renderValidation = () => (
     <OntologyReleaseValidation
       release={
@@ -952,6 +906,8 @@ const OntologyReleasePanel = ({
           {renderVersionError()}
         </Box>
         <Box className="tw:min-w-0" direction="col" gap={4}>
+          {renderValidation()}
+          {renderVersionEditor()}
           <OntologyReleaseReviewers
             key={scopeKey}
             scopeKey={scopeKey}
@@ -959,8 +915,6 @@ const OntologyReleasePanel = ({
             onChange={updateReviewSettings}
             onRefresh={refresh}
           />
-          {renderValidation()}
-          {renderVersionEditor()}
         </Box>
       </div>
     </Box>
@@ -1041,9 +995,6 @@ const OntologyReleasePanel = ({
     );
   };
 
-  const renderClassicView = () =>
-    view === 'changes' ? renderChanges() : renderReleases();
-
   const renderStateError = () =>
     state.isError && (
       <Alert variant="error">
@@ -1076,33 +1027,7 @@ const OntologyReleasePanel = ({
     );
   };
 
-  if (isAiMode) {
-    return renderAiPanel();
-  }
-
-  return (
-    <Box direction="col" gap={4}>
-      <div className="tw:grid tw:grid-cols-1 tw:gap-5 tw:md:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <Box direction="col" gap={4}>
-          {renderClassicView()}
-          {renderRelease()}
-        </Box>
-        <Box direction="col" gap={4}>
-          <OntologyReleaseReviewers
-            key={scopeKey}
-            scopeKey={scopeKey}
-            view={panelView}
-            onChange={updateReviewSettings}
-            onRefresh={refresh}
-          />
-          {renderValidation()}
-        </Box>
-      </div>
-      {renderStorageStatus()}
-      {renderRecovery()}
-      {renderFooter()}
-    </Box>
-  );
+  return renderAiPanel();
 };
 
 export default OntologyReleasePanel;

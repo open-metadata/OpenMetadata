@@ -20,6 +20,7 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
 import {
+  openOntologyTransfer,
   selectOntologyOption,
   waitForPackInstallJob,
 } from '../../utils/ontologyStudio';
@@ -156,8 +157,7 @@ const seedDraft = async (
 const openImport = async (page: Page, ontology: Ontology) => {
   await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-  await page.getByTestId('ontology-import-export-trigger').click();
-  await page.getByTestId('ontology-native-import-tab').click();
+  await openOntologyTransfer(page, 'import');
 };
 
 const chooseFile = (page: Page, name: string, content: string | Buffer) =>
@@ -220,8 +220,7 @@ test.describe(
         await expect(itemRow(page, 'Invoice')).toContainText('New');
         await applyImport(page);
 
-        await page.getByTestId('ontology-import-export-trigger').click();
-        await page.getByTestId('ontology-native-import-tab').click();
+        await openOntologyTransfer(page, 'import');
         await parseFile(page, 'billing.ttl', TURTLE(NS(ontology.name)));
         await expect(itemRow(page, 'Invoice')).toContainText('Already exists');
         await expect(itemRow(page, 'Payment')).toContainText('Already exists');
@@ -617,7 +616,7 @@ test.describe(
         await parseFile(page, 'billing.ttl', TURTLE(NS(ontology.name)));
         await applyImport(page);
 
-        await page.getByTestId('ontology-import-export-trigger').click();
+        await openOntologyTransfer(page);
         await expect(page.getByTestId('ontology-export-scope')).toContainText(
           'Current draft'
         );
@@ -663,7 +662,7 @@ test.describe(
           );
           await applyImport(page);
 
-          await page.getByTestId('ontology-import-export-trigger').click();
+          await openOntologyTransfer(page);
           await page.getByTestId(`ontology-release-format-${card}`).click();
           await expect(
             page.getByTestId('ontology-release-export-preview')
@@ -724,7 +723,7 @@ test.describe(
         );
 
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
-        await page.getByTestId('ontology-import-export-trigger').click();
+        await openOntologyTransfer(page);
         await page
           .getByTestId('ontology-export-scope')
           .getByRole('button')

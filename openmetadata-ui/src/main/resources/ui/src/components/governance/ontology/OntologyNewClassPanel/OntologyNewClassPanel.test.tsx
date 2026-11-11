@@ -100,6 +100,15 @@ const setup = (
   );
 const openAdvanced = () =>
   fireEvent.click(screen.getByTestId('new-class-advanced-toggle'));
+const chooseType = async (type: OntologyConceptType) => {
+  fireEvent.click(
+    within(screen.getByTestId('new-class-type')).getByRole('button', {
+      hidden: true,
+    })
+  );
+  fireEvent.click(await screen.findByTestId('new-class-type-' + type));
+};
+
 const fill = (id: string, value: string) =>
   fireEvent.change(screen.getByTestId(id), { target: { value } });
 const fillMappingIri = (value: string) =>
@@ -191,7 +200,11 @@ it('commits synonyms on comma and Enter and requires two distinct enum chips', a
   expect(screen.getByText('Transfer')).toBeVisible();
 
   fill('new-class-property-name', 'state');
-  fireEvent.click(screen.getByRole('button', { name: /label.type/ }));
+  const conceptType = screen.getByTestId('new-class-type');
+  const propertyType = screen
+    .getAllByRole('button', { name: /label.type/ })
+    .find((button) => !conceptType.contains(button));
+  fireEvent.click(propertyType as HTMLElement);
   fireEvent.click(await screen.findByRole('option', { name: 'label.enum' }));
   fill('new-class-enum-values', 'Pending,');
 
@@ -832,7 +845,7 @@ describe('one drawer for every entry point', () => {
       .getAllByRole('textbox')
       .map((box) => box.getAttribute('aria-label') ?? box.id);
 
-  it('orders Name, Display name, Description, Type, IRI, Synonyms and Mappings, with the rest under Advanced', () => {
+  it('orders Name, Display name, Synonyms, Type, IRI, then Description and Mappings, with the rest under Advanced', () => {
     setup();
 
     expect(
@@ -842,16 +855,16 @@ describe('one drawer for every entry point', () => {
     ).toEqual([
       'new-class-local-name',
       'new-class-label',
-      'new-class-description',
-      'new-class-iri-input',
       'new-class-synonyms',
+      'new-class-iri-input',
+      'new-class-description',
     ]);
     expect(
       within(screen.getByTestId('new-class-mapping-iri')).getByRole('combobox')
     ).toBeVisible();
     expect(
-      screen.getAllByRole('radio').map((radio) => radio.getAttribute('value'))
-    ).toEqual(['OWL_CLASS', 'SKOS_CONCEPT', 'BOTH']);
+      within(screen.getByTestId('new-class-type')).getByRole('button')
+    ).toHaveTextContent('label.class-owl');
     expect(textboxNames()).toHaveLength(5);
     expect(
       screen.queryByRole('combobox', { name: 'label.subclass-of' })
@@ -973,7 +986,7 @@ describe('one drawer for every entry point', () => {
   it('plans the chosen type, IRI, synonyms and mappings', async () => {
     setup();
     fill('new-class-label', 'Remittance');
-    fireEvent.click(screen.getByRole('radio', { name: 'label.both-owl-skos' }));
+    await chooseType(OntologyConceptType.Both);
     fill('new-class-iri-input', 'https://example.org/other#Remittance');
     fill('new-class-synonyms', 'Wire,');
     fillMappingIri('https://schema.org/Payment');
@@ -1341,8 +1354,6 @@ describe('a SKOS concept takes no OWL axioms', () => {
     useKeyEchoTranslations();
   });
 
-  const chooseType = (type: OntologyConceptType) =>
-    fireEvent.click(screen.getByTestId('new-class-type-' + type));
   const addParent = async (name: string) => {
     const input = screen.getByRole('combobox', { name: 'Subclass of' });
     fireEvent.focus(input);
@@ -1363,7 +1374,7 @@ describe('a SKOS concept takes no OWL axioms', () => {
     setup();
     fill('new-class-label', 'Remittance');
     openAdvanced();
-    chooseType(OntologyConceptType.SkosConcept);
+    await chooseType(OntologyConceptType.SkosConcept);
 
     expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
     expect(screen.getByTestId('new-class-create')).toBeEnabled();
@@ -1374,7 +1385,7 @@ describe('a SKOS concept takes no OWL axioms', () => {
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
     expect(screen.getByText('Payment')).toBeVisible();
 
-    chooseType(OntologyConceptType.OwlClass);
+    await chooseType(OntologyConceptType.OwlClass);
 
     expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
     expect(screen.getByTestId('new-class-create')).toBeEnabled();
@@ -1389,22 +1400,22 @@ describe('a SKOS concept takes no OWL axioms', () => {
     expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
     expect(screen.getByTestId('new-class-create')).toBeEnabled();
 
-    chooseType(OntologyConceptType.SkosConcept);
+    await chooseType(OntologyConceptType.SkosConcept);
 
     expect(screen.getByText(SKOS_ERROR)).toBeVisible();
     expect(screen.getByTestId('new-class-create')).toBeDisabled();
 
-    chooseType(OntologyConceptType.Both);
+    await chooseType(OntologyConceptType.Both);
 
     expect(screen.queryByText(SKOS_ERROR)).not.toBeInTheDocument();
     expect(screen.getByTestId('new-class-create')).toBeEnabled();
   });
 
-  it('refuses an own property on a SKOS concept and clears once it is removed', () => {
+  it('refuses an own property on a SKOS concept and clears once it is removed', async () => {
     setup();
     fill('new-class-label', 'Remittance');
     openAdvanced();
-    chooseType(OntologyConceptType.SkosConcept);
+    await chooseType(OntologyConceptType.SkosConcept);
     addProperty('reference');
 
     expect(screen.getByText(SKOS_ERROR)).toBeVisible();
@@ -1420,7 +1431,7 @@ describe('a SKOS concept takes no OWL axioms', () => {
   it('creates a SKOS concept that has only synonyms and mappings', async () => {
     setup();
     fill('new-class-label', 'Remittance');
-    chooseType(OntologyConceptType.SkosConcept);
+    await chooseType(OntologyConceptType.SkosConcept);
     fill('new-class-synonyms', 'Wire,');
     fillMappingIri('https://schema.org/Payment');
     fireEvent.click(screen.getByTestId('new-class-add-mapping'));

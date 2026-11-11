@@ -177,7 +177,7 @@ for (const mode of ['classic', 'ai'] as const) {
           });
           await page.getByTestId('ontology-new-class-close').click();
 
-          await page.getByTestId('ontology-canvas-add-concept').click();
+          await page.getByTestId('ontology-add-concept').click();
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toBeVisible();
@@ -226,6 +226,10 @@ for (const mode of ['classic', 'ai'] as const) {
         for (const [index, [label, type]] of types.entries()) {
           await page.getByTestId('new-class-label').fill(label);
           if (type !== 'OWL_CLASS') {
+            await page
+              .getByTestId('new-class-type')
+              .getByRole('button')
+              .click();
             await page.getByTestId('new-class-type-' + type).click();
           }
           await submitDrawer(

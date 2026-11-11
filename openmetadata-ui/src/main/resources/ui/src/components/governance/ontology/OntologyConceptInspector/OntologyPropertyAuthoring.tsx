@@ -18,10 +18,8 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   DataPropertyInput,
   humanizeName,
@@ -231,44 +229,35 @@ const PropertyFields = ({
 
 const PropertyActions = ({
   canSubmit,
-  isAiMode,
   isSaving,
   onCancel,
   onSubmit,
 }: {
   canSubmit: boolean;
-  isAiMode: boolean;
   isSaving: boolean;
   onCancel: () => void;
   onSubmit: () => void;
 }) => {
   const { t } = useTranslation();
-  const size = isAiMode ? 'sm' : 'xs';
-  const cancel = (
-    <Button
-      color="secondary"
-      isDisabled={isSaving}
-      size={size}
-      onPress={onCancel}>
-      {t('label.cancel')}
-    </Button>
-  );
 
   return (
-    <Box gap={2} justify={isAiMode ? 'end' : 'start'}>
-      {isAiMode ? cancel : null}
+    <Box gap={2} justify="end">
+      <Button
+        color="secondary"
+        isDisabled={isSaving}
+        size="sm"
+        onPress={onCancel}>
+        {t('label.cancel')}
+      </Button>
       <Button
         color="primary"
         data-testid="ontology-property-submit"
         isDisabled={!canSubmit}
         isLoading={isSaving}
-        size={size}
+        size="sm"
         onPress={onSubmit}>
-        {isAiMode
-          ? t('label.add-entity', { entity: t('label.property') })
-          : t('label.add')}
+        {t('label.add-entity', { entity: t('label.property') })}
       </Button>
-      {isAiMode ? null : cancel}
     </Box>
   );
 };
@@ -292,7 +281,6 @@ interface OntologyPropertyAuthoringProps {
   readonly isOpen: boolean;
   readonly reusable: ReadonlyArray<OntologyIriOption>;
   readonly onClose: () => void;
-  readonly onOpen: () => void;
   readonly onSave: (input: DataPropertyInput) => Promise<boolean>;
 }
 
@@ -301,11 +289,8 @@ const OntologyPropertyAuthoring = ({
   isOpen,
   reusable,
   onClose,
-  onOpen,
   onSave,
 }: OntologyPropertyAuthoringProps) => {
-  const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const [draft, setDraft] = useState<PropertyDraft>(EMPTY_DRAFT);
   const [isSaving, setIsSaving] = useState(false);
   const change = (patch: Partial<PropertyDraft>) =>
@@ -321,20 +306,8 @@ const OntologyPropertyAuthoring = ({
     }
   };
 
-  if (!isAvailable || (isAiMode && !isOpen)) {
+  if (!isAvailable || !isOpen) {
     return null;
-  }
-  if (!isOpen) {
-    return (
-      <Button
-        color="secondary"
-        data-testid="ontology-add-property"
-        iconLeading={Plus}
-        size="xs"
-        onPress={onOpen}>
-        {t('label.add-entity', { entity: t('label.property') })}
-      </Button>
-    );
   }
   const fields = (
     <PropertyFields
@@ -347,27 +320,18 @@ const OntologyPropertyAuthoring = ({
   const actions = (
     <PropertyActions
       canSubmit={canSubmitDraft(draft)}
-      isAiMode={isAiMode}
       isSaving={isSaving}
       onCancel={onClose}
       onSubmit={() => void save()}
     />
   );
 
-  return isAiMode ? (
+  return (
     <ConceptFormCard testId="ontology-property-form">
       {fields}
       <PropertyPreview draft={draft} />
       {actions}
     </ConceptFormCard>
-  ) : (
-    <Box
-      className="tw:rounded-lg tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:p-3"
-      direction="col"
-      gap={3}>
-      {fields}
-      {actions}
-    </Box>
   );
 };
 
