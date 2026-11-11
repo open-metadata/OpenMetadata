@@ -7,6 +7,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
@@ -54,16 +55,17 @@ public class MemorySourceSharing {
 
   private void refreshReferencingMemories(EntityReference file, List<EntityReference> stated) {
     Set<UUID> refreshed = stated.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    Stream.of(Relationship.APPLIED_TO, Relationship.RELATED_TO)
+    Stream.of(Relationship.MENTIONED_IN, Relationship.APPLIED_TO, Relationship.RELATED_TO)
         .flatMap(
             relation ->
                 memories
-                    .findTo(file.getId(), file.getType(), relation, Entity.CONTEXT_MEMORY)
+                    .findTo(
+                        file.getId(), file.getType(), relation, Entity.CONTEXT_MEMORY, Include.ALL)
                     .stream())
         .map(EntityReference::getId)
         .distinct()
         .filter(id -> !refreshed.contains(id))
-        .forEach(memories::refreshSearchDocument);
+        .forEach(id -> memories.refreshSearchDocument(id, Include.ALL));
   }
 
   private static EntityReference referenceTo(ContextFile file) {

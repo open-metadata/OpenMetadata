@@ -277,8 +277,11 @@ Guarded by `MemorySourceLifecycleTest`, `SourceReadersTest`, `MemorySourceDisclo
   a single version, and `/history`. A reader who cannot access a file sees its id and type.
   The search index keeps only the id and type for restricted file references, including on reindex.
   A sharing change refreshes memories that cite or are anchored on the file as well as those it
-  states. Refreshes run after the sharing transaction commits and remove source fields that no
-  longer apply. Pre-release instances reindex `contextMemory` after upgrading to refresh older
+  states, including memories a person archived. Archived memories keep their deleted state while
+  their search references are refreshed from an `Include.ALL` read. Refreshes run after the sharing
+  transaction commits and remove source fields that no longer apply.
+  `ContextMemoryExtractionIT#restrictingAFileAlsoRedactsItsArchivedMemoryInSearch` guards deleted
+  search results. Pre-release instances reindex `contextMemory` after upgrading to refresh older
   source metadata.
   An article reads to everyone, and an admin reads every file.
 - **Naming.** An extracted memory, and a copy, is named `memory-<uuid>`. A name is the memory's FQN

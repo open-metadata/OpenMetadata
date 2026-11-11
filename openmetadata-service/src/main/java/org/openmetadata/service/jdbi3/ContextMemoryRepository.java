@@ -61,6 +61,7 @@ import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.PostCommitActionQueue;
 
 /**
  * Every memory is written to the search index regardless of its {@code shareConfig.visibility}, and
@@ -1286,5 +1287,13 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     EntityLifecycleEventDispatcher.getInstance()
         .onEntityUpdated(
             new EntityReference().withId(memoryId).withType(Entity.CONTEXT_MEMORY), null);
+  }
+
+  /** Refreshes an archived dependent after sharing commits, preserving its deleted state. */
+  public void refreshSearchDocument(UUID memoryId, Include include) {
+    EntityReference reference =
+        new EntityReference().withId(memoryId).withType(Entity.CONTEXT_MEMORY);
+    PostCommitActionQueue.runOrDefer(
+        () -> Entity.getSearchRepository().updateEntity(reference, include));
   }
 }

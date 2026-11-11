@@ -838,12 +838,48 @@ class ContextMemoryExtractionIT {
             });
   }
 
+  @Test
+  void restrictingAFileAlsoRedactsItsArchivedMemoryInSearch(TestNamespace ns) throws Exception {
+    ContextFile document =
+        fileOwnedBy(ns, "archived-reference", "Archived refund policy " + ns.shortPrefix(), null);
+    ContextMemory memory =
+        pill("Thirty days.", document.getEntityReference(), ContextMemorySourceType.MANUAL)
+            .withOwners(List.of(SharedEntities.get().USER1_REF));
+    memoryRepository().create(null, memory);
+    namespace.trackRoot(Entity.CONTEXT_MEMORY, memory.getId());
+    RestClient.admin().delete(MEMORIES, memory.getId());
+    memory.setDeleted(true);
+    Awaitility.await("the archived memory still names the public file")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(() -> assertTrue(searchMemoryAsOwner(memory).contains(document.getName())));
+
+    share(document, privately());
+
+    Awaitility.await("the archived memory no longer names the private file")
+        .atMost(Duration.ofSeconds(60))
+        .untilAsserted(
+            () -> {
+              String result = searchMemoryAsOwner(memory);
+              JsonNode source = searchMemorySource(result, memory);
+              assertTrue(source.path("deleted").asBoolean(), result);
+              assertFalse(result.contains(document.getName()), result);
+              for (String field : List.of("primaryEntity", "sourceEntity", "sourceFile")) {
+                assertEquals(idOnlyFile(document), source.path(field), result);
+              }
+            });
+    assertTrue(
+        memoryRepository()
+            .get(null, memory.getId(), memoryRepository().getFields(""), Include.ALL, false)
+            .getDeleted());
+  }
+
   private static String searchMemoryAsOwner(ContextMemory memory) {
     String byId = "{\"query\":{\"term\":{\"id.keyword\":\"" + memory.getId() + "\"}}}";
     return SdkClients.user1Client()
         .search()
         .query("*")
         .index("context_memory_search_index")
+        .deleted(Boolean.TRUE.equals(memory.getDeleted()))
         .queryFilter(byId)
         .execute();
   }
