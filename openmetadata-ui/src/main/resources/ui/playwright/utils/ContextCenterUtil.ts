@@ -202,17 +202,19 @@ export const MEMORY_EXTRACTION_CANNOT_START_MESSAGE =
 
 export const expectMemoryExtractionOffTooltip = async (page: Page) => {
   const trigger = page.getByTestId('memory-extraction-btn').locator('..');
+  const tooltip = page.getByRole('tooltip', {
+    name: MEMORY_EXTRACTION_OFF_MESSAGE,
+    exact: true,
+  });
+  // Enter from inside the document after React Aria observes pointer movement.
+  await page.mouse.move(10, 10);
   await trigger.hover();
-  await expect(page.getByRole('tooltip')).toHaveText(
-    MEMORY_EXTRACTION_OFF_MESSAGE
-  );
+  await expect(tooltip).toBeVisible();
   await trigger.focus();
   await page.keyboard.press('Shift+Tab');
   await page.keyboard.press('Tab');
   await expect(trigger).toBeFocused();
-  await expect(page.getByRole('tooltip')).toHaveText(
-    MEMORY_EXTRACTION_OFF_MESSAGE
-  );
+  await expect(tooltip).toBeVisible();
   await expect(trigger).toHaveAccessibleDescription(
     MEMORY_EXTRACTION_OFF_MESSAGE
   );
