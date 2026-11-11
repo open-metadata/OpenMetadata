@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -58,6 +59,7 @@ import org.openmetadata.service.search.vector.PageBodyTextContributor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -487,11 +489,21 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public List<PageHierarchy> listHierarchy(
       ListFilter filter, int limit, SecurityContext securityContext, Authorizer authorizer) {
     List<PageHierarchy> pageHierarchyList = new ArrayList<>();
+    boolean admin = DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
     EntityUtil.Fields fields = getFields("parent,children");
+    if (!admin) {
+      fields = ResourceContext.authorizationFields(this, fields);
+    }
 
-    List<Page> pages =
-        viewablePages(
-            listAfter(null, fields, filter, limit, null).getData(), securityContext, authorizer);
+    List<Page> pages = listAfter(null, fields, filter, limit, null).getData();
+    if (!admin) {
+      // Built from the pages the caller may view, so the tree and its child counts match what
+      // opens.
+      pages =
+          new ViewPermissionFilter(authorizer)
+              .retainPermitted(
+                  securityContext, Entity.PAGE, this, pages, List.of(MetadataOperation.VIEW_BASIC));
+    }
     Map<UUID, Page> lookUp = pages.stream().collect(Collectors.toMap(Page::getId, p -> p));
     List<Page> topLevelPages = pages.stream().filter(p -> p.getParent() == null).toList();
 
@@ -500,18 +512,6 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
     }
 
     return pageHierarchyList;
-  }
-
-  /** Keeps the pages the caller may view, so the tree and its child counts match what opens. */
-  private static List<Page> viewablePages(
-      List<Page> pages, SecurityContext securityContext, Authorizer authorizer) {
-    if (DefaultAuthorizer.getSubjectContext(securityContext).isAdmin()) {
-      return pages;
-    }
-    Set<UUID> viewable =
-        new ViewPermissionFilter(authorizer)
-            .viewableIds(securityContext, pages.stream().map(Page::getEntityReference).toList());
-    return pages.stream().filter(page -> viewable.contains(page.getId())).toList();
   }
 
   public PageHierarchy getHierarchy(Map<UUID, Page> lookUp, Page topLevelPage) {
