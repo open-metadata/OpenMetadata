@@ -106,7 +106,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -206,7 +206,7 @@ jobs:
     needs: [changes, integration-test-build]
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:

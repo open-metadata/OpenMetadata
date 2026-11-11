@@ -198,7 +198,7 @@ const DropdownPopover = (props: DropdownPopoverProps) => {
       // transition-none keeps the enter/exit keyframes.
       className={(state) =>
         cx(
-          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-y-auto tw:transition-none tw:rounded-lg tw:bg-overlay-surface tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
+          'tw:w-62 tw:origin-(--trigger-anchor-point) tw:overflow-y-auto tw:transition-none tw:rounded-lg tw:bg-floating tw:shadow-raised tw:outline-1 tw:outline-secondary_alt tw:will-change-transform',
           state.isEntering &&
             'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
           state.isExiting &&

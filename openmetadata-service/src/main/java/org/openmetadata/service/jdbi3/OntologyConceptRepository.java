@@ -24,8 +24,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.OntologyClassHierarchy;
 import org.openmetadata.service.ontology.OntologyDefinitionStatusResolver;
-import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -154,7 +154,7 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
         }
         last = reference;
       }
-      if (loaded.size() > OntologyReleaseManifest.MAX_MEMBERS) {
+      if (loaded.size() > OntologyWriteClosureLimits.CONCEPT_DELETION_IMPACT) {
         throw new BadRequestException("Concept deletion impact exceeds the 10000 reference limit");
       }
     } while (page.size() == REFERENCE_PAGE);
@@ -173,7 +173,7 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
               concepts.getTableName(),
               ontologyId,
               subjects,
-              OntologyReleaseManifest.MAX_MEMBERS + 1,
+              OntologyWriteClosureLimits.CONCEPT_DELETION_IMPACT + 1,
               "")
           .forEach(json -> context.add(JsonUtils.readValue(json, OntologyConcept.class)));
     }
@@ -229,8 +229,8 @@ public class OntologyConceptRepository extends OntologyEntityRepository<Ontology
                     .distinct()
                     .toList(),
                 role.value(),
-                OntologyReleaseManifest.MAX_MEMBERS + 1);
-    if (json.size() > OntologyReleaseManifest.MAX_MEMBERS) {
+                OntologyWriteClosureLimits.CONCEPT_HIERARCHY_EDGES + 1);
+    if (json.size() > OntologyWriteClosureLimits.CONCEPT_HIERARCHY_EDGES) {
       throw new BadRequestException("Concept hierarchy lookup exceeds the 10000 axiom limit");
     }
     final Map<ClassKey, Set<String>> edges = new HashMap<>();

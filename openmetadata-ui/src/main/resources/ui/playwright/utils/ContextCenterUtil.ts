@@ -105,6 +105,22 @@ export const selectDocumentByName = async (page: Page, fileName: string) => {
   await row.getByTestId('document-checkbox').click();
 };
 
+// Changing the search clears the selection, so a multi-select must come from one
+// search whose term matches every file (e.g. a uuid shared by their names).
+export const selectDocumentsBySharedTerm = async (
+  page: Page,
+  searchTerm: string,
+  fileNames: string[]
+) => {
+  await searchAndGetDocumentRow(page, searchTerm);
+  for (const fileName of fileNames) {
+    const row = getDocumentRowByName(page, fileName);
+    await expect(row).toBeVisible();
+    await row.scrollIntoViewIfNeeded();
+    await row.getByTestId('document-checkbox').click();
+  }
+};
+
 export const expectSelectedCount = async (page: Page, count: number) => {
   await expect(
     page.getByText(`${count} selected`, { exact: true })
@@ -1246,6 +1262,18 @@ export const patchMemory = async (
   return res.json();
 };
 
+/** A memory's stage as stored, read by id rather than from the search index the lists read. */
+export const getMemoryStatus = async (
+  apiContext: APIRequestContext,
+  id: string
+): Promise<string> => {
+  const response = await apiContext.get(`${MEMORIES_API}/${id}`);
+  const body = await response.text();
+  expect(response.status(), body).toBe(200);
+
+  return parseResponseJson<{ entityStatus: string }>(body).entityStatus;
+};
+
 /**
  * Sets a memory's outcome counters through the admin-only outcome write, the only write that
  * changes them: a PATCH keeps the stored counts.
@@ -1288,7 +1316,11 @@ export const createMemoryViaApi = async (
   apiContext: APIRequestContext,
   overrides: Record<string, unknown>
 ) => {
-  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  // OSS defaults a new memory to Approved, Collate to Unprocessed (hidden from
+  // non-owners). Pin Approved so fixtures behave the same on both distributions.
+  const res = await apiContext.post(MEMORIES_API, {
+    data: { ...overrides, entityStatus: overrides.entityStatus ?? 'Approved' },
+  });
   expect(res.status()).toBe(201);
 
   return res.json();

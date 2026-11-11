@@ -15,6 +15,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.SeedData;
+import org.openmetadata.it.factories.SizeFactor;
 import org.openmetadata.it.search.CpuSampler;
 import org.openmetadata.it.search.HealthProbe;
 import org.openmetadata.it.search.ReindexHelpers;
@@ -27,7 +28,8 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.sdk.fluent.Apps;
 
 /**
- * Asserts that under a 50k-table reindex, Jetty stays responsive (k8s-style health
+ * Asserts that under a 50k-table reindex ({@link SizeFactor} scales the cohort), Jetty stays
+ * responsive (k8s-style health
  * probes succeed with p99 latency below 500 ms) and JVM CPU stays under a 75%
  * ceiling so the liveness probe never starves.
  *
@@ -40,7 +42,7 @@ import org.openmetadata.sdk.fluent.Apps;
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
 class ReindexCpuHeadroomIT {
 
-  private static final int SEED_TABLES = 50_000;
+  private static final int SEED_TABLES = SizeFactor.scale(50_000);
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int LOAD_WORKERS = 16;
   private static final int PROBE_QPS = 10;

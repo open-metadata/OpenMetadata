@@ -163,8 +163,7 @@ class StorageUnitTest(TestCase):
         return_value=None,
     )
     @patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection")
-    def __init__(self, method_name: str, test_connection, _get_manifest_file) -> None:
-        super().__init__(method_name)
+    def setUp(self, test_connection, _get_manifest_file) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(MOCK_OBJECT_STORE_CONFIG)
 

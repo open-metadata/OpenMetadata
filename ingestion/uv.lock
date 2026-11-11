@@ -19,6 +19,22 @@ required-markers = [
 excludes = ["black"]
 
 [[manifest.dependency-metadata]]
+name = "en-core-web-md"
+version = "3.8.0"
+
+[[manifest.dependency-metadata]]
+name = "es-core-news-md"
+version = "3.8.0"
+
+[[manifest.dependency-metadata]]
+name = "it-core-news-md"
+version = "3.8.0"
+
+[[manifest.dependency-metadata]]
+name = "pl-core-news-md"
+version = "3.8.0"
+
+[[manifest.dependency-metadata]]
 name = "sqlalchemy-ibmi"
 version = "0.9.3"
 requires-dist = ["pyodbc>=4.0", "sqlalchemy>=2.0,<2.1"]
@@ -9946,6 +9962,12 @@ bootstrap = [
     { name = "tomli", marker = "python_full_version < '3.11'" },
     { name = "uv" },
 ]
+classification-models = [
+    { name = "en-core-web-md" },
+    { name = "es-core-news-md" },
+    { name = "it-core-news-md" },
+    { name = "pl-core-news-md" },
+]
 coverage = [
     { name = "coverage", extra = ["toml"] },
     { name = "pip" },
@@ -10010,8 +10032,6 @@ test = [
     { name = "coverage", extra = ["toml"] },
     { name = "datamodel-code-generator" },
     { name = "dirty-equals" },
-    { name = "en-core-web-md" },
-    { name = "es-core-news-md" },
     { name = "exasol-integration-test-docker-environment" },
     { name = "factory-boy" },
     { name = "faker" },
@@ -10019,7 +10039,6 @@ test = [
     { name = "google-api-python-client-stubs" },
     { name = "google-auth-stubs" },
     { name = "import-linter" },
-    { name = "it-core-news-md" },
     { name = "kafka-python" },
     { name = "locust" },
     { name = "luigi" },
@@ -10028,7 +10047,6 @@ test = [
     { name = "nox" },
     { name = "pandas-stubs" },
     { name = "pip" },
-    { name = "pl-core-news-md" },
     { name = "pre-commit", version = "4.6.2", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
     { name = "pre-commit", version = "4.7.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
     { name = "pytest" },
@@ -11035,6 +11053,12 @@ bootstrap = [
     { name = "tomli", marker = "python_full_version < '3.11'", specifier = ">=2" },
     { name = "uv", specifier = "==0.13.4" },
 ]
+classification-models = [
+    { name = "en-core-web-md", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" },
+    { name = "es-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" },
+    { name = "it-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl" },
+    { name = "pl-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl" },
+]
 coverage = [
     { name = "coverage", extras = ["toml"] },
     { name = "pip" },
@@ -11094,8 +11118,6 @@ test = [
     { name = "coverage", extras = ["toml"] },
     { name = "datamodel-code-generator", specifier = "==0.83.0" },
     { name = "dirty-equals" },
-    { name = "en-core-web-md", url = "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-3.8.0/en_core_web_md-3.8.0-py3-none-any.whl" },
-    { name = "es-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_md-3.8.0/es_core_news_md-3.8.0-py3-none-any.whl" },
     { name = "exasol-integration-test-docker-environment", specifier = ">=6.0.0,<7" },
     { name = "factory-boy", specifier = "~=3.3.3" },
     { name = "faker", specifier = "==37.1.0" },
@@ -11103,7 +11125,6 @@ test = [
     { name = "google-api-python-client-stubs" },
     { name = "google-auth-stubs" },
     { name = "import-linter", specifier = "~=2.13" },
-    { name = "it-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/it_core_news_md-3.8.0/it_core_news_md-3.8.0-py3-none-any.whl" },
     { name = "kafka-python", specifier = "==2.3.2" },
     { name = "locust", specifier = "~=2.32.0" },
     { name = "luigi", specifier = ">=2.8.4,<=3.6.0" },
@@ -11112,7 +11133,6 @@ test = [
     { name = "nox" },
     { name = "pandas-stubs", specifier = "~=2.2" },
     { name = "pip" },
-    { name = "pl-core-news-md", url = "https://github.com/explosion/spacy-models/releases/download/pl_core_news_md-3.8.0/pl_core_news_md-3.8.0-py3-none-any.whl" },
     { name = "pre-commit" },
     { name = "pytest", specifier = "==9.0.3" },
     { name = "pytest-cov" },

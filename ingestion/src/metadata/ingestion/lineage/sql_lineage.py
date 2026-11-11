@@ -14,6 +14,7 @@ Helper functions to handle SQL lineage operations
 
 import functools
 import itertools
+import re
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
@@ -61,6 +62,7 @@ from metadata.ingestion.models.ometa_lineage import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.utils import fqn
 from metadata.utils.elasticsearch import get_entity_from_es_result
 from metadata.utils.fqn import build_es_fqn_search_string
 from metadata.utils.logger import utils_logger
@@ -520,9 +522,13 @@ def _create_lineage_by_table_name(
     procedure: EntityReference | None = None,
     graph: DiGraph | None = None,
     schema_fallback: bool = False,
+    to_table_entities: list[Table] | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method is to create a lineage between two tables
+
+    `to_table_entities` are the target entities when the caller already has them, so
+    `to_table` is not resolved again by name.
     """
     if isinstance(service_names, str):
         service_names = [service_names]
@@ -537,7 +543,7 @@ def _create_lineage_by_table_name(
             schema_fallback=schema_fallback,
         )
 
-        to_table_entities = get_table_entities_from_query(
+        to_table_entities = to_table_entities or get_table_entities_from_query(
             metadata=metadata,
             service_names=service_names,
             database_name=database_name,
@@ -617,6 +623,24 @@ def populate_column_lineage_map(raw_column_lineage):
     return lineage_map
 
 
+def _view_target(view_entity: Table | None, target_table: object) -> list[Table] | None:
+    """Bind only the view's own SQL name, preserving its catalog qualifications."""
+    if view_entity is None:
+        return None
+    target_name = re.sub(r'[\[\]"`]', "", str(target_table)).lower()
+    # An unqualified target prints with the parser's placeholder schema.
+    target_name = target_name.removeprefix(f"{DEFAULT_SCHEMA_NAME}.")
+    # Some parsers drop the qualifiers around a dotted leaf name entirely.
+    if target_name == model_str(view_entity.name).lower():
+        return [view_entity]
+    if view_entity.fullyQualifiedName is None:
+        return None
+    view_parts = [fqn.unquote_name(part).lower() for part in fqn.split(model_str(view_entity.fullyQualifiedName))[1:]]
+    if any(target_name == ".".join(view_parts[index:]) for index in range(len(view_parts))):
+        return [view_entity]
+    return None
+
+
 # pylint: disable=too-many-locals
 def get_lineage_by_query(
     metadata: OpenMetadata,
@@ -632,12 +656,16 @@ def get_lineage_by_query(
     schema_fallback: bool = False,
     service_name: str | None = None,  # backward compatibility for python sdk
     parser_type: QueryParserType = QueryParserType.Auto,
+    view_entity: Table | None = None,
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method parses the query to get source, target and intermediate table names to create lineage,
     and returns True if target table is found to create lineage otherwise returns False.
 
     Now supports cross-database lineage by accepting a list of service names.
+
+    `view_entity` is the view whose definition is `query`. A target that names it uses
+    the entity as is instead of being resolved again by its dotted name.
     """
     column_lineage = {}
 
@@ -695,6 +723,7 @@ def get_lineage_by_query(
                     lineage_source=lineage_source,
                     schema_fallback=schema_fallback,
                     graph=graph,
+                    to_table_entities=_view_target(view_entity, target_table),
                 )
         if not lineage_parser.intermediate_tables:
             for target_table in lineage_parser.target_tables:
@@ -722,6 +751,7 @@ def get_lineage_by_query(
                             procedure=procedure,
                             graph=graph,
                             schema_fallback=schema_fallback,
+                            to_table_entities=_view_target(view_entity, target_table),
                         )
     except Exception as exc:
         yield Either(
@@ -786,6 +816,9 @@ def get_lineage_via_table_entity(
                         procedure=procedure,
                         graph=graph,
                         schema_fallback=schema_fallback,
+                        # The view was looked up by its FQN already. Joining its names
+                        # with dots loses the boundary of a name that contains one.
+                        to_table_entities=[table_entity],
                     )
                     or []
                 )

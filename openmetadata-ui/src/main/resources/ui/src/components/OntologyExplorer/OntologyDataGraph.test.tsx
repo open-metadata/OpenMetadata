@@ -18,6 +18,7 @@ import {
   screen,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import i18next from 'i18next';
 import { Profiler } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -893,7 +894,7 @@ describe('native Data mode of one concept', () => {
     widths.mockRestore();
   });
 
-  it('counts the bound columns on the row that has them, and opens them as named column nodes', () => {
+  it('counts the bound columns on the row that has them and draws nothing until they are opened', () => {
     renderGraph({ data: singleConceptData(), isSingleConcept: true });
 
     const toggle = screen.getByTestId(
@@ -908,17 +909,142 @@ describe('native Data mode of one concept', () => {
       )
     ).not.toBeInTheDocument();
     expect(screen.queryAllByTestId('ontology-data-column')).toHaveLength(0);
+    expect(screen.queryAllByTestId('ontology-data-column-edge')).toHaveLength(
+      0
+    );
+  });
+
+  it('draws each bound column as its own node with an edge to its table, named by column and type', () => {
+    renderGraph({ data: singleConceptData(), isSingleConcept: true });
+    const toggle = screen.getByTestId(
+      'ontology-data-asset-columns-toggle-asset:transfer:t0'
+    );
 
     fireEvent.click(toggle);
 
     expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.queryByTestId('ontology-data-asset-columns-asset:transfer:t0')
+    ).not.toBeInTheDocument();
 
-    const columns = screen.getAllByTestId('ontology-data-column');
+    const nodes = screen.getAllByTestId('ontology-data-column');
 
-    expect(columns.map((column) => column.textContent)).toEqual([
-      'amountdecimal(10,2)amount',
-      'gonestatus',
+    expect(nodes.map((node) => node.textContent)).toEqual([
+      'amountdecimal(10,2)',
+      'gone',
     ]);
+    expect(nodes.map((node) => node.getAttribute('aria-label'))).toEqual([
+      'label.ontology-column-node-aria',
+      'label.ontology-column-node-aria',
+    ]);
+
+    const edges = screen.getAllByTestId('ontology-data-column-edge');
+
+    expect(edges.map((edge) => edge.getAttribute('data-column'))).toEqual([
+      'amount',
+      'gone',
+    ]);
+    expect(
+      screen.getByTestId('ontology-data-legend-column-binding')
+    ).toHaveTextContent('label.ontology-column-binding');
+
+    fireEvent.click(toggle);
+
+    expect(screen.queryAllByTestId('ontology-data-column')).toHaveLength(0);
+  });
+
+  it('selects a column node with the keyboard and the pointer, and marks the selected one', async () => {
+    const user = userEvent.setup();
+    const onSelectColumn = jest.fn();
+    const { rerender } = renderGraph({
+      data: singleConceptData(),
+      isSingleConcept: true,
+      onSelectColumn,
+    });
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-columns-toggle-asset:transfer:t0')
+    );
+    const [amount, gone] = screen.getAllByTestId('ontology-data-column');
+
+    act(() => amount.focus());
+    await user.keyboard('{Enter}');
+
+    expect(onSelectColumn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'asset:transfer:t0' }),
+      expect.objectContaining({ path: ['amount'], propertyLabel: 'amount' })
+    );
+
+    await user.click(gone);
+
+    expect(onSelectColumn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'asset:transfer:t0' }),
+      expect.objectContaining({ path: ['gone'], isResolved: false })
+    );
+    expect(amount).toHaveAttribute('aria-pressed', 'false');
+
+    rerender(
+      <OntologyDataGraph
+        isSingleConcept
+        data={singleConceptData()}
+        glossaryColorMap={{}}
+        hasMoreTerms={false}
+        isLoadingMoreTerms={false}
+        relationTypes={[]}
+        selectedColumnKey="asset:transfer:t0::gone"
+        variant="native"
+        onLoadMore={jest.fn()}
+        onLoadMoreTerms={jest.fn()}
+        onPaneClick={jest.fn()}
+        onSelectColumn={onSelectColumn}
+        onSelectNode={jest.fn()}
+      />
+    );
+
+    expect(gone).toHaveAttribute('aria-pressed', 'true');
+    expect(amount).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('keeps five column nodes per table and expands the rest from a +N more node', () => {
+    const columns = Array.from({ length: 8 }, (_, index) => ({
+      path: [`col_${index}`],
+      propertyLabel: `prop_${index}`,
+      isResolved: true,
+    }));
+    const data = singleConceptData();
+    renderGraph({
+      data: {
+        ...data,
+        nodes: data.nodes.map((node) =>
+          node.id === 'asset:transfer:t0'
+            ? { ...node, boundColumns: columns }
+            : node
+        ),
+      },
+      isSingleConcept: true,
+    });
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-columns-toggle-asset:transfer:t0')
+    );
+
+    expect(screen.getAllByTestId('ontology-data-column')).toHaveLength(5);
+    expect(screen.getAllByTestId('ontology-data-column-edge')).toHaveLength(5);
+
+    const more = screen.getByTestId(
+      'ontology-data-column-more-asset:transfer:t0'
+    );
+
+    expect(more).toHaveTextContent('label.show-count-more');
+
+    fireEvent.click(more);
+
+    expect(screen.getAllByTestId('ontology-data-column')).toHaveLength(8);
+    expect(screen.getAllByTestId('ontology-data-column-edge')).toHaveLength(8);
+
+    fireEvent.click(
+      screen.getByTestId('ontology-data-column-fewer-asset:transfer:t0')
+    );
+
+    expect(screen.getAllByTestId('ontology-data-column')).toHaveLength(5);
   });
 
   it('names the column binding in the legend only when a column is bound, and drops the multi-concept heading and inferred legend', () => {

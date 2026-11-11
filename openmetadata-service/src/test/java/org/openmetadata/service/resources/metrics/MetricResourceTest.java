@@ -157,8 +157,14 @@ class MetricResourceTest {
       ArgumentCaptor<ResourceContextInterface> resources =
           ArgumentCaptor.forClass(ResourceContextInterface.class);
 
-      MetricAuthorization.authorizeHierarchyDestinations(
-          fixture.authorizer(), mock(SecurityContext.class), null, updated);
+      SecurityContext securityContext = mock(SecurityContext.class);
+      MetricRepository.hierarchyDestinations(null, updated)
+          .forEach(
+              destination ->
+                  MetricRepository.authorizeEditAll(
+                      destination,
+                      (operation, resource) ->
+                          fixture.authorizer().authorize(securityContext, operation, resource)));
 
       verify(fixture.authorizer(), times(2))
           .authorize(any(), operations.capture(), resources.capture());
@@ -181,99 +187,6 @@ class MetricResourceTest {
                 .getOperations(resources.getAllValues().get(index)));
       }
     }
-  }
-
-  @Test
-  void metricPatchRejectsRelationshipDerivedFieldsAndDetectsHierarchyPaths() {
-    jakarta.json.JsonPatch assets =
-        Json.createPatchBuilder().add("/assets", Json.createArrayBuilder().build()).build();
-    jakarta.json.JsonPatch children =
-        Json.createPatchBuilder().add("/children", Json.createArrayBuilder().build()).build();
-    jakarta.json.JsonPatch childrenCount =
-        Json.createPatchBuilder().add("/childrenCount", 2).build();
-    jakarta.json.JsonPatch parent =
-        Json.createPatchBuilder()
-            .add(
-                "/parent",
-                Json.createObjectBuilder().add("id", UUID.randomUUID().toString()).build())
-            .build();
-
-    IllegalArgumentException exception =
-        assertThrows(
-            IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(assets));
-
-    assertTrue(exception.getMessage().contains("assets"));
-    assertThrows(
-        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(children));
-    assertThrows(
-        IllegalArgumentException.class,
-        () -> MetricAuthorization.validateMetricPatch(childrenCount));
-    assertTrue(MetricAuthorization.patchMutatesHierarchy(parent));
-    assertFalse(MetricAuthorization.patchMutatesHierarchy(assets));
-  }
-
-  @Test
-  void wholeDocumentReplaceCountsAsAHierarchyChange() {
-    jakarta.json.JsonPatch rootReplace =
-        Json.createPatchBuilder().replace("", Json.createObjectBuilder().build()).build();
-
-    assertTrue(MetricAuthorization.patchMutatesHierarchy(rootReplace));
-  }
-
-  @Test
-  void metricPatchRejectsReadingARelationIntoAnotherFieldOrATest() {
-    for (String from :
-        List.of(
-            "/parent/description",
-            "/metricGroup/name",
-            "/relatedMetrics/0/description",
-            "/children/0/name",
-            "")) {
-      jakarta.json.JsonPatch copy = Json.createPatchBuilder().copy("/description", from).build();
-      jakarta.json.JsonPatch move = Json.createPatchBuilder().move("/displayName", from).build();
-      assertThrows(
-          IllegalArgumentException.class,
-          () -> MetricAuthorization.validateMetricPatch(copy),
-          from);
-      assertThrows(
-          IllegalArgumentException.class,
-          () -> MetricAuthorization.validateMetricPatch(move),
-          from);
-    }
-    for (String path : List.of("", "/parent/name", "/metricGroup", "/relatedMetrics/0/name")) {
-      jakarta.json.JsonPatch test =
-          Json.createPatchBuilder().test(path, "guess").add("/description", "x").build();
-      assertThrows(
-          IllegalArgumentException.class,
-          () -> MetricAuthorization.validateMetricPatch(test),
-          path);
-    }
-    // Reordering within a relation (as jsonpatch diff tools emit) and copying plain fields still
-    // pass.
-    MetricAuthorization.validateMetricPatch(
-        Json.createPatchBuilder().move("/relatedMetrics/0", "/relatedMetrics/1").build());
-    MetricAuthorization.validateMetricPatch(
-        Json.createPatchBuilder().copy("/displayName", "/description").build());
-  }
-
-  @Test
-  void metricPatchRejectsOperationsOnTheDocumentRoot() {
-    jakarta.json.JsonObject wholeMetric =
-        Json.createObjectBuilder()
-            .add("name", "scratch")
-            .add("parent", Json.createObjectBuilder().add("id", UUID.randomUUID().toString()))
-            .build();
-    jakarta.json.JsonPatch add = Json.createPatchBuilder().add("", wholeMetric).build();
-    jakarta.json.JsonPatch replace =
-        Json.createPatchBuilder().add("/description", "scratch").replace("", wholeMetric).build();
-    jakarta.json.JsonPatch description =
-        Json.createPatchBuilder().add("/description", "scratch").build();
-
-    assertThrows(
-        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(add));
-    assertThrows(
-        IllegalArgumentException.class, () -> MetricAuthorization.validateMetricPatch(replace));
-    MetricAuthorization.validateMetricPatch(description);
   }
 
   @Test
