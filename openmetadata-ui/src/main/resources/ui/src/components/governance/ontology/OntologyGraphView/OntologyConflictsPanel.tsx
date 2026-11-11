@@ -63,6 +63,20 @@ const ConflictRow = ({
 );
 
 /** Lists what the server finds wrong with the working draft, with a link to each concept a clash names. */
+/** Says the draft is clean, only once validation answered with no conflicts. */
+const CleanNote = ({ isShown }: { isShown: boolean }) => {
+  const { t } = useTranslation();
+
+  return isShown ? (
+    <Typography
+      className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
+      color="secondary"
+      size="text-xs">
+      {t('message.ontology-validate-all-clean')}
+    </Typography>
+  ) : null;
+};
+
 const OntologyConflictsPanel = ({
   isChecking,
   isFailed,
@@ -134,14 +148,8 @@ const OntologyConflictsPanel = ({
                 />
               ))}
             </ul>
-          ) : (
-            <Typography
-              className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
-              color="secondary"
-              size="text-xs">
-              {t('message.ontology-validate-all-clean')}
-            </Typography>
-          )}
+          ) : null}
+          <CleanNote isShown={!hasConflicts && !isFailed} />
         </Box>
       ) : null}
     </Card>

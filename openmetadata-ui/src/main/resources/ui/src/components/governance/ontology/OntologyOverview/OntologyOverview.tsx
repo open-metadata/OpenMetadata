@@ -73,7 +73,7 @@ interface StatCardProps {
   readonly testId: string;
   readonly label: string;
   readonly count: number;
-  readonly detail: string;
+  readonly detail?: string;
   readonly isAlert?: boolean;
   readonly onOpen?: () => void;
 }
@@ -106,9 +106,11 @@ const StatCard = ({
         <Typography size="display-xs" weight="semibold">
           {count}
         </Typography>
-        <Typography color={isAlert ? 'danger' : 'secondary'} size="text-sm">
-          {detail}
-        </Typography>
+        {detail ? (
+          <Typography color={isAlert ? 'danger' : 'secondary'} size="text-sm">
+            {detail}
+          </Typography>
+        ) : null}
       </Box>
     </Card.Content>
   </Card>
@@ -171,14 +173,36 @@ const getOverviewFacts = (
     .length,
 });
 
+const getValidationMessage = (
+  isFailed: boolean,
+  hasResult: boolean,
+  hasConflicts: boolean
+) => {
+  if (isFailed) {
+    return 'server.unexpected-error';
+  }
+  if (!hasResult) {
+    return 'message.validating-ellipsis';
+  }
+
+  return hasConflicts
+    ? 'message.ontology-conflicts-explained-in-constraints'
+    : 'message.ontology-validate-all-clean';
+};
+
 const ValidationCard = ({
   conflictCount,
+  hasResult,
   isChecking,
+  isFailed,
   onValidate,
   onReview,
 }: {
   conflictCount: number;
+  /** False until a validation run answered, so a pending or failed run never reads as clean. */
+  hasResult: boolean;
   isChecking: boolean;
+  isFailed: boolean;
   onValidate: () => void;
   onReview?: () => void;
 }) => {
@@ -199,13 +223,18 @@ const ValidationCard = ({
       />
       <Card.Content>
         <Box direction="col" gap={4}>
-          <Typography color="secondary" size="text-sm">
-            {t(
-              hasConflicts
-                ? 'message.ontology-conflicts-explained-in-constraints'
-                : 'message.ontology-validate-all-clean'
-            )}
-          </Typography>
+          {isFailed ? (
+            <Alert variant="error">
+              {t(getValidationMessage(isFailed, hasResult, hasConflicts))}
+            </Alert>
+          ) : (
+            <Typography
+              color="secondary"
+              data-testid="ontology-overview-validation-message"
+              size="text-sm">
+              {t(getValidationMessage(isFailed, hasResult, hasConflicts))}
+            </Typography>
+          )}
           <Box gap={2} wrap="wrap">
             <Button
               color="secondary"
@@ -383,9 +412,13 @@ const OntologyOverview = ({
         />
         <StatCard
           count={model.axioms.length}
-          detail={t('message.ontology-overview-in-conflict', {
-            count: facts.conflictCount,
-          })}
+          detail={
+            validation.data
+              ? t('message.ontology-overview-in-conflict', {
+                  count: facts.conflictCount,
+                })
+              : undefined
+          }
           isAlert={facts.conflictCount > 0}
           label={t('label.constraint-plural')}
           testId="ontology-overview-count-constraints"
@@ -396,7 +429,9 @@ const OntologyOverview = ({
         {releaseId ? null : (
           <ValidationCard
             conflictCount={facts.conflictCount}
+            hasResult={Boolean(validation.data)}
             isChecking={validation.isFetching}
+            isFailed={validation.isError}
             onReview={openTab('axiom')}
             onValidate={() => void validation.refetch()}
           />

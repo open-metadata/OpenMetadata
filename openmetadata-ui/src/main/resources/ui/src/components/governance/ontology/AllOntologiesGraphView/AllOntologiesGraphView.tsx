@@ -394,9 +394,9 @@ const AllOntologiesGraphView = ({
         {renderSearch()}
         {renderGraphMode()}
         {renderSurface()}
-        {!selected && surface === 'graph' && graphMode === 'model' ? (
+        {selected ? null : (
           <OntologyHealthPanel isRaised health={health} onConnect={openOwner} />
-        ) : null}
+        )}
       </div>
       {selected && model ? (
         <OntologyConceptInspector
