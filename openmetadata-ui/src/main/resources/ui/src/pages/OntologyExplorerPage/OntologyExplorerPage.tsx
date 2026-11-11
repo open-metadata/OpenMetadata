@@ -12,32 +12,32 @@
  */
 
 import {
-  BadgeWithDot,
-  Box,
-  Button,
-  Divider,
-  Typography,
+    BadgeWithDot,
+    Box,
+    Button,
+    Divider,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  ArrowRight,
-  Expand05,
-  GitBranch01,
-  Grid01,
-  Minimize02,
-  Plus,
-  Share07,
+    ArrowRight,
+    Expand05,
+    GitBranch01,
+    Grid01,
+    Minimize02,
+    Plus,
+    Share07
 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { TFunction } from 'i18next';
 import React, {
-  useCallback,
-  useEffect,
-  useId,
-  useMemo,
-  useRef,
-  useState,
+    useCallback,
+    useEffect,
+    useId,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -92,17 +92,17 @@ import { OntologyPublicationStatus } from '../../generated/type/ontologyPublicat
 import { useAuth } from '../../hooks/authHooks';
 import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
-  OntologyEditLeaseState,
-  useOntologyEditLease,
+    OntologyEditLeaseState,
+    useOntologyEditLease
 } from '../../hooks/governance/ontology/useOntologyEditLease';
 import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../hooks/governance/ontology/useOntologyPublication';
 import {
-  ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
-  useAllOntologyStudioModels,
+    ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
+    useAllOntologyStudioModels
 } from '../../hooks/governance/ontology/useOntologyStudioModel';
 import {
-  ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
-  useOntologyStudioScopes,
+    ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
+    useOntologyStudioScopes
 } from '../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useOntologyUnpublishedCount } from '../../hooks/governance/ontology/useOntologyUnpublishedCount';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
@@ -111,29 +111,29 @@ import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntity
 import { getOntology } from '../../rest/ontologyAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
-  ALL_ONTOLOGIES_SCOPE,
-  getScopeKey,
-  getStudioScope,
-  isOntologyScope,
-  OntologyStudioScope,
+    ALL_ONTOLOGIES_SCOPE,
+    getScopeKey,
+    getStudioScope,
+    isOntologyScope,
+    OntologyStudioScope
 } from '../../utils/governance/ontology/OntologyStudioScope.utils';
 import {
-  parseStudioUrlState,
-  patchStudioUrlParams,
-  StudioUrlState,
-  StudioUrlVersion,
-  StudioUrlView,
+    parseStudioUrlState,
+    patchStudioUrlParams,
+    StudioUrlState,
+    StudioUrlVersion,
+    StudioUrlView
 } from '../../utils/governance/ontology/OntologyStudioUrlState.utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import {
-  checkPermission,
-  DEFAULT_ENTITY_PERMISSION,
+    checkPermission,
+    DEFAULT_ENTITY_PERMISSION
 } from '../../utils/PermissionsUtils';
 import { generateUUID } from '../../utils/StringUtils';
 import {
-  showErrorToast,
-  showInfoToast,
-  showSuccessToast,
+    showErrorToast,
+    showInfoToast,
+    showSuccessToast
 } from '../../utils/ToastUtils';
 
 // 'review' has no tab; a memory's "view draft" link (?draft=) still opens it.
@@ -1256,7 +1256,7 @@ const OntologyExplorerContent: React.FC = () => {
   const querySurface = resolveQuerySurface(urlState.view);
   const aggregateSurface = getAggregateSurface(mode, viewSurface, editSurface);
   const isFullScreen = searchParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
-  const [drawerHost, setDrawerHost] = useState<HTMLDivElement | null>(null);
+  const [drawerHost, setDrawerHost] = useState<HTMLElement | null>(null);
   const [lastQuerySurface, setLastQuerySurface] =
     useState<QuerySurface>('console');
   useEffect(() => {
@@ -2525,9 +2525,7 @@ const OntologyExplorerContent: React.FC = () => {
     banner: React.ReactNode,
     isGraphCanvas: boolean
   ) => (
-    <div
-      className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
-      ref={setDrawerHost}>
+    <div className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
       {banner ? (
         <div
           className={
@@ -2787,6 +2785,7 @@ const OntologyExplorerContent: React.FC = () => {
       <main
         className={getShellClassName(isFullScreen)}
         data-testid="ontology-studio-shell"
+        ref={setDrawerHost}
         style={ONTOLOGY_STUDIO_STYLE}>
         <OntologyTasksDrawer
           ontologyId={selectedOntology?.id}

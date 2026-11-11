@@ -16,27 +16,27 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
-  CreateOntologyChangeSet,
-  OperationState,
-  OperationType,
+    CreateOntologyChangeSet,
+    OperationState,
+    OperationType
 } from '../../../../generated/api/data/createOntologyChangeSet';
 import {
-  Format,
-  Kind,
-  NativeOntologyImportSummary,
-  SkipReason,
-  Status,
+    Format,
+    Kind,
+    NativeOntologyImportSummary,
+    SkipReason,
+    Status
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
 import {
-  applyOntologyChangeSet,
-  createOntology,
-  createOntologyChangeSet,
-  detectNativeOntologyImportFormat,
-  getOntologyByName,
-  getOntologyChangeSet,
-  previewNativeOntologyImport,
-  previewNativeOntologyImportWithoutTarget,
+    applyOntologyChangeSet,
+    createOntology,
+    createOntologyChangeSet,
+    detectNativeOntologyImportFormat,
+    getOntologyByName,
+    getOntologyChangeSet,
+    previewNativeOntologyImport,
+    previewNativeOntologyImportWithoutTarget
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
@@ -644,6 +644,39 @@ describe('OntologyNativeImportPanel', () => {
     await parse();
 
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
+  it('dry-runs against the target chosen while the format was still being detected', async () => {
+    let finishDetection:
+      | ((value: { detectedFormat: string }) => void)
+      | undefined;
+    (detectNativeOntologyImportFormat as jest.Mock).mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finishDetection = resolve;
+        })
+    );
+    renderPanel();
+    dropFile();
+
+    await user.click(
+      within(screen.getByTestId('ontology-native-import-target')).getByRole(
+        'button'
+      )
+    );
+    await user.click(
+      await screen.findByRole('option', { name: 'label.new-ontology' })
+    );
+    finishDetection?.({ detectedFormat: Format.Turtle });
+
+    await waitFor(() =>
+      expect(previewNativeOntologyImportWithoutTarget).toHaveBeenCalledWith({
+        data: TURTLE,
+        fileName: 'fibo-sample.ttl',
+      })
+    );
+
+    expect(previewNativeOntologyImport).not.toHaveBeenCalled();
   });
 
   it('describes importing into the ontology while it is the target', async () => {

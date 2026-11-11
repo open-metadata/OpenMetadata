@@ -12,26 +12,26 @@
  */
 
 import {
-  Alert,
-  Badge,
-  Box,
-  Button,
-  CloseButton,
-  Dialog,
-  FileTrigger,
-  FileUpload,
-  getReadableFileSize,
-  Select,
-  Typography,
+    Alert,
+    Badge,
+    Box,
+    Button,
+    CloseButton,
+    Dialog,
+    FileTrigger,
+    FileUpload,
+    getReadableFileSize,
+    Select,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
-  Dispatch,
-  MutableRefObject,
-  useEffect,
-  useReducer,
-  useRef,
+    Dispatch,
+    MutableRefObject,
+    useEffect,
+    useReducer,
+    useRef
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
@@ -42,8 +42,8 @@ import type { Ontology } from '../../../../generated/entity/data/ontology';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../hooks/authHooks';
 import {
-  NativeInstallTarget,
-  useNativeOntologyInstall,
+    NativeInstallTarget,
+    useNativeOntologyInstall
 } from '../../../../hooks/governance/ontology/useNativeOntologyInstall';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
@@ -57,34 +57,34 @@ import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIden
 import { resolveNativeLibraryTarget } from '../OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.utils';
 import OntologyNativeImportItems from './OntologyNativeImportItems';
 import {
-  canApplyImport,
-  detectedFormatOf,
-  detectNativeImportFile,
-  hasReviewers,
-  importBusyOf,
-  importItemsOf,
-  importSummaryParts,
-  INITIAL_NATIVE_IMPORT_STATE,
-  isFileChoiceDisabled,
-  isNewImportTarget,
-  isSelectableItem,
-  itemImportCount,
-  landOnImportedOntology,
-  NativeImportAction,
-  nativeImportErrorMessage,
-  nativeImportOntologyRequest,
-  NativeImportParse,
-  nativeImportReducer,
-  NativeImportState,
-  NativeImportTarget,
-  NATIVE_IMPORT_ACCEPTED_EXTENSIONS,
-  NATIVE_IMPORT_FORMAT_LABEL_KEYS,
-  NATIVE_IMPORT_MAX_BYTES,
-  parseNativeImportFile,
-  pick,
-  readySummaryOf,
-  selectChanges,
-  selectionOf,
+    canApplyImport,
+    detectedFormatOf,
+    detectNativeImportFile,
+    hasReviewers,
+    importBusyOf,
+    importItemsOf,
+    importSummaryParts,
+    INITIAL_NATIVE_IMPORT_STATE,
+    isFileChoiceDisabled,
+    isNewImportTarget,
+    isSelectableItem,
+    itemImportCount,
+    landOnImportedOntology,
+    NativeImportAction,
+    nativeImportErrorMessage,
+    nativeImportOntologyRequest,
+    NativeImportParse,
+    nativeImportReducer,
+    NativeImportState,
+    NativeImportTarget,
+    NATIVE_IMPORT_ACCEPTED_EXTENSIONS,
+    NATIVE_IMPORT_FORMAT_LABEL_KEYS,
+    NATIVE_IMPORT_MAX_BYTES,
+    parseNativeImportFile,
+    pick,
+    readySummaryOf,
+    selectChanges,
+    selectionOf
 } from './OntologyNativeImportPanel.utils';
 import OntologyNativeImportSkipped from './OntologyNativeImportSkipped';
 
@@ -711,6 +711,10 @@ const OntologyNativeImportPanel = ({
     );
   };
 
+  // Detection resolves after later renders; the dry run must use the target chosen by then.
+  const latestParse = useRef({ parse, isNewTarget });
+  latestParse.current = { parse, isNewTarget };
+
   const { clearFile, handleFile, handleSelectedFile, rejectOversizedFile } =
     useNativeImportFileChoice({
       content,
@@ -718,7 +722,11 @@ const OntologyNativeImportPanel = ({
       dispatch,
       isLocked: install.isLocked,
       nextToken,
-      onDetected: (fileName) => void parse(fileName, isNewTarget),
+      onDetected: (fileName) =>
+        void latestParse.current.parse(
+          fileName,
+          latestParse.current.isNewTarget
+        ),
     });
 
   const changeTarget = (target: NativeImportTarget) => {

@@ -44,6 +44,8 @@ export const getNativeQueryRelations = (relations: OntologyModelRelation[]) => {
   });
 };
 
+// Query shape, limits and the shared fixture:
+// ADR:2026-11-12-ontology-visual-builder-queries-follow-a-shared-sparql-contract
 export const QUERY_LIMITS = [10, 50, 100, 500];
 
 export const DEFAULT_QUERY_LIMIT = 100;

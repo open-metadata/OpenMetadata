@@ -24,13 +24,17 @@ interface OntologyStudioDrawerProps {
 }
 
 // 600px is the design width; narrower screens keep the 420px the canvas could always spare.
-const PANEL_CLASS =
-  'tw:flex tw:w-105 tw:2xl:w-150 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl';
+const PANEL_WIDTH = 'tw:w-105 tw:2xl:w-150';
+const PANEL_CLASS = `${PANEL_WIDTH} tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
+// Full height of the Studio, over the right of the header too; nothing behind it is dimmed.
+const HOSTED_CLASS =
+  'tw:absolute tw:top-2 tw:right-2 tw:bottom-2 tw:z-40 tw:max-w-[calc(100%-1rem)]';
 
 /**
- * The Studio's right slide-over. `beside` (the default) sits next to the canvas, which
- * narrows, so every node and row stays clickable while a panel is open. `overlay` floats
- * over the canvas area below the header, for lists with nothing to click underneath.
+ * The Studio's right drawer, per the design: full height, over the header, no backdrop.
+ * `beside` (the default) also leaves a same-width gap in the canvas row, so the canvas
+ * narrows and no node ends up under the drawer. `overlay` covers the area below it, for
+ * lists where nothing underneath needs clicking.
  */
 const OntologyStudioDrawer = ({
   ariaLabel,
@@ -40,36 +44,41 @@ const OntologyStudioDrawer = ({
   testId,
 }: OntologyStudioDrawerProps) => {
   const host = useOntologyStudioDrawerHost();
-
-  if (placement === 'beside') {
-    return (
-      <aside
-        aria-label={ariaLabel}
-        className={classNames(
-          PANEL_CLASS,
-          'tw:relative tw:z-30 tw:my-2 tw:mr-2 tw:max-w-[55%] tw:shrink-0',
-          className
-        )}
-        data-testid={testId}>
-        {children}
-      </aside>
-    );
-  }
-
-  return createPortal(
+  const panel = (positionClass: string) => (
     <aside
       aria-label={ariaLabel}
-      className={classNames(
-        PANEL_CLASS,
-        host
-          ? 'tw:absolute tw:top-2 tw:right-2 tw:bottom-2 tw:z-30 tw:max-w-[calc(100%-1rem)]'
-          : 'tw:fixed tw:top-1.5 tw:right-1.5 tw:bottom-1.5 tw:z-40 tw:max-w-[calc(100vw-0.75rem)]',
-        className
-      )}
+      className={classNames(PANEL_CLASS, positionClass, className)}
       data-testid={testId}>
       {children}
-    </aside>,
-    host ?? document.body
+    </aside>
+  );
+
+  // Outside the Studio shell (e.g. a component test) the panel simply sits in the flow.
+  if (!host) {
+    return placement === 'beside'
+      ? panel('tw:relative tw:z-30 tw:my-2 tw:mr-2 tw:max-w-[55%] tw:shrink-0')
+      : createPortal(
+          panel(
+            'tw:fixed tw:top-1.5 tw:right-1.5 tw:bottom-1.5 tw:z-40 tw:max-w-[calc(100vw-0.75rem)]'
+          ),
+          document.body
+        );
+  }
+
+  return (
+    <>
+      {placement === 'beside' ? (
+        <div
+          aria-hidden
+          className={classNames(
+            PANEL_WIDTH,
+            'tw:my-2 tw:mr-2 tw:max-w-[55%] tw:shrink-0'
+          )}
+          data-testid="ontology-studio-drawer-gap"
+        />
+      ) : null}
+      {createPortal(panel(HOSTED_CLASS), host)}
+    </>
   );
 };
 
