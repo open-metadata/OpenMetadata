@@ -4393,9 +4393,24 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     for (Table t : setup.allTables()) {
       applyTermToTable(admin, t, setup.term);
     }
+    // Hide the failing tables only (they carry the conflicting tag); the passing table stays
+    // visible.
+    String conflictTagFqn =
+        admin
+            .tables()
+            .get(setup.failTables.getFirst().getId().toString(), "tags")
+            .getTags()
+            .stream()
+            .filter(tag -> tag.getSource() == TagLabel.TagSource.CLASSIFICATION)
+            .findFirst()
+            .orElseThrow()
+            .getTagFQN();
     OpenMetadataClient denied =
-        DenyPolicyPrincipals.clientDenied(
-            ns.shortPrefix("validate_view"), Entity.TABLE, MetadataOperation.VIEW_BASIC);
+        DenyPolicyPrincipals.clientDeniedWhen(
+            ns.shortPrefix("validate_view"),
+            Entity.TABLE,
+            MetadataOperation.VIEW_BASIC,
+            "matchAnyTag('" + conflictTagFqn + "')");
 
     ValidateGlossaryTagsRequest validate =
         new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(setup.glossaryTagLabel));
@@ -4406,7 +4421,12 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
     assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
     assertTrue(result.getFailedRequest().isEmpty());
-    assertTrue(result.getSuccessRequest().isEmpty());
+    assertEquals(1, result.getSuccessRequest().size());
+    assertEquals(
+        setup.passTable.getId(),
+        JsonUtils.convertValue(
+                result.getSuccessRequest().getFirst().getRequest(), EntityReference.class)
+            .getId());
   }
 
   @Test
