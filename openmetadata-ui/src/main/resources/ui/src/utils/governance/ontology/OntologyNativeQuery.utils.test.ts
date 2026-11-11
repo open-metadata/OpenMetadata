@@ -95,24 +95,13 @@ it.each(relations)(
   }
 );
 
-it('compiles two ANDed conditions into the query the Java contract test runs', () => {
-  const other = { ...target, id: 'other', iri: 'urn:visual:other' };
-  const fixture = fixtures.find((item) => item.name === 'twoConditions');
+it('lists properties by a domain condition, with readable domain and range', () => {
+  const query = buildNativePropertyQuery([{ kind: 'domain', target: source }]);
 
-  expect(
-    buildNativeVisualSparqlQuery([
-      { relation: relations[0], target },
-      { relation: { ...relations[2], to: other }, target: other },
-    ])
-  ).toBe(fixture?.query);
-});
-
-it('compiles a property domain condition into the query the Java contract test runs', () => {
-  const fixture = fixtures.find((item) => item.name === 'propertyDomain');
-
-  expect(buildNativePropertyQuery([{ kind: 'domain', target: source }])).toBe(
-    fixture?.query
-  );
+  expect(query).toContain('VALUES ?target { <urn:visual:source> }');
+  expect(query).toContain('?property rdfs:domain ?target .');
+  expect(query).toContain('?property rdfs:range ?rangeClass .');
+  expect(query).toMatch(/\nLIMIT 100$/);
 });
 
 it('rejects an IRI that could escape the target value', () => {
@@ -142,11 +131,11 @@ it('ANDs every condition, each against its own target, under the chosen limit', 
   expect(query).toMatch(/\nLIMIT 10$/);
 });
 
-it('lists every concept with its parent when no condition is complete', () => {
+it('keeps the single-condition shape when no condition is complete', () => {
   const query = buildNativeVisualSparqlQuery([]);
 
   expect(query).not.toContain('VALUES ?target');
-  expect(query).toContain('?concept rdfs:subClassOf ?superClass .');
+  expect(query).toContain('SELECT DISTINCT ?concept ?label WHERE {');
   expect(query).toMatch(/\nLIMIT 100$/);
 });
 

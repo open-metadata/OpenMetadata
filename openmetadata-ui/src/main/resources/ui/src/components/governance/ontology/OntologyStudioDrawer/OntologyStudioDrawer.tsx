@@ -23,8 +23,8 @@ interface OntologyStudioDrawerProps {
   readonly testId?: string;
 }
 
-// 600px is the design width; narrower screens keep the 420px the canvas could always spare.
-const PANEL_WIDTH = 'tw:w-105 tw:2xl:w-150';
+// 40% of the screen, as the design's drawer; never narrower than the 420px its forms need.
+const PANEL_WIDTH = 'tw:w-[40vw] tw:min-w-105';
 const PANEL_CLASS = `${PANEL_WIDTH} tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
 // Full height of the Studio, over the right of the header too; nothing behind it is dimmed.
 const HOSTED_CLASS =
@@ -70,10 +70,7 @@ const OntologyStudioDrawer = ({
       {placement === 'beside' ? (
         <div
           aria-hidden
-          className={classNames(
-            PANEL_WIDTH,
-            'tw:my-2 tw:mr-2 tw:max-w-[55%] tw:shrink-0'
-          )}
+          className={classNames(PANEL_WIDTH, 'tw:my-2 tw:mr-2 tw:shrink-0')}
           data-testid="ontology-studio-drawer-gap"
         />
       ) : null}

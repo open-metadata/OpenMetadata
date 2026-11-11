@@ -110,7 +110,6 @@ const NATIVE_COLUMN_LABEL_KEYS: Partial<
   concepts: {
     label: 'label.concept',
     concept: 'label.iri',
-    parent: 'label.parent',
   },
   properties: {
     propertyName: 'label.property',

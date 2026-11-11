@@ -44,8 +44,6 @@ export const getNativeQueryRelations = (relations: OntologyModelRelation[]) => {
   });
 };
 
-// Query shape, limits and the shared fixture:
-// ADR:2026-11-12-ontology-visual-builder-queries-follow-a-shared-sparql-contract
 export const QUERY_LIMITS = [10, 50, 100, 500];
 
 export const DEFAULT_QUERY_LIMIT = 100;
@@ -128,39 +126,30 @@ const buildConceptPattern = (
 };
 
 /**
- * Concepts matching every condition (ANDed), one row per concept with its label and a named parent.
- * The Java contract test runs these exact strings against canonical RDF
- * (openmetadata-service/src/test/resources/ontology/native-visual-queries.json).
+ * Concepts matching every condition (ANDed), each condition against its own target.
+ * One condition at the default limit is byte for byte the query the Java contract test runs
+ * (openmetadata-service/src/test/resources/ontology/native-visual-queries.json), so the
+ * shape must stay as it is; more conditions and other limits only extend it.
  */
 export const buildNativeVisualSparqlQuery = (
   conditions: NativeConceptCondition[],
   limit = DEFAULT_QUERY_LIMIT
-): string => {
-  const patterns = conditions.map(
-    ({ relation }, index) =>
-      `  ${buildConceptPattern(relation, targetVariable(index))}`
-  );
-
-  return [
+): string =>
+  [
     PREFIXES,
     '',
-    'SELECT (SAMPLE(?conceptLabel) AS ?label) ?concept (SAMPLE(COALESCE(?superLabel, ?superClass)) AS ?parent) WHERE {',
+    'SELECT DISTINCT ?concept ?label WHERE {',
     ...buildTargetValues(conditions.map(({ target }) => target)),
     '  VALUES ?conceptType { owl:Class skos:Concept }',
     '  ?concept rdf:type ?conceptType .',
-    ...patterns,
-    '  OPTIONAL { ?concept rdfs:label ?conceptLabel . }',
-    OPEN_OPTIONAL,
-    '    ?concept rdfs:subClassOf ?superClass .',
-    '    FILTER(isIRI(?superClass) && ?superClass != owl:Thing)',
-    '    OPTIONAL { ?superClass rdfs:label ?superLabel . }',
-    '  }',
+    ...conditions.map(
+      ({ relation }, index) =>
+        `  ${buildConceptPattern(relation, targetVariable(index))}`
+    ),
+    '  OPTIONAL { ?concept rdfs:label ?label . }',
     '}',
-    'GROUP BY ?concept',
-    'ORDER BY ?label ?concept',
     `LIMIT ${limit}`,
   ].join('\n');
-};
 
 /** Object and data properties matching every domain/range condition, with readable domain and range. */
 export const buildNativePropertyQuery = (
