@@ -396,7 +396,7 @@ def test_unit_test_jobs_still_restore_maven_on_prs_and_save_on_main(job: str) ->
 
 
 # ---------------------------------------------------------------------------
-# O-2: service unit tests run in two surefire forks, without JaCoCo / apt.
+# O-2: service unit tests run without JaCoCo / apt.
 # ---------------------------------------------------------------------------
 
 
