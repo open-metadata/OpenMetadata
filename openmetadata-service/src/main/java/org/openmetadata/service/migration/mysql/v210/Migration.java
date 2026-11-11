@@ -143,12 +143,12 @@ public class Migration extends MigrationProcessImpl {
     // Lineage edges written before pipelines were type-restricted can name any entity — a database
     // service among them — which the edge copied into the downstream search document
     // (ANT-2026-RL0ZDKB8). Clear those references from the stored edges; each one is logged for
-    // credential rotation. DB-agnostic, so it also runs on Postgres.
+    // credential rotation. It runs on both engines, each with its own page query.
     runOnce(
         migrationDAO,
         getVersion(),
         LineageEdgePipelineCleanupMigration.STEP_NAME,
-        () -> clearNonPipelineEdgePipelines(collectionDAO));
+        () -> clearNonPipelineEdgePipelines(handle, MYSQL));
     runOnce(
         migrationDAO,
         getVersion(),
