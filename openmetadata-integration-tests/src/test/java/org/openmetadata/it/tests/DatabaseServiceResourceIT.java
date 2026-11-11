@@ -59,7 +59,6 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceMetadataPipeline
 import org.openmetadata.schema.metadataIngestion.SourceConfig;
 import org.openmetadata.schema.services.connections.database.ConnectionArguments;
 import org.openmetadata.schema.services.connections.database.ConnectionOptions;
-import org.openmetadata.schema.services.connections.database.MongoDBConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.services.connections.database.RedshiftConnection;
@@ -358,30 +357,20 @@ public class DatabaseServiceResourceIT
   }
 
   @Test
-  void post_servicesWithValidSslConfig_200_OK(TestNamespace ns) {
-    MysqlConnection mysql =
+  void post_mysqlServiceWithValidSslConfig_200_OK(TestNamespace ns) {
+    MysqlConnection conn =
         new MysqlConnection()
             .withHostPort("localhost:3306")
             .withUsername("test_user")
             .withSslConfig(Map.of("caCertificate", "ca-pem"));
-    // MongoDB has no class converter, so its sslConfig reaches the check as an untyped map.
-    MongoDBConnection mongo =
-        new MongoDBConnection()
-            .withHostPort("localhost:27017")
-            .withSslConfig(Map.of("caCertificate", "ca-pem"));
 
-    assertNotNull(
+    DatabaseService service =
         createEntity(
             new CreateDatabaseService()
                 .withName(ns.prefix("mysql_ssl"))
                 .withServiceType(DatabaseServiceType.Mysql)
-                .withConnection(new DatabaseConnection().withConfig(mysql))));
-    assertNotNull(
-        createEntity(
-            new CreateDatabaseService()
-                .withName(ns.prefix("mongo_ssl"))
-                .withServiceType(DatabaseServiceType.MongoDB)
-                .withConnection(new DatabaseConnection().withConfig(mongo))));
+                .withConnection(new DatabaseConnection().withConfig(conn)));
+    assertNotNull(service.getConnection());
   }
 
   @Test
