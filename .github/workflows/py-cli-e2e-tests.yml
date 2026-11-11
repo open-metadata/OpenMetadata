@@ -32,6 +32,19 @@ permissions:
   contents: read
 
 jobs:
+  prepare-spacy-model:
+    permissions:
+      contents: read
+    cache-mode: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/prepare-classification-models
+
   # Needed since env is not available on the job context: https://github.com/actions/runner/issues/2372
   check-debug:
     runs-on: ubuntu-latest
@@ -41,6 +54,7 @@ jobs:
       - run: echo "INPUTS_DEBUG=${{ inputs.debug }}, GITHUB_REF=${{ github.ref }}, DEBUG=$DEBUG"
 
   py-cli-e2e-tests:
+    needs: prepare-spacy-model
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -83,6 +97,7 @@ jobs:
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
         python-version: '3.10'
+        classification-models: 'true'
         install-server: 'false'
 
     - name: Setup Openmetadata Test Environment
@@ -90,6 +105,7 @@ jobs:
       uses: ./.github/actions/setup-openmetadata-test-environment
       with:
         python-version: '3.10'
+        classification-models: 'true'
 
     - name: Reclaim unused disk for Exasol
       if: matrix.e2e-test == 'exasol'
@@ -398,7 +414,7 @@ jobs:
         run: |
           python3 -m venv env
           source env/bin/activate
-          make install_all install_test
+          make install_all install_test PYTHON_TEST_PROFILE=test
 
       - name: Download all artifacts
         uses: actions/download-artifact@v7

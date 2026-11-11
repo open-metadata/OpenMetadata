@@ -42,13 +42,8 @@ on:
         default: false
 
 env:
-  # matrix can't use 'env'. When updating it, update it for both jobs.
+  # Coverage and static checks run on the lowest supported interpreter.
   MAIN_PYTHON_VERSION: "3.10"
-  # Temporary pause: retain model provisioning for the classification CI fix.
-  OM_SKIP_CLASSIFICATION_MODELS: "true"
-  # Pin the model release and verify its content before installation.
-  SPACY_MODEL_VERSION: "3.8.0"
-  SPACY_MODEL_SHA256: "5e6329fe3fecedb1d1a02c3ea2172ee0fede6cea6e4aefb6a02d832dba78a310"
 jobs:
   # Detect whether relevant paths changed before the matrix fans out.
   changes:
@@ -76,6 +71,10 @@ jobs:
           filters: |
             python:
               - 'ingestion/**'
+              - 'scripts/prepare_classification_models.py'
+              - '.github/actions/prepare-classification-models/**'
+              - '.github/actions/prepare-classification-model/**'
+              - '.github/workflows/warm-classification-models.yml'
               - '.github/workflows/py-tests.yml'
               - '.github/workflows/py-tests-shared.yml'
               - '.github/workflows/py-cli-e2e-tests-v2.yml'
@@ -144,55 +143,47 @@ jobs:
           compression-level: 0
           retention-days: 1
 
-  prepare-spacy-model:
-    name: Prepare spaCy model
+  python-matrix:
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' && (inputs.run-unit-tests || needs.changes.outputs.integration == 'true') }}
-    timeout-minutes: 10
-    runs-on: ubuntu-latest
-    concurrency:
-      group: spacy-model-${{ github.event.pull_request.number || github.ref }}
-      cancel-in-progress: false
+    runs-on: ubuntu-24.04
+    outputs:
+      versions: ${{ steps.matrix.outputs.versions }}
     steps:
-      - name: Restore spaCy model wheel
-        if: env.OM_SKIP_CLASSIFICATION_MODELS != 'true'
-        id: spacy-model-cache
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          path: .cache/spacy-model
-          key: spacy-model-${{ env.SPACY_MODEL_VERSION }}-${{ env.SPACY_MODEL_SHA256 }}
-
-      - name: Download spaCy model wheel
-        if: env.OM_SKIP_CLASSIFICATION_MODELS != 'true' && steps.spacy-model-cache.outputs.cache-hit != 'true'
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - id: matrix
         run: |
-          mkdir -p .cache/spacy-model
-          wheel_path=".cache/spacy-model/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
-          curl --fail --location --retry 10 --retry-all-errors --connect-timeout 20 --max-time 600 \
-            --output "${wheel_path}" \
-            "https://github.com/explosion/spacy-models/releases/download/en_core_web_md-${SPACY_MODEL_VERSION}/en_core_web_md-${SPACY_MODEL_VERSION}-py3-none-any.whl"
-          echo "${SPACY_MODEL_SHA256}  ${wheel_path}" | sha256sum --check --strict
-        shell: bash
+          matrix=$(python3 scripts/prepare_classification_models.py matrix --project ingestion)
+          echo "versions=$(jq -c '."python-versions"' <<< "$matrix")" >> "$GITHUB_OUTPUT"
 
-      - name: Upload spaCy model wheel
-        if: env.OM_SKIP_CLASSIFICATION_MODELS != 'true'
-        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+  prepare-spacy-model:
+    permissions:
+      contents: read
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' && (inputs.run-unit-tests || needs.changes.outputs.integration == 'true') }}
+    cache-mode: read
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          name: spacy-en-model
-          path: .cache/spacy-model/*.whl
-          if-no-files-found: error
-          compression-level: 0
-          retention-days: 1
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/prepare-classification-models
 
   py-unit-tests:
     name: Unit Tests & Static Checks
-    needs: [changes, prepare-spacy-model]
+    needs: [changes, python-matrix, prepare-spacy-model]
     if: ${{ inputs.run-unit-tests && needs.changes.outputs.python == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.10", "3.11", "3.12"]
+        py-version: ${{ fromJSON(needs.python-matrix.outputs.versions) }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -203,14 +194,8 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ matrix.py-version }}
+          classification-models: 'true'
           install-server: 'false'
-
-      - name: Download spaCy model
-        if: env.OM_SKIP_CLASSIFICATION_MODELS != 'true'
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: spacy-en-model
-          path: /tmp/spacy-model
 
       # The job checks out the PR head, which can predate the cli_e2e_v2 framework,
       # so skip when the suite isn't checked out.
@@ -221,14 +206,6 @@ jobs:
           cd ingestion
           env -u OM_JWT_TOKEN OM_SERVER_URL=http://127.0.0.1:1/api \
             python -m pytest tests/cli_e2e_v2/meta -q
-        shell: bash
-
-      - name: Install and verify spaCy model
-        if: env.OM_SKIP_CLASSIFICATION_MODELS != 'true'
-        run: |
-          source env/bin/activate
-          uv pip install --no-deps /tmp/spacy-model/*.whl
-          python -c 'import spacy; spacy.load("en_core_web_md")'
         shell: bash
 
       - name: Run Static Checks
@@ -303,14 +280,14 @@ jobs:
 
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
-    needs: [changes, build-distribution, prepare-spacy-model]
+    needs: [changes, python-matrix, build-distribution, prepare-spacy-model]
     if: ${{ needs.changes.outputs.integration == 'true' }}
     timeout-minutes: 180
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        py-version: ["3.10", "3.11", "3.12"]
+        py-version: ${{ fromJSON(needs.python-matrix.outputs.versions) }}
         # shard-3 is the catch-all and is deliberately the lightest, so new directories land
         # in slack rather than on the critical path. Moving one OUT of shard-1 or shard-2
         # means removing its --ignore too, or it runs nowhere.
@@ -382,22 +359,8 @@ jobs:
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
           python-version: ${{ matrix.py-version}}
+          classification-models: 'true'
           args: ${{ inputs.compose-args }}
-
-      - name: Download spaCy model
-        if: env.OM_SKIP_CLASSIFICATION_MODELS != 'true'
-        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
-        with:
-          name: spacy-en-model
-          path: /tmp/spacy-model
-
-      - name: Install and verify spaCy model
-        if: env.OM_SKIP_CLASSIFICATION_MODELS != 'true'
-        run: |
-          source env/bin/activate
-          uv pip install --no-deps /tmp/spacy-model/*.whl
-          python -c 'import spacy; spacy.load("en_core_web_md")'
-        shell: bash
 
       - name: Reclaim unused disk for the Exasol shard
         if: matrix.shard.needs-disk
