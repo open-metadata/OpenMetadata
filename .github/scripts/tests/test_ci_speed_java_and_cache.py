@@ -109,12 +109,18 @@ def cache_writer(step: dict) -> str | None:
 
 
 def off_by_input(condition: str, inputs: dict) -> bool:
-    """True when a top-level `inputs.X == 'true'` term is known to be false."""
+    """True when an AND-only condition has an `inputs.X == 'true'` term known false."""
+    if "||" in condition:
+        return False  # another branch could still make the step run
     for term in condition.replace("${{", "").replace("}}", "").split("&&"):
         name, _, value = term.strip().partition(" == ")
         known = inputs.get(name.removeprefix("inputs."), "${{")
-        if name.startswith("inputs.") and value == "'true'" and "${{" not in known:
-            return known != "true"
+        if (
+            name.startswith("inputs.")
+            and value.lower() == "'true'"
+            and "${{" not in known
+        ):
+            return known.lower() != "true"  # GitHub compares strings case-insensitively
     return False
 
 
@@ -335,6 +341,24 @@ def test_guard_honours_composite_inputs_that_gate_a_save(
         step["with"] = caller_with
     pr_workflow(tmp_path, [step])
     assert bool(pull_request_cache_writers(tmp_path)) == writes
+
+
+@pytest.mark.parametrize(
+    "condition,given",
+    [
+        (
+            "inputs.save-cache == 'true' && x || github.event_name == 'pull_request'",
+            "false",
+        ),
+        ("inputs.save-cache == 'true'", "TRUE"),
+        ("inputs.save-cache == 'TRUE'", "true"),
+    ],
+)
+def test_input_gate_cannot_hide_a_save_that_still_runs(
+    condition: str, given: str
+) -> None:
+    # `||` can make the condition true anyway; GitHub compares strings ignoring case.
+    assert not off_by_input(condition, {"save-cache": given})
 
 
 def test_guard_follows_reusable_workflows_and_honours_job_gates(tmp_path: Path) -> None:
