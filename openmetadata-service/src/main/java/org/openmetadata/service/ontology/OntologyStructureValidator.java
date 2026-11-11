@@ -33,7 +33,6 @@ import org.openmetadata.schema.type.OntologyReferenceRole;
 import org.openmetadata.schema.type.OntologyReleaseMember;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyReleaseStructureIssue;
-import org.openmetadata.schema.type.RelationshipCharacteristic;
 import org.openmetadata.service.exception.OntologyValidationException;
 import org.openmetadata.service.rdf.OwlEntityDeclarations;
 
@@ -42,12 +41,6 @@ public final class OntologyStructureValidator {
   private static final int MAX_FINDINGS = 1000;
   private static final Set<String> INDIVIDUAL_IDENTITY =
       Set.of(OWL2.sameAs.getURI(), OWL2.differentFrom.getURI());
-  private static final Set<RelationshipCharacteristic> SIMPLE_ONLY =
-      Set.of(
-          RelationshipCharacteristic.FUNCTIONAL,
-          RelationshipCharacteristic.INVERSE_FUNCTIONAL,
-          RelationshipCharacteristic.ASYMMETRIC,
-          RelationshipCharacteristic.IRREFLEXIVE);
 
   private final Set<String> concepts;
   private final Map<String, List<OntologyProperty>> properties;
@@ -386,22 +379,32 @@ public final class OntologyStructureValidator {
             iri -> requireProperty(member, iri, OntologyPropertyKind.OBJECT, "/propertyChain"));
     listOrEmpty(property.getDisjointWith())
         .forEach(iri -> requireProperty(member, iri, property.getKind(), "/disjointWith"));
+    listOrEmpty(property.getSuperProperties())
+        .forEach(iri -> requireProperty(member, iri, property.getKind(), "/superProperties"));
+    final boolean cyclic = propertyHierarchy.isCyclic(property.getIri());
+    if (cyclic) {
+      add(
+          member,
+          OntologyProfileViolationCode.SUBPROPERTY_CYCLE,
+          "/superProperties",
+          "Superproperty links must not form a cycle: " + property.getIri());
+    }
     validateSimplePropertyUse(member, property);
-    if (propertyHierarchy.isIrregular(property.getIri())) {
+    if (!cyclic && propertyHierarchy.isIrregular(property.getIri())) {
       add(
           member,
           OntologyProfileViolationCode.PROPERTY_CHAIN_REGULARITY,
-          "/propertyChain",
-          "Property chains and inverses do not admit a regular property order");
+          nullOrEmpty(property.getPropertyChain()) && !nullOrEmpty(property.getSuperProperties())
+              ? "/superProperties"
+              : "/propertyChain",
+          "Property chains, inverses and superproperties do not admit a regular property order");
     }
   }
 
   private void validateSimplePropertyUse(
       final OntologyReleaseMember member, final OntologyProperty property) {
     if (propertyHierarchy.isNonSimple(property.getIri())
-        && ((!nullOrEmpty(property.getCharacteristics())
-                && property.getCharacteristics().stream().anyMatch(SIMPLE_ONLY::contains))
-            || !listOrEmpty(property.getDisjointWith()).isEmpty())) {
+        && OntologyPropertyHierarchy.requiresSimplicity(property)) {
       add(
           member,
           OntologyProfileViolationCode.NON_SIMPLE_PROPERTY,
@@ -417,6 +420,16 @@ public final class OntologyStructureValidator {
                     OntologyProfileViolationCode.NON_SIMPLE_PROPERTY,
                     "/disjointWith",
                     "Property disjointness requires a simple object property: " + iri));
+    propertyHierarchy
+        .simpleOnlyAncestors(property)
+        .forEach(
+            iri ->
+                add(
+                    member,
+                    OntologyProfileViolationCode.NON_SIMPLE_PROPERTY,
+                    "/superProperties",
+                    "A non-simple object property cannot specialize a functional, inverse-functional, asymmetric, irreflexive or disjoint property: "
+                        + iri));
   }
 
   private void requireProperty(

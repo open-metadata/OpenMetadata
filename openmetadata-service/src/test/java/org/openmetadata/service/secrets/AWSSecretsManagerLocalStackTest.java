@@ -16,15 +16,19 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.api.services.CreateDatabaseService.DatabaseServiceType.Mysql;
+import static org.openmetadata.service.secrets.SecretsManager.SECRET_FIELD_PREFIX;
 
 import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.services.ServiceType;
 import org.openmetadata.schema.security.secrets.Parameters;
+import org.openmetadata.schema.services.connections.database.SnowflakeConnection;
 import org.openmetadata.service.fernet.Fernet;
 import org.testcontainers.containers.localstack.LocalStackContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -75,6 +79,20 @@ class AWSSecretsManagerLocalStackTest {
       rawClient.close();
     }
     resetSingleton();
+  }
+
+  @Test
+  void anOwnedSecretHeldUnderItsArnIsDeletedWithItsOwner() {
+    OwnedSecrets owned = secretsManager.ownedSecrets();
+    SecretOwner owner = SecretOwner.builder("localstack").id(UUID.randomUUID()).build();
+    String secretName = ownedSecretName(owned, owner);
+    String arn = rawClient.describeSecret(request -> request.secretId(secretName)).arn();
+
+    owned.delete(Set.of(SECRET_FIELD_PREFIX + arn), owner);
+
+    assertFalse(
+        secretsManager.existSecret(secretName),
+        "a secret held under its ARN must be deleted with its owner");
   }
 
   @Test
@@ -189,6 +207,19 @@ class AWSSecretsManagerLocalStackTest {
             StaticCredentialsProvider.create(
                 AwsBasicCredentials.create(LOCALSTACK.getAccessKey(), LOCALSTACK.getSecretKey())))
         .build();
+  }
+
+  private static String ownedSecretName(OwnedSecrets owned, SecretOwner owner) {
+    SnowflakeConnection stored =
+        (SnowflakeConnection)
+            owned.encrypt(
+                new SnowflakeConnection().withPassword("owned"),
+                owner,
+                List.of("connection"),
+                Set.of());
+    return Fernet.getInstance()
+        .decryptIfApplies(stored.getPassword())
+        .substring(SECRET_FIELD_PREFIX.length());
   }
 
   private static void resetSingleton() throws Exception {

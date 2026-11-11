@@ -31,6 +31,7 @@ import { CreateOntologyConcept } from '../generated/api/data/createOntologyConce
 import { CreateOntologyProperty } from '../generated/api/data/createOntologyProperty';
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
+import { InstallNativeOntologyPack } from '../generated/api/data/installNativeOntologyPack';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
 import type { NativeOntologyDataGraphPage } from '../generated/api/data/nativeOntologyDataGraphPage';
 import type { NativeOntologyDataGraphPageRequest } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
@@ -61,6 +62,7 @@ import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMap
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
 import { OntologyNaturalLanguageQueryRequest } from '../generated/api/data/ontologyNaturalLanguageQueryRequest';
 import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontologyNaturalLanguageQueryResult';
+import { OntologyPackInstallJob } from '../generated/api/data/ontologyPackInstallJob';
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackList } from '../generated/api/data/ontologyPackList';
 import { OntologyPackManifest } from '../generated/api/data/ontologyPackManifest';
@@ -1207,14 +1209,51 @@ export const previewNativeOntologyPack = async (
   return response.data;
 };
 
-/** The pack preview with a status for every definition and any clash the install would add. */
+/** Queues the library install as a background job; a repeat of the running install returns that job. */
+export const installNativeOntologyPack = async (
+  ontologyId: string,
+  packId: string,
+  request: InstallNativeOntologyPack
+): Promise<OntologyPackInstallJob> => {
+  const response = await APIClient.post<OntologyPackInstallJob>(
+    `/ontologies/${ontologyId}/library/${packId}/install`,
+    request
+  );
+
+  return response.data;
+};
+
+export const getNativeOntologyPackInstallJob = async (
+  ontologyId: string,
+  jobId: number
+): Promise<OntologyPackInstallJob> => {
+  const response = await APIClient.get<OntologyPackInstallJob>(
+    `/ontologies/${ontologyId}/library/jobs/${jobId}`
+  );
+
+  return response.data;
+};
+
+/** Stops the job after its current slice; what already landed stays installed. */
+export const cancelNativeOntologyPackInstallJob = async (
+  ontologyId: string,
+  jobId: number
+): Promise<OntologyPackInstallJob> => {
+  const response = await APIClient.put<OntologyPackInstallJob>(
+    `/ontologies/${ontologyId}/library/jobs/${jobId}/cancel`
+  );
+
+  return response.data;
+};
+
+/** Bounded definition statuses and any clash the pack install would add to the current draft. */
 export const reviewNativeOntologyPack = async (
   ontologyId: string,
   packId: string,
   request: PreviewNativeOntologyPack
-): Promise<NativeOntologyImportPreview> => {
-  const response = await APIClient.post<NativeOntologyImportPreview>(
-    `/ontologies/${ontologyId}/library/${packId}/review`,
+): Promise<NativeOntologyImportSummary> => {
+  const response = await APIClient.post<NativeOntologyImportSummary>(
+    `/ontologies/${ontologyId}/library/${packId}/summary`,
     request
   );
 

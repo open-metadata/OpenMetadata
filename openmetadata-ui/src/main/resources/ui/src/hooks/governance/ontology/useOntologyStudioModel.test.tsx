@@ -136,6 +136,34 @@ describe('useOntologyStudioModel', () => {
     );
   });
 
+  it('loads an ontology larger than ten pages of a kind', async () => {
+    const pages = 35;
+    mockListOntologyConcepts.mockImplementation(async (params) => {
+      const pageNumber = Number(params?.after ?? 0);
+
+      return {
+        data: Array.from({ length: 1000 }, (_, index) =>
+          concept(`C${pageNumber * 1000 + index}`)
+        ),
+        paging:
+          pageNumber + 1 < pages
+            ? { after: String(pageNumber + 1), total: pages * 1000 }
+            : { total: pages * 1000 },
+      };
+    });
+
+    const { result } = renderHook(() => useOntologyStudioModel(ontology), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.model).toBeDefined(), {
+      timeout: 10_000,
+    });
+
+    expect(result.current.model?.concepts).toHaveLength(pages * 1000);
+    expect(mockListOntologyConcepts).toHaveBeenCalledTimes(pages);
+  });
+
   it('fails visibly when a cursor repeats instead of returning a truncated model', async () => {
     const page = Array.from({ length: 5_000 }, () => concept('Repeated'));
     mockListOntologyConcepts.mockResolvedValue({
