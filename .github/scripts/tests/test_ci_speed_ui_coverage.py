@@ -12,8 +12,6 @@ import yaml
 ROOT = Path(__file__).resolve().parents[3]
 WORKFLOW = ROOT / ".github/workflows/yarn-coverage.yml"
 UI_DIR = ROOT / "openmetadata-ui/src/main/resources/ui"
-# GitHub-hosted ubuntu-latest runners for public repos have 4 vCPUs.
-HOSTED_RUNNER_VCPUS = 4
 
 
 def load_workflow() -> dict:
@@ -32,32 +30,16 @@ def run_coverage_step() -> dict:
     return steps[0]
 
 
-def jest_args(command: str) -> list[str]:
-    tokens = shlex.split(command)
-    assert tokens[:2] == ["yarn", "test:cov-summary"], command
-    return tokens[2:]
-
-
 def test_coverage_job_runs_on_github_hosted_ubuntu() -> None:
     assert coverage_job()["runs-on"] == "ubuntu-latest"
 
 
-def test_ci_jest_uses_every_runner_vcpu() -> None:
-    args = jest_args(run_coverage_step()["run"])
-    workers = [arg.split("=", 1)[1] for arg in args if arg.startswith("--maxWorkers=")]
-    assert workers == [str(HOSTED_RUNNER_VCPUS)], args
-
-
 def test_ci_keeps_the_same_tests_and_coverage_output() -> None:
-    args = jest_args(run_coverage_step()["run"])
-    narrowing = (
-        "--shard",
-        "--testPathPattern",
-        "--testPathIgnorePatterns",
-        "--onlyChanged",
-        "--changedSince",
-    )
-    assert not [arg for arg in args if arg.startswith(narrowing)], args
+    assert shlex.split(run_coverage_step()["run"]) == [
+        "yarn",
+        "test:cov-summary",
+        "--maxWorkers=4",
+    ]
     assert run_coverage_step()["working-directory"] == "${{ env.UI_WORKING_DIRECTORY }}"
     comment = next(
         step for step in coverage_job()["steps"] if step.get("id") == "coverage_comment"

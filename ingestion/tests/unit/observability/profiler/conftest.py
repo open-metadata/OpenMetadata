@@ -30,7 +30,7 @@ from metadata.ingestion.connections.session import create_and_bind_session
 # worker that has imported the whole unit suite each call takes seconds, and
 # test_metrics.py computes almost 500 metrics, so the collections alone kept one
 # CI worker busy for about 25 minutes. Only the modules listed here skip it;
-# sqlalchemy/test_profiler_interface_gc.py checks the real collection.
+# sqlalchemy/test_sqa_profiler_interface.py checks the real collection.
 GC_STUBBED_MODULES = frozenset(
     {
         "sqlalchemy/test_metrics.py",

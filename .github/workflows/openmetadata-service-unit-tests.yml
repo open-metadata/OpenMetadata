@@ -158,9 +158,6 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      # Restore-only here; the save after the build runs on push to main only.
-      # A PR-scoped copy is readable by that PR alone but still evicts the
-      # main-scoped caches every run restores from the shared 10 GB budget.
       - name: Restore Maven dependencies
         id: maven-cache
         uses: actions/cache/restore@v6
@@ -216,9 +213,6 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
-      # Restore-only here; the save after the build runs on push to main only.
-      # A PR-scoped copy is readable by that PR alone but still evicts the
-      # main-scoped caches every run restores from the shared 10 GB budget.
       - name: Restore Maven dependencies
         id: maven-cache
         uses: actions/cache/restore@v6

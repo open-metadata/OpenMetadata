@@ -178,12 +178,8 @@ def write(root: Path, relative: str, document: dict) -> None:
     path.write_text(yaml.safe_dump(document, sort_keys=False))
 
 
-def pr_workflow(
-    root: Path, steps: list, *, job_if: str | None = None, uses: str | None = None
-):
+def pr_workflow(root: Path, steps: list, *, uses: str | None = None):
     job = {"runs-on": "ubuntu-latest"}
-    if job_if:
-        job["if"] = job_if
     if uses:
         job = {"uses": uses}
     else:
@@ -482,5 +478,7 @@ def test_cache_ui_dist_is_restore_only_on_prs_and_signals_hits_from_both_paths()
     ]
     assert len(combined) == 1, "non-PR events must keep the restore+save writer"
     signal = next(s for s in steps if "SKIP_UI_BUILD" in s.get("run", ""))
-    for step in (*pr_restores, *combined):
-        assert f"steps.{step['id']}.outputs.cache-hit" in signal["if"]
+    assert " ".join(signal["if"].split()) == (
+        "steps.cache.outputs.cache-hit == 'true' || "
+        "steps.cache-readonly.outputs.cache-hit == 'true'"
+    )

@@ -20,8 +20,10 @@ def load(name: str) -> dict:
 def test_backport_automerge_only_takes_a_runner_for_backport_branches():
     job = load("backport-automerge.yaml")["jobs"]["automerge"]
     condition = " ".join(job.get("if", "").split())
-    assert "github.event_name == 'workflow_dispatch'" in condition
-    assert "startsWith(github.event.check_suite.head_branch, 'backport/')" in condition
+    assert condition == (
+        "github.event_name == 'workflow_dispatch' || "
+        "startsWith(github.event.check_suite.head_branch, 'backport/')"
+    )
 
 
 def test_backport_automerge_keeps_its_provenance_gate():
