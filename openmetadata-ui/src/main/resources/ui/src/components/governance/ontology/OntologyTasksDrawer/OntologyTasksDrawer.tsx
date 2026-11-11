@@ -713,29 +713,18 @@ const OntologyTasksDrawer = ({
         <Typography role="status">{t('label.loading')}</Typography>
       ) : null}
       {!queue.isPending && !queue.isError && !queue.data?.data.length ? (
-        <Box
-          align="center"
-          className="tw:py-16 tw:text-center"
-          data-testid="ontology-tasks-empty"
-          direction="col"
-          gap={2}>
-          <FeaturedIcon
-            color="gray"
-            icon={ClipboardCheck}
-            size="md"
-            theme="modern"
-          />
-          <Typography size="text-sm" weight="semibold">
-            {t('message.ontology-no-tasks-yet')}
-          </Typography>
-          <Typography color="secondary" size="text-sm">
-            {t(
+        <div
+          className="tw:relative tw:min-h-60"
+          data-testid="ontology-tasks-empty">
+          <NoDataPlaceholder
+            description={t(
               view === 'assigned'
                 ? 'message.ontology-tasks-assigned-empty'
                 : 'message.ontology-tasks-created-empty'
             )}
-          </Typography>
-        </Box>
+            title={t('message.ontology-no-tasks-yet')}
+          />
+        </div>
       ) : null}
       {queue.isPending
         ? null
@@ -883,6 +872,7 @@ const OntologyTasksDrawer = ({
         <Modal>
           <Dialog
             aria-label={t('label.task-plural')}
+            dividers="scroll"
             showCloseButton={false}
             width={1325}
             onClose={close}>
@@ -892,7 +882,7 @@ const OntologyTasksDrawer = ({
               selectedKey={view}
               onSelectionChange={changeView}>
               <Box
-                className="tw:shrink-0 tw:border-b tw:border-secondary tw:bg-secondary_alt tw:px-6 tw:pt-5"
+                className="tw:shrink-0 tw:bg-secondary_alt tw:px-6 tw:pt-5"
                 direction="col"
                 gap={3}>
                 <Box align="center" gap={3}>
