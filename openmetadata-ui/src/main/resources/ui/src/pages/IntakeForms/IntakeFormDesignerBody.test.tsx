@@ -14,13 +14,13 @@ import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { createRef } from 'react';
 import { CustomProperty } from '../../generated/entity/type';
 import {
-  FieldKind,
-  IntakeForm,
-  TargetEntityType,
+    FieldKind,
+    IntakeForm,
+    TargetEntityType
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
 import IntakeFormDesignerBody, {
-  IntakeFormDesignerBodyHandle,
+    IntakeFormDesignerBodyHandle
 } from './IntakeFormDesignerBody';
 
 jest.mock('../../rest/metadataTypeAPI', () => ({
@@ -47,22 +47,6 @@ const initialValue = {
 } as unknown as IntakeForm;
 
 describe('IntakeFormDesignerBody', () => {
-  it('warns that intake forms are deprecated', () => {
-    (getCustomPropertiesByEntityType as jest.Mock).mockResolvedValue([]);
-    render(
-      <IntakeFormDesignerBody
-        open
-        entityType={TargetEntityType.Domain}
-        initialValue={initialValue}
-        onSubmit={jest.fn()}
-      />
-    );
-
-    expect(
-      screen.getByTestId('intake-form-deprecated-alert')
-    ).toHaveTextContent('message.intake-form-deprecated');
-  });
-
   it('keeps what was typed when the custom properties load afterwards', async () => {
     let loadProperties: (properties: CustomProperty[]) => void = jest.fn();
     (getCustomPropertiesByEntityType as jest.Mock).mockReturnValue(

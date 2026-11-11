@@ -12,40 +12,40 @@
  */
 
 import {
-  Alert,
-  Badge,
-  Box,
-  Checkbox,
-  Divider,
-  Input,
-  TextArea,
-  Toggle,
-  Typography,
+    Alert,
+    Badge,
+    Box,
+    Checkbox,
+    Divider,
+    Input,
+    TextArea,
+    Toggle,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import {
-  forwardRef,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useState,
+    forwardRef,
+    useCallback,
+    useEffect,
+    useImperativeHandle,
+    useMemo,
+    useState
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import Loader from '../../components/common/Loader/Loader';
 import { CreateIntakeForm } from '../../generated/api/governance/createIntakeForm';
 import { CustomProperty } from '../../generated/entity/type';
 import {
-  FieldKind,
-  IntakeForm,
-  TargetEntityType,
+    FieldKind,
+    IntakeForm,
+    TargetEntityType
 } from '../../generated/governance/intakeForm';
 import { getCustomPropertiesByEntityType } from '../../rest/metadataTypeAPI';
 import {
-  buildIntakeFormPayload,
-  computeFieldRows,
-  ENTITY_TYPE_LABEL_KEYS,
-  IntakeFormFieldRow,
+    buildIntakeFormPayload,
+    computeFieldRows,
+    ENTITY_TYPE_LABEL_KEYS,
+    IntakeFormFieldRow
 } from '../../utils/IntakeFormUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import intakeFormClassBase from './IntakeFormClassBase';
@@ -292,11 +292,6 @@ const IntakeFormDesignerBody = forwardRef<
       data-testid="intake-form-designer-body"
       direction="col"
       gap={6}>
-      <Alert
-        data-testid="intake-form-deprecated-alert"
-        title={t('message.intake-form-deprecated')}
-        variant="warning"
-      />
       <Alert
         title={t('message.intake-form-one-per-type-help', {
           entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
