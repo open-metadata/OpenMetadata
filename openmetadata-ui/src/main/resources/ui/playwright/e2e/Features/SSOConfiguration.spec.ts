@@ -17,6 +17,7 @@ import path from 'path';
 import {
   LDAP_VISIBLE_FIELDS,
   OIDC_COMMON_FIELDS,
+  SAML_STRICT_MODE_FIELDS,
   SAML_VISIBLE_FIELDS,
   SSO_COMMON_FIELDS,
 } from '../../constant/ssoConfiguration';
@@ -586,6 +587,22 @@ test.describe('SSO Configuration Tests', () => {
       );
 
       await expect(callbackField).not.toBeVisible();
+    });
+
+    test('should show the SAML signing switches only while Strict Mode is on', async ({
+      page,
+    }) => {
+      await selectSSOProvider(page, 'saml');
+
+      for (const field of SAML_STRICT_MODE_FIELDS) {
+        await expect(page.getByLabel(field)).not.toBeVisible();
+      }
+
+      await page.getByLabel('Strict Mode').check();
+
+      for (const field of SAML_STRICT_MODE_FIELDS) {
+        await expect(page.getByLabel(field)).toBeVisible();
+      }
     });
 
     test('should hide clientAuthenticationMethod for Auth0 provider', async ({

@@ -1522,6 +1522,59 @@ describe('SSOConfigurationForm', () => {
       });
     });
 
+    it('should hide the SAML signing switches while Strict Mode is off', async () => {
+      renderComponent({ selectedProvider: AuthProvider.Saml });
+
+      await waitFor(() => {
+        expect(screen.getByText('Strict Mode')).toBeInTheDocument();
+      });
+
+      expect(
+        screen.queryByText('Want Messages Signed')
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('Want Assertions Signed')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should show the SAML signing switches while Strict Mode is on', async () => {
+      const strictSamlConfig = {
+        authenticationConfiguration: {
+          provider: AuthProvider.Saml,
+          providerName: 'SAML',
+          clientType: ClientType.Public,
+          authority: 'https://idp.example.com',
+          callbackUrl: 'https://app.example.com/callback',
+          jwtPrincipalClaims: ['email'],
+          publicKeyUrls: [],
+          samlConfiguration: {
+            idp: { entityId: 'https://idp.example.com/metadata' },
+            sp: {},
+            security: { strictMode: true },
+          },
+        } as unknown as AuthenticationConfiguration,
+        authorizerConfiguration: {
+          adminPrincipals: [],
+          className: 'org.openmetadata.service.security.DefaultAuthorizer',
+          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          enableSecureSocketConnection: false,
+          enforcePrincipalDomain: false,
+          principalDomain: '',
+        } as AuthorizerConfiguration,
+      } as Partial<SecurityConfiguration>;
+
+      renderComponent({
+        securityConfig: strictSamlConfig as unknown as SecurityConfiguration,
+        forceEditMode: true,
+      });
+
+      await waitFor(() => {
+        expect(screen.getByText('Want Messages Signed')).toBeInTheDocument();
+      });
+
+      expect(screen.getByText('Want Assertions Signed')).toBeInTheDocument();
+    });
+
     it('should load defaults for Auth0 provider', async () => {
       renderComponent({ selectedProvider: AuthProvider.Auth0 });
 
