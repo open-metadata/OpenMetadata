@@ -1489,6 +1489,27 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
   }
 
   @Test
+  void put_byBotChildOfDeletedParent_restoresItAsARoot(TestNamespace ns) {
+    Metric parent = createEntity(createRequest(ns.prefix("bot_orphan_parent"), ns));
+    Metric child = createChild(ns, "bot_orphan_child", parent);
+    SdkClients.adminClient()
+        .metrics()
+        .delete(parent.getId().toString(), Map.of("recursive", "true"));
+
+    Metric restored =
+        SdkClients.ingestionBotClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metrics",
+                new CreateMetric().withName(child.getName()).withDescription("Child metric"),
+                Metric.class);
+
+    assertFalse(restored.getDeleted());
+    assertNull(getWithHierarchy(child).getParent(), "A bot PUT must not keep a deleted parent");
+  }
+
+  @Test
   void inactiveContainsEdgeIsExcludedFromHierarchyReads(TestNamespace ns) {
     Metric parent = createEntity(createRequest(ns.prefix("inactive_edge_parent"), ns));
     Metric child = createChild(ns, "inactive_edge_child", parent);
@@ -2702,6 +2723,48 @@ public class MetricResourceIT extends BaseEntityIT<Metric, CreateMetric> {
     assertEquals(
         List.of(referenced.getId()),
         fetchedReferencing.getRelatedMetrics().stream().map(EntityReference::getId).toList());
+  }
+
+  @Test
+  void put_reingestingKeepsParentAndGroupSetInTheUi(TestNamespace ns) {
+    String parentName = ns.prefix("reingested_hierarchy_parent");
+    String childName = ns.prefix("reingested_hierarchy_child");
+    Metric parent = createEntity(createRequest(parentName, ns));
+    Metric child = createEntity(createRequest(childName, ns));
+    MetricGroup group =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.PUT,
+                "/v1/metricGroups",
+                new CreateMetricGroup().withName(ns.prefix("reingested_hierarchy_group")),
+                MetricGroup.class);
+
+    Metric groupedParent = getEntityWithFields(parent.getId().toString(), "parent,metricGroup");
+    groupedParent.setMetricGroup(group.getEntityReference());
+    patchEntity(groupedParent.getId().toString(), groupedParent);
+    Metric parentedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    parentedChild.setParent(parent.getEntityReference());
+    patchEntity(parentedChild.getId().toString(), parentedChild);
+    Metric curatedParent = getEntityWithFields(parent.getId().toString(), "parent,metricGroup");
+    Metric curatedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+
+    OpenMetadataClient bot = SdkClients.ingestionBotClient();
+    bot.getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(parentName, ns), Metric.class);
+    bot.getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/metrics", createRequest(childName, ns), Metric.class);
+
+    Metric reingestedParent = getEntityWithFields(parent.getId().toString(), "parent,metricGroup");
+    Metric reingestedChild = getEntityWithFields(child.getId().toString(), "parent,metricGroup");
+    assertNotNull(reingestedParent.getMetricGroup(), "Re-ingestion removed the parent's group");
+    assertEquals(group.getId(), reingestedParent.getMetricGroup().getId());
+    assertNotNull(reingestedChild.getParent(), "Re-ingestion removed the child's parent");
+    assertEquals(parent.getId(), reingestedChild.getParent().getId());
+    assertNotNull(reingestedChild.getMetricGroup(), "Re-ingestion removed the child's group");
+    assertEquals(group.getId(), reingestedChild.getMetricGroup().getId());
+    assertEquals(curatedParent.getVersion(), reingestedParent.getVersion());
+    assertEquals(curatedChild.getVersion(), reingestedChild.getVersion());
   }
 
   @Test
