@@ -130,6 +130,26 @@ class IndexMappingNestedFieldConsistencyTest {
   }
 
   @Test
+  void fqnPartsMustMatchEnglishInEveryLanguage() {
+    List<String> violations = new ArrayList<>();
+    for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
+      String key = entry.getKey();
+      JsonNode english = allMappings.get(key.substring(0, key.indexOf('[')) + "[en]");
+      JsonNode expected = english == null ? null : getTopLevelProperties(english).get("fqnParts");
+      JsonNode actual = getTopLevelProperties(entry.getValue()).get("fqnParts");
+      if (expected != null && !expected.equals(actual)) {
+        violations.add(key + " (" + actual + ")");
+      }
+    }
+    assertTrue(
+        violations.isEmpty(),
+        "Every entity document carries fqnParts, so a language that omits it gets a dynamic text "
+            + "field that keyword-only queries reject (e.g. the hierarchy terms aggregation). "
+            + "Map it as English does. Violations: "
+            + violations);
+  }
+
+  @Test
   void customPropertiesTypedMustBeNestedWhereExtensionExists() {
     List<String> violations = new ArrayList<>();
     for (Map.Entry<String, JsonNode> entry : allMappings.entrySet()) {
