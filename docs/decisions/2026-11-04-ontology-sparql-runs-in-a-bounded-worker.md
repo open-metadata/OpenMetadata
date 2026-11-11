@@ -1,9 +1,9 @@
 # Ontology SPARQL runs in a disposable JVM with bounded query memory
 
 - **Status:** Proposed
-- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (input-proportional heap and loading refusals) · v3 2026-11-05 (prefix fidelity and bounded admission wait)
+- **Revisions:** v1 2026-11-04 (initial) · v2 2026-11-04 (input-proportional heap and loading refusals) · v3 2026-11-05 (prefix fidelity and bounded admission wait) · v4 2026-11-10 (an active release too large for the worker is answered from its served graph)
 - **Deciders:** Pending maintainer review
-- **Guard:** OntologySparqlQueryServiceTest and reviewer
+- **Guard:** OntologySparqlQueryServiceTest, OntologySparqlServedGraphTest, OntologyReleaseQueryTest, RdfLibraryPackActivationIT and reviewer
 - **Related:** [#37088](https://github.com/open-metadata/OpenMetadata/issues/37088), ANT-2026-J4XIPJA4
 
 ## Context
@@ -85,3 +85,29 @@ remaining budget. The deadline starts before waiting and is not renewed after ad
 Saturation returns HTTP 429 with `Retry-After: 1`; deadline expiry or interruption remains a
 timeout. The permit is still held through materialization and child cleanup, preserving the
 one-worker memory bound. Configurable worker concurrency is outside this amendment.
+
+## Amendment: an active release too large for the worker is answered from its served graph (v4)
+
+Bundled library packs are installed whole, and the full FHIR R5 release serializes to more than
+the 32 MiB transport bound; anything above roughly 8 MiB of N-Triples already reaches the 256 MiB
+heap ceiling. Raising either limit would undo this record's containment, so an active native
+ontology release that the worker refuses for its own size (`OntologyTooLargeException`: the input
+bound, or exhausting the heap while loading) is answered by the triplestore instead. A query that
+exhausts memory after loading is still refused, so a costly query is never retried elsewhere.
+
+The fallback runs only after the parent has materialized and authorized every member, so the
+caller is already cleared to view the whole release. It needs RDF enabled and the ontology's
+served graph (`OntologyActiveGraph.graph`) to hold this release, checked by asking for the
+ontology IRI's `owl:versionIRI`; a graph that is still loading returns HTTP 429 with
+`Retry-After: 1`. The query keeps the endpoint's validation (read-only, no `FROM`, no `SERVICE`,
+result limit, timeout) and names the served graph as both `FROM` and `FROM NAMED`, because the
+store's default graph is the union of the dataset's named graphs
+(ADR:2026-10-11-asserted-only-rdf-reads-name-every-non-inferred-graph). Results stream through the
+worker's own serializers into the same 10 MiB response bound.
+
+Two differences follow from serving the store's graph rather than the worker's model. The served
+graph carries asserted statements without their statement sources, which stay in SQL and in
+exports. RDFS and OWL inference run only in memory, so they are refused for such a release.
+Fuseki's streaming read counts only an unreachable or unavailable store toward its circuit breaker,
+so slow caller queries cannot open it for every other RDF read. Glossary queries and draft-scope
+queries are unchanged.
