@@ -1523,7 +1523,9 @@ const OntologyGraphView = ({
     if (surface === 'tree') {
       return (
         // Leaves room on the right for the floating cards so they never cover a row.
-        <div className={hasCanvasCards ? 'tw:h-full tw:pr-92' : 'tw:h-full'}>
+        <div
+          className={hasCanvasCards ? 'tw:h-full tw:pr-92' : 'tw:h-full'}
+          data-testid="ontology-tree-surface">
           <OntologyTreeView
             density="compact"
             emptyMessage={t('label.no-entity-found', {
