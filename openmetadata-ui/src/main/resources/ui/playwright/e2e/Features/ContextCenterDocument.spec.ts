@@ -48,6 +48,7 @@ import {
   scrollUntilResponse,
   searchAndGetDocumentRow,
   selectDocumentByName,
+  selectDocumentsBySearch,
   selectFolderInSidebar,
   uploadDocument as uploadDocumentToApi,
   waitForDocumentProcessingComplete,
@@ -1255,8 +1256,9 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     const folderName = `bulk-move-folder-${uuid()}`;
-    const firstFileName = `bulk-move-one-${uuid()}.txt`;
-    const secondFileName = `bulk-move-two-${uuid()}.txt`;
+    const filePrefix = `bulk-move-${uuid()}`;
+    const firstFileName = `${filePrefix}-one.txt`;
+    const secondFileName = `${filePrefix}-two.txt`;
 
     const { apiContext } = documentSession;
     const firstDocument = await uploadDocument(
@@ -1289,8 +1291,10 @@ test.describe('Context Center - Documents Page', () => {
     contextFolderIdsToCleanup.add(targetFolder.id);
 
     await revealFolderRow(page, folderName);
-    await selectDocumentByName(page, firstFileName);
-    await selectDocumentByName(page, secondFileName);
+    await selectDocumentsBySearch(page, filePrefix, [
+      firstFileName,
+      secondFileName,
+    ]);
     await expectSelectedCount(page, 2);
 
     await page.getByTestId('bulk-move-btn').click();
@@ -1329,8 +1333,9 @@ test.describe('Context Center - Documents Page', () => {
     documentSession,
     page,
   }) => {
-    const firstName = `bulk-del-archive-one-${uuid()}.txt`;
-    const secondName = `bulk-del-archive-two-${uuid()}.txt`;
+    const filePrefix = `bulk-del-archive-${uuid()}`;
+    const firstName = `${filePrefix}-one.txt`;
+    const secondName = `${filePrefix}-two.txt`;
 
     const { apiContext } = documentSession;
     const doc1 = await uploadDocument(
@@ -1346,8 +1351,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    await selectDocumentByName(page, firstName);
-    await selectDocumentByName(page, secondName);
+    await selectDocumentsBySearch(page, filePrefix, [firstName, secondName]);
     await expectSelectedCount(page, 2);
 
     await page.getByTestId('bulk-delete-btn').click();

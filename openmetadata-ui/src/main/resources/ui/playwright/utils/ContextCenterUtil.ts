@@ -105,6 +105,25 @@ export const selectDocumentByName = async (page: Page, fileName: string) => {
   await row.getByTestId('document-checkbox').click();
 };
 
+/**
+ * Selects several documents under one search. Changing the search query
+ * clears the selection, so searching per file would leave only the last one
+ * selected — the names must share `searchTerm`.
+ */
+export const selectDocumentsBySearch = async (
+  page: Page,
+  searchTerm: string,
+  fileNames: string[]
+) => {
+  await searchAndGetDocumentRow(page, searchTerm);
+  for (const fileName of fileNames) {
+    const row = getDocumentRowByName(page, fileName);
+    await expect(row).toBeVisible();
+    await row.scrollIntoViewIfNeeded();
+    await row.getByTestId('document-checkbox').click();
+  }
+};
+
 export const expectSelectedCount = async (page: Page, count: number) => {
   await expect(
     page.getByText(`${count} selected`, { exact: true })
