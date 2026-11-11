@@ -1501,7 +1501,18 @@ describe('TaskTabNew Component', () => {
   });
 
   describe('multi-approver vote', () => {
-    const renderApproval = async (reviewVotes: Task['reviewVotes']) => {
+    const APPROVE_TRANSITION = {
+      id: 'approve',
+      label: 'Approve',
+      resolutionType: TaskResolutionType.Approved,
+      targetStageId: 'approved',
+      targetTaskStatus: TaskEntityStatus.Approved,
+    };
+
+    const renderApproval = async (
+      reviewVotes: Task['reviewVotes'],
+      availableTransitions: Task['availableTransitions'] = [APPROVE_TRANSITION]
+    ) => {
       const { useAuth } = require('../../../../hooks/authHooks');
       const { isTagsTaskType } = require('../../../../utils/TaskActionUtils');
       useAuth.mockReturnValue({ isAdminUser: false });
@@ -1516,15 +1527,7 @@ describe('TaskTabNew Component', () => {
           { id: 'test-user-id', type: 'user', name: 'test-user' },
           { id: 'other-id', type: 'user', name: 'other' },
         ],
-        availableTransitions: [
-          {
-            id: 'approve',
-            label: 'Approve',
-            resolutionType: TaskResolutionType.Approved,
-            targetStageId: 'approved',
-            targetTaskStatus: TaskEntityStatus.Approved,
-          },
-        ],
+        availableTransitions,
         reviewVotes,
       };
       await act(async () => {
@@ -1551,6 +1554,25 @@ describe('TaskTabNew Component', () => {
         screen.getByTestId('workflow-task-action-primary')
       ).toBeInTheDocument();
       expect(screen.queryByTestId('task-review-votes')).not.toBeInTheDocument();
+    });
+
+    it("keeps the stage's other transitions for an assignee who voted", async () => {
+      await renderApproval(
+        [vote('review')],
+        [
+          APPROVE_TRANSITION,
+          {
+            id: 'reassign',
+            label: 'Reassign',
+            targetStageId: 'assigned',
+            targetTaskStatus: TaskEntityStatus.Open,
+          },
+        ]
+      );
+
+      expect(
+        screen.getByTestId('workflow-task-action-primary')
+      ).toHaveTextContent('Reassign');
     });
 
     it('shows the counted vote instead of Approve once the assignee voted', async () => {
