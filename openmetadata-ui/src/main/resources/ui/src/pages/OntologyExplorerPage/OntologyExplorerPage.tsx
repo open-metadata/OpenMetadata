@@ -1722,7 +1722,12 @@ const OntologyExplorerContent: React.FC = () => {
   function renderPrimaryAction() {
     const canAddConcept = (() => {
       if (isAllOntologies) {
-        return canCreateNativeClass && availableOntologies.length > 0;
+        // The Ontology surface only asks which ontology to open; it has no concept drawer.
+        return [
+          canCreateNativeClass,
+          availableOntologies.length > 0,
+          aggregateSurface !== 'ontology',
+        ].every(Boolean);
       }
 
       return isNativeOntology
@@ -1960,6 +1965,16 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
+  // In AI mode Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
+  function showsTasksInSubBar() {
+    return [
+      isAiMode,
+      mode !== 'ai' && mode !== 'review',
+      !(ontologyId && !selectedOntology),
+      !isCatalogEmpty,
+    ].every(Boolean);
+  }
+
   function renderHeader(tasksAction: React.ReactNode) {
     return (
       <OntologyStudioHeader
@@ -1969,7 +1984,7 @@ const OntologyExplorerContent: React.FC = () => {
             {renderImportExport()}
             {renderPrimaryAction()}
             {renderPublicationActions()}
-            {isAiMode ? null : tasksAction}
+            {showsTasksInSubBar() ? null : tasksAction}
           </Box>
         }
         breadcrumb={
@@ -2125,7 +2140,7 @@ const OntologyExplorerContent: React.FC = () => {
               size="text-sm">
               {statsLabel}
             </Typography>
-            {isAiMode && tasksAction ? (
+            {showsTasksInSubBar() && tasksAction ? (
               <>
                 <Divider className="tw:h-6" orientation="vertical" />
                 {tasksAction}
@@ -2720,12 +2735,13 @@ const OntologyExplorerContent: React.FC = () => {
       {settingsOntology ? (
         <OntologySettingsDialog
           ontology={settingsOntology}
-          onClose={() => setSettingsOntology(undefined)}
+          onClose={() => guard(() => setSettingsOntology(undefined))}
           onSaved={(saved) => {
             setSettingsOntology(undefined);
             void queryClient.invalidateQueries({
               queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
             });
+            refreshNativeWorkingDiff();
             if (saved.id === selectedOntology?.id) {
               reloadOntology();
             }

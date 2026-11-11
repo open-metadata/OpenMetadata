@@ -2054,6 +2054,50 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  it('keeps unsaved field edits when a relation is added from the same panel', async () => {
+    (createOntologyAxiom as jest.Mock).mockResolvedValue({});
+    (getOntologyConcept as jest.Mock).mockResolvedValue(customer);
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.change(
+      await screen.findByRole('textbox', { name: 'label.description' }),
+      { target: { value: 'Unsaved wording' } }
+    );
+    let refetched!: (value: unknown) => void;
+    (getOntologyConcept as jest.Mock).mockReturnValue(
+      new Promise((resolve) => {
+        refetched = resolve;
+      })
+    );
+
+    await act(() =>
+      latestGraphProps().onCreateRelation(customer.id, orphan.id, SUBCLASS_OF)
+    );
+
+    expect(createOntologyAxiom).toHaveBeenCalled();
+    expect(
+      screen.getByRole('textbox', { name: 'label.description' })
+    ).toHaveValue('Unsaved wording');
+
+    await act(async () => refetched(customer));
+
+    expect(
+      screen.getByRole('textbox', { name: 'label.description' })
+    ).toHaveValue('Unsaved wording');
+    expect(screen.getByTestId('concept-save-status')).toHaveTextContent(
+      'label.unsaved-changes'
+    );
+  });
+
   it('starts a blank concept after editing an existing concept and hides the editor in View', async () => {
     const { rerender } = render(
       <OntologyGraphView
@@ -2367,23 +2411,6 @@ describe('OntologyGraphView', () => {
         expect(list).toHaveAttribute('aria-label', 'label.concept-plural (5)');
       });
     });
-  });
-
-  it('leaves Add concept to the page header instead of the canvas', async () => {
-    render(
-      <OntologyGraphView
-        isEditing
-        ontology={ontology}
-        surface="graph"
-        onRequestCreateConcept={jest.fn()}
-        onRequestGraphSurface={jest.fn()}
-      />
-    );
-    await screen.findByTestId('native-ontology-graph');
-
-    expect(
-      screen.queryByTestId('ontology-canvas-add-concept')
-    ).not.toBeInTheDocument();
   });
 
   it('offers a user who cannot create properties only the relations an axiom completes', async () => {

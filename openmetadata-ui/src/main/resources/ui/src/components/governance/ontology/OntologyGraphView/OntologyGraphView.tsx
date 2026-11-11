@@ -433,9 +433,12 @@ const useDraftConcept = (
 ) => {
   const conceptId = editor?.conceptId;
 
-  return useQuery({
+  return useQuery<OntologyConcept>({
     enabled: Boolean(conceptId) && isEditing && !releaseId,
     gcTime: 0,
+    // A refetch after a relation or property write keeps the panel editable, so unsaved field edits survive it.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === conceptId ? previous : undefined,
     queryFn: ({ signal }) =>
       getOntologyConcept(conceptId ?? '', WORKING_CONCEPT_FIELDS, signal),
     queryKey: ['ontology-draft-concept', conceptId, revision],
@@ -470,13 +473,14 @@ const EditableConceptInspector = ({
 }: EditableConceptInspectorProps) => {
   const editor = useOntologyConceptEditor(editable);
   const { reset } = editor;
+  const { isEditing } = props;
 
   // Leaving Edit discards the in-place edits, so nothing stays marked unsaved in View.
   useEffect(() => {
-    if (!isEditable) {
+    if (!isEditing) {
       reset();
     }
-  }, [isEditable, reset]);
+  }, [isEditing, reset]);
 
   return (
     <OntologyConceptInspector
@@ -1393,7 +1397,8 @@ const OntologyGraphView = ({
     const isPanelOpen = [selected, selectedRelation, conceptEditor].some(
       Boolean
     );
-    if (graphMode === 'data' || surface !== 'graph' || isPanelOpen) {
+    // Graph and Tree both float the cards, so Validate all stays reachable from either.
+    if (graphMode === 'data' || isPanelOpen) {
       return null;
     }
 

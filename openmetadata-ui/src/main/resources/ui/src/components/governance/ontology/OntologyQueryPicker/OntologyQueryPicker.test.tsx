@@ -139,4 +139,23 @@ describe('OntologyQueryPicker', () => {
 
     expect(onSelect).toHaveBeenCalledWith(RETAIL);
   });
+
+  it('lists only the ontologies whose name matches what the user typed', async () => {
+    render(
+      <OntologyQueryPicker
+        ontologies={[CLINICAL, RETAIL]}
+        surface="ontology"
+        onSelect={jest.fn()}
+      />
+    );
+
+    await openPicker('Ret');
+
+    expect(
+      await screen.findByTestId('ontology-query-picker-option-o-2')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-query-picker-option-o-1')
+    ).not.toBeInTheDocument();
+  });
 });

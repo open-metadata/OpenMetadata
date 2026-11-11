@@ -47,15 +47,18 @@ const OntologyQueryPicker = ({
   const { t } = useTranslation();
   const isOntologyView = surface === 'ontology';
   const [query, setQuery] = useState('');
-  const countedOntologies = useMemo(() => {
+  // The combobox shows only the items it is given, so the typed query filters them here.
+  const matchingOntologies = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase();
 
-    return ontologies
-      .filter((ontology) =>
-        getEntityName(ontology).toLocaleLowerCase().includes(needle)
-      )
-      .slice(0, COUNTED_ROWS);
+    return ontologies.filter((ontology) =>
+      getEntityName(ontology).toLocaleLowerCase().includes(needle)
+    );
   }, [ontologies, query]);
+  const countedOntologies = useMemo(
+    () => matchingOntologies.slice(0, COUNTED_ROWS),
+    [matchingOntologies]
+  );
   const conceptCounts = useOntologyConceptCounts(countedOntologies, true);
   const propertyCounts = useOntologyPropertyCounts(countedOntologies, true);
 
@@ -79,7 +82,7 @@ const OntologyQueryPicker = ({
     return parts.join(COUNT_SEPARATOR);
   };
 
-  const items = ontologies.map((ontology) => ({
+  const items = matchingOntologies.map((ontology) => ({
     id: ontology.id,
     label: getEntityName(ontology),
     supportingText: describeCounts(ontology) || undefined,
