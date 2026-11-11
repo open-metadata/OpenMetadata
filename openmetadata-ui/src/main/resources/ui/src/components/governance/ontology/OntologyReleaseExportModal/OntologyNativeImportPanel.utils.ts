@@ -334,6 +334,7 @@ export const NATIVE_IMPORT_SKIP_REASON_LABEL_KEYS: Record<SkipReason, string> =
     [SkipReason.Individual]: 'label.skip-reason-individual',
     [SkipReason.NonPreferredLanguage]:
       'label.skip-reason-non-preferred-language',
+    [SkipReason.UndeclaredReference]: 'label.skip-reason-undeclared-reference',
     [SkipReason.UnsupportedAnnotation]:
       'label.skip-reason-unsupported-annotation',
     [SkipReason.UnsupportedStructure]:

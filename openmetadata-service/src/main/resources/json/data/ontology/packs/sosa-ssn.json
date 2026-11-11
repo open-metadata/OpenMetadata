@@ -1,0 +1,46 @@
+{
+  "abbreviation": "SOSA/SSN",
+  "attribution": "Semantic Sensor Network Ontology, W3C Recommendation and OGC Implementation Standard 19 October 2017. Copyright 2017 W3C/OGC. Used under the W3C Software and Document License or the OGC Software License. Redistributed without changes.",
+  "bundled": true,
+  "description": "The W3C and OGC sensor, observation, sampling and actuation vocabulary. SOSA is the lightweight core; SSN adds systems, deployments and stimuli on top of it. Published verbatim.",
+  "id": "sosa-ssn",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "W3C Software and Document License or OGC Software License",
+  "licenseUrl": "https://www.w3.org/copyright/software-license-2023/",
+  "modules": [
+    {
+      "conceptCount": 16,
+      "dependencies": [],
+      "description": "Sensors, observations, samples, actuators and the platforms that host them.",
+      "format": "turtle",
+      "id": "sosa",
+      "name": "SOSA",
+      "relationshipCount": 0,
+      "resourcePath": "rdf/ontology-packs/sosa-ssn/sosa.ttl",
+      "selectedByDefault": true,
+      "sha256": "c70b0d1c843c0047e4c98e0a89392e46a05752ff6365bda7f7f55303905a0392",
+      "sourceUrl": "https://www.w3.org/ns/sosa/"
+    },
+    {
+      "conceptCount": 11,
+      "dependencies": [
+        "sosa"
+      ],
+      "description": "Systems, deployments, stimuli and properties layered on SOSA.",
+      "format": "turtle",
+      "id": "ssn",
+      "name": "SSN",
+      "relationshipCount": 8,
+      "resourcePath": "rdf/ontology-packs/sosa-ssn/ssn.ttl",
+      "selectedByDefault": true,
+      "sha256": "184d86189191146e314cc52b1bceb96fca11e70aacbc160d71588102a5153eb9",
+      "sourceUrl": "https://www.w3.org/ns/ssn/"
+    }
+  ],
+  "name": "SOSA and SSN",
+  "publisher": "W3C and OGC",
+  "sourceUrl": "https://www.w3.org/TR/vocab-ssn/",
+  "standard": "Semantic Sensor Network Ontology",
+  "version": "2017-10-19"
+}

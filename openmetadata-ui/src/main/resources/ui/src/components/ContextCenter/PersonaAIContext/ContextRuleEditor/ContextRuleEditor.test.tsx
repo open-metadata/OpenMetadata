@@ -21,6 +21,7 @@ import {
 import { ReactNode, useEffect } from 'react';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ContextRule } from '../../../../generated/type/personaContextDefinition';
+import { previewPersonaAIContextRule } from '../../../../rest/PersonaAPI';
 import { ContextRuleEditor } from './ContextRuleEditor.component';
 
 jest.mock('../../../../rest/PersonaAPI', () => ({
@@ -45,6 +46,8 @@ jest.mock('../../../common/atoms/drawer/useFormDrawer', () => ({
 
 jest.mock('./RuleQueryBuilderField.component', () => ({
   RuleQueryBuilderField: (props: {
+    queryFilter?: string;
+    onChange: (queryFilter: string) => void;
     onReconstructionStatusChange?: (rendered: boolean) => void;
   }) => {
     // Simulate the reconstruction-status callback so the editor's warning
@@ -53,7 +56,14 @@ jest.mock('./RuleQueryBuilderField.component', () => ({
       props.onReconstructionStatusChange?.(false);
     });
 
-    return <div data-testid="rule-query-builder" />;
+    return (
+      <input
+        aria-label="Query filter"
+        data-testid="rule-query-builder"
+        value={props.queryFilter ?? ''}
+        onChange={(event) => props.onChange(event.target.value)}
+      />
+    );
   },
 }));
 
@@ -72,8 +82,175 @@ describe('ContextRuleEditor', () => {
     rule,
   };
 
+  it('rejects a whitespace-only name at the field', async () => {
+    const onSubmit = jest.fn();
+    render(<ContextRuleEditor {...defaultProps} onSubmit={onSubmit} />);
+    const input = screen.getByTestId('context-rule-name');
+    fireEvent.change(input, { target: { value: '   ' } });
+    fireEvent.submit(input.closest('form') as HTMLFormElement);
+
+    await waitFor(() => expect(input).toHaveAttribute('aria-invalid', 'true'));
+
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it('lets an admin disable an individual rule', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    render(<ContextRuleEditor {...defaultProps} onSubmit={onSubmit} />);
+    fireEvent.click(screen.getByRole('switch', { name: 'label.enabled' }));
+    fireEvent.submit(
+      screen.getByTestId('context-rule-name').closest('form') as HTMLFormElement
+    );
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false })
+      )
+    );
+  });
+
+  it('rejects an invalid filter when re-enabling a rule', async () => {
+    const onSubmit = jest.fn();
+    jest
+      .mocked(previewPersonaAIContextRule)
+      .mockRejectedValue(new Error('Invalid regular expression'));
+    render(
+      <ContextRuleEditor
+        {...defaultProps}
+        rule={{
+          ...rule,
+          enabled: false,
+          queryFilter: '{"regexp":{"name":"[shop"}}',
+        }}
+        onSubmit={onSubmit}
+      />
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'label.enabled' }));
+    fireEvent.submit(
+      screen.getByTestId('context-rule-name').closest('form') as HTMLFormElement
+    );
+
+    expect(await screen.findByText('Invalid regular expression')).toBeVisible();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
+  it.each([undefined, '', '{"regexp":{"name":"[shop"}}'])(
+    'allows unrelated edits with unchanged filter %p when search is unavailable',
+    async (queryFilter) => {
+      const onSubmit = jest.fn().mockResolvedValue(undefined);
+      jest
+        .mocked(previewPersonaAIContextRule)
+        .mockRejectedValue(new Error('Search unavailable'));
+      render(
+        <ContextRuleEditor
+          {...defaultProps}
+          rule={{ ...rule, enabled: true, queryFilter }}
+          onSubmit={onSubmit}
+        />
+      );
+      const name = screen.getByTestId('context-rule-name');
+      fireEvent.change(name, { target: { value: 'Renamed tables' } });
+      fireEvent.submit(name.closest('form') as HTMLFormElement);
+
+      await waitFor(() =>
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            enabled: true,
+            name: 'Renamed tables',
+            queryFilter: queryFilter ?? '',
+          })
+        )
+      );
+    }
+  );
+
+  it('saves a new rule without a filter when search is unavailable', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    jest
+      .mocked(previewPersonaAIContextRule)
+      .mockRejectedValue(new Error('Search unavailable'));
+    render(
+      <ContextRuleEditor
+        {...defaultProps}
+        rule={undefined}
+        onSubmit={onSubmit}
+      />
+    );
+    const name = screen.getByTestId('context-rule-name');
+    fireEvent.change(name, { target: { value: 'All tables' } });
+    fireEvent.submit(name.closest('form') as HTMLFormElement);
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ name: 'All tables', queryFilter: '' })
+      )
+    );
+  });
+
+  it.each([true, false])(
+    'rejects invalid changed filters when enabled is %p',
+    async (enabled) => {
+      const onSubmit = jest.fn();
+      jest
+        .mocked(previewPersonaAIContextRule)
+        .mockRejectedValue(new Error('Invalid regular expression'));
+      render(
+        <ContextRuleEditor
+          {...defaultProps}
+          rule={{ ...rule, enabled }}
+          onSubmit={onSubmit}
+        />
+      );
+      fireEvent.change(screen.getByRole('textbox', { name: 'Query filter' }), {
+        target: { value: '{"regexp":{"name":"[shop"}}' },
+      });
+
+      expect(screen.getByRole('textbox', { name: 'Query filter' })).toHaveValue(
+        '{"regexp":{"name":"[shop"}}'
+      );
+
+      fireEvent.submit(
+        screen
+          .getByTestId('context-rule-name')
+          .closest('form') as HTMLFormElement
+      );
+
+      expect(
+        await screen.findByText('Invalid regular expression')
+      ).toBeVisible();
+      expect(onSubmit).not.toHaveBeenCalled();
+    }
+  );
+
+  it('allows disabling an existing broken filter without requiring search to succeed', async () => {
+    const onSubmit = jest.fn().mockResolvedValue(undefined);
+    jest
+      .mocked(previewPersonaAIContextRule)
+      .mockRejectedValue(new Error('Search unavailable'));
+    render(
+      <ContextRuleEditor
+        {...defaultProps}
+        rule={{ ...rule, queryFilter: '{"regexp":{"name":"[shop"}}' }}
+        onSubmit={onSubmit}
+      />
+    );
+    fireEvent.click(screen.getByRole('switch', { name: 'label.enabled' }));
+    fireEvent.submit(
+      screen.getByTestId('context-rule-name').closest('form') as HTMLFormElement
+    );
+
+    await waitFor(() =>
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({ enabled: false })
+      )
+    );
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    jest
+      .mocked(previewPersonaAIContextRule)
+      .mockResolvedValue({ matchedCount: 0, sampleNames: [] });
   });
 
   it('preserves edits when polling replaces a rule with the same id', () => {

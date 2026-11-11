@@ -45,9 +45,9 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.GlossaryRepository;
 import org.openmetadata.service.jdbi3.OntologyRepository;
-import org.openmetadata.service.ontology.OntologyPackContentLoader;
 import org.openmetadata.service.ontology.OntologyPackInstallations;
 import org.openmetadata.service.ontology.OntologyPackInstaller;
+import org.openmetadata.service.ontology.OntologyPackModels;
 import org.openmetadata.service.ontology.OntologyPackSampler;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
@@ -78,9 +78,7 @@ public final class OntologyPackResource {
   OntologyPackResource(final Authorizer authorizer, final OntologyPackInstaller installer) {
     this.authorizer = authorizer;
     this.installer = installer;
-    this.sampler =
-        new OntologyPackSampler(
-            installer.catalog(), new OntologyPackContentLoader(getClass().getClassLoader()));
+    this.sampler = new OntologyPackSampler(installer.catalog(), OntologyPackModels.bundled());
   }
 
   @GET
