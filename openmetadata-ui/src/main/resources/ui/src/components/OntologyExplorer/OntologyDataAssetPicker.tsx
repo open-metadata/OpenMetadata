@@ -198,7 +198,17 @@ const buildNativeQueryFilter = (
       filters.domain,
       { term: { 'domains.fullyQualifiedName': filters.domain } },
     ],
-    [filters.owner, { term: { 'owners.id': filters.owner } }],
+    // Owners are a nested field in the search index.
+    [
+      filters.owner,
+      {
+        nested: {
+          path: 'owners',
+          query: { term: { 'owners.id': filters.owner } },
+          ignore_unmapped: true,
+        },
+      },
+    ],
   ];
 
   return {

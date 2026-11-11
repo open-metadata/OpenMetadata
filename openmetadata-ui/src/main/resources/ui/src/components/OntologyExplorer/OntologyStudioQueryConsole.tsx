@@ -362,7 +362,6 @@ interface QueryConsoleHeaderProps {
   readonly isDirty: boolean;
   readonly query: string;
   readonly running: boolean;
-  readonly onDelete: () => void;
   readonly onDiscard: () => void;
   readonly onDuplicate: () => void;
   readonly onRun: () => void;
@@ -430,21 +429,11 @@ const QueryMoreActions = ({
 };
 
 const QueryConsoleActions = (props: QueryConsoleActionsProps) => {
-  const { activeQuery, isDirty, running, onDelete, onDuplicate, onRun } = props;
+  const { activeQuery, isDirty, running, onDuplicate, onRun } = props;
   const { t } = useTranslation();
 
   return (
     <Box align="center" className="tw:ml-auto" gap={2} wrap="wrap">
-      {activeQuery.savedQuery ? (
-        <ButtonUtility
-          color="tertiary"
-          data-testid="ontology-query-delete"
-          icon={Trash01}
-          size="lg"
-          tooltip={t('label.delete-entity', { entity: t('label.query') })}
-          onClick={onDelete}
-        />
-      ) : null}
       <QueryMoreActions {...props} />
       <Button
         color="secondary"
@@ -593,7 +582,7 @@ const QueryStatusBar = ({
   scopeLabel,
 }: QueryStatusBarProps) => {
   const { t } = useTranslation();
-  const mod = NavigatorHelper.isMacOs() ? '⌘' : 'Ctrl';
+  const mod = NavigatorHelper.isMacOs() ? '⌘' : t('label.ctrl-key');
   const hints = [t('label.mod-enter-to-run', { mod })];
   if (canSave) {
     hints.push(t('label.mod-s-to-save', { mod }));
@@ -1071,7 +1060,11 @@ const OntologyStudioQueryConsole = ({
   });
   useEffect(() => {
     shortcutsRef.current = {
-      run: () => void executeQuery(query),
+      run: () => {
+        if (!running) {
+          void executeQuery(query);
+        }
+      },
       save:
         activeSavedQuery && isDirty
           ? () => void handleUpdateSavedQuery()
@@ -1343,10 +1336,6 @@ const OntologyStudioQueryConsole = ({
               onStart: () => setRenameValue(activeSavedQuery?.name ?? ''),
             }}
             running={running}
-            onDelete={() =>
-              activeSavedQuery &&
-              void handleDeleteSavedQuery(activeSavedQuery.id)
-            }
             onDiscard={() => setQuery(openedQuery)}
             onDuplicate={() =>
               void duplicateIntoMyQueries(

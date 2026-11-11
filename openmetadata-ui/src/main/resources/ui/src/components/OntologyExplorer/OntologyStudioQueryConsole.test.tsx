@@ -1098,7 +1098,7 @@ describe('query scope, errors and saved-query tools', () => {
     );
   });
 
-  it('opens a saved query with its saved time, a delete action and a save shortcut', async () => {
+  it('opens a saved query with its saved time and a save shortcut', async () => {
     mockGetSavedQueries.mockResolvedValue([{ ...SAVED, savedAt: Date.now() }]);
     renderNative({ ontologyName: 'clinical', version: 'draft' });
 
@@ -1140,11 +1140,9 @@ describe('query scope, errors and saved-query tools', () => {
       ])
     );
 
-    fireEvent.click(screen.getByTestId('ontology-query-delete'));
-
-    await waitFor(() =>
-      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([])
-    );
+    expect(
+      screen.queryByTestId('ontology-query-delete')
+    ).not.toBeInTheDocument();
   });
 
   it('runs the query with Mod-Enter from the editor', async () => {
@@ -1159,6 +1157,19 @@ describe('query scope, errors and saved-query tools', () => {
         { scope: 'release' }
       )
     );
+  });
+
+  it('ignores Mod-Enter while a query is already running', async () => {
+    runNative.mockReturnValue(new Promise(() => undefined));
+    renderNative(undefined, 'SELECT ?c WHERE { ?c a ?t }');
+
+    pressEditorKey('Enter');
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-sparql-run')).toBeDisabled()
+    );
+    pressEditorKey('Enter');
+
+    expect(runNative).toHaveBeenCalledTimes(1);
   });
 
   it('keeps Discard behind the more menu and restores the opened text', async () => {

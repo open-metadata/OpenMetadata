@@ -17,8 +17,6 @@ import {
   Badge,
   Box,
   Button,
-  ButtonUtility,
-  Input,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -320,39 +318,32 @@ const CommentBar = ({
   };
 
   return (
-    <form
-      className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-auto tw:flex tw:items-center tw:gap-3 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
-      data-testid="ontology-task-comment-bar"
-      onSubmit={(event) => {
-        event.preventDefault();
-        void send();
-      }}>
+    <div
+      className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-auto tw:flex tw:items-end tw:gap-3 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
+      data-testid="ontology-task-comment-bar">
       <Avatar
         initials={initialsOf(getEntityName(currentUser))}
         size="md"
         src={currentUser?.profile?.images?.image}
       />
-      <Input
+      <TextArea
         aria-label={t('label.comment')}
+        autoSize={{ minRows: 1, maxRows: 6 }}
         className="tw:flex-1"
-        inputDataTestId="ontology-task-comment-input"
+        data-testid="ontology-task-comment-input"
         placeholder={t('message.leave-a-comment')}
-        trailingSlot={
-          <ButtonUtility
-            className="tw:mr-1"
-            color="secondary"
-            data-testid="ontology-task-comment-send"
-            icon={Send01}
-            isDisabled={disabled}
-            size="xs"
-            tooltip={t('label.add-comment')}
-            type="submit"
-          />
-        }
         value={comment}
         onChange={setComment}
       />
-    </form>
+      <Button
+        aria-label={t('label.add-comment')}
+        color="secondary"
+        data-testid="ontology-task-comment-send"
+        iconLeading={Send01}
+        isDisabled={disabled}
+        onPress={() => void send()}
+      />
+    </div>
   );
 };
 

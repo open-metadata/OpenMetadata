@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-    Badge,
-    Button,
-    Select,
-    Typography
+  Badge,
+  Button,
+  Select,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { uniq } from 'lodash';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,9 +25,9 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-    AxiomType,
-    OntologyAxiom,
-    Provenance
+  AxiomType,
+  OntologyAxiom,
+  Provenance,
 } from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
@@ -37,14 +37,14 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyDefinitionList, {
-    DefinitionColumn
+  DefinitionColumn,
 } from '../OntologyAuthoringWorkspace/OntologyDefinitionList';
 import { shortenIris } from '../OntologyAuthoringWorkspace/OntologyDefinitionTable.utils';
 import OntologyAxiomEditor from '../OntologyAxiomEditor/OntologyAxiomEditor';
 import {
-    axiomFormValues,
-    axiomTypeLabel,
-    previewSentence
+  axiomFormValues,
+  axiomTypeLabel,
+  previewSentence,
 } from '../OntologyAxiomEditor/OntologyAxiomEditor.parts';
 import { overviewValidationQueryKey } from '../OntologyOverview/OntologyOverview.constants';
 
@@ -117,6 +117,7 @@ const OntologyAxiomWorkspace = ({
   onOpenConcept?: (conceptId: string) => void;
 }) => {
   const { t } = useTranslation();
+  const queryClient = useQueryClient();
   const { model, isError, refetch } = useOntologyStudioModel(ontology);
   const [axiomType, setAxiomType] = useState<string>(ALL);
   const [provenance, setProvenance] = useState<string>(ALL);
@@ -306,6 +307,10 @@ const OntologyAxiomWorkspace = ({
       toolbar={toolbar}
       onChanged={() => {
         void refetch();
+        // A saved or deleted constraint changes the verdict, so the shown result must not stay.
+        void queryClient.invalidateQueries({
+          queryKey: overviewValidationQueryKey(ontology.id),
+        });
         onWorkingChange?.();
       }}
       onRetry={() => void refetch()}>

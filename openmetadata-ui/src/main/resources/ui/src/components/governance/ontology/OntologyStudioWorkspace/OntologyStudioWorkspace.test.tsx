@@ -47,9 +47,23 @@ jest.mock(
     ({ definitionType = 'concept' }: { definitionType?: string }) =>
       <div data-testid={`authoring-${definitionType}`} />
 );
-jest.mock('../OntologyAxiomWorkspace/OntologyAxiomWorkspace', () => () => (
-  <div data-testid="axiom-workspace" />
-));
+const mockGuard = jest.fn((action: () => void) => action());
+jest.mock(
+  '../../../../hooks/governance/ontology/useOntologyDraftGuard',
+  () => ({ useOntologyDraftGuard: () => mockGuard })
+);
+jest.mock(
+  '../OntologyAxiomWorkspace/OntologyAxiomWorkspace',
+  () =>
+    ({ onOpenConcept }: { onOpenConcept?: (id: string) => void }) =>
+      (
+        <button
+          data-testid="axiom-workspace"
+          onClick={() => onOpenConcept?.('concept-1')}>
+          show on graph
+        </button>
+      )
+);
 jest.mock('../OntologyCreateForm/OntologyCreateForm', () => () => (
   <div data-testid="settings-form" />
 ));
@@ -179,5 +193,36 @@ describe('OntologyStudioWorkspace', () => {
 
       expect(screen.getByTestId('settings-form')).toBeInTheDocument();
     });
+  });
+
+  it('asks the draft guard before Show on graph leaves for the graph', async () => {
+    const onRequestEdit = jest.fn();
+    let pending: (() => void) | undefined;
+    renderWithQueryClient(
+      <OntologyStudioWorkspace
+        mode="definitions"
+        ontology={ontology}
+        viewSurface="graph"
+        onRequestEdit={onRequestEdit}
+        onRequestGraphSurface={jest.fn()}
+        onSaved={jest.fn()}
+      />
+    );
+    await flushReactQuery();
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('tab', { name: 'label.constraint-plural' })
+      );
+    });
+    mockGuard.mockImplementationOnce((action: () => void) => {
+      pending = action;
+    });
+    fireEvent.click(screen.getByTestId('axiom-workspace'));
+
+    expect(onRequestEdit).not.toHaveBeenCalled();
+
+    act(() => pending?.());
+
+    expect(onRequestEdit).toHaveBeenCalledWith('concept-1');
   });
 });

@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -122,6 +123,21 @@ it('shows final publication only with permission and supports approved activatio
   fireEvent.click(screen.getByRole('button', { name: 'label.publish' }));
 
   expect(props.onPublish).toHaveBeenCalledTimes(1);
+});
+
+it('keeps the comment multi-line: Enter adds a new line and only the send button posts', async () => {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  renderWithQueryClient(<OntologyTaskDetail {...props} />);
+  const input = screen.getByRole('textbox', { name: /label.comment/ });
+
+  await user.type(input, 'First line{Enter}Second line');
+
+  expect(input).toHaveValue('First line\nSecond line');
+  expect(props.onComment).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole('button', { name: 'label.add-comment' }));
+
+  expect(props.onComment).toHaveBeenCalledWith('First line\nSecond line');
 });
 
 it('shows the requester explanation without actions and posts repeated comments deliberately', async () => {

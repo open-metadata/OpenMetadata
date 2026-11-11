@@ -90,8 +90,6 @@ import OntologyNativeImportSkipped from './OntologyNativeImportSkipped';
 
 interface OntologyNativeImportPanelProps {
   readonly canImport: boolean;
-  /** Offers a new ontology as the target besides `ontology`; without `ontology` the target is always new. */
-  readonly isTargetSelectable?: boolean;
   readonly ontology?: Ontology;
   readonly onApplied: () => void;
   readonly onBusyChange?: (isBusy: boolean) => void;
@@ -314,18 +312,20 @@ const ImportFooterSummary = ({
   readonly selection: ReadonlySet<string>;
   readonly summary?: NativeOntologyImportSummary;
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const parts = summary ? importSummaryParts(summary, selection) : [];
   let text = t('message.ontology-import-supported-files');
   if (summary) {
     text =
       parts.length > 0
         ? t('message.native-import-saved-as-draft', {
-            changes: parts
-              .map(({ part, count }) =>
+            changes: new Intl.ListFormat(i18n.language, {
+              type: 'unit',
+            }).format(
+              parts.map(({ part, count }) =>
                 t(`message.native-import-count-${part}`, { count })
               )
-              .join(', '),
+            ),
           })
         : t('message.native-import-nothing-selected');
   }
@@ -381,14 +381,12 @@ const ImportIntro = ({
   canCreate,
   isDisabled,
   isNewTarget,
-  isTargetSelectable,
   ontology,
   onTargetChange,
 }: {
   readonly canCreate: boolean;
   readonly isDisabled: boolean;
   readonly isNewTarget: boolean;
-  readonly isTargetSelectable: boolean;
   readonly ontology?: Ontology;
   readonly onTargetChange: (target: NativeImportTarget) => void;
 }) => {
@@ -401,15 +399,13 @@ const ImportIntro = ({
           ? t('message.native-ontology-import-help')
           : t('message.ontology-import-into-help')}
       </Typography>
-      {(isTargetSelectable || !ontology) && (
-        <ImportTargetSelect
-          canCreate={canCreate}
-          isDisabled={isDisabled}
-          isNewTarget={isNewTarget}
-          ontology={ontology}
-          onChange={onTargetChange}
-        />
-      )}
+      <ImportTargetSelect
+        canCreate={canCreate}
+        isDisabled={isDisabled}
+        isNewTarget={isNewTarget}
+        ontology={ontology}
+        onChange={onTargetChange}
+      />
     </>
   );
 };
@@ -660,7 +656,6 @@ const ImportReading = ({
 
 const OntologyNativeImportPanel = ({
   canImport,
-  isTargetSelectable = false,
   ontology,
   onApplied,
   onBusyChange,
@@ -756,7 +751,6 @@ const OntologyNativeImportPanel = ({
           canCreate={canCreate}
           isDisabled={isLockedOrBusy}
           isNewTarget={isNewTarget}
-          isTargetSelectable={isTargetSelectable}
           ontology={ontology}
           onTargetChange={changeTarget}
         />

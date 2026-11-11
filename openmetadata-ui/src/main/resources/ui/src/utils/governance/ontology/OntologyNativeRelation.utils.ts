@@ -47,6 +47,7 @@ import {
   buildSubClassAxiomRequest,
   DataPropertyInput,
   getAvailableName,
+  getModelRelations,
   getPropertyLabel,
   humanizeName,
   OntologyModelRelation,
@@ -249,13 +250,50 @@ const declaredProperties = (model: OntologyStudioModel): DeclaredProperty => {
 };
 
 /** Adds the domain and range the ontology declares for an object property, as concept ids. */
+/** Each concept with every concept below it, through the hierarchy the model draws. */
+const descendantsOf = (model: OntologyStudioModel) => {
+  const children = new Map<string, string[]>();
+  getModelRelations(model)
+    .filter((relation) => relation.kind === 'subClassOf')
+    .forEach(({ from, to }) =>
+      children.set(to.id, [...(children.get(to.id) ?? []), from.id])
+    );
+
+  return (ids: readonly string[]) => {
+    const reached = new Set(ids);
+    let frontier = [...ids];
+    while (frontier.length > 0) {
+      frontier = frontier
+        .flatMap((id) => children.get(id) ?? [])
+        .filter((id) => !reached.has(id));
+      frontier.forEach((id) => reached.add(id));
+    }
+
+    return [...reached];
+  };
+};
+
 const scopeOf = (model: OntologyStudioModel) => {
   const concepts = new Map(
     model.concepts.map((concept) => [concept.iri, concept])
   );
   const declared = declaredProperties(model);
-  const idsOf = (iris: readonly string[] = []) =>
-    iris.map((iri) => concepts.get(iri)?.id ?? iri);
+  const withDescendants = descendantsOf(model);
+  /**
+   * The concepts an end may be: the declared classes and everything below them. A class the
+   * model does not hold (owl:Thing, an external vocabulary) cannot be checked, so it allows any.
+   */
+  const allowedIds = (iris: readonly string[] = []) => {
+    const known = iris.flatMap((iri) => {
+      const concept = concepts.get(iri);
+
+      return concept ? [concept.id] : [];
+    });
+
+    return iris.length > 0 && known.length === iris.length
+      ? withDescendants(known)
+      : undefined;
+  };
   const namesOf = (iris: readonly string[] = []) =>
     iris
       .map((iri) => {
@@ -267,14 +305,16 @@ const scopeOf = (model: OntologyStudioModel) => {
 
   return (type: NativeRelationType): NativeRelationType => {
     const property = declared(type.id);
-    if (!property?.domain?.length && !property?.range?.length) {
+    const domain = allowedIds(property?.domain);
+    const range = allowedIds(property?.range);
+    if (!property || (!domain && !range)) {
       return type;
     }
 
     return {
       ...type,
-      domain: idsOf(property.domain),
-      range: idsOf(property.range),
+      domain,
+      range,
       scopeLabel: `${namesOf(property.domain)} → ${namesOf(property.range)}`,
     };
   };

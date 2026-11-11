@@ -95,6 +95,26 @@ it.each(relations)(
   }
 );
 
+it('compiles two ANDed conditions into the query the Java contract test runs', () => {
+  const other = { ...target, id: 'other', iri: 'urn:visual:other' };
+  const fixture = fixtures.find((item) => item.name === 'twoConditions');
+
+  expect(
+    buildNativeVisualSparqlQuery([
+      { relation: relations[0], target },
+      { relation: { ...relations[2], to: other }, target: other },
+    ])
+  ).toBe(fixture?.query);
+});
+
+it('compiles a property domain condition into the query the Java contract test runs', () => {
+  const fixture = fixtures.find((item) => item.name === 'propertyDomain');
+
+  expect(buildNativePropertyQuery([{ kind: 'domain', target: source }])).toBe(
+    fixture?.query
+  );
+});
+
 it('rejects an IRI that could escape the target value', () => {
   expect(() =>
     buildNativeVisualSparqlQuery([

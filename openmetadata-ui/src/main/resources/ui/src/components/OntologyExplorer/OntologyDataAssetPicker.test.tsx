@@ -661,7 +661,9 @@ describe('OntologyDataAssetPicker', () => {
 
       await pick(/label\.owner/, 'Priya Raman');
       await waitFor(() =>
-        expect(lastFilter()).toContain('{"term":{"owners.id":"u-1"}}')
+        expect(lastFilter()).toContain(
+          '{"nested":{"path":"owners","query":{"term":{"owners.id":"u-1"}},"ignore_unmapped":true}}'
+        )
       );
 
       expect(lastFilter()).toContain('domains.fullyQualifiedName');

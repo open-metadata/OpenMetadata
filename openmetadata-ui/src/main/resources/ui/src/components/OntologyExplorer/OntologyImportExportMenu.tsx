@@ -102,13 +102,11 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const renderTransfer = (
     ontology: Ontology,
     canImport: boolean,
-    onApplied: () => void,
-    isTargetSelectable?: boolean
+    onApplied: () => void
   ) =>
     openKind === 'import' ? (
       <OntologyNativeImportDialog
         canImport={canImport}
-        isTargetSelectable={isTargetSelectable}
         ontology={ontology}
         onApplied={onApplied}
         onClose={close}
@@ -166,7 +164,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
       }
 
       return selectedOwner
-        ? renderTransfer(selectedOwner, canEditAll, props.onApplied, true)
+        ? renderTransfer(selectedOwner, canEditAll, props.onApplied)
         : renderOwnerPicker(props.ontologies);
     }
     if (props.kind === 'ontology') {

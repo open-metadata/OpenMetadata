@@ -646,15 +646,17 @@ describe('OntologyNativeImportPanel', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
-  it('offers no target choice unless the caller allows a new ontology', async () => {
+  it('describes importing into the ontology while it is the target', async () => {
     renderPanel();
 
-    expect(screen.queryByTestId('ontology-native-import-target')).toBeNull();
     expect(screen.getByText('message.ontology-import-into-help')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-target')
+    ).toHaveTextContent('Sales');
   });
 
   it('dry-runs again when the target switches to a new ontology and back, then imports into the ontology', async () => {
-    const { onApplied } = renderPanel({ isTargetSelectable: true });
+    const { onApplied } = renderPanel();
     dropFile();
     await parse();
 

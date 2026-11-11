@@ -404,6 +404,7 @@ describe('OntologyVisualQueryBuilder component', () => {
       'VALUES ?propertyType { owl:ObjectProperty owl:DatatypeProperty }'
     );
     expect(generated).not.toHaveTextContent('rdfs:domain ?target');
+    expect(screen.getByTestId('ontology-builder-run')).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
     fireEvent.click(await screen.findByRole('option', { name: 'Customer' }));
@@ -412,6 +413,7 @@ describe('OntologyVisualQueryBuilder component', () => {
       'VALUES ?target { <urn:retail:Customer> }'
     );
     expect(generated).toHaveTextContent('?property rdfs:domain ?target .');
+    expect(screen.getByTestId('ontology-builder-run')).toBeEnabled();
     expect(
       screen.queryByTestId('ontology-builder-incomplete')
     ).not.toBeInTheDocument();
@@ -437,6 +439,12 @@ describe('OntologyVisualQueryBuilder component', () => {
         'FinancialRiskCompliance.Compliance.AntiMoneyLaundering'
       )
     );
+
+    fireEvent.click(screen.getByTestId('ontology-builder-remove-condition-0'));
+
+    expect(
+      screen.getByTestId('ontology-builder-edit-as-sparql')
+    ).toBeDisabled();
   });
 
   it('hides the Edit as SPARQL action when no handler is provided', async () => {
@@ -551,6 +559,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     expect(
       screen.getByTestId('ontology-generated-sparql')
     ).not.toHaveTextContent('AntiMoneyLaundering');
+    expect(screen.getByTestId('ontology-builder-run')).toBeDisabled();
 
     fireEvent.click(screen.getByTestId('ontology-builder-reset'));
 

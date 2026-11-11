@@ -194,4 +194,31 @@ describe('OntologyNativeDataCanvas', () => {
     expect(root).toHaveAttribute('aria-pressed', 'true');
     expect(onSelectConcept).toHaveBeenCalledTimes(1);
   });
+
+  it('keeps the cards as real buttons inside a plain group, and clears the selection from the empty canvas only', () => {
+    const { onPaneClick, onSelectAsset } = renderCanvas();
+    const pane = screen.getByTestId('ontology-data-cluster-medication');
+
+    expect(pane).toHaveAttribute('role', 'group');
+    expect(pane).not.toHaveAttribute('tabindex');
+
+    const card = screen.getByTestId(
+      'ontology-data-asset-asset:medication:orders'
+    );
+    card.focus();
+    fireEvent.keyDown(card, { key: 'Enter' });
+    fireEvent.keyUp(card, { key: 'Enter' });
+
+    expect(onSelectAsset).toHaveBeenCalledWith(ASSETS[0]);
+
+    fireEvent.pointerDown(card);
+    fireEvent.pointerUp(card);
+
+    expect(onPaneClick).not.toHaveBeenCalled();
+
+    fireEvent.pointerDown(pane);
+    fireEvent.pointerUp(pane);
+
+    expect(onPaneClick).toHaveBeenCalledTimes(1);
+  });
 });

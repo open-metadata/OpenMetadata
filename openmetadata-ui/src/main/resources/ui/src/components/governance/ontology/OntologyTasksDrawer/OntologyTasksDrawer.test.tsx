@@ -371,6 +371,31 @@ it('requires a rejection reason and preserves its original text in the native pa
   );
 });
 
+it('says the approval was recorded, not that the release is approved, when other approvals are still required', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url.endsWith('/review')
+      ? Promise.resolve({ data: { ...review, callerCompletesRule: false } })
+      : read?.(url, config)
+  );
+  post.mockResolvedValue({ data: { ...task, availableTransitions: [] } });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'label.approve' })).toBeEnabled()
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'label.approve' }));
+
+  await waitFor(() =>
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'message.vote-recorded-waiting-for-other-approvers'
+    )
+  );
+
+  expect(showSuccessToast).not.toHaveBeenCalledWith(
+    'message.ontology-task-approved'
+  );
+});
+
 it('keeps a successful final vote approved when its reconciliation read fails', async () => {
   const read = get.getMockImplementation();
   let committed = false;

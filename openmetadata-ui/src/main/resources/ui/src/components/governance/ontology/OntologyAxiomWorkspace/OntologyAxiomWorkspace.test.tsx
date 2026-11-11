@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen } from '@testing-library/react';
+import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   AxiomType,
@@ -75,9 +75,18 @@ jest.mock('../../../../rest/ontologyAPI', () => ({
   getOntologyWorkingValidation: jest.fn(),
   restoreOntologyDefinition: jest.fn(),
 }));
-jest.mock('../OntologyAxiomEditor/OntologyAxiomEditor', () => () => (
-  <div data-testid="axiom-editor" />
-));
+jest.mock(
+  '../OntologyAxiomEditor/OntologyAxiomEditor',
+  () =>
+    ({ onSaved }: { onSaved?: (axiom: unknown) => void }) =>
+      (
+        <button
+          data-testid="axiom-editor"
+          onClick={() => onSaved?.({ id: 'new', name: 'new' })}>
+          save
+        </button>
+      )
+);
 
 const ontology = { id: 'o', name: 'fhir' } as Ontology;
 
@@ -124,5 +133,17 @@ describe('OntologyAxiomWorkspace', () => {
       await screen.findByText('message.ontology-validate-all-clean')
     ).toBeInTheDocument();
     expect(getOntologyWorkingValidation).toHaveBeenCalledTimes(1);
+  });
+
+  it('re-runs validation after a constraint is saved, so the result never goes stale', async () => {
+    renderWithQueryClient(<OntologyAxiomWorkspace ontology={ontology} />);
+    await screen.findByText('message.ontology-validate-all-clean');
+
+    fireEvent.click(screen.getByTestId('ontology-add-axiom'));
+    fireEvent.click(await screen.findByTestId('axiom-editor'));
+
+    await waitFor(() =>
+      expect(getOntologyWorkingValidation).toHaveBeenCalledTimes(2)
+    );
   });
 });

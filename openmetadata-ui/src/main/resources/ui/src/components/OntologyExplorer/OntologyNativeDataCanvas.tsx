@@ -689,6 +689,13 @@ const OntologyNativeDataCanvas = ({
     if (drag?.capturing) {
       setIsPanning(false);
       containerRef.current?.releasePointerCapture?.(event.pointerId);
+
+      return;
+    }
+    // A press on the empty canvas, not on a card, clears the selection.
+    const target = event.target as HTMLElement;
+    if (drag && (target === event.currentTarget || 'pane' in target.dataset)) {
+      onPaneClick();
     }
   };
 
@@ -970,23 +977,13 @@ const OntologyNativeDataCanvas = ({
       <div
         aria-label={t('label.graph')}
         className="tw:relative tw:origin-top-left"
+        data-pane=""
         data-testid={`ontology-data-cluster-${concept.id}`}
-        role="button"
+        role="group"
         style={{
           height: contentHeight,
           transform: `translate3d(${view.x}px, ${view.y}px, 0) scale(${view.zoom})`,
           width: contentWidth,
-        }}
-        tabIndex={0}
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            onPaneClick();
-          }
-        }}
-        onKeyDown={(event) => {
-          if (event.target === event.currentTarget && event.key === 'Escape') {
-            onPaneClick();
-          }
         }}>
         {renderEdges()}
         <RootNode

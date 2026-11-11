@@ -506,6 +506,8 @@ const OntologyVisualQueryBuilder = ({
     terms,
   ]);
   const { hasCopied, onCopyToClipBoard } = useClipboard(generatedQuery);
+  // Like the single-condition builder before it, nothing runs until one condition is complete.
+  const canRun = !isLoading && conditions.length > incomplete;
 
   const getRelationLabel = useCallback(
     (relation: RelationshipType) =>
@@ -804,7 +806,7 @@ const OntologyVisualQueryBuilder = ({
             color="secondary"
             data-testid="ontology-builder-edit-as-sparql"
             iconLeading={Code01}
-            isDisabled={isLoading}
+            isDisabled={!canRun}
             size="sm"
             onClick={() => onEditAsSparql(generatedQuery)}>
             {t('label.edit-as-sparql')}
@@ -814,7 +816,7 @@ const OntologyVisualQueryBuilder = ({
           color="primary"
           data-testid="ontology-builder-run"
           iconLeading={Play}
-          isDisabled={isLoading || isRunning}
+          isDisabled={!canRun || isRunning}
           size="sm"
           onClick={() => void handleRun()}>
           {isRunning ? t('label.running') : t('label.run-query')}

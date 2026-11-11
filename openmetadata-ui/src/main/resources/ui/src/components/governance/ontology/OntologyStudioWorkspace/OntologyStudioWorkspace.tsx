@@ -101,8 +101,9 @@ const OntologyStudioWorkspace = ({
   const { model } = useOntologyStudioModel(
     mode === 'definitions' ? ontology : undefined
   );
+  // Leaving for the graph drops an open definition editor, so it asks first.
   const openConcept = onRequestEdit
-    ? (conceptId: string) => onRequestEdit(conceptId)
+    ? (conceptId: string) => guard(() => onRequestEdit(conceptId))
     : undefined;
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,

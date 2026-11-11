@@ -11,18 +11,18 @@
  *  limitations under the License.
  */
 import {
-    fireEvent,
-    render,
-    screen,
-    waitFor,
-    within
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { applyPatch, Operation } from 'fast-json-patch';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-    Characteristic,
-    Kind,
-    OntologyProperty
+  Characteristic,
+  Kind,
+  OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
@@ -40,7 +40,6 @@ jest.mock('../../../../rest/axiosClient', () => ({
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
-
 
 /** A new property submits with Create, an existing one with Save. */
 const SUBMIT = /^label\.(save|create-entity)$/;
@@ -71,6 +70,38 @@ const property: OntologyProperty = {
 
 describe('OntologyPropertyEditor', () => {
   beforeEach(() => jest.clearAllMocks());
+
+  it('marks edits unsaved and Cancel puts the saved values back', async () => {
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        property={property}
+        onSaved={jest.fn()}
+      />
+    );
+    const displayName = screen.getByRole('textbox', {
+      name: 'label.display-name',
+    });
+    const cancel = screen.getByRole('button', { name: 'label.cancel' });
+
+    expect(cancel).toBeDisabled();
+
+    fireEvent.change(displayName, { target: { value: 'Changed' } });
+
+    expect(
+      await screen.findByTestId('ontology-property-footer-status')
+    ).toHaveTextContent('label.unsaved-changes');
+
+    fireEvent.click(cancel);
+
+    await waitFor(() => expect(displayName).not.toHaveValue('Changed'));
+
+    expect(
+      screen.getByTestId('ontology-property-footer-status')
+    ).toHaveTextContent('label.no-unsaved-changes');
+    expect(patch).not.toHaveBeenCalled();
+  });
 
   it('creates an object property in its native ontology with a server-minted IRI', async () => {
     post.mockResolvedValue({ data: { ...property, kind: Kind.Object } });

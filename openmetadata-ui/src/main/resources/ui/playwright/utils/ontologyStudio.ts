@@ -118,23 +118,14 @@ export async function openExportAdvanced(page: Page) {
   await expect(advanced).toHaveAttribute('aria-expanded', 'true');
 }
 
-/**
- * Only the All ontologies import offers a new ontology as the target: it asks
- * for an existing ontology first, then the import can go to a new one instead.
- */
+/** Opens one ontology's Import dialog and points it at a new ontology instead. */
 export async function openNewOntologyImport(
   page: Page,
-  owner: Pick<Ontology, 'name'>
+  owner: Pick<Ontology, 'id'>
 ) {
-  await page.goto('/governance/ontology');
+  await page.goto(`/governance/ontology?ontology=${owner.id}`);
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
   await openOntologyTransfer(page, 'import');
-  await selectOntologyOption(
-    page,
-    page.getByTestId('ontology-import-target-picker').getByRole('button'),
-    owner.name,
-    { replacedOnPick: true }
-  );
   await page.getByTestId('ontology-native-import-target').click();
   await page.getByRole('option', { name: /new ontology/i }).click();
 }

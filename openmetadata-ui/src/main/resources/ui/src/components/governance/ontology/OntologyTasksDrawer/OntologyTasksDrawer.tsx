@@ -469,7 +469,10 @@ const OntologyTasksDrawer = ({
   const announce = (kind: ReviewWrite['kind'], current: Detail) => {
     const version = 'v' + (current.release.semanticVersion ?? '');
     const messages: Partial<Record<ReviewWrite['kind'], string>> = {
-      approve: t('message.ontology-task-approved', { version }),
+      // Under an all-reviewers rule one approval may leave others pending.
+      approve: current.review.callerCompletesRule
+        ? t('message.ontology-task-approved', { version })
+        : t('message.vote-recorded-waiting-for-other-approvers'),
       [combinedApproval]: t('message.ontology-task-approved-published', {
         version,
         ontology: getEntityName(current.review.ontology),

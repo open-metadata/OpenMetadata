@@ -13,6 +13,12 @@
 
 import { Ontology } from '../../../generated/entity/data/ontology';
 import {
+  AxiomType,
+  ExpressionKind,
+  OntologyAxiom,
+  Provenance,
+} from '../../../generated/entity/data/ontologyAxiom';
+import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../generated/entity/data/ontologyConcept';
@@ -296,6 +302,53 @@ describe('OntologyNativeRelation.utils', () => {
     ).toContainEqual(['other', [[servedBy.iri, true]]]);
     // An unknown target only checks the domain, as in the panel before a target is chosen.
     expect(idsOf({ sourceId: account.id })).toHaveLength(2);
+  });
+
+  it('lets a subclass, owl:Thing and classes outside the model fit, and disables only an unrelated known concept', () => {
+    const premium = concept('PremiumAccount');
+    const premiumIsAccount: OntologyAxiom = {
+      axiomType: AxiomType.SubclassOf,
+      description: 'PremiumAccount is a Account',
+      displayName: 'PremiumAccount is a Account',
+      expressions: [{ classIri: account.iri, kind: ExpressionKind.NamedClass }],
+      fullyQualifiedName: 'RetailCommerce.PremiumIsAccount',
+      id: 'axiom-premium',
+      name: 'PremiumIsAccount',
+      ontology: { id: ontology.id, type: 'ontology' },
+      provenance: Provenance.Manual,
+      subjectIri: premium.iri,
+    };
+    const ofThing = objectProperty('describes', `${NS}describes`, {
+      domain: ['http://www.w3.org/2002/07/owl#Thing'],
+      range: [customer.iri],
+    });
+    const ofExternal = objectProperty('cites', `${NS}cites`, {
+      domain: ['https://schema.org/Organization'],
+      range: [customer.iri],
+    });
+    const hierarchyModel: OntologyStudioModel = {
+      ...model,
+      axioms: [premiumIsAccount],
+      concepts: [account, customer, premium],
+      properties: [servedBy, ofThing, ofExternal],
+    };
+    const groups = buildNativeRelationGroups(
+      buildNativeRelationCatalog(hierarchyModel, [], labels),
+      { hierarchy: 'Hierarchy', relationships: 'Relationships' }
+    );
+    const disabledFor = (sourceId: string, targetId: string) =>
+      splitUnfitRelationOptions(groups, { sourceId, targetId }, 'Other')
+        .flatMap((group) => group.options)
+        .filter((option) => option.isDisabled)
+        .map((option) => option.id);
+
+    expect(disabledFor(premium.id, customer.id)).toEqual([]);
+    expect(disabledFor(customer.id, customer.id)).toEqual([servedBy.iri]);
+    expect(disabledFor(premium.id, account.id)).toEqual([
+      servedBy.iri,
+      ofThing.iri,
+      ofExternal.iri,
+    ]);
   });
 
   it('reads relation phrases from synonyms and finds their type', () => {

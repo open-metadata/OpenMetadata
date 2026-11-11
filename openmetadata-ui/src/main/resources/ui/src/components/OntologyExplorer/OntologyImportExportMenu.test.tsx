@@ -60,17 +60,14 @@ jest.mock(
     default: ({
       ontology: owner,
       canImport,
-      isTargetSelectable,
       onClose,
     }: {
       ontology?: Ontology;
       canImport?: boolean;
-      isTargetSelectable?: boolean;
       onClose: () => void;
     }) => (
       <div data-testid="ontology-native-import-dialog-stub" role="dialog">
         <span>{owner?.name ?? 'no ontology'}</span>
-        {isTargetSelectable ? <span>target selectable</span> : null}
         <button disabled={!canImport}>Import</button>
         <button onClick={onClose}>Close import</button>
       </div>
@@ -193,7 +190,7 @@ describe('OntologyImportExportMenu', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('opens the import dialog into the ontology without a target choice', async () => {
+  it('opens the import dialog into the ontology', async () => {
     render(
       <OntologyImportExportMenu
         canImport
@@ -211,7 +208,6 @@ describe('OntologyImportExportMenu', () => {
     const dialog = screen.getByTestId('ontology-native-import-dialog-stub');
 
     expect(dialog).toHaveTextContent('Sales');
-    expect(dialog).not.toHaveTextContent('target selectable');
     expect(screen.getByRole('button', { name: 'Import' })).toBeEnabled();
     expect(
       screen.queryByTestId('ontology-release-export-modal-stub')
@@ -281,7 +277,7 @@ describe('OntologyImportExportMenu', () => {
       expect(screen.getAllByRole('dialog')).toHaveLength(1);
       expect(
         screen.getByTestId('ontology-native-import-dialog-stub')
-      ).toHaveTextContent('Owner 24target selectable');
+      ).toHaveTextContent('Owner 24');
 
       await waitFor(() =>
         expect(

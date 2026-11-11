@@ -24,8 +24,6 @@ interface OntologyNativeImportDialogProps {
   /** Without an ontology the file always becomes a new ontology. */
   readonly ontology?: Ontology;
   readonly canImport?: boolean;
-  /** Lets the user import into a new ontology instead of `ontology`. */
-  readonly isTargetSelectable?: boolean;
   readonly onApplied?: () => void;
 }
 
@@ -33,7 +31,6 @@ const OntologyNativeImportDialog = ({
   onClose,
   ontology,
   canImport = false,
-  isTargetSelectable,
   onApplied,
 }: OntologyNativeImportDialogProps) => {
   const { t } = useTranslation();
@@ -73,7 +70,6 @@ const OntologyNativeImportDialog = ({
           />
           <OntologyNativeImportPanel
             canImport={canImport}
-            isTargetSelectable={isTargetSelectable}
             ontology={ontology}
             onApplied={() => {
               onApplied?.();
