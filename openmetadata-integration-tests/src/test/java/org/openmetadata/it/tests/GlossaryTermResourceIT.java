@@ -33,6 +33,7 @@ import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.DenyPolicyPrincipals;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -4382,6 +4383,30 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     assertEquals(setup.totalAssets(), result.getNumberOfRowsProcessed());
     assertEquals(1, result.getNumberOfRowsPassed());
     assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+  }
+
+  @Test
+  void test_validateGlossaryTagsAddition_listsOnlyAssetsTheCallerMayView(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    MutualExclusiveGlossarySetup setup = mutualExclusiveGlossarySetup(ns, "pf_view");
+    for (Table t : setup.allTables()) {
+      applyTermToTable(admin, t, setup.term);
+    }
+    OpenMetadataClient denied =
+        DenyPolicyPrincipals.clientDenied(
+            ns.shortPrefix("validate_view"), Entity.TABLE, MetadataOperation.VIEW_BASIC);
+
+    ValidateGlossaryTagsRequest validate =
+        new ValidateGlossaryTagsRequest().withGlossaryTags(List.of(setup.glossaryTagLabel));
+    String path = "/v1/glossaryTerms/" + setup.term.getId() + "/tags/validate";
+    BulkOperationResult result =
+        denied.getHttpClient().execute(HttpMethod.PUT, path, validate, BulkOperationResult.class);
+
+    assertEquals(ApiStatus.PARTIAL_SUCCESS, result.getStatus());
+    assertEquals(setup.failTables.size(), result.getNumberOfRowsFailed());
+    assertTrue(result.getFailedRequest().isEmpty());
+    assertTrue(result.getSuccessRequest().isEmpty());
   }
 
   @Test
