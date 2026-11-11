@@ -194,9 +194,9 @@ def test_ci_queues_the_v1_and_v2_snowflake_jobs_in_one_group():
 
 
 def test_ci_reruns_these_meta_tests_when_a_workflow_they_read_changes():
-    """The shared Python workflow runs these tests only for changed paths in its filters."""
+    """The Python entrypoint selects these tests when their workflow inputs change."""
     root = Path(__file__).resolve().parents[4]
-    shared = yaml.safe_load((root / ".github/workflows/py-tests-shared.yml").read_text())
+    shared = yaml.safe_load((root / ".github/workflows/py-tests.yml").read_text())
     step = next(step for job in shared["jobs"].values() for step in job.get("steps", []) if step.get("id") == "filter")
     filters = yaml.safe_load(step["with"]["filters"])
     for name in ("python", "e2e"):

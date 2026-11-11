@@ -24,6 +24,10 @@ on:
         type: choice
         options: [pull-request, merge-queue, nightly]
         default: nightly
+      connectors:
+        description: CLI E2E connectors as a JSON array; leave empty for all connectors (nightly mode)
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -46,6 +50,7 @@ jobs:
       versions: ${{ steps.matrix.outputs.versions }}
       static-version: ${{ steps.matrix.outputs.static-version }}
       coverage-version: ${{ steps.matrix.outputs.coverage-version }}
+      latest-version: ${{ steps.matrix.outputs.latest-version }}
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -117,9 +122,55 @@ jobs:
           persist-credentials: false
       - uses: ./.github/actions/prepare-classification-models
 
+  # Produces the one artifact docker/development/Dockerfile needs, so shards can skip Maven.
+  build-distribution:
+    name: Build Backend Distribution
+    needs: changes
+    if: ${{ needs.changes.outputs.python == 'true' && needs.changes.outputs.integration == 'true' }}
+    timeout-minutes: 45
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup JDK 21
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+
+      # Restore-only: pull_request / merge_group writes are scoped to refs no
+      # other run can read, so saving would only consume the repo's cache quota.
+      - name: Restore Maven dependencies
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      # -am builds only openmetadata-dist's dependency closure, and -DonlyBackend is what
+      # drops openmetadata-ui from it. Removing either pulls the whole frontend build back
+      # in, which also needs the antlr4 CLI that this job deliberately does not install.
+      - name: Build backend distribution
+        run: mvn -DskipTests -DonlyBackend clean package -pl openmetadata-dist -am
+        shell: bash
+
+      - name: Upload backend distribution
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: openmetadata-backend-distribution
+          path: openmetadata-dist/target/openmetadata-*.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 1
+
   python:
-    needs: [changes, prepare-spacy-model]
-    if: ${{ needs.changes.outputs.python == 'true' }}
+    needs: [changes, prepare-spacy-model, build-distribution]
+    if: ${{ !cancelled() && needs.changes.result == 'success' && needs.prepare-spacy-model.result == 'success' && (needs.build-distribution.result == 'success' || (needs.changes.outputs.integration == 'false' && needs.build-distribution.result == 'skipped')) }}
     uses: ./.github/workflows/py-tests-shared.yml
     with:
       python-versions: ${{ needs.changes.outputs.versions }}
@@ -128,9 +179,21 @@ jobs:
       run-integration: ${{ needs.changes.outputs.integration == 'true' }}
       run-e2e: ${{ needs.changes.outputs.e2e == 'true' }}
 
+  cli-e2e:
+    needs: [changes, prepare-spacy-model, build-distribution]
+    if: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) }}
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/py-cli-e2e-tests.yml
+    secrets: inherit
+    with:
+      python-version: ${{ needs.changes.outputs.latest-version }}
+      connectors: ${{ inputs.connectors || '' }}
+
   py-tests-status:
     name: py-tests-status
-    needs: [changes, prepare-spacy-model, python]
+    needs: [changes, prepare-spacy-model, build-distribution, python, cli-e2e]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     steps:
@@ -139,6 +202,10 @@ jobs:
           CHANGES_RESULT: ${{ needs.changes.result }}
           PYTHON_CHANGED: ${{ needs.changes.outputs.python }}
           MODELS_RESULT: ${{ needs.prepare-spacy-model.result }}
+          BUILD_RESULT: ${{ needs.build-distribution.result }}
+          RUN_INTEGRATION: ${{ needs.changes.outputs.integration }}
+          CLI_RESULT: ${{ needs.cli-e2e.result }}
+          RUN_CLI: ${{ (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) }}
           PIPELINE_RESULT: ${{ needs.python.result }}
         run: |
           if [ "$CHANGES_RESULT" != "success" ]; then
@@ -150,6 +217,18 @@ jobs:
             false) expected="skipped" ;;
             *) echo "Invalid Python change result: $PYTHON_CHANGED"; exit 1 ;;
           esac
+          expected_build="skipped"
+          if [ "$PYTHON_CHANGED" = "true" ] && [ "$RUN_INTEGRATION" = "true" ]; then
+            expected_build="success"
+          fi
+          expected_cli="skipped"
+          if [ "$RUN_CLI" = "true" ]; then
+            expected_cli="success"
+          fi
+          if [ "$BUILD_RESULT" != "$expected_build" ] || [ "$CLI_RESULT" != "$expected_cli" ]; then
+            echo "Unexpected Python results: build=$BUILD_RESULT (expected $expected_build) cli=$CLI_RESULT (expected $expected_cli)"
+            exit 1
+          fi
           if [ "$MODELS_RESULT" != "$expected" ] || [ "$PIPELINE_RESULT" != "$expected" ]; then
             echo "Expected $expected: models=$MODELS_RESULT pipeline=$PIPELINE_RESULT"
             exit 1
@@ -157,7 +236,7 @@ jobs:
         shell: bash
 
   notify:
-    needs: [changes, prepare-spacy-model, python, py-tests-status]
+    needs: [changes, prepare-spacy-model, build-distribution, python, cli-e2e, py-tests-status]
     if: ${{ always() && !cancelled() && (github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly')) && needs.py-tests-status.result == 'failure' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -172,5 +251,72 @@ jobs:
           payload: |
             {
               "channel": "C03EYBDDX17",
-              "text": "<!subteam^S0AH093PEQL> 🔥 *Python Tests Nightly* failed on `${{ github.ref_name }}` 🔥\nselection: ${{ needs.changes.result }} · models: ${{ needs.prepare-spacy-model.result }} · tests: ${{ needs.python.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+              "text": "<!subteam^S0AH093PEQL> 🔥 *Python Tests Nightly* failed on `${{ github.ref_name }}` 🔥\nselection: ${{ needs.changes.result }} · models: ${{ needs.prepare-spacy-model.result }} · build: ${{ needs.build-distribution.result }} · tests: ${{ needs.python.result }} · CLI E2E: ${{ needs.cli-e2e.result }}\nLogs: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
             }
+
+  sonar-cloud-coverage-upload:
+    runs-on: ubuntu-latest
+    needs: [changes, python, cli-e2e]
+    if: ${{ github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.python.result == 'success' && needs.cli-e2e.result == 'success' }}
+    continue-on-error: true
+    steps:
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: ${{ needs.changes.outputs.latest-version }}
+
+      - name: Install coverage dependencies
+        run: |
+          python3 -m venv env
+          env/bin/python -m pip install "coverage[toml]"
+
+      - name: Download coverage artifacts
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: '*coverage-*'
+          path: artifacts
+
+      - name: Download CLI test results
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: tests-*
+          path: test-artifacts
+
+      - name: Download unit and integration test results
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: py-*-test-results-*
+          path: test-artifacts
+
+      - name: Generate report
+        run: |
+          shopt -s nullglob
+          for folder in artifacts/*coverage-*; do
+            artifact=$(basename "$folder")
+            for file in "$folder"/.coverage*; do
+              [ -f "$file" ] && cp "$file" "ingestion/.coverage.${artifact}.$(basename "$file")"
+            done
+          done
+          mkdir -p ingestion/junit
+          find test-artifacts -name 'test-results-*.xml' | while IFS= read -r file; do
+            name="${file#test-artifacts/}"
+            name="${name//\//-}"
+            cp "$file" "ingestion/junit/test-results-${name}"
+          done
+          source env/bin/activate
+          cd ingestion
+          coverage combine --rcfile=pyproject.toml --keep .coverage*
+          coverage xml --rcfile=pyproject.toml --data-file=.coverage
+        shell: bash
+
+      - name: Push Results to Sonar
+        uses: SonarSource/sonarqube-scan-action@v7
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.INGESTION_SONAR_SECRET }}
+        with:
+          projectBaseDir: ingestion/

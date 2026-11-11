@@ -85,6 +85,7 @@ def test_matrix(project, event):
     return {
         "versions": versions if full_suite else [highest],
         "run-integration": event != "pull_request",
+        "latest-version": highest,
         "static-version": lowest,
         "coverage-version": lowest if full_suite else highest,
     }
