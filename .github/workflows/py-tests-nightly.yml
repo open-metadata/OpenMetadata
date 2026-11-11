@@ -25,7 +25,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  prepare-spacy-model:
+    runs-on: ubuntu-24.04
+    cache-mode: read
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: ./.github/actions/prepare-classification-models
+
   mysql:
+    needs: prepare-spacy-model
     uses: ./.github/workflows/py-tests-shared.yml
     with:
       compose-args: "-m no-ui -s true -i false"
@@ -34,11 +46,14 @@ jobs:
       run-unit-tests: true
       run-coverage: true
       full-suite: true
+      classification-models-prepared: true
 
   postgres:
+    needs: prepare-spacy-model
     uses: ./.github/workflows/py-tests-shared.yml
     with:
       compose-args: "-m no-ui -d postgresql -s true -i false"
       artifact-prefix: py-postgres
       test-profile: python-postgresql-integration
       full-suite: true
+      classification-models-prepared: true

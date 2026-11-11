@@ -8,9 +8,6 @@ inputs:
   classification-models:
     description: Import model archives and retain models in the test profile
     default: 'false'
-  classification-models-artifact:
-    description: Name of the model archive artifact to download
-    default: classification-models
   java-version:
     description: Java Version to install
     default: '21'
@@ -126,7 +123,7 @@ runs:
       if: inputs.classification-models == 'true'
       uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
       with:
-        name: ${{ inputs.classification-models-artifact }}
+        name: classification-models
         path: ${{ runner.temp }}/classification-models
 
     - name: Import classification model caches

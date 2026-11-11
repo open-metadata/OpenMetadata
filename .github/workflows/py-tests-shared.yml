@@ -35,6 +35,11 @@ on:
         required: false
         type: boolean
         default: false
+      classification-models-prepared:
+        description: The caller already uploaded the shared classification-models artifact
+        required: false
+        type: boolean
+        default: false
       full-suite:
         description: Run all supported Python versions and integration tests
         required: false
@@ -150,6 +155,9 @@ jobs:
           retention-days: 1
 
   python-matrix:
+    name: Prepare Python Tests
+    cache-mode: read
+    timeout-minutes: 15
     needs: changes
     if: ${{ needs.changes.outputs.python == 'true' && (inputs.run-unit-tests || needs.changes.outputs.integration == 'true') }}
     runs-on: ubuntu-24.04
@@ -176,26 +184,13 @@ jobs:
           python3 scripts/prepare_classification_models.py test-matrix --project ingestion "${args[@]}" \
             | jq -r 'to_entries[] | "\(.key)=\(.value | if type == "array" then tojson else . end)"' >> "$GITHUB_OUTPUT"
 
-  prepare-spacy-model:
-    permissions:
-      contents: read
-    needs: changes
-    if: ${{ needs.changes.outputs.python == 'true' && (inputs.run-unit-tests || needs.changes.outputs.integration == 'true') }}
-    cache-mode: read
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha || github.sha }}
-          persist-credentials: false
-      - uses: ./.github/actions/prepare-classification-models
-        with:
-          artifact-name: ${{ inputs.artifact-prefix }}-classification-models
+      - name: Prepare classification models
+        if: ${{ !inputs.classification-models-prepared }}
+        uses: ./.github/actions/prepare-classification-models
 
   py-static-checks:
     name: Static Checks
-    needs: [changes, python-matrix, prepare-spacy-model]
+    needs: [changes, python-matrix]
     if: ${{ inputs.run-unit-tests && needs.changes.outputs.python == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
@@ -208,7 +203,6 @@ jobs:
         with:
           python-version: ${{ needs.python-matrix.outputs.static-version }}
           classification-models: 'true'
-          classification-models-artifact: ${{ inputs.artifact-prefix }}-classification-models
           install-server: 'false'
       - name: Run Static Checks
         run: |
@@ -228,7 +222,7 @@ jobs:
 
   py-unit-tests:
     name: Unit Tests
-    needs: [changes, python-matrix, prepare-spacy-model]
+    needs: [changes, python-matrix]
     if: ${{ inputs.run-unit-tests && needs.changes.outputs.python == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
@@ -247,7 +241,6 @@ jobs:
         with:
           python-version: ${{ matrix.py-version }}
           classification-models: 'true'
-          classification-models-artifact: ${{ inputs.artifact-prefix }}-classification-models
           install-server: 'false'
 
       # The job checks out the PR head, which can predate the cli_e2e_v2 framework,
@@ -318,7 +311,7 @@ jobs:
 
   py-integration-tests:
     name: "Integration Tests (${{ matrix.shard.name }}, ${{ matrix.py-version }})"
-    needs: [changes, python-matrix, build-distribution, prepare-spacy-model]
+    needs: [changes, python-matrix, build-distribution]
     if: ${{ needs.changes.outputs.integration == 'true' }}
     timeout-minutes: 180
     runs-on: ubuntu-latest
@@ -398,7 +391,6 @@ jobs:
         with:
           python-version: ${{ matrix.py-version}}
           classification-models: 'true'
-          classification-models-artifact: ${{ inputs.artifact-prefix }}-classification-models
           args: ${{ inputs.compose-args }}
 
       - name: Reclaim unused disk for the Exasol shard
