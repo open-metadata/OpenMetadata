@@ -29,7 +29,7 @@ test('filters, previews, and keeps a native pack installed across reload', async
     await page.getByTestId('ontology-library-trigger').click();
     await page.getByTestId('ontology-library-filter-cross-industry').click();
     await expect(page.getByTestId('ontology-pack-sosa-ssn')).toBeVisible();
-    await expect(page.getByTestId('ontology-pack-sosa-ssn')).toHaveCount(0);
+    await expect(page.getByTestId('ontology-pack-fhir')).toHaveCount(0);
 
     const firstSample = page.waitForResponse(
       (response) =>
