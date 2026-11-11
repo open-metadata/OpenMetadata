@@ -15,7 +15,10 @@ import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.sun.net.httpserver.HttpExchange;
+import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -25,10 +28,20 @@ import java.net.HttpURLConnection;
 import java.net.InetSocketAddress;
 import java.net.ProtocolException;
 import java.net.URL;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.security.GeneralSecurityException;
+import java.security.Signature;
 import java.security.cert.CertificateException;
+import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import javax.security.auth.x500.X500Principal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -961,13 +974,79 @@ class SamlValidatorTest {
   }
 
   @Test
-  void validateIdpConnectivityTreatsSamlClientErrorsAsWarnings() throws Exception {
+  void validateSamlConfigurationSignsTheCheckRequestWhenRequestSigningIsOn() throws Exception {
+    try (SigningIdp idp = SigningIdp.start()) {
+      SamlSSOClientConfig samlConfig = baseConfig(idp.url());
+      samlConfig.setSecurity(new SamlSecurityConfig().withSendSignedAuthRequest(true));
+
+      FieldError error =
+          validator.validateSamlConfiguration(new AuthenticationConfiguration(), samlConfig);
+
+      assertNull(error);
+      assertTrue(idp.acceptedSignedRequest(), "the IdP must have verified a signed request");
+    }
+  }
+
+  @Test
+  void validateSamlConfigurationShowsTheIdpReasonWhenItRejectsAnUnsignedRequest() throws Exception {
+    try (SigningIdp idp = SigningIdp.start()) {
+      FieldError error =
+          validator.validateSamlConfiguration(
+              new AuthenticationConfiguration(), baseConfig(idp.url()));
+
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+      assertEquals(
+          "The identity provider rejected the SAML sign-in request (HTTP 400): "
+              + IdpErrorResponseTest.ENTRA_UNSIGNED_REQUEST_REASON,
+          error.getError());
+    }
+  }
+
+  @Test
+  void validateIdpConnectivityReportsAnSpKeyThatCannotSignRequests() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.setSecurity(new SamlSecurityConfig().withSendSignedAuthRequest(true));
+      samlConfig.getSp().setSpPrivateKey(pkcs1PrivateKey());
+
+      FieldError error =
+          invokePrivate("validateIdpConnectivity", SamlSSOClientConfig.class, samlConfig);
+
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
+      assertTrue(error.getError().contains("PKCS#8"));
+    }
+  }
+
+  @Test
+  void validateIdpConnectivityReportsSettingsTheLiveLoginCannotBuild() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(200, "ok")) {
+      SamlSSOClientConfig samlConfig = baseConfig(server.url());
+      samlConfig.setSecurity(new SamlSecurityConfig().withWantAssertionEncrypted(true));
+      samlConfig.getSp().withSpX509Certificate(null).setSpPrivateKey(null);
+
+      FieldError error =
+          invokePrivate("validateIdpConnectivity", SamlSSOClientConfig.class, samlConfig);
+
+      assertNotNull(error);
+      assertEquals("", error.getField());
+      assertTrue(error.getError().startsWith("Could not build the SAML sign-in request: "));
+    }
+  }
+
+  @Test
+  void validateIdpConnectivityReportsSamlClientErrorsWithTheIdpReason() throws Exception {
     try (TestSsoServer server = TestSsoServer.start(400, "invalid saml request")) {
       FieldError error =
           invokePrivate(
               "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig(server.url()));
 
-      assertNull(error);
+      assertNotNull(error);
+      assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+      assertEquals(
+          "The identity provider rejected the SAML sign-in request (HTTP 400): invalid saml request",
+          error.getError());
     }
   }
 
@@ -988,62 +1067,81 @@ class SamlValidatorTest {
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, methodError.getField());
       assertNotNull(serverErrorField);
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, serverErrorField.getField());
+      assertEquals(
+          "SSO URL is not accessible (HTTP 503): unavailable", serverErrorField.getError());
     }
   }
 
   @Test
-  void validateIdpConnectivityMapsClientErrorsWithoutSamlHints() throws Exception {
-    try (TestSsoServer server = TestSsoServer.start(400, "plain client error")) {
+  void validateIdpConnectivityMapsClientErrorsWithoutAReadableReason() throws Exception {
+    try (TestSsoServer server = TestSsoServer.start(400, "")) {
       FieldError error =
           invokePrivate(
               "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig(server.url()));
 
       assertNotNull(error);
       assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+      assertTrue(
+          error
+              .getError()
+              .startsWith("The identity provider rejected the SAML sign-in request (HTTP 400)."));
     }
   }
 
   @Test
-  void validateIdpConnectivityTreatsMalformedUrlsAsWarnings() throws Exception {
+  void validateSamlConfigurationRejectsMalformedSsoUrlsBeforeTheCheckRequest() {
+    FieldError error =
+        validator.validateSamlConfiguration(
+            new AuthenticationConfiguration(), baseConfig("http://bad host"));
+
+    assertNotNull(error);
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_IDP_SSO_URL, error.getField());
+    assertTrue(error.getError().startsWith("Invalid SAML IdP SSO Login URL"));
+  }
+
+  @Test
+  void validateIdpConnectivityTreatsUnreachableIdpsAsWarnings() throws Exception {
     FieldError error =
         invokePrivate(
-            "validateIdpConnectivity", SamlSSOClientConfig.class, baseConfig("http://bad host"));
+            "validateIdpConnectivity",
+            SamlSSOClientConfig.class,
+            baseConfig("http://localhost:0/sso"));
 
     assertNull(error);
   }
 
   @Test
-  void readResponseSnippetReturnsEmptyWhenConnectionHasNoReadableStreams() throws Exception {
+  void readResponseBodyReturnsEmptyWhenConnectionHasNoReadableStreams() throws Exception {
     HttpURLConnection connection = mock(HttpURLConnection.class);
     when(connection.getErrorStream()).thenReturn(null);
     when(connection.getInputStream()).thenThrow(new IOException("no body"));
 
-    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+    String body = invokePrivate("readResponseBody", HttpURLConnection.class, connection);
 
-    assertEquals("", snippet);
+    assertEquals("", body);
   }
 
   @Test
-  void readResponseSnippetFallsBackToInputStreams() throws Exception {
+  void readResponseBodyFallsBackToInputStreams() throws Exception {
     HttpURLConnection connection = mock(HttpURLConnection.class);
     when(connection.getErrorStream()).thenReturn(null);
     when(connection.getInputStream())
         .thenReturn(new java.io.ByteArrayInputStream("from-input".getBytes()));
 
-    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+    String body = invokePrivate("readResponseBody", HttpURLConnection.class, connection);
 
-    assertEquals("from-input", snippet);
+    assertEquals("from-input", body);
   }
 
   @Test
-  void readResponseSnippetClosesReadableStreams() throws Exception {
+  void readResponseBodyClosesReadableStreams() throws Exception {
     TrackingInputStream inputStream = new TrackingInputStream("from-error".getBytes());
     HttpURLConnection connection = mock(HttpURLConnection.class);
     when(connection.getErrorStream()).thenReturn(inputStream);
 
-    String snippet = invokePrivate("readResponseSnippet", HttpURLConnection.class, connection);
+    String body = invokePrivate("readResponseBody", HttpURLConnection.class, connection);
 
-    assertEquals("from-error", snippet);
+    assertEquals("from-error", body);
     assertTrue(inputStream.isClosed());
   }
 
@@ -1079,13 +1177,23 @@ class SamlValidatorTest {
     verify(validator, never()).openConnection(any(URL.class));
   }
 
+  /**
+   * An identity provider on a private network is never probed, but the live login still cannot
+   * sign with a key OneLogin cannot load, so the check reports it without sending anything.
+   */
   @Test
-  void createTestSamlRequestFallsBackWhenConfigIsIncomplete() throws Exception {
-    String request =
-        invokePrivate(
-            "createTestSamlRequest", SamlSSOClientConfig.class, new SamlSSOClientConfig());
+  void validateIdpConnectivityReportsAnUnusableSpKeyForAnIdpItMayNotProbe() throws Exception {
+    validator = spy(validator);
+    SamlSSOClientConfig samlConfig = baseConfig("http://169.254.169.254/latest/meta-data/");
+    samlConfig.setSecurity(new SamlSecurityConfig().withSendSignedAuthRequest(true));
+    samlConfig.getSp().setSpPrivateKey(pkcs1PrivateKey());
 
-    assertEquals("dGVzdA==", request);
+    FieldError error =
+        invokePrivate("validateIdpConnectivity", SamlSSOClientConfig.class, samlConfig);
+
+    assertNotNull(error);
+    assertEquals(ValidationErrorBuilder.FieldPaths.SAML_SP_KEY, error.getField());
+    verify(validator, never()).openConnection(any(URL.class));
   }
 
   @Test
@@ -1290,18 +1398,41 @@ class SamlValidatorTest {
     return (T) method.invoke(validator, arguments);
   }
 
+  /**
+   * The test key in PKCS#1 form ({@code BEGIN RSA PRIVATE KEY}), as OpenSSL 1.x {@code genrsa}
+   * writes it. A 2048-bit PKCS#8 RSA key is a 26-byte PrivateKeyInfo header followed by the PKCS#1
+   * RSAPrivateKey.
+   */
+  private static String pkcs1PrivateKey() {
+    String base64 =
+        GENERIC_PRIVATE_KEY
+            .replace("-----BEGIN PRIVATE KEY-----", "")
+            .replace("-----END PRIVATE KEY-----", "")
+            .replaceAll("\\s", "");
+    byte[] pkcs8 = Base64.getDecoder().decode(base64);
+    byte[] pkcs1 = Arrays.copyOfRange(pkcs8, 26, pkcs8.length);
+    return "-----BEGIN RSA PRIVATE KEY-----\n"
+        + Base64.getMimeEncoder(64, "\n".getBytes(StandardCharsets.US_ASCII)).encodeToString(pkcs1)
+        + "\n-----END RSA PRIVATE KEY-----\n";
+  }
+
+  private static void respond(HttpExchange exchange, int statusCode, String body)
+      throws IOException {
+    byte[] payload = body.getBytes(StandardCharsets.UTF_8);
+    exchange.sendResponseHeaders(statusCode, payload.length == 0 ? -1 : payload.length);
+    try (OutputStream responseBody = exchange.getResponseBody()) {
+      responseBody.write(payload);
+    }
+  }
+
   private record TestSsoServer(HttpServer server, String url) implements AutoCloseable {
     static TestSsoServer start(int statusCode, String body) throws IOException {
+      return start(exchange -> respond(exchange, statusCode, body));
+    }
+
+    static TestSsoServer start(HttpHandler handler) throws IOException {
       HttpServer server = HttpServer.create(new InetSocketAddress(0), 0);
-      server.createContext(
-          "/sso",
-          exchange -> {
-            byte[] payload = body.getBytes();
-            exchange.sendResponseHeaders(statusCode, payload.length);
-            try (OutputStream responseBody = exchange.getResponseBody()) {
-              responseBody.write(payload);
-            }
-          });
+      server.createContext("/sso", handler);
       server.start();
       return new TestSsoServer(
           server, "http://localhost:" + server.getAddress().getPort() + "/sso");
@@ -1310,6 +1441,83 @@ class SamlValidatorTest {
     @Override
     public void close() {
       server.stop(0);
+    }
+  }
+
+  /**
+   * An identity provider that, like a Microsoft Entra application with "Require verification
+   * certificates" on, accepts a sign-in request only when it carries a valid HTTP-Redirect binding
+   * signature by the SP key, and otherwise answers with Entra's AADSTS76021 error page.
+   */
+  private static final class SigningIdp implements AutoCloseable {
+    private final AtomicBoolean acceptedSignedRequest = new AtomicBoolean();
+    private final TestSsoServer server;
+
+    private SigningIdp() throws IOException {
+      server = TestSsoServer.start(this::handle);
+    }
+
+    static SigningIdp start() throws IOException {
+      return new SigningIdp();
+    }
+
+    String url() {
+      return server.url();
+    }
+
+    boolean acceptedSignedRequest() {
+      return acceptedSignedRequest.get();
+    }
+
+    private void handle(HttpExchange exchange) throws IOException {
+      boolean signed = isSignedBySpKey(exchange.getRequestURI().getRawQuery());
+      acceptedSignedRequest.compareAndSet(false, signed);
+      respond(
+          exchange,
+          signed ? 200 : 400,
+          signed ? "Sign in to your account" : IdpErrorResponseTest.ENTRA_UNSIGNED_REQUEST_PAGE);
+    }
+
+    /** SAML 2.0 bindings §3.4.4.1: the signature covers the parameters exactly as encoded. */
+    private static boolean isSignedBySpKey(String rawQuery) {
+      Map<String, String> parameters = new HashMap<>();
+      for (String parameter : rawQuery.split("&")) {
+        String[] nameAndValue = parameter.split("=", 2);
+        parameters.put(nameAndValue[0], nameAndValue.length > 1 ? nameAndValue[1] : "");
+      }
+      if (!parameters.containsKey("Signature")) {
+        return false;
+      }
+      String signedContent =
+          "SAMLRequest="
+              + parameters.get("SAMLRequest")
+              + (parameters.containsKey("RelayState")
+                  ? "&RelayState=" + parameters.get("RelayState")
+                  : "")
+              + "&SigAlg="
+              + parameters.get("SigAlg");
+      try {
+        Signature verifier = Signature.getInstance("SHA256withRSA");
+        verifier.initVerify(spCertificate().getPublicKey());
+        verifier.update(signedContent.getBytes(StandardCharsets.UTF_8));
+        return verifier.verify(
+            Base64.getDecoder()
+                .decode(URLDecoder.decode(parameters.get("Signature"), StandardCharsets.UTF_8)));
+      } catch (GeneralSecurityException e) {
+        return false;
+      }
+    }
+
+    private static X509Certificate spCertificate() throws CertificateException {
+      return (X509Certificate)
+          CertificateFactory.getInstance("X.509")
+              .generateCertificate(
+                  new ByteArrayInputStream(GENERIC_CERT.getBytes(StandardCharsets.US_ASCII)));
+    }
+
+    @Override
+    public void close() {
+      server.close();
     }
   }
 

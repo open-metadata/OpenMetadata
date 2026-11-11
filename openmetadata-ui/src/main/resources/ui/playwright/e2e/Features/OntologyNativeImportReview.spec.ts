@@ -13,12 +13,16 @@
 
 import { Page } from '@playwright/test';
 import { readFile } from 'fs/promises';
+import { Status as InstallJobStatus } from '../../../src/generated/api/data/ontologyPackInstallJob';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
-import { selectOntologyOption } from '../../utils/ontologyStudio';
+import {
+  selectOntologyOption,
+  waitForPackInstallJob,
+} from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -786,17 +790,13 @@ test.describe(
         await expect(
           page.getByTestId('ontology-library-pack-review')
         ).toContainText('New');
-        const applied = page.waitForResponse(
-          (response) =>
-            response.url().includes('/api/v1/ontologyChangeSets/') &&
-            response.url().endsWith('/apply') &&
-            response.request().method() === 'POST'
-        );
+        const settled = waitForPackInstallJob(page, ontology.id);
         await page.getByTestId('ontology-library-native-install').click();
-        expect((await applied).ok()).toBeTruthy();
+        expect((await settled).status).toBe(InstallJobStatus.Completed);
         await page.keyboard.press('Escape');
 
-        await expect(publish).toHaveText(`Publish (${before + 62})`);
+        // The 14 DCAT properties whose ranges sit outside the pack are skipped, not installed.
+        await expect(publish).toHaveText(`Publish (${before + 48})`);
       } finally {
         await remove(api, ontology.id);
         if (installed) {
@@ -826,9 +826,12 @@ test.describe(
 
         const review = page.getByTestId('ontology-library-pack-review');
         await expect(review).toContainText('Dataset');
-        await expect(
-          review.locator('[data-testid^="ontology-native-import-item-status-"]')
-        ).toHaveText(Array(62).fill('New'));
+        const statuses = review.locator(
+          '[data-testid^="ontology-native-import-item-status-"]'
+        );
+        await expect(statuses).toHaveCount(62);
+        await expect(statuses.filter({ hasText: /^New$/ })).toHaveCount(48);
+        await expect(statuses.filter({ hasText: /^Skipped$/ })).toHaveCount(14);
         await expect(
           review.locator(
             '[data-testid^="ontology-native-import-item-warning-"]'
@@ -846,7 +849,7 @@ test.describe(
       let failures = 1;
 
       try {
-        await page.route('**/api/v1/ontologies/*/library/*/review', (route) =>
+        await page.route('**/api/v1/ontologies/*/library/*/summary', (route) =>
           failures-- > 0
             ? route.fulfill({ status: 500, body: '{"message":"boom"}' })
             : route.continue()
