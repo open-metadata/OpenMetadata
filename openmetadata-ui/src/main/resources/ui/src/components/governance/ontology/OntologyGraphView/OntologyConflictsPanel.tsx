@@ -24,6 +24,8 @@ import { useTranslation } from 'react-i18next';
 import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
 
 interface OntologyConflictsPanelProps {
+  /** False until a validation run answered, so a pending run never reads as clean. */
+  hasResult: boolean;
   isChecking: boolean;
   isFailed: boolean;
   violations: OntologyProfileViolation[];
@@ -62,12 +64,19 @@ const ConflictRow = ({
   </li>
 );
 
-/** Lists what the server finds wrong with the working draft, with a link to each concept a clash names. */
 /** Says the draft is clean, only once validation answered with no conflicts. */
-const CleanNote = ({ isShown }: { isShown: boolean }) => {
+const CleanNote = ({
+  hasConflicts,
+  hasResult,
+  isFailed,
+}: {
+  hasConflicts: boolean;
+  hasResult: boolean;
+  isFailed: boolean;
+}) => {
   const { t } = useTranslation();
 
-  return isShown ? (
+  return hasResult && !hasConflicts && !isFailed ? (
     <Typography
       className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
       color="secondary"
@@ -77,7 +86,9 @@ const CleanNote = ({ isShown }: { isShown: boolean }) => {
   ) : null;
 };
 
+/** Lists what the server finds wrong with the working draft, with a link to each concept a clash names. */
 const OntologyConflictsPanel = ({
+  hasResult,
   isChecking,
   isFailed,
   violations,
@@ -149,7 +160,11 @@ const OntologyConflictsPanel = ({
               ))}
             </ul>
           ) : null}
-          <CleanNote isShown={!hasConflicts && !isFailed} />
+          <CleanNote
+            hasConflicts={hasConflicts}
+            hasResult={hasResult}
+            isFailed={isFailed}
+          />
         </Box>
       ) : null}
     </Card>

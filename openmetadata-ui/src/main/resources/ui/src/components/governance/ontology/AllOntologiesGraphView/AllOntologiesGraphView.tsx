@@ -242,12 +242,15 @@ const AllOntologiesGraphView = ({
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        <OntologyTreeView
-          density="compact"
-          selectedNodeId={selectedConceptId}
-          source={{ kind: 'native', index: treeIndex }}
-          onSelect={selectNode}
-        />
+        // Leaves room on the right for the floating health card.
+        <div className={selected ? 'tw:h-full' : 'tw:h-full tw:pr-92'}>
+          <OntologyTreeView
+            density="compact"
+            selectedNodeId={selectedConceptId}
+            source={{ kind: 'native', index: treeIndex }}
+            onSelect={selectNode}
+          />
+        </div>
       );
     }
     if (graphMode === 'data') {
@@ -394,7 +397,7 @@ const AllOntologiesGraphView = ({
         {renderSearch()}
         {renderGraphMode()}
         {renderSurface()}
-        {selected ? null : (
+        {selected || graphMode === 'data' ? null : (
           <OntologyHealthPanel isRaised health={health} onConnect={openOwner} />
         )}
       </div>
