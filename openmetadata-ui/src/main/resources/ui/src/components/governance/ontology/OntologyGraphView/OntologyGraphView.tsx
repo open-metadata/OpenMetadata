@@ -1436,6 +1436,10 @@ const OntologyGraphView = ({
         }
         isEditable={Boolean(workingConcept)}
         isEditing={isEditing}
+        isEditorUnavailable={
+          [isEditing, !releaseId, canEditConcept].every(Boolean) &&
+          draftConceptQuery.isError
+        }
         key={selected.id}
         model={model}
         relationTypeGroups={relationTypeGroups}
@@ -1785,6 +1789,7 @@ const OntologyGraphView = ({
   const renderSearch = () => {
     const finder = (
       <OntologyConceptSearch
+        opensUpward={Boolean(searchSlot)}
         results={searchResults}
         value={search}
         onChange={setSearch}

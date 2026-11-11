@@ -130,6 +130,8 @@ interface OntologyConceptInspectorProps {
   readonly onSelectConcept: (concept: OntologyConcept) => void;
   /** Given in Edit mode: the concept's own fields edit in place with a Save bar. */
   readonly editor?: OntologyConceptEditorState;
+  /** Edit mode could not load the concept's working copy, so it stays read-only. */
+  readonly isEditorUnavailable?: boolean;
 }
 
 interface RelationAuthoringProps {
@@ -422,6 +424,7 @@ const OntologyConceptInspector = ({
   onOpenData,
   onSelectConcept,
   editor,
+  isEditorUnavailable,
 }: OntologyConceptInspectorProps) => {
   const { t } = useTranslation();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
@@ -1058,6 +1061,16 @@ const OntologyConceptInspector = ({
   return (
     <OntologyStudioDrawer testId="ontology-concept-inspector">
       {renderHeader()}
+      {isEditorUnavailable ? (
+        <Typography
+          className="tw:px-6 tw:pt-3"
+          color="danger"
+          data-testid="ontology-concept-editor-error"
+          role="alert"
+          size="text-sm">
+          {t('server.unexpected-error')}
+        </Typography>
+      ) : null}
       {editor ? (
         // Edit mode: the body and its Save bar are the concept editor's form.
         <ConceptEditorProvider editor={editor}>

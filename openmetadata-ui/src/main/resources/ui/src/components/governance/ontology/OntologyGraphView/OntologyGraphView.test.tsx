@@ -2200,6 +2200,28 @@ describe('OntologyGraphView', () => {
     );
   });
 
+  it('says the working copy failed to load instead of leaving Edit read-only without a reason', async () => {
+    (getOntologyConcept as jest.Mock).mockRejectedValue(new Error('boom'));
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+
+    expect(
+      await screen.findByTestId('ontology-concept-editor-error')
+    ).toHaveTextContent('server.unexpected-error');
+    expect(
+      screen.queryByRole('textbox', { name: 'label.description' })
+    ).not.toBeInTheDocument();
+  });
+
   it('keeps unsaved field edits when a relation is added from the same panel', async () => {
     (createOntologyAxiom as jest.Mock).mockResolvedValue({});
     (getOntologyConcept as jest.Mock).mockResolvedValue(customer);
@@ -3315,6 +3337,19 @@ describe('OntologyGraphView', () => {
           </OntologyGraphSearchSlotContext.Provider>
         </MemoryRouter>
       );
+
+    it('opens the search results upward from the bottom toolbar, so the canvas never cuts them off', async () => {
+      renderAiGraph();
+      await screen.findByTestId('native-ontology-graph');
+
+      fireEvent.change(within(slot).getByTestId('ontology-graph-search'), {
+        target: { value: 'customer' },
+      });
+
+      expect(
+        within(slot).getByTestId('ontology-graph-search-results')
+      ).toHaveClass('tw:bottom-full');
+    });
 
     it('moves the term search into the sub-bar slot and keeps the canvas controls', async () => {
       renderAiGraph();

@@ -1424,6 +1424,22 @@ describe('OntologyExplorerPage', () => {
     ).not.toHaveAttribute('aria-describedby');
   });
 
+  it('shows why Publish is disabled when the pointer rests on it', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderNativeStudio('');
+    const trigger = screen.getByTestId('ontology-publication-trigger');
+
+    expect(trigger).toBeDisabled();
+
+    // react-aria counts hover only after the pointer has moved once.
+    fireEvent.mouseMove(document);
+    await user.hover(trigger.parentElement as HTMLElement);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'message.ontology-choose-ontology-to-publish'
+    );
+  });
+
   it('disables Publish on All ontologies and opens no dialog', async () => {
     renderNativeStudio('');
     const trigger = screen.getByTestId('ontology-publication-trigger');
@@ -1531,6 +1547,17 @@ describe('OntologyExplorerPage', () => {
     expect(
       screen.queryByTestId('ontology-add-concept')
     ).not.toBeInTheDocument();
+  });
+
+  it('offers Add concept on the Tree view as on the Graph view', async () => {
+    renderNativeStudio('?ontology=native-sales&mode=edit');
+    await screen.findByTestId('native-canvas');
+
+    expect(screen.getByTestId('ontology-add-concept')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('submode-tab-tree'));
+
+    expect(await screen.findByTestId('ontology-add-concept')).toBeVisible();
   });
 
   it('refreshes the server publication count after a native definition save', async () => {
