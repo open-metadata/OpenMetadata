@@ -458,20 +458,6 @@ const WorkflowsPage = () => {
             <SlideoutMenu.Content>
               <div className="tw:flex tw:flex-col tw:gap-5">
                 <div>
-                  <Typography
-                    as="p"
-                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
-                    {t('label.display-name')}
-                  </Typography>
-                  <Input
-                    data-testid="workflow-display-name"
-                    isDisabled={isSubmitting}
-                    placeholder={t('message.enter-display-name')}
-                    value={workflowDisplayName}
-                    onChange={setWorkflowDisplayName}
-                  />
-                </div>
-                <div>
                   <div className="tw:flex tw:items-center tw:gap-0.5 tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
                     <Typography as="span">
                       {t('label.workflow-name')}
@@ -507,6 +493,20 @@ const WorkflowsPage = () => {
                       {nameError}
                     </Typography>
                   )}
+                </div>
+                <div>
+                  <Typography
+                    as="p"
+                    className="tw:m-0 tw:mb-1.5 tw:text-sm tw:font-medium tw:text-secondary">
+                    {t('label.display-name')}
+                  </Typography>
+                  <Input
+                    data-testid="workflow-display-name"
+                    isDisabled={isSubmitting}
+                    placeholder={t('message.enter-display-name')}
+                    value={workflowDisplayName}
+                    onChange={setWorkflowDisplayName}
+                  />
                 </div>
                 <div>
                   <Typography
