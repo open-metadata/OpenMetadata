@@ -11,15 +11,15 @@
  *  limitations under the License.
  */
 import {
-  Alert,
-  Box,
-  Button,
-  ButtonUtility,
-  Table,
-  TableCard,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    ButtonUtility,
+    Table,
+    TableCard,
+    Typography
 } from '@openmetadata/ui-core-components';
-import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
+import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import { Fragment, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -195,19 +195,18 @@ const OntologyDefinitionList = <
     );
   };
 
-  const renderDelete = () => (
-    <>
-      {definition && permission.canDelete && (
-        <Button
-          color="secondary-destructive"
-          size="sm"
-          onPress={() => setIsDeleting(true)}>
-          {t('label.delete')}
-        </Button>
-      )}
-      {renderDeleteDialog()}
-    </>
-  );
+  const renderDeleteAction = () =>
+    definition && permission.canDelete ? (
+      <ButtonUtility
+        aria-label={t('label.delete')}
+        color="tertiary"
+        data-testid="ontology-definition-delete"
+        icon={Trash01}
+        size="sm"
+        tooltip={t('label.delete')}
+        onClick={() => setIsDeleting(true)}
+      />
+    ) : null;
 
   const renderEditorForm = () => (
     <Fragment
@@ -220,7 +219,7 @@ const OntologyDefinitionList = <
           onChanged?.();
         }
       )}
-      <div className="tw:flex tw:empty:hidden">{renderDelete()}</div>
+      {renderDeleteDialog()}
     </Fragment>
   );
 
@@ -272,6 +271,7 @@ const OntologyDefinitionList = <
             {title}
           </Typography>
         </Box>
+        {renderDeleteAction()}
         <ButtonUtility
           data-testid="ontology-definition-drawer-close"
           icon={XClose}
@@ -305,7 +305,9 @@ const OntologyDefinitionList = <
     }
 
     return renderDrawer(
-      definition ? getEntityName(definition) : entityLabel,
+      definition
+        ? getEntityName(definition)
+        : t('label.new-entity', { entity: entityLabel }),
       renderEditorForm()
     );
   };
@@ -369,7 +371,7 @@ const OntologyDefinitionList = <
           {(item) => (
             <Table.Row id={item.id}>
               <Table.Cell>
-                <Box align="center" className="tw:max-w-120 tw:min-w-0" gap={2}>
+                <Box align="center" className="tw:max-w-80 tw:min-w-0" gap={2}>
                   <span
                     aria-hidden
                     className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"

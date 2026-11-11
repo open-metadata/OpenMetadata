@@ -16,9 +16,9 @@ import { pick } from 'lodash';
 import type { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
-  Characteristic,
-  CreateOntologyProperty,
-  Kind,
+    Characteristic,
+    CreateOntologyProperty,
+    Kind
 } from '../../../../generated/api/data/createOntologyProperty';
 import { OntologyProperty } from '../../../../generated/entity/data/ontologyProperty';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
@@ -187,6 +187,7 @@ export const propertyFormFields = (
       label: t('label.name'),
       type: FieldTypes.TEXT,
       required: true,
+      placeholder: t('message.ontology-property-name-placeholder'),
       props: { isDisabled: editing },
       rules: {
         validate: (value: string) =>

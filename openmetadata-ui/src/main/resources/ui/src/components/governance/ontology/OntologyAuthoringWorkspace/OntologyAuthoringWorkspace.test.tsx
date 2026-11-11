@@ -18,9 +18,9 @@ import { Access } from '../../../../generated/entity/policies/accessControl/reso
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
-  flushReactQuery,
-  renderWithQueryClient,
-  runQueryNotificationsSynchronously,
+    flushReactQuery,
+    renderWithQueryClient,
+    runQueryNotificationsSynchronously
 } from '../../../../test/unit/test-utils';
 import OntologyAuthoringWorkspace from './OntologyAuthoringWorkspace';
 
@@ -231,7 +231,9 @@ describe('OntologyAuthoringWorkspace', () => {
       target: { value: 'purchasedBy' },
     });
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+      fireEvent.click(
+        screen.getByRole('button', { name: 'label.create-entity' })
+      );
     });
 
     await waitFor(() =>

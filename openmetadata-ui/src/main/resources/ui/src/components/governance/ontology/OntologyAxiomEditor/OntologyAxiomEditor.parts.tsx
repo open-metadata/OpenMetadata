@@ -12,63 +12,62 @@
  */
 
 import {
-  Alert,
-  Box,
-  Button,
-  ButtonGroup,
-  ButtonGroupItem,
-  Card,
-  FieldTypes,
-  getField,
-  Input,
-  Select,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    ButtonGroup,
+    ButtonGroupItem,
+    Card,
+    FieldTypes,
+    getField,
+    Input,
+    Select,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { pick } from 'lodash';
-import { Key, ReactNode } from 'react';
+import { Key } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-  AxiomType,
-  ExpressionKind,
-  OntologyExpression,
+    AxiomType,
+    ExpressionKind,
+    OntologyExpression
 } from '../../../../generated/api/data/createOntologyAxiom';
 import {
-  OntologyProfileReport,
-  Severity,
+    OntologyProfileReport,
+    Severity
 } from '../../../../generated/api/data/ontologyProfileReport';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyExpressionEditor, {
-  defaultExpression,
-  getExpressionRenderKey,
+    defaultExpression,
+    getExpressionRenderKey
 } from '../../../OntologyExplorer/OntologyExpressionEditor';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { ONTOLOGY_DATATYPE_OPTIONS } from '../OntologyIriInput/OntologyIriInput.constants';
 import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
-  AXIOM_LABELS,
-  EMPTY_AXIOM_FORM,
-  formatOntologyExpression,
-  isClassExpressionAxiom,
-  OntologyAxiomFormState,
+    AXIOM_LABELS,
+    EMPTY_AXIOM_FORM,
+    formatOntologyExpression,
+    isClassExpressionAxiom,
+    OntologyAxiomFormState
 } from './OntologyAxiomEditor.utils';
 import {
-  AxiomProblem,
-  EMPTY_QUICK_RULE,
-  formToQuickRule,
-  QuickQuantifier,
-  QuickRule,
-  QuickRuleKind,
-  quickRuleSentence,
-  quickRuleToForm,
-  QUICK_QUANTIFIERS,
-  QUICK_QUANTIFIER_LABELS,
-  QUICK_RULE_HELP,
-  QUICK_RULE_LABELS,
-  routeAxiomProblems,
-  RoutedAxiomProblems,
+    AxiomProblem,
+    EMPTY_QUICK_RULE,
+    formToQuickRule,
+    QuickQuantifier,
+    QuickRule,
+    QuickRuleKind,
+    quickRuleSentence,
+    quickRuleToForm,
+    QUICK_QUANTIFIERS,
+    QUICK_QUANTIFIER_LABELS,
+    QUICK_RULE_HELP,
+    QUICK_RULE_LABELS,
+    routeAxiomProblems,
+    RoutedAxiomProblems
 } from './OntologyAxiomQuickRule.utils';
 import { AxiomEditorMode } from './useOntologyAxiomRule';
 
@@ -172,56 +171,6 @@ export const previewSentence = (
     .join(' ');
 };
 
-export const AxiomFrame = ({
-  isAiMode,
-  children,
-}: {
-  isAiMode: boolean;
-  children: ReactNode;
-}) =>
-  isAiMode ? (
-    <section
-      className="tw:flex tw:flex-col tw:gap-4.5"
-      data-testid="ontology-axiom-panel">
-      {children}
-    </section>
-  ) : (
-    <Card
-      className="tw:flex tw:flex-col tw:gap-5 tw:border tw:border-secondary tw:p-5"
-      data-testid="ontology-axiom-panel">
-      {children}
-    </Card>
-  );
-
-export const AxiomTitle = ({
-  isAiMode,
-  axiom,
-}: {
-  isAiMode: boolean;
-  axiom?: OntologyAxiom;
-}) => {
-  const { t } = useTranslation();
-
-  return isAiMode ? (
-    <Typography
-      as="h3"
-      className="not-prose tw:m-0"
-      size="text-sm"
-      weight="semibold">
-      {axiom
-        ? getEntityName(axiom)
-        : t('label.new-entity', { entity: t('label.constraint') })}
-    </Typography>
-  ) : (
-    <Typography as="h3" size="text-lg" weight="semibold">
-      {t('label.ontology')} {t('label.constraint-plural')}
-    </Typography>
-  );
-};
-
-export const axiomButtonSize = (isAiMode: boolean) =>
-  isAiMode ? 'sm' : undefined;
-
 export const AxiomPreview = ({ sentence }: { sentence: string }) => {
   const { t } = useTranslation();
 
@@ -229,9 +178,11 @@ export const AxiomPreview = ({ sentence }: { sentence: string }) => {
     <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
       <Card.Content className="tw:flex tw:flex-col tw:gap-1">
         <Typography color="secondary" size="text-xs" weight="medium">
-          {t('label.preview')}
+          {t('label.reads-as')}
         </Typography>
-        <Typography size="text-sm">{sentence}</Typography>
+        <Typography size="text-sm">
+          {sentence || t('message.ontology-axiom-preview-empty')}
+        </Typography>
       </Card.Content>
     </Card>
   );
@@ -455,26 +406,38 @@ export const AxiomModeSwitch = ({
 }) => {
   const { t } = useTranslation();
 
+  // A grey band across the drawer, whose body pads 24px on each side.
   return (
-    <ButtonGroup
-      disallowEmptySelection
-      aria-label={t('label.rule')}
-      data-testid="ontology-axiom-mode"
-      selectedKeys={[mode]}
-      size="sm"
-      onSelectionChange={(keys) => {
-        const [next] = [...keys];
-        if (next) {
-          onChange(next as AxiomEditorMode);
-        }
-      }}>
-      <ButtonGroupItem data-testid="ontology-axiom-mode-quick" id="quick">
-        {t('label.quick')}
-      </ButtonGroupItem>
-      <ButtonGroupItem data-testid="ontology-axiom-mode-advanced" id="advanced">
-        {t('label.advanced')}
-      </ButtonGroupItem>
-    </ButtonGroup>
+    <div className="tw:-mx-6 tw:-mt-6 tw:mb-1 tw:flex tw:flex-wrap tw:items-center tw:gap-3 tw:border-b tw:border-secondary tw:bg-secondary tw:px-6 tw:py-3">
+      <ButtonGroup
+        disallowEmptySelection
+        aria-label={t('label.rule')}
+        data-testid="ontology-axiom-mode"
+        selectedKeys={[mode]}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const [next] = [...keys];
+          if (next) {
+            onChange(next as AxiomEditorMode);
+          }
+        }}>
+        <ButtonGroupItem data-testid="ontology-axiom-mode-quick" id="quick">
+          {t('label.quick')}
+        </ButtonGroupItem>
+        <ButtonGroupItem
+          data-testid="ontology-axiom-mode-advanced"
+          id="advanced">
+          {t('label.advanced')}
+        </ButtonGroupItem>
+      </ButtonGroup>
+      <Typography color="secondary" size="text-sm">
+        {t(
+          mode === 'quick'
+            ? 'message.ontology-axiom-quick-help'
+            : 'message.ontology-axiom-advanced-help'
+        )}
+      </Typography>
+    </div>
   );
 };
 
@@ -557,47 +520,6 @@ export const AxiomOutcome = ({
         {t('message.ontology-profile-validation-help')}
       </Typography>
     </Box>
-  );
-};
-
-export const AxiomActions = ({
-  isReady,
-  isSavable,
-  isSubmitting,
-  isValidating,
-  size,
-  onValidate,
-}: {
-  isReady: boolean;
-  isSavable: boolean;
-  isSubmitting: boolean;
-  isValidating: boolean;
-  size?: 'sm';
-  onValidate: () => void;
-}) => {
-  const { t } = useTranslation();
-
-  return (
-    <div className="tw:flex tw:flex-wrap tw:justify-end tw:gap-2">
-      <Button
-        color="secondary"
-        data-testid="ontology-axiom-validate"
-        isDisabled={!isReady}
-        isLoading={isValidating}
-        size={size}
-        onClick={onValidate}>
-        {t('label.validate')}
-      </Button>
-      <Button
-        color="primary"
-        data-testid="ontology-axiom-submit"
-        isDisabled={!isSavable}
-        isLoading={isSubmitting}
-        size={size}
-        type="submit">
-        {t('label.save')}
-      </Button>
-    </div>
   );
 };
 

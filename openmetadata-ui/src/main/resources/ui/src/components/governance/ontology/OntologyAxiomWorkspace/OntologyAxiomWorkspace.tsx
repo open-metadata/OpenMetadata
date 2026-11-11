@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import {
-  Badge,
-  Button,
-  Select,
-  Typography,
+    Badge,
+    Button,
+    Select,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
@@ -25,9 +25,9 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-  AxiomType,
-  OntologyAxiom,
-  Provenance,
+    AxiomType,
+    OntologyAxiom,
+    Provenance
 } from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
@@ -37,14 +37,14 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import OntologyDefinitionList, {
-  DefinitionColumn,
+    DefinitionColumn
 } from '../OntologyAuthoringWorkspace/OntologyDefinitionList';
 import { shortenIris } from '../OntologyAuthoringWorkspace/OntologyDefinitionTable.utils';
 import OntologyAxiomEditor from '../OntologyAxiomEditor/OntologyAxiomEditor';
 import {
-  axiomFormValues,
-  axiomTypeLabel,
-  previewSentence,
+    axiomFormValues,
+    axiomTypeLabel,
+    previewSentence
 } from '../OntologyAxiomEditor/OntologyAxiomEditor.parts';
 import { overviewValidationQueryKey } from '../OntologyOverview/OntologyOverview.constants';
 
@@ -191,7 +191,10 @@ const OntologyAxiomWorkspace = ({
       id: 'sentence',
       label: t('label.sentence'),
       render: (axiom) => (
-        <Typography as="span" className="tw:line-clamp-1" size="text-sm">
+        <Typography
+          as="span"
+          className="tw:line-clamp-2 tw:min-w-64"
+          size="text-sm">
           {sentenceOf(axiom)}
         </Typography>
       ),
