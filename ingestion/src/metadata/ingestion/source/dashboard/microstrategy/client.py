@@ -121,9 +121,13 @@ class MicroStrategyClient:
         try:
             response.raise_for_status()
         except requests.HTTPError as exc:
+            hint = (
+                f"No MicroStrategy Library API at {self.library_url}/api; check Host Port and Library Path."
+                if response.status_code == 404
+                else "Check the username, password and Login Mode (1 Standard, 8 Anonymous, 16 LDAP)."
+            )
             raise MicroStrategyApiError(
-                f"Login failed with HTTP {response.status_code}: {response.text[:500]}. Check the username, "
-                "password and Login Mode (1 Standard, 8 Anonymous, 16 LDAP)."
+                f"Login failed with HTTP {response.status_code}: {response.text[:500]}. {hint}"
             ) from exc
         token = response.headers.get(AUTH_TOKEN_HEADER)
         if not token:

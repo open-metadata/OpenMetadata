@@ -398,6 +398,13 @@ class TestClient:
         assert server.calls[0].path == "/MicroStrategyLibrary2/api/auth/login"
         assert client.library_url == "https://mstr.example.com/MicroStrategyLibrary2"
 
+    def test_a_login_404_points_at_the_library_path(self, server):
+        with (
+            patch(f"{CLIENT_MODULE}.requests.post", return_value=_response(404, {"code": "ERR404"})),
+            pytest.raises(MicroStrategyApiError, match=r"HTTP 404.*check Host Port and Library Path"),
+        ):
+            MicroStrategyClient(_connection())
+
     @pytest.mark.parametrize("library_path", [None, "", "/"])
     def test_an_empty_library_path_falls_back_to_the_default(self, server, library_path):
         client = MicroStrategyClient(_connection(libraryPath=library_path))
