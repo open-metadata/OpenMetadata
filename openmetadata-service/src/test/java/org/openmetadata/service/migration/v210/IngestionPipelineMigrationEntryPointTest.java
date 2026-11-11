@@ -165,7 +165,6 @@ class IngestionPipelineMigrationEntryPointTest {
               org.openmetadata.service.migration.utils.v206.MigrationUtil
                   .addContractAndStatusToActivityFeedAlert(handle));
       if (connectionType == ConnectionType.MYSQL) {
-        // The consent feature ships in 2.1.0, so 2.1.0 adds its columns.
         consentColumns.verify(() -> McpConsentColumns.addOnMySql(handle));
         grantUserNameIndexes.verify(() -> McpGrantUserNameIndexes.addOnMySql(handle));
         // A database that recorded 2.0.8 before this step existed does not run it there.
