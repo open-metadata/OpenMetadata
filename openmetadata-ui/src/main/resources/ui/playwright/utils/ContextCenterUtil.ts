@@ -184,6 +184,25 @@ export const MEMORY_EXTRACTION_OFF_MESSAGE =
 export const MEMORY_EXTRACTION_CANNOT_START_MESSAGE =
   "Memory extraction is already queued or can't start for this document now.";
 
+export const expectMemoryExtractionOffTooltip = async (page: Page) => {
+  const trigger = page.getByTestId('memory-extraction-btn').locator('..');
+  await trigger.hover();
+  await expect(page.getByRole('tooltip')).toHaveText(
+    MEMORY_EXTRACTION_OFF_MESSAGE
+  );
+  await trigger.focus();
+  await page.keyboard.press('Shift+Tab');
+  await page.keyboard.press('Tab');
+  await expect(trigger).toBeFocused();
+  await expect(page.getByRole('tooltip')).toHaveText(
+    MEMORY_EXTRACTION_OFF_MESSAGE
+  );
+  await expect(trigger).toHaveAccessibleDescription(
+    MEMORY_EXTRACTION_OFF_MESSAGE
+  );
+  await page.keyboard.press('Escape');
+};
+
 /**
  * The e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
  * leaves an upload or a new article Not processed. A spec that relies on that says so first.

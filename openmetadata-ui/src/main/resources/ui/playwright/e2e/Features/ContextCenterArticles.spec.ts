@@ -45,11 +45,11 @@ import {
   createMemoryViaApi,
   deleteArticleByFqn,
   expectMemoryExtractionOff,
+  expectMemoryExtractionOffTooltip,
   getArticleFqnFromUrl,
   getLoggedInUser,
   getMemoryStatus,
   MEMORIES_API,
-  MEMORY_EXTRACTION_OFF_MESSAGE,
   navigateToArticle,
   navigateToArticles,
   navigateToDashboard,
@@ -1290,9 +1290,7 @@ test.describe('Context Center Articles', () => {
       const extract = panel.getByTestId('memory-extraction-btn');
       await expect(extract).toHaveText('Extract');
       await expect(extract).toBeDisabled();
-      await expect(
-        panel.getByRole('group', { name: MEMORY_EXTRACTION_OFF_MESSAGE })
-      ).toBeVisible();
+      await expectMemoryExtractionOffTooltip(page);
 
       await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
       const consumerPanel = dataConsumerPage.getByTestId(

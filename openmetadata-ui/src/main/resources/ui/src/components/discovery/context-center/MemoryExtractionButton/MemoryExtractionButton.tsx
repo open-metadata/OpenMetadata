@@ -12,7 +12,6 @@
  */
 import { Button, Tooltip } from '@openmetadata/ui-core-components';
 import { RefreshCw01, Stars01 } from '@openmetadata/ui-core-components/icons';
-import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import {
   MemoryExtractionAction,
@@ -49,17 +48,9 @@ const MemoryExtractionButton = <T,>(props: MemoryExtractionOptions<T>) => {
     </Button>
   );
 
-  // A disabled button takes no tooltip trigger; Focusable hands it to a span that names the reason.
   return disabledReasonKey ? (
     <Tooltip placement="top" title={t(disabledReasonKey)}>
-      <Focusable>
-        <span
-          aria-label={t(disabledReasonKey)}
-          className="tw:inline-flex"
-          role="group">
-          {button}
-        </span>
-      </Focusable>
+      {button}
     </Tooltip>
   ) : (
     button

@@ -41,6 +41,7 @@ import {
   DOCUMENTS_URL,
   expectBulkIdsRequest,
   expectMemoryExtractionOff,
+  expectMemoryExtractionOffTooltip,
   expectSelectedCount,
   getDocumentRowByName,
   getDocumentSearchInput,
@@ -1266,9 +1267,7 @@ test.describe('Context Center - Documents Page', () => {
     const extract = panel.getByTestId('memory-extraction-btn');
     await expect(extract).toHaveText('Extract');
     await expect(extract).toBeDisabled();
-    await expect(
-      panel.getByRole('group', { name: MEMORY_EXTRACTION_OFF_MESSAGE })
-    ).toBeVisible();
+    await expectMemoryExtractionOffTooltip(page);
 
     await test.step('the row menu offers it the same way', async () => {
       // A search lists the rows from the index, so wait for it to say Not processed too.
@@ -1341,9 +1340,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(badge).toHaveText('Failed');
     await expect(retry).toHaveText('Retry');
     await expect(retry).toBeDisabled();
-    await expect(
-      panel.getByRole('group', { name: MEMORY_EXTRACTION_OFF_MESSAGE })
-    ).toBeVisible();
+    await expectMemoryExtractionOffTooltip(page);
 
     const isRetryRequest = (response: Response) =>
       response.request().method() === 'POST' &&

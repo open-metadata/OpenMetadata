@@ -22,6 +22,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosResponse } from 'axios';
 import { MemoryExtractionAction } from '../../../../constants/ContextCenter.constants';
 import { Reason } from '../../../../generated/api/context/extractionAvailability';
@@ -95,6 +96,21 @@ const renderButton = async (
 };
 
 const button = () => screen.getByTestId('memory-extraction-btn');
+
+const expectDisabledReason = async (message: string) => {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  fireEvent.mouseMove(document);
+  const trigger = button().parentElement;
+
+  expect(trigger).toHaveAttribute('tabindex', '0');
+
+  if (!trigger) {
+    throw new Error('A disabled action needs a focusable tooltip trigger');
+  }
+  await user.hover(trigger);
+
+  expect(await screen.findByRole('tooltip')).toHaveTextContent(message);
+};
 
 describe('MemoryExtractionButton', () => {
   beforeEach(() => {
@@ -175,10 +191,33 @@ describe('MemoryExtractionButton', () => {
       });
       await renderButton();
 
-      expect(
-        await screen.findByRole('group', { name: message })
-      ).toContainElement(button());
+      await waitFor(() => expect(button()).toBeDisabled());
+      await expectDisabledReason(message);
+
       expect(button()).toBeDisabled();
+    }
+  );
+
+  it.each([MemoryExtractionAction.Extract, MemoryExtractionAction.Retry])(
+    'exposes the disabled reason to keyboard users for %s',
+    async (action) => {
+      const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+      (getExtractionAvailability as jest.Mock).mockResolvedValue({
+        available: false,
+        reason: Reason.ExtractionDisabled,
+      });
+      await renderButton({ action });
+      await waitFor(() => expect(button()).toBeDisabled());
+      const trigger = button().parentElement;
+      await user.tab();
+
+      expect(trigger).toHaveFocus();
+      expect(await screen.findByRole('tooltip')).toHaveTextContent(
+        'message.memory-extraction-off'
+      );
+      expect(trigger).toHaveAccessibleDescription(
+        'message.memory-extraction-off'
+      );
     }
   );
 
@@ -242,9 +281,8 @@ describe('MemoryExtractionButton', () => {
 
       await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(message));
 
-      expect(screen.getByRole('group', { name: message })).toContainElement(
-        button()
-      );
+      await expectDisabledReason(message);
+
       expect(button()).toBeDisabled();
     }
   );
