@@ -409,12 +409,14 @@ def mvn_command(steps: list[dict]) -> list[str]:
     return shlex.split(script.replace("\\\n", " "))
 
 
-def test_service_unit_tests_run_in_two_surefire_forks_without_jacoco() -> None:
+def test_service_unit_tests_run_in_one_jvm_without_jacoco() -> None:
     steps = steps_of(
         "openmetadata-service-unit-tests.yml", "openmetadata-service-unit-tests"
     )
     command = mvn_command(steps)
-    assert "-DforkCount=2" in command
+    # Tests share static registries (Entity's repository map); split across forks
+    # they meet another order and fail (RdfLiveWriterTest, PR #37493).
+    assert not any(arg.startswith("-DforkCount") for arg in command)
     assert not any(
         arg.startswith("-P") and "static-code-analysis" in arg for arg in command
     )
