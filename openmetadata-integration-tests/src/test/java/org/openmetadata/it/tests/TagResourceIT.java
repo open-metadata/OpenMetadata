@@ -1989,9 +1989,11 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             List.of(
                 Map.of(
                     "op", "remove", "path", "/recognizers/0/recognizerConfig/supportedLanguage")));
-    assertThrows(
-        InvalidRequestException.class,
-        () -> SdkClients.adminClient().tags().patch(tag.getId(), dropLanguage));
+    InvalidRequestException error =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> SdkClients.adminClient().tags().patch(tag.getId(), dropLanguage));
+    assertTrue(error.getMessage().contains("supportedLanguage"), error.getMessage());
 
     Tag reloaded = getEntityWithFields(tag.getId().toString(), "recognizers");
     Map<?, ?> storedConfig =
@@ -2009,7 +2011,9 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
             .withRecognizers(
                 List.of(new Recognizer().withName("Government_ID").withRecognizerConfig(config)));
 
-    assertThrows(InvalidRequestException.class, () -> createEntity(request));
+    InvalidRequestException error =
+        assertThrows(InvalidRequestException.class, () -> createEntity(request));
+    assertTrue(error.getMessage().contains("supportedLanguage"), error.getMessage());
   }
 
   // A tag as stored before the language rule: its recognizer config has no supportedLanguage.

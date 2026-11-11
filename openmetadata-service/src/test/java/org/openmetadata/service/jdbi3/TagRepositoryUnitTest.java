@@ -14,6 +14,7 @@ import static org.mockito.Mockito.when;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -481,5 +482,10 @@ public class TagRepositoryUnitTest {
         () -> TagRepository.validateSupportedLanguage(recognizerWithConfig(pattern)));
     assertDoesNotThrow(
         () -> TagRepository.validateSupportedLanguage(recognizerWithConfig(predefined)));
+    Map<String, Object> predefinedNullLanguage = new HashMap<>(predefined);
+    predefinedNullLanguage.put("supportedLanguage", null);
+    assertDoesNotThrow(
+        () ->
+            TagRepository.validateSupportedLanguage(recognizerWithConfig(predefinedNullLanguage)));
   }
 }
