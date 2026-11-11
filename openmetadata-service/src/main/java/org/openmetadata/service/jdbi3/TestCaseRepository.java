@@ -873,6 +873,29 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void prepare(TestCase test, boolean update) {
+    Table table = validateForWrite(test, update);
+    // Create/resolve the basic test suite only after all validations pass.
+    // This avoids creating side entities when request validation fails early.
+    // A suite the caller already resolved (CSV row or bundle) is kept.
+    if (test.getTestSuite() == null) {
+      test.setTestSuite(getOrCreateTestSuite(test, table));
+    }
+  }
+
+  /**
+   * Runs the checks {@link #prepareInternal} runs for a test case, minus the basic test suite, so a
+   * CSV dry run reports the rows the real import would and creates nothing.
+   */
+  void checkForImport(TestCase test, boolean isUpdate) {
+    validateTags(test);
+    validateForWrite(test, isUpdate);
+    validateExtension(test, isUpdate);
+    if (!isUpdate) {
+      prepareCertification(test);
+    }
+  }
+
+  private Table validateForWrite(TestCase test, boolean update) {
     EntityLink entityLink = EntityLink.parse(test.getEntityLink());
     EntityUtil.validateEntityLink(entityLink);
 
@@ -906,23 +929,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     if (!update) {
       TestCaseDefinitionConformance.validate(test, testDefinition, table, entityLink);
     }
-
-    // Create/resolve the basic test suite only after all validations pass.
-    // This avoids creating side entities when request validation fails early.
-    var testSuite = getOrCreateTestSuite(test, table);
-    test.setTestSuite(testSuite);
+    return table;
   }
 
   /*
    * Get the test suite for a test case. We'll use the entity linked to the test case
    * to find the basic test suite. If it doesn't exist, create a new one.
    */
-  EntityReference getOrCreateTestSuite(TestCase test) {
-    var entityLink = EntityLink.parse(test.getEntityLink());
-    EntityInterface<?> tableEntity = Entity.getEntity(entityLink, "", ALL);
-    return getOrCreateTestSuite(test, tableEntity);
-  }
-
   private EntityReference getOrCreateTestSuite(TestCase test, EntityInterface<?> tableEntity) {
     try {
       return getTestSuite(tableEntity.getId(), TEST_SUITE, TABLE, Direction.TO);
@@ -2604,44 +2617,41 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                   parsedLink.getFullyQualifiedFieldValue(), EntityInterfaceUtil.quoteName(name));
           testCase.setFullyQualifiedName(testCaseFqn);
           testCase.setEntityFQN(parsedLink.getFullyQualifiedFieldValue());
+          boolean isUpdate = repository.findByNameOrNull(testCaseFqn, Include.ALL) != null;
 
           // A row can name any table, so it is checked as the matching REST write, before anything
           // is created for it (e.g. the table's test suite)
           authorizeRowForAny(
               () ->
-                  repository.findByNameOrNull(testCaseFqn, Include.ALL) == null
-                      ? TestCaseWriteAuthRequests.forCreate(testCase)
-                      : TestCaseWriteAuthRequests.forUpdate(testCase));
+                  isUpdate
+                      ? TestCaseWriteAuthRequests.forUpdate(testCase)
+                      : TestCaseWriteAuthRequests.forCreate(testCase));
 
-          // Get test suite if provided, otherwise get or create default test suite
+          // A suite named by the row is kept; otherwise prepare resolves the table's basic suite
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
             TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
             if (testSuite == null) {
               continue;
             }
             testCase.withTestSuite(testSuite.getEntityReference());
-            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
+          }
+
+          if (importResult.getDryRun()) {
+            repository.checkForImport(testCase, isUpdate);
+            importSuccess(printer, csvRecord, isUpdate ? ENTITY_UPDATED : ENTITY_CREATED);
           } else {
-            // No test suite provided - get or create the default basic test suite
-            EntityReference testSuite = repository.getOrCreateTestSuite(testCase);
-            testCase.withTestSuite(testSuite);
-            importedTestSuiteIds.putIfAbsent(testSuite.getFullyQualifiedName(), testSuite.getId());
-          }
-
-          // Set required fields for new entities - createOrUpdateForImport doesn't call
-          // prepareInternal which would normally set these
-          if (testCase.getId() == null) {
-            testCase.setId(UUID.randomUUID());
-          }
-          if (testCase.getUpdatedAt() == null) {
-            testCase.setUpdatedAt(System.currentTimeMillis());
-          }
-          if (testCase.getUpdatedBy() == null) {
-            testCase.setUpdatedBy(importedBy);
-          }
-
-          if (!importResult.getDryRun()) {
-            // Use createOrUpdateForImport which handles both create and update
+            repository.prepareInternal(testCase, isUpdate);
+            importedTestSuiteIds.putIfAbsent(
+                testCase.getTestSuite().getFullyQualifiedName(), testCase.getTestSuite().getId());
+            if (testCase.getId() == null) {
+              testCase.setId(UUID.randomUUID());
+            }
+            if (testCase.getUpdatedAt() == null) {
+              testCase.setUpdatedAt(System.currentTimeMillis());
+            }
+            if (testCase.getUpdatedBy() == null) {
+              testCase.setUpdatedBy(importedBy);
+            }
             RestUtil.PutResponse<TestCase> response =
                 repository.createOrUpdateForImport(null, testCase, importedBy);
             if (targetBundleSuite != null) {
@@ -2652,10 +2662,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
             } else {
               importSuccess(printer, csvRecord, ENTITY_UPDATED);
             }
-          } else {
-            // Dry run - just validate
-            repository.prepareInternal(testCase, true);
-            importSuccess(printer, csvRecord, ENTITY_CREATED);
           }
 
         } catch (Exception ex) {

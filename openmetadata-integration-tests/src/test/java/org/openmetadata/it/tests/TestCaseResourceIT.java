@@ -46,6 +46,7 @@ import org.junit.jupiter.api.parallel.Resources;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -59,6 +60,7 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.tests.CreateTestCase;
 import org.openmetadata.schema.api.tests.CreateTestCaseResolutionStatus;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
+import org.openmetadata.schema.api.tests.CreateTestDefinition;
 import org.openmetadata.schema.api.tests.CreateTestSuite;
 import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
@@ -71,6 +73,8 @@ import org.openmetadata.schema.search.AggregationRequest;
 import org.openmetadata.schema.services.connections.database.PostgresConnection;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.TestDefinition;
+import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.DimensionValue;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
@@ -95,6 +99,7 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TableExecutionSource;
 import org.openmetadata.schema.type.TableProfile.ProfileSampleType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TestDefinitionEntityType;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -1202,6 +1207,226 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     assertThrows(Exception.class, () -> createEntity(request));
     assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void put_createWithDisabledDefinition_4xx_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition definition = disableDefinition(createTableDefinition(ns, "put_disabled"));
+    CreateTestCase request =
+        new CreateTestCase()
+            .withName(ns.prefix("put_disabled_case"))
+            .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+            .withTestDefinition(definition.getName());
+
+    Exception error =
+        assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
+    assertTrue(error.getMessage().contains("is disabled"), error.getMessage());
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void put_createWithMissingRequiredParameter_4xx_leavesNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    CreateTestCase request =
+        rowCountRequest(table, ns.prefix("put_missing_param")).withParameterValues(List.of());
+
+    assertThrows(Exception.class, () -> SdkClients.adminClient().testCases().upsert(request));
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void put_updateAfterDefinitionDisabled_200(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition definition = createTableDefinition(ns, "put_update_disabled");
+    CreateTestCase request =
+        new CreateTestCase()
+            .withName(ns.prefix("put_update_disabled_case"))
+            .withEntityLink("<#E::table::" + table.getFullyQualifiedName() + ">")
+            .withTestDefinition(definition.getName());
+    TestCase created = SdkClients.adminClient().testCases().upsert(request);
+
+    disableDefinition(definition);
+    request.setDescription("Edited after its definition was disabled");
+    TestCase updated = SdkClients.adminClient().testCases().upsert(request);
+
+    assertEquals(created.getId(), updated.getId());
+    assertEquals(request.getDescription(), updated.getDescription());
+  }
+
+  @Test
+  void csvImport_newRowDisabledDefinition_failsRealAndDryRun(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition definition = disableDefinition(createTableDefinition(ns, "csv_disabled"));
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_disabled_case"),
+                "",
+                definition.getName(),
+                table.getFullyQualifiedName(),
+                "");
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), "is disabled");
+    assertAllRowsFailed(performImportCsv(ns, csv, false), "is disabled");
+    assertNull(tableTestSuite(table));
+  }
+
+  @Test
+  void csvImport_newRowMissingRequiredParameter_failsRealAndDryRun(TestNamespace ns) {
+    Table table = createTable(ns);
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_missing_param"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                "");
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), null);
+    assertAllRowsFailed(performImportCsv(ns, csv, false), null);
+  }
+
+  @Test
+  void csvImport_updateExistingRow_succeeds(TestNamespace ns) {
+    Table table = createTable(ns);
+    String name = ns.prefix("csv_update");
+    SdkClients.adminClient().testCases().upsert(rowCountRequest(table, name));
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                name,
+                "Edited by CSV import",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                ROW_COUNT_100);
+
+    CsvImportResult result = performImportCsv(ns, csv, false);
+
+    assertAllRowsPassed(result);
+    assertTrue(importRows(result).getFirst().contains(EntityCsv.ENTITY_UPDATED));
+    String fqn = table.getFullyQualifiedName() + "." + name;
+    assertEquals(
+        "Edited by CSV import",
+        SdkClients.adminClient().testCases().getByName(fqn).getDescription());
+  }
+
+  @Test
+  void csvImport_dryRunMatchesRealImportRowResults(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestDefinition disabled = disableDefinition(createTableDefinition(ns, "csv_match_disabled"));
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_match_new"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                ROW_COUNT_100)
+            + csvRow(
+                ns.prefix("csv_match_missing"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                "")
+            + csvRow(
+                ns.prefix("csv_match_disabled"),
+                "",
+                disabled.getName(),
+                table.getFullyQualifiedName(),
+                "");
+
+    List<String> dryRunNew = importRows(performImportCsv(ns, csv, true));
+    List<String> realNew = importRows(performImportCsv(ns, csv, false));
+    List<String> dryRunExisting = importRows(performImportCsv(ns, csv, true));
+    List<String> realExisting = importRows(performImportCsv(ns, csv, false));
+
+    assertEquals(realNew, dryRunNew);
+    assertEquals(realExisting, dryRunExisting);
+    assertTrue(dryRunNew.getFirst().contains(EntityCsv.ENTITY_CREATED), dryRunNew.getFirst());
+    assertTrue(
+        dryRunExisting.getFirst().contains(EntityCsv.ENTITY_UPDATED), dryRunExisting.getFirst());
+  }
+
+  @Test
+  void csvImport_dryRun_createsNoTestSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    String csv =
+        CSV_HEADER
+            + csvRow(
+                ns.prefix("csv_dry_no_suite"),
+                "",
+                "tableRowCountToEqual",
+                table.getFullyQualifiedName(),
+                ROW_COUNT_100);
+
+    assertAllRowsPassed(performImportCsv(ns, csv, true));
+    assertNull(tableTestSuite(table));
+  }
+
+  private static final String CSV_HEADER =
+      "name*,displayName,description,testDefinition*,entityFQN*,testSuite,parameterValues,"
+          + "computePassedFailedRowCount,useDynamicAssertion,inspectionQuery,tags,glossaryTerms\n";
+  private static final String ROW_COUNT_100 =
+      "\"{\"\"name\"\":\"\"value\"\",\"\"value\"\":\"\"100\"\"}\"";
+
+  private static String csvRow(
+      String name,
+      String description,
+      String testDefinition,
+      String entityFqn,
+      String parameterValues) {
+    return String.join(
+            ",",
+            name,
+            "",
+            description,
+            testDefinition,
+            entityFqn,
+            "",
+            parameterValues,
+            "",
+            "",
+            "",
+            "",
+            "")
+        + "\n";
+  }
+
+  private static List<String> importRows(CsvImportResult result) {
+    List<String> rows = result.getImportResultsCsv().lines().skip(1).toList();
+    assertFalse(rows.isEmpty(), result.getImportResultsCsv());
+    return rows;
+  }
+
+  private static void assertAllRowsPassed(CsvImportResult result) {
+    assertTrue(
+        importRows(result).stream().allMatch(row -> row.startsWith(EntityCsv.IMPORT_SUCCESS + ",")),
+        result.getImportResultsCsv());
+  }
+
+  private static void assertAllRowsFailed(CsvImportResult result, String reason) {
+    assertTrue(
+        importRows(result).stream().allMatch(row -> row.startsWith(EntityCsv.IMPORT_FAILED + ",")),
+        result.getImportResultsCsv());
+    if (reason != null) {
+      assertTrue(result.getImportResultsCsv().contains(reason), result.getImportResultsCsv());
+    }
+  }
+
+  private static TestDefinition createTableDefinition(TestNamespace ns, String suffix) {
+    CreateTestDefinition request = new CreateTestDefinition();
+    request.setName(ns.prefix(suffix));
+    request.setDescription("Test definition created by integration test");
+    request.setEntityType(TestDefinitionEntityType.TABLE);
+    request.setTestPlatforms(List.of(TestPlatform.OPEN_METADATA));
+    return SdkClients.adminClient().testDefinitions().create(request);
+  }
+
+  private static TestDefinition disableDefinition(TestDefinition definition) {
+    definition.setEnabled(false);
+    return SdkClients.adminClient().testDefinitions().update(definition.getId(), definition);
   }
 
   private static EntityReference tableTestSuite(Table table) {

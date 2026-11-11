@@ -3579,11 +3579,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * Stamp who created the entity and when, derived from updatedAt/updatedBy so a freshly created
    * entity satisfies createdAt == updatedAt and createdBy == updatedBy.
    *
-   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: PUT reaches
-   * the create path through {@code EntityResource.createOrUpdate}, which calls
-   * {@code prepareInternal(entity, true)}, so a prepare-time hook would skip every entity created
-   * by ingestion. createNewEntity is the one funnel all create paths share, and by then the
-   * late updatedBy override in {@code createInternal} has already been applied.
+   * <p>This is called from {@link #createNewEntity(Object)} rather than from prepare: {@link
+   * #createOrUpdate} creates a missing entity through createNewEntity without a prepare pass, so a
+   * prepare-time hook would skip every entity created that way. createNewEntity is the one funnel
+   * all create paths share, and by then the late updatedBy override in {@code createInternal} has
+   * already been applied.
    *
    * <p>Entities whose schema does not declare these fields fall through to the no-op
    * EntityInterface defaults.
@@ -7192,7 +7192,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return JsonUtils.treeToValue(jsonNode, Object.class);
   }
 
-  private void validateExtension(T entity, boolean update) {
+  protected void validateExtension(T entity, boolean update) {
     // Validate complete extension field only on POST
     if (entity.getExtension() == null || update) {
       return;
@@ -7896,7 +7896,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * #applyCertification} in tolerating a certification with no usable tag rather than failing the
    * create — that shape is already a no-op downstream.
    */
-  private void prepareCertification(T entity) {
+  protected void prepareCertification(T entity) {
     if (!supportsCertification || entity.getCertification() == null) {
       return;
     }
