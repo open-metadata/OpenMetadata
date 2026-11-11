@@ -89,6 +89,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
+import org.openmetadata.service.util.ListCursors;
 import org.openmetadata.service.util.RestUtil;
 
 @Tag(
@@ -226,8 +227,34 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
     ResultList<ContextFile> resultList =
         repository.listByUpdatedAt(
-            uriInfo, fields, filter, limit, before, after, resolveOrderBy(orderBy));
-    return visibleOnly(uriInfo, securityContext, filter, addHref(uriInfo, resultList));
+            uriInfo,
+            fields,
+            filter,
+            limit,
+            ListCursors.unseal(before),
+            ListCursors.unseal(after),
+            resolveOrderBy(orderBy));
+    return visibleOnly(
+        uriInfo,
+        securityContext,
+        filter,
+        addHref(uriInfo, readableOnly(securityContext, fields, resultList)));
+  }
+
+  /**
+   * Leaves out the rows a rule refuses, as an unordered listing does
+   * (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read). The page is not refilled;
+   * its cursors are sealed, since one may point at a row left out.
+   */
+  private ResultList<ContextFile> readableOnly(
+      SecurityContext securityContext, Fields fields, ResultList<ContextFile> page) {
+    if (rowsMayDiffer(securityContext, fields)) {
+      page.setData(rowAuthorization(fields).readable().apply(securityContext, page.getData()));
+      page.getPaging()
+          .withBefore(ListCursors.seal(page.getPaging().getBefore()))
+          .withAfter(ListCursors.seal(page.getPaging().getAfter()));
+    }
+    return page;
   }
 
   /**

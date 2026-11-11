@@ -4,7 +4,8 @@
 - **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-11 (file listings count the same way)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryVisibilityTest`, `ContextMemorySearchVisibilityTest`,
-  `ContextMemoryResourceTest`, `ContextFileIT.testListingCountsOnlyFilesTheCallerMaySee`
+  `ContextMemoryResourceTest`, `ContextFileIT.testListingCountsOnlyFilesTheCallerMaySee`,
+  `ListRowAuthorizationIT.aFileListingOrderedByUpdateTimeLeavesOutAndDoesNotCountRowsADenyRuleRefuses`
 - **Related:** ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request;
   ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review;
   ADR:ai-platform/2026-10-11-explicit-memory-delete-searches-every-status
@@ -56,3 +57,5 @@ rule as the plain memory list: it stands only when the page shows every counted 
 the files the caller may see are recounted over at most `MAX_VISIBLE_COUNT_SCAN` rows, never less
 than the page. The recount reads the rows straight from the repository and applies the listing's
 row check and the file sharing rules; the caller's teams and domains are resolved once per list.
+The listing ordered by update time (`orderBy`) applies the same row check to its page, so the page
+and its total agree; it does not refill, and its cursors are sealed when rows are checked.
