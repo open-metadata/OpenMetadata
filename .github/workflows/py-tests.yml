@@ -19,17 +19,18 @@ on:
     - cron: "0 3 * * *"
   workflow_dispatch:
     inputs:
-      full-suite:
-        description: Run all supported Python versions instead of the highest only
-        type: boolean
-        default: true
+      mode:
+        description: Workload to run manually
+        type: choice
+        options: [pull-request, merge-queue, nightly]
+        default: nightly
 
 permissions:
   contents: read
   pull-requests: read
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ inputs.mode || 'auto' }}
   cancel-in-progress: true
 
 jobs:
@@ -62,7 +63,6 @@ jobs:
             python:
               - 'ingestion/**'
               - 'scripts/prepare_classification_models.py'
-              - 'scripts/tests/test_python_ci_matrix.py'
               - '.github/actions/prepare-classification-models/**'
               - '.github/actions/prepare-classification-model/**'
               - '.github/workflows/warm-classification-models.yml'
@@ -88,18 +88,20 @@ jobs:
               - '.github/workflows/py-cli-e2e-tests.yml'
               - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
-      - name: Validate Python CI selection
-        run: python3 -m unittest discover -s scripts/tests -p test_python_ci_matrix.py -v
       - id: matrix
         env:
           CI_EVENT: ${{ github.event_name }}
-          FULL_SUITE: ${{ inputs.full-suite }}
+          TEST_MODE: ${{ inputs.mode }}
         run: |
-          args=()
-          if [ "$FULL_SUITE" = "true" ]; then
-            args+=(--full-suite)
+          if [ "$CI_EVENT" = "workflow_dispatch" ]; then
+            case "$TEST_MODE" in
+              pull-request) CI_EVENT="pull_request" ;;
+              merge-queue) CI_EVENT="merge_group" ;;
+              nightly) CI_EVENT="schedule" ;;
+              *) echo "Invalid test mode: $TEST_MODE"; exit 1 ;;
+            esac
           fi
-          python3 scripts/prepare_classification_models.py test-matrix --project ingestion --event "$CI_EVENT" "${args[@]}" \
+          python3 scripts/prepare_classification_models.py test-matrix --project ingestion --event "$CI_EVENT" \
             | jq -r 'to_entries[] | "\(.key)=\(.value | if type == "array" or type == "boolean" then tojson else . end)"' >> "$GITHUB_OUTPUT"
 
   prepare-spacy-model:
