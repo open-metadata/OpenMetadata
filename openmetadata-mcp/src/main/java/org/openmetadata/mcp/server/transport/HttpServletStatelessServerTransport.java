@@ -166,6 +166,19 @@ public class HttpServletStatelessServerTransport extends HttpServlet
 
     McpTransportContext transportContext = this.contextExtractor.extract(request);
 
+    // After authentication, so a client without a token still gets the 401 that starts OAuth
+    // discovery. See ADR:2026-11-06-mcp-post-requires-a-json-content-type.
+    if (!isJsonContentType(request.getContentType())) {
+      responseError(
+          response,
+          HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE,
+          null,
+          McpError.builder(McpSchema.ErrorCodes.INVALID_REQUEST)
+              .message("Content-Type must be application/json")
+              .build());
+      return;
+    }
+
     String accept = request.getHeader(ACCEPT);
     boolean acceptsJson = accept != null && accept.contains(APPLICATION_JSON);
     boolean acceptsSse = accept != null && accept.contains(TEXT_EVENT_STREAM);
@@ -286,6 +299,15 @@ public class HttpServletStatelessServerTransport extends HttpServlet
   static byte[] readBody(HttpServletRequest request, int maxBytes) throws IOException {
     byte[] body = request.getInputStream().readNBytes(maxBytes + 1);
     return body.length > maxBytes ? null : body;
+  }
+
+  /**
+   * The rule the SDK's own servlet transports apply: the media type must be
+   * application/json, and parameters such as charset are allowed. A missing header fails.
+   */
+  static boolean isJsonContentType(String contentType) {
+    String mediaType = contentType == null ? "" : contentType.split(";", 2)[0].trim();
+    return APPLICATION_JSON.equalsIgnoreCase(mediaType);
   }
 
   /**

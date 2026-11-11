@@ -922,3 +922,11 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
 
+-- MCP SSO sign-in waits for the user to approve the client on a consent page, and the pending
+-- approval lives on the pending request row. The consent feature ships in 2.1.0, so its columns are
+-- added here, where every database upgrading to 2.1 runs them. 2.0.7 shipped without them, and a
+-- database that has run a later 2.0.x never reads the 2.0.7 folder again.
+-- ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+ALTER TABLE mcp_pending_auth_requests
+    ADD COLUMN IF NOT EXISTS consent_token_hash VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS consent_user_name VARCHAR(256);
