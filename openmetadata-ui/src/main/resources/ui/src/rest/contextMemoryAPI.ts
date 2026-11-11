@@ -12,7 +12,9 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { ApproveExtractedMemories } from '../generated/api/context/approveExtractedMemories';
 import { CreateContextMemory } from '../generated/api/context/createContextMemory';
+import { ExtractedMemoryApproval } from '../generated/api/context/extractedMemoryApproval';
 import { ContextMemory } from '../generated/entity/context/contextMemory';
 import { MemoryDerivation } from '../generated/entity/context/memoryDerivation';
 import { EntityHistory } from '../generated/type/entityHistory';
@@ -114,6 +116,31 @@ export const getContextMemoryByName = async (
       params: fields ? { fields } : undefined,
     }
   );
+
+  return response.data;
+};
+
+/** What approving a document's Unprocessed extracted memories would do; writes nothing. */
+export const getExtractedMemoryApproval = async (
+  sourceId: string,
+  sourceType: string
+): Promise<ExtractedMemoryApproval> => {
+  const response = await APIClient.get<ExtractedMemoryApproval>(
+    `${BASE_URL}/extractedApproval`,
+    { params: { sourceId, sourceType } }
+  );
+
+  return response.data;
+};
+
+/** Approves a document's Unprocessed extracted memories; contested ones stay pending. */
+export const approveExtractedMemories = async (
+  request: ApproveExtractedMemories
+): Promise<ExtractedMemoryApproval> => {
+  const response = await APIClient.put<
+    ApproveExtractedMemories,
+    AxiosResponse<ExtractedMemoryApproval>
+  >(`${BASE_URL}/extractedApproval`, request);
 
   return response.data;
 };

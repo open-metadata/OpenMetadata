@@ -73,14 +73,94 @@
       "description": "Confluent Kafka Consumer Config. From https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md",
       "type": "object",
       "default": {},
-      "additionalProperties": true
+      "properties": {
+        "sasl.password": {
+          "title": "sasl.password",
+          "description": "SASL password.",
+          "type": "string",
+          "format": "password"
+        },
+        "sasl.oauthbearer.client.secret": {
+          "title": "sasl.oauthbearer.client.secret",
+          "description": "Client secret for the OAUTHBEARER (OIDC) token request.",
+          "type": "string",
+          "format": "password"
+        },
+        "sasl.oauthbearer.config": {
+          "title": "sasl.oauthbearer.config",
+          "description": "SASL/OAUTHBEARER configuration string, which can carry a client secret.",
+          "type": "string",
+          "format": "password"
+        },
+        "sasl.oauthbearer.assertion.private.key.passphrase": {
+          "title": "sasl.oauthbearer.assertion.private.key.passphrase",
+          "description": "Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.",
+          "type": "string",
+          "format": "password"
+        },
+        "sasl.oauthbearer.assertion.private.key.pem": {
+          "title": "sasl.oauthbearer.assertion.private.key.pem",
+          "description": "PEM private key used to sign the OAUTHBEARER JWT assertion.",
+          "type": "string",
+          "format": "password"
+        },
+        "ssl.key.password": {
+          "title": "ssl.key.password",
+          "description": "Passphrase of the client's private key.",
+          "type": "string",
+          "format": "password"
+        },
+        "ssl.key.pem": {
+          "title": "ssl.key.pem",
+          "description": "Client's private key as a PEM string.",
+          "type": "string",
+          "format": "password"
+        },
+        "ssl.keystore.password": {
+          "title": "ssl.keystore.password",
+          "description": "Password of the client keystore (PKCS#12).",
+          "type": "string",
+          "format": "password"
+        },
+        "ssl.truststore.password": {
+          "title": "ssl.truststore.password",
+          "description": "Password of the truststore.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "additionalProperties": {
+        "format": "password"
+      }
     },
     "schemaRegistryConfig": {
       "title": "Schema Registry Config",
       "description": "Confluent Kafka Schema Registry Config. From https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient",
       "type": "object",
       "default": {},
-      "additionalProperties": true
+      "properties": {
+        "basic.auth.user.info": {
+          "title": "basic.auth.user.info",
+          "description": "Schema Registry credentials in the form of username:password.",
+          "type": "string",
+          "format": "password"
+        },
+        "bearer.auth.token": {
+          "title": "bearer.auth.token",
+          "description": "Static bearer token for the Schema Registry.",
+          "type": "string",
+          "format": "password"
+        },
+        "bearer.auth.client.secret": {
+          "title": "bearer.auth.client.secret",
+          "description": "Client secret for the Schema Registry OAuth token request.",
+          "type": "string",
+          "format": "password"
+        }
+      },
+      "additionalProperties": {
+        "format": "password"
+      }
     },
     "schemaRegistryTopicSuffixName": {
       "title": "Schema Registry Topic Suffix Name",

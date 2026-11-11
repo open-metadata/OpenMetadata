@@ -18,10 +18,11 @@ import {
   ButtonGroupItem,
   Dropdown,
   Grid,
+  selectedTriggerClassName,
 } from '@openmetadata/ui-core-components';
 import { WeeklyEmailPreferences } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { map } from 'lodash';
+import { findKey, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -93,6 +94,8 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
     }
   };
 
+  const isStatusFiltered = status !== MenuOptions.all;
+
   const handleMenuClick = useCallback(
     (key: Key) => setStatus(MenuOptions[key as keyof typeof MenuOptions]),
     []
@@ -163,17 +166,23 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               itemClassName="layout-space-item">
               <Dropdown.Root>
                 <Button
-                  className="tw:text-brand-secondary tw:after:outline-brand"
+                  className={
+                    isStatusFiltered ? selectedTriggerClassName(true) : undefined
+                  }
                   color="secondary"
                   data-testid="status-button"
                   iconLeading={WeeklyEmailPreferences}
                   size="sm">
-                  {status === MenuOptions.all ? t('label.status') : status}
+                  {isStatusFiltered ? status : t('label.status')}
                 </Button>
                 <Dropdown.Popover className="tw:w-auto" placement="bottom">
                   <Dropdown.Menu
+                    disallowEmptySelection
                     aria-label={t('label.status')}
-                    selectionMode="none"
+                    selectedKeys={[
+                      findKey(MenuOptions, (v) => v === status) ?? 'all',
+                    ]}
+                    selectionMode="single"
                     onAction={handleMenuClick}>
                     {map(MenuOptions, (value, key) => (
                       <Dropdown.Item id={key} key={key}>

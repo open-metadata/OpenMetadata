@@ -1,0 +1,31 @@
+{
+  "abbreviation": "DCAT",
+  "attribution": "DCAT Version 3, W3C Recommendation. Copyright W3C. Licensed under CC BY 4.0. Redistributed without changes.",
+  "bundled": true,
+  "description": "The W3C vocabulary for describing data catalogs, datasets, distributions and data services, published verbatim.",
+  "id": "dcat",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "CC BY 4.0",
+  "licenseUrl": "https://creativecommons.org/licenses/by/4.0/",
+  "modules": [
+    {
+      "conceptCount": 9,
+      "dependencies": [],
+      "description": "Catalogs, datasets, distributions, data services and their relationships.",
+      "format": "turtle",
+      "id": "dcat",
+      "name": "DCAT 3 vocabulary",
+      "relationshipCount": 24,
+      "resourcePath": "rdf/ontology-packs/dcat/dcat.ttl",
+      "selectedByDefault": true,
+      "sha256": "d1624d3bbf364f6fc1d43b9a188bbb9e67639b1a7d46a5cb7ea3f5d47d02b62f",
+      "sourceUrl": "https://www.w3.org/ns/dcat3.ttl"
+    }
+  ],
+  "name": "DCAT 3",
+  "publisher": "W3C",
+  "sourceUrl": "https://www.w3.org/TR/vocab-dcat-3/",
+  "standard": "Data Catalog Vocabulary (DCAT) Version 3",
+  "version": "3"
+}

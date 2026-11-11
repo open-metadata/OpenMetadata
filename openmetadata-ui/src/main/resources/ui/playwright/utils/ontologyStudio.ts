@@ -19,6 +19,10 @@ import {
   Page,
   TestInfo,
 } from '@playwright/test';
+import {
+  OntologyPackInstallJob,
+  Status as InstallJobStatus,
+} from '../../src/generated/api/data/ontologyPackInstallJob';
 import { Ontology } from '../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../src/generated/entity/data/ontologyConcept';
 import { ACTION_TIMEOUT } from '../constant/common';
@@ -34,6 +38,43 @@ import {
   uuid,
 } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
+
+const SETTLED_INSTALL_JOB = new Set<string>([
+  InstallJobStatus.Completed,
+  InstallJobStatus.Failed,
+  InstallJobStatus.Cancelled,
+]);
+
+/**
+ * The settled job of a library install into an existing ontology: the start
+ * response when the job settles at once, otherwise the poll that sees it settle.
+ */
+export function waitForPackInstallJob(
+  page: Page,
+  ontologyId: string
+): Promise<OntologyPackInstallJob> {
+  const library = `/api/v1/ontologies/${ontologyId}/library/`;
+
+  return page
+    .waitForResponse(async (candidate) => {
+      const path = new URL(candidate.url()).pathname;
+      if (
+        !path.startsWith(library) ||
+        !(path.endsWith('/install') || path.startsWith(`${library}jobs/`))
+      ) {
+        return false;
+      }
+      if (!candidate.ok()) {
+        return true;
+      }
+      const job: OntologyPackInstallJob = await candidate.json();
+
+      return SETTLED_INSTALL_JOB.has(job.status);
+    })
+    .then((response) =>
+      okJson<OntologyPackInstallJob>(response, 'Library install job')
+    );
+}
 
 export interface GraphTermRef {
   id: string;

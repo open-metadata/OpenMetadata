@@ -940,6 +940,12 @@ export interface OntologyProperty {
      */
     replacedBy?: string;
     /**
+     * Semantic IRIs of the named properties this property specializes (rdfs:subPropertyOf).
+     * Each must be a declared property of the same kind; a property cannot name itself, and the
+     * links cannot form a cycle.
+     */
+    superProperties?: string[];
+    /**
      * Unit IRI or display symbol for a DATA property, retained as an annotation without
      * implying conversion.
      */

@@ -449,6 +449,20 @@ export const getConceptPropertyRows = (
   return [...own, ...inherited];
 };
 
+/** The properties a column can be bound to: data properties, own and inherited; annotations hold no data. */
+export const getBindableConceptProperties = (
+  model: OntologyStudioModel,
+  relations: OntologyModelRelation[],
+  concept: OntologyConcept
+) =>
+  getConceptPropertyRows(model, relations, concept)
+    .filter(({ property }) => property.kind !== Kind.Annotation)
+    .map(({ property }) => ({
+      id: property.id,
+      label: getPropertyLabel(property),
+      isIdentifier: property.isIdentifier,
+    }));
+
 /** Object properties the Studio can offer as relationship types between two concepts. */
 export const getObjectProperties = (
   model: OntologyStudioModel

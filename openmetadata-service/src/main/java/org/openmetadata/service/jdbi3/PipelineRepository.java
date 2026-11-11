@@ -1007,6 +1007,13 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           "concurrency",
           () -> recordChange("concurrency", original.getConcurrency(), updated.getConcurrency()));
       compareAndUpdate(
+          "scheduleInterval",
+          () ->
+              recordChange(
+                  "scheduleInterval",
+                  original.getScheduleInterval(),
+                  updated.getScheduleInterval()));
+      compareAndUpdate(
           "pipelineLocation",
           () ->
               recordChange(

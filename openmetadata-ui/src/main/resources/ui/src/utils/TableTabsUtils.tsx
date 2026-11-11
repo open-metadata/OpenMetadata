@@ -256,6 +256,7 @@ export const getTableDetailPageBaseTabs = ({
   editCustomAttributePermission,
   viewSampleDataPermission,
   viewQueriesPermission,
+  viewQueryResourcePermission,
   editLineagePermission,
   fetchTableDetails,
   isViewTableType,
@@ -334,6 +335,9 @@ export const getTableDetailPageBaseTabs = ({
         />
       ),
       key: EntityTabs.TABLE_QUERIES,
+      // Hidden rather than omitted: a persona layout listing this tab would otherwise
+      // render it with the Schema tab's content.
+      isHidden: !viewQueryResourcePermission,
       children: getTableQueriesTabChildren({
         viewQueriesPermission,
         deleted,

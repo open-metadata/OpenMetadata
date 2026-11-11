@@ -35,9 +35,11 @@ interface OntologyDataAssetPanelProps {
   /** The bound asset with its columns, once the concept's bindings have loaded. */
   readonly binding?: AssetBinding;
   readonly conceptName: string;
+  readonly canBindColumns?: boolean;
   readonly canUnlink: boolean;
   /** The row the person clicked, shown while the bindings are still loading. */
   readonly node: OntologyNode;
+  readonly onBindColumns?: () => void;
   readonly onClose: () => void;
   readonly onOpenAsset: () => void;
   readonly onUnlink: (binding: AssetBinding) => Promise<boolean>;
@@ -47,8 +49,10 @@ interface OntologyDataAssetPanelProps {
 const OntologyDataAssetPanel = ({
   binding,
   conceptName,
+  canBindColumns = false,
   canUnlink,
   node,
+  onBindColumns,
   onClose,
   onOpenAsset,
   onUnlink,
@@ -137,6 +141,15 @@ const OntologyDataAssetPanel = ({
             </li>
           ))}
         </ul>
+        {canBindColumns ? (
+          <Button
+            color="link-color"
+            data-testid="ontology-data-asset-bind-columns"
+            size="sm"
+            onPress={onBindColumns}>
+            {t('label.ontology-bind-columns')}
+          </Button>
+        ) : null}
       </Box>
       <Box className="tw:mt-auto" gap={2}>
         <Button

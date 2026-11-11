@@ -1,0 +1,31 @@
+{
+  "abbreviation": "ODRL",
+  "attribution": "ODRL Vocabulary and Expression 2.2, W3C Recommendation 15 February 2018. Copyright W3C. Used under the W3C Document License. Redistributed without changes.",
+  "bundled": true,
+  "description": "The W3C Open Digital Rights Language vocabulary for policies, permissions, prohibitions, duties and constraints, published verbatim.",
+  "id": "odrl",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "W3C Document License",
+  "licenseUrl": "https://www.w3.org/copyright/document-license-2023/",
+  "modules": [
+    {
+      "conceptCount": 217,
+      "dependencies": [],
+      "description": "Policies, rules, actions, constraints, parties and assets.",
+      "format": "turtle",
+      "id": "odrl",
+      "name": "ODRL 2.2 vocabulary",
+      "relationshipCount": 40,
+      "resourcePath": "rdf/ontology-packs/odrl/odrl.ttl",
+      "selectedByDefault": true,
+      "sha256": "7895765e80d86d1d0349d945a28b8a2479f03169572345080a5b3e561ef31457",
+      "sourceUrl": "https://www.w3.org/ns/odrl/2/ODRL22.ttl"
+    }
+  ],
+  "name": "ODRL 2.2",
+  "publisher": "W3C",
+  "sourceUrl": "https://www.w3.org/TR/odrl-vocab/",
+  "standard": "ODRL Vocabulary and Expression 2.2",
+  "version": "2.2"
+}

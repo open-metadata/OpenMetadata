@@ -190,8 +190,7 @@ class TableauUnitTest(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.DashboardServiceSource.test_connection")
     @patch("metadata.ingestion.source.dashboard.tableau.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, get_connection, test_connection) -> None:
         get_connection.return_value = False
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_tableau_config)
@@ -279,7 +278,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=5),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):
@@ -300,7 +299,7 @@ class TableauUnitTest(TestCase):
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
             usageSummary=UsageDetails(
                 dailyStats=UsageStats(count=1000),
-                date=datetime.strftime(datetime.now() - timedelta(1), "%Y-%m-%d"),
+                date=datetime.strftime(datetime.fromisoformat(self.tableau.today) - timedelta(1), "%Y-%m-%d"),
             ),
         )
         with patch.object(OpenMetadata, "get_by_name", return_value=return_value):

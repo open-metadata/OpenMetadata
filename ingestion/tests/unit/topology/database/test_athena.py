@@ -292,8 +292,7 @@ def _athena_config_with_catalog_id(catalog_id):
 
 class TestAthenaService(unittest.TestCase):
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_athena_config)
         self.athena_source = AthenaSource.create(

@@ -15,6 +15,7 @@ import java.util.Set;
 import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.util.SdkClients;
@@ -52,6 +53,7 @@ class IndependentOntologyDraftReadIT extends BaseOntologyApprovalIT {
   private static final String SPARQL = "{\"query\":\"SELECT * WHERE { ?s ?p ?o } LIMIT 1\"}";
 
   @Test
+  @ResourceLock("ontology-sparql-worker")
   void dataConsumerReadsThePublishedReleaseAndNoWorkingDraft(final TestNamespace ns) {
     final User consumer = createConsumer(ns);
     final Ontology ontology = createOntology(ns, "draftRead");

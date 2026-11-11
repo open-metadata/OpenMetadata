@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
-import { Fragment, useMemo, useRef, useState } from 'react';
+import { Fragment, useRef, useState } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -44,7 +44,7 @@ import {
   mappingFormFields,
   OntologyConceptFormValues,
 } from './OntologyConceptEditor.utils';
-import { useReadableConceptOptions } from './useReadableConceptOptions';
+import { useMappingTargetOptions } from './useReadableConceptOptions';
 
 interface OntologyConceptEditorProps {
   ontology: Ontology;
@@ -73,17 +73,8 @@ const OntologyConceptEditor = ({
     name: 'conceptMappings',
   });
   const addMappingButton = useRef<HTMLButtonElement>(null);
-  const readableConcepts = useReadableConceptOptions(
-    canEdit && mappings.fields.length > 0
-  );
-  const mappingTargets = useMemo(() => {
-    const local = new Set((concepts ?? []).map((option) => option.iri));
-
-    return [
-      ...(concepts ?? []),
-      ...readableConcepts.filter((option) => !local.has(option.iri)),
-    ];
-  }, [concepts, readableConcepts]);
+  const { options: mappingTargets, isLoading: mappingTargetsLoading } =
+    useMappingTargetOptions(concepts, canEdit && mappings.fields.length > 0);
   const disabled = !canEdit || isSaving;
   const saveStatus = form.formState.isDirty
     ? t('label.unsaved-changes')
@@ -146,6 +137,7 @@ const OntologyConceptEditor = ({
                   isRequired
                   error={fieldState.error?.message}
                   isDisabled={disabled}
+                  isLoading={mappingTargetsLoading}
                   label={t('label.concept-iri')}
                   options={mappingTargets}
                   testId="ontology-mapping-concept"

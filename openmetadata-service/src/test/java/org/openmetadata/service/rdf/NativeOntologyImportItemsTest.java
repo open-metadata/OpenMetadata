@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
@@ -20,6 +19,7 @@ import org.openmetadata.schema.api.data.NativeOntologyImportItem;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemKind;
 import org.openmetadata.schema.api.data.NativeOntologyImportItemStatus;
 import org.openmetadata.schema.api.data.NativeOntologyImportPreview;
+import org.openmetadata.schema.api.data.NativeOntologyImportSkipReason;
 import org.openmetadata.schema.api.data.PreviewNativeOntologyImport;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -27,7 +27,6 @@ import org.openmetadata.schema.type.OntologyChangeOperation;
 import org.openmetadata.schema.type.OntologyConceptType;
 import org.openmetadata.schema.type.OntologyReleaseMember.MemberKind;
 import org.openmetadata.schema.type.OntologyState;
-import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.ontology.NativeOntologyDocument;
 import org.openmetadata.service.ontology.OntologyWorkingSnapshot;
 
@@ -308,22 +307,25 @@ class NativeOntologyImportItemsTest {
   }
 
   @Test
-  void aRangeOutsideTheOwlDatatypeMapFailsThePreviewWithItsReason() {
-    final var source =
-        read(
-            PREFIXES
-                + """
-                ex:when a owl:DatatypeProperty ; rdfs:label "when" ; rdfs:range xsd:date .
-                """);
+  void aRangeOutsideTheOwlDatatypeMapIsSkippedAndReportedSoApplyNeverRefusesIt() {
+    final var preview =
+        importer.preview(
+            read(
+                PREFIXES
+                    + """
+                    ex:when a owl:DatatypeProperty ; rdfs:label "when" ; rdfs:range xsd:date .
+                    """),
+            emptySnapshot(root()));
 
-    final var failure =
-        assertThrows(
-            BadRequestException.class, () -> importer.preview(source, emptySnapshot(root())));
-
+    final var skipped = preview.getSummary().getSkippedStatements();
+    assertEquals(1, skipped.getTotal());
     assertEquals(
-        "Property https://example.org/items/when, range: Data property ranges require supported"
-            + " OWL 2 datatypes: http://www.w3.org/2001/XMLSchema#date",
-        failure.getMessage());
+        NativeOntologyImportSkipReason.UNSUPPORTED_STRUCTURE,
+        skipped.getGroups().getFirst().getReason());
+    assertEquals(
+        "http://www.w3.org/2000/01/rdf-schema#range",
+        skipped.getGroups().getFirst().getPredicate());
+    assertEquals(1, preview.getSummary().getCounts().getNewProperties());
   }
 
   @Test

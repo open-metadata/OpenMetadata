@@ -33,7 +33,14 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
-import { Fragment, MutableRefObject, useEffect, useRef, useState } from 'react';
+import {
+  Fragment,
+  MutableRefObject,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { v4 as uuid } from 'uuid';
@@ -58,6 +65,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
+import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import {
   buildNewClassChangeSet,
   NewClassDraft,
@@ -76,6 +84,8 @@ import {
   toEntityReferences,
 } from '../../../Glossary/AddGlossary/AddGlossary.utils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
+import { useMappingTargetOptions } from '../OntologyConceptEditor/useReadableConceptOptions';
+import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import {
   ClassIdentityIssue,
   classIdentityIssues,
@@ -329,7 +339,15 @@ const OntologyNewClassPanel = ({
     conceptIri: mappingIri,
   };
   const mappingRowValid = isValidMapping(mappings, pendingMapping);
-  const mappingRowInvalid = Boolean(mappingIri.trim()) && !mappingRowValid;
+  const mappingRowUnresolved =
+    Boolean(mappingIri.trim()) && !isAbsoluteOntologyIri(mappingIri.trim());
+  const isDuplicateMapping =
+    isAbsoluteOntologyIri(mappingIri.trim()) && !mappingRowValid;
+  const [mappingCommitTried, setMappingCommitTried] = useState(false);
+  const changeMappingIri = (iri: string) => {
+    setMappingIri(iri);
+    setMappingCommitTried(false);
+  };
   const [restoring, setRestoring] = useState(false);
   const [restoreFailed, setRestoreFailed] = useState(false);
   const deletedConcept = useDeletedConceptNamed(ontology, model, localName);
@@ -366,7 +384,7 @@ const OntologyNewClassPanel = ({
         name: localName.trim(),
       });
     }
-    if (mappingRowInvalid) {
+    if (mappingRowUnresolved && mappingCommitTried) {
       return t('message.invalid-concept-iri');
     }
 
@@ -424,7 +442,7 @@ const OntologyNewClassPanel = ({
     setSynonym('');
     setMappings([]);
     setMappingType(ConceptMappingType.ExactMatch);
-    setMappingIri('');
+    changeMappingIri('');
     setProperties([]);
     setPropertyName('');
     setDatatype('string');
@@ -532,14 +550,19 @@ const OntologyNewClassPanel = ({
     setIdentifier(false);
   };
   const addMapping = () => {
-    if (!mappingRowValid || locked) {
+    if (locked) {
+      return;
+    }
+    if (!mappingRowValid) {
+      setMappingCommitTried(true);
+
       return;
     }
     setMappings((previous) => [
       ...previous,
       { mappingType, conceptIri: mappingIri.trim() },
     ]);
-    setMappingIri('');
+    changeMappingIri('');
   };
   const restoreDeleted = async () => {
     if (!deletedConcept || restoring) {
@@ -589,8 +612,17 @@ const OntologyNewClassPanel = ({
 
     return fieldHint(undefined, ...NAME_ISSUES);
   };
+  const canSubmit = [permitted, !locked].every(Boolean);
   const create = async (keepOpen: boolean) => {
-    if (!valid || !permitted || locked || submitting.current) {
+    if (!canSubmit) {
+      return;
+    }
+    if (mappingRowUnresolved) {
+      setMappingCommitTried(true);
+
+      return;
+    }
+    if (!valid || submitting.current) {
       return;
     }
     submitting.current = true;
@@ -636,6 +668,17 @@ const OntologyNewClassPanel = ({
       submitting.current = false;
     }
   };
+  const localMappingTargets = useMemo(
+    () =>
+      model.concepts.map((c) => ({
+        iri: c.iri,
+        label: c.displayName ?? c.name,
+        context: getEntityName(ontology),
+      })),
+    [model.concepts, ontology]
+  );
+  const { options: mappingTargets, isLoading: mappingTargetsLoading } =
+    useMappingTargetOptions(localMappingTargets, !locked);
   const conceptOptions = model.concepts
     .filter((c) => c.conceptType !== OntologyConceptType.SkosConcept)
     .map((c) => ({
@@ -716,6 +759,15 @@ const OntologyNewClassPanel = ({
       </Box>
     );
   };
+  const mappingFieldError = (() => {
+    if (isDuplicateMapping) {
+      return t('message.ontology-mapping-already-added');
+    }
+
+    return mappingRowUnresolved && mappingCommitTried
+      ? t('message.invalid-concept-iri')
+      : undefined;
+  })();
   const renderMappings = () => (
     <>
       <Typography size="text-sm" weight="semibold">
@@ -757,25 +809,22 @@ const OntologyNewClassPanel = ({
         onChange={(key) => setMappingType(String(key) as ConceptMappingType)}>
         {(item) => <Select.Item id={item.id} label={item.label} />}
       </Select>
-      <Input
-        hint={mappingRowInvalid ? t('message.invalid-concept-iri') : undefined}
-        inputDataTestId="new-class-mapping-iri"
+      <OntologyIriInput
+        error={mappingFieldError}
         isDisabled={locked}
-        isInvalid={mappingRowInvalid}
+        isLoading={mappingTargetsLoading}
         label={t('label.concept-iri')}
+        options={mappingTargets}
+        testId="new-class-mapping-iri"
         value={mappingIri}
-        onChange={setMappingIri}
-        onKeyDown={(event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault();
-            addMapping();
-          }
-        }}
+        onChange={changeMappingIri}
+        onInvalidCommit={() => setMappingCommitTried(true)}
+        onSubmit={addMapping}
       />
       <Button
         color="secondary"
         data-testid="new-class-add-mapping"
-        isDisabled={!mappingRowValid || locked}
+        isDisabled={!mappingIri.trim() || isDuplicateMapping || locked}
         size="sm"
         onPress={addMapping}>
         {t('label.add-mapping')}

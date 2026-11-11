@@ -85,9 +85,24 @@ jest.mock('../DocumentStatusBadge/DocumentStatusBadge.component', () =>
 );
 
 jest.mock('../ExtractedMemoriesCard/ExtractedMemoriesCard.component', () =>
-  jest.fn(({ sourceId }: { sourceId: string }) => (
-    <div data-source-id={sourceId} data-testid="extracted-memories-card" />
-  ))
+  jest.fn(
+    ({
+      sourceId,
+      sourceOwners,
+      sourceType,
+    }: {
+      sourceId: string;
+      sourceOwners?: { id: string }[];
+      sourceType: string;
+    }) => (
+      <div
+        data-owner-ids={sourceOwners?.map((owner) => owner.id).join(',')}
+        data-source-id={sourceId}
+        data-source-type={sourceType}
+        data-testid="extracted-memories-card"
+      />
+    )
+  )
 );
 
 const baseFile: ContextFile = {
@@ -234,6 +249,25 @@ describe('DocumentPreviewPanel', () => {
       'data-source-id',
       'file-1'
     );
+  });
+
+  // The card offers the file's owners the approval of its extracted memories.
+  it('names the file and its owners to the memories card', () => {
+    render(
+      <DocumentPreviewPanel
+        file={{
+          ...baseFile,
+          owners: [{ id: 'user-alice', type: 'user', name: 'alice' }],
+        }}
+        url="http://x"
+        onClose={jest.fn()}
+      />
+    );
+
+    const card = screen.getByTestId('extracted-memories-card');
+
+    expect(card).toHaveAttribute('data-source-type', 'contextFile');
+    expect(card).toHaveAttribute('data-owner-ids', 'user-alice');
   });
 
   it('shows the processing error for a failed file', () => {

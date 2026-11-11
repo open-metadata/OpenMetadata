@@ -123,7 +123,12 @@ describe('Test Execution Component', () => {
 
     expect(screen.getByTestId('execution-tab')).toBeInTheDocument();
     expect(screen.getByTestId('radio-switch')).toBeInTheDocument();
-    expect(screen.getByTestId('status-button')).toBeInTheDocument();
+    expect(screen.getByTestId('status-button')).toHaveTextContent(
+      'label.status'
+    );
+    expect(screen.getByTestId('status-button')).toHaveClass(
+      'tw:after:outline-primary'
+    );
     expect(screen.getByTestId('data-range-picker')).toBeInTheDocument();
   });
 
@@ -165,5 +170,24 @@ describe('Test Execution Component', () => {
     expect(screen.getByText('TreeViewTab')).toBeInTheDocument();
 
     expect(screen.queryByTestId('data-range-picker')).not.toBeInTheDocument();
+  });
+
+  it('Should show the picked status and highlight the trigger', async () => {
+    render(<ExecutionsTab {...mockProps} />);
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('status-button'));
+    });
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('menuitemradio', { name: 'Failed' }));
+    });
+
+    const trigger = screen.getByTestId('status-button');
+
+    expect(trigger).toHaveTextContent('Failed');
+    expect(trigger).toHaveClass(
+      'tw:text-fg-brand-primary',
+      'tw:after:outline-brand'
+    );
   });
 });

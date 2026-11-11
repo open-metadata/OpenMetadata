@@ -708,7 +708,7 @@ describe('bound columns, unlinking and linking', () => {
     columns: [amountColumn],
   };
 
-  it('draws the bound columns of an asset under its row, counts them in the chip and names them in the legend', async () => {
+  it('draws the bound columns of an asset as nodes beside its row, counts them in the chip and names them in the legend', async () => {
     (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
       kind: 'complete',
       revision: 2,
@@ -722,17 +722,15 @@ describe('bound columns, unlinking and linking', () => {
     );
 
     expect(
-      screen.queryByTestId('ontology-data-asset-columns-asset:transfer:a1')
+      screen.queryByTestId('ontology-data-column')
     ).not.toBeInTheDocument();
 
     fireEvent.click(toggle);
-    const list = screen.getByTestId(
-      'ontology-data-asset-columns-asset:transfer:a1'
-    );
+    const node = screen.getByTestId('ontology-data-column');
 
-    expect(list).toHaveTextContent('amount');
-    expect(list).toHaveTextContent('decimal(10,2)');
-    expect(list).toHaveTextContent('amountProperty');
+    expect(node).toHaveTextContent('amount');
+    expect(node).toHaveTextContent('decimal(10,2)');
+    expect(screen.getAllByTestId('ontology-data-column-edge')).toHaveLength(1);
     expect(
       screen.getByTestId('ontology-data-concept-summary')
     ).toHaveTextContent('label.bound-column-count');
@@ -743,6 +741,52 @@ describe('bound columns, unlinking and linking', () => {
       screen.queryByTestId(
         'ontology-data-asset-columns-toggle-asset:transfer:a2'
       )
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the binding of a selected column node, and returns to the asset when the asset is selected', async () => {
+    (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
+      kind: 'complete',
+      revision: 2,
+      assets: [boundAsset],
+    });
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode();
+    fireEvent.click(
+      await screen.findByTestId(
+        'ontology-data-asset-columns-toggle-asset:transfer:a1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-data-column'));
+    const panel = await screen.findByTestId('ontology-data-column-panel');
+
+    expect(
+      within(panel).getByTestId('ontology-data-column-panel-column')
+    ).toHaveTextContent('amount');
+    expect(
+      within(panel).getByTestId('ontology-data-column-panel-property')
+    ).toHaveTextContent('amountProperty');
+    expect(
+      within(panel).getByTestId('ontology-data-column-panel-asset')
+    ).toHaveTextContent('table_1');
+    expect(screen.getByTestId('ontology-data-column')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(
+      screen.queryByTestId('ontology-data-asset-panel')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-asset:transfer:a1')
+    );
+
+    expect(
+      await screen.findByTestId('ontology-data-asset-panel')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-column-panel')
     ).not.toBeInTheDocument();
   });
 
