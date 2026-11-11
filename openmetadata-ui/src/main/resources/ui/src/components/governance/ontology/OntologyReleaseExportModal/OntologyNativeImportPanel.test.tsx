@@ -11,38 +11,97 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { AxiosError } from 'axios';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
+  CreateOntologyChangeSet,
   OperationState,
   OperationType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
-import { Format } from '../../../../generated/api/data/previewNativeOntologyImport';
 import {
-  OntologyChangeSetState,
-  OperationStatus,
-} from '../../../../generated/entity/data/ontologyChangeSet';
-import { useOntologyEditLease } from '../../../../hooks/governance/ontology/useOntologyEditLease';
+  Format,
+  Kind,
+  NativeOntologyImportSummary,
+  SkipReason,
+  Status,
+} from '../../../../generated/api/data/nativeOntologyImportSummary';
+import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
+import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   applyOntologyChangeSet,
+  createOntology,
   createOntologyChangeSet,
+  detectNativeOntologyImportFormat,
+  getOntologyByName,
   getOntologyChangeSet,
   previewNativeOntologyImport,
+  previewNativeOntologyImportWithoutTarget,
 } from '../../../../rest/ontologyAPI';
+import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyNativeImportPanel from './OntologyNativeImportPanel';
+import { NATIVE_IMPORT_MAX_BYTES } from './OntologyNativeImportPanel.utils';
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
   applyOntologyChangeSet: jest.fn(),
+  createOntology: jest.fn(),
   createOntologyChangeSet: jest.fn(),
+  detectNativeOntologyImportFormat: jest.fn(),
+  getOntologyByName: jest.fn(),
   getOntologyChangeSet: jest.fn(),
+  listOntologyChangeSets: jest.fn(),
   previewNativeOntologyImport: jest.fn(),
+  previewNativeOntologyImportWithoutTarget: jest.fn(),
+}));
+const mockListed: unknown[] = [];
+const mockIdentityOf = (listed: unknown[]) => (title: string) =>
+  jest
+    .requireActual('../OntologyCreateForm/OntologyCreateForm.utils')
+    .generatedOntologyIdentity(title, 'https://open-metadata.org', listed);
+jest.mock('../OntologyCreateForm/useOntologyIdentitySource', () => ({
+  useOntologyIdentitySource: () => ({
+    isReady: true,
+    identityOf: mockIdentityOf([]),
+    refreshIdentityOf: async () => mockIdentityOf(mockListed),
+  }),
 }));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
 jest.mock('../../../../hooks/governance/ontology/useOntologyEditLease', () => ({
-  useOntologyEditLease: jest.fn(),
+  useOntologyEditLease: ({ resourceId }: { resourceId?: string }) => ({
+    isOwned: Boolean(resourceId),
+    lock: resourceId ? { sessionId: 'session-id', version: 2 } : undefined,
+    state: 'owned',
+  }),
+}));
+jest.mock(
+  '../../../../hooks/useEntityPermissions/useEntityPermissions',
+  () => ({
+    useEntityPermissions: () => ({
+      canEditAll: true,
+      isLoading: false,
+      error: null,
+    }),
+  })
+);
+jest.mock('../../../../hooks/authHooks', () => ({
+  useAuth: () => ({ isAdminUser: true }),
+}));
+jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({ permissions: {} }),
+}));
+jest.mock('../../../../hooks/useApplicationStore', () => ({
+  useApplicationStore: (
+    selector: (state: { currentUser: { id: string } }) => unknown
+  ) => selector({ currentUser: { id: 'author' } }),
+}));
+jest.mock('../../../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
 }));
 
 const ontology = {
@@ -52,7 +111,21 @@ const ontology = {
   iri: 'urn:sales',
   namespace: 'urn:sales:',
 };
-const preview = {
+const summary: NativeOntologyImportSummary = {
+  detectedFormat: Format.Turtle,
+  ontologyLabel: 'Fibo sample',
+  counts: {
+    newConcepts: 42,
+    updatedConcepts: 2,
+    newProperties: 5,
+    updatedProperties: 1,
+    newRelations: 37,
+    newMappings: 12,
+    skippedDefinitions: 3,
+    skippedRelations: 4,
+  },
+};
+const changeSet: CreateOntologyChangeSet = {
   baseWorkingRevision: 4,
   description: 'Import',
   displayName: 'Import',
@@ -67,223 +140,921 @@ const preview = {
   ],
 };
 const draft = {
-  ...preview,
+  ...changeSet,
   id: 'draft-id',
   ontology: { id: ontology.id, type: 'ontology', fullyQualifiedName: 'Sales' },
   state: OntologyChangeSetState.Draft,
-  undoCursor: preview.operations.length,
+  undoCursor: 1,
+};
+const TURTLE = '@prefix ex: <https://example.org/> .\nex:A a ex:B .\n';
+
+const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+
+const Location = () => (
+  <span data-testid="location">{useLocation().search}</span>
+);
+
+const renderPanel = (
+  props: Partial<React.ComponentProps<typeof OntologyNativeImportPanel>> = {}
+) => {
+  const onApplied = jest.fn();
+  renderWithQueryClient(
+    <MemoryRouter
+      initialEntries={['/governance/ontology?concept=c1&scope=all']}>
+      <OntologyNativeImportPanel
+        canImport
+        ontology={ontology}
+        onApplied={onApplied}
+        {...props}
+      />
+      <Location />
+    </MemoryRouter>
+  );
+
+  return { onApplied };
 };
 
-const upload = async () => {
+const dropFile = (name = 'fibo-sample.ttl', text = TURTLE, size?: number) => {
   const input = document.querySelector('input[type="file"]');
   if (!input) {
     throw new Error('Missing file input');
   }
-  const file = new File(['<urn:Customer> a <urn:Class> .'], 'sales.nt', {
-    type: 'application/n-triples',
-  });
+  const file = new File([text], name);
   Object.defineProperty(file, 'text', {
-    value: jest.fn().mockResolvedValue('<urn:Customer> a <urn:Class> .'),
+    value: jest.fn().mockResolvedValue(text),
   });
+  if (size !== undefined) {
+    Object.defineProperty(file, 'size', { value: size });
+  }
   fireEvent.change(input, { target: { files: [file] } });
-  await screen.findByTestId('ontology-native-import-preview');
+
+  return file;
+};
+
+const parse = async () => {
+  await user.click(await screen.findByTestId('ontology-native-import-parse'));
+  await screen.findByTestId('ontology-native-import-result');
 };
 
 describe('OntologyNativeImportPanel', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (useOntologyEditLease as jest.Mock).mockImplementation(
-      ({ resourceId }) => ({
-        isOwned: Boolean(resourceId),
-        lock: resourceId ? { sessionId: 'session-id', version: 2 } : undefined,
-      })
-    );
-    (previewNativeOntologyImport as jest.Mock).mockResolvedValue(preview);
-    (createOntologyChangeSet as jest.Mock).mockResolvedValue(draft);
-    (getOntologyChangeSet as jest.Mock).mockResolvedValue({
-      ...draft,
-      state: OntologyChangeSetState.ApplyFailed,
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
+    (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({
+      detectedFormat: 'turtle',
     });
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary,
+      changeSet,
+    });
+    (previewNativeOntologyImportWithoutTarget as jest.Mock).mockResolvedValue(
+      summary
+    );
+    (createOntology as jest.Mock).mockImplementation(async (request) => ({
+      ...request,
+      id: 'new-ontology-id',
+      fullyQualifiedName: request.name,
+    }));
+    (createOntologyChangeSet as jest.Mock).mockResolvedValue(draft);
+    (getOntologyChangeSet as jest.Mock).mockResolvedValue(draft);
     (applyOntologyChangeSet as jest.Mock).mockResolvedValue({
       ...draft,
       state: OntologyChangeSetState.Applied,
     });
   });
 
-  it('previews an RDF file and applies the retained draft under its lease', async () => {
-    const onApplied = jest.fn();
-    render(
-      <OntologyNativeImportPanel
-        canImport
-        ontology={ontology}
-        onApplied={onApplied}
-      />
+  it('names the detected format before anything is parsed', async () => {
+    renderPanel();
+    dropFile('misleading.csv', TURTLE);
+
+    expect(
+      await screen.findByTestId('ontology-native-import-format')
+    ).toHaveTextContent('label.turtle');
+    expect(detectNativeOntologyImportFormat).toHaveBeenCalledWith({
+      data: TURTLE,
+      fileName: 'misleading.csv',
+    });
+    expect(previewNativeOntologyImport).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('ontology-native-import-result')).toBeNull();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
+  it('keeps one extra character so detection recognizes a truncated N-Triples sample', async () => {
+    const source = '<urn:a> <urn:b> <urn:c> .\n'.repeat(4_000);
+
+    renderPanel();
+    dropFile('large.nt', source);
+
+    await screen.findByTestId('ontology-native-import-format');
+
+    expect(detectNativeOntologyImportFormat).toHaveBeenCalledWith({
+      data: source.slice(0, 65_537),
+      fileName: 'large.nt',
+    });
+  });
+
+  it('parses the latest file when an earlier detection finishes last', async () => {
+    let finishFirstDetection:
+      | ((value: { detectedFormat: string }) => void)
+      | undefined;
+    (detectNativeOntologyImportFormat as jest.Mock).mockImplementation(
+      ({ fileName }) =>
+        fileName === 'first.ttl'
+          ? new Promise((resolve) => {
+              finishFirstDetection = resolve;
+            })
+          : Promise.resolve({ detectedFormat: Format.Turtle })
     );
-    await upload();
+    renderPanel();
+    dropFile('first.ttl', 'first content');
+    dropFile('second.ttl', 'second content');
+
+    await screen.findByTestId('ontology-native-import-format');
+    finishFirstDetection?.({ detectedFormat: Format.Turtle });
+    await parse();
 
     expect(previewNativeOntologyImport).toHaveBeenCalledWith('ontology-id', {
-      format: Format.Ntriples,
-      data: '<urn:Customer> a <urn:Class> .',
+      data: 'second content',
+      fileName: 'second.ttl',
     });
-    expect(createOntologyChangeSet).not.toHaveBeenCalled();
+  });
 
-    fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
+  it('parses without persisting and shows the server counts', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(previewNativeOntologyImport).toHaveBeenCalledWith('ontology-id', {
+      data: TURTLE,
+      fileName: 'fibo-sample.ttl',
+    });
+    expect(
+      screen.getByText('message.native-import-nothing-persisted')
+    ).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-count-new-concepts')
+    ).toHaveTextContent('42');
+    expect(
+      screen.getByTestId('ontology-native-import-count-relations')
+    ).toHaveTextContent('37');
+    expect(
+      screen.getByTestId('ontology-native-import-count-new-properties')
+    ).toHaveTextContent('5');
+    expect(
+      screen.getByTestId('ontology-native-import-count-mappings')
+    ).toHaveTextContent('12');
+    expect(
+      screen.getByTestId('ontology-native-import-count-skipped')
+    ).toHaveTextContent('3');
+    expect(createOntologyChangeSet).not.toHaveBeenCalled();
+    expect(createOntology).not.toHaveBeenCalled();
+  });
+
+  it('shows new properties when they are the only importable changes', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: {
+        ...summary,
+        counts: {
+          ...summary.counts,
+          newConcepts: 0,
+          updatedConcepts: 0,
+          updatedProperties: 0,
+          newRelations: 0,
+          newMappings: 0,
+          skippedDefinitions: 0,
+          skippedRelations: 0,
+        },
+      },
+      changeSet,
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.getByTestId('ontology-native-import-count-new-properties')
+    ).toHaveTextContent('5');
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeEnabled();
+  });
+
+  it('says how many already-existing definitions the server left unlisted', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: { ...summary, omittedItems: 4_990 },
+      changeSet,
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.getByTestId('ontology-native-import-items-omitted')
+    ).toHaveTextContent('message.native-import-items-omitted');
+  });
+
+  it('lists what the server skipped, grouped by reason and predicate', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: {
+        ...summary,
+        skippedStatements: {
+          total: 3,
+          omittedGroups: 2,
+          groups: [
+            {
+              reason: SkipReason.UnsupportedAnnotation,
+              predicate: 'http://www.w3.org/2000/01/rdf-schema#isDefinedBy',
+              count: 2,
+              subjects: ['https://example.org/A', 'https://example.org/B'],
+            },
+            {
+              reason: SkipReason.Individual,
+              count: 1,
+              subjects: ['https://example.org/i'],
+            },
+          ],
+        },
+      },
+      changeSet,
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    const skipped = screen.getByTestId('ontology-native-import-skipped');
+
+    expect(skipped).toHaveTextContent(
+      'message.native-import-skipped-statements'
+    );
+    expect(skipped).toHaveTextContent(
+      'label.skip-reason-unsupported-annotation'
+    );
+    expect(skipped).toHaveTextContent(
+      'http://www.w3.org/2000/01/rdf-schema#isDefinedBy'
+    );
+    expect(skipped).toHaveTextContent(
+      'https://example.org/A, https://example.org/B'
+    );
+    expect(skipped).toHaveTextContent('label.skip-reason-individual');
+    expect(skipped).toHaveTextContent(
+      'message.native-import-skipped-more-groups'
+    );
+  });
+
+  it('shows no skipped disclosure when the server skipped nothing', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.queryByTestId('ontology-native-import-skipped')
+    ).not.toBeInTheDocument();
+  });
+
+  it('applies the previewed change set to the existing ontology under its lease', async () => {
+    const { onApplied } = renderPanel();
+    dropFile();
+    await parse();
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
 
     await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
 
-    expect(createOntologyChangeSet).toHaveBeenCalledTimes(1);
+    expect(createOntologyChangeSet).toHaveBeenCalledWith(changeSet);
     expect(applyOntologyChangeSet).toHaveBeenCalledWith('draft-id', {
       lease: { sessionId: 'session-id', version: 2 },
     });
-    expect(showSuccessToast).toHaveBeenCalled();
+    expect(showSuccessToast).toHaveBeenCalledWith('label.ontology-applied');
+    expect(createOntology).not.toHaveBeenCalled();
   });
 
-  it('skips draft creation for a no-op preview', async () => {
-    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
-      ...preview,
-      operations: [],
-    });
-    render(
-      <OntologyNativeImportPanel
-        canImport
-        ontology={ontology}
-        onApplied={jest.fn()}
-      />
-    );
-    const input = document.querySelector('input[type="file"]');
-    if (!input) {
-      throw new Error('Missing file input');
-    }
-    const file = new File([''], 'sales.ttl');
-    Object.defineProperty(file, 'text', {
-      value: jest.fn().mockResolvedValue(''),
-    });
-    fireEvent.change(input, { target: { files: [file] } });
-
-    expect(await screen.findByText('message.no-changes-to-save')).toBeVisible();
-    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
-    expect(createOntologyChangeSet).not.toHaveBeenCalled();
-  });
-
-  it('shows the failed operation reason and retains the draft for retry', async () => {
-    (applyOntologyChangeSet as jest.Mock).mockResolvedValue({
-      ...draft,
-      applicationResult: {
-        results: [
-          {
-            message: 'Concept IRI is already used',
-            operationId: 'operation-id',
-            status: OperationStatus.Failed,
-          },
-        ],
+  it('warns that imported concepts enter Draft when the ontology has reviewers', async () => {
+    renderPanel({
+      ontology: {
+        ...ontology,
+        reviewers: [{ id: 'reviewer', type: 'user' }],
       },
-      state: OntologyChangeSetState.ApplyFailed,
     });
-    render(
-      <OntologyNativeImportPanel
-        canImport
-        ontology={ontology}
-        onApplied={jest.fn()}
-      />
-    );
-    await upload();
-    fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
+    dropFile();
+    await parse();
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Concept IRI is already used'
+    expect(
+      screen.getByTestId('ontology-native-import-draft-notice')
+    ).toHaveTextContent('message.native-import-enters-draft');
+  });
+
+  it('shows no Draft notice for an ontology without reviewers', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.queryByTestId('ontology-native-import-draft-notice')
+    ).toBeNull();
+  });
+
+  it('parses against an empty target and creates nothing before Import for a new ontology', async () => {
+    renderPanel({ ontology: undefined });
+    dropFile();
+    await parse();
+
+    expect(previewNativeOntologyImportWithoutTarget).toHaveBeenCalledWith({
+      data: TURTLE,
+      fileName: 'fibo-sample.ttl',
+    });
+    expect(previewNativeOntologyImport).not.toHaveBeenCalled();
+    expect(createOntology).not.toHaveBeenCalled();
+    expect(
+      screen.getByTestId('ontology-native-import-count-new-concepts')
+    ).toHaveTextContent('42');
+  });
+
+  it('creates the new ontology on Import, applies into it, and lands on it', async () => {
+    const { onApplied } = renderPanel({ ontology: undefined });
+    dropFile();
+    await parse();
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+    const request = (createOntology as jest.Mock).mock.calls[0][0];
+
+    expect(request.iri).toBe('https://open-metadata.org/onto/fibosamp');
+    expect(request.namespace).toBe('https://open-metadata.org/onto/fibosamp#');
+    expect(request.name).toBe('fibo-sample');
+    expect(request.displayName).toBe('Fibo sample');
+    expect(request.owners).toEqual([{ id: 'author', type: 'user' }]);
+    expect(previewNativeOntologyImport).toHaveBeenCalledWith(
+      'new-ontology-id',
+      {
+        data: TURTLE,
+        fileName: 'fibo-sample.ttl',
+      }
+    );
+    expect(screen.getByTestId('location')).toHaveTextContent(
+      '?ontology=new-ontology-id'
     );
     expect(
-      screen.getByTestId('ontology-native-import-apply')
-    ).toHaveTextContent('label.retry');
-    expect(createOntologyChangeSet).toHaveBeenCalledTimes(1);
+      within(screen.getByTestId('location')).queryByText(/concept|scope/)
+    ).toBeNull();
   });
 
-  it('renders a bounded page of a large import plan', async () => {
-    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
-      ...preview,
-      operations: Array.from({ length: 1000 }, (_, index) => ({
-        id: `operation-${index}`,
-        operationType: OperationType.UpsertConcept,
-        state: OperationState.Active,
-      })),
+  it('never writes into an ontology that took the name after the panel opened', async () => {
+    const taken = {
+      id: 'old-ontology-id',
+      name: 'fibo-sample',
+      displayName: 'Fibo sample',
+      iri: 'https://open-metadata.org/onto/fibosamp',
+      namespace: 'https://open-metadata.org/onto/fibosamp#',
+    };
+    (createOntology as jest.Mock).mockRejectedValueOnce(
+      Object.assign(new AxiosError('Conflict'), {
+        response: { status: 409, data: { message: 'Entity already exists' } },
+      })
+    );
+    (getOntologyByName as jest.Mock).mockResolvedValue({
+      ...taken,
+      fullyQualifiedName: taken.name,
     });
-    render(
-      <OntologyNativeImportPanel
-        canImport
-        ontology={ontology}
-        onApplied={jest.fn()}
-      />
+    renderPanel({ ontology: undefined });
+    dropFile();
+    await parse();
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.ontology-install-name-taken'
     );
-    await upload();
+    expect(previewNativeOntologyImport).not.toHaveBeenCalled();
+    expect(createOntologyChangeSet).not.toHaveBeenCalled();
+    expect(screen.getByTestId('location')).not.toHaveTextContent('ontology=');
 
-    const plan = screen.getByTestId('ontology-native-import-preview');
+    mockListed.push(taken);
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
 
-    expect(plan.querySelectorAll('li')).toHaveLength(25);
-    expect(plan).toHaveTextContent('operation-24');
-    expect(plan).not.toHaveTextContent('operation-25');
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        '?ontology=new-ontology-id'
+      )
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+    expect(createOntology).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        name: 'fibo-sample-2',
+        displayName: 'Fibo sample (2)',
+      })
+    );
 
-    expect(plan.querySelectorAll('li')).toHaveLength(25);
-    expect(plan).toHaveTextContent('operation-25');
-    expect(plan).not.toHaveTextContent('operation-0 ');
+    mockListed.length = 0;
   });
 
-  it('rejects an oversized file before reading or sending it', async () => {
-    render(
-      <OntologyNativeImportPanel
-        canImport
-        ontology={ontology}
-        onApplied={jest.fn()}
-      />
+  it('shows the server error that names a CSV row and creates nothing', async () => {
+    const message = "CSV row 7, column iri: 'Customer' is not an absolute IRI";
+    (previewNativeOntologyImportWithoutTarget as jest.Mock).mockRejectedValue(
+      Object.assign(new AxiosError('Request failed'), {
+        response: { status: 400, data: { message } },
+      })
     );
-    await upload();
-    const input = document.querySelector('input[type="file"]');
-    if (!input) {
-      throw new Error('Missing file input');
-    }
-    const file = new File([''], 'large.ttl');
-    const read = jest.fn();
-    Object.defineProperty(file, 'size', { value: 10 * 1024 * 1024 + 1 });
-    Object.defineProperty(file, 'text', { value: read });
-    fireEvent.change(input, { target: { files: [file] } });
+    renderPanel({ ontology: undefined });
+    dropFile('bad.csv', 'kind,iri\n');
+    await user.click(await screen.findByTestId('ontology-native-import-parse'));
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(message);
+    expect(createOntology).not.toHaveBeenCalled();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
+  it('drops the parsed preview when a replacement file is too large', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+    dropFile('replacement.ttl', TURTLE, NATIVE_IMPORT_MAX_BYTES + 1);
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'message.file-size-exceeded'
     );
-    expect(read).not.toHaveBeenCalled();
-    expect(previewNativeOntologyImport).toHaveBeenCalledTimes(1);
+    expect(screen.queryByTestId('ontology-native-import-result')).toBeNull();
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
-  it('checks the same draft before retrying an uncertain apply response', async () => {
-    (applyOntologyChangeSet as jest.Mock)
-      .mockRejectedValueOnce(new Error('network'))
-      .mockResolvedValueOnce({
-        ...draft,
-        state: OntologyChangeSetState.Applied,
-      });
-    const onApplied = jest.fn();
-    render(
-      <OntologyNativeImportPanel
-        canImport
-        ontology={ontology}
-        onApplied={onApplied}
-      />
-    );
-    await upload();
-    fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
+  it('does not offer Parse when the format cannot be detected', async () => {
+    (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({});
+    renderPanel();
+    dropFile('notes.ttl', 'just words');
 
-    await screen.findByRole('alert');
-    fireEvent.click(screen.getByTestId('ontology-native-import-apply'));
+    expect(
+      await screen.findByText('message.native-import-format-undetected')
+    ).toBeVisible();
+    expect(screen.getByTestId('ontology-native-import-parse')).toBeDisabled();
+  });
+
+  it('shows the detection failure instead of an empty state', async () => {
+    (detectNativeOntologyImportFormat as jest.Mock).mockRejectedValue(
+      Object.assign(new AxiosError('Request failed'), {
+        response: { status: 500, data: { message: 'Detector unavailable' } },
+      })
+    );
+    renderPanel();
+    dropFile();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Detector unavailable'
+    );
+  });
+
+  it('does not import a file that changes nothing', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: {
+        ...summary,
+        counts: {
+          ...summary.counts,
+          newConcepts: 0,
+          updatedConcepts: 0,
+          newProperties: 0,
+          updatedProperties: 0,
+          newRelations: 0,
+          newMappings: 0,
+        },
+      },
+      changeSet: { ...changeSet, operations: [] },
+    });
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+
+  it('parses, shows the counts and imports into the ontology in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const { onApplied } = renderPanel();
+
+    expect(document.querySelectorAll('input[type="file"]')).toHaveLength(1);
+    expect(
+      screen.queryByText('message.native-import-supported-formats')
+    ).toBeNull();
+    expect(screen.getByTestId('ontology-native-import-file')).toBeEnabled();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+
+    dropFile();
+
+    expect(
+      await screen.findByTestId('ontology-native-import-format')
+    ).toHaveTextContent('label.turtle');
+    expect(screen.getByText('fibo-sample.ttl')).toBeVisible();
+
+    await parse();
+
+    expect(
+      screen.getByText('message.native-import-nothing-persisted')
+    ).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-native-import-count-new-concepts')
+    ).toHaveTextContent('42');
+    expect(
+      screen.getByTestId('ontology-native-import-count-relations')
+    ).toHaveTextContent('37');
+    expect(createOntologyChangeSet).not.toHaveBeenCalled();
+
+    await user.click(
+      within(screen.getByTestId('ontology-native-import-target')).getByRole(
+        'button'
+      )
+    );
+    await user.click(await screen.findByRole('option', { name: 'Sales' }));
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
 
     await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
 
-    expect(createOntologyChangeSet).toHaveBeenCalledTimes(1);
-    expect(getOntologyChangeSet).toHaveBeenCalledWith(
-      'draft-id',
-      'operations,applicationResult'
+    expect(createOntologyChangeSet).toHaveBeenCalledWith(changeSet);
+    expect(applyOntologyChangeSet).toHaveBeenCalledWith('draft-id', {
+      lease: { sessionId: 'session-id', version: 2 },
+    });
+    expect(createOntology).not.toHaveBeenCalled();
+  });
+
+  it('rejects an oversized file before detection in AI mode', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderPanel();
+    dropFile('big.ttl', TURTLE, NATIVE_IMPORT_MAX_BYTES + 1);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'message.file-size-exceeded'
     );
-    expect(applyOntologyChangeSet).toHaveBeenCalledTimes(2);
+    expect(detectNativeOntologyImportFormat).not.toHaveBeenCalled();
+  });
+});
+
+describe('OntologyNativeImportPanel item review', () => {
+  const itemSummary: NativeOntologyImportSummary = {
+    ...summary,
+    items: [
+      {
+        id: 'concept:https://example.org/Invoice',
+        kind: Kind.Concept,
+        label: 'Invoice',
+        iri: 'https://example.org/Invoice',
+        status: Status.New,
+        operationId: 'op-invoice',
+        conceptIds: [],
+      },
+      {
+        id: 'concept:https://example.org/Payment',
+        kind: Kind.Concept,
+        label: 'Payment',
+        iri: 'https://example.org/Payment',
+        status: Status.New,
+        operationId: 'op-payment',
+        conceptIds: [],
+      },
+      {
+        id: 'concept:https://example.org/Customer',
+        kind: Kind.Concept,
+        label: 'Customer',
+        iri: 'https://example.org/Customer',
+        status: Status.AlreadyExists,
+        conceptIds: [],
+      },
+      {
+        id: 'axiom:1111111111111111',
+        kind: Kind.Rule,
+        label: 'Invoice and Payment are disjoint',
+        status: Status.New,
+        operationId: 'op-rule',
+        warning: 'Invoice and Payment would clash with an existing subclass',
+        conceptIds: [],
+      },
+      {
+        id: 'axiom:2222222222222222',
+        kind: Kind.Relationship,
+        label: 'Invoice relates to Payment',
+        status: Status.Duplicate,
+        reason: 'Stated twice in the file',
+        conceptIds: [],
+      },
+    ],
+  };
+  const itemChangeSet: CreateOntologyChangeSet = {
+    ...changeSet,
+    operations: ['op-invoice', 'op-payment', 'op-rule'].map((id) => ({
+      id,
+      operationType: OperationType.UpsertConcept,
+      state: OperationState.Active,
+    })),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({
+      detectedFormat: 'turtle',
+    });
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: itemSummary,
+      changeSet: itemChangeSet,
+    });
+    let stored = draft;
+    (createOntologyChangeSet as jest.Mock).mockImplementation(
+      async (request: CreateOntologyChangeSet) => {
+        stored = {
+          ...draft,
+          operations: request.operations,
+          undoCursor: request.undoCursor ?? 0,
+        };
+
+        return stored;
+      }
+    );
+    (getOntologyChangeSet as jest.Mock).mockImplementation(async () => stored);
+    (applyOntologyChangeSet as jest.Mock).mockImplementation(async () => ({
+      ...stored,
+      state: OntologyChangeSetState.Applied,
+    }));
+  });
+
+  it('lists every item under its kind with its status, reason and warning', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    expect(
+      screen.getByTestId('ontology-native-import-group-CONCEPT')
+    ).toHaveTextContent('Invoice');
+    expect(
+      within(
+        screen.getByTestId('ontology-native-import-group-RELATIONSHIP')
+      ).getByText('Invoice relates to Payment')
+    ).toBeVisible();
+    expect(
+      screen.getByTestId(
+        'ontology-native-import-item-status-concept:https://example.org/Customer'
+      )
+    ).toHaveTextContent('label.already-exists');
+    expect(
+      screen.getByTestId(
+        'ontology-native-import-item-note-axiom:2222222222222222'
+      )
+    ).toHaveTextContent('Stated twice in the file');
+    expect(
+      screen.getByTestId(
+        'ontology-native-import-item-warning-axiom:1111111111111111'
+      )
+    ).toHaveTextContent('Invoice and Payment would clash');
+    expect(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-concept:https://example.org/Customer'
+        )
+      ).getByRole('checkbox')
+    ).toBeDisabled();
+  });
+
+  it('applies only the operations of the items left ticked', async () => {
+    const { onApplied } = renderPanel();
+    dropFile();
+    await parse();
+
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeEnabled();
+
+    await user.click(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-concept:https://example.org/Payment'
+        )
+      ).getByRole('checkbox')
+    );
+    await user.click(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-axiom:1111111111111111'
+        )
+      ).getByRole('checkbox')
+    );
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+    const sent = (createOntologyChangeSet as jest.Mock).mock.calls[0][0];
+
+    expect(sent.operations.map(({ id }: { id: string }) => id)).toEqual([
+      'op-invoice',
+    ]);
+  });
+
+  it('disables Import once every item is unticked', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    for (const kind of ['CONCEPT', 'RULE']) {
+      await user.click(
+        within(
+          screen.getByTestId(`ontology-native-import-group-check-${kind}`)
+        ).getByRole('checkbox')
+      );
+    }
+
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
+  });
+});
+
+describe('OntologyNativeImportPanel dependents of an unticked concept', () => {
+  const ACCOUNT = 'concept:https://example.org/Account';
+  const LEDGER = 'concept:https://example.org/Ledger';
+  const LINK = 'axiom:aaaaaaaaaaaaaaaa';
+  const RULE = 'axiom:bbbbbbbbbbbbbbbb';
+  const OWNS = 'property:https://example.org/owns';
+  const itemSummary: NativeOntologyImportSummary = {
+    ...summary,
+    items: [
+      {
+        id: ACCOUNT,
+        kind: Kind.Concept,
+        label: 'Account',
+        iri: 'https://example.org/Account',
+        status: Status.New,
+        operationId: 'op-account',
+        conceptIds: [],
+      },
+      {
+        id: LEDGER,
+        kind: Kind.Concept,
+        label: 'Ledger',
+        iri: 'https://example.org/Ledger',
+        status: Status.New,
+        operationId: 'op-ledger',
+        conceptIds: [],
+      },
+      {
+        id: LINK,
+        kind: Kind.Relationship,
+        label: 'Ledger is a kind of Account',
+        iri: 'https://example.org/Ledger',
+        status: Status.New,
+        operationId: 'op-link',
+        dependsOnIris: [
+          'https://example.org/Account',
+          'https://example.org/Ledger',
+        ],
+        conceptIds: [],
+      },
+      {
+        id: RULE,
+        kind: Kind.Rule,
+        label: 'Account and Ledger are disjoint',
+        iri: 'https://example.org/Account',
+        status: Status.New,
+        operationId: 'op-rule',
+        dependsOnIris: [
+          'https://example.org/Account',
+          'https://example.org/Ledger',
+        ],
+        conceptIds: [],
+      },
+      {
+        id: OWNS,
+        kind: Kind.Property,
+        label: 'owns',
+        iri: 'https://example.org/owns',
+        status: Status.New,
+        operationId: 'op-owns',
+        dependsOnIris: ['https://example.org/Ledger'],
+        conceptIds: [],
+      },
+    ],
+  };
+  const check = (id: string) =>
+    within(
+      screen.getByTestId(`ontology-native-import-item-check-${id}`)
+    ).getByRole('checkbox');
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (detectNativeOntologyImportFormat as jest.Mock).mockResolvedValue({
+      detectedFormat: 'turtle',
+    });
+    (previewNativeOntologyImport as jest.Mock).mockResolvedValue({
+      summary: itemSummary,
+      changeSet: {
+        ...changeSet,
+        operations: [
+          'op-account',
+          'op-ledger',
+          'op-link',
+          'op-rule',
+          'op-owns',
+        ].map((id) => ({
+          id,
+          operationType: OperationType.UpsertConcept,
+          state: OperationState.Active,
+        })),
+      },
+    });
+    let stored = draft;
+    (createOntologyChangeSet as jest.Mock).mockImplementation(
+      async (request: CreateOntologyChangeSet) => {
+        stored = {
+          ...draft,
+          operations: request.operations,
+          undoCursor: request.undoCursor ?? 0,
+        };
+
+        return stored;
+      }
+    );
+    (getOntologyChangeSet as jest.Mock).mockImplementation(async () => stored);
+    (applyOntologyChangeSet as jest.Mock).mockImplementation(async () => ({
+      ...stored,
+      state: OntologyChangeSetState.Applied,
+    }));
+  });
+
+  it('unticks the relationship and rule that use the concept and says so', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    await user.click(check(ACCOUNT));
+
+    expect(check(LINK)).not.toBeChecked();
+    expect(check(RULE)).not.toBeChecked();
+    expect(check(LEDGER)).toBeChecked();
+    expect(
+      screen.getByTestId('ontology-native-import-unticked-notice')
+    ).toHaveTextContent(
+      'message.native-import-also-unticked-relationshipmessage.native-import-also-unticked-rule'
+    );
+    expect(
+      screen.getByTestId('ontology-native-import-apply')
+    ).toHaveTextContent('label.import-selected-count');
+  });
+
+  it('unticks a property whose domain or range is the concept and says so', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    await user.click(check(LEDGER));
+
+    expect(check(OWNS)).not.toBeChecked();
+    expect(check(OWNS)).toBeDisabled();
+    expect(check(ACCOUNT)).toBeChecked();
+    expect(
+      screen.getByTestId('ontology-native-import-unticked-notice')
+    ).toHaveTextContent(
+      'message.native-import-also-unticked-relationshipmessage.native-import-also-unticked-rulemessage.native-import-also-unticked-property'
+    );
+  });
+
+  it('keeps them unticked and unavailable until the concept is ticked, then lets the user tick them', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+    await user.click(check(ACCOUNT));
+
+    expect(check(LINK)).toBeDisabled();
+    expect(
+      screen.getByTestId(`ontology-native-import-item-needs-${LINK}`)
+    ).toHaveTextContent('message.native-import-needs-concept');
+
+    await user.click(check(ACCOUNT));
+
+    expect(check(ACCOUNT)).toBeChecked();
+    expect(check(LINK)).not.toBeChecked();
+    expect(check(LINK)).toBeEnabled();
+    expect(
+      screen.queryByTestId('ontology-native-import-unticked-notice')
+    ).not.toBeInTheDocument();
+
+    await user.click(check(LINK));
+
+    expect(check(LINK)).toBeChecked();
+  });
+
+  it('sends only the operations of what stays ticked', async () => {
+    const { onApplied } = renderPanel();
+    dropFile();
+    await parse();
+    await user.click(check(ACCOUNT));
+    await user.click(screen.getByTestId('ontology-native-import-apply'));
+
+    await waitFor(() => expect(onApplied).toHaveBeenCalledTimes(1));
+
+    expect(
+      (createOntologyChangeSet as jest.Mock).mock.calls[0][0].operations.map(
+        ({ id }: { id: string }) => id
+      )
+    ).toEqual(['op-ledger', 'op-owns']);
+  });
+
+  it('unticks the dependents of every concept when the concept group is unticked', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+
+    await user.click(
+      within(
+        screen.getByTestId('ontology-native-import-group-check-CONCEPT')
+      ).getByRole('checkbox')
+    );
+
+    expect(check(LINK)).not.toBeChecked();
+    expect(check(RULE)).not.toBeChecked();
+    expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 });

@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.config.source.SettingsChangeWatcher;
+import org.openmetadata.service.security.credentials.Credentials;
 import org.openmetadata.service.security.policyevaluator.SubjectCache;
 
 @Slf4j
@@ -130,6 +131,12 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
               // the next poll. No entity changed, so no entity cache is touched.
               if (CacheInvalidationPubSub.TYPE_SETTINGS.equals(msg.type())) {
                 SettingsChangeWatcher.requestImmediatePoll();
+                return;
+              }
+              // A credential changed on another server: nudge the verifier, no entity cache is
+              // touched.
+              if (CacheInvalidationPubSub.TYPE_CREDENTIAL.equals(msg.type())) {
+                Credentials.nudgeFromPeer(msg.fqn());
                 return;
               }
               // Non-entity signals ride this channel too (a persona context rebuild mutates no

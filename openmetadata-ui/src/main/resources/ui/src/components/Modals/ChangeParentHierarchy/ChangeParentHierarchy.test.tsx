@@ -15,6 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { act } from 'react';
 import { PageType } from '../../../generated/system/ui/page';
 import { mockedGlossaryTerms } from '../../../mocks/Glossary.mock';
+import { moveGlossaryTerm } from '../../../rest/glossaryAPI';
 import ChangeParent from './ChangeParentHierarchy.component';
 
 const mockOnCancel = jest.fn();
@@ -58,6 +59,31 @@ jest.mock('../../../rest/glossaryAPI', () => ({
     })
   ),
 }));
+
+// Picking a parent hands the modal a term of the same glossary.
+jest.mock('../../common/GlossaryTermPicker/GlossaryTermPicker', () =>
+  jest.fn().mockImplementation(({ onChange, ...props }) => (
+    <button
+      data-testid={props['data-testid']}
+      onClick={() =>
+        onChange(
+          [],
+          [
+            {
+              tagFQN: 'Glossary.Parent',
+              entity: {
+                id: 'parent-id',
+                fullyQualifiedName: 'Glossary.Parent',
+                glossary: { id: 'glossary-id', type: 'glossary' },
+              },
+            },
+          ]
+        )
+      }>
+      pick-parent
+    </button>
+  ))
+);
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation((obj) => obj.name),
@@ -145,5 +171,44 @@ describe('Test ChangeParentHierarchy modal component', () => {
 
     expect(mockNavigate).not.toHaveBeenCalled();
     expect(mockOnCancel).not.toHaveBeenCalled();
+  });
+
+  it('should close without waiting for a job when the move is held for approval', async () => {
+    // An approval workflow holds the move: the server opens a change request and starts no job.
+    (moveGlossaryTerm as jest.Mock).mockResolvedValueOnce({
+      message: 'Pending approval: change request cr-id',
+      entityName: 'term',
+    });
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-parent-select'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(moveGlossaryTerm).toHaveBeenCalledWith(
+      mockProps.selectedData.id,
+      expect.objectContaining({ id: 'parent-id', type: 'glossaryTerm' })
+    );
+    expect(mockOnCancel).toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should wait for the move job when the move is not held', async () => {
+    await act(async () => {
+      render(<ChangeParent {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('change-parent-select'));
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    expect(moveGlossaryTerm).toHaveBeenCalled();
+    // The job runs on the server; the modal stays until its websocket update arrives.
+    expect(mockOnCancel).not.toHaveBeenCalled();
+    expect(mockNavigate).not.toHaveBeenCalled();
   });
 });

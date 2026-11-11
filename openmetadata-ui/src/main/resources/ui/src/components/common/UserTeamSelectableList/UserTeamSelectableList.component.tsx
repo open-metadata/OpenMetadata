@@ -12,6 +12,7 @@
  */
 import {
   Avatar,
+  ButtonUtility,
   Popover,
   Tabs,
   Tag,
@@ -19,7 +20,7 @@ import {
   TagList,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Users01 } from '@openmetadata/ui-core-components/icons';
+import { Edit01, Users01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isArray, isEmpty, noop, toString } from 'lodash';
 import React, {
@@ -45,9 +46,9 @@ import {
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
-import { EditIconButton } from '../IconButtons/EditIconButton';
 import { SelectableList } from '../SelectableList/SelectableList.component';
 import { UserSelectDropdownProps } from './UserTeamSelectableList.interface';
+import { getTabCounts, searchOptions } from './UserTeamSelectableList.utils';
 
 export const TeamListItemRenderer = (props: EntityReference) => {
   return (
@@ -73,6 +74,8 @@ export const UserTeamSelectableList = ({
   tooltipText,
   overlayClassName,
   triggerDataTestId = 'edit-owner',
+  triggerClassName,
+  options,
 }: UserSelectDropdownProps) => {
   const { t } = useTranslation();
   const triggerRef = useRef<HTMLSpanElement>(null);
@@ -115,6 +118,11 @@ export const UserTeamSelectableList = ({
     return EntityType.TEAM;
   }, [owner]);
 
+  // Ids that arrive after the picker opened must re-read the open lists.
+  const optionsKey = options?.map((option) => option.id).join(',');
+
+  const tabCounts = getTabCounts(count, options);
+
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
 
@@ -128,6 +136,9 @@ export const UserTeamSelectableList = ({
   }, [selectedUsers]);
 
   const fetchUserOptions = async (searchText: string, after?: string) => {
+    if (options) {
+      return searchOptions(options, EntityType.USER, searchText);
+    }
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
@@ -171,6 +182,9 @@ export const UserTeamSelectableList = ({
   };
 
   const fetchTeamOptions = async (searchText: string, after?: string) => {
+    if (options) {
+      return searchOptions(options, EntityType.TEAM, searchText);
+    }
     const afterPage = isNaN(Number(after)) ? 1 : Number(after);
     const isInitialPage = !searchText && afterPage <= 1;
 
@@ -252,6 +266,9 @@ export const UserTeamSelectableList = ({
   };
 
   const getUserCount = async () => {
+    if (options) {
+      return;
+    }
     const res = await searchQuery({
       query: '',
       pageNumber: 1,
@@ -264,6 +281,9 @@ export const UserTeamSelectableList = ({
   };
 
   const getTeamCount = async () => {
+    if (options) {
+      return;
+    }
     const res = await searchQuery({
       query: '',
       pageNumber: 1,
@@ -381,12 +401,11 @@ export const UserTeamSelectableList = ({
   };
 
   const defaultTrigger = hasPermission ? (
-    <span ref={triggerRef}>
-      <EditIconButton
-        newLook
+    <span className="tw:inline-flex" ref={triggerRef}>
+      <ButtonUtility
         data-testid={triggerDataTestId}
-        size="small"
-        title={getEditTriggerTitle()}
+        icon={Edit01}
+        tooltip={getEditTriggerTitle()}
         onClick={handleTriggerClick}
       />
     </span>
@@ -406,6 +425,7 @@ export const UserTeamSelectableList = ({
   // swallow the event, so the popover reliably opens for add-owner/edit-owner.
   const triggerElement = children ? (
     <span
+      className={triggerClassName}
       ref={triggerRef}
       onClickCapture={handleTriggerClick}
       onKeyDownCapture={handleTriggerKeyDown}>
@@ -454,6 +474,7 @@ export const UserTeamSelectableList = ({
     <SelectableList
       fetchOptions={fetchUserOptions}
       height={listHeight}
+      key={optionsKey}
       multiSelect={isMultiUser}
       searchBarDataTestId="owner-select-users-search-bar"
       searchPlaceholder={t('label.search-for-type', {
@@ -480,10 +501,10 @@ export const UserTeamSelectableList = ({
           selectedKey={activeTab}
           onSelectionChange={(key) => setActiveTab(key as 'teams' | 'users')}>
           <Tabs.List className="tw:px-2 tw:pt-2" size="sm" type="underline">
-            <Tabs.Item badge={count.team} id="teams">
+            <Tabs.Item badge={tabCounts.team} id="teams">
               {t('label.team-plural')}
             </Tabs.Item>
-            <Tabs.Item badge={count.user} id="users">
+            <Tabs.Item badge={tabCounts.user} id="users">
               {t('label.user-plural')}
             </Tabs.Item>
           </Tabs.List>
@@ -492,6 +513,7 @@ export const UserTeamSelectableList = ({
               customTagRenderer={TeamListItemRenderer}
               fetchOptions={fetchTeamOptions}
               height={listHeight}
+              key={optionsKey}
               multiSelect={isMultiTeam}
               searchBarDataTestId="owner-select-teams-search-bar"
               searchPlaceholder={t('label.search-for-type', {

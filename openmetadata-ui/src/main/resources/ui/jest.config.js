@@ -105,8 +105,6 @@ module.exports = {
     '^axios$': '<rootDir>/node_modules/axios/dist/node/axios.cjs',
     '@melloware/react-logviewer':
       '<rootDir>/node_modules/@melloware/react-logviewer/dist/cjs/index.js',
-    'react-antd-column-resize':
-      '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
     '^.*/Lineage/Layout/ELKUtil/ELKUtil$':
       '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
     '^.*/AppRouter/withSuspenseFallback$':

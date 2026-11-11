@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Metric;
@@ -36,7 +37,9 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
  * page}. Deliberately cheap — no profile, no lineage, no budgeting, no vector excerpts — so a
  * search layer can annotate every candidate in a result page with its linked knowledge in one
  * round-trip. Relationship reads are batched across all assets ({@code findToBatch} /
- * {@code findFromBatch}); knowledge entities are bulk-loaded once and shared.
+ * {@code findFromBatch}); knowledge entities are bulk-loaded once and shared. Each item is
+ * returned only if the caller's per-item check accepts it: viewing an asset does not imply access
+ * to every term, metric or article attached to it.
  */
 @Slf4j
 public final class AttachedKnowledgeBatch {
@@ -60,8 +63,12 @@ public final class AttachedKnowledgeBatch {
       Map<UUID, Metric> metrics,
       Map<String, KnowledgeItem> glossaryTerms) {}
 
-  /** Resolves attached knowledge for each asset. Unknown or unloadable assets are skipped. */
-  public static List<AssetKnowledge> resolve(List<AssetKey> assets) {
+  /**
+   * Resolves attached knowledge for each asset. Unknown or unloadable assets are skipped, and so
+   * are items {@code canView} rejects.
+   */
+  public static List<AssetKnowledge> resolve(
+      List<AssetKey> assets, Predicate<KnowledgeItem> canView) {
     Map<AssetKey, EntityInterface<?>> loaded = loadAssets(assets);
     Lookups lookups = lookupKnowledge(loaded);
     List<AssetKnowledge> result = new ArrayList<>();
@@ -70,7 +77,7 @@ public final class AttachedKnowledgeBatch {
           new AssetKnowledge(
               entry.getKey().fullyQualifiedName(),
               entry.getKey().entityType(),
-              itemsFor(entry.getValue(), lookups)));
+              itemsFor(entry.getValue(), lookups, canView)));
     }
     return result;
   }
@@ -143,23 +150,26 @@ public final class AttachedKnowledgeBatch {
     return terms;
   }
 
-  private static List<KnowledgeItem> itemsFor(EntityInterface<?> asset, Lookups lookups) {
+  private static List<KnowledgeItem> itemsFor(
+      EntityInterface<?> asset, Lookups lookups, Predicate<KnowledgeItem> canView) {
     List<KnowledgeItem> items = new ArrayList<>();
     for (String fqn : AIContextBuilder.collectGlossaryFqns(asset)) {
-      addItem(items, lookups.glossaryTerms().get(fqn));
+      addItem(items, lookups.glossaryTerms().get(fqn), canView);
     }
     String assetId = asset.getId().toString();
     for (UUID id : lookups.metricIdsByAsset().getOrDefault(assetId, List.of())) {
-      addItem(items, knowledgeItemOf(Entity.METRIC, lookups.metrics().get(id)));
+      addItem(items, knowledgeItemOf(Entity.METRIC, lookups.metrics().get(id)), canView);
     }
     for (UUID id : lookups.pageIdsByAsset().getOrDefault(assetId, List.of())) {
-      addItem(items, knowledgeItemOf(Entity.PAGE, lookups.pages().get(id)));
+      addItem(items, knowledgeItemOf(Entity.PAGE, lookups.pages().get(id)), canView);
     }
     return items;
   }
 
-  private static void addItem(List<KnowledgeItem> items, KnowledgeItem item) {
-    if (item != null && items.size() < MAX_ITEMS_PER_ASSET) {
+  /** An item {@code canView} rejects does not take one of the per-asset slots. */
+  static void addItem(
+      List<KnowledgeItem> items, KnowledgeItem item, Predicate<KnowledgeItem> canView) {
+    if (item != null && items.size() < MAX_ITEMS_PER_ASSET && canView.test(item)) {
       items.add(truncated(item));
     }
   }

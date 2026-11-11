@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   FieldProp,
   FieldTypes,
   FormField,
@@ -334,14 +335,13 @@ const AddGlossaryTermForm = ({
                 type: FieldTypes.TEXT,
               })}
             </div>
-            <Button
-              aria-label={t('label.remove')}
+            <ButtonUtility
               className="tw:mt-6"
-              color="tertiary"
               data-testid={`remove-reference-${index}`}
-              iconLeading={Trash01}
-              size="sm"
-              onPress={() => removeReference(index)}
+              icon={Trash01}
+              size="lg"
+              tooltip={t('label.remove')}
+              onClick={() => removeReference(index)}
             />
           </Box>
         ))}

@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page } from '@playwright/test';
+import { Locator, Page } from '@playwright/test';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { expect, test as base } from '../../support/fixtures/isolatedUser';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -74,6 +74,37 @@ const test = base.extend<{ page: Page }>({
 });
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
+
+// Picks a rule's field or operator and leaves its menu closed. A press that lands
+// while the menu is already closing still selects, and the ComboBox then reopens
+// with the new value and stays open — aria-hiding the rest of the dialog, so the
+// next role lookup waits out the test timeout. selectOption's blur fallback cannot
+// close it here: the modal's focus containment re-focuses the input, which reopens
+// it. The ComboBox's own chevron toggles it shut without moving focus. When the
+// menu closes before the press instead, the press selects nothing, so the whole
+// pick is retried until the value has landed.
+const selectRuleControl = async (
+  page: Page,
+  control: Locator,
+  optionTitle: string,
+  isSearchable = false
+) => {
+  const input = control.locator('input[role="combobox"]');
+
+  await expect(async () => {
+    await selectOption(page, control, optionTitle, isSearchable);
+
+    if ((await input.getAttribute('aria-expanded')) === 'true') {
+      await control
+        .locator('button[aria-haspopup="listbox"]')
+        .click({ timeout: 2000 });
+    }
+    await expect(input).toHaveAttribute('aria-expanded', 'false', {
+      timeout: 2000,
+    });
+    await expect(input).toHaveValue(optionTitle, { timeout: 2000 });
+  }).toPass({ timeout: 60000 });
+};
 
 test.beforeAll(
   'Setup pre-requests',
@@ -144,14 +175,14 @@ test.describe('Curated Assets Widget', () => {
       // Apply Display Name filter with the actual entity's display name
       const ruleLocator = page.getByTestId('query-builder-rule-0');
 
-      await selectOption(
+      await selectRuleControl(
         page,
         ruleLocator.getByTestId('advanced-search-field-select'),
         'Display Name',
         true
       );
 
-      await selectOption(
+      await selectRuleControl(
         page,
         ruleLocator.getByTestId('advanced-search-operator-select'),
         'Contains'
@@ -272,14 +303,14 @@ test.describe('Curated Assets Widget', () => {
 
     // Add a simple filter condition
     const ruleLocator = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
 
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -354,13 +385,13 @@ test.describe('Curated Assets Widget', () => {
 
     // Add OR conditions
     const ruleLocator1 = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Is Set'
@@ -375,13 +406,13 @@ test.describe('Curated Assets Widget', () => {
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -464,13 +495,13 @@ test.describe('Curated Assets Widget', () => {
 
     // Configure conditions
     const ruleLocator1 = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-field-select'),
       'Deleted',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -487,13 +518,13 @@ test.describe('Curated Assets Widget', () => {
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-field-select'),
       'Display Name',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Contains'
@@ -595,13 +626,13 @@ test.describe('Curated Assets Widget', () => {
 
     // Create first group with OR conditions
     const ruleLocator1 = page.getByTestId('query-builder-rule-0');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-field-select'),
       'Owners',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator1.getByTestId('advanced-search-operator-select'),
       'Any in'
@@ -626,13 +657,13 @@ test.describe('Curated Assets Widget', () => {
       .click();
 
     const ruleLocator2 = page.getByTestId('query-builder-rule-1');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-field-select'),
       'Description Status',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator2.getByTestId('advanced-search-operator-select'),
       'Is'
@@ -647,13 +678,13 @@ test.describe('Curated Assets Widget', () => {
     await page.getByRole('button', { name: 'Add New Field' }).click();
 
     const ruleLocator3 = page.getByTestId('query-builder-rule-2');
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator3.getByTestId('advanced-search-field-select'),
       'Tier',
       true
     );
-    await selectOption(
+    await selectRuleControl(
       page,
       ruleLocator3.getByTestId('advanced-search-operator-select'),
       'Is Not'

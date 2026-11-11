@@ -829,7 +829,7 @@ const WorkflowBuilderWrapper: React.FC<WorkflowBuilderWrapperProps> = ({
 
   return (
     <WorkflowModeProvider
-      workflowDefinition={workflowDefinition}
+      workflowDefinition={workflowDefinition ?? undefined}
       workflowFqn={workflowFqn}>
       <WorkflowBuilderInternal
         embedded={embedded}

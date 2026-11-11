@@ -12,6 +12,7 @@
  */
 
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -51,10 +52,6 @@ jest.mock('../../../hooks/useApplicationStore', () => ({
 
 jest.mock('../../../hooks/user-profile/useUserProfile', () => ({
   useUserProfile: () => [false, undefined, { id: 'author-id', name: 'alice' }],
-}));
-
-jest.mock('../../../utils/FeedUtils', () => ({
-  getActivityEventHeaderText: jest.fn(() => 'updated description'),
 }));
 
 jest.mock('../ActivityFeedProvider/ActivityFeedProvider', () => ({
@@ -189,7 +186,7 @@ describe('ActivityFeedCardNew', () => {
     mockProviderValue.activityReplies = [];
   });
 
-  it('keeps root reactions and management actions available in the drawer', () => {
+  it('keeps root reactions and the actions menu available in the drawer', () => {
     render(
       <MemoryRouter>
         <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
@@ -197,52 +194,26 @@ describe('ActivityFeedCardNew', () => {
     );
 
     expect(screen.getByTestId('conversation-reaction-footer')).toBeVisible();
-
-    // Mounted before any pointer interaction: hiding these behind a hover
-    // state put them out of reach of the keyboard and of screen readers. The
-    // hover reveal is presentational, applied by CSS on the owning card.
-    expect(screen.getByTestId('feed-actions')).toBeVisible();
-    expect(screen.getByTestId('edit-message')).toBeVisible();
-
-    fireEvent.mouseEnter(screen.getByTestId('feed-card-v2-sidebar'));
-
-    expect(screen.getByTestId('feed-actions')).toBeVisible();
+    expect(screen.getByTestId('conversation-actions')).toBeVisible();
   });
 
   // FeedEditor no longer focuses itself on mount, so an editor revealed by a
   // click must ask for focus, or the user clicks twice before typing.
-  it('focuses the comment editor its placeholder reveals', async () => {
+  it('focuses the comment editor the read-only input reveals', async () => {
     render(
       <MemoryRouter>
         <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
       </MemoryRouter>
     );
 
-    fireEvent.click(screen.getByTestId('comments-input-field'));
+    act(() => {
+      screen.getByTestId('comments-input-field').focus();
+    });
 
     expect(await screen.findByTestId('reply-editor')).toHaveAttribute(
       'data-focused',
       'true'
     );
-  });
-
-  it('keeps the root actions a direct child of the card body', () => {
-    render(
-      <MemoryRouter>
-        <ActivityFeedCardNew isOpenInDrawer showThread feed={conversation} />
-      </MemoryRouter>
-    );
-
-    // The hover reveal in activity-feed-actions.less is written as
-    // `.activity-feed-card-new:hover > .activity-feed-card-new-body >
-    // .feed-actions`, so that middle step is load-bearing: drop it and the
-    // selector stops matching, leaving the reply/resolve/edit/delete bar
-    // hidden from mouse users.
-    const actions = screen.getByTestId('feed-actions');
-    const body = actions.parentElement;
-
-    expect(body).toHaveClass('activity-feed-card-new-body');
-    expect(body?.parentElement).toHaveClass('activity-feed-card-new');
   });
 
   it('names the field a conversation was started on after the entity', () => {
@@ -404,17 +375,29 @@ describe('ActivityFeedCardNew', () => {
       return within(screen.getByTestId('feed-reply-card'));
     };
 
-    it('offers edit and delete on the authors own reply', () => {
+    // The menu opens in a popover outside the reply card.
+    const chooseReplyAction = async (
+      reply: ReturnType<typeof renderReply>,
+      name: string
+    ) => {
+      fireEvent.click(reply.getByTestId('conversation-actions'));
+      fireEvent.click(await screen.findByRole('menuitem', { name }));
+    };
+
+    it('offers edit and delete on the authors own reply', async () => {
       const reply = renderReply();
 
-      expect(reply.getByTestId('edit-message')).toBeInTheDocument();
-      expect(reply.getByTestId('delete-message')).toBeInTheDocument();
+      fireEvent.click(reply.getByTestId('conversation-actions'));
+
+      expect(
+        (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+      ).toEqual(['label.edit', 'label.delete']);
     });
 
     it('patches the reply through updateFeed when the user saves an edit', async () => {
       const reply = renderReply();
 
-      fireEvent.click(reply.getByTestId('edit-message'));
+      await chooseReplyAction(reply, 'label.edit');
 
       const editor = await reply.findByTestId('reply-editor');
       fireEvent.change(within(editor).getByTestId('reply-editor-input'), {
@@ -435,7 +418,7 @@ describe('ActivityFeedCardNew', () => {
     it('removes the reply through deleteFeed when the user confirms', async () => {
       const reply = renderReply();
 
-      fireEvent.click(reply.getByTestId('delete-message'));
+      await chooseReplyAction(reply, 'label.delete');
       fireEvent.click(await screen.findByTestId('confirm-delete'));
 
       await waitFor(() => {
@@ -462,5 +445,144 @@ describe('ActivityFeedCardNew', () => {
         );
       });
     });
+  });
+
+  it.each([
+    ['an entity Activity tab list', {}],
+    ['an activity thread panel', { isThreadPanel: true }],
+  ])(
+    'puts only Edit and Delete in the conversation menu in %s',
+    async (_surface, props) => {
+      render(
+        <MemoryRouter>
+          <ActivityFeedCardNew feed={conversation} {...props} />
+        </MemoryRouter>
+      );
+
+      fireEvent.click(screen.getByTestId('conversation-actions'));
+
+      expect(
+        (await screen.findAllByRole('menuitem')).map((item) => item.textContent)
+      ).toEqual(['label.edit', 'label.delete']);
+    }
+  );
+
+  it('keeps no menu and no header room for it on a conversation the user cannot manage', () => {
+    const { container, rerender } = render(
+      <MemoryRouter>
+        <ActivityFeedCardNew feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(container.querySelector('.tw\\:pe-8')).toBeInTheDocument();
+
+    rerender(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          feed={{
+            ...conversation,
+            createdBy: { id: 'other-id', type: 'user', name: 'bob' },
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    expect(
+      screen.queryByTestId('conversation-actions')
+    ).not.toBeInTheDocument();
+    expect(container.querySelector('.tw\\:pe-8')).not.toBeInTheDocument();
+  });
+
+  it('drops the "conversation" label only in the activity thread panel', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <ActivityFeedCardNew feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('headerText')).toHaveTextContent(
+      'label.conversation-lowercase'
+    );
+
+    rerender(
+      <MemoryRouter>
+        <ActivityFeedCardNew isThreadPanel feed={conversation} />
+      </MemoryRouter>
+    );
+
+    expect(screen.queryByTestId('headerText')).not.toBeInTheDocument();
+    expect(screen.getByTestId('entity-link')).toBeInTheDocument();
+  });
+
+  it('labels an activity event a conversation too', () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew activity={activity} />
+      </MemoryRouter>
+    );
+
+    expect(screen.getByTestId('headerText')).toHaveTextContent(
+      'label.conversation-lowercase'
+    );
+  });
+
+  it('shows the comment input above the newest-first replies in the activity thread panel', async () => {
+    render(
+      <MemoryRouter>
+        <ActivityFeedCardNew
+          isOpenInDrawer
+          isThreadPanel
+          showThread
+          feed={{
+            ...conversation,
+            replies: [
+              {
+                ...activityReply,
+                id: 'newer',
+                createdAt: 20,
+                message: 'Newer',
+              },
+              {
+                ...activityReply,
+                id: 'older',
+                createdAt: 10,
+                message: 'Older',
+              },
+            ],
+          }}
+        />
+      </MemoryRouter>
+    );
+
+    const commentInput = screen.getByTestId('comments-input-field');
+    const replies = screen.getAllByTestId('reply-message');
+
+    expect(screen.getByText('label.comment-plural')).toBeInTheDocument();
+    expect(commentInput).toHaveAttribute(
+      'placeholder',
+      'message.input-placeholder'
+    );
+    expect(replies.map((reply) => reply.textContent)).toEqual([
+      'Newer',
+      'Older',
+    ]);
+    expect(commentInput.compareDocumentPosition(replies[0])).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING
+    );
+
+    act(() => {
+      commentInput.focus();
+    });
+    const editor = await screen.findByTestId('reply-editor');
+
+    expect(editor).toHaveAttribute('data-focused', 'true');
+
+    mockProviderValue.postFeed.mockResolvedValueOnce(undefined);
+    fireEvent.click(within(editor).getByTestId('reply-editor-save'));
+
+    expect(mockProviderValue.postFeed).toHaveBeenCalledTimes(1);
+    expect(
+      await screen.findByTestId('comments-input-field')
+    ).toBeInTheDocument();
   });
 });

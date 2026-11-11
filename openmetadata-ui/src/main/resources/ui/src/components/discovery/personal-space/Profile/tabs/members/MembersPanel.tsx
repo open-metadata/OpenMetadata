@@ -22,7 +22,10 @@ import { Operation } from '../../../../../../generated/entity/policies/policy';
 import { useAuth } from '../../../../../../hooks/authHooks';
 import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
 import { EXTENSION_POINTS } from '../../../../../../utils/extensionPoints';
-import type { MembersSectionContribution } from '../../../../../../utils/ExtensionPointTypes';
+import type {
+  MembersSectionContribution,
+  TabContribution,
+} from '../../../../../../utils/ExtensionPointTypes';
 import { checkPermission } from '../../../../../../utils/PermissionsUtils';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import { EntityExportModalProvider } from '../../../../../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
@@ -52,6 +55,7 @@ const TEAMS_IMPORT = 'teams-import' as const;
 const USER_CREATE = 'user-create' as const;
 const SECTION = 'section' as const;
 const USER_DETAIL = 'user-detail' as const;
+const TEAM_TAB_SUBPAGE = 'team-tab-subpage' as const;
 
 const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
   const { t } = useTranslation();
@@ -268,6 +272,67 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
     );
   };
 
+  // A contributed team tab's own sub-page, rendered where the team detail would
+  // be so it replaces the team chrome rather than nesting inside that tab — the
+  // same shape the team forms above use. The tab resolves its own route from
+  // `subPath`, and `onNavigate(undefined)` returns to the team.
+  const renderTeamTabSubPage = () => {
+    if (view.type !== TEAM_TAB_SUBPAGE) {
+      return null;
+    }
+
+    const { fqn, teamId, key, subPath } = view;
+    // Match MembersTeamDetail's own filter: a tab whose `condition` is false,
+    // or that is hidden, is not offered there, so a deep link must not open its
+    // sub-page either.
+    const tab = getContributions<TabContribution>(
+      EXTENSION_POINTS.TEAM_DETAILS_TABS
+    ).find((contribution) => {
+      const isVisible = contribution.condition
+        ? contribution.condition({ teamId })
+        : !contribution.isHidden;
+
+      return contribution.key === key && isVisible;
+    });
+
+    // A key that is unknown, hidden, or whose condition is now false (a stale
+    // link, or a plugin that is no longer registered) has no component to
+    // render, so fall back to the team it belongs to.
+    if (!tab) {
+      return (
+        <MembersTeamDetail
+          fqn={fqn}
+          key={fqn}
+          onNavigate={onNavigate}
+          onRename={setResolvedName}
+          onSetHeader={setPanelHeader}
+        />
+      );
+    }
+
+    const TabComponent = tab.component;
+
+    return (
+      // `flex-1`/`min-h-0`, not the section wrapper's auto height: the tab owns
+      // a full page here, so a sticky footer inside it needs a bounded height
+      // to pin against. Padding matches the profile panel's content body, so a
+      // page written for one host lays out the same in the other.
+      <Box className="tw:min-h-0 tw:flex-1 tw:px-8 tw:pb-8" direction="col">
+        <TabComponent
+          subPath={subPath}
+          teamId={teamId}
+          onNavigate={(next?: string) =>
+            onNavigate(
+              next
+                ? { type: TEAM_TAB_SUBPAGE, fqn, teamId, key, subPath: next }
+                : { type: TEAM_DETAIL, fqn, name: fqn }
+            )
+          }
+        />
+      </Box>
+    );
+  };
+
   // Split out of renderView so its branches don't count against that function's
   // complexity budget.
   const renderSection = () => {
@@ -355,6 +420,10 @@ const MembersPanel: FC<MembersPanelProps> = ({ onHeaderChange }) => {
 
     if (view.type === TEAMS_ADD || view.type === TEAMS_IMPORT) {
       return renderTeamForm();
+    }
+
+    if (view.type === TEAM_TAB_SUBPAGE) {
+      return renderTeamTabSubPage();
     }
 
     if (view.type === 'users' || view.type === 'admins') {

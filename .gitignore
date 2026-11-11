@@ -107,6 +107,7 @@ openmetadata-ui/src/main/resources/ui/downloads/*
 # Python generated sources
 ingestion-core/src/metadata/generated/**
 ingestion/src/metadata/generated/**
+ingestion/src/metadata/generated/.generation-manifest.json
 ingestion/requirements.txt
 ingestion/.python-version
 ingestion/venv2/**
@@ -165,6 +166,7 @@ _bmad/
 
 # Claude Flow generated files
 .claude/*
+CLAUDE.local.md
 .mcp.json
 claude-flow.config.json
 .swarm/

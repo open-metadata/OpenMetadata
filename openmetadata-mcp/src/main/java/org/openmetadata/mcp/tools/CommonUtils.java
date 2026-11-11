@@ -10,6 +10,7 @@ import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.CreateEntity;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
@@ -21,7 +22,9 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.TeamRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.context.ContextMemoryEvidenceAccess;
 import org.openmetadata.service.resources.context.ContextMemoryVisibility;
+import org.openmetadata.service.resources.feeds.AnnouncementVisibility;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -36,7 +39,8 @@ public class CommonUtils {
    * {@code authorizer.authorize(...)} a tool makes cannot see them - binding the check to the fetch
    * is what stops a read path from holding an entity it is not allowed to answer with. The rule is
    * a no-op for entity types that have none, so callers need no per-type knowledge. Secrets the
-   * REST resource masks come back masked here too ({@link McpResponseUtils#maskSecrets}).
+   * REST resource masks come back masked here too ({@link McpResponseUtils#maskSecrets}). A tool
+   * that answers with the entity also passes it through {@link #withVisibleEvidence}.
    */
   public static EntityInterface<?> readEntityForCaller(
       String entityType,
@@ -48,7 +52,22 @@ public class CommonUtils {
         Entity.getEntityByName(
             entityType, fqn, ContextMemoryVisibility.guardFields(entityType, fields), include);
     ContextMemoryVisibility.enforceVisibility(entity, securityContext);
+    AnnouncementVisibility.enforceVisibility(entity, securityContext);
     return McpResponseUtils.maskSecrets(entity);
+  }
+
+  /**
+   * Returns {@code entity} as the caller may read it: a context memory's references to Queries the
+   * caller cannot view keep only their id and type, as in every REST memory response ({@link
+   * ContextMemoryEvidenceAccess}); a metric's or metric group's relations keep only the entities
+   * the caller may view ({@link MetricRelationVisibility}); every other entity type is returned as
+   * is. Applied where a tool answers with the entity, not on reads it only checks.
+   */
+  public static EntityInterface<?> withVisibleEvidence(
+      EntityInterface<?> entity, Authorizer authorizer, SecurityContext securityContext) {
+    return entity instanceof ContextMemory memory
+        ? ContextMemoryEvidenceAccess.redactedCopy(memory, authorizer, securityContext)
+        : MetricRelationVisibility.visibleTo(entity, authorizer, securityContext);
   }
 
   /**
@@ -58,7 +77,8 @@ public class CommonUtils {
    */
   public static void enforceEntityVisibility(
       String entityType, String fqn, SecurityContext securityContext) {
-    if (ContextMemoryVisibility.hasVisibilityRules(entityType)) {
+    if (ContextMemoryVisibility.hasVisibilityRules(entityType)
+        || Entity.ANNOUNCEMENT.equals(entityType)) {
       readEntityForCaller(entityType, fqn, "", Include.NON_DELETED, securityContext);
     }
   }

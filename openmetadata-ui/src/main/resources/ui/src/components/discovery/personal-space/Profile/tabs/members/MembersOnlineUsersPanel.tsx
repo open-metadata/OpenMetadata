@@ -13,24 +13,27 @@
 
 import {
   Box,
-  PaginationCardWithControls,
   Select,
+  TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { WILD_CARD_CHAR } from '../../../../../../constants/char.constants';
 import {
   INITIAL_PAGING_VALUE,
-  PAGE_SIZE_BASE,
-  PAGE_SIZE_LARGE,
-  PAGE_SIZE_MEDIUM,
+  LIST_PAGE_SIZE_OPTIONS,
+  pagingObject,
 } from '../../../../../../constants/constants';
-import { CursorType } from '../../../../../../enums/pagination.enum';
 import { SearchIndex } from '../../../../../../enums/search.enum';
 import type { User } from '../../../../../../generated/entity/teams/user';
-import { usePaging } from '../../../../../../hooks/paging/usePaging';
-import { useSettingsHash } from '../../../../../../hooks/useSettingsHash';
+import { Paging } from '../../../../../../generated/type/paging';
+import {
+  useHashPagingParams,
+  useSettingsHash,
+} from '../../../../../../hooks/useSettingsHash';
 import { searchQuery } from '../../../../../../rest/searchAPI';
 import {
   getOnlineUsers,
@@ -41,9 +44,12 @@ import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import { getTermQuery } from '../../../../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NextPrevious from '../../../../../common/NextPrevious/NextPrevious';
+import type { PagingHandlerParams } from '../../../../../common/NextPrevious/NextPrevious.interface';
 import type { ColumnsType } from '../../../../../common/Table/Table.interface';
 import Table from '../../../../../common/Table/TableV2';
 
+import { shouldShowPager } from '../../../../../../utils/PaginationUtils';
 import { DEFAULT_TIME_WINDOW, TIME_WINDOW_OPTIONS } from './Members.constants';
 import type { MembersSubPanelProps } from './Members.types';
 import { formatOnlineStatus } from './Members.utils';
@@ -60,15 +66,28 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   const [timeWindow, setTimeWindow] = useState<number>(DEFAULT_TIME_WINDOW);
   const { goTo } = useSettingsHash();
 
+  // Only page + size go to the settings hash; cursors stay in state, so a
+  // reloaded page > 1 has no cursor to resume from and restarts at page 1.
   const {
-    paging,
-    handlePagingChange,
-    currentPage,
-    handlePageChange,
-    pageSize,
-    handlePageSizeChange,
-    showPagination,
-  } = usePaging();
+    page: currentPage,
+    resolvedPageSize: pageSize,
+    savePageSize,
+    setPage: setHashPage,
+  } = useHashPagingParams(LIST_PAGE_SIZE_OPTIONS);
+  const [paging, setPaging] = useState<Paging>(pagingObject);
+  const showPagination = shouldShowPager(users);
+
+  const handlePageChange = useCallback(
+    (page: number) => setHashPage(page, undefined, undefined, pageSize),
+    [setHashPage, pageSize]
+  );
+  const handlePageSizeChange = useCallback(
+    (size: number) => {
+      savePageSize(size);
+      setHashPage(INITIAL_PAGING_VALUE, undefined, undefined, size);
+    },
+    [savePageSize, setHashPage]
+  );
 
   const fetchOnlineUsers = useCallback(
     async (params?: { after?: string; before?: string }) => {
@@ -87,7 +106,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         const response = await getOnlineUsers(queryParams);
 
         setUsers(response.data);
-        handlePagingChange(response.paging);
+        setPaging(response.paging);
       } catch (error) {
         showErrorToast(error as AxiosError);
         setUsers([]);
@@ -95,20 +114,17 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         setLoading(false);
       }
     },
-    [timeWindow, pageSize, handlePagingChange]
+    [timeWindow, pageSize, setPaging]
   );
 
-  const handlePageNavigation = (newPage: number) => {
-    if (newPage === currentPage || searchText) {
-      return;
-    }
+  const handlePageNavigation = ({
+    currentPage: newPage,
+    cursorType,
+  }: PagingHandlerParams) => {
+    const cursor = cursorType && paging[cursorType];
 
-    // ponytail: cursor paging only supports ±1 steps; numbered/jump beyond adjacent no-ops.
-    const cursorType =
-      newPage > currentPage ? CursorType.AFTER : CursorType.BEFORE;
-    const cursor = paging[cursorType];
-
-    if (Math.abs(newPage - currentPage) !== 1 || !cursor) {
+    // Search results are filtered client-side into a single page.
+    if (searchText || !cursorType || !cursor) {
       return;
     }
 
@@ -131,7 +147,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
 
       try {
         const response = await searchQuery({
-          query,
+          query: `${WILD_CARD_CHAR}${query}${WILD_CARD_CHAR}`,
           searchIndex: SearchIndex.USER,
           pageSize,
           pageNumber: INITIAL_PAGING_VALUE,
@@ -152,7 +168,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
           });
 
         setUsers(filtered);
-        handlePagingChange({
+        setPaging({
           total: filtered.length,
         });
         handlePageChange(INITIAL_PAGING_VALUE);
@@ -163,13 +179,7 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
         setLoading(false);
       }
     },
-    [
-      timeWindow,
-      pageSize,
-      handlePagingChange,
-      handlePageChange,
-      fetchOnlineUsers,
-    ]
+    [timeWindow, pageSize, setPaging, handlePageChange, fetchOnlineUsers]
   );
 
   const handleTimeWindowChange = useCallback((key: string | number | null) => {
@@ -182,7 +192,9 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
   // re-firing on every keystroke.
   const refetchOnlineUsers = useRef<() => void>(() => undefined);
   refetchOnlineUsers.current = () => {
-    handlePageChange(INITIAL_PAGING_VALUE);
+    if (currentPage !== INITIAL_PAGING_VALUE) {
+      handlePageChange(INITIAL_PAGING_VALUE);
+    }
     if (searchText) {
       void handleSearch(searchText);
     } else {
@@ -267,78 +279,83 @@ const MembersOnlineUsersPanel: FC<MembersSubPanelProps> = () => {
     [t, goTo]
   );
 
-  const totalPages = Math.max(1, Math.ceil((paging.total ?? 0) / pageSize));
-
   return (
     <Box
       className="tw:px-8 tw:pb-8 tw:pt-1"
       data-testid="online-users-panel"
-      direction="col"
-      gap={4}>
-      <Table<User>
-        columns={columns}
-        data-testid="online-users-table"
-        dataSource={users}
-        extraTableFilters={
-          <Box align="center" direction="row" gap={2}>
-            <Typography size="text-sm">{t('label.time-window')}:</Typography>
-            <Select
-              data-testid="time-window-select"
-              selectedKey={String(timeWindow)} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
-              size="sm"
-              onSelectionChange={handleTimeWindowChange} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
-            >
-              {TIME_WINDOW_OPTIONS.map((opt) => (
-                <Select.Item
-                  id={String(opt.value)}
-                  key={String(opt.value)}
-                  textValue={t(opt.labelKey, opt.labelParams)}>
-                  {t(opt.labelKey, opt.labelParams)}
-                </Select.Item>
-              ))}
-            </Select>
-          </Box>
-        }
-        loading={loading}
-        locale={{
-          emptyText: (
-            <Box
-              align="center"
-              className="tw:min-h-32 tw:relative"
-              justify="center">
-              <NoDataPlaceholder
-                title={t('label.no-entity-found', {
-                  entity: t('label.online-user-plural'),
-                })}
-              />
+      direction="col">
+      <TableCard.Root
+        className="tw:flex tw:flex-col"
+        size="compact"
+        variant="muted">
+        <Table<User>
+          columns={columns}
+          data-testid="online-users-table"
+          dataSource={users}
+          extraTableFilters={
+            <Box align="center" direction="row" gap={2}>
+              <Typography size="text-sm">{t('label.time-window')}:</Typography>
+              <Select
+                data-testid="time-window-select"
+                selectedKey={String(timeWindow)} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
+                size="sm"
+                onSelectionChange={handleTimeWindowChange} // NOSONAR react-aria's controlled Select API; no non-deprecated alternative exists
+              >
+                {TIME_WINDOW_OPTIONS.map((opt) => (
+                  <Select.Item
+                    id={String(opt.value)}
+                    key={String(opt.value)}
+                    textValue={t(opt.labelKey, opt.labelParams)}>
+                    {t(opt.labelKey, opt.labelParams)}
+                  </Select.Item>
+                ))}
+              </Select>
             </Box>
-          ),
-        }}
-        pagination={false}
-        rowKey="id"
-        searchProps={{
-          containerClassName: 'tw:w-80!',
-          onSearch: handleSearch,
-          searchValue: searchText,
-          typingInterval: 500,
-          placeholder: t('label.search-entity', {
-            entity: t('label.user-plural'),
-          }),
-        }}
-        size="small"
-      />
-
-      {showPagination && (
-        <PaginationCardWithControls
-          minimal
-          page={currentPage}
-          pageSize={pageSize}
-          pageSizeOptions={[PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM, PAGE_SIZE_LARGE]}
-          total={totalPages}
-          onPageChange={handlePageNavigation}
-          onPageSizeChange={handlePageSizeChange}
+          }
+          loading={loading}
+          locale={{
+            emptyText: (
+              <Box
+                align="center"
+                className="tw:min-h-32 tw:relative"
+                justify="center">
+                <NoDataPlaceholder
+                  icon={<User01 />}
+                  title={t('label.no-entity-found', {
+                    entity: t('label.online-user-plural'),
+                  })}
+                />
+              </Box>
+            ),
+          }}
+          pagination={false}
+          rowKey="id"
+          searchProps={{
+            containerClassName: 'tw:w-80!',
+            onSearch: handleSearch,
+            searchValue: searchText,
+            typingInterval: 500,
+            placeholder: t('label.search-entity', {
+              entity: t('label.user-plural'),
+            }),
+          }}
+          size="small"
+          variant="muted"
         />
-      )}
+
+        {showPagination && (
+          <NextPrevious
+            currentPage={currentPage}
+            isLoading={loading}
+            isNumberBased={Boolean(searchText)}
+            pageSize={pageSize}
+            pageSizeOptions={LIST_PAGE_SIZE_OPTIONS}
+            paging={paging}
+            pagingHandler={handlePageNavigation}
+            onShowSizeChange={handlePageSizeChange}
+          />
+        )}
+      </TableCard.Root>
     </Box>
   );
 };

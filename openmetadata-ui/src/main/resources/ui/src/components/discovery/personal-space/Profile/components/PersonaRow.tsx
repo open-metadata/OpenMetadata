@@ -53,8 +53,6 @@ const mergeFetchedPersonas =
 interface PersonaRowProps {
   userData: User;
   updateUserDetails: (data: Partial<User>, key: keyof User) => Promise<boolean>;
-  // Overrides the default admin-only rule (e.g. per-user EditAll permission).
-  canEdit?: boolean;
   // Overrides the first-person description used on your own profile.
   description?: string;
 }
@@ -62,7 +60,6 @@ interface PersonaRowProps {
 const PersonaRow: React.FC<PersonaRowProps> = ({
   userData,
   updateUserDetails,
-  canEdit: canEditProp,
   description,
 }) => {
   const { t } = useTranslation();
@@ -70,7 +67,7 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
   const { isAdminUser } = useAuth();
   // Persona assignment is admin-managed (like teams/roles); users pick their
   // own default persona in DefaultPersonaRow, not the assignment here.
-  const canEdit = canEditProp ?? (Boolean(isAdminUser) && !userData.deleted);
+  const canEdit = Boolean(isAdminUser) && !userData.deleted;
 
   const initialPersonaIds = useMemo(
     () => (userData.personas ?? []).map((p) => p.id),
@@ -131,8 +128,18 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
     return map;
   }, [fetchedById, userData]);
 
-  // Only the current search page (+ the user's assigned personas), never the
-  // accumulated pool — otherwise stale results from earlier queries linger.
+  const selectedItems = useMemo(
+    () =>
+      draftPersonaIds
+        .map((id) => resolvedById.get(id))
+        .filter((p): p is EntityReference => Boolean(p))
+        .map((p) => ({ id: p.id, label: getEntityName(p) })),
+    [draftPersonaIds, resolvedById]
+  );
+
+  // Only the current search page (+ assigned and draft-selected personas), never the
+  // accumulated pool — otherwise stale results from earlier queries linger. Draft
+  // selections must stay listed so the "+N" overflow list can show them.
   const options = useMemo(() => {
     const fetched = personaResults.map((p) => ({
       id: p.id,
@@ -143,17 +150,8 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
       label: getEntityName(p),
     }));
 
-    return uniqBy([...existing, ...fetched], 'id');
-  }, [personaResults, userData.personas]);
-
-  const selectedItems = useMemo(
-    () =>
-      draftPersonaIds
-        .map((id) => resolvedById.get(id))
-        .filter((p): p is EntityReference => Boolean(p))
-        .map((p) => ({ id: p.id, label: getEntityName(p) })),
-    [draftPersonaIds, resolvedById]
-  );
+    return uniqBy([...selectedItems, ...existing, ...fetched], 'id');
+  }, [personaResults, selectedItems, userData.personas]);
 
   const handleSave = async () => {
     const selectedPersonas = draftPersonaIds
@@ -195,6 +193,7 @@ const PersonaRow: React.FC<PersonaRowProps> = ({
           data-testid="persona-multiselect"
           filterOption={() => true}
           items={options}
+          maxVisibleItems={3}
           placeholder={t('label.select-entity', {
             entity: t('label.persona-plural'),
           })}

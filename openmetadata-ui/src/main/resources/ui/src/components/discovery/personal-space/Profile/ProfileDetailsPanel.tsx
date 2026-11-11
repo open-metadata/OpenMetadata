@@ -51,6 +51,35 @@ interface ProfileDetailsPanelProps {
 }
 
 /**
+ * The "Verified" pill on the email row. Shown only when the viewer can see the
+ * (unmasked) email AND the backend confirms the address via `isEmailVerified`,
+ * so the UI never vouches for a verification state the server did not grant.
+ */
+const VerifiedEmailBadge = ({
+  visibleEmail,
+  isVerified,
+}: {
+  visibleEmail?: string;
+  isVerified?: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  if (!visibleEmail || !isVerified) {
+    return null;
+  }
+
+  return (
+    <BadgeWithIcon
+      color="success"
+      iconLeading={Check}
+      size="xs"
+      type="pill-color">
+      {t('label.verified-status')}
+    </BadgeWithIcon>
+  );
+};
+
+/**
  * Content for the `profile` nav item: a PROFILE section (photo, preferred name,
  * email) and an IDENTITY & ACCESS section (persona, default persona, domains,
  * teams, roles, inherited roles). Editing is permission-guarded per row.
@@ -124,15 +153,10 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
               weight="regular">
               {visibleEmail}
             </Typography>
-            {visibleEmail && (
-              <BadgeWithIcon
-                color="success"
-                iconLeading={Check}
-                size="xs"
-                type="pill-color">
-                {t('label.verified-status')}
-              </BadgeWithIcon>
-            )}
+            <VerifiedEmailBadge
+              isVerified={userData.isEmailVerified}
+              visibleEmail={visibleEmail}
+            />
           </Box>
         </ReadOnlyRow>
       </SettingsSection>
@@ -148,11 +172,13 @@ const ProfileDetailsPanel: React.FC<ProfileDetailsPanelProps> = ({
       <SettingsSection
         testId="profile-section-identity"
         title={t('label.identity-and-access')}>
+        {/* No canEdit override: the server lets only admins change a user's
+            personas (ADR:2026-11-03-only-admins-assign-personas), which is the
+            row's own default. */}
         {isProfileLoading ? (
           <RowSkeleton />
         ) : (
           <PersonaRow
-            canEdit={canEditAll}
             updateUserDetails={updateUserDetails}
             userData={userData}
           />

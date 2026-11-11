@@ -109,4 +109,32 @@ describe('ExpressionCodeCell', () => {
     expect(onCancel).toHaveBeenCalled();
     expect(onCommit).not.toHaveBeenCalled();
   });
+
+  it('follows its cell when the grid scrolls', () => {
+    let cellLeft = 300;
+    const rectSpy = jest
+      .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+      .mockImplementation(
+        () =>
+          ({
+            top: 100,
+            bottom: 140,
+            left: cellLeft,
+            right: cellLeft + 200,
+            width: 200,
+            height: 40,
+          } as DOMRect)
+      );
+    render(<ExpressionCodeCell {...baseProps} />);
+    const editor = screen.getByTestId('bulk-edit-code-editor');
+
+    expect(editor).toHaveStyle({ left: '300px' });
+
+    cellLeft = 120;
+    fireEvent.scroll(window);
+
+    expect(editor).toHaveStyle({ left: '120px' });
+
+    rectSpy.mockRestore();
+  });
 });

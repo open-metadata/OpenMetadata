@@ -14,12 +14,17 @@
 package org.openmetadata.service.rdf;
 
 import java.io.StringWriter;
+import java.net.URI;
+import java.util.Comparator;
 import java.util.List;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.riot.RDFFormat;
 import org.apache.jena.shacl.ValidationReport;
 import org.apache.jena.shacl.validation.ReportEntry;
 import org.apache.jena.shacl.validation.Severity;
+import org.openmetadata.schema.type.NativeOntologyShaclFinding;
+import org.openmetadata.schema.type.NativeOntologyShaclReport;
+import org.openmetadata.schema.type.NativeOntologyShaclSeverity;
 import org.openmetadata.schema.type.RdfValidationReport;
 import org.openmetadata.schema.type.RdfValidationViolation;
 
@@ -47,6 +52,56 @@ public final class RdfShaclReportMapper {
         .withTruncated(false)
         .withViolationCount(0)
         .withViolations(List.of());
+  }
+
+  public NativeOntologyShaclReport mapNative(final ValidationReport report) {
+    final List<ReportEntry> entries = List.copyOf(report.getEntries());
+    final List<NativeOntologyShaclFinding> findings =
+        entries.stream()
+            .map(this::mapNative)
+            .sorted(
+                Comparator.comparing(
+                        (NativeOntologyShaclFinding finding) -> finding.getFocusIri().toString())
+                    .thenComparing(finding -> finding.getShapeIri().toString())
+                    .thenComparing(finding -> finding.getSeverity().value())
+                    .thenComparing(NativeOntologyShaclFinding::getMessage))
+            .limit(MAX_TYPED_VIOLATIONS)
+            .toList();
+    final long warnings =
+        entries.stream()
+            .filter(entry -> severity(entry) == NativeOntologyShaclSeverity.WARNING)
+            .count();
+    return new NativeOntologyShaclReport()
+        .withViolationCount(Math.toIntExact(entries.size() - warnings))
+        .withWarningCount(Math.toIntExact(warnings))
+        .withTruncated(entries.size() > MAX_TYPED_VIOLATIONS)
+        .withFindings(findings);
+  }
+
+  private NativeOntologyShaclFinding mapNative(final ReportEntry entry) {
+    if (entry.focusNode() == null
+        || !entry.focusNode().isURI()
+        || entry.source() == null
+        || !entry.source().isURI()) {
+      throw new IllegalStateException("Native SHACL finding requires named focus and shape IRIs");
+    }
+    return new NativeOntologyShaclFinding()
+        .withFocusIri(URI.create(entry.focusNode().getURI()))
+        .withShapeIri(URI.create(entry.source().getURI()))
+        .withSeverity(severity(entry))
+        .withMessage(
+            entry.message() == null ? "Native ontology constraint violation" : entry.message());
+  }
+
+  private static NativeOntologyShaclSeverity severity(final ReportEntry entry) {
+    final String level = entry.severity().level().getURI();
+    if ("http://www.w3.org/ns/shacl#Warning".equals(level)) {
+      return NativeOntologyShaclSeverity.WARNING;
+    }
+    if ("http://www.w3.org/ns/shacl#Violation".equals(level)) {
+      return NativeOntologyShaclSeverity.VIOLATION;
+    }
+    throw new IllegalStateException("Unexpected native SHACL severity: " + level);
   }
 
   private RdfValidationViolation map(final ReportEntry entry) {

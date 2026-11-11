@@ -13,14 +13,18 @@
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { mocked } from 'jest-mock';
 import {
+  CreateOntologyChangeSet,
+  OntologyConceptType,
   OperationState,
   OperationType,
 } from '../../../generated/api/data/createOntologyChangeSet';
 import {
+  OntologyChangeSet,
   OntologyChangeSetState,
   OperationStatus,
 } from '../../../generated/entity/data/ontologyChangeSet';
 import APIClient from '../../../rest/axiosClient';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { useOntologyChangeSetApply } from './useOntologyChangeSetApply';
 
 jest.mock('../../../rest/axiosClient', () => ({
@@ -40,15 +44,40 @@ const plan = {
       id: 'op',
       operationType: OperationType.UpsertConcept,
       state: OperationState.Active,
+      concept: {
+        id: 'concept',
+        name: 'Customer',
+        fullyQualifiedName: 'Sales.Customer',
+        iri: 'urn:sales:Customer',
+        ontology: { id: 'sales', type: 'ontology' },
+        conceptType: OntologyConceptType.OwlClass,
+        description: undefined,
+        synonyms: ['Client', 'Buyer'],
+      },
     },
   ],
-};
+} satisfies CreateOntologyChangeSet;
 const draft = {
   ...plan,
   id: 'draft',
   ontology: { id: 'sales', type: 'ontology', fullyQualifiedName: 'Sales' },
   state: OntologyChangeSetState.Draft,
   undoCursor: plan.operations.length,
+  operations: plan.operations.map((operation) => ({
+    ...operation,
+    sourceMemoryIds: [],
+    concept: {
+      ...operation.concept,
+      version: 0.1,
+      deleted: false,
+      provider: 'user',
+      conceptMappings: [],
+      abstract: false,
+      deprecated: false,
+      superClasses: [],
+      subClasses: [],
+    },
+  })),
 };
 const lock = {
   sessionId: 'session',
@@ -86,7 +115,7 @@ describe('native change-set application', () => {
     });
   });
 
-  it('applies one frozen plan once despite synchronous repeated submission', async () => {
+  it('accepts server defaults and applies one frozen plan once despite repeated submission', async () => {
     const onApplied = jest.fn();
     const { result } = renderHook(() =>
       useOntologyChangeSetApply({ canApply: true, onApplied })
@@ -105,6 +134,31 @@ describe('native change-set application', () => {
       ],
     ]);
     expect(onApplied).toHaveBeenCalledTimes(1);
+  });
+
+  it('reports the create refusal, not the list refusal, when the caller lost the edit right', async () => {
+    const refusal = (message: string) =>
+      Object.assign(new Error(message), {
+        isAxiosError: true,
+        response: { status: 403, data: { message } },
+      });
+    post.mockRejectedValueOnce(refusal('operations [EditAll] not allowed'));
+    get.mockRejectedValueOnce(refusal('list refused'));
+    const { result } = renderHook(() =>
+      useOntologyChangeSetApply({ canApply: true, onApplied: jest.fn() })
+    );
+    await act(async () => {
+      await result.current.start(plan);
+    });
+
+    expect(result.current.status).toEqual({
+      kind: 'blocked',
+      message: 'server.unexpected-error',
+    });
+    expect(showErrorToast).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'operations [EditAll] not allowed' })
+    );
+    expect(createCalls()).toHaveLength(1);
   });
 
   it('recovers a lost create response on a later cursor page without creating another draft', async () => {
@@ -129,6 +183,7 @@ describe('native change-set application', () => {
       params: {
         fields: 'operations,applicationResult',
         limit: 100,
+        ontology: 'Sales',
         after: 'next',
       },
     });
@@ -295,6 +350,7 @@ describe('native change-set application', () => {
 
     expect(result.current.status.kind).toBe('blocked');
     expect(post).not.toHaveBeenCalled();
+    expect(get).not.toHaveBeenCalled();
   });
 
   it('blocks after lease contention and reacquires before retrying the retained draft', async () => {
@@ -391,7 +447,7 @@ describe('native change-set application', () => {
     expect(applyCalls()).toHaveLength(0);
   });
 
-  it.each<{ field: string; changes: Partial<typeof draft> }>([
+  it.each<{ field: string; changes: Partial<OntologyChangeSet> }>([
     { field: 'name', changes: { name: 'renamed' } },
     {
       field: 'owner',
@@ -401,6 +457,54 @@ describe('native change-set application', () => {
     {
       field: 'operations',
       changes: { operations: [{ ...plan.operations[0], id: 'changed' }] },
+    },
+    {
+      field: 'additional operation',
+      changes: {
+        operations: [
+          plan.operations[0],
+          { ...plan.operations[0], id: 'extra' },
+        ],
+      },
+    },
+    {
+      field: 'additional concept data',
+      changes: {
+        operations: [
+          {
+            ...plan.operations[0],
+            concept: {
+              ...plan.operations[0].concept,
+              synonyms: ['Client', 'Buyer', 'Unexpected'],
+            },
+          },
+        ],
+      },
+    },
+    {
+      field: 'array order',
+      changes: {
+        operations: [
+          {
+            ...plan.operations[0],
+            concept: {
+              ...plan.operations[0].concept,
+              synonyms: ['Buyer', 'Client'],
+            },
+          },
+        ],
+      },
+    },
+    {
+      field: 'non-default flag',
+      changes: {
+        operations: [
+          {
+            ...plan.operations[0],
+            concept: { ...plan.operations[0].concept, abstract: true },
+          },
+        ],
+      },
     },
     { field: 'cursor', changes: { undoCursor: 0 } },
   ])(

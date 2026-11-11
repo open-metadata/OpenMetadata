@@ -7,9 +7,9 @@
 | Metric | Count |
 |--------|-------|
 | **Components** | 32 |
-| **Test Files** | 206 |
-| **Test Cases** | 3479 |
-| **Total Scenarios** | 5143 🚀 |
+| **Test Files** | 205 |
+| **Test Cases** | 3478 |
+| **Total Scenarios** | 5139 🚀 |
 
 ---
 
@@ -74,11 +74,11 @@
 
 ## Integration
 
-> **1 Components** | **61 Tests** | **66 Scenarios**
+> **1 Components** | **60 Tests** | **62 Scenarios**
 
 | Component | Files | Tests | Total Scenarios | Skipped |
 |-----------|-------|-------|-----------------|---------|
-| [Connectors](./Integration.md#connectors) | 7 | 61 | 66 | 0 |
+| [Connectors](./Integration.md#connectors) | 6 | 60 | 62 | 0 |
 
 
 *Last updated: 2026-03-09*

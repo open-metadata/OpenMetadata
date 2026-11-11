@@ -102,10 +102,10 @@ SRC_TESTID_RE = re.compile(r"""data-testid=['"]([^'"]+)['"]""")
 TESTID_MAX_OWNERS = 3
 
 # Delegated spec globs are managed by the hand-authored map already — they
-# run under a dedicated workflow (Auth → playwright-sso-login-nightly.yml,
-# Features/KnowledgeGraph.spec.ts + Features/Ontology*Rdf.spec.ts →
-# playwright-knowledge-graph-postgresql-e2e.yml, etc.) that the postgres PR
-# gate does NOT schedule. Regenerating them here would emit source→spec
+# run outside spec-impact selection (Auth → playwright-sso-login-nightly.yml;
+# Features/KnowledgeGraph.spec.ts + Features/Ontology*Rdf.spec.ts and
+# VisualRegression/** → the path-gated `rdf` and `visual` lanes of
+# playwright-e2e-reusable.yml). Regenerating them here would emit source→spec
 # entries that select_playwright_tests would then strip via its
 # `remove_delegated_specs` pass — pointless noise in the file and misleading
 # to a reviewer skimming it.

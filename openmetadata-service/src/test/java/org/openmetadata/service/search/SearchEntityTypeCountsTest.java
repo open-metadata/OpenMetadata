@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.util.concurrent.Uninterruptibles;
 import jakarta.json.spi.JsonProvider;
@@ -257,20 +258,36 @@ class SearchEntityTypeCountsTest {
             hint -> {
               hints.incrementAndGet();
               assertEquals("cluster_dataAsset", hint.getIndex());
-              assertEquals(List.of("entityType"), hint.getIncludeSourceFields());
-              assertEquals(1, hint.getSize());
+              assertEquals(
+                  List.of("entityType", "name", "fullyQualifiedName"),
+                  hint.getIncludeSourceFields());
+              assertEquals(10, hint.getSize());
+              assertFalse(hint.getIncludeHighlights());
+              assertFalse(hint.getTrackTotalHits());
+              AtomicInteger passes = new AtomicInteger();
+              SearchRankingHelper.searchWithIdentifierPrecision(
+                  hint,
+                  ranked,
+                  (settings, window) -> {
+                    passes.incrementAndGet();
+                    return List.<String>of();
+                  },
+                  List::stream);
+              assertEquals(1, passes.get(), "the hint must serve as its own identity probe");
               ObjectNode body = envelope();
-              body.putObject("hits")
-                  .put("max_score", 10)
-                  .putArray("hits")
-                  .addObject()
+              ArrayNode hits = body.putObject("hits").put("max_score", 10).putArray("hits");
+              hits.addObject()
                   .putObject("_source")
-                  .put("entityType", "table");
+                  .put("entityType", "table")
+                  .put("name", "orders")
+                  .put("fullyQualifiedName", "svc.db.schema.orders");
+              hits.addObject().putObject("_source").put("entityType", "dashboard");
               return Response.ok(body.toString()).build();
             });
     JsonNode result = search(counts, request().withSize(1), "table", ranked);
     assertEquals(1, hints.get());
     assertEquals(2, result.at("/hits/total/value").longValue());
+    assertEquals(1, result.at("/hits/hits").size());
     assertEquals("table", result.at("/hits/hits/0/_source/entityType").textValue());
     assertEquals(1, result.at("/hits/hits/0/_source").size());
     assertEquals(14, result.path("took").longValue());
@@ -579,6 +596,32 @@ class SearchEntityTypeCountsTest {
               return response;
             });
     assertThrows(IOException.class, () -> search(counts, request(), "table", ranked));
+  }
+
+  @Test
+  void incompleteResponseSaysWhatFailedWithoutTheEngineReasons() {
+    SearchEntityTypeCounts counts =
+        counts(
+            (body, index) -> {
+              ObjectNode response = response(body);
+              response.put("timed_out", true);
+              ObjectNode shards = (ObjectNode) response.path("_shards");
+              shards.put("failed", 2);
+              shards
+                  .putArray("failures")
+                  .addObject()
+                  .put("index", "cluster_table_search_index")
+                  .putObject("reason")
+                  .put("type", "query_shard_exception")
+                  .put("reason", "failed to create query on field [owners.name]");
+              return response;
+            });
+    IOException error =
+        assertThrows(IOException.class, () -> search(counts, request(), "table", ranked));
+    assertTrue(
+        error.getMessage().endsWith("(timed out: true, failed shards: 2 of 3)"),
+        error.getMessage());
+    assertFalse(error.getMessage().contains("query_shard_exception"), error.getMessage());
   }
 
   @Test

@@ -57,7 +57,7 @@ const LITERAL_PAGE_TITLE = /pageTitle=(?:"[^"]*"|\{\s*['"`][^'"`]*['"`]\s*\})/g;
 
 /** The same defect spelled `<DocumentTitle title="X" />`. */
 const LITERAL_DOCUMENT_TITLE =
-  /<DocumentTitle\b[^>]*?\stitle=(?:"[^"]*"|\{\s*['"`][^'"`]*['"`]\s*\})/gs;
+  /<DocumentTitle\b[^>]*?\stitle=(?:"[^"]*"|\{\s*['"`][^'"`]*['"`]\s*\})/g;
 
 const findLiteralTitles = (file: string): string[] => {
   const contents = fs.readFileSync(file, 'utf8');

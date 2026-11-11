@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { startCase } from 'lodash';
 import { EntityType } from '../../../../enums/entity.enum';
 import {
   Task,
@@ -26,6 +25,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Fqn from '../../../../utils/Fqn';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getTagsWithoutTier } from '../../../../utils/TablePureUtils';
+import { getSeverityLabel } from '../../../DataQuality/IncidentManager/Severity/Severity.utils';
 import { StatTile, TaskAboutEntity } from './taskDetail.types';
 import { getTaskStatusBadge } from './taskResolution.utils';
 
@@ -148,7 +148,7 @@ const getIncidentTiles = (
           {
             key: 'severity',
             label: t('label.severity'),
-            value: startCase(severity),
+            value: getSeverityLabel(severity, t),
             badgeColor: 'error' as const,
             layout: 'field' as const,
           },

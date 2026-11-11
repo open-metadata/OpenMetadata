@@ -51,19 +51,13 @@ class WorkflowSignalIsolationTest {
             .list())
         .thenReturn(List.of(paused, active, waiting, pausedInstance));
     var repository = engine.getRepositoryService();
-    when(repository
-            .createProcessDefinitionQuery()
-            .processDefinitionId("paused")
-            .active()
-            .singleResult())
-        .thenReturn(null);
+    ProcessDefinition pausedDefinition = mock(ProcessDefinition.class);
+    when(pausedDefinition.isSuspended()).thenReturn(true);
+    when(repository.createProcessDefinitionQuery().processDefinitionId("paused").singleResult())
+        .thenReturn(pausedDefinition);
     ProcessDefinition definition = mock(ProcessDefinition.class);
     when(definition.getId()).thenReturn("active");
-    when(repository
-            .createProcessDefinitionQuery()
-            .processDefinitionId("active")
-            .active()
-            .singleResult())
+    when(repository.createProcessDefinitionQuery().processDefinitionId("active").singleResult())
         .thenReturn(definition);
     var running = runtime.createExecutionQuery().executionId("running").singleResult();
     when(running.getId()).thenReturn("running");
@@ -107,7 +101,6 @@ class WorkflowSignalIsolationTest {
             .getRepositoryService()
             .createProcessDefinitionQuery()
             .processDefinitionId("active")
-            .active()
             .singleResult())
         .thenReturn(definition);
     when(runtime.createExecutionQuery().executionId("broken").singleResult().getId())

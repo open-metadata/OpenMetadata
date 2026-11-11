@@ -220,16 +220,20 @@ export const ContractSLAFormTab: React.FC<{
 
   const { columnItems, topLevelColumnIds } = useMemo(() => {
     const { columns } = tableData as Table;
+    const topLevelColumnIds = new Set(
+      (columns ?? []).map((column) => column.fullyQualifiedName ?? column.name)
+    );
 
     return {
+      // Freshness evaluation resolves only top-level columns.
       columnItems: isEmpty(columns)
         ? []
-        : toItems(getColumnOptionsFromTableColumn(columns, true)),
-      topLevelColumnIds: new Set(
-        (columns ?? []).map(
-          (column) => column.fullyQualifiedName ?? column.name
-        )
-      ),
+        : toItems(
+            getColumnOptionsFromTableColumn(columns, true).filter((opt) =>
+              topLevelColumnIds.has(opt.value)
+            )
+          ),
+      topLevelColumnIds,
     };
   }, [tableData]);
 

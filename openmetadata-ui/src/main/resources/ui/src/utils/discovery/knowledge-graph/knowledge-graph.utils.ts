@@ -1209,7 +1209,7 @@ export const transformToG6Format = (
 export const projectGraphToPositions = (
   data: GraphData,
   positioned: G6GraphData
-) => {
+): ReturnType<typeof transformToG6Format> => {
   const positions = new Map(positioned.nodes?.map((node) => [node.id, node]));
   const filtered = transformToG6Format(data);
   const positionedEdges = new Map(

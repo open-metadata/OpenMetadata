@@ -115,7 +115,7 @@ const OMFieldSelect: FC<OMFieldSelectProps> = ({
     const lower = inputValue.toLowerCase();
 
     return selectItems.filter((item) =>
-      item.label.toLowerCase().includes(lower)
+      (item.label ?? '').toLowerCase().includes(lower)
     );
   }, [selectItems, inputValue, selectedLabel]);
 

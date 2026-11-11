@@ -11,9 +11,11 @@
  *  limitations under the License.
  */
 import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
+import {
+  BookOutline,
+  CodeOutline,
+} from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as BookOutline } from '../../../assets/svg/bookoutline.svg';
-import { ReactComponent as CodeOutline } from '../../../assets/svg/codeOutline.svg';
 import { DataContractMode } from '../../../constants/DataContract.constants';
 import {
   SEGMENT_TOGGLE_GROUP_CLASS,
@@ -47,19 +49,13 @@ const ContractViewSwitchTab = ({
         aria-label={t('label.editor')}
         className={SEGMENT_TOGGLE_ITEM_CLASS}
         id={DataContractMode.UI}>
-        <BookOutline
-          className="tw:size-5"
-          data-testid="contract-view-switch-tab-ui"
-        />
+        <BookOutline data-testid="contract-view-switch-tab-ui" size={20} />
       </ButtonGroupItem>
       <ButtonGroupItem
         aria-label={t('label.code')}
         className={SEGMENT_TOGGLE_ITEM_CLASS}
         id={DataContractMode.YAML}>
-        <CodeOutline
-          className="tw:size-5"
-          data-testid="contract-view-switch-tab-yaml"
-        />
+        <CodeOutline data-testid="contract-view-switch-tab-yaml" size={20} />
       </ButtonGroupItem>
     </ButtonGroup>
   );

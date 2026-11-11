@@ -176,10 +176,10 @@ const VirtualColumnList = ({
       {needsNavigation && (
         <div className="tw:flex tw:items-center tw:justify-center">
           <ButtonUtility
-            color="tertiary"
             data-testid="column-scroll-up"
-            disabled={!canScrollUp}
             icon={ChevronUp}
+            isDisabled={!canScrollUp}
+            size="xs"
             onClick={handleUp}
           />
         </div>
@@ -200,10 +200,10 @@ const VirtualColumnList = ({
       {needsNavigation && (
         <div className="tw:flex tw:items-center tw:justify-center">
           <ButtonUtility
-            color="tertiary"
             data-testid="column-scroll-down"
-            disabled={!canScrollDown}
             icon={ChevronDown}
+            isDisabled={!canScrollDown}
+            size="xs"
             onClick={handleDown}
           />
         </div>

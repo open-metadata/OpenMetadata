@@ -26,6 +26,8 @@ test.use({
   storageState: 'playwright/.auth/admin.json',
 });
 
+const PAGE_SIZE = 15;
+
 test.describe('Large Glossary Performance Tests', () => {
   const TOTAL_TERMS = 100; // Reduced for test performance
   const glossary = new Glossary();
@@ -85,14 +87,26 @@ test.describe('Large Glossary Performance Tests', () => {
       page.locator('[data-testid="glossary-terms-scroll-container"]')
     );
 
+    // The glossary terms pager defaults to the list scale of 15 rows.
     const initialTerms = await page.locator('tbody tr[data-row-key]').count();
 
-    expect(initialTerms).toBe(50);
+    expect(initialTerms).toBe(PAGE_SIZE);
 
     // First page: Previous is disabled, Next is enabled.
     const pagination = page.getByTestId('pagination');
 
     await expect(pagination).toBeVisible();
+
+    // A full page can overflow the Terms tab panel; a wheel scroll (unlike
+    // scrollIntoView, which also moves overflow-hidden boxes) must bring the
+    // pagination on screen, or the last terms are clipped and unreachable.
+    // The table's own scroller takes the first wheel, so keep wheeling until the
+    // panel behind it has scrolled too.
+    await page.getByTestId('glossary-terms-table').hover();
+    await expect(async () => {
+      await page.mouse.wheel(0, 2000);
+      await expect(pagination).toBeInViewport({ ratio: 1, timeout: 1000 });
+    }).toPass();
     await expect(pagination.getByTestId('previous')).toBeDisabled();
     await expect(pagination.getByTestId('next')).toBeEnabled();
 
@@ -113,10 +127,10 @@ test.describe('Large Glossary Performance Tests', () => {
     );
 
     // Cursor pagination replaces the page rather than appending, so the second
-    // page still shows 50 rows and Previous is now enabled.
+    // page shows another full page and Previous is now enabled.
     await expect
       .poll(() => page.locator('tbody tr[data-row-key]').count())
-      .toBe(50);
+      .toBe(PAGE_SIZE);
     await expect(pagination.getByTestId('previous')).toBeEnabled();
 
     // Going back returns to the first page.
@@ -147,7 +161,11 @@ test.describe('Large Glossary Performance Tests', () => {
     await expect(page.getByText('Term_5', { exact: true })).toBeVisible();
 
     // Clear search
-    const allTermsResponse = page.waitForResponse('api/v1/glossaryTerms?*');
+    const allTermsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms?') &&
+        response.url().includes('directChildrenOf=')
+    );
     await searchInput.clear();
 
     const clearRes = await allTermsResponse;
@@ -155,20 +173,24 @@ test.describe('Large Glossary Performance Tests', () => {
     expect(clearRes.status()).toBe(200);
     await waitForAllLoadersToDisappear(page);
 
-    // Verify all terms are shown again.
-    //
-    // waitForResponse only proves the listing bytes arrived — the component
-    // still has to apply the store update and re-render the rows, which
-    // happens in a later microtask (GlossaryTermTab sets the terms after its
-    // own await). A single count() here has no retry budget and samples the
-    // stale search results instead, so poll the rendered row count.
-    //
-    // Polling rather than toHaveCount: the tab auto-fetches another page when
-    // the rows do not fill the viewport, so an exact count would swap this
-    // flake for a different one.
-    await expect
-      .poll(() => page.locator('tbody tr[data-row-key]').count())
-      .toBeGreaterThanOrEqual(50);
+    // Verify the unfiltered listing is shown again. Search results are paged
+    // at the same size as the listing, so a row count alone cannot tell the
+    // stale "Term_5" results from the listing; wait for a listed term the
+    // search did not match. Assertions retry because GlossaryTermTab applies
+    // the store update after its own await.
+    const { data: listedTerms } = (await clearRes.json()) as {
+      data: { name: string }[];
+    };
+    const unmatchedTerm = listedTerms.find(
+      ({ name }) => !name.includes('Term_5')
+    );
+
+    expect(unmatchedTerm).toBeDefined();
+
+    await expect(
+      page.getByText(unmatchedTerm?.name ?? '', { exact: true })
+    ).toBeVisible();
+    await expect(page.locator('tbody tr[data-row-key]')).toHaveCount(PAGE_SIZE);
   });
 
   test('should expand and collapse all terms', async ({ page }) => {

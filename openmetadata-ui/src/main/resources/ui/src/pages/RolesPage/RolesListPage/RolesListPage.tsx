@@ -21,13 +21,13 @@ import {
   PopoverTrigger,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
-import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import CreatePlaceholder from '../../../components/common/EmptyPlaceholder/CreatePlaceholder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -68,7 +68,6 @@ import {
 } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import './roles-list.less';
 
 const RolesListPage = () => {
   const navigate = useNavigate();
@@ -135,7 +134,7 @@ const RolesListPage = () => {
           </Link>
         ),
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<Role>(),
       {
         title: t('label.policy-plural').toString(),
         dataIndex: 'policies',
@@ -232,25 +231,21 @@ const RolesListPage = () => {
         key: 'actions',
         render: (_, record) => {
           return (
-            <Tooltip
-              arrow
-              placement="left"
-              title={
+            <ButtonUtility
+              data-testid={`delete-action-${getEntityName(record)}`}
+              icon={Trash01}
+              isDisabled={!deleteRolePermission}
+              size="lg"
+              tooltip={
                 deleteRolePermission
                   ? t('label.delete-entity', {
                       entity: t('label.role-plural').toString(),
                     })
                   : t(NO_PERMISSION_FOR_ACTION)
-              }>
-              <ButtonUtility
-                color="tertiary"
-                data-testid={`delete-action-${getEntityName(record)}`}
-                icon={IconDelete}
-                isDisabled={!deleteRolePermission}
-                size="sm"
-                onClick={() => setSelectedRole(record)}
-              />
-            </Tooltip>
+              }
+              tooltipPlacement="left"
+              onClick={() => setSelectedRole(record)}
+            />
           );
         },
       },

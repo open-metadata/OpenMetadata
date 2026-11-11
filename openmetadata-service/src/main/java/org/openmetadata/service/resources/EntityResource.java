@@ -26,7 +26,12 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import jakarta.json.Json;
+import jakarta.json.JsonArray;
+import jakarta.json.JsonArrayBuilder;
+import jakarta.json.JsonObject;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
@@ -42,15 +47,23 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.UUID;
+import java.util.function.BiConsumer;
+import java.util.function.BiFunction;
+import java.util.function.Function;
+import java.util.function.Supplier;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -62,10 +75,12 @@ import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.api.BulkDeleteStaleRequest;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
@@ -103,11 +118,14 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PagePermissionsResolver;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.ViewOperations;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.BulkFieldHydrator;
 import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.AsyncService.DatabaseOperation;
@@ -119,6 +137,8 @@ import org.openmetadata.service.util.DeleteEntityResponse;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.JsonPatchUtils;
+import org.openmetadata.service.util.ListCursors;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -138,6 +158,15 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected final Authorizer authorizer;
   protected final Limits limits;
   protected final Map<String, MetadataOperation> fieldsToViewOperations = new HashMap<>();
+  protected final ViewPermissionFilter viewPermissionFilter;
+
+  private static final List<MetadataOperation> VIEW_BASIC_ONLY = List.of(VIEW_BASIC);
+
+  /** Pages a filtered listing reads to fill one page, the first included. */
+  private static final int MAX_FILTERED_PAGE_READS = 5;
+
+  /** Rows a filtered listing scans for one page before it returns a short page. */
+  private static final int MAX_FILTERED_ROWS_SCANNED = 1000;
 
   protected EntityResource(String entityType, Authorizer authorizer, Limits limits) {
     this.entityType = entityType;
@@ -145,6 +174,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     this.entityClass = (Class<T>) Entity.getEntityClassFromType(entityType);
     allowedFields = repository.getAllowedFields();
     this.authorizer = authorizer;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
     this.limits = limits;
     addViewOperation(
         "owners,followers,votes,tags,extension,domains,dataProducts,experts,reviewers", VIEW_BASIC);
@@ -262,12 +292,468 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   private ResultList<T> listCursorPaged(
       UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
     ResultList<T> resultList =
-        page.before() != null // Reverse paging
-            ? repository.listBefore(
-                uriInfo, page.fields(), page.filter(), page.limit(), page.before())
-            : repository.listAfter(
-                uriInfo, page.fields(), page.filter(), page.limit(), page.after());
+        rowsMayDiffer(securityContext, page.fields())
+            ? readableRowsPage(uriInfo, securityContext, page)
+            : readPage(uriInfo, page, page.before(), page.after());
+    retainViewableReferences(securityContext, page.fields(), resultList.getData());
     return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
+  }
+
+  /** A reference-list field of {@code E} whose targets are filtered per caller. */
+  public record ReferenceListField<E>(
+      String name,
+      Function<E, List<EntityReference>> getter,
+      BiConsumer<E, List<EntityReference>> setter) {}
+
+  /**
+   * Reference-list fields whose targets the caller may not be allowed to view, such as the assets a
+   * user owns: a target stays in the list only if the caller may view it
+   * (ADR:2026-11-03-a-reference-list-names-only-entities-the-caller-may-view). None by default.
+   */
+  protected List<ReferenceListField<T>> viewFilteredReferenceFields() {
+    return List.of();
+  }
+
+  protected final T retainViewableReferences(
+      SecurityContext securityContext, Fields fields, T entity) {
+    if (entity != null) {
+      retainViewableReferences(securityContext, fields, List.of(entity));
+    }
+    return entity;
+  }
+
+  protected final void retainViewableReferences(
+      SecurityContext securityContext, Fields fields, List<T> entities) {
+    List<ReferenceListField<T>> requested =
+        viewFilteredReferenceFields().stream()
+            .filter(field -> fields != null && fields.contains(field.name()))
+            .toList();
+    if (requested.isEmpty() || nullOrEmpty(entities)) {
+      return;
+    }
+    Set<UUID> hidden = hiddenReferences(securityContext, requested, entities);
+    if (!hidden.isEmpty()) {
+      entities.forEach(entity -> ShownReferenceLists.removeHidden(entity, requested, hidden));
+    }
+  }
+
+  /**
+   * Ids of the references in {@code lists} of {@code entities} the caller may not view, checked in
+   * one batch per target type where a row-dependent rule could refuse a view.
+   */
+  private Set<UUID> hiddenReferences(
+      SecurityContext securityContext, List<ReferenceListField<T>> lists, List<T> entities) {
+    SubjectContext subject = getSubjectContext(securityContext);
+    Map<String, Boolean> typeMayDiffer = new HashMap<>();
+    List<EntityReference> toCheck =
+        entities.stream()
+            .flatMap(
+                entity ->
+                    lists.stream()
+                        .flatMap(list -> listOrEmpty(list.getter().apply(entity)).stream()))
+            .filter(
+                ref ->
+                    ref.getType() != null
+                        && ref.getId() != null
+                        && typeMayDiffer.computeIfAbsent(
+                            ref.getType(),
+                            type -> RowDecisionGate.mayDiffer(subject, type, VIEW_BASIC_ONLY)))
+            .toList();
+    Set<UUID> hidden = new HashSet<>();
+    if (!toCheck.isEmpty()) {
+      Set<UUID> viewable = viewPermissionFilter.viewableIds(securityContext, toCheck);
+      toCheck.stream()
+          .map(EntityReference::getId)
+          .filter(id -> !viewable.contains(id))
+          .forEach(hidden::add);
+    }
+    return hidden;
+  }
+
+  /**
+   * The write response with its reference lists filtered as a GET filters them. The entity is the
+   * one the repository wrote, which handlers that run after the write may still read, so the
+   * response carries a filtered copy instead.
+   */
+  @SuppressWarnings("unchecked")
+  private Response withViewableReferences(SecurityContext securityContext, Response response) {
+    List<ReferenceListField<T>> lists = viewFilteredReferenceFields();
+    if (lists.isEmpty() || !entityClass.isInstance(response.getEntity())) {
+      return response;
+    }
+    T entity = (T) response.getEntity();
+    Set<UUID> hidden = hiddenReferences(securityContext, lists, List.of(entity));
+    if (hidden.isEmpty()) {
+      return response;
+    }
+    T viewable = JsonUtils.deepCopy(entity, entityClass);
+    ShownReferenceLists.removeHidden(viewable, lists, hidden);
+    return Response.fromResponse(response).entity(viewable).build();
+  }
+
+  /** The reference lists whose targets are filtered among those a write of {@code fields} stores. */
+  private List<ReferenceListField<T>> writtenReferenceLists(Fields fields) {
+    return viewFilteredReferenceFields().stream()
+        .filter(list -> fields.contains(list.name()))
+        .toList();
+  }
+
+  /**
+   * The patch to write for this caller. A reference list the caller was shown without some of its
+   * entries is patched as it was shown and the entries the caller could not see are written back,
+   * so an index means what the caller saw and a PATCH never drops what it was not shown
+   * (ADR:2026-11-03-a-reference-list-names-only-entities-the-caller-may-view). Any other patch is
+   * written as it was sent.
+   */
+  private JsonPatch patchAsShown(
+      SecurityContext securityContext, JsonPatch patch, Supplier<T> storedEntity) {
+    Set<String> patched = JsonUtils.extractPatchedFields(patch);
+    List<ReferenceListField<T>> lists =
+        writtenReferenceLists(repository.getPatchFields()).stream()
+            .filter(list -> patched.contains(list.name()))
+            .toList();
+    if (lists.isEmpty() || getSubjectContext(securityContext).isAdmin()) {
+      return patch;
+    }
+    T stored = storedEntity.get();
+    Set<UUID> hidden = hiddenReferences(securityContext, lists, List.of(stored));
+    return hidden.isEmpty()
+        ? patch
+        : ShownReferenceLists.patchOfShown(stored, patch, lists, hidden, entityClass);
+  }
+
+  /**
+   * A PUT names a reference list as the caller was shown it, so the stored entries the caller may
+   * not view are added back to what it sent
+   * (ADR:2026-11-03-a-reference-list-names-only-entities-the-caller-may-view).
+   */
+  private void keepHiddenReferences(SecurityContext securityContext, T entity, T stored) {
+    List<ReferenceListField<T>> lists = writtenReferenceLists(repository.getPutFields());
+    if (lists.isEmpty() || getSubjectContext(securityContext).isAdmin()) {
+      return;
+    }
+    String listNames = String.join(",", lists.stream().map(ReferenceListField::name).toList());
+    T current =
+        repository.get(null, stored.getId(), repository.getFields(listNames), Include.ALL, false);
+    Set<UUID> hidden = hiddenReferences(securityContext, lists, List.of(current));
+    for (ReferenceListField<T> list : lists) {
+      List<EntityReference> kept = ShownReferenceLists.hiddenEntries(current, list, hidden);
+      if (!kept.isEmpty()) {
+        list.setter()
+            .accept(entity, ShownReferenceLists.withEntries(list.getter().apply(entity), kept));
+      }
+    }
+  }
+
+  /**
+   * What a caller was shown of an entity's reference lists, and a PATCH applied to it. The pure
+   * part of the reference-list filtering, kept apart so it can be tested without a server.
+   */
+  static final class ShownReferenceLists {
+    private static final String OP = "op";
+    private static final String PATH = "path";
+    private static final String VALUE = "value";
+    private static final String ID = "id";
+
+    private ShownReferenceLists() {}
+
+    /**
+     * {@code patch} as it applies to {@code stored} for a caller shown {@code stored} without the
+     * {@code hidden} references of {@code lists}. The caller's operations on those lists run on the
+     * lists as shown, and each list holding a hidden entry is written whole with its hidden entries
+     * added back. Operations on other fields are kept as sent, unless one also touches such a list,
+     * in which case the fields it touches are written whole too. A patch that replaces the document
+     * root is returned as sent, for the write to refuse.
+     */
+    static <E extends EntityInterface<?>> JsonPatch patchOfShown(
+        E stored,
+        JsonPatch patch,
+        List<ReferenceListField<E>> lists,
+        Set<UUID> hidden,
+        Class<E> entityClass) {
+      if (replacesWholeDocument(patch)) {
+        return patch;
+      }
+      E shown = JsonUtils.deepCopy(stored, entityClass);
+      removeHidden(shown, lists, hidden);
+      JsonObject intended = JsonUtils.applyPatch(shown, patch).asJsonObject();
+      JsonObject storedJson = JsonUtils.getJsonStructure(stored).asJsonObject();
+      Map<String, List<EntityReference>> kept = new LinkedHashMap<>();
+      for (ReferenceListField<E> list : lists) {
+        List<EntityReference> entries = hiddenEntries(stored, list, hidden);
+        if (!entries.isEmpty()) {
+          kept.put(list.name(), entries);
+        }
+      }
+      Set<String> wholeFields = fieldsWrittenWhole(patch, kept.keySet());
+      JsonArrayBuilder operations = Json.createArrayBuilder();
+      patch.toJsonArray().stream()
+          .filter(operation -> Collections.disjoint(fieldsOf(operation), wholeFields))
+          .forEach(operations::add);
+      for (String field : wholeFields) {
+        JsonValue value =
+            kept.containsKey(field)
+                ? shownListWith(intended.get(field), kept.get(field))
+                : intended.get(field);
+        writeWhole(operations, field, value, storedJson.containsKey(field));
+      }
+      return Json.createPatch(operations.build());
+    }
+
+    static <E> void removeHidden(E entity, List<ReferenceListField<E>> lists, Set<UUID> hidden) {
+      for (ReferenceListField<E> list : lists) {
+        List<EntityReference> refs = list.getter().apply(entity);
+        if (refs != null) {
+          list.setter()
+              .accept(
+                  entity,
+                  refs.stream()
+                      .filter(ref -> !isHidden(ref, hidden))
+                      .collect(Collectors.toCollection(ArrayList::new)));
+        }
+      }
+    }
+
+    static <E> List<EntityReference> hiddenEntries(
+        E entity, ReferenceListField<E> list, Set<UUID> hidden) {
+      return listOrEmpty(list.getter().apply(entity)).stream()
+          .filter(ref -> isHidden(ref, hidden))
+          .toList();
+    }
+
+    /** {@code sent} with the {@code kept} entries it does not already name. */
+    static List<EntityReference> withEntries(
+        List<EntityReference> sent, List<EntityReference> kept) {
+      List<EntityReference> entries = new ArrayList<>(listOrEmpty(sent));
+      Set<UUID> named =
+          entries.stream()
+              .map(EntityReference::getId)
+              .filter(Objects::nonNull)
+              .collect(Collectors.toSet());
+      kept.stream().filter(ref -> !named.contains(ref.getId())).forEach(entries::add);
+      return entries;
+    }
+
+    private static boolean isHidden(EntityReference ref, Set<UUID> hidden) {
+      return ref.getId() != null && hidden.contains(ref.getId());
+    }
+
+    private static boolean replacesWholeDocument(JsonPatch patch) {
+      return patch.toJsonArray().stream()
+          .anyMatch(
+              operation ->
+                  operation instanceof JsonObject object
+                      && "".equals(object.getString(PATH, null)));
+    }
+
+    /**
+     * The shown list as the patch left it, with the {@code kept} entries it does not already name.
+     * A value that is not a list is returned as it is, for the write to refuse.
+     */
+    private static JsonValue shownListWith(JsonValue shown, List<EntityReference> kept) {
+      if (shown != null
+          && shown.getValueType() != JsonValue.ValueType.ARRAY
+          && shown.getValueType() != JsonValue.ValueType.NULL) {
+        return shown;
+      }
+      JsonArrayBuilder entries = Json.createArrayBuilder();
+      Set<String> named = new HashSet<>();
+      if (shown instanceof JsonArray shownEntries) {
+        for (JsonValue entry : shownEntries) {
+          entries.add(entry);
+          if (entry instanceof JsonObject reference) {
+            named.add(reference.getString(ID, "").toLowerCase(Locale.ROOT));
+          }
+        }
+      }
+      kept.stream()
+          .filter(ref -> !named.contains(ref.getId().toString()))
+          .forEach(ref -> entries.add(JsonUtils.getJsonStructure(ref)));
+      return entries.build();
+    }
+
+    /** {@code seeds} and every field an operation touches together with one already in the set. */
+    private static Set<String> fieldsWrittenWhole(JsonPatch patch, Set<String> seeds) {
+      Set<String> fields = new HashSet<>(seeds);
+      boolean grew = true;
+      while (grew) {
+        grew = false;
+        for (JsonValue operation : patch.toJsonArray()) {
+          Set<String> touched = fieldsOf(operation);
+          if (!Collections.disjoint(touched, fields)) {
+            grew |= fields.addAll(touched);
+          }
+        }
+      }
+      return fields;
+    }
+
+    private static Set<String> fieldsOf(JsonValue operation) {
+      return JsonPatchUtils.touchedLocations(operation).stream()
+          .map(ShownReferenceLists::topLevelField)
+          .collect(Collectors.toSet());
+    }
+
+    /** The field a JSON Pointer starts at; the document root and a missing location are "". */
+    private static String topLevelField(String location) {
+      if (location.isEmpty()) {
+        return location;
+      }
+      int end = location.indexOf('/', 1);
+      return location
+          .substring(1, end < 0 ? location.length() : end)
+          .replace("~1", "/")
+          .replace("~0", "~");
+    }
+
+    private static void writeWhole(
+        JsonArrayBuilder operations, String field, JsonValue value, boolean stored) {
+      String path = "/" + field.replace("~", "~0").replace("/", "~1");
+      if (value != null) {
+        operations.add(Json.createObjectBuilder().add(OP, "add").add(PATH, path).add(VALUE, value));
+      } else if (stored) {
+        operations.add(Json.createObjectBuilder().add(OP, "remove").add(PATH, path));
+      }
+    }
+  }
+
+  /**
+   * A cursor page of {@code filter} as the caller may read it, for resources that authorize and
+   * build their listing themselves. Takes cursors as sent; returns the page without links.
+   */
+  protected final ResultList<T> readableListPage(
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      Fields fields,
+      ListFilter filter,
+      int limit,
+      String before,
+      String after) {
+    CursorPage page =
+        new CursorPage(
+            fields, filter, limit, ListCursors.unseal(before), ListCursors.unseal(after));
+    return rowsMayDiffer(securityContext, fields)
+        ? readableRowsPage(uriInfo, securityContext, page)
+        : readPage(uriInfo, page, page.before(), page.after());
+  }
+
+  private ResultList<T> readPage(UriInfo uriInfo, CursorPage page, String before, String after) {
+    return before != null // Reverse paging
+        ? repository.listBefore(uriInfo, page.fields(), page.filter(), page.limit(), before)
+        : repository.listAfter(uriInfo, page.fields(), page.filter(), page.limit(), after);
+  }
+
+  /**
+   * Whether a row-dependent rule could refuse a row the listing's own check allowed: a listing is
+   * authorized once for its type (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
+   */
+  protected final boolean rowsMayDiffer(SecurityContext securityContext, Fields fields) {
+    RowAuthorization<T> rows = rowAuthorization(fields);
+    return RowDecisionGate.mayDiffer(
+        getSubjectContext(securityContext), rows.resource(), rows.operations());
+  }
+
+  /**
+   * How each row of a listing is authorized: as the entity's item endpoint authorizes it, so a
+   * listing never returns a row that endpoint refuses
+   * (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read). Each row is checked for
+   * {@code operations} on {@code resource}; {@code readable} keeps the rows that pass.
+   */
+  public record RowAuthorization<E>(
+      String resource,
+      List<MetadataOperation> operations,
+      BiFunction<SecurityContext, List<E>, List<E>> readable) {}
+
+  /** By default a row is the entity itself, read with the operations its requested fields need. */
+  protected RowAuthorization<T> rowAuthorization(Fields fields) {
+    List<MetadataOperation> operations = ViewOperations.forFields(entityType, fields);
+    return new RowAuthorization<>(
+        entityType,
+        operations,
+        (securityContext, rows) -> readableRows(securityContext, rows, operations));
+  }
+
+  /**
+   * The page as the caller may read it. Rows the caller may not read are dropped and replaced from
+   * the pages that follow, within {@link #MAX_FILTERED_PAGE_READS} reads and
+   * {@link #MAX_FILTERED_ROWS_SCANNED} rows; past that the page comes back short. The total still
+   * counts every row, and the cursors are sealed because one may point at a dropped row.
+   */
+  private ResultList<T> readableRowsPage(
+      UriInfo uriInfo, SecurityContext securityContext, CursorPage page) {
+    boolean backward = page.before() != null;
+    RowAuthorization<T> rows = rowAuthorization(page.fields());
+    ResultList<T> read = readPage(uriInfo, page, page.before(), page.after());
+    Paging first = read.getPaging();
+    List<T> kept = new ArrayList<>();
+    String onward;
+    int reads = 0;
+    int scanned = 0;
+    while (true) {
+      List<T> readable = rows.readable().apply(securityContext, read.getData());
+      if (backward) {
+        kept.addAll(0, readable);
+      } else {
+        kept.addAll(readable);
+      }
+      reads++;
+      scanned += read.getData().size();
+      onward = backward ? read.getPaging().getBefore() : read.getPaging().getAfter();
+      if (kept.size() >= page.limit()
+          || onward == null
+          || reads >= MAX_FILTERED_PAGE_READS
+          || scanned >= MAX_FILTERED_ROWS_SCANNED) {
+        break;
+      }
+      read =
+          backward ? readPage(uriInfo, page, onward, null) : readPage(uriInfo, page, null, onward);
+    }
+    if (kept.size() > page.limit()) {
+      kept =
+          new ArrayList<>(
+              backward
+                  ? kept.subList(kept.size() - page.limit(), kept.size())
+                  : kept.subList(0, page.limit()));
+      onward = cursorOf(backward ? kept.getFirst() : kept.getLast(), page.filter());
+    }
+    // The repository leaves this cursor null when no page lies that way (the first page); it stays
+    // null, so a client does not offer a page that would come back empty.
+    String repositoryBackAgain = backward ? first.getAfter() : first.getBefore();
+    String backAgain =
+        repositoryBackAgain == null || kept.isEmpty()
+            ? repositoryBackAgain
+            : cursorOf(backward ? kept.getLast() : kept.getFirst(), page.filter());
+    ResultList<T> result = new ResultList<>(kept, null, null, first.getTotal());
+    result
+        .getPaging()
+        .withBefore(ListCursors.seal(backward ? onward : backAgain))
+        .withAfter(ListCursors.seal(backward ? backAgain : onward));
+    return result;
+  }
+
+  private String cursorOf(T row, ListFilter filter) {
+    return RestUtil.encodeCursor(repository.getCursorValue(row, filter));
+  }
+
+  /** The {@code rows} the caller may read with {@code operations}, decided on authorization copies. */
+  private List<T> readableRows(
+      SecurityContext securityContext, List<T> rows, List<MetadataOperation> operations) {
+    if (rows.isEmpty()) {
+      return rows;
+    }
+    List<T> copies =
+        repository.get(
+            null,
+            rows.stream().map(T::getId).distinct().toList(),
+            ResourceContext.authorizationFields(repository),
+            Include.ALL);
+    Set<UUID> readable =
+        viewPermissionFilter
+            .retainPermitted(securityContext, entityType, repository, copies, operations)
+            .stream()
+            .map(EntityInterface::getId)
+            .collect(Collectors.toSet());
+    return rows.stream().filter(row -> readable.contains(row.getId())).toList();
   }
 
   public ResultList<T> listInternal(
@@ -311,9 +797,17 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
     return listCursorPaged(
-        uriInfo, securityContext, new CursorPage(fields, filter, limitParam, before, after));
+        uriInfo,
+        securityContext,
+        new CursorPage(
+            fields, filter, limitParam, ListCursors.unseal(before), ListCursors.unseal(after)));
   }
 
+  /**
+   * A listing authorized by any of {@code authRequests}. A request on another entity, such as the
+   * table whose queries are listed, allows the listing but not its rows: each row is still checked
+   * as its item endpoint checks it.
+   */
   public ResultList<T> listInternal(
       UriInfo uriInfo,
       SecurityContext securityContext,
@@ -330,7 +824,10 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     EntityUtil.addDomainQueryParam(securityContext, filter, entityType);
 
     return listCursorPaged(
-        uriInfo, securityContext, new CursorPage(fields, filter, limitParam, before, after));
+        uriInfo,
+        securityContext,
+        new CursorPage(
+            fields, filter, limitParam, ListCursors.unseal(before), ListCursors.unseal(after)));
   }
 
   protected ResultList<T> searchInternal(
@@ -354,7 +851,22 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
 
     ResultList<T> resultList =
         repository.listAfterWithOffset(uriInfo, fields, filter, limit, offset);
+    retainReadableRows(securityContext, fields, resultList);
     return addPermissions(uriInfo, securityContext, addHref(uriInfo, resultList));
+  }
+
+  /**
+   * Drops the rows of an offset page the caller may not read. An offset page is not refilled, since
+   * the offset of the next page would no longer line up; it can come back short.
+   */
+  protected final void retainReadableRows(
+      SecurityContext securityContext, Fields fields, ResultList<T> resultList) {
+    if (resultList != null
+        && resultList.getData() != null
+        && rowsMayDiffer(securityContext, fields)) {
+      resultList.setData(
+          rowAuthorization(fields).readable().apply(securityContext, resultList.getData()));
+    }
   }
 
   public ResultList<T> listInternalFromSearch(
@@ -370,6 +882,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       List<AuthRequest> authRequests)
       throws IOException {
     authorizer.authorizeRequests(securityContext, authRequests, AuthorizationLogic.ANY);
+    EntityUtil.addNavbarDomainFilter(securityContext, searchListFilter, entityType);
     ResultList<T> resultList =
         repository.listFromSearchWithOffset(
             uriInfo,
@@ -381,6 +894,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             q,
             queryString,
             securityContext);
+    retainReadableRows(securityContext, fields, resultList);
     return addPermissions(uriInfo, securityContext, resultList);
   }
 
@@ -442,11 +956,15 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
-    return addHref(
-        uriInfo,
-        authorized != null
-            ? authorized
-            : repository.get(uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled()));
+    return retainViewableReferences(
+        securityContext,
+        fields,
+        addHref(
+            uriInfo,
+            authorized != null
+                ? authorized
+                : repository.get(
+                    uriInfo, id, fields, relationIncludes, isDistributedCacheEnabled())));
   }
 
   /**
@@ -513,7 +1031,33 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getVersion(id, version);
+    T stored = repository.getVersion(id, version);
+    return snapshotRedaction(securityContext)
+        .map(redaction -> redaction.apply(stored))
+        .orElse(stored);
+  }
+
+  /**
+   * The versions and history endpoints return entities as they were stored, without the
+   * post-processing the entity's own reads apply. A resource whose entities carry secrets returns
+   * the redaction its reads apply; empty, the default, shows a stored snapshot unchanged.
+   */
+  protected Optional<UnaryOperator<T>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.empty();
+  }
+
+  /** Applies {@code redaction} to the entity a response carries, bare or inside a change event. */
+  @SuppressWarnings("unchecked")
+  protected final Response withRedactedEntity(Response response, UnaryOperator<T> redaction) {
+    Object body = response.getEntity();
+    if (entityClass.isInstance(body)) {
+      return Response.fromResponse(response).entity(redaction.apply((T) body)).build();
+    }
+    if (body instanceof ChangeEvent changeEvent
+        && entityClass.isInstance(changeEvent.getEntity())) {
+      changeEvent.setEntity(redaction.apply((T) changeEvent.getEntity()));
+    }
+    return response;
   }
 
   protected EntityHistory listVersionsInternal(SecurityContext securityContext, UUID id) {
@@ -527,7 +1071,20 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       OperationContext operationContext,
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listVersions(id);
+    EntityHistory history = repository.listVersions(id);
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setVersions(
+                    history.getVersions().stream()
+                        .map(
+                            version ->
+                                (Object)
+                                    JsonUtils.pojoToJson(
+                                        redaction.apply(
+                                            JsonUtils.readValue((String) version, entityClass))))
+                        .collect(Collectors.toList())));
+    return history;
   }
 
   protected ResultList<T> listEntityHistoryByTimestampInternal(
@@ -541,7 +1098,36 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     ResourceContext resourceContext = getResourceContext();
     OperationContext operationContext = new OperationContext(entityType, VIEW_BASIC);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    ResultList<T> history =
+        repository.listEntityHistoryByTimestamp(startTs, endTs, after, before, limit);
+    history.setData(
+        retainReadableHistory(securityContext, readableSnapshots(securityContext, history)));
+    snapshotRedaction(securityContext)
+        .ifPresent(
+            redaction ->
+                history.setData(
+                    history.getData().stream().map(redaction).collect(Collectors.toList())));
+    return history;
+  }
+
+  /**
+   * The snapshots of entities the caller may view now: a snapshot is a version of an entity, so it
+   * is decided as the entity is (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read).
+   */
+  private List<T> readableSnapshots(SecurityContext securityContext, ResultList<T> history) {
+    List<T> snapshots = history.getData() == null ? List.of() : history.getData();
+    if (snapshots.isEmpty() || !rowsMayDiffer(securityContext, Fields.EMPTY_FIELDS)) {
+      return snapshots;
+    }
+    return rowAuthorization(Fields.EMPTY_FIELDS).readable().apply(securityContext, snapshots);
+  }
+
+  /**
+   * Snapshots this caller may see beyond what policies decide, for entities with a visibility of
+   * their own (private memories and files). Every snapshot by default.
+   */
+  protected List<T> retainReadableHistory(SecurityContext securityContext, List<T> snapshots) {
+    return snapshots;
   }
 
   public T getByNameInternal(
@@ -602,12 +1188,37 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       ResourceContextInterface resourceContext) {
     authorizer.authorize(securityContext, operationContext, resourceContext);
     T authorized = reuseAuthorizedEntity(uriInfo, resourceContext, fields);
-    return addHref(
-        uriInfo,
-        authorized != null
-            ? authorized
-            : repository.getByName(
-                uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled()));
+    return retainViewableReferences(
+        securityContext,
+        fields,
+        addHref(
+            uriInfo,
+            authorized != null
+                ? authorized
+                : repository.getByName(
+                    uriInfo, name, fields, relationIncludes, isDistributedCacheEnabled())));
+  }
+
+  /**
+   * Authorizes what a create or update does beyond writing the entity itself, once the CREATE or
+   * EDIT_ALL check on the entity has passed. Every create and create-or-update path, single and
+   * bulk, calls it, so a resource whose entity links to other entities checks those links in one
+   * place. {@code stored} is the saved entity, carrying what {@link
+   * #prepareCreateOrUpdateAuthorization} loaded, or null when the write creates it. Throwing fails
+   * the write; in a bulk request it fails that item alone.
+   */
+  protected void authorizeCreateOrUpdate(SecurityContext securityContext, T entity, T stored) {}
+
+  /**
+   * Loads onto the stored entities what {@link #authorizeCreateOrUpdate} reads from them, for all of
+   * them at once, so a bulk request pays one read rather than one per item. It runs before that
+   * check on every update path: for a bulk request, once with every entity the request updates.
+   */
+  protected void prepareCreateOrUpdateAuthorization(List<T> stored) {}
+
+  private void authorizeUpdate(SecurityContext securityContext, T entity, T stored) {
+    prepareCreateOrUpdateAuthorization(List.of(stored));
+    authorizeCreateOrUpdate(securityContext, entity, stored);
   }
 
   public Response create(UriInfo uriInfo, SecurityContext securityContext, T entity) {
@@ -616,6 +1227,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorize(securityContext, operationContext, createResourceContext);
+    authorizeCreateOrUpdate(securityContext, entity, null);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     T createdEntity =
         addHref(
@@ -636,6 +1248,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         new CreateResourceContext<>(entityType, entity);
     limits.enforceLimits(securityContext, createResourceContext, operationContext);
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    authorizeCreateOrUpdate(securityContext, entity, null);
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     T createdEntity =
         addHref(
@@ -657,21 +1270,28 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorize(securityContext, operationContext, createResourceContext);
+      authorizeCreateOrUpdate(securityContext, entity, null);
       T createdEntity =
           addHref(
               uriInfo,
               repository.create(
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
-      return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
+      return withViewableReferences(
+          securityContext,
+          new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse());
     }
+    // Already loaded by createOrUpdateOperation, so handing it over costs no read.
+    T stored = entityClass.cast(resourceContext.getEntity());
     resourceContext =
         getResourceContextByName(
             entity.getFullyQualifiedName(), ResourceContextInterface.Operation.PUT);
     authorizer.authorize(securityContext, operationContext, resourceContext);
+    authorizeUpdate(securityContext, entity, stored);
+    keepHiddenReferences(securityContext, entity, stored);
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return withViewableReferences(securityContext, response.toResponse());
   }
 
   public Response createOrUpdate(
@@ -691,18 +1311,24 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           new CreateResourceContext<>(entityType, entity);
       limits.enforceLimits(securityContext, createResourceContext, operationContext);
       authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+      authorizeCreateOrUpdate(securityContext, entity, null);
       T createdEntity =
           addHref(
               uriInfo,
               repository.create(
                   uriInfo, entity, securityContext.getUserPrincipal().getName(), impersonatedBy));
-      return new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse();
+      return withViewableReferences(
+          securityContext,
+          new PutResponse<>(Response.Status.CREATED, createdEntity, ENTITY_CREATED).toResponse());
     }
     authorizer.authorizeRequests(securityContext, authRequests, authorizationLogic);
+    T stored = entityClass.cast(resourceContext.getEntity());
+    authorizeUpdate(securityContext, entity, stored);
+    keepHiddenReferences(securityContext, entity, stored);
     PutResponse<T> response =
         repository.createOrUpdate(uriInfo, entity, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
-    return response.toResponse();
+    return withViewableReferences(securityContext, response.toResponse());
   }
 
   /** Deprecated: use method with changeContext
@@ -747,12 +1373,16 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             uriInfo,
             id,
             securityContext.getUserPrincipal().getName(),
-            patch,
+            patchAsShown(securityContext, patch, () -> storedForPatch(id)),
             changeSource,
             ifMatchHeader,
             impersonatedBy);
     addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return withViewableReferences(securityContext, response.toResponse());
+  }
+
+  private T storedForPatch(UUID id) {
+    return repository.get(null, id, repository.getPatchFields(), Include.NON_DELETED, false);
   }
 
   /**
@@ -777,12 +1407,12 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
             uriInfo,
             id,
             securityContext.getUserPrincipal().getName(),
-            patch,
+            patchAsShown(securityContext, patch, () -> storedForPatch(id)),
             null,
             ifMatchHeader,
             impersonatedBy);
     addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return withViewableReferences(securityContext, response.toResponse());
   }
 
   public Response patchInternal(
@@ -815,17 +1445,21 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
         operationContext,
         getResourceContextByName(fqn, ResourceContextInterface.Operation.PATCH));
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+    Supplier<T> stored =
+        () ->
+            repository.getByName(
+                null, fqn, repository.getPatchFields(), Include.NON_DELETED, false);
     PatchResponse<T> response =
         repository.patch(
             uriInfo,
             fqn,
             securityContext.getUserPrincipal().getName(),
-            patch,
+            patchAsShown(securityContext, patch, stored),
             changeSource,
             ifMatchHeader,
             impersonatedBy);
     addHref(uriInfo, response.entity());
-    return response.toResponse();
+    return withViewableReferences(securityContext, response.toResponse());
   }
 
   public Response delete(
@@ -955,6 +1589,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.EDIT_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    repository.validateRestore(id);
     PutResponse<T> response =
         repository.restoreEntity(securityContext.getUserPrincipal().getName(), id);
     if (response == null) {
@@ -1011,6 +1646,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       }
       throw notDeleted;
     }
+    repository.validateRestore(id);
     String entityName = preCheck.getName() != null ? preCheck.getName() : id.toString();
     String jobId = UUID.randomUUID().toString();
     String userName = securityContext.getUserPrincipal().getName();
@@ -1081,11 +1717,22 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     }
   }
 
+  /**
+   * Authorizes a CSV export ({@code VIEW_ALL}) or import ({@code EDIT_ALL}) of {@code name}: by
+   * default, of the entity that name identifies. A resource whose CSV names another entity type
+   * overrides this.
+   */
+  protected void authorizeCsv(
+      SecurityContext securityContext, String name, MetadataOperation operation) {
+    authorizer.authorize(
+        securityContext,
+        new OperationContext(entityType, operation),
+        getResourceContextByName(name));
+  }
+
   public Response exportCsvInternalAsync(
       SecurityContext securityContext, String name, boolean recursive) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.VIEW_ALL);
     CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
     CsvAsyncJob job =
         csvJobManager.createJob(
@@ -1243,9 +1890,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       boolean dryRun,
       boolean recursive,
       String versioningEntityType) {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.EDIT_ALL);
     CsvAsyncJobManager csvJobManager = CsvAsyncJobManager.getInstance();
     CsvAsyncJob job =
         csvJobManager.createJob(
@@ -1264,9 +1909,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
 
   public String exportCsvInternal(SecurityContext securityContext, String name, boolean recursive)
       throws IOException {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.VIEW_ALL);
     return repository.exportToCsv(name, securityContext.getUserPrincipal().getName(), recursive);
   }
 
@@ -1304,9 +1947,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       String versioningEntityType,
       CsvImportProgressCallback progressCallback)
       throws IOException {
-    OperationContext operationContext =
-        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    authorizeCsv(securityContext, name, MetadataOperation.EDIT_ALL);
     CsvImportResult result =
         nullOrEmpty(versioningEntityType)
             ? repository.importFromCsv(
@@ -1442,18 +2083,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
   protected static final MetadataOperation[] VIEW_BASIC_OPERATIONS = {VIEW_BASIC};
 
   protected MetadataOperation[] getViewOperations(Fields fields) {
-    if (fields.getFieldList().isEmpty()) {
-      return VIEW_BASIC_OPERATIONS;
-    }
-    Set<MetadataOperation> viewOperations = new TreeSet<>();
-    for (String field : fields.getFieldList()) {
-      MetadataOperation operation = fieldsToViewOperations.get(field);
-      if (operation == null) {
-        return VIEW_ALL_OPERATIONS;
-      }
-      viewOperations.add(operation);
-    }
-    return viewOperations.toArray(new MetadataOperation[0]);
+    return ViewOperations.forFields(entityType, fields).toArray(new MetadataOperation[0]);
   }
 
   protected EntityReference getEntityReference(String entityType, String fqn) {
@@ -1623,6 +2253,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
       }
       if (!existingEntities.isEmpty()) {
         repository.enrichEntitiesForAuth(existingEntities);
+        prepareCreateOrUpdateAuthorization(existingEntities);
       }
     }
 
@@ -1631,10 +2262,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
     // avoiding an N+1. A field no policy inspects is never loaded. New on-demand fields are added
     // here as another entry, with no change to ResourceContext.
     BulkFieldHydrator bulkFieldHydrator =
-        new BulkFieldHydrator(
-            Map.of(
-                Entity.FIELD_TAGS,
-                () -> repository.batchLoadTags(new ArrayList<>(existingByFqn.values()))));
+        BulkFieldHydrator.forTags(repository, new ArrayList<>(existingByFqn.values()));
 
     // Phase 3: Auth check using batch results
     for (T entity : preparedEntities) {
@@ -1647,6 +2275,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
               new CreateResourceContext<>(entityType, entity);
           limits.enforceLimits(securityContext, createResourceContext, operationContext);
           authorizer.authorize(securityContext, operationContext, createResourceContext);
+          authorizeCreateOrUpdate(securityContext, entity, null);
         } else {
           MetadataOperation operation = MetadataOperation.EDIT_ALL;
           OperationContext operationContext = new OperationContext(entityType, operation);
@@ -1654,6 +2283,7 @@ public abstract class EntityResource<T extends EntityInterface<?>, K extends Ent
           ResourceContext<T> resourceContext =
               new ResourceContext<>(entityType, existingEntity, repository, bulkFieldHydrator);
           authorizer.authorize(securityContext, operationContext, resourceContext);
+          authorizeCreateOrUpdate(securityContext, entity, existingEntity);
         }
 
         validEntities.add(entity);

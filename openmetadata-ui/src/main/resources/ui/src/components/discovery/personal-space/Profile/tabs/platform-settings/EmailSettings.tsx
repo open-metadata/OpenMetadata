@@ -13,7 +13,7 @@
 
 import { Badge, Box, Button, Toggle } from '@openmetadata/ui-core-components';
 import { Edit01, Mail01, Plus } from '@openmetadata/ui-core-components/icons';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EMAIL_CONFIG_FORM_FIELDS } from '../../../../../../constants/EmailConfig.constants';
 import { SMTPSettings } from '../../../../../../generated/email/smtpSettings';
@@ -25,7 +25,7 @@ import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
 import SettingValue from './SettingValue';
-import TestEmailModal from './TestEmailModal';
+import TestEmailPopover from './TestEmailPopover';
 import { useDeploymentManagedFields } from './useDeploymentManagedFields';
 import { useSettingsFetch } from './useSettingsFetch';
 
@@ -56,7 +56,6 @@ const EmailSettings = ({
     SettingType.EmailConfiguration,
     EMAIL_CONFIG_FORM_FIELDS
   );
-  const [isTestEmailOpen, setIsTestEmailOpen] = useState(false);
 
   useEffect(() => {
     if (isLoading || isSourceLoading) {
@@ -65,15 +64,7 @@ const EmailSettings = ({
 
     onSetHeaderActions(
       <Box direction="row" gap={3}>
-        {config?.senderMail && (
-          <Button
-            color="secondary"
-            data-testid="test-email-button"
-            size="xs"
-            onPress={() => setIsTestEmailOpen(true)}>
-            {t('label.test-email')}
-          </Button>
-        )}
+        {config?.senderMail && <TestEmailPopover />}
         {!isFullyManaged && (
           <Button
             color="primary"
@@ -189,10 +180,6 @@ const EmailSettings = ({
           <SettingValue testId="support-url-value" value={config.supportUrl} />
         </ReadOnlyRow>
       </SettingsSection>
-
-      {isTestEmailOpen && (
-        <TestEmailModal onClose={() => setIsTestEmailOpen(false)} />
-      )}
     </Box>
   );
 };

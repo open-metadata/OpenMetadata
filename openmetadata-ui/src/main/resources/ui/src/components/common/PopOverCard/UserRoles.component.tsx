@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconUsers } from '../../../assets/svg/user.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { UserRolesProps } from './UserPopOverCard.interface';
@@ -26,7 +26,7 @@ export const UserRoles = React.memo(({ user }: UserRolesProps) => {
   return roles?.length ? (
     <div className="m-t-xs">
       <p className="d-flex items-center">
-        <IconUsers height={16} width={16} />
+        <User01 size={16} />
         <span className="m-r-xs m-l-xss align-middle font-medium">
           {t('label.role-plural')}
         </span>

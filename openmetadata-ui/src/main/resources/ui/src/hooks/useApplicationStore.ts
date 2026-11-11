@@ -115,11 +115,10 @@ const syncDomainStoreForUser = (user?: User) => {
   // The selection persisted on the user (defaultDomain) is the source of truth: the server scopes
   // list views from it, so the navbar must show exactly that, including "no selection" when it was
   // cleared elsewhere (another session or the API) and this browser still caches an older pick.
-  domainStore.updateActiveDomain(user?.defaultDomain);
-
-  if (hasSingleDomain && !user?.defaultDomain) {
-    domainStore.updateActiveDomain(userDomains[0]);
-  }
+  // One write: other tabs reload when the stored pick changes, so no intermediate value is written.
+  domainStore.updateActiveDomain(
+    user?.defaultDomain ?? (hasSingleDomain ? userDomains[0] : undefined)
+  );
 };
 
 export const useApplicationStore = create<ApplicationStore>()((set, get) => ({

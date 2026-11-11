@@ -1005,7 +1005,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         if (testSuite.getDataContract() != null) {
           DataContractRepository dataContractRepository =
               (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
-          dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+          dataContractRepository.updateContractDQResults(
+              testSuite.getDataContract(), testSuite, state);
         }
 
         updateRelatedSuites(testSuite, pipeline.getUpdatedBy());

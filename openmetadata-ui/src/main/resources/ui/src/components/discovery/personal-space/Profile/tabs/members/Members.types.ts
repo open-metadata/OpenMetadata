@@ -55,7 +55,18 @@ export type MembersView =
   // A downstream-contributed section (EXTENSION_POINTS.MEMBERS_LANDING_SECTIONS).
   // `subPath` carries the section's own internal route, as the Notification
   // panel's section view does.
-  | { type: 'section'; key: string; subPath?: string };
+  | { type: 'section'; key: string; subPath?: string }
+  // A sub-page owned by a contributed team tab (EXTENSION_POINTS.TEAM_DETAILS_TABS).
+  // Rendered at panel level, like the team forms, so the tab's page replaces the
+  // team detail instead of sitting inside its tab chrome. `subPath` carries the
+  // tab's own internal route, as the `section` view does.
+  | {
+      type: 'team-tab-subpage';
+      fqn: string;
+      teamId: string;
+      key: string;
+      subPath?: string;
+    };
 
 export interface MembersLandingCard {
   id: string;

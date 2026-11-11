@@ -18,13 +18,15 @@ import yaml
 
 from metadata.generated.schema.entity.data.table import DataType, DmlOperationType, PartitionIntervalTypes, Table
 from metadata.generated.schema.entity.data.table import SystemProfile as DmlProfile
+from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
 
 from ..bigquery.baseline import build_bigquery_baseline
 from ..bigquery.checks import system_profile_matches, table_is_day_partitioned
-from ..bigquery.connector import bigquery_invocation, table_diff_invocation
+from ..bigquery.connector import BigQueryContext, bigquery_invocation, table_diff_invocation
 from ..bigquery.expected import bigquery_database, bigquery_expected
 from ..bigquery.source import BigQueryInstance, BigQueryProject, BigQuerySource
-from ..features.database.pipelines import MetadataPipeline, ProfilerPipeline
+from ..bigquery.test_sharding import grouped
+from ..features.database.pipelines import AutoClassificationPipeline, MetadataPipeline, ProfilerPipeline
 from ..features.database.pipelines import TestPipeline as SuitePipeline
 from ..server import ServerConfig
 
@@ -254,3 +256,24 @@ def test_partition_check_requires_the_day_partition_column():
     ):
         with pytest.raises(AssertionError, match="partition"):
             check(table(columns))
+
+
+@pytest.mark.parametrize("options", [MetadataPipeline(), ProfilerPipeline(), AutoClassificationPipeline()])
+def test_sharded_fixture_workflows_validate_offline(instance, server, options):
+    context = BigQueryContext(
+        source=_source(instance.primary, "e2e_bq_owned"),
+        instance=instance,
+        service_name="demo_service",
+        server=server,
+        om=None,
+    )
+    invocation = grouped(context, options)
+    workflow = OpenMetadataWorkflowConfig.model_validate(invocation.config)
+    source_config = invocation.config["source"]["sourceConfig"]["config"]
+    parsed = type(options).model_validate(source_config)
+    assert parsed.tableFilterPattern.includes == ["^events_yyyymmdd$"]
+    assert workflow.source.serviceName == "demo_service"
+    if isinstance(options, MetadataPipeline):
+        assert source_config["shardedTables"] == {"enabled": True}
+    else:
+        assert "shardedTables" not in source_config

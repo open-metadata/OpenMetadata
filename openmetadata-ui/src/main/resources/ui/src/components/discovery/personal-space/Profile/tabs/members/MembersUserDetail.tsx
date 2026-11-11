@@ -15,9 +15,8 @@ import { Box } from '@openmetadata/ui-core-components';
 import { User01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import { FC, Key, useCallback, useState } from 'react';
+import { FC, Key, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { EntityType } from '../../../../../../enums/entity.enum';
 import { useUserProfile } from '../../../../../../hooks/discovery/personal-space/useUserProfile';
 import { restoreUser } from '../../../../../../rest/userAPI';
 import { getEntityName } from '../../../../../../utils/EntityNameUtils';
@@ -25,7 +24,6 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../../utils/ToastUtils';
-import DeleteEntityModal from '../../../../../common/DeleteWidget/DeleteEntityModal';
 import NoDataPlaceholder from '../../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
@@ -67,7 +65,6 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
     hiddenTabs,
     activeTab,
   } = useMembersUserDetailAccess(view, userData);
-  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
 
   const navigateTo = useCallback(
     (tab: UserDetailTab, taskId?: string) =>
@@ -96,7 +93,11 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
     }
   }, [userData, t, refetch]);
 
-  const openDelete = useCallback(() => setIsDeleteOpen(true), []);
+  const afterDelete = useCallback(
+    (isSoftDelete?: boolean) =>
+      isSoftDelete ? void refetch() : onNavigate({ type: 'users' }),
+    [refetch, onNavigate]
+  );
 
   useMembersUserDetailHeader({
     user: userData,
@@ -106,7 +107,7 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
     canDelete,
     hiddenTabs,
     onTabChange: handleTabChange,
-    onDelete: openDelete,
+    afterDelete,
     onSetHeader,
   });
 
@@ -179,20 +180,6 @@ const MembersUserDetail: FC<MembersUserDetailProps> = ({
         user={userData}
         onOpenTask={(taskId) => navigateTo('tasks', taskId)}
       />
-      {isDeleteOpen && (
-        <DeleteEntityModal
-          isRecursiveDelete
-          visible
-          afterDeleteAction={(isSoftDelete) =>
-            isSoftDelete ? void refetch() : onNavigate({ type: 'users' })
-          }
-          allowSoftDelete={!userData.deleted}
-          entityId={userData.id}
-          entityName={getEntityName(userData)}
-          entityType={EntityType.USER}
-          onCancel={() => setIsDeleteOpen(false)}
-        />
-      )}
     </Box>
   );
 };

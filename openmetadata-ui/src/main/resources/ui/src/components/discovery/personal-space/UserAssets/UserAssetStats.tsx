@@ -13,7 +13,7 @@
 
 import { Button, Grid } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   CodeSquare02,
   HeartRounded,
   Star04,
@@ -28,7 +28,10 @@ import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import StatCard from './StatCard';
 import { useUserAssetStats } from './useUserAssetStats';
 
-const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
+const UserAssetStats: React.FC<{
+  user: User;
+  cardVariant?: 'default' | 'muted';
+}> = ({ user, cardVariant = 'default' }) => {
   const { t } = useTranslation();
   const {
     assetStats,
@@ -94,6 +97,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
                   },
                 ]
           }
+          cardVariant={cardVariant}
           icon={<Star04 data-icon />}
           label={t('label.asset-owned-plural')}
           loading={isLoading}
@@ -104,6 +108,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
       </Grid.Item>
       <Grid.Item span={6}>
         <StatCard
+          cardVariant={cardVariant}
           icon={<HeartRounded data-icon />}
           label={t('label.data-health-score')}
           loading={isLoading}
@@ -121,7 +126,8 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
       </Grid.Item>
       <Grid.Item span={6}>
         <StatCard
-          icon={<AlertTriangle data-icon />}
+          cardVariant={cardVariant}
+          icon={<Alert data-icon />}
           label={t('label.open-incidents')}
           loading={isLoading}
           subtitle={
@@ -138,6 +144,7 @@ const UserAssetStats: React.FC<{ user: User }> = ({ user }) => {
       </Grid.Item>
       <Grid.Item span={6}>
         <StatCard
+          cardVariant={cardVariant}
           icon={<CodeSquare02 data-icon />}
           label={t('label.queries')}
           loading={isLoading}

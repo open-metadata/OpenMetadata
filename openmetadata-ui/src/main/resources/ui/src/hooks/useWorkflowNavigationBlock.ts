@@ -11,15 +11,22 @@
  *  limitations under the License.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  UNSAFE_NavigationContext,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 
 const NO_PENDING_PATH = null;
 
 const isInternalLink = (
   href: string | null,
   currentPath: string
-): href is string => Boolean(href?.startsWith('/') && href !== currentPath);
+): href is string =>
+  Boolean(
+    href?.startsWith('/') && !href.startsWith('//') && href !== currentPath
+  );
 
 const blockAndShowModal = (
   pendingPath: string,
@@ -30,64 +37,185 @@ const blockAndShowModal = (
   setShowModal(true);
 };
 
-const proceedToPendingPath = (
-  pendingRef: React.MutableRefObject<string | null>,
-  navigate: (path: string) => void
-) => {
-  const path = pendingRef.current;
-  pendingRef.current = NO_PENDING_PATH;
-  if (path) {
-    navigate(path);
-  }
-};
-
 const preventUnload = (e: BeforeUnloadEvent) => {
   e.preventDefault();
+  e.returnValue = '';
 };
 
 export interface UseWorkflowNavigationBlockOptions {
   enabled: boolean;
+  blockProgrammaticNavigation?: boolean;
+  isBlocked?: () => boolean;
   onSaveWorkflow: () => Promise<boolean>;
 }
 
 export const useWorkflowNavigationBlock = ({
   enabled,
+  blockProgrammaticNavigation = false,
+  isBlocked,
   onSaveWorkflow,
 }: UseWorkflowNavigationBlockOptions) => {
   const navigate = useNavigate();
+  const navigator = useContext(UNSAFE_NavigationContext)?.navigator;
   const location = useLocation();
   const [showModal, setShowModal] = useState(false);
   const [isSaveLoading, setIsSaveLoading] = useState(false);
   const pendingPathRef = useRef<string | null>(NO_PENDING_PATH);
+  const pendingNavigation = useRef<() => void>();
+  const bypass = useRef(false);
+  const blockCheck = useRef(isBlocked);
+  blockCheck.current = isBlocked;
 
-  const handlePopState = useCallback(() => {
-    const nextPath = globalThis.location.pathname;
-    if (nextPath === location.pathname) {
+  const currentEntry = useRef(globalThis.history.state);
+  const pendingPop = useRef<{
+    delta: number;
+    sourceIndex: number;
+    state: unknown;
+  }>();
+  const restoring = useRef(false);
+  const allowPop = useRef(false);
+  const currentPath = `${location.pathname}${location.search}${location.hash}`;
+
+  const runWithoutBlocking = useCallback((action: () => void) => {
+    const previous = bypass.current;
+    bypass.current = true;
+    try {
+      action();
+    } finally {
+      bypass.current = previous;
+    }
+  }, []);
+
+  const proceed = useCallback(() => {
+    const path = pendingPathRef.current;
+    const pop = pendingPop.current;
+    const navigation = pendingNavigation.current;
+    pendingNavigation.current = undefined;
+    pendingPathRef.current = NO_PENDING_PATH;
+    pendingPop.current = undefined;
+    if (navigation) {
+      runWithoutBlocking(navigation);
+    } else if (pop && path) {
+      const currentIndex = globalThis.history.state?.idx;
+      const targetIndex = pop.sourceIndex + pop.delta;
+      // A save can push View mode, replacing the original forward entry.
+      const targetSurvives =
+        typeof currentIndex === 'number' &&
+        (currentIndex === pop.sourceIndex || pop.delta < 0);
+      if (targetSurvives && targetIndex !== currentIndex) {
+        allowPop.current = true;
+        globalThis.history.go(targetIndex - currentIndex);
+      } else {
+        runWithoutBlocking(() =>
+          navigate(path, { replace: true, state: pop.state })
+        );
+      }
+    } else if (path) {
+      runWithoutBlocking(() => navigate(path));
+    }
+  }, [navigate, runWithoutBlocking]);
+
+  useEffect(() => {
+    if (!enabled || !blockProgrammaticNavigation || !navigator) {
       return;
     }
+    const { push, replace } = navigator;
+    const intercept =
+      (method: typeof push): typeof push =>
+      (...args) => {
+        if (bypass.current || blockCheck.current?.() === false) {
+          method(...args);
+        } else {
+          pendingNavigation.current = () => method(...args);
+          pendingPathRef.current = NO_PENDING_PATH;
+          pendingPop.current = undefined;
+          setShowModal(true);
+        }
+      };
+    // ADR:2026-10-30-only-ontology-drafts-intercept-programmatic-navigation
+    // BrowserRouter shares this navigator with sidebar buttons outside the editor subtree.
+    navigator.push = intercept(push);
+    navigator.replace = intercept(replace);
 
-    globalThis.history.replaceState(
-      null,
-      '',
-      `${location.pathname}${location.search}${location.hash}`
-    );
-    blockAndShowModal(nextPath, pendingPathRef, setShowModal);
-  }, [location]);
+    return () => {
+      navigator.push = push;
+      navigator.replace = replace;
+    };
+  }, [enabled, blockProgrammaticNavigation, navigator]);
+
+  const handlePopState = useCallback(
+    (event: PopStateEvent) => {
+      if (allowPop.current) {
+        allowPop.current = false;
+
+        return;
+      }
+      if (restoring.current) {
+        event.stopImmediatePropagation();
+        restoring.current = false;
+        setShowModal(true);
+
+        return;
+      }
+      const nextPath =
+        globalThis.location.pathname +
+        globalThis.location.search +
+        globalThis.location.hash;
+      if (nextPath === currentPath) {
+        return;
+      }
+      // Restore the existing entry before React Router can unmount the dirty editor.
+      event.stopImmediatePropagation();
+      pendingNavigation.current = undefined;
+      pendingPathRef.current = nextPath;
+      const previousIndex = currentEntry.current?.idx;
+      const nextIndex = event.state?.idx;
+      if (
+        typeof previousIndex === 'number' &&
+        typeof nextIndex === 'number' &&
+        previousIndex !== nextIndex
+      ) {
+        pendingPop.current = {
+          delta: nextIndex - previousIndex,
+          sourceIndex: previousIndex,
+          state: event.state?.usr,
+        };
+        restoring.current = true;
+        globalThis.history.go(-pendingPop.current.delta);
+      } else {
+        globalThis.history.replaceState(currentEntry.current, '', currentPath);
+        setShowModal(true);
+      }
+    },
+    [currentPath]
+  );
 
   const handleLinkClick = useCallback(
     (e: MouseEvent) => {
       const anchor = (e.target as HTMLElement).closest('a');
       const href = anchor?.getAttribute('href') ?? null;
 
-      if (!isInternalLink(href, location.pathname)) {
+      const opensElsewhere = [
+        e.defaultPrevented,
+        e.button !== 0,
+        e.ctrlKey,
+        e.metaKey,
+        e.shiftKey,
+        e.altKey,
+        anchor?.hasAttribute('download'),
+        anchor?.target && anchor.target !== '_self',
+      ].some(Boolean);
+      if (opensElsewhere || !isInternalLink(href, currentPath)) {
         return;
       }
 
       e.preventDefault();
       e.stopPropagation();
+      pendingNavigation.current = undefined;
+      pendingPop.current = undefined;
       blockAndShowModal(href, pendingPathRef, setShowModal);
     },
-    [location.pathname]
+    [currentPath]
   );
 
   useEffect(() => {
@@ -95,13 +223,15 @@ export const useWorkflowNavigationBlock = ({
       return;
     }
 
+    allowPop.current = false;
+    currentEntry.current = globalThis.history.state;
     globalThis.addEventListener('beforeunload', preventUnload);
-    globalThis.addEventListener('popstate', handlePopState);
+    globalThis.addEventListener('popstate', handlePopState, true);
     document.addEventListener('click', handleLinkClick, true);
 
     return () => {
       globalThis.removeEventListener('beforeunload', preventUnload);
-      globalThis.removeEventListener('popstate', handlePopState);
+      globalThis.removeEventListener('popstate', handlePopState, true);
       document.removeEventListener('click', handleLinkClick, true);
     };
   }, [enabled, handlePopState, handleLinkClick]);
@@ -109,6 +239,8 @@ export const useWorkflowNavigationBlock = ({
   const closeModal = useCallback(() => {
     setShowModal(false);
     pendingPathRef.current = NO_PENDING_PATH;
+    pendingPop.current = undefined;
+    pendingNavigation.current = undefined;
   }, []);
 
   const onSave = useCallback(async () => {
@@ -122,16 +254,18 @@ export const useWorkflowNavigationBlock = ({
 
     setShowModal(false);
     if (saved) {
-      proceedToPendingPath(pendingPathRef, navigate);
+      proceed();
     } else {
       pendingPathRef.current = NO_PENDING_PATH;
+      pendingPop.current = undefined;
+      pendingNavigation.current = undefined;
     }
-  }, [onSaveWorkflow, navigate]);
+  }, [onSaveWorkflow, proceed]);
 
   const onDiscard = useCallback(() => {
     setShowModal(false);
-    proceedToPendingPath(pendingPathRef, navigate);
-  }, [navigate]);
+    proceed();
+  }, [proceed]);
 
   return {
     showModal,
@@ -139,5 +273,6 @@ export const useWorkflowNavigationBlock = ({
     onSave,
     onDiscard,
     onCancel: closeModal,
+    runWithoutBlocking,
   };
 };

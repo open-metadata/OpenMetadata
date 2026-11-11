@@ -126,6 +126,8 @@ const getGraphFilteredData = (
           [data.entityType ?? '']: value,
         };
       }
+
+      return undefined;
     })
     .filter(Boolean);
 

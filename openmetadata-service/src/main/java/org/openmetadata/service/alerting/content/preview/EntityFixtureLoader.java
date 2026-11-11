@@ -79,20 +79,26 @@ public class EntityFixtureLoader {
 
   /**
    * Load a JSON file from classpath with caching.
-   * Generic method for loading any JSON file by full path.
+   * Generic method for loading any JSON file by full path. Only files that exist are kept: the
+   * caller names the resource, so a missing one is looked up again instead of remembered.
    *
    * @param path Full classpath path to the JSON file
    * @return Map representation of the JSON file, or empty map if not found
    */
   private Map<String, Object> load(String path) {
-    return cache.computeIfAbsent(path, this::loadFromClasspath);
+    Map<String, Object> fixture = cache.computeIfAbsent(path, this::loadFromClasspath);
+    return fixture == null ? Map.of() : fixture;
+  }
+
+  int cachedFiles() {
+    return cache.size();
   }
 
   @SuppressWarnings("unchecked")
   private Map<String, Object> loadFromClasspath(String path) {
     try (InputStream is = getClass().getClassLoader().getResourceAsStream(path)) {
       if (is == null) {
-        return Map.of(); // Return empty for missing files
+        return null;
       }
       return json.readValue(is, Map.class);
     } catch (IOException e) {

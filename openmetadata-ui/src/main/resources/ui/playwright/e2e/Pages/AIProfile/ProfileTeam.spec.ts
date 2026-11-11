@@ -31,7 +31,9 @@ import {
 import { okJson } from '../../../utils/apiResponse';
 import { uuid } from '../../../utils/common';
 import { removeCustomPropertyViaApi } from '../../../utils/customProperty';
+import { dragAndDropElement } from '../../../utils/dragDrop';
 import { waitForOwnedAssetCount } from '../../../utils/polling';
+import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { expect, test } from '../../fixtures/pages';
 
 // Ports the PORTABLE behaviours of e2e/Pages/Teams.spec.ts onto the AI-mode team
@@ -154,15 +156,28 @@ test.describe('AI Profile Team Detail', () => {
     const searchInput = page
       .getByTestId('team-detail')
       .getByTestId('searchbar');
+    const teamLink = page.getByTestId(`team-link-${team.responseData.name}`);
+    const teamLinks = page
+      .getByTestId('sub-teams-table')
+      .locator('[data-testid^="team-link-"]');
+
+    // The search filters the loaded teams in the browser (no request to
+    // await). It is debounced, and applying it writes the term back into the
+    // input, so a term typed before that write-back is overwritten by it. Wait
+    // for each step to show in the table — the render that applies the term —
+    // before typing the next one.
     await searchInput.fill(team.responseData.displayName);
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeVisible();
+    await expect(teamLinks).toHaveCount(1);
+    await expect(teamLink).toBeVisible();
+
+    await searchInput.clear();
+    await expect(searchInput).toHaveValue('');
+    // The full list is back once the cleared term has been applied.
+    await expect(teamLinks).not.toHaveCount(1);
 
     await searchInput.fill('non-existent-team-xyz');
-    await expect(
-      page.getByTestId(`team-link-${team.responseData.name}`)
-    ).toBeHidden();
+    await expect(searchInput).toHaveValue('non-existent-team-xyz');
+    await expect(teamLink).toBeHidden();
   });
 
   test('Should rename a team inline', async ({ browser, page }) => {
@@ -221,13 +236,17 @@ test.describe('AI Profile Team Detail', () => {
   }) => {
     const { apiContext } = await performAdminLogin(browser);
     const team = await makeTeam(apiContext);
-    await openCreatedTeam(page, team);
-
-    const teamUsers = page.waitForResponse((response) =>
-      response.url().includes('/api/v1/users?')
+    // A Group team has no Teams tab, so the detail opens on Users and fetches
+    // them on mount — listen before navigating or the response is missed.
+    const teamUsers = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/users?') &&
+        new URL(response.url()).searchParams.get('team') ===
+          team.responseData.name
     );
-    await openTeamTab(page, /Users/);
+    await openCreatedTeam(page, team);
     await teamUsers;
+    await expect(page.getByTestId('team-users-table')).toBeVisible();
 
     await addUserToTeam(
       page,
@@ -244,13 +263,65 @@ test.describe('AI Profile Team Detail', () => {
         ['PATCH', 'DELETE'].includes(response.request().method())
     );
     await page.getByTestId(`remove-user-${member.responseData.name}`).click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('remove-from-team-popover')).toBeVisible();
+    await page.getByTestId('remove-from-team-popover-confirm').click();
     await removeResponse;
 
     await expect(
       page.getByTestId('team-users-table').getByText(member.responseData.name)
     ).toBeHidden();
+  });
+
+  test('Should confirm a team move in a popover, not a modal', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext } = await performAdminLogin(browser);
+    const parent = await makeTeam(apiContext, { teamType: 'Department' });
+    const target = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    const moved = await makeTeam(apiContext, {
+      teamType: 'Department',
+      parents: [parent.responseData.id ?? ''],
+    });
+    await openCreatedTeam(page, parent);
+
+    const subTeams = page.getByTestId('sub-teams-table');
+    await expect(
+      subTeams.locator(`[data-row-key="${target.responseData.name}"]`)
+    ).toBeVisible();
+    await expect(
+      subTeams.locator(`[data-row-key="${moved.responseData.name}"]`)
+    ).toBeVisible();
+
+    await dragAndDropElement(
+      page,
+      moved.responseData.name,
+      target.responseData.name
+    );
+
+    await expect(page.getByTestId('move-team-popover')).toBeVisible();
+
+    const patchResponse = waitForTeamPatch(page, moved.responseData.id ?? '');
+    await page.getByTestId('move-team-popover-confirm').click();
+    const patch = await patchResponse;
+
+    await expect(page.getByTestId('move-team-popover')).toBeHidden();
+    expect(JSON.stringify(patch.request().postDataJSON())).toContain(
+      target.responseData.id ?? ''
+    );
+
+    const movedTeam = await okJson<{ parents?: { id: string }[] }>(
+      await apiContext.get(
+        `/api/v1/teams/${moved.responseData.id}?fields=parents`
+      ),
+      'Read the moved team'
+    );
+    expect(movedTeam.parents?.map(({ id }) => id)).toEqual([
+      target.responseData.id,
+    ]);
   });
 
   test('Should render and update the team user count', async ({
@@ -388,8 +459,8 @@ test.describe('AI Profile Team Detail', () => {
 
       const removePatch = waitForTeamPatch(page, team.responseData.id ?? '');
       await page.getByTestId(`remove-${name}`).click();
-      await page.getByTestId('delete-modal').waitFor();
-      await page.getByTestId('confirm-button').click();
+      await expect(page.getByTestId('remove-from-team-popover')).toBeVisible();
+      await page.getByTestId('remove-from-team-popover-confirm').click();
       await removePatch;
 
       await expect(entityButton).toBeHidden();
@@ -418,14 +489,22 @@ test.describe('AI Profile Team Detail', () => {
     const { apiContext } = await performAdminLogin(browser);
     // Public group team the admin is not a member of.
     const team = await makeTeam(apiContext, { isJoinable: true });
+    const admin = await okJson<{ id: string }>(
+      await apiContext.get('/api/v1/users/loggedInUser'),
+      'GET loggedInUser'
+    );
+    // Join and leave both patch the admin's own teams, not the team entity.
+    const waitForOwnTeamsPatch = () =>
+      waitForResponseWithStatus(
+        page,
+        (response) =>
+          new URL(response.url()).pathname === `/api/v1/users/${admin.id}` &&
+          response.request().method() === 'PATCH',
+        200
+      );
     await openCreatedTeam(page, team);
 
-    // Joining patches the current (admin) user's teams, not the team entity.
-    const joinResponse = page.waitForResponse(
-      (response) =>
-        response.url().includes('/api/v1/users/') &&
-        response.request().method() === 'PATCH'
-    );
+    const joinResponse = waitForOwnTeamsPatch();
     await page
       .getByTestId('profile-content-header')
       .getByTestId('join-team-button')
@@ -437,14 +516,7 @@ test.describe('AI Profile Team Detail', () => {
       .getByTestId('leave-team-button');
     await expect(leaveButton).toBeVisible();
 
-    // Leaving removes the user from the team: DELETE /teams/<id>/users/<userId>.
-    const leaveResponse = page.waitForResponse(
-      (response) =>
-        response
-          .url()
-          .includes(`/api/v1/teams/${team.responseData.id}/users/`) &&
-        response.request().method() === 'DELETE'
-    );
+    const leaveResponse = waitForOwnTeamsPatch();
     await leaveButton.click();
     await leaveResponse;
 
@@ -468,9 +540,8 @@ test.describe('AI Profile Team Detail', () => {
         response.request().method() === 'DELETE'
     );
     await page.getByTestId('delete-team').click();
-    await page.getByTestId('delete-modal').waitFor();
-    await page.getByTestId('soft-delete').click();
-    await page.getByTestId('confirm-button').click();
+    await expect(page.getByTestId('delete-team-popover')).toBeVisible();
+    await page.getByTestId('delete-team-popover-confirm').click();
     await deleteResponse;
 
     // Re-open with deleted teams shown, restore it.
@@ -593,7 +664,9 @@ test.describe('AI Profile Team Detail', () => {
       const team = await makeTeam(apiContext);
       await openCreatedTeam(page, team);
 
-      const tab = page.getByRole('tab', { name: /Custom Properties/ });
+      const tab = page
+        .getByTestId('team-detail')
+        .getByRole('tab', { name: /Custom Properties/ });
 
       await expect(tab).toBeVisible();
 

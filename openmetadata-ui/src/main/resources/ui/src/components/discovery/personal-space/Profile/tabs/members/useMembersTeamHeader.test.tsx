@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { fireEvent, render, screen } from '@testing-library/react';
+import { createRef } from 'react';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { MembersHeaderPatch } from './Members.types';
 import { UseMembersTeamHeaderParams } from './MembersTeamDetail.types';
@@ -49,6 +50,7 @@ const buildParams = (
   isGroupType: true,
   isOrgType: false,
   isCurrentUserMember: false,
+  isAdminUser: true,
   onEditNameValueChange: jest.fn(),
   onStartEditName: jest.fn(),
   onCancelEditName: jest.fn(),
@@ -108,6 +110,19 @@ describe('useMembersTeamHeader', () => {
     expect(params.onCancelEditName).toHaveBeenCalled();
   });
 
+  it('places Cancel before Save in the title input', () => {
+    const params = buildParams({ isEditingName: true, editNameValue: 'New' });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).titleInput}</>);
+
+    expect(
+      screen
+        .getByTestId('cancel-display-name')
+        .compareDocumentPosition(screen.getByTestId('save-display-name'))
+    ).toBe(Node.DOCUMENT_POSITION_FOLLOWING);
+  });
+
   it('offers a join button for a group the user has not joined', () => {
     const params = buildParams({ isCurrentUserMember: false });
     render(<Harness {...params} />);
@@ -126,6 +141,40 @@ describe('useMembersTeamHeader', () => {
 
     expect(screen.getByTestId('leave-team-button')).toBeInTheDocument();
   });
+
+  it('offers a member who is not an admin to leave a joinable team', () => {
+    const params = buildParams({
+      team: {
+        name: 'team1',
+        teamType: TeamType.Group,
+        isJoinable: true,
+      } as Team,
+      isAdminUser: false,
+      canEditAll: false,
+      isCurrentUserMember: true,
+    });
+    render(<Harness {...params} />);
+
+    render(<>{lastPatch(params.onSetHeader).actions}</>);
+
+    expect(screen.getByTestId('leave-team-button')).toBeInTheDocument();
+  });
+
+  it.each([true, false])(
+    'offers an owner who is not an admin neither join nor leave on a team that is not joinable (member: %s)',
+    (isCurrentUserMember) => {
+      const params = buildParams({ isAdminUser: false, isCurrentUserMember });
+      render(<Harness {...params} />);
+
+      render(<>{lastPatch(params.onSetHeader).actions}</>);
+
+      expect(
+        screen.getByRole('button', { name: /open menu/i })
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('join-team-button')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('leave-team-button')).not.toBeInTheDocument();
+    }
+  );
 
   it('shows a deleted badge in the title suffix for a soft-deleted team', () => {
     const params = buildParams({
@@ -171,6 +220,21 @@ describe('useMembersTeamHeader', () => {
     render(<>{lastPatch(params.onSetHeader).actions}</>);
     fireEvent.click(screen.getByRole('button', { name: /open menu/i }));
   };
+
+  it('anchors team confirmations to the menu trigger and opens delete from the menu', () => {
+    const menuTriggerRef = createRef<HTMLButtonElement>();
+    const params = buildParams({ menuTriggerRef });
+    openMenu(params);
+
+    // The open menu hides the rest of the page from assistive tech.
+    expect(menuTriggerRef.current).toBe(
+      screen.getByRole('button', { hidden: true, name: /open menu/i })
+    );
+
+    fireEvent.click(screen.getByTestId('delete-team'));
+
+    expect(params.onDelete).toHaveBeenCalled();
+  });
 
   it('offers export and import on a team the viewer can edit', () => {
     openMenu(buildParams({ isGroupType: false }));

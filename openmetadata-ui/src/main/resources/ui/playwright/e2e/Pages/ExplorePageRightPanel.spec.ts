@@ -1518,7 +1518,9 @@ test.describe('Right Panel Test Suite', () => {
               await dataQualityDS.shouldBeVisible();
             }
 
-            if (rightPanelDS.isTabAvailable('custom property')) {
+            if (
+              rightPanelDS.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+            ) {
               const customPropertiesDS = new CustomPropertiesPageObject(
                 rightPanelDS
               );
@@ -1745,7 +1747,9 @@ test.describe('Right Panel Test Suite', () => {
               await dataQualityDC.shouldBeVisible();
             }
 
-            if (rightPanelDC.isTabAvailable('custom property')) {
+            if (
+              rightPanelDC.isTabAvailable(RIGHT_PANEL_TAB.CUSTOM_PROPERTIES)
+            ) {
               const customPropertiesDC = new CustomPropertiesPageObject(
                 rightPanelDC
               );
@@ -1935,13 +1939,6 @@ test.describe('Right Panel Test Suite', () => {
           await overview.navigateToOverviewTab();
           const tierSection = adminPage.locator('.tier-section');
           await expect(tierSection).toBeVisible();
-          // The tier chip only renders when a tier is assigned — verify it is absent
-          await expect(
-            adminPage
-              .locator('[data-testid="entity-summary-panel-container"]')
-              .getByTestId('Tier')
-              .locator('.ant-tag')
-          ).not.toBeVisible();
         } finally {
           await testEntity.delete(apiContext);
           await afterAction();

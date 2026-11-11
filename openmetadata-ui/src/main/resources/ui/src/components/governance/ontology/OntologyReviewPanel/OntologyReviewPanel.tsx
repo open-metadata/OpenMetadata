@@ -99,7 +99,7 @@ const OntologyReviewPanel = ({
       </Typography>
       <Typography>
         {getEntityName(data)} ·{' '}
-        {t('label.version-number', { version: target?.entityVersion })}
+        {data.semanticVersion ? 'v' + data.semanticVersion : t('label.draft')}
       </Typography>
       <OntologyReviewRelease
         baseReleaseId={data.baseReleaseId}

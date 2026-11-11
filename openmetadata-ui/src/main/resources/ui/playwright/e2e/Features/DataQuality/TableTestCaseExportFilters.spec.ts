@@ -195,7 +195,7 @@ test.describe(
       });
 
       await test.step('Bulk Edit keeps the same rows after a reload', async () => {
-        await page.locator('.csv-jobs-tray-close').click();
+        await page.getByTestId('csv-jobs-tray-close').click();
         await clickManageButton(page, 'table');
         await navigateToBulkEditPage(page);
         await expect(getRowByName(page, matchingName)).toBeVisible();

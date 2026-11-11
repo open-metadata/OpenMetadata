@@ -607,29 +607,6 @@ export const clickOutside = async (page: Page) => {
   });
 };
 
-/**
- * Blocks until every open Ant Design overlay has finished its enter animation.
- *
- * Ant Design animates a dropdown open with `transform: scaleY(0.8) -> scaleY(1)`
- * around `transform-origin: 0 0`, and rc-motion applies the start class one frame
- * before the `-active` class that begins the transition. Playwright's actionability
- * check ("bounding box unchanged across two consecutive animation frames") can be
- * satisfied on those pre-transition frames, so the click point gets computed against
- * the 0.8-scaled menu. Once the menu finishes growing, that point has slid onto the
- * item above the intended one — the click silently selects the wrong option.
- *
- * rc-motion strips the `-appear`/`-enter` classes on `animationend`, so their absence
- * is the signal that the popup geometry is final.
- */
-export const waitForAntdPopupToSettle = async (page: Page) => {
-  await expect(
-    page.locator(
-      '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-appear"], ' +
-        '.ant-dropdown:not(.ant-dropdown-hidden)[class*="-enter"]'
-    )
-  ).toHaveCount(0);
-};
-
 export const searchFromSearchInput = async (
   page: Page,
   searchInput: Locator,
@@ -650,15 +627,20 @@ export const searchFromSearchInput = async (
 };
 
 export const visitOwnProfilePage = async (page: Page) => {
-  await page.locator('[data-testid="dropdown-profile"] svg').click();
-  await page.locator('[role="menu"].profile-dropdown').waitFor({
-    state: 'visible',
-  });
-  const userResponse = page.waitForResponse(
-    '/api/v1/users/name/*?fields=*&include=all'
-  );
-  await page.getByTestId('user-name').click();
-  await userResponse;
+  await page.getByTestId('dropdown-profile').click();
+  const menu = page.locator('[role="menu"].profile-dropdown');
+  await expect(menu).toBeVisible();
+  const profileLink = menu.getByTestId('user-name');
+  const href = await profileLink.getAttribute('href');
+  if (!href) {
+    throw new Error('Profile menu item is missing its destination.');
+  }
+  const profileUrl = new URL(href, page.url()).href;
+
+  // Returning to a cached profile does not issue another user request.
+  await profileLink.click();
+  await expect(page).toHaveURL(profileUrl);
+  await waitForAllLoadersToDisappear(page);
   await clickOutside(page);
 };
 
@@ -1262,7 +1244,22 @@ export const testPaginationNavigation = async (
     expect(afterValue).toBeTruthy();
   }
 
-  if (page1FirstItemName) {
+  const page2FirstItem = (await page2Response.json()).data?.[0];
+  // Columns (/columns) carry no id, so fall back to FQN, then name.
+  const itemKey = (item?: {
+    id?: string;
+    fullyQualifiedName?: string;
+    name?: string;
+  }) => item?.id ?? item?.fullyQualifiedName ?? item?.name;
+  expect(itemKey(page1FirstItem)).toBeDefined();
+  expect(itemKey(page2FirstItem)).not.toBe(itemKey(page1FirstItem));
+
+  // Display names are not unique (fixture users can share one), so the row-text
+  // check only proves the page changed when the two first-row labels differ.
+  if (
+    page1FirstItemName &&
+    page1FirstItemName !== (page2FirstItem?.displayName || page2FirstItem?.name)
+  ) {
     const firstRow = page.locator('tbody tr').first();
     await expect(firstRow.locator('td').nth(0)).not.toHaveText(
       page1FirstItemName
@@ -1418,7 +1415,7 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
   expect(page1Response.status()).toBe(200);
   const page1Url = new URL(page1Response.url());
   expect(page1Url.pathname).toContain('/api/v1/metrics/hierarchy');
-  expect(page1Url.searchParams.get('limit')).toBe('20');
+  expect(page1Url.searchParams.get('limit')).toBe('15');
   expect(page1Url.searchParams.get('offset')).toBe('0');
 
   await page.locator('table').waitFor({ state: 'visible' });
@@ -1434,8 +1431,8 @@ export const testMetricsPaginationNavigation = async (page: Page) => {
   ]);
   expect(page2Response.status()).toBe(200);
   const page2Url = new URL(page2Response.url());
-  expect(page2Url.searchParams.get('limit')).toBe('20');
-  expect(page2Url.searchParams.get('offset')).toBe('20');
+  expect(page2Url.searchParams.get('limit')).toBe('15');
+  expect(page2Url.searchParams.get('offset')).toBe('15');
 
   await waitForAllLoadersToDisappear(page);
   await expect(page.getByTestId('metric-page-previous')).toBeEnabled();
@@ -1767,7 +1764,16 @@ export const selectOptionWithRetry = async (
   }).toPass({ timeout: 15000 });
 };
 
-export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
+/**
+ * `selected`, when given, is visible only once the pick took: the retry then
+ * also covers an option click that resolves but picks nothing, which happens
+ * when the options are replaced under the pointer.
+ */
+export const chooseSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected?: Locator
+) => {
   await expect(trigger).toBeVisible();
   const nestedControl = trigger.locator(
     'input[role="combobox"], button[aria-haspopup="listbox"]'
@@ -1787,6 +1793,9 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
   // dismissed by anything else, with a short option timeout so a detached
   // option reopens quickly instead of waiting out a long click.
   await expect(async () => {
+    if (selected && (await selected.isVisible())) {
+      return;
+    }
     if ((await control.getAttribute('aria-expanded')) !== 'true') {
       await scrollIntoViewAndSettle(control);
       if ((await control.getAttribute('role')) === 'combobox') {
@@ -1797,14 +1806,37 @@ export const chooseSelectOption = async (trigger: Locator, option: Locator) => {
     }
     await expect(option).toBeVisible({ timeout: 5_000 });
     await option.click({ timeout: 2_000 });
+    if (selected) {
+      await expect(selected).toBeVisible({ timeout: 2_000 });
+    }
   }).toPass({ timeout: 30_000 });
+};
+
+/**
+ * Picks a React Aria Select option with the keyboard: focuses it and presses Enter, retrying until
+ * `selected` (visible only once the pick took) shows. Use it when the option list can jump into
+ * place after opening: a mouse pick selects on release over whichever row is then under the
+ * pointer, so it can pick the next row or nothing. A repeat after the pick took is a no-op.
+ */
+export const pickSelectOption = async (
+  trigger: Locator,
+  option: Locator,
+  selected: Locator
+) => {
+  await expect(async () => {
+    if (await selected.isVisible()) {
+      return;
+    }
+    if ((await trigger.getAttribute('aria-expanded')) !== 'true') {
+      await trigger.press('Enter', { timeout: 2_000 });
+    }
+    await option.press('Enter', { timeout: 2_000 });
+    await expect(selected).toBeVisible({ timeout: 2_000 });
+  }).toPass({ timeout: 15_000 });
 };
 
 export const dismissHoverPopovers = async (page: Page) => {
   await page.mouse.move(0, 0);
-  await expect(
-    page.locator('.ant-popover:not(.ant-popover-hidden)')
-  ).toHaveCount(0);
 };
 
 export const dismissToasts = async (page: Page) => {

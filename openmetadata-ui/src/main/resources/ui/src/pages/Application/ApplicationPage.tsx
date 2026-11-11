@@ -33,7 +33,7 @@ import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/Ti
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import ApplicationCard from '../../components/Settings/Applications/ApplicationCard/ApplicationCard.component';
-import { ROUTES } from '../../constants/constants';
+import { GRID_PAGE_SIZE_OPTIONS, ROUTES } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
@@ -48,6 +48,7 @@ import { getLayoutGutter } from '../../utils/common/layout.utils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
+import { shouldShowPager } from '../../utils/PaginationUtils';
 import { getApplicationDetailsPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 
@@ -60,9 +61,8 @@ const ApplicationPage = () => {
     handlePagingChange,
     handlePageChange,
     handlePageSizeChange,
-    showPagination,
     pagingCursor,
-  } = usePaging();
+  } = usePaging(undefined, GRID_PAGE_SIZE_OPTIONS);
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [applicationData, setApplicationData] = useState<App[]>();
@@ -261,11 +261,12 @@ const ApplicationPage = () => {
               </Grid>
             </Grid.Item>
             <Grid.Item className="layout-column" span={24}>
-              {showPagination && (
+              {shouldShowPager(applicationData) && (
                 <NextPrevious
                   currentPage={currentPage}
                   isLoading={isLoading}
                   pageSize={pageSize}
+                  pageSizeOptions={GRID_PAGE_SIZE_OPTIONS}
                   paging={paging}
                   pagingHandler={handleApplicationPageChange}
                   onShowSizeChange={handlePageSizeChange}

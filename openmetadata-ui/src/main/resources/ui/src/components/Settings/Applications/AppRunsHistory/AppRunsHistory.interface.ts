@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import type { TableCardVariant } from '@openmetadata/ui-core-components';
 import { RJSFSchema } from '@rjsf/utils';
 import { App } from '../../../../generated/entity/applications/app';
 import { AppRunRecord } from '../../../../generated/entity/applications/appRunRecord';
@@ -29,4 +30,7 @@ export interface AppRunsHistoryProps {
   appData?: App;
   showPagination?: boolean;
   jsonSchema?: RJSFSchema;
+  /** Opens a run's configuration as a page instead of the built-in dialog. */
+  onViewRunConfig?: (record: AppRunRecordWithId) => void;
+  variant?: TableCardVariant;
 }

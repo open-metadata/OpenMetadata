@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { get } from 'lodash';
+import { escapeRegExp, get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { DatabaseClass } from '../../../support/entity/DatabaseClass';
@@ -143,6 +143,13 @@ test.describe('Entity Lineage tab', () => {
       ).toBeVisible();
       await expectLineageNodeVisible(page, nodeFqn);
 
+      // The tab title names the entity the page is centred on.
+      const tableName =
+        table.entityResponseData.displayName ?? table.entityResponseData.name;
+      await expect(page).toHaveTitle(
+        new RegExp(`^${escapeRegExp(`${tableName} Lineage`)} \\|`)
+      );
+
       await redirectToHomePage(page);
       await sidebarClick(page, SidebarItem.LINEAGE);
       await entitySearch.fill(db);
@@ -273,6 +280,11 @@ test.describe('Platform Lineage page (/lineage)', () => {
     expect((await lineageRes).ok()).toBeTruthy();
     await dismissLineageMapOnboarding(page);
 
+    const pageHeading = page
+      .getByTestId('page-header-container')
+      .getByTestId('heading');
+    await expect(pageHeading).toHaveText('Service Lineage');
+
     // Verify PNG export
     await verifyExportLineagePNG(page, true);
 
@@ -288,6 +300,7 @@ test.describe('Platform Lineage page (/lineage)', () => {
     );
     await domainButton.click();
     expect((await domainRes).ok()).toBeTruthy();
+    await expect(pageHeading).toHaveText('Domain Lineage');
 
     await page.getByTestId('lineage-layer-btn').click();
     const dataProductRes = page.waitForResponse(
@@ -297,6 +310,7 @@ test.describe('Platform Lineage page (/lineage)', () => {
     );
     await page.getByTestId('lineage-layer-lens-dataProduct').click();
     expect((await dataProductRes).ok()).toBeTruthy();
+    await expect(pageHeading).toHaveText('Data Product Lineage');
   });
 
   test('Settings depth change refetches platform lineage', async ({ page }) => {
@@ -407,5 +421,41 @@ test.describe('Platform Lineage page (/lineage)', () => {
     );
     await retry.click();
     await refetch;
+  });
+
+  test('Zooming in quickly past the maximum zoom still drills into the card', async ({
+    page,
+  }) => {
+    // Regression: wheel events keep arriving after the zoom reaches its maximum,
+    // and each one cancelled the pending drill without starting it again, so a
+    // fast zoom-in stopped at the maximum and never opened the next level.
+    const tableFqn = get(table, 'entityResponseData.fullyQualifiedName', '');
+    await redirectToHomePage(page);
+    await page.goto(
+      `/lineage?lineageLens=service&lineageBand=ASSET&lineageFocus=${encodeURIComponent(
+        tableFqn
+      )}&lineageEntityType=table`
+    );
+    await dismissLineageMapOnboarding(page);
+
+    const card = page.getByTestId(`lineage-node-${tableFqn}`);
+    await expect(card).toBeVisible();
+    await expect(page.getByTestId('loader')).toHaveCount(0);
+    // eslint-disable-next-line playwright/no-wait-for-timeout -- the map ignores semantic zoom for 1.2s after it fits a scene, with no DOM signal
+    await page.waitForTimeout(1500);
+
+    const box = await card.boundingBox();
+    expect(box).not.toBeNull();
+    await page.mouse.move(
+      (box?.x ?? 0) + (box?.width ?? 0) / 2,
+      (box?.y ?? 0) + (box?.height ?? 0) / 2
+    );
+    // Far more steps than the maximum zoom needs, sent without pausing, the
+    // way a fast wheel or trackpad does.
+    for (let step = 0; step < 40; step++) {
+      await page.mouse.wheel(0, -100);
+    }
+
+    await expect(page).toHaveURL(/lineageBand=FIELD/);
   });
 });

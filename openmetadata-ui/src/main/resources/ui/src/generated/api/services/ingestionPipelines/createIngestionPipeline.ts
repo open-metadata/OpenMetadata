@@ -297,6 +297,11 @@ export interface Pipeline {
      * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
      * Iceberg table properties) onto the entity extension. When disabled, no custom property
      * definitions are registered and no extension values are set.
+     *
+     * Optional configuration to toggle the ingestion of source-specific custom properties (e.g.
+     * the app views, last run status, run time and refresh time of Hex projects) onto the
+     * dashboard extension. The custom property definitions are shared by every dashboard in
+     * OpenMetadata, so this is disabled by default.
      */
     includeCustomProperties?: boolean;
     /**
@@ -404,6 +409,10 @@ export interface Pipeline {
      * Regex to only fetch tables or databases that matches the pattern.
      */
     schemaFilterPattern?: FilterPattern;
+    /**
+     * BigQuery daily shard grouping. Omitted configuration remains disabled.
+     */
+    shardedTables?: BigQueryShardedTables;
     /**
      * Regex to only include/exclude stored procedures that matches the pattern.
      *
@@ -2474,7 +2483,15 @@ export interface DBTConfigurationSource {
      */
     dbtCloudAuthToken?: string;
     /**
-     * dbt cloud job id.
+     * When no job IDs are set, extract the dbt run artifacts from the latest completed run of
+     * every job of the project (or of the account, when no project is set) instead of only the
+     * most recent run. CI jobs are skipped.
+     */
+    dbtCloudIngestAllJobs?: boolean;
+    /**
+     * Comma-separated IDs of the dbt cloud jobs to extract the dbt run artifacts from, using
+     * the latest completed run of each job. If left empty, the artifacts of the most recent
+     * completed run across all jobs are used.
      */
     dbtCloudJobId?: string;
     /**
@@ -2630,9 +2647,9 @@ export interface DbtSSLConfigClass {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  *
  * GCP credentials configs.
  *
@@ -3346,7 +3363,7 @@ export interface ServiceConnections {
  * MCP Service Connection.
  */
 export interface ServiceConnection {
-    config?: any[] | boolean | number | null | Connection | string;
+    config?: any[] | boolean | number | null | AirflowConnectionObject | string;
 }
 
 /**
@@ -3642,7 +3659,7 @@ export interface ServiceConnection {
  * MCP (Model Context Protocol) Service Connection for discovering and cataloging MCP
  * servers, their tools, resources, and prompts.
  */
-export interface Connection {
+export interface AirflowConnectionObject {
     /**
      * Regex to only fetch api collections with names matching the pattern.
      */
@@ -4620,7 +4637,9 @@ export interface Connection {
      */
     s3StagingDir?: string;
     /**
-     * Athena workgroup.
+     * Athena workgroup that runs the ingestion queries and whose query history usage and
+     * lineage read. When empty, queries run in the default workgroup and query history is read
+     * from every enabled workgroup.
      */
     workgroup?: string;
     /**
@@ -5150,7 +5169,8 @@ export interface Connection {
     /**
      * Specifies additional data needed by a logon mechanism, such as a secure token,
      * Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon
-     * mechanism.
+     * mechanism. The entire value is protected as a secret, including non-secret names. Secret
+     * references must resolve to the entire LOGDATA value.
      */
     logdata?: string;
     /**
@@ -5250,7 +5270,7 @@ export interface Connection {
      *
      * Confluent Redpanda Consumer Config
      */
-    consumerConfig?: { [key: string]: any };
+    consumerConfig?: ConsumerConfig;
     /**
      * Consumer Config SSL Config. Configuration for enabling SSL for the Consumer Config
      * connection.
@@ -5274,7 +5294,7 @@ export interface Connection {
      *
      * Confluent Redpanda Schema Registry Config.
      */
-    schemaRegistryConfig?: { [key: string]: any };
+    schemaRegistryConfig?: SchemaRegistryConfig;
     /**
      * Schema Registry SSL Config. Configuration for enabling SSL for the Schema Registry
      * connection.
@@ -5563,7 +5583,7 @@ export interface Connection {
     /**
      * Underlying storage connection
      */
-    packageConnection?: S3Connection | string;
+    packageConnection?: S3ConnectionClass | string;
     /**
      * Fivetran API Secret.
      */
@@ -5724,7 +5744,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?: string;
     /**
@@ -6344,9 +6366,9 @@ export interface AWSCredentials {
 /**
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface AzureCredentials {
     /**
@@ -6684,9 +6706,9 @@ export enum CloudProvider {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface DataLakeConfigurationSource {
     securityConfig?: DbtSecurityConfigClass;
@@ -6878,7 +6900,7 @@ export interface ConnectionClass {
     /**
      * Service Type
      */
-    type?: ConnectionType;
+    type?: S3Type;
     /**
      * Optional name to give to the database in OpenMetadata. If left blank, we will use default
      * as the database name.
@@ -7157,7 +7179,7 @@ export enum SSLMode {
  *
  * S3 service type
  */
-export enum ConnectionType {
+export enum S3Type {
     Backend = "Backend",
     MatillionDPC = "MatillionDPC",
     MatillionETL = "MatillionETL",
@@ -7166,6 +7188,52 @@ export enum ConnectionType {
     RESTAPI = "RestAPI",
     S3 = "S3",
     SQLite = "SQLite",
+}
+
+/**
+ * Confluent Kafka Consumer Config. From
+ * https://github.com/edenhill/librdkafka/blob/master/CONFIGURATION.md
+ *
+ * Confluent Redpanda Consumer Config
+ */
+export interface ConsumerConfig {
+    /**
+     * Passphrase of the private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.passphrase"?: string;
+    /**
+     * PEM private key used to sign the OAUTHBEARER JWT assertion.
+     */
+    "sasl.oauthbearer.assertion.private.key.pem"?: string;
+    /**
+     * Client secret for the OAUTHBEARER (OIDC) token request.
+     */
+    "sasl.oauthbearer.client.secret"?: string;
+    /**
+     * SASL/OAUTHBEARER configuration string, which can carry a client secret.
+     */
+    "sasl.oauthbearer.config"?: string;
+    /**
+     * SASL password.
+     */
+    "sasl.password"?: string;
+    /**
+     * Passphrase of the client's private key.
+     */
+    "ssl.key.password"?: string;
+    /**
+     * Client's private key as a PEM string.
+     */
+    "ssl.key.pem"?: string;
+    /**
+     * Password of the client keystore (PKCS#12).
+     */
+    "ssl.keystore.password"?: string;
+    /**
+     * Password of the truststore.
+     */
+    "ssl.truststore.password"?: string;
+    [property: string]: any;
 }
 
 /**
@@ -7183,9 +7251,9 @@ export enum ConnectionType {
  *
  * Azure Cloud Credentials
  *
- * Available sources to fetch metadata.
- *
  * Azure Credentials
+ *
+ * Available sources to fetch metadata.
  */
 export interface PurpleGCPCredentials {
     /**
@@ -7666,9 +7734,11 @@ export interface OracleConnectionType {
 
 /**
  * S3 Connection.
+ *
+ * ADLS Connection.
  */
-export interface S3Connection {
-    awsConfig: AWSCredentials;
+export interface S3ConnectionClass {
+    awsConfig?: AWSCredentials;
     /**
      * Bucket Names of the data source.
      */
@@ -7689,14 +7759,25 @@ export interface S3Connection {
      * Service Type
      */
     type?: S3ConnectionType;
+    /**
+     * Container Name of the data source.
+     */
+    containerName?: string;
+    /**
+     * Azure Credentials
+     */
+    credentials?: AzureCredentials;
 }
 
 /**
  * Service Type
  *
  * S3 service type
+ *
+ * ADLS service type
  */
 export enum S3ConnectionType {
+    Adls = "ADLS",
     S3 = "S3",
 }
 
@@ -7781,6 +7862,28 @@ export interface PolicyAgentConfig {
 export enum RunMode {
     Batch = "batch",
     Stream = "stream",
+}
+
+/**
+ * Confluent Kafka Schema Registry Config. From
+ * https://docs.confluent.io/5.5.1/clients/confluent-kafka-python/index.html#confluent_kafka.schema_registry.SchemaRegistryClient
+ *
+ * Confluent Redpanda Schema Registry Config.
+ */
+export interface SchemaRegistryConfig {
+    /**
+     * Schema Registry credentials in the form of username:password.
+     */
+    "basic.auth.user.info"?: string;
+    /**
+     * Client secret for the Schema Registry OAuth token request.
+     */
+    "bearer.auth.client.secret"?: string;
+    /**
+     * Static bearer token for the Schema Registry.
+     */
+    "bearer.auth.token"?: string;
+    [property: string]: any;
 }
 
 /**
@@ -8304,6 +8407,19 @@ export enum AirflowConnectionType {
     VertexAI = "VertexAI",
     Vertica = "Vertica",
     Wherescape = "Wherescape",
+}
+
+/**
+ * BigQuery daily shard grouping. Omitted configuration remains disabled.
+ *
+ * Group native daily shard tables into stable logical families.
+ */
+export interface BigQueryShardedTables {
+    /**
+     * Group BigQuery daily shards into a stable logical table using the newest shard for
+     * columns and execution.
+     */
+    enabled?: boolean;
 }
 
 /**

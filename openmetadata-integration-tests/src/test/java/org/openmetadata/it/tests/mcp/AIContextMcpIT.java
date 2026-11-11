@@ -21,19 +21,29 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestInstance;
+import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.schema.api.data.CreateGlossary;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreateMetric;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.policies.CreatePolicy;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TableConstraint;
+import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 
@@ -50,6 +60,7 @@ class AIContextMcpIT extends McpTestBase {
   private static final String ARTICLE_BODY =
       "Revenue reporting rule: exclude cancelled and refunded orders from all revenue metrics.";
   private static final String METRIC_CODE = "SUM(amount) WHERE status = 'completed'";
+  private static final String RESTRICTED_TAG_FQN = "PII.Sensitive";
   private static final String LONG_ARTICLE_LEAD = "Revenue recognition handbook";
   private static final String LONG_ARTICLE_TAIL = "REFUNDEXCLUSIONZZ";
   private static final String LONG_ARTICLE_BODY =
@@ -222,6 +233,123 @@ class AIContextMcpIT extends McpTestBase {
   private static JsonNode assetsOf(Metric metric) throws Exception {
     return get("metrics/" + metric.getId() + "/assets?limit=100&offset=0", JsonNode.class)
         .path("data");
+  }
+
+  @Test
+  void getEntityDetails_parentMetricCarriesEachVariantExpression() throws Exception {
+    Metric parent =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_variant_parent_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode("COUNT(*)")),
+            Metric.class);
+    String variantCode = "COUNT(*) GROUP BY segment";
+    Metric variant =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_variant_child_" + suffix)
+                .withParent(parent.getFullyQualifiedName())
+                .withMetricExpression(new MetricExpression().withCode(variantCode)),
+            Metric.class);
+
+    JsonNode response =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_entity_details",
+                Map.of("entityType", "metric", "fqn", parent.getFullyQualifiedName())));
+
+    JsonNode child =
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("children")
+            .get(0);
+    assertThat(child.path("fullyQualifiedName").asText())
+        .isEqualTo(variant.getFullyQualifiedName());
+    assertThat(child.path("metricExpression").path("code").asText()).isEqualTo(variantCode);
+  }
+
+  @Test
+  void getEntityDetails_withholdsExpressionOfAVariantTheCallerCannotView() throws Exception {
+    Metric parent =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_guarded_parent_" + suffix)
+                .withMetricExpression(new MetricExpression().withCode("COUNT(*)")),
+            Metric.class);
+    post(
+        "metrics",
+        new CreateMetric()
+            .withName("aicontext_guarded_child_" + suffix)
+            .withParent(parent.getFullyQualifiedName())
+            .withTags(List.of(new TagLabel().withTagFQN(RESTRICTED_TAG_FQN)))
+            .withMetricExpression(new MetricExpression().withCode("SUM(salary) GROUP BY person")),
+        Metric.class);
+    String openCode = "COUNT(*) GROUP BY team";
+    Metric open =
+        post(
+            "metrics",
+            new CreateMetric()
+                .withName("aicontext_guarded_open_child_" + suffix)
+                .withParent(parent.getFullyQualifiedName())
+                .withMetricExpression(new MetricExpression().withCode(openCode)),
+            Metric.class);
+
+    JsonNode response =
+        executeMcpRequest(
+            McpTestUtils.createToolCallRequest(
+                "get_entity_details",
+                Map.of("entityType", "metric", "fqn", parent.getFullyQualifiedName())),
+            restrictedMetricViewerToken());
+
+    JsonNode children =
+        OBJECT_MAPPER
+            .readTree(response.get("result").get("content").get(0).get("text").asText())
+            .path("children");
+    assertThat(children.size()).isEqualTo(2);
+    for (JsonNode child : children) {
+      boolean isOpenChild =
+          open.getFullyQualifiedName().equals(child.path("fullyQualifiedName").asText());
+      assertThat(child.path("metricExpression").path("code").asText())
+          .isEqualTo(isOpenChild ? openCode : "");
+    }
+  }
+
+  private static String restrictedMetricViewerToken() throws Exception {
+    Rule denyRestricted =
+        new Rule()
+            .withName("DenyRestrictedMetrics")
+            .withResources(List.of("metric"))
+            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+            .withCondition("matchAnyTag('" + RESTRICTED_TAG_FQN + "')")
+            .withEffect(Rule.Effect.DENY);
+    Policy policy =
+        post(
+            "policies",
+            new CreatePolicy()
+                .withName("aicontext_restricted_metrics_policy_" + suffix)
+                .withRules(List.of(denyRestricted)),
+            Policy.class);
+    Role role =
+        post(
+            "roles",
+            new CreateRole()
+                .withName("aicontext_restricted_metrics_role_" + suffix)
+                .withPolicies(List.of(policy.getFullyQualifiedName())),
+            Role.class);
+    String name = "aicontext_restricted_metrics_" + suffix;
+    User user =
+        post(
+            "users",
+            new CreateUser()
+                .withName(name)
+                .withEmail(name + "@test.openmetadata.org")
+                .withRoles(List.of(role.getId())),
+            User.class);
+    return "Bearer "
+        + JwtAuthProvider.tokenFor(user.getEmail(), user.getEmail(), new String[] {}, 3600);
   }
 
   @Test

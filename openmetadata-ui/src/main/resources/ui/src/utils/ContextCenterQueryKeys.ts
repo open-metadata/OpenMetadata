@@ -43,6 +43,10 @@ export const CONTEXT_CENTER_MEMORY_DETAIL_QUERY_KEY = [
   'context-center-memory-detail',
 ];
 
+export const CONTEXT_CENTER_RETIRED_QUERY_NAME_QUERY_KEY = [
+  'context-center-retired-query-name',
+];
+
 /**
  * Converge a badge-count query after an async (`202`) delete: poll `hasLanded`
  * until the deleted row is gone, then refetch once and keep the server's

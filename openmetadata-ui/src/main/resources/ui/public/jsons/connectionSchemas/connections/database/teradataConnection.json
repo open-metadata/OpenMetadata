@@ -67,8 +67,9 @@
     },
     "logdata": {
       "title": "Extra data for the chosen logon authentication method (LOGDATA)",
-      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism.",
-      "type": "string"
+      "description": "Specifies additional data needed by a logon mechanism, such as a secure token, Distinguished Name, or a domain/realm name. LOGDATA values are specific to each logon mechanism. The entire value is protected as a secret, including non-secret names. Secret references must resolve to the entire LOGDATA value.",
+      "type": "string",
+      "format": "password"
     },
     "hostPort": {
       "title": "Host and Port",
@@ -114,6 +115,39 @@
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^DBC$",
+          "^SYS_CALENDAR$",
+          "^SYSLIB$",
+          "^SYSUDTLIB$",
+          "^SYSADMIN$",
+          "^SYSSPATIAL$",
+          "^SYSTEMFE$",
+          "^SYSBAR$",
+          "^SYSJDBC$",
+          "^SYSXML$",
+          "^SYSUIF$",
+          "^TD_SYS.*",
+          "^TD_SERVER_DB$",
+          "^TDSTATS$",
+          "^TDQCD$",
+          "^TDWM$",
+          "^TDMAPS$",
+          "^DBCMNGR$",
+          "^LOCKLOGSHREDDER$",
+          "^CRASHDUMPS$",
+          "^EXTERNAL_AP$",
+          "^SQLJ$",
+          "^TDPUSER$",
+          "^EXTUSER$",
+          "^PUBLIC$",
+          "^ALL$",
+          "^DEFAULT$",
+          "^CONSOLE$"
+        ]
+      },
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "properties": {

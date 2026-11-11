@@ -67,7 +67,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
             size="md"
             variant="muted"
             onClick={() => onNavigate(card.view)}>
-            <Card.Content>
+            <Card.Content className="tw:px-3">
               <Box
                 align="start"
                 data-testid={`members-card-${card.id}`}
@@ -75,7 +75,7 @@ const MembersLanding: FC<MembersSubPanelProps> = ({ onNavigate }) => {
                 gap={4}>
                 <Box
                   align="center"
-                  className={`tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
+                  className={`tw:mt-1 tw:shrink-0 tw:rounded-lg tw:h-10 tw:w-10 ${getLandingIconColor(
                     index
                   )}`}
                   justify="center">

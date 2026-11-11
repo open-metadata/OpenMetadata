@@ -22,7 +22,7 @@ import { getSettingsLink } from '../../../../../utils/SettingsModalLinkUtils';
 import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import './announcement-card-v1-content.less';
 
-const PRIMARY_COLOR = 'var(--ant-primary-color)';
+const PRIMARY_COLOR = 'var(--theme-primary-color)';
 
 const RichTextEditorPreviewerV1 = withSuspenseFallback(
   lazy(

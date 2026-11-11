@@ -48,6 +48,7 @@ export interface UseTestSuiteDetailsPageResult {
   pagingData: NextPreviousProps;
   showPagination: boolean;
   ingestionPipelineCount: number;
+  handlePipelinesChange: (total: number) => void;
   canAddMultipleDomains: boolean;
   canAddMultipleUserOwners: boolean;
   canAddMultipleTeamOwner: boolean;

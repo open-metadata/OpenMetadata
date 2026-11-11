@@ -19,7 +19,7 @@ import { AppModule } from './app-module.interface';
 import { LeftSidebarItem } from './sidebar.interface';
 
 export interface LeftSidebarItemExample extends LeftSidebarItem {
-  index: number;
+  index?: number;
 }
 
 /**

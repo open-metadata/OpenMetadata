@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { usePersonalSpaceStore } from '../../../../../../hooks/usePersonalSpaceStore';
@@ -40,9 +46,17 @@ jest.mock('./PersonaAddForm', () => ({
   ),
 }));
 
-jest.mock('./PersonaDetail', () => ({
-  __esModule: true,
-  default: (props: {
+const mockDeletedCallbacks: Array<() => void> = [];
+
+jest.mock('./PersonaDetail', () => {
+  const { useRef } = require('react');
+
+  // A capitalized component name satisfies react-hooks/rules-of-hooks for the
+  // ref below. `useRef` captures the first fqn this mounted instance saw: a
+  // real remount (parent keys by fqn) starts a fresh ref, so `firstFqn`
+  // follows the new fqn; a reused instance keeps the original, surfacing a
+  // missing key.
+  const MockPersonaDetail = (props: {
     activeTab: PersonaDetailTab;
     fqn: string;
     subCategory?: string;
@@ -50,33 +64,41 @@ jest.mock('./PersonaDetail', () => ({
     onRename: (name: string) => void;
     onSelectCategory: (category: string) => void;
     onTabChange: (tab: PersonaDetailTab) => void;
-  }) => (
-    <div
-      data-active-tab={props.activeTab}
-      data-fqn={props.fqn}
-      data-sub-category={props.subCategory ?? ''}
-      data-testid="persona-detail">
-      <button
-        data-testid="detail-rename"
-        onClick={() => props.onRename('Data Steward')}>
-        detail-rename
-      </button>
-      <button
-        data-testid="detail-select-navigation"
-        onClick={() => props.onSelectCategory('navigation')}>
-        detail-select-navigation
-      </button>
-      <button
-        data-testid="detail-select-users-tab"
-        onClick={() => props.onTabChange('users')}>
-        detail-select-users-tab
-      </button>
-      <button data-testid="detail-delete" onClick={props.onDeleted}>
-        detail-delete
-      </button>
-    </div>
-  ),
-}));
+  }) => {
+    const firstFqnRef = useRef(props.fqn);
+    mockDeletedCallbacks.push(props.onDeleted);
+
+    return (
+      <div
+        data-active-tab={props.activeTab}
+        data-first-fqn={firstFqnRef.current}
+        data-fqn={props.fqn}
+        data-sub-category={props.subCategory ?? ''}
+        data-testid="persona-detail">
+        <button
+          data-testid="detail-rename"
+          onClick={() => props.onRename('Data Steward')}>
+          detail-rename
+        </button>
+        <button
+          data-testid="detail-select-navigation"
+          onClick={() => props.onSelectCategory('navigation')}>
+          detail-select-navigation
+        </button>
+        <button
+          data-testid="detail-select-users-tab"
+          onClick={() => props.onTabChange('users')}>
+          detail-select-users-tab
+        </button>
+        <button data-testid="detail-delete" onClick={props.onDeleted}>
+          detail-delete
+        </button>
+      </div>
+    );
+  };
+
+  return { __esModule: true, default: MockPersonaDetail };
+});
 
 const mockEditorSave = jest.fn();
 
@@ -234,6 +256,48 @@ describe('PersonasPanel', () => {
     );
   });
 
+  it('keeps onDeleted stable across re-renders', () => {
+    // PersonaDetail builds its header actions from onDeleted and pushes them
+    // back up here; a new callback per render re-renders in a loop.
+    mockDeletedCallbacks.length = 0;
+    renderAt('#personas/p1');
+
+    fireEvent.click(screen.getByTestId('detail-rename'));
+
+    expect(mockDeletedCallbacks.length).toBeGreaterThan(1);
+    expect(new Set(mockDeletedCallbacks).size).toBe(1);
+  });
+
+  it('re-mounts PersonaDetail with fresh state when the persona fqn changes via a hash navigation', () => {
+    renderAt('#personas/p1');
+
+    const detail = screen.getByTestId('persona-detail');
+
+    expect(detail).toHaveAttribute('data-fqn', 'p1');
+    // `data-first-fqn` is captured on mount via useRef; it only follows a new
+    // fqn when the instance is re-mounted (key={fqn}).
+    expect(detail).toHaveAttribute('data-first-fqn', 'p1');
+
+    // A browser-driven hash change (Back/Forward, address-bar edit, or a pasted
+    // `#personas/<fqn>` deep link) is adopted back into the open modal without
+    // unmounting the panel tree. `replaceState` avoids pushing a stray history
+    // entry that would leak into later tests.
+    act(() => {
+      window.history.replaceState(null, '', '/#personas/p2');
+      window.dispatchEvent(new PopStateEvent('popstate'));
+    });
+
+    expect(screen.getByTestId('hash-probe')).toHaveTextContent('personas|p2|');
+
+    const nextDetail = screen.getByTestId('persona-detail');
+
+    expect(nextDetail).toHaveAttribute('data-fqn', 'p2');
+    // A fresh ref proves the instance was re-mounted; without key={fqn} the
+    // same instance would keep `data-first-fqn` = 'p1' under persona B's title.
+    expect(nextDetail).toHaveAttribute('data-first-fqn', 'p2');
+    expect(screen.getByTestId('header-title')).toHaveTextContent('p2');
+  });
+
   it('reads the active tab from the hash', () => {
     renderAt('#personas/p1?tab=users');
 
@@ -356,11 +420,11 @@ describe('PersonasPanel', () => {
       fireEvent.click(screen.getByTestId('crumb-detail'));
 
       expect(
-        await screen.findByTestId('unsaved-changes-modal')
+        await screen.findByTestId('unsaved-changes-popover')
       ).toBeInTheDocument();
       expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+      fireEvent.click(screen.getByTestId('unsaved-changes-popover-discard'));
 
       expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
       expect(mockEditorSave).not.toHaveBeenCalled();
@@ -370,10 +434,30 @@ describe('PersonasPanel', () => {
       await openDirtyEditor();
 
       fireEvent.click(screen.getByTestId('persona-customize-view'));
-      fireEvent.click(await screen.findByTestId('unsaved-changes-modal-save'));
+      fireEvent.click(
+        await screen.findByTestId('unsaved-changes-popover-confirm')
+      );
 
       expect(await screen.findByTestId('persona-detail')).toBeInTheDocument();
       expect(mockEditorSave).toHaveBeenCalledTimes(1);
+    });
+
+    it('stays in the editor when the prompt is dismissed with Escape', async () => {
+      await openDirtyEditor();
+
+      fireEvent.click(screen.getByTestId('crumb-detail'));
+      fireEvent.keyDown(await screen.findByTestId('unsaved-changes-popover'), {
+        key: 'Escape',
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('unsaved-changes-popover')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(screen.getByTestId('persona-customize-view')).toBeInTheDocument();
+      expect(mockEditorSave).not.toHaveBeenCalled();
     });
 
     it('intercepts closing the modal through the exit guard', async () => {
@@ -388,10 +472,10 @@ describe('PersonasPanel', () => {
 
       expect(intercepted).toBe(true);
       expect(
-        await screen.findByTestId('unsaved-changes-modal')
+        await screen.findByTestId('unsaved-changes-popover')
       ).toBeInTheDocument();
 
-      fireEvent.click(screen.getByTestId('unsaved-changes-modal-discard'));
+      fireEvent.click(screen.getByTestId('unsaved-changes-popover-discard'));
 
       expect(close).toHaveBeenCalledTimes(1);
     });

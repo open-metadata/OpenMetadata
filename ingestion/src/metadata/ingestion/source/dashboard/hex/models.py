@@ -51,22 +51,22 @@ class Reviews(BaseModel):
 class AppViews(BaseModel):
     """App view counts"""
 
-    allTime: int | None = Field(None, alias="all_time")  # noqa: N815
-    lastSevenDays: int | None = Field(None, alias="last_seven_days")  # noqa: N815
-    lastFourteenDays: int | None = Field(None, alias="last_fourteen_days")  # noqa: N815
-    lastThirtyDays: int | None = Field(None, alias="last_thirty_days")  # noqa: N815
+    allTime: int | None = None  # noqa: N815
+    lastSevenDays: int | None = None  # noqa: N815
+    lastFourteenDays: int | None = None  # noqa: N815
+    lastThirtyDays: int | None = None  # noqa: N815
 
 
 class ProjectAnalytics(BaseModel):
     """Project analytics data"""
 
-    appViews: AppViews | None = Field(None, alias="app_views")  # noqa: N815
-    lastViewedAt: datetime | None = Field(None, alias="last_viewed_at")  # noqa: N815
-    publishedResultsUpdatedAt: datetime | None = Field(None, alias="published_results_updated_at")  # noqa: N815
+    appViews: AppViews | None = None  # noqa: N815
+    lastViewedAt: datetime | None = None  # noqa: N815
+    publishedResultsUpdatedAt: datetime | None = None  # noqa: N815
 
 
 class Project(BaseModel):
-    """Hex Project Model"""
+    """Hex Project or Component, told apart by type"""
 
     id: str
     title: str
@@ -78,11 +78,11 @@ class Project(BaseModel):
     categories: list[Category] = Field(default_factory=list)
     reviews: Reviews | None = None
     analytics: ProjectAnalytics | None = None
-    lastEditedAt: datetime | None = Field(None, alias="last_edited_at")  # noqa: N815
-    lastPublishedAt: datetime | None = Field(None, alias="last_published_at")  # noqa: N815
-    createdAt: datetime | None = Field(None, alias="created_at")  # noqa: N815
-    archivedAt: datetime | None = Field(None, alias="archived_at")  # noqa: N815
-    trashedAt: datetime | None = Field(None, alias="trashed_at")  # noqa: N815
+    lastEditedAt: datetime | None = None  # noqa: N815
+    lastPublishedAt: datetime | None = None  # noqa: N815
+    createdAt: datetime | None = None  # noqa: N815
+    archivedAt: datetime | None = None  # noqa: N815
+    trashedAt: datetime | None = None  # noqa: N815
     schedules: list = Field(default_factory=list)
 
 
@@ -93,36 +93,31 @@ class Pagination(BaseModel):
     before: str | None = None
 
 
-class ProjectListResponse(BaseModel):
-    """List Projects API Response"""
-
-    values: list[Project] = Field(default_factory=list)
+class PagedResponse(BaseModel):
     pagination: Pagination | None = None
 
 
-class ProjectRunInput(BaseModel):
-    """Project run input parameter"""
+class ProjectListResponse(PagedResponse):
+    """List Projects API Response"""
 
-    name: str
-    value: str | None = None
+    values: list[Project] = Field(default_factory=list)
 
 
 class ProjectRun(BaseModel):
-    """Project run information"""
+    """A run of a published project"""
 
-    projectId: str = Field(alias="project_id")  # noqa: N815
-    runId: str = Field(alias="run_id")  # noqa: N815
+    runId: str  # noqa: N815
     status: str | None = None
-    startedAt: datetime | None = Field(None, alias="started_at")  # noqa: N815
-    completedAt: datetime | None = Field(None, alias="completed_at")  # noqa: N815
-    inputs: list[ProjectRunInput] = Field(default_factory=list)
+    startTime: datetime | None = None  # noqa: N815
+    endTime: datetime | None = None  # noqa: N815
+    # Milliseconds
+    elapsedTime: float | None = None  # noqa: N815
 
 
 class ProjectRunsResponse(BaseModel):
     """Get Project Runs API Response"""
 
     runs: list[ProjectRun] = Field(default_factory=list)
-    nextPage: str | None = Field(None, alias="next_page")  # noqa: N815
 
 
 class DataConnection(BaseModel):
@@ -132,10 +127,61 @@ class DataConnection(BaseModel):
     name: str
     type: str | None = None
     description: str | None = None
+    # Keyed by type, e.g. {"snowflake": {"database": "analytics", ...}}
+    connectionDetails: dict | None = None  # noqa: N815
+
+    @property
+    def default_database(self) -> str | None:
+        return self._details.get("database")
+
+    @property
+    def default_schema(self) -> str | None:
+        return self._details.get("schema")
+
+    @property
+    def _details(self) -> dict:
+        details = (self.connectionDetails or {}).get(self.type or "")
+        return details if isinstance(details, dict) else {}
 
 
-class DataConnectionsResponse(BaseModel):
-    """Data Connections API Response"""
+class DataConnectionsResponse(PagedResponse):
+    """List Data Connections API Response"""
 
-    connections: list[DataConnection] = Field(default_factory=list)
-    nextPage: str | None = Field(None, alias="next_page")  # noqa: N815
+    values: list[DataConnection] = Field(default_factory=list)
+
+
+class SqlCellContents(BaseModel):
+    source: str | None = None
+
+
+class CellContents(BaseModel):
+    sqlCell: SqlCellContents | None = None  # noqa: N815
+
+
+class Cell(BaseModel):
+    """Hex notebook cell"""
+
+    id: str
+    staticId: str | None = None  # noqa: N815
+    cellType: str | None = None  # noqa: N815
+    label: str | None = None
+    dataConnectionId: str | None = None  # noqa: N815
+    # Name later SQL cells use to query this cell's result; only the export API returns it
+    resultVariableName: str | None = None  # noqa: N815
+    contents: CellContents | None = None
+
+    @property
+    def sql(self) -> str | None:
+        return self.contents.sqlCell.source if self.contents and self.contents.sqlCell else None
+
+
+class ProjectExport(BaseModel):
+    """Export Project API Response: the project as YAML"""
+
+    content: str
+
+
+class CellListResponse(PagedResponse):
+    """List Cells API Response"""
+
+    values: list[Cell] = Field(default_factory=list)

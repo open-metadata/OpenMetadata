@@ -14,13 +14,14 @@
 import type { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import {
   Bell01,
+  Bot,
+  Customize,
   GridView,
   Key01,
-  PermissionDebugger as AccessControlIcon,
+  PermissionDebugger,
   Persona as PersonaIcon,
-  Policy as GovernanceTabIcon,
+  Policy,
   Settings01,
-  Settings02,
   ShieldTick,
   SingleSignOn,
   Sliders02,
@@ -29,18 +30,17 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
 import React, { FC } from 'react';
-import { ReactComponent as BotIcon } from '../../../../assets/svg/entity/bot.svg';
 import type { ProfileNavId } from '../../../../constants/Profile.constants';
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { User } from '../../../../generated/entity/teams/user';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import AccessTokenPanel from './components/AccessTokenPanel';
-import CustomPropertiesPanel from './panels/CustomPropertiesPanel/CustomPropertiesPanel';
 import ProfileTabPanel from './ProfileTabPanel';
 import AccessControlPanel from './tabs/access-control/AccessControlPanel';
 import ApplicationsPanel from './tabs/applications/ApplicationsPanel';
 import BotsPanel from './tabs/bots/BotsPanel';
+import CustomPropertiesPanel from './tabs/custom-properties/CustomPropertiesPanel';
 import GovernancePanel from './tabs/governance/GovernancePanel';
 import { canOpenMembers, getMembersAccess } from './tabs/members/Members.utils';
 import MembersPanel from './tabs/members/MembersPanel';
@@ -194,7 +194,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'administration',
     label: 'label.access-control',
     description: 'message.access-control-description',
-    icon: AccessControlIcon,
+    icon: PermissionDebugger,
     // Admin-only whatever view permissions a non-admin holds
     // (ADR:2026-10-21-settings-pages-are-classic-only).
     isVisible: (_permissions, isAdmin) => isAdmin,
@@ -208,7 +208,7 @@ export const PROFILE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'administration',
     label: 'label.bot-plural',
     description: 'message.page-sub-header-for-bots',
-    icon: BotIcon as FC<{ className?: string }>,
+    icon: Bot as FC<{ className?: string }>,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
@@ -277,7 +277,7 @@ export const WORKSPACE_NAV_ITEMS: ProfileNavItem[] = [
     group: 'workspace',
     label: 'label.custom-property-plural',
     description: 'message.custom-properties-settings-description',
-    icon: Settings02 as FC<{ className?: string }>,
+    icon: Customize as FC<{ className?: string }>,
     isVisible: (permissions) =>
       userPermissions.hasViewPermissions(ResourceEntity.TYPE, permissions),
     selfContainedLayout: true,
@@ -293,7 +293,7 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
     group: 'features',
     label: 'label.governance',
     description: 'message.governance-settings-description',
-    icon: GovernanceTabIcon as FC<{ className?: string }>,
+    icon: Policy as FC<{ className?: string }>,
     isVisible: (_permissions, isAdmin) => isAdmin,
     selfContainedLayout: true,
     render: ({ onHeaderChange }) => (
@@ -316,7 +316,7 @@ export const FEATURES_NAV_ITEMS: ProfileNavItem[] = [
   {
     id: 'notification',
     group: 'features',
-    label: 'label.notification',
+    label: 'label.alerts-and-notifications',
     description: 'message.alerts-description',
     icon: Bell01 as FC<{ className?: string }>,
     isVisible: (permissions) =>

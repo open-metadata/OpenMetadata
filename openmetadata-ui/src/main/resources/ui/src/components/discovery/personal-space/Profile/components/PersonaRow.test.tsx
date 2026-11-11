@@ -106,13 +106,21 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   ),
   Autocomplete: Object.assign(
     ({
+      items,
+      maxVisibleItems,
       onItemInserted,
       onSearchChange,
     }: {
+      items?: { id: string }[];
+      maxVisibleItems?: number;
       onItemInserted: (...args: unknown[]) => void;
       onSearchChange?: (...args: unknown[]) => void;
     }) => (
       <div>
+        <span data-testid="max-visible">{String(maxVisibleItems)}</span>
+        <span data-testid="option-ids">
+          {(items ?? []).map((item) => item.id).join(',')}
+        </span>
         <button
           data-testid="add-persona"
           type="button"
@@ -183,6 +191,39 @@ describe('PersonaRow', () => {
     await waitFor(() =>
       expect(mockSearchPersonas).toHaveBeenCalledWith('analyst', 50)
     );
+  });
+
+  it('caps the visible chips so many selections collapse into a "+N" count', async () => {
+    await act(async () => {
+      render(<PersonaRow updateUserDetails={jest.fn()} userData={userData} />);
+    });
+
+    expect(screen.getByTestId('max-visible')).toHaveTextContent('3');
+  });
+
+  it('keeps a picked persona listed after a new search drops it from the results', async () => {
+    await act(async () => {
+      render(<PersonaRow updateUserDetails={jest.fn()} userData={userData} />);
+    });
+    await waitFor(() =>
+      expect(screen.getByTestId('option-ids')).toHaveTextContent('p2')
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('add-persona'));
+    });
+
+    mockSearchPersonas.mockResolvedValue([]);
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('search-persona'));
+    });
+
+    await waitFor(() =>
+      expect(mockSearchPersonas).toHaveBeenCalledWith('analyst', 50)
+    );
+
+    // The "+N" overflow list is built from the options, so the draft selection must stay in it.
+    expect(screen.getByTestId('option-ids')).toHaveTextContent('p2');
   });
 
   it('shows an error toast when loading the persona options fails', async () => {

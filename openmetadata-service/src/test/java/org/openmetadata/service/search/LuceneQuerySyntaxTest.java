@@ -14,8 +14,10 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.time.Duration;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -118,6 +120,14 @@ class LuceneQuerySyntaxTest {
   @DisplayName("blank text is left to the caller's empty-query handling")
   void acceptsBlankText(String query) {
     assertTrue(LuceneQuerySyntax.isWellFormed(query), query);
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"[", "{", "[{", "[\"", "[/", "[\\\\", "/ [", "\" ["})
+  @DisplayName("a long run of unterminated openers is masked in linear time")
+  void masksLongUnterminatedRunsInLinearTime(String unit) {
+    String query = unit.repeat(200_000 / unit.length());
+    assertTimeoutPreemptively(Duration.ofSeconds(2), () -> LuceneQuerySyntax.isWellFormed(query));
   }
 
   @org.junit.jupiter.api.Test

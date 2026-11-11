@@ -214,7 +214,10 @@ test('GlossaryTerm', async ({ page }) => {
     const glossaryTermsRes = page.waitForResponse(
       '/api/v1/glossaryTerms/name/**'
     );
-    await page.getByRole('dialog').getByRole('img').click();
+    await page
+      .getByTestId('versions-list-container')
+      .getByRole('button', { name: 'Close' })
+      .click();
     await glossaryTermsRes;
 
     await waitForAllLoadersToDisappear(page);
@@ -335,7 +338,10 @@ test('Return to current version from history', async ({ page }) => {
     await waitForAllLoadersToDisappear(page);
 
     // Close the version dialog
-    await page.getByRole('dialog').getByRole('img').click();
+    await page
+      .getByTestId('versions-list-container')
+      .getByRole('button', { name: 'Close' })
+      .click();
 
     // Wait for dialog to close
     await page.locator('[role="dialog"]').waitFor({ state: 'hidden' });

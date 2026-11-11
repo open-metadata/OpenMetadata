@@ -18,6 +18,7 @@ import {
 import {
   OntologyAiProposals,
   OntologyAiProposalsOptions,
+  OntologyConceptLiveDataExtension,
 } from './OntologyExplorerClassBase.interface';
 
 const NO_NODES: OntologyNode[] = [];
@@ -46,6 +47,16 @@ class OntologyExplorerClassBase {
     options: OntologyAiProposalsOptions
   ) => OntologyAiProposals {
     return useNoAiProposals;
+  }
+
+  /**
+   * Running a concept's generated SQL: the live preview and the SQL Studio
+   * hand-off. Running queries needs source credentials and Collate's query
+   * runner, so OSS returns none; Collate returns its component.
+   * ADR:2026-10-21-ontology-live-data-execution-is-a-collate-extension
+   */
+  public getConceptLiveDataExtension(): OntologyConceptLiveDataExtension | null {
+    return null;
   }
 }
 

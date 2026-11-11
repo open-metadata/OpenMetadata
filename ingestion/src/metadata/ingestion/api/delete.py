@@ -14,6 +14,7 @@ Delete methods
 
 import traceback
 from collections.abc import Iterable
+from dataclasses import dataclass
 
 from metadata.config.settings import ingestion_settings
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
@@ -29,6 +30,39 @@ from metadata.utils.logger import utils_logger
 logger = utils_logger()
 
 SERVICE_SCOPE_KEY = "service"
+
+
+@dataclass
+class SourceListing:
+    """
+    What a connector listed for one entity type in this run.
+
+    An empty seen-set is ambiguous: the source may hold nothing, or its listing may have failed and
+    come back empty, so the server deletes nothing for it. A connector that can tell the two apart
+    marks the listing complete once every fetch behind it succeeded, and failed when any did not.
+    See ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing.
+    """
+
+    listed: int = 0
+    filtered: int = 0
+    is_complete: bool = False
+    has_failed: bool = False
+
+    def count_listed(self) -> None:
+        self.listed += 1
+
+    def count_filtered(self) -> None:
+        self.filtered += 1
+
+    def mark_complete(self) -> None:
+        self.is_complete = True
+
+    def mark_failed(self) -> None:
+        self.has_failed = True
+
+    @property
+    def confirms_nothing_to_ingest(self) -> bool:
+        return self.is_complete and not self.has_failed and self.filtered == self.listed
 
 
 def _default_dispatch_async() -> bool:
@@ -66,11 +100,14 @@ def delete_entity_from_source(
     recursive: bool = True,
     params: dict[str, str] | None = None,
     dispatch_async: bool | None = None,
+    source_listing: SourceListing | None = None,
 ) -> Iterable[Either[DeleteEntity]]:
     """
     Soft-delete the entities of ``entity_type`` within ``params`` scope that were not seen in
     this run. The server owns the detection: the connector sends the set of FQNs it produced
     (``entity_source_state``) and the server soft-deletes the in-scope entities not in that set.
+    An empty ``entity_source_state`` deletes nothing unless ``source_listing`` confirms there was
+    nothing to ingest.
 
     Whether stale deletion runs at all is decided by the caller (the ``markDeleted*`` source
     config gate); this function only performs it.
@@ -89,8 +126,16 @@ def delete_entity_from_source(
         server-side async endpoint (returns 202 + jobId, runs cascade on the server's
         executor) so ingestion does not block on large hierarchies — see issue #4003. The
         server-side bulk deleteStale path is already async by design and ignores this flag.
+    :param source_listing: What the connector listed for ``entity_type`` this run, see
+        :class:`SourceListing`.
     """
     use_async = dispatch_async if dispatch_async is not None else _default_dispatch_async()
+    allow_empty_seen = source_listing is not None and source_listing.confirms_nothing_to_ingest
+    if allow_empty_seen and not entity_source_state:
+        logger.info(
+            "The source confirmed there is no %s to ingest; marking every one in scope as deleted",
+            entity_type.__name__,
+        )
     # Flush the sink buffer so the scope entity and the entities seen this run are committed
     # before the server resolves the scope and computes what is stale.
     barrier = Barrier(reason=f"flush_before_delete_stale:{entity_type.__name__}")
@@ -101,6 +146,7 @@ def delete_entity_from_source(
             scope_params=_scope_params_as_fqn(params),
             live_fqns=entity_source_state,
             recursive=recursive,
+            allow_empty_seen=allow_empty_seen,
         )
         if result is not None:
             # The server soft-deleted the stale entities; nothing to push through the sink.

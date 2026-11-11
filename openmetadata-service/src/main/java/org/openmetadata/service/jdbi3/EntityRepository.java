@@ -109,6 +109,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.WebApplicationException;
@@ -280,10 +281,14 @@ import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
+import org.openmetadata.service.secrets.masker.MaskedFields;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ChangeActor;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.PatchRequester;
+import org.openmetadata.service.security.SecurityUtil;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -292,12 +297,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.security.policyevaluator.UpdatedDomainsResourceContext;
 import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityETag;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.JsonStorageUtils;
+import org.openmetadata.service.util.LifeCycles;
 import org.openmetadata.service.util.LineageUtil;
 import org.openmetadata.service.util.ListWithOffsetFunction;
 import org.openmetadata.service.util.PostCommitActionQueue;
@@ -1051,6 +1058,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * @see TableRepository#setInheritedFields(Table, Fields) for an example implementation
    */
   @SuppressWarnings("unused")
+  /**
+   * Runs inheritance on a single already-loaded entity, for a caller outside this package such as
+   * the authorization {@code ResourceContext}, which must see inherited tags for a deny rule.
+   */
+  public void setInheritedFieldsInternal(T entity, Fields fields) {
+    setInheritedFields(entity, fields);
+  }
+
   protected void setInheritedFields(T entity, Fields fields) {
     if (!requiresParentForInheritance(entity, fields)) {
       return;
@@ -1126,6 +1141,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** Fields to load on parent entities for inheritance. Override for repos that inherit more than domains. */
   protected String getInheritableFields() {
     return "domains";
+  }
+
+  /** Whether an entity of this type with no owners of its own takes its parent's. */
+  public final boolean inheritsOwners() {
+    String inheritableFields = getInheritableFields();
+    return inheritableFields != null
+        && List.of(inheritableFields.split(",")).contains(FIELD_OWNERS);
   }
 
   /**
@@ -1869,7 +1891,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     entity.setUpdatedAt(System.currentTimeMillis());
     entity.setReviewers(request.getReviewers());
 
-    RuleEngine.getInstance().evaluate(entity);
+    if (!RuleEngine.dependsOnInheritedDomains(entity)) {
+      RuleEngine.getInstance().evaluate(entity);
+    }
     return entity;
   }
 
@@ -2801,14 +2825,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return entities;
   }
 
-  public final List<T> listAllForCSV(Fields fields, String parentFqn) {
+  /** Lists the entities below {@code parentFqn} that {@code user} may view, for a CSV export. */
+  public final List<T> listAllForCSV(Fields fields, String parentFqn, String user) {
     ListFilter filter = new ListFilter(NON_DELETED);
     List<String> jsons = listAllByParentFqn(parentFqn, filter);
-    List<T> entities = new ArrayList<>();
+    List<T> all = new ArrayList<>();
     for (String json : jsons) {
-      T entity = JsonUtils.readValue(json, entityClass);
-      entities.add(entity);
+      all.add(JsonUtils.readValue(json, entityClass));
     }
+    List<T> entities = retainViewableForExport(all, user);
     // TODO: Ensure consistent behavior with setFieldsInBulk when all repositories implement it
     fetchAndSetFields(entities, fields);
     setInheritedFields(entities, fields);
@@ -2816,6 +2841,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       clearFieldsInternal(entity, fields);
     }
     return entities;
+  }
+
+  /**
+   * An export authorizes only the entity named in the request, so each row it writes must also be
+   * one the exporting user may view in full; a new mutable list, as the exports go on to sort it.
+   */
+  public static <E extends EntityInterface<?>> List<E> retainViewableForExport(
+      List<E> entities, String user) {
+    List<E> viewable = new ArrayList<>(listOrEmpty(entities));
+    if (!viewable.isEmpty() && !SubjectContext.getSubjectContext(user).isAdmin()) {
+      Set<UUID> viewableIds =
+          new ViewPermissionFilter(Entity.getAuthorizer())
+              .viewableIds(
+                  user,
+                  MetadataOperation.VIEW_ALL,
+                  viewable.stream().map(EntityInterface::getEntityReference).toList());
+      viewable.removeIf(entity -> !viewableIds.contains(entity.getId()));
+    }
+    return viewable;
   }
 
   /**
@@ -2830,6 +2874,26 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    */
   public void setFieldsInBulk(Fields fields, List<T> entities, ListFilter filter) {
     setFieldsInBulk(fields, entities);
+  }
+
+  /**
+   * Loads {@code fieldNames} onto {@code entities} with the field fetchers and leaves every other
+   * field as it is, unlike {@link #setFieldsInBulk}, which clears what it was not asked for. For
+   * search documents built from entities that never carried those computed fields. A field with no
+   * registered fetcher would load nothing and be indexed as 0, so it fails the write instead.
+   */
+  @SuppressWarnings("unchecked")
+  public final void loadFieldsForSearchIndex(
+      List<? extends EntityInterface<?>> entities, Set<String> fieldNames) {
+    List<String> unfetchable =
+        fieldNames.stream().filter(field -> !fieldFetchers.containsKey(field)).toList();
+    if (!unfetchable.isEmpty()) {
+      throw new IllegalStateException(
+          String.format("%s has no field fetcher for %s", entityType, unfetchable));
+    }
+    // Only the asked-for fetchers: fetchAndSetFields would also run fetchers that ignore `fields`.
+    Fields fields = getFields(String.join(",", fieldNames));
+    fieldNames.forEach(field -> fieldFetchers.get(field).accept((List<T>) entities, fields));
   }
 
   public void setFieldsInBulk(Fields fields, List<T> entities) {
@@ -2863,43 +2927,60 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   /**
-   * Batch-rewrite {@code task_entity.aboutFqnHash} from old to new for a set of
-   * {@code oldHash -> newHash} pairs (one per entity in a moved/renamed subtree). Tasks are keyed by
-   * an opaque FQN hash that cannot be prefix-matched, so each entity is rewritten by exact hash.
-   * No-op when empty.
+   * Entity types whose FQNs nest under this entity's FQN and change with it on a rename or move.
+   * Empty when the FQN is the bare name: metric {@code X.Y} hashes under metric {@code X} without
+   * being nested in it. See ADR:2026-10-26-tasks-follow-fqn-changes-from-store-update.
    */
-  protected void updateTaskAboutFqnHashes(Map<String, String> fqnHashUpdates) {
-    if (nullOrEmpty(fqnHashUpdates)) {
-      return;
-    }
-    int rows = 0;
-    int[] counts =
+  protected Set<String> getNestedFqnEntityTypes() {
+    return Set.of();
+  }
+
+  /**
+   * Carry the tasks and workflow instances that find an entity by FQN over to its new FQN: the
+   * entity itself by exact FQN, and the nested entity types under it by FQN prefix.
+   */
+  private void repointTasksAndWorkflowInstancesForFqnChange(String oldFqn, String newFqn) {
+    List<String> nestedTypes = List.copyOf(getNestedFqnEntityTypes());
+    int tasks =
         daoCollection
             .taskDAO()
-            .updateAboutFqnHashBatch(
-                new ArrayList<>(fqnHashUpdates.keySet()), new ArrayList<>(fqnHashUpdates.values()));
-    for (int count : counts) {
-      rows += count;
+            .repointAboutFqnHash(
+                FullyQualifiedName.buildHash(oldFqn),
+                FullyQualifiedName.buildHash(newFqn),
+                entityType,
+                Relationship.MENTIONED_IN.ordinal(),
+                nestedTypes);
+    // One statement per type, so a link the exact match moves is not matched again by the prefix.
+    repointWorkflowInstancesForFqnChange(
+        entityType, oldFqn, newFqn, nestedTypes.contains(entityType));
+    nestedTypes.stream()
+        .filter(type -> !type.equals(entityType))
+        .forEach(type -> repointWorkflowInstancesForFqnChange(type, oldFqn, newFqn, true));
+    if (tasks > 0) {
+      LOG.info("[fqn-change] repointed tasks {} -> {} rows={}", oldFqn, newFqn, tasks);
     }
-    LOG.info(
-        "[fqn-change] task aboutFqnHash updates={} rowsUpdated={}", fqnHashUpdates.size(), rows);
   }
 
   /**
    * Repoint workflow-instance {@code relatedEntity} (the history-card filter key) for a moved or
-   * renamed subtree in a single set-based statement: the root entity itself (exact link) plus every
-   * descendant ({@code entityLink LIKE oldStem.%}). The workflow instance stores the FQN as a
-   * readable {@link MessageParser.EntityLink}, so unlike the opaque task hash the whole subtree is
-   * covered at once. The {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never
-   * touches sibling {@code a.bc}).
+   * renamed entity in a single set-based statement: the entity itself (exact link) plus, with
+   * {@code includeNested}, every descendant ({@code entityLink LIKE oldStem.%}). The
+   * {@code .}-suffixed prefix is collision-safe (a move of {@code a.b} never touches sibling
+   * {@code a.bc}).
    */
   protected void repointWorkflowInstancesForFqnChange(
-      String entityType, String oldFqn, String newFqn) {
+      String entityType, String oldFqn, String newFqn, boolean includeNested) {
     String oldLink = new MessageParser.EntityLink(entityType, oldFqn).getLinkString();
     String newLink = new MessageParser.EntityLink(entityType, newFqn).getLinkString();
     String oldStem = oldLink.substring(0, oldLink.length() - 1);
     String newStem = newLink.substring(0, newLink.length() - 1);
-    String oldChildPrefix = oldStem + Entity.SEPARATOR + "%";
+    // Entity names may contain the LIKE wildcards % and _; escape them so the pattern only matches
+    // this link, or the links nested under it.
+    String escapedStem = ListFilter.escapeLikeBindValue(oldStem);
+    String oldChildPrefix =
+        includeNested
+            ? escapedStem + Entity.SEPARATOR + "%"
+            : ListFilter.escapeLikeBindValue(oldLink);
     int instances =
         daoCollection
             .workflowInstanceTimeSeriesDAO()
@@ -3135,12 +3216,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Get previous version from version history
     String json = daoCollection.entityExtensionDAO().getExtension(id, extension);
     if (json != null) {
-      return JsonUtils.readValue(json, entityClass);
+      return JsonUtils.readValue(withoutFieldsHiddenFromHistory(json), entityClass);
     }
     // If requested the latest version, return it from current version of the entity
     T entity = setFieldsInternal(find(id, ALL), putFields);
     if (entity.getVersion().equals(requestedVersion)) {
-      return entity;
+      return withoutFieldsHiddenFromHistory(entity);
     }
     throw EntityNotFoundException.byMessage(
         CatalogExceptionMessage.entityVersionNotFound(entityType, id, requestedVersion));
@@ -3161,10 +3242,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     final List<Object> versions = new ArrayList<>();
 
     if (offset == 0) {
-      versions.add(JsonUtils.pojoToJson(latest));
+      versions.add(withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(latest)));
     }
 
-    oldVersions.forEach(version -> versions.add(version.getEntityJson()));
+    oldVersions.forEach(
+        version -> versions.add(withoutFieldsHiddenFromHistory(version.getEntityJson())));
     return new EntityHistoryWithOffset(
         new EntityHistory().withEntityType(entityType).withVersions(versions), offset + limit);
   }
@@ -3224,8 +3306,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     oldVersions.sort(EntityUtil.compareVersion.reversed());
 
     final List<Object> allVersions = new ArrayList<>();
-    allVersions.add(JsonUtils.pojoToJson(latest));
-    oldVersions.forEach(version -> allVersions.add(version.getEntityJson()));
+    allVersions.add(withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(latest)));
+    oldVersions.forEach(
+        version -> allVersions.add(withoutFieldsHiddenFromHistory(version.getEntityJson())));
     return new EntityHistory().withEntityType(entityType).withVersions(allVersions);
   }
 
@@ -3319,7 +3402,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // before its last page.
     String firstCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getFirst());
     String lastCursor = pageRows.isEmpty() ? null : historyCursor(pageRows.getLast());
-    List<T> entities = hydrateHistoryPage(pageRows);
+    List<T> entities =
+        hydrateHistoryPage(pageRows).stream().map(this::withoutFieldsHiddenFromHistory).toList();
 
     int total = getVersionCountCached(tableName, startTs, endTs, entityType);
     return historyPageResult(
@@ -3470,12 +3554,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     // Always set impersonatedBy to clear it when null (regular user operations)
     entity.setImpersonatedBy(impersonatedBy);
+    authorizeUserWrite(
+        null, entity, ChangeActor.recorded(entity.getUpdatedBy(), impersonatedBy), null);
 
     return createNewEntity(entity);
   }
 
   public final void prepareInternal(T entity, boolean update) {
     validateTags(entity);
+    entity.setLifeCycle(LifeCycles.withoutPlaceholderTimestamps(entity.getLifeCycle()));
     prepare(entity, update);
     setFullyQualifiedName(entity);
     validateExtension(entity, update);
@@ -3694,6 +3781,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
     }
     if (!allRelationships.isEmpty()) {
+      lockDataProducts(
+          entities.stream()
+              .flatMap(entity -> listOrEmpty(entity.getDataProducts()).stream())
+              .toList());
       bulkInsertRelationships(allRelationships);
     }
   }
@@ -4407,6 +4498,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (original == null) { // If an original entity does not exist then create it, else update
       // Always set impersonatedBy to clear it when null (regular user operations)
       updated.setImpersonatedBy(impersonatedBy);
+      authorizeUserWrite(null, updated, ChangeActor.recorded(updatedBy, impersonatedBy), null);
       T created;
       try (var ignored = phase("upsertCreate")) {
         created = withHref(uriInfo, createNewEntity(updated));
@@ -4542,6 +4634,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The import records its author as impersonatedBy too; it carries no bot impersonation.
     authorizeImportedDomains(originals, updates, ChangeActor.recorded(updatedBy, null));
 
+    // Each original is a fresh read that nothing else holds, so it takes the relationships a PUT or
+    // PATCH records in history in place. Serializing here keeps the transaction to the inserts.
+    setFieldsInBulk(putFields, originals);
+    VersionRows previousVersions = versionRows(originals);
     List<T> updatedEntities = new ArrayList<>();
     for (int i = 0; i < originals.size(); i++) {
       T original = originals.get(i);
@@ -4550,6 +4646,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setId(original.getId());
       carryCreationAudit(original, updated);
       updated.setVersion(nextVersion(original.getVersion()));
+      updated.setChangeDescription(importChangeDescription(original));
+      updated.setIncrementalChangeDescription(null);
       updated.setUpdatedBy(updatedBy);
       updated.setUpdatedAt(System.currentTimeMillis());
       // 2. Set impersonatedBy
@@ -4557,11 +4655,17 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updatedEntities.add(updated);
     }
 
+    // The batch path never runs postUpdate, so it checks for moves itself, reading the counting
+    // parents before the flush rewrites their edges.
+    List<List<EntityReference>> previousParents =
+        originals.stream().map(this::getCountingParents).toList();
+
     // Store the row, extension, and relationship rewrites in one atomic transaction. The cache
     // invalidations issued here are recorded and drained once the transaction ends so no Redis
     // round trip runs while the handle is held.
     flushInOneTransaction(
         () -> {
+          storeVersions(previousVersions);
           updateMany(updatedEntities);
           replaceExtensions(originals, updatedEntities);
           clearRelationshipsForUpdateMany(updatedEntities);
@@ -4573,7 +4677,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           }
         });
 
+    refreshCountingParentsMovedInBatch(previousParents, updatedEntities);
     return updatedEntities;
+  }
+
+  /**
+   * The change description of an imported entity. It follows the stored version, so an edit in the
+   * same session consolidates against that version, and it keeps the per-field change summary.
+   */
+  private ChangeDescription importChangeDescription(T original) {
+    ChangeSummaryMap changeSummary =
+        Optional.ofNullable(original.getChangeDescription())
+            .map(ChangeDescription::getChangeSummary)
+            .orElse(null);
+    return new ChangeDescription()
+        .withPreviousVersion(original.getVersion())
+        .withChangeSummary(changeSummary);
   }
 
   @SuppressWarnings("unused")
@@ -4582,6 +4701,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       EntityLifecycleEventDispatcher.getInstance().onEntityCreated(entity, null);
     }
     RdfUpdater.updateEntity(entity);
+    getCountingParents(entity).forEach(this::refreshCountingParent);
     ListCountCache.invalidate(entityType);
     // Drop any negative-cache markers (P2.4) for this just-created entity. Without this, a
     // create-then-immediately-read flow would 404 for up to notFoundTtlSeconds because a
@@ -4683,9 +4803,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .onEntitiesCreated(new ArrayList<>(uniqueEntities), null);
     }
 
+    Set<String> refreshedParents = new HashSet<>();
     for (T entity : uniqueEntities) {
       RdfUpdater.updateEntity(entity);
       CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
+      getCountingParents(entity).stream()
+          .filter(parent -> refreshedParents.add(countingKey(parent)))
+          .forEach(this::refreshCountingParent);
     }
     ListCountCache.invalidate(entityType);
   }
@@ -4698,6 +4822,73 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     RdfUpdater.updateEntity(updated);
     closeApprovalTaskOnEntityStatusChange(original, updated);
     invalidateListCountsOnStageChange(original, updated);
+    refreshCountingParentsOnMove(original, updated);
+  }
+
+  /**
+   * The entities whose search documents count this one, such as a parent metric, every ancestor
+   * glossary term, or a folder. They are re-indexed whenever this one is created, deleted, restored
+   * or moved, or their counts go stale until the next reindex. A reference needs a type and either
+   * an id or a fully qualified name. Empty, the default, for entities nothing counts.
+   *
+   * <p>ADR:2026-10-29-counted-parents-are-reindexed-when-a-child-changes
+   */
+  protected List<EntityReference> getCountingParents(T entity) {
+    return List.of();
+  }
+
+  private void refreshCountingParentsOnMove(T original, T updated) {
+    refreshIfCountingParentsMoved(
+        getCountingParents(original), getCountingParents(updated), new HashSet<>());
+  }
+
+  private void refreshCountingParentsMovedInBatch(
+      List<List<EntityReference>> previousParents, List<T> updated) {
+    Set<String> refreshed = new HashSet<>();
+    for (int i = 0; i < updated.size(); i++) {
+      refreshIfCountingParentsMoved(
+          previousParents.get(i), getCountingParents(updated.get(i)), refreshed);
+    }
+  }
+
+  private void refreshIfCountingParentsMoved(
+      List<EntityReference> before, List<EntityReference> after, Set<String> refreshed) {
+    if (!countingKeys(before).equals(countingKeys(after))) {
+      Stream.concat(before.stream(), after.stream())
+          .filter(parent -> refreshed.add(countingKey(parent)))
+          .forEach(this::refreshCountingParent);
+    }
+  }
+
+  private static Set<String> countingKeys(List<EntityReference> parents) {
+    return parents.stream().map(EntityRepository::countingKey).collect(Collectors.toSet());
+  }
+
+  private static String countingKey(EntityReference parent) {
+    return parent.getId() != null
+        ? parent.getId().toString()
+        : parent.getType() + ":" + parent.getFullyQualifiedName();
+  }
+
+  /**
+   * Re-reads the parent rather than trusting the reference: a reference kept in stored JSON can
+   * call a deleted parent live. A deleted or missing parent is skipped, since the refresh could not
+   * load it, and so is every child of a hard-delete cascade, whose parent goes with it.
+   */
+  protected final void refreshCountingParent(EntityReference parent) {
+    if (parent != null && !isInHardDeleteCascade()) {
+      EntityInterface current = currentCountingParent(parent);
+      if (current != null && !Boolean.TRUE.equals(current.getDeleted())) {
+        EntityLifecycleEventDispatcher.getInstance()
+            .onEntityUpdated(current.getEntityReference(), null);
+      }
+    }
+  }
+
+  private static EntityInterface currentCountingParent(EntityReference parent) {
+    return parent.getId() != null
+        ? Entity.getEntityOrNull(parent.getType(), parent.getId(), "", ALL)
+        : Entity.findByNameOrNull(parent.getType(), parent.getFullyQualifiedName(), ALL);
   }
 
   // Listing totals are cached per filter and dropped only on create or delete, but a stage change
@@ -4787,6 +4978,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     updated.setImpersonatedBy(impersonatedBy);
     // A PUT body carries a fresh id; the stored asset keeps its own, as EntityUpdater applies it.
     updated.setId(original.getId());
+    evaluatePutRulesDeferredUntilInherited(original, updated);
     Optional<StagedChange> staged =
         admit(original, updated, ChangeActor.recorded(updatedBy, impersonatedBy), Edit.put());
     return staged
@@ -5070,6 +5262,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       ChangeSource changeSource,
       boolean useOptimisticLocking,
       ApprovedApplication approval) {
+    // An approved change was checked when it was requested, as admitOrVerify does below.
+    if (approval == null) {
+      authorizePatchBeforeApply(original, patch, actor);
+    }
     T updated = preparePatched(original, patch, actor.userName(), actor.impersonatedBy());
     Optional<StagedChange> staged =
         admitOrVerify(original, updated, actor, approval, patchedFieldNames);
@@ -5113,10 +5309,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * runs, and saves nothing.
    */
   final Optional<StagedChange> previewPatch(T original, JsonPatch patch, ChangeActor actor) {
+    authorizePatchBeforeApply(original, patch, actor);
     T updated = preparePatched(original, patch, actor.userName(), actor.impersonatedBy());
     authorizeDomainWrite(original, updated, actor, Edit.Kind.PATCH);
-    return ApprovalGate.preview(
-        original, updated, actor.userName(), Edit.patch(JsonUtils.extractPatchedFields(patch)));
+    final Edit edit = Edit.patch(JsonUtils.extractPatchedFields(patch));
+    authorizeUserWrite(original, updated, actor, edit);
+    return ApprovalGate.preview(original, updated, actor.userName(), edit);
   }
 
   /** Runs the preparation and validation a PATCH by {@code user} would, without storing anything. */
@@ -5125,7 +5323,75 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     preparePatched(original, patch, user, null);
   }
 
+  /**
+   * The patched entity as the rules see it: its own owners and domains plus the ones it inherits
+   * now. The patched copy still carries the inherited refs of the original, which may be stale, so
+   * they are dropped and inheritance is resolved again on a scratch copy. Only owners and domains
+   * are taken from it, because some types' setInheritedFields also reload other stored state, such
+   * as an alert's template, which would hide the patch from the rules. A type that resolves its
+   * inheritance elsewhere, such as a task taking its target's domains in prepare, inherits nothing
+   * here, so it keeps the refs it already carries.
+   */
+  private T withInheritedOwnersAndDomains(final T updated) {
+    final T inheriting = JsonUtils.deepCopy(updated, entityClass);
+    inheriting.setOwners(EntityUpdater.getEntityReferences(updated.getOwners()));
+    inheriting.setDomains(EntityUpdater.getEntityReferences(updated.getDomains()));
+    setInheritedFields(inheriting, new Fields(allowedFields, "owners,domains", true));
+    final T ruleFacts = JsonUtils.deepCopy(updated, entityClass);
+    ruleFacts.setOwners(resolvedOrCarried(inheriting.getOwners(), updated.getOwners()));
+    ruleFacts.setDomains(resolvedOrCarried(inheriting.getDomains(), updated.getDomains()));
+    return ruleFacts;
+  }
+
+  private static List<EntityReference> resolvedOrCarried(
+      final List<EntityReference> resolved, final List<EntityReference> carried) {
+    return nullOrEmpty(resolved) ? carried : resolved;
+  }
+
+  /** The rules copy() left for now: the entity's parent is attached, so it inherits. */
+  private void evaluateRulesDeferredUntilInherited(final T entity) {
+    if (RuleEngine.dependsOnInheritedDomains(entity)) {
+      RuleEngine.getInstance().evaluate(withInheritedOwnersAndDomains(entity));
+    }
+  }
+
+  /**
+   * The rules copy() left for now, on a PUT of an existing entity. A PUT that sends no owners or
+   * domains keeps the stored ones, so the rules see those, and inherited ones only when the entity
+   * has none of its own.
+   */
+  private void evaluatePutRulesDeferredUntilInherited(final T original, final T sent) {
+    if (RuleEngine.dependsOnInheritedDomains(sent)) {
+      final T asStored = JsonUtils.deepCopy(sent, entityClass);
+      asStored.setDomains(EntityUpdater.getEntityReferences(original.getDomains()));
+      if (EntityUpdater.getEntityReferences(sent.getOwners()).isEmpty()) {
+        asStored.setOwners(EntityUpdater.getEntityReferences(original.getOwners()));
+      }
+      RuleEngine.getInstance().evaluate(withInheritedOwnersAndDomains(asStored));
+    }
+  }
+
+  // A PUT loads the stored entity without inheritance, so an entity whose domain comes from its
+  // parent shows none here; it only belongs to no domain if it inherits none either.
+  private boolean belongsToNoDomain(final T entity) {
+    return nullOrEmpty(entity.getDomains())
+        && nullOrEmpty(withInheritedOwnersAndDomains(entity).getDomains());
+  }
+
+  /** An entity the patch leaves with no domain of its own still belongs to its inherited ones. */
+  private void keepInheritedDomainsWhenNoneOwn(final T updated, final T ruleFacts) {
+    if (EntityUpdater.getEntityReferences(updated.getDomains()).isEmpty()) {
+      updated.setDomains(EntityUpdater.inheritedOnly(ruleFacts.getDomains()));
+    }
+  }
+
   private T preparePatched(T original, JsonPatch patch, String user, String impersonatedBy) {
+    // A patch to the document root replaces the whole entity, skipping the per-field checks below.
+    // It is refused: a client edits fields (ADR:2026-11-03-input-parsing-is-bounded).
+    if (replacesWholeDocument(patch)) {
+      throw new IllegalArgumentException(
+          "A JSON Patch operation on the document root (\"path\": \"\") is not allowed");
+    }
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -5140,12 +5406,19 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // The patched copy carries the stored impersonatedBy. Replace it (null for a regular user)
     // before prepare, so validation sees who makes this change rather than who made the last one.
     updated.setImpersonatedBy(impersonatedBy);
+    updated.setLifeCycle(
+        LifeCycles.withoutPlaceholderTimestamps(updated.getLifeCycle(), original.getLifeCycle()));
 
     try (var ignored = phase("patchPrepareInternal")) {
       prepareInternal(updated, true);
     }
+    final T ruleFacts;
+    try (var ignored = phase("patchInheritance")) {
+      ruleFacts = withInheritedOwnersAndDomains(updated);
+      keepInheritedDomainsWhenNoneOwn(updated, ruleFacts);
+    }
     try (var ignored = phase("patchRuleEvaluation")) {
-      RuleEngine.getInstance().evaluateUpdate(original, updated);
+      RuleEngine.getInstance().evaluateUpdate(original, ruleFacts);
     }
 
     // Validate and populate owners
@@ -5161,10 +5434,25 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       validatedDomains = getValidatedDomains(updated.getDomains());
     }
     updated.setDomains(validatedDomains);
+    String patchedName = updated.getName();
     try (var ignored = phase("patchRestoreAttributes")) {
       restorePatchAttributes(original, updated);
     }
+    if (!Objects.equals(patchedName, updated.getName())) {
+      // A rejected rename: prepareInternal derived child FQNs (e.g. columns) from the patched name.
+      // Derive them again from the restored name; the entity keeps its stored FQN.
+      setFullyQualifiedName(updated);
+      updated.setFullyQualifiedName(original.getFullyQualifiedName());
+    }
     return updated;
+  }
+
+  private static boolean replacesWholeDocument(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .anyMatch(
+            operation ->
+                operation.getValueType() == JsonValue.ValueType.OBJECT
+                    && "".equals(operation.asJsonObject().getString("path", null)));
   }
 
   private Optional<StagedChange> admitOrVerify(
@@ -5419,6 +5707,33 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return DeleteLifecycle.NOOP;
   }
 
+  /**
+   * Captures cleanup inputs before hard deletion removes relationships. The returned action runs
+   * after the owning row deletion succeeds, or after an enclosing transaction commits.
+   */
+  protected Runnable preparePostDeleteCleanup(List<T> entities) {
+    return () -> {};
+  }
+
+  /**
+   * This repository's post-delete cleanup and every lifecycle handler's, both captured while the
+   * entities' rows still exist. The handlers' cleanup runs even when the repository's fails. Call it
+   * before removing references and queue the result with {@link PostCommitActionQueue#runOrDefer}
+   * (ADR:2026-11-09-lifecycle-handlers-prepare-a-hard-delete-before-its-rows-are-removed).
+   */
+  private Runnable prepareHardDeleteCleanup(List<T> entities) {
+    Runnable repositoryCleanup = preparePostDeleteCleanup(entities);
+    Runnable handlerCleanup =
+        EntityLifecycleEventDispatcher.getInstance().prepareHardDelete(entities);
+    return () -> {
+      try {
+        repositoryCleanup.run();
+      } finally {
+        handlerCleanup.run();
+      }
+    };
+  }
+
   protected void postDelete(T entity, boolean hardDelete) {
     // A bulk hard-delete cascade cancels the change requests of each chunk in one query; an entity
     // without an id was never stored, so it has none.
@@ -5431,9 +5746,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
     // Both hard and soft delete change the count of non-deleted entities returned by listings.
     ListCountCache.invalidate(entityType);
+    getCountingParents(entity).forEach(this::refreshCountingParent);
   }
 
-  protected void postRestore(T entity) {}
+  protected void postRestore(T entity) {
+    getCountingParents(entity).forEach(this::refreshCountingParent);
+  }
+
+  /** Checked by the restore endpoint only; upserts and cascades that restore do not call it. */
+  public void validateRestore(UUID id) {}
 
   @FunctionalInterface
   protected interface DeleteLifecycle extends AutoCloseable {
@@ -5620,7 +5941,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           // need to walk HAS to discover linked entities. Mirrors bulkHardDeleteSubtree
           // ordering for direct-entity hard delete.
           hardDeleteAdditionalChildren(original.getId(), deletedBy);
+          Runnable postDeleteCleanup = prepareHardDeleteCleanup(List.of(updated));
           cleanup(updated);
+          PostCommitActionQueue.runOrDefer(postDeleteCleanup);
           changeType = ENTITY_DELETED;
         }
         LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
@@ -5815,6 +6138,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   /** Returns the holders whose custom-property values referenced the deleted entity. */
   private Set<UUID> cleanupFlushBody(String deletedBy, T entityInterface) {
+    lockRowsForDelete(List.of(entityInterface));
+
     // Perform Entity Specific Cleanup
     entitySpecificCleanup(deletedBy, entityInterface);
 
@@ -5839,11 +6164,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     if (shouldCleanupFqnDependents()) {
       daoCollection
           .fieldRelationshipDAO()
-          .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
-      daoCollection
-          .tagUsageDAO()
-          .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-      daoCollection.tagUsageDAO().deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
+          .deleteAllByPrefix(entityInterface.getFullyQualifiedName(), entityType);
+      if (supportsTags) {
+        daoCollection
+            .tagUsageDAO()
+            .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
+      }
     }
     // Delete all the usage data
     daoCollection.usageDAO().delete(id);
@@ -5899,8 +6225,22 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   protected void entitySpecificCleanup(T entityInterface) {}
 
+  /**
+   * Runs first in a hard delete's cleanup transaction, single or bulk, before the relationship
+   * sweep. A repository whose rows writers share-lock before linking to them takes the delete's
+   * row locks here, so the sweep cannot run ahead of a writer's uncommitted edge.
+   */
+  protected void lockRowsForDelete(List<T> entities) {}
+
+  /**
+   * Whether a hard delete removes the FQN-keyed rows under this entity: its field relationships,
+   * and for a taggable type the tag labels of it and its nested parts. Those rows are keyed by FQN
+   * alone, which is unique only within a type, so only types that carry such rows run the delete,
+   * and tag labels, whose table records no type, are removed only for taggable types
+   * (ADR:2026-11-03-a-hard-delete-removes-only-rows-of-the-deleted-entity).
+   */
   protected boolean shouldCleanupFqnDependents() {
-    return true;
+    return supportsTags;
   }
 
   /**
@@ -6052,6 +6392,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected T createNewEntity(T entity) {
+    evaluateRulesDeferredUntilInherited(entity);
     setCreationAudit(entity);
     createNewEntityFlush(entity);
     try (var ignored = phase("createPostCreate")) {
@@ -6367,6 +6708,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   private List<T> createManyEntities(List<T> entities) {
+    entities.forEach(this::evaluateRulesDeferredUntilInherited);
     entities.forEach(this::setCreationAudit);
     createManyEntitiesFlush(entities);
     try (var ignored = phase("postCreate")) {
@@ -6494,12 +6836,105 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return node;
   }
 
-  protected String serializeForStorage(T entity) {
-    return JsonStorageUtils.sanitizeNulCharacters(storageJsonNode(entity).toString());
+  /** Applies entity-specific preparation to ordinary, conditional, and bulk storage writes. */
+  protected T prepareForStorage(T entity) {
+    return entity;
   }
 
-  protected String serializeForVersionHistory(T entity) {
-    return JsonUtils.pojoToJson(entity);
+  protected boolean isStoragePreparationSideEffecting() {
+    return false;
+  }
+
+  protected String serializeForStorage(T entity) {
+    return JsonStorageUtils.sanitizeNulCharacters(
+        storageJsonNode(prepareForStorage(entity)).toString());
+  }
+
+  /** Fields of this entity type that no version shows, besides the ones its schema masks. */
+  protected List<String> getFieldsHiddenFromHistory() {
+    return Collections.emptyList();
+  }
+
+  /** Stores each entity as the version it was before an update. The only writer of versions. */
+  protected final void storeVersions(final List<T> originals) {
+    storeVersions(versionRows(originals));
+  }
+
+  /**
+   * The rows {@link #storeVersions(List)} writes, column by column. Only {@link #versionRows} builds
+   * them, so every stored version goes through {@link #serializeForVersionHistory}.
+   */
+  private record VersionRows(List<UUID> ids, List<String> extensions, List<String> jsons) {}
+
+  /** Serializes the versions ahead of the write, so a caller can keep that work out of its transaction. */
+  private VersionRows versionRows(final List<T> originals) {
+    final List<UUID> ids = new ArrayList<>(originals.size());
+    final List<String> extensions = new ArrayList<>(originals.size());
+    final List<String> jsons = new ArrayList<>(originals.size());
+    for (T original : originals) {
+      ids.add(original.getId());
+      extensions.add(EntityUtil.getVersionExtension(entityType, original.getVersion()));
+      jsons.add(serializeForVersionHistory(original));
+    }
+    return new VersionRows(ids, extensions, jsons);
+  }
+
+  private void storeVersions(final VersionRows rows) {
+    if (!rows.ids().isEmpty()) {
+      daoCollection
+          .entityExtensionDAO()
+          .insertMany(rows.ids(), rows.extensions(), entityType, rows.jsons());
+    }
+  }
+
+  /** The copy of an entity a version stores, before the fields no version shows leave it. */
+  protected T prepareForVersionHistory(final T entity) {
+    return entity;
+  }
+
+  final String serializeForVersionHistory(final T entity) {
+    return withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(prepareForVersionHistory(entity)));
+  }
+
+  /**
+   * Fields no version of this entity shows: the ones its schema marks secret as a whole, and the
+   * ones its repository hides. Versions are stored without them, and every read of a version or of
+   * the entity history leaves them out, older rows included. A field that only holds secrets inside
+   * it, such as a service connection, stays; its resource masks those secrets for each caller.
+   */
+  private List<String> fieldsHiddenFromHistory() {
+    final List<String> hidden = new ArrayList<>(MaskedFields.wholeFieldsOf(entityClass));
+    hidden.addAll(getFieldsHiddenFromHistory());
+    return hidden;
+  }
+
+  private String withoutFieldsHiddenFromHistory(final String versionJson) {
+    final List<String> hidden = fieldsHiddenFromHistory();
+    final ObjectNode node =
+        nullOrEmpty(hidden) ? null : (ObjectNode) JsonUtils.readTree(versionJson);
+    return node == null ? versionJson : node.remove(hidden).toString();
+  }
+
+  private T withoutFieldsHiddenFromHistory(final T entity) {
+    return nullOrEmpty(fieldsHiddenFromHistory())
+        ? entity
+        : JsonUtils.readValue(
+            withoutFieldsHiddenFromHistory(JsonUtils.pojoToJson(entity)), entityClass);
+  }
+
+  // A stored version has no hidden fields, so one read back to merge a session's edits takes the
+  // current values: otherwise the merged change would report them as changed.
+  private String withHiddenFieldsOf(final T current, final String versionJson) {
+    final List<String> hidden = fieldsHiddenFromHistory();
+    final boolean shouldRestore = versionJson != null && !nullOrEmpty(hidden);
+    final ObjectNode version = shouldRestore ? (ObjectNode) JsonUtils.readTree(versionJson) : null;
+    if (shouldRestore) {
+      final JsonNode currentNode = JsonUtils.valueToTree(current);
+      hidden.stream()
+          .filter(currentNode::hasNonNull)
+          .forEach(field -> version.set(field, currentNode.get(field)));
+    }
+    return shouldRestore ? version.toString() : versionJson;
   }
 
   @Transaction
@@ -6512,8 +6947,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   }
 
   protected void store(T entity, boolean update, Double expectedVersion) {
-    String json = serializeForStorage(entity);
     EntityDAO<T> writeDAO = entityDAOForWrite();
+    if (update && expectedVersion != null && isStoragePreparationSideEffecting()) {
+      lockAndValidateVersion(writeDAO, entity, expectedVersion);
+    }
+    String json = serializeForStorage(entity);
 
     if (update) {
       if (expectedVersion != null) {
@@ -6549,6 +6987,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           entity.getFullyQualifiedName(),
           json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
+    }
+  }
+
+  private void lockAndValidateVersion(EntityDAO<T> writeDAO, T entity, Double expectedVersion) {
+    // Secret preparation can mutate an external vault before the conditional SQL update.
+    String currentVersion =
+        writeDAO.findVersionByIdForUpdate(writeDAO.getTableName(), entity.getId());
+    if (!expectedVersion.toString().equals(currentVersion)) {
+      throw new PreconditionFailedException(
+          "The entity has been modified by another user. Please refresh and retry.");
     }
   }
 
@@ -7790,8 +8238,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // a clean 404 instead of running children / hooks against a non-existent id and
     // potentially surfacing a 500 from a hook side-effect.
     T restoredEntity = find(id, ALL);
-    return executeEntityWrite(
-        List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity));
+    return RdfUpdater.restoring(
+        () ->
+            executeEntityWrite(
+                List.of(restoredEntity), () -> restoreLoadedEntity(updatedBy, id, restoredEntity)));
   }
 
   private PutResponse<T> restoreLoadedEntity(String updatedBy, UUID id, T restoredEntity) {
@@ -7820,6 +8270,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setUpdatedAt(System.currentTimeMillis());
       EntityUpdater updater = getUpdater(original, updated, Operation.PUT, null);
       updater.update();
+      RdfUpdater.recordRestored(List.of(updated));
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
@@ -7857,8 +8308,14 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       idsByType.computeIfAbsent(record.getType(), k -> new ArrayList<>()).add(record.getId());
     }
     for (var entry : idsByType.entrySet()) {
-      EntityRepository<?> repo = Entity.getEntityRepository(entry.getKey());
-      repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+      // Time-series children (e.g., TestCase --PARENT_OF--> testCaseResolutionStatus) carry no
+      // deleted flag and have no repository in ENTITY_REPOSITORY_MAP — skip them, mirroring
+      // dispatchToContainedChildren, instead of failing the whole subtree restore.
+      String childType = entry.getKey();
+      if (!Entity.isTimeSeriesEntity(childType)) {
+        EntityRepository<?> repo = Entity.getEntityRepository(childType);
+        repo.bulkRestoreSubtree(entry.getValue(), updatedBy);
+      }
     }
   }
 
@@ -7935,6 +8392,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       List<EntityUpdater> changed = filterChanged(updaters);
       if (!changed.isEmpty()) {
         persistBulkUpdaters(changed, "bulkRestore");
+        RdfUpdater.recordRestored(changed.stream().map(EntityUpdater::getUpdated).toList());
         ListCountCache.invalidate(entityType);
       }
     }
@@ -8258,7 +8716,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         // bulkCleanupReferences skips the FQN-keyed satellite deletes for cascade-covered types
         // (see descendantsCoveredByAncestorCascade) and batches usage by id-set. Children were
         // already deleted by the recursion above, so this transaction is bounded to this chunk.
+        Runnable postDeleteCleanup = prepareHardDeleteCleanup(entities);
         bulkDeleteReferencesAndRows(entities);
+        PostCommitActionQueue.runOrDefer(postDeleteCleanup);
         bulkInvalidate(entities);
         // When an ancestor's deleteFromSearch cascade already removes these docs in a single
         // delete-by-query (SearchRepository.deleteOrUpdateChildren wipes child indexes by
@@ -8349,6 +8809,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     AtomicReference<Set<UUID>> holders = new AtomicReference<>(Set.of());
     flushInOneTransaction(
         () -> {
+          lockRowsForDelete(entities);
           bulkCleanupReferences(entities);
           bulkDeleteEntityRows(entities);
           // After the entity rows' X locks, like the single-entity cleanup.
@@ -8418,9 +8879,10 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
         for (T entity : entities) {
           String fqn = entity.getFullyQualifiedName();
-          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn);
-          daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
-          daoCollection.tagUsageDAO().deleteTagLabelsByFqn(fqn);
+          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn, entityType);
+          if (supportsTags) {
+            daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
+          }
         }
       }
     }
@@ -8598,7 +9060,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * charts attached to dashboards) and entity types without a {@code parent.id} field in
    * their ES mapping would otherwise drift — DB shows restored / soft-deleted, but ES still
    * reflects the previous state. {@code SearchIndexHandler.onEntitiesUpdated} batches the
-   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side.
+   * writes via {@code updateEntitiesIndex}, so this is still bulk on the ES side. The RDF graph
+   * gets the same descendants for the same reason: no cascade hook reaches it otherwise.
    */
   private void persistBulkUpdaters(List<EntityUpdater> changed, String phasePrefix) {
     writeBulkVersionHistory(changed, phasePrefix);
@@ -8613,6 +9076,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       hydrateForSearchIndex(changedEntities);
       EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(changedEntities, null, null);
     }
+    RdfUpdater.updateEntities(changedEntities);
     // Cascade children of a recursive delete/restore intentionally do NOT emit per-entity change
     // events. A single change event is recorded for the user-targeted root entity (see the delete
     // and restore paths in EntityResource). This keeps deleting a service with 100k descendants to
@@ -8637,23 +9101,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   private void writeBulkVersionHistory(List<EntityUpdater> changed, String phasePrefix) {
     try (var ignored = phase(phasePrefix + "VersionHistory")) {
-      List<UUID> historyIds = new ArrayList<>();
-      List<String> historyExtensions = new ArrayList<>();
-      List<String> historyJsons = new ArrayList<>();
-      for (EntityUpdater u : changed) {
-        if (u.isVersionChanged()) {
-          historyIds.add(u.getOriginal().getId());
-          historyExtensions.add(
-              EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
-          historyJsons.add(serializeForVersionHistory(u.getOriginal()));
-        }
-      }
-      if (!historyIds.isEmpty()) {
-        daoCollection
-            .entityExtensionDAO()
-            .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-      }
+      storeVersions(originalsOfNewVersions(changed));
     }
+  }
+
+  private List<T> originalsOfNewVersions(final List<EntityUpdater> updaters) {
+    return updaters.stream()
+        .filter(EntityUpdater::isVersionChanged)
+        .map(EntityUpdater::getOriginal)
+        .toList();
   }
 
   public final void addRelationship(
@@ -9637,7 +10093,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   /** The user a write records as its author; {@code admin} is the system, an unknown name a user. */
   protected static User authorOf(final String userName) {
     final User author =
-        userName.equalsIgnoreCase(ADMIN_USER_NAME)
+        SecurityUtil.sameIdentifier(userName, ADMIN_USER_NAME)
             ? new User().withName(ADMIN_USER_NAME).withIsAdmin(true)
             : findEntityByNameOrNull(USER, userName, ALL);
     return author == null ? new User().withName(userName).withIsAdmin(false) : author;
@@ -9745,14 +10201,73 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  private static final Set<Edit.Kind> CSV_IMPORT_KINDS =
+      Set.of(Edit.Kind.IMPORT_UPDATE, Edit.Kind.IMPORT_ROW);
+
   /**
-   * Admits a write of {@code original}, loaded with the fields policies read: its domain move is
-   * authorized, then an approval workflow may hold it.
+   * Admits a write of {@code original}, loaded with the fields policies read: its domain move and
+   * the repository's own write checks are authorized, then an approval workflow may hold it.
    */
   public final Optional<StagedChange> admit(
       final T original, final T updated, final ChangeActor actor, final Edit edit) {
     authorizeDomainWrite(original, updated, actor, edit.kind());
+    if (!CSV_IMPORT_KINDS.contains(edit.kind())) {
+      authorizeUserWrite(original, updated, actor, edit);
+    }
     return ApprovalGate.admit(original, updated, actor.userName(), actor.impersonatedBy(), edit);
+  }
+
+  /**
+   * The checks a repository adds to a user's write of one of its entities, on top of the request's
+   * policy check and the domain move check. {@code original} is the entity as stored, with the
+   * fields the write loads, and {@code edit} the kind of write; both are null for a create. {@code
+   * updated} is the prepared entity the write stores. {@code createInternal}, the create branch of
+   * {@code createOrUpdate}, {@code admit} (PUT and PATCH), the patch preview and bulk PUT run it;
+   * {@code createMany} does not, and a CSV row is checked by the entity's {@code EntityCsv}
+   * instead, because a dry run checks rows against earlier rows that are not stored. A system write
+   * is not checked. See ADR:2026-11-03-metric-writes-run-the-same-checks-through-rest-and-mcp.
+   */
+  protected void authorizeWrite(
+      final T original, final T updated, final ChangeActor actor, final Edit edit) {}
+
+  private void authorizeUserWrite(
+      final T original, final T updated, final ChangeActor actor, final Edit edit) {
+    if (!actor.system()) {
+      authorizeWrite(original, updated, actor, edit);
+    }
+  }
+
+  /**
+   * The checks a repository adds to a patch before the patch is applied. Applying it reads {@code
+   * original}, the entity as stored with the patch fields, so a check on what an operation may
+   * read, which a failed {@code test} or a JSON-P error would otherwise answer, runs here rather
+   * than in {@link #authorizeWrite}. PATCH, bulk edits and the patch preview run it for every
+   * actor, so a refusal of the patch itself holds for every account; a permission check skips
+   * {@code actor.system()}, as {@code authorizeWrite} does, since REST records {@code admin} as
+   * one. The publishing of an approved change is not checked. See
+   * ADR:2026-11-03-metric-hierarchy-and-membership-patches-are-authorized-before-they-apply.
+   */
+  protected void authorizePatch(final T original, final JsonPatch patch, final ChangeActor actor) {}
+
+  private void authorizePatchBeforeApply(
+      final T original, final JsonPatch patch, final ChangeActor actor) {
+    // preparePatched refuses a document-root patch with a 400, which must come before any check.
+    if (!replacesWholeDocument(patch)) {
+      authorizePatch(original, patch, actor);
+    }
+  }
+
+  /** Authorizes the author of a write; without a registered authorizer the write is refused. */
+  protected static void authorizeAuthor(
+      final ChangeActor actor,
+      final OperationContext operation,
+      final ResourceContextInterface resource) {
+    final Authorizer authorizer = Entity.getAuthorizer();
+    if (authorizer == null) {
+      throw new IllegalStateException(
+          "No authorizer is registered to check the write by " + actor.userName());
+    }
+    authorizer.authorizeActor(actor, operation, resource);
   }
 
   /**
@@ -9865,6 +10380,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
   @Transaction
   protected void storeDataProducts(T entity, List<EntityReference> dataProducts) {
     if (supportsDataProducts && !nullOrEmpty(dataProducts)) {
+      lockDataProducts(dataProducts);
       // Batch add all data product relationships
       LOG.info(
           "Adding {} data products for entity {}:{}",
@@ -10060,7 +10576,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
             .withCurrentVersion(updated.getVersion())
             .withPreviousVersion(changeDescription.getPreviousVersion())
             .withChangeDescription(changeDescription)
-            .withEntity(updated);
+            .withEntity(JsonUtils.pojoToMaskedJson(updated));
 
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
     LOG.debug(
@@ -10250,6 +10766,37 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  /**
+   * Share-locks the data products an entity is about to be linked to, inside the writer's
+   * transaction. A concurrent hard delete of one of them, which locks the row before it sweeps the
+   * data product's relationships, then either waits for this commit and removes the new edge, or
+   * commits first and this write fails; either way no edge outlives its data product. {@link
+   * #validateDataProducts} can be answered from the cache, so it cannot give that guarantee.
+   */
+  private void lockDataProducts(List<EntityReference> dataProducts) {
+    if (!nullOrEmpty(dataProducts)) {
+      EntityDAO<?> dataProductDao = daoCollection.dataProductDAO();
+      List<String> ids =
+          dataProducts.stream()
+              .map(dataProduct -> dataProduct.getId().toString())
+              .distinct()
+              .toList();
+      Set<String> existing =
+          new HashSet<>(
+              EntityDAO.queryInChunks(
+                  ids,
+                  chunk -> dataProductDao.lockExistingIds(dataProductDao.getTableName(), chunk)));
+      ids.stream()
+          .filter(id -> !existing.contains(id))
+          .findFirst()
+          .ifPresent(
+              id -> {
+                throw EntityNotFoundException.byMessage(
+                    CatalogExceptionMessage.entityNotFound(DATA_PRODUCT, id));
+              });
+    }
+  }
+
   public static <A, B, R, ID> List<R> diffLists(
       List<A> l1, List<B> l2, Function<A, ID> aID, Function<B, ID> bID, Function<A, R> r) {
 
@@ -10326,6 +10873,37 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
 
   public List<TagLabel> getAllTags(EntityInterface<?> entity) {
     return entity.getTags();
+  }
+
+  /**
+   * The fields {@link #getAllTags} needs loaded: the entity's tags and, in repositories whose inline
+   * children (columns, tasks, schema fields) carry tags, those children
+   * (ADR:2026-11-03-tag-conditions-see-the-tags-of-inline-children).
+   */
+  public Fields getPolicyTagFields() {
+    return supportsTags ? getFields(FIELD_TAGS) : Fields.EMPTY_FIELDS;
+  }
+
+  /** Whether a tag condition has to read tags on inline children as well as on the entity. */
+  public final boolean hasNestedPolicyTags() {
+    return getPolicyTagFields().getFieldList().size() > 1;
+  }
+
+  /**
+   * Every tag a policy condition reads for each of {@code entities}, as {@link #getAllTags} merges
+   * them, inherited ones included. Read from copies loaded with {@link #getPolicyTagFields}, so the
+   * entities themselves keep the projection they were loaded with.
+   */
+  public Map<UUID, List<TagLabel>> loadPolicyTags(List<T> entities) {
+    List<UUID> ids =
+        entities.stream().map(EntityInterface::getId).filter(Objects::nonNull).distinct().toList();
+    Map<UUID, List<TagLabel>> tags = new HashMap<>();
+    if (!ids.isEmpty()) {
+      for (T copy : get(null, ids, getPolicyTagFields(), ALL)) {
+        tags.put(copy.getId(), listOrEmpty(getAllTags(copy)));
+      }
+    }
+    return tags;
   }
 
   protected void validateColumnTags(List<Column> columns) {
@@ -10955,9 +11533,21 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateInternal();
 
         // Finally, go from previous to the latest updated entity to consolidate changes
+        deferMoveCheckAgainstRequestOriginal();
         original = previous;
         entityChanged = false;
       }
+    }
+
+    /**
+     * After a consolidation, postUpdate compares the pre-session version with the update, which
+     * misses a counting parent this request moved the entity away from. So the move is also checked
+     * against the request's own original.
+     */
+    private void deferMoveCheckAgainstRequestOriginal() {
+      T requestOriginal = original;
+      T requestUpdated = updated;
+      deferReactOperation(() -> refreshCountingParentsOnMove(requestOriginal, requestUpdated));
     }
 
     @Transaction
@@ -10982,6 +11572,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         updateInternalForImport();
 
         // Finally, go from previous to the latest updated entity to consolidate changes
+        deferMoveCheckAgainstRequestOriginal();
         original = previous;
         entityChanged = false;
       }
@@ -11550,7 +12141,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               removedDomains,
               entityReferenceMatch)) {
         updateDomains(original, origDomains, writtenDomains);
-        updated.setDomains(writtenDomains);
+        // Inherited domains are not written, but an entity without its own still holds them.
+        updated.setDomains(
+            writtenDomains.isEmpty() ? inheritedOnly(updated.getDomains()) : writtenDomains);
       } else {
         updated.setDomains(original.getDomains());
       }
@@ -11617,7 +12210,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         return;
       }
 
-      if (nullOrEmpty(updated.getDomains()) && !nullOrEmpty(updatedDataProducts)) {
+      if (!nullOrEmpty(updatedDataProducts) && belongsToNoDomain(updated)) {
         throw new IllegalArgumentException(
             "Domain cannot be empty when data products are provided.");
       }
@@ -11642,6 +12235,13 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               entityReferenceListMatch)) {
         updatedDataProducts = listOrEmpty(updated.getDataProducts());
       }
+      lockDataProducts(
+          diffLists(
+              updatedDataProducts,
+              origDataProducts,
+              EntityReference::getId,
+              EntityReference::getId,
+              Function.identity()));
       updateFromRelationships(
           FIELD_DATA_PRODUCTS,
           DATA_PRODUCT,
@@ -11698,6 +12298,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       return reference == null || Boolean.TRUE.equals(reference.getInherited()) ? null : reference;
     }
 
+    private static List<EntityReference> inheritedOnly(List<EntityReference> references) {
+      return listOrEmpty(references).stream()
+          .filter(r -> Boolean.TRUE.equals(r.getInherited()))
+          .collect(Collectors.toList());
+    }
+
     private static List<EntityReference> getEntityReferences(List<EntityReference> references) {
       // Don't use the inherited entity references in update
       return listOrEmpty(references).stream()
@@ -11751,7 +12357,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         if (origLifeCycle.getCreated() != null
             && (updatedLifeCycle.getCreated() == null
                 || updatedLifeCycle.getCreated().getTimestamp()
-                    < origLifeCycle.getCreated().getTimestamp())) {
+                    > origLifeCycle.getCreated().getTimestamp())) {
           updatedLifeCycle.setCreated(origLifeCycle.getCreated());
         }
 
@@ -12230,6 +12836,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           revertToPreviousVersion();
         }
       }
+      repointTasksAndWorkflowInstancesIfFqnChanged();
+    }
+
+    /**
+     * {@code originalFqn} is the FQN the entity had when this request started, which is what its
+     * tasks and workflow instances still point at; {@code original} may already be the rebased
+     * pre-session version by now. Nothing moves unless the update was stored: a dropped rename
+     * leaves the FQN in the database unchanged.
+     */
+    private void repointTasksAndWorkflowInstancesIfFqnChanged() {
+      String newFqn = updated.getFullyQualifiedName();
+      if (entityStored && originalFqn != null && newFqn != null && !originalFqn.equals(newFqn)) {
+        repointTasksAndWorkflowInstancesForFqnChange(originalFqn, newFqn);
+      }
     }
 
     /**
@@ -12296,14 +12916,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           revertToPreviousVersion();
         }
       }
+      repointTasksAndWorkflowInstancesIfFqnChanged();
     }
 
     private void storeEntityHistory() {
-      String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
-      daoCollection
-          .entityExtensionDAO()
-          .insert(
-              original.getId(), extensionName, entityType, serializeForVersionHistory(original));
+      storeVersions(List.of(original));
     }
 
     private void removeEntityHistory(Double version) {
@@ -12548,7 +13165,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
           .orElse(null);
     }
 
-    private T getPreviousVersion(T original) {
+    protected T getPreviousVersion(T original) {
       String extensionName =
           EntityUtil.getVersionExtension(
               entityType, original.getChangeDescription().getPreviousVersion());
@@ -12559,7 +13176,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       // The JSON already contains the correct historical state of all fields including experts.
       // Calling setFieldsInternal would fetch current relationships from DB which is wrong.
       // The version history JSON is a complete snapshot of the entity at that point in time.
-      return JsonUtils.readValue(json, entityClass);
+      return JsonUtils.readValue(withHiddenFieldsOf(original, json), entityClass);
     }
   }
 
@@ -12662,8 +13279,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
               stored.getFullyQualifiedName(), updated.getFullyQualifiedName());
         }
 
-        String columnPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String columnPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateColumnDescription(columnPrefix, stored, updated);
         updateColumnDisplayName(columnPrefix, stored, updated);
         updateColumnDataLength(columnPrefix, stored, updated);
@@ -13590,7 +14206,12 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * tag policy evaluates against tags fetched once for the whole request rather than once per entity.
    */
   public void batchLoadTags(List<T> entities) {
-    fetchAndSetTags(entities, getFields(FIELD_TAGS));
+    Fields tagFields = getFields(FIELD_TAGS);
+    fetchAndSetTags(entities, tagFields);
+    // Inherited tags (from a service, database, ...) must be visible to a tag-based deny rule in
+    // the
+    // bulk authorization path too, just as the single-entity ResourceContext loads them.
+    setInheritedFields(entities, tagFields);
   }
 
   private void fetchAndSetDataProducts(List<T> entities, Fields fields) {
@@ -14439,11 +15060,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     updated.setUpdatedBy(updatedBy);
     updated.setUpdatedAt(System.currentTimeMillis());
 
-    // Store history of the previous version
-    String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
-    daoCollection
-        .entityExtensionDAO()
-        .insert(original.getId(), extensionName, entityType, serializeForVersionHistory(original));
+    storeVersions(List.of(original));
 
     // Directly update the entity in the database without calling other versioning methods
     dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));
@@ -14452,6 +15069,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Create a ChangeEvent for the feed
     ChangeEvent changeEvent =
         getChangeEvent(updated, change, entityType, change.getPreviousVersion());
+    changeEvent.setEntity(JsonUtils.pojoToMaskedJson(updated));
     daoCollection.changeEventDAO().insert(JsonUtils.pojoToJson(changeEvent));
   }
 
@@ -14537,11 +15155,15 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     LOG.info(
         "Submitting async bulk operation with jobId: {} for {} entities", jobId, entities.size());
 
+    // Policy conditions such as isImpersonated() read the impersonation from the thread, so the
+    // job carries the request's into the write checks it runs and clears it when it ends.
+    final String impersonatedBy = ImpersonationContext.getImpersonatedBy();
     CompletableFuture<BulkOperationResult> job;
     try {
       job =
           CompletableFuture.supplyAsync(
               () -> {
+                ImpersonationContext.setImpersonatedBy(impersonatedBy);
                 try {
                   return bulkCreateOrUpdateEntitiesSequential(
                       uriInfo, entities, userName, existingByFqn, overrideMetadata);
@@ -14552,6 +15174,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                   errorResult.setNumberOfRowsFailed(entities.size());
                   errorResult.setNumberOfRowsPassed(0);
                   return errorResult;
+                } finally {
+                  ImpersonationContext.clear();
                 }
               },
               BulkExecutor.getInstance().getExecutor());
@@ -14736,9 +15360,11 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
                   : hydratedOriginal;
           entity.setUpdatedBy(userName);
           entity.setUpdatedAt(System.currentTimeMillis());
-          authorizeDomainWrite(
-              original, entity, ChangeActor.recorded(userName, null), Edit.Kind.PUT);
+          final ChangeActor actor = ChangeActor.recorded(userName, null);
+          authorizeDomainWrite(original, entity, actor, Edit.Kind.PUT);
+          authorizeUserWrite(original, entity, actor, Edit.bulkPut(overrideMetadata));
 
+          evaluatePutRulesDeferredUntilInherited(original, entity);
           if (Boolean.TRUE.equals(original.getDeleted())) {
             restoreEntity(entity.getUpdatedBy(), original.getId());
           }
@@ -14773,23 +15399,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     // Batch DB writes
     try {
       try (var ignored = phase("batchDbWrites")) {
-        // Batch version history inserts
-        List<UUID> historyIds = new ArrayList<>();
-        List<String> historyExtensions = new ArrayList<>();
-        List<String> historyJsons = new ArrayList<>();
-        for (EntityUpdater updater : changedUpdaters) {
-          if (updater.isVersionChanged()) {
-            historyIds.add(updater.getOriginal().getId());
-            historyExtensions.add(
-                EntityUtil.getVersionExtension(entityType, updater.getOriginal().getVersion()));
-            historyJsons.add(JsonUtils.pojoToJson(updater.getOriginal()));
-          }
-        }
-        if (!historyIds.isEmpty()) {
-          daoCollection
-              .entityExtensionDAO()
-              .insertMany(historyIds, historyExtensions, entityType, historyJsons);
-        }
+        storeVersions(originalsOfNewVersions(changedUpdaters));
 
         // Batch entity row updates
         List<T> entitiesToStore = new ArrayList<>();
@@ -14917,6 +15527,9 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         newEntities.add(entity);
       }
     }
+
+    // A refused create fails alone, with the 403 a refused update in this request gets.
+    newEntities.removeIf(entity -> refusesBulkCreate(entity, userName, failedRequests));
 
     // Batch create new entities
     if (!newEntities.isEmpty()) {
@@ -15124,6 +15737,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return staged;
   }
 
+  private boolean refusesBulkCreate(
+      final T entity, final String userName, final List<BulkResponse> failedRequests) {
+    boolean refused = false;
+    try {
+      authorizeUserWrite(null, entity, ChangeActor.recorded(userName, null), null);
+    } catch (AuthorizationException e) {
+      failedRequests.add(failedBulkItem(entity, Status.FORBIDDEN.getStatusCode(), e.getMessage()));
+      refused = true;
+    } catch (EntityNotFoundException | IllegalArgumentException e) {
+      // A parent or group deleted since the request was prepared fails this item, not the batch.
+      failedRequests.add(
+          failedBulkItem(entity, Status.BAD_REQUEST.getStatusCode(), e.getMessage()));
+      refused = true;
+    }
+    return refused;
+  }
+
   private BulkResponse failedBulkItem(T entity, int status, String message) {
     return new BulkResponse()
         .withRequest(entity.getFullyQualifiedName())
@@ -15205,6 +15835,16 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     }
   }
 
+  /**
+   * The entity as a change event this repository writes records it. A response filter records the
+   * change event of a synchronous write from the response, which a resource may mask; an
+   * asynchronous or bulk write has no response, so a repository whose entity carries values that
+   * must not be served returns the copy its responses would show.
+   */
+  protected T forChangeEvent(T entity) {
+    return entity;
+  }
+
   private void createChangeEventForBulkOperation(T entity, EventType eventType, String userName) {
     buildChangeEventJsonForBulkOperation(entity, eventType, userName)
         .ifPresent(this::insertChangeEvent);
@@ -15231,7 +15871,7 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       }
 
       ChangeEvent changeEvent =
-          ChangeEvents.createChangeEventForEntity(userName, eventType, entity);
+          ChangeEvents.createChangeEventForEntity(userName, eventType, forChangeEvent(entity));
 
       if (changeEvent.getEntity() != null) {
         Object entityObject = changeEvent.getEntity();
@@ -15306,18 +15946,20 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
    * hard-delete the stale entities.
    *
    * <p>FQNs are compared by hash so quoting or case differences between the connector-supplied and
-   * stored values never cause spurious deletes. An empty scope yields zero deletions - it is never
-   * interpreted as "everything is stale". Each delete runs in its own transaction so a single
-   * failure does not roll back the rest of the batch.
+   * stored values never cause spurious deletes. An empty {@code seenFqns} yields zero deletions
+   * unless the connector sets {@code allowEmptySeenFqns}, confirming its listing was complete
+   * (ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing).
+   * Each delete runs in its own transaction so a single failure does not roll back the rest of the
+   * batch.
    */
   public BulkOperationResult bulkDeleteStaleEntities(
       BulkDeleteStaleRequest request, String deletedBy) {
     validateScopeRequest(request.getScopeEntityType(), request.getScopeFqn());
-    if (nullOrEmpty(request.getSeenFqns())) {
-      // An empty seen-set cannot be distinguished from a connector run that crashed or discovered
-      // nothing, so it must never be interpreted as "every entity under the scope is stale" - that
-      // would silently delete the whole service/database. Treat it as zero deletions, mirroring the
-      // scope-not-found path.
+    if (isAmbiguousEmptySeenSet(request)) {
+      // An unconfirmed empty seen-set cannot be distinguished from a connector run that crashed or
+      // discovered nothing, so it must never be interpreted as "every entity under the scope is
+      // stale" - that would silently delete the whole service/database. Treat it as zero
+      // deletions, mirroring the scope-not-found path.
       LOG.warn(
           "deleteStale for scope {} '{}' received an empty seenFqns; treating as zero deletions "
               + "rather than marking the entire scope stale",
@@ -15364,12 +16006,18 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
     return buildStaleDeletionResult(dryRun, successRequests, failedRequests);
   }
 
+  private static boolean isAmbiguousEmptySeenSet(BulkDeleteStaleRequest request) {
+    return nullOrEmpty(request.getSeenFqns())
+        && !Boolean.TRUE.equals(request.getAllowEmptySeenFqns());
+  }
+
   /**
    * Rejects a malformed request before any work runs: {@code scopeFqn} and {@code scopeEntityType}
    * must be present and {@code scopeEntityType} must resolve to a registered entity type. These are
-   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} is handled
-   * separately in {@link #bulkDeleteStaleEntities} as a safe zero-deletion no-op rather than a 400,
-   * since it is a well-formed request whose intent is genuinely ambiguous.
+   * caller mistakes (typos, swapped fields) and fail with 400. An empty {@code seenFqns} without
+   * {@code allowEmptySeenFqns} is handled separately in {@link #bulkDeleteStaleEntities} as a safe
+   * zero-deletion no-op rather than a 400, since it is a well-formed request whose intent is
+   * genuinely ambiguous.
    */
   private void validateScopeRequest(String scopeEntityType, String scopeFqn) {
     if (nullOrEmpty(scopeFqn)) {

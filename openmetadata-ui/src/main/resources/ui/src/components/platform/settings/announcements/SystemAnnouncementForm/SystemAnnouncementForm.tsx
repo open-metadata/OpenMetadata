@@ -18,6 +18,7 @@ import {
   Input,
   Label,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { AnnouncementType } from '../../../../../generated/entity/feed/announcement';
@@ -33,6 +34,7 @@ import {
 import {
   ANNOUNCEMENT_TITLE_MAX_LENGTH,
   ANNOUNCEMENT_TITLE_MIN_LENGTH,
+  applyAnnouncementTypeChange,
   toAnnouncementTypeFields,
 } from '../../../../Modals/AnnouncementModal/announcementFormUtils';
 import { AnnouncementFormValues } from '../../../../Modals/AnnouncementModal/AnnouncementModal.interface';
@@ -57,6 +59,7 @@ const SystemAnnouncementForm = ({
   announcement,
   onCancel,
   onSaved,
+  centered,
 }: SystemAnnouncementFormProps) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -105,17 +108,16 @@ const SystemAnnouncementForm = ({
     onChange: (value: AnnouncementType) => void
   ) => {
     onChange(value);
-    // Leaving Custom drops its colour and name requirements, so their errors go too.
-    if (value !== AnnouncementType.Custom) {
-      form.clearErrors(['color', 'customTypeName']);
-    }
+    applyAnnouncementTypeChange(form, value);
   };
 
   return (
     <Box className="tw:h-full tw:min-h-0" direction="col">
       <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto">
         <Box
-          className="tw:w-full tw:max-w-[50%] tw:px-6 tw:pb-6"
+          className={classNames('tw:w-full tw:max-w-[50%] tw:px-6 tw:pb-6', {
+            'tw:mx-auto': centered,
+          })}
           direction="col"
           gap={6}>
           <HookForm

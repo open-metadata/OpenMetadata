@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -23,7 +24,6 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
-import { AlignRightIconButton } from '../../components/common/IconButtons/EditIconButton';
 import { GenericProvider } from '../../components/Customization/GenericProvider/GenericProvider';
 import { DataAssetsHeader } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component';
 import {
@@ -45,9 +45,6 @@ import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { FQN_SEPARATOR_CHAR } from '../../constants/char.constants';
 import { ROUTES } from '../../constants/constants';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
-import { mockTablePermission } from '../../constants/mockTourPermission.constants';
-import { OperationPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
-import { useTourProvider } from '../../context/TourProvider/TourProvider';
 import { ClientErrors } from '../../enums/Axios.enum';
 import {
   EntityTabs,
@@ -64,6 +61,10 @@ import { TagLabel } from '../../generated/type/tagLabel';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useCustomPages } from '../../hooks/useCustomPages';
+import {
+  permissionQueryKeys,
+  PERMISSION_STALE_TIME,
+} from '../../hooks/useEntityPermissions/permissionQueryKeys';
 import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../hooks/useFqn';
 import { useSub } from '../../hooks/usePubSub';
@@ -71,6 +72,7 @@ import { QueryVote } from '../../interface/entity/vote.interface';
 import { FeedCounts } from '../../interface/feed.interface';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
+import { getResourcePermission } from '../../rest/permissionAPI';
 import {
   tableQueryCountFn,
   tableQueryCountKey,
@@ -103,6 +105,11 @@ import {
 } from '../../utils/FeedUtilsPure';
 import { getPartialNameFromTableFQN } from '../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
+import { PERMISSION_POLICY } from '../../utils/permissionPolicy';
+import {
+  DEFAULT_ENTITY_PERMISSION,
+  getOperationPermissions,
+} from '../../utils/PermissionsUtils';
 import { addToRecentViewed } from '../../utils/RecentActivityUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import tableClassBase from '../../utils/TableClassBase';
@@ -121,6 +128,7 @@ import {
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { useTestCaseStore } from '../IncidentManager/IncidentManagerDetailPage/useTestCase.store';
+import TableLinkedConcepts from './TableLinkedConcepts';
 // The incidents API 403s without ViewTests/ViewAll, so skip it and report no incidents.
 const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
   canViewTests
@@ -139,23 +147,23 @@ const fetchOpenIncidents = (tableFqn: string, canViewTests: boolean) =>
     : Promise.resolve({ data: [], paging: { total: 0 } });
 
 // useQuery rather than a fetch effect plus a loading flag: isFetching is already true on
-// the render that starts the request, so the badge never flashes a placeholder 0. The tour's
-// table is mock data with no stored queries, so it is never counted.
-const useTableQueryCount = (tableId: string, isTourDataset: boolean) =>
+// the render that starts the request, so the badge never flashes a placeholder 0.
+const useTableQueryCount = (tableId: string, canListQueries: boolean) =>
   useQuery({
     queryKey: tableQueryCountKey(tableId),
     queryFn: tableQueryCountFn(tableId),
-    enabled: Boolean(tableId) && !isTourDataset,
+    enabled: Boolean(tableId) && canListQueries,
   });
 
+// The Queries tab shows only with Query view access that is allow or, per
+// PERMISSION_POLICY.tableQueriesTabConditionalAllow, conditionalAllow.
+const fetchQueryResourcePermission = async () =>
+  getOperationPermissions(
+    await getResourcePermission(ResourceEntity.QUERY),
+    PERMISSION_POLICY.tableQueriesTabConditionalAllow === 'attempt'
+  );
+
 const TableDetailsPageV1: React.FC = () => {
-  const {
-    isTourOpen,
-    activeTabForTourDatasetPage,
-    isTourPage,
-    tourMockDatasetData,
-  } = useTourProvider();
-  const isTourDataset = isTourOpen || isTourPage;
   const { currentUser } = useApplicationStore();
   const { setDqLineageData } = useTestCaseStore();
   const queryClient = useQueryClient();
@@ -191,21 +199,10 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   const {
-    permissions: fetchedTablePermissions,
+    permissions: tablePermissions,
     isLoading: isPermissionsLoading,
     error: permissionsError,
-  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn, {
-    enabled: !isTourDataset,
-  });
-  // Tour grants stay outside the real permission cache, but every derived flag must use the
-  // selected object so tab-level permission checks remain consistent with child props.
-  const tablePermissions = useMemo(
-    () =>
-      isTourDataset
-        ? (mockTablePermission as OperationPermission)
-        : fetchedTablePermissions,
-    [isTourDataset, fetchedTablePermissions]
-  );
+  } = useEntityPermissions(ResourceEntity.TABLE, tableFqn);
   const {
     canViewBasic: viewBasicPermission,
     canViewAll: viewAllPermission,
@@ -216,6 +213,19 @@ const TableDetailsPageV1: React.FC = () => {
     canViewUsage: viewUsagePermission,
     canViewTests: viewTestCasePermission,
   } = getDerivedPermissionFlags(tablePermissions);
+  const {
+    data: queryResourcePermission,
+    isLoading: isQueryResourcePermissionLoading,
+  } = useQuery({
+    queryKey: permissionQueryKeys.tableQueriesTab(),
+    queryFn: fetchQueryResourcePermission,
+    staleTime: PERMISSION_STALE_TIME,
+  });
+  // Table-level ViewQueries is not enough: a deny on the Query resource must hide the tab.
+  const { canViewBasic: viewQueryResourcePermission } =
+    getDerivedPermissionFlags(
+      queryResourcePermission ?? DEFAULT_ENTITY_PERMISSION
+    );
   // Same value as viewBasicPermission above, named for what it means at its one call site
   // (the entity useQuery's `enabled` a few lines down) rather than re-destructured.
   const canViewTableInQuery = viewBasicPermission;
@@ -260,13 +270,10 @@ const TableDetailsPageV1: React.FC = () => {
   //   - Mutations apply optimistic updates via {@code queryClient.setQueryData}; every
   //     consumer reading the same key sees the change instantly (no prop drilling).
   //
-  // {@code enabled} gates the fire so we don't fetch in tour mode (we seed the mock directly
-  // below) or before view permissions have resolved. The tour case writes to the cache via
-  // {@code setQueryData} so {@code tableDetails} below stays one variable.
+  // {@code enabled} gates the fire so we don't fetch before view permissions have resolved.
   const isTableQueryEnabled = useMemo(
-    () =>
-      Boolean(tableFqn && canViewTableInQuery && !isTourOpen && !isTourPage),
-    [tableFqn, canViewTableInQuery, isTourOpen, isTourPage]
+    () => Boolean(tableFqn && canViewTableInQuery),
+    [tableFqn, canViewTableInQuery]
   );
 
   const {
@@ -282,7 +289,10 @@ const TableDetailsPageV1: React.FC = () => {
   const tableDetailsId = tableDetails?.id ?? '';
 
   const { data: queryCount = 0, isFetching: isQueryCountLoading } =
-    useTableQueryCount(tableDetailsId, isTourDataset);
+    useTableQueryCount(
+      tableDetailsId,
+      viewQueryResourcePermission && viewQueriesPermission
+    );
 
   // Forbidden → redirect, preserving the prior behavior. Run as an effect rather than during
   // render so the navigate call doesn't fire during the same commit that returns the query
@@ -495,7 +505,7 @@ const TableDetailsPageV1: React.FC = () => {
   }, [tableFqn]);
 
   const handleTabChange = (activeKey: string) => {
-    if (activeKey !== activeTab && !isTourDataset) {
+    if (activeKey !== activeTab) {
       navigate(getEntityDetailsPath(EntityType.TABLE, tableFqn, activeKey), {
         replace: true,
         state: location.state,
@@ -515,21 +525,29 @@ const TableDetailsPageV1: React.FC = () => {
     [tableDetails, tableId]
   );
 
-  const onTableUpdate = async (updatedTable: Table, key?: keyof Table) => {
-    try {
-      const res = await saveUpdatedTableData(updatedTable);
+  const onTableUpdate = useCallback(
+    async (updatedTable: Table, key?: keyof Table) => {
+      try {
+        const res = await saveUpdatedTableData(updatedTable);
 
-      setTableDetails((previous) => {
-        if (!previous) {
-          return;
-        }
+        setTableDetails((previous) => {
+          if (!previous) {
+            return;
+          }
 
-        return mergeEntityStateUpdate<Table>(previous, res, updatedTable, key);
-      });
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    }
-  };
+          return mergeEntityStateUpdate<Table>(
+            previous,
+            res,
+            updatedTable,
+            key
+          );
+        });
+      } catch (error) {
+        showErrorToast(error as AxiosError);
+      }
+    },
+    [saveUpdatedTableData, setTableDetails]
+  );
 
   const handleUpdateOwner = useCallback(
     async (newOwners?: Table['owners']) => {
@@ -542,7 +560,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'owners');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleUpdateRetentionPeriod = useCallback(
@@ -556,7 +574,7 @@ const TableDetailsPageV1: React.FC = () => {
       };
       await onTableUpdate(updatedTableDetails, 'retentionPeriod');
     },
-    [tableDetails]
+    [tableDetails, onTableUpdate]
   );
 
   const handleDisplayNameUpdate = async (data: EntityName) => {
@@ -587,7 +605,6 @@ const TableDetailsPageV1: React.FC = () => {
     const tabs = tableClassBase.getTableDetailPageTabs({
       queryCount,
       isQueryCountLoading,
-      isTourOpen,
       tablePermissions,
       activeTab,
       deleted,
@@ -600,6 +617,7 @@ const TableDetailsPageV1: React.FC = () => {
       editCustomAttributePermission,
       viewSampleDataPermission,
       viewQueriesPermission,
+      viewQueryResourcePermission,
       viewProfilerPermission,
       editLineagePermission,
       fetchTableDetails: refetchTableDetails,
@@ -619,7 +637,6 @@ const TableDetailsPageV1: React.FC = () => {
   }, [
     queryCount,
     isQueryCountLoading,
-    isTourOpen,
     tablePermissions,
     activeTab,
     deleted,
@@ -633,6 +650,7 @@ const TableDetailsPageV1: React.FC = () => {
     editCustomAttributePermission,
     viewSampleDataPermission,
     viewQueriesPermission,
+    viewQueryResourcePermission,
     viewProfilerPermission,
     editLineagePermission,
     refetchTableDetails,
@@ -645,12 +663,8 @@ const TableDetailsPageV1: React.FC = () => {
   // knowledge_graph while RDF is off) falls back to the first tab, and the
   // widget layout must follow that fallback rather than the raw route param.
   const renderedActiveTab = useMemo(
-    () =>
-      getRenderedActiveTab(
-        tabs,
-        isTourDataset ? activeTabForTourDatasetPage : activeTab
-      ),
-    [tabs, isTourDataset, activeTabForTourDatasetPage, activeTab]
+    () => getRenderedActiveTab(tabs, activeTab),
+    [tabs, activeTab]
   );
 
   const firstTab = tabs[0];
@@ -872,7 +886,7 @@ const TableDetailsPageV1: React.FC = () => {
         const activeCol = findColumnByEntityLink(
           prev.fullyQualifiedName ?? '',
           prev.columns,
-          suggestion.entityLink
+          suggestion.entityLink ?? ''
         );
 
         if (!activeCol) {
@@ -906,12 +920,7 @@ const TableDetailsPageV1: React.FC = () => {
   );
 
   useEffect(() => {
-    if (isTourOpen || isTourPage) {
-      const mock = tourMockDatasetData as { tableDetails: unknown } | undefined;
-      if (mock?.tableDetails) {
-        setTableDetails(mock.tableDetails as Table);
-      }
-    } else if (viewBasicPermission) {
+    if (viewBasicPermission) {
       // Don't manually clear the cache to {@code undefined} here — that would flash a Loader
       // on every navigation between tables even when the destination is already cached.
       // {@link useQuery}'s own refetch-on-key-change handles this: a stale entry serves
@@ -919,13 +928,7 @@ const TableDetailsPageV1: React.FC = () => {
       fetchTaskCounts();
       fetchActivityCount();
     }
-  }, [
-    tableFqn,
-    isTourOpen,
-    isTourPage,
-    viewBasicPermission,
-    tourMockDatasetData,
-  ]);
+  }, [tableFqn, viewBasicPermission]);
 
   const loadedTableFqn = tableDetails?.fullyQualifiedName;
 
@@ -972,13 +975,13 @@ const TableDetailsPageV1: React.FC = () => {
 
   // Wait for permissions to resolve before deciding what to render — without this we'd flash
   // a "no permission" placeholder during the brief window before the permissions endpoint
-  // returns. Once permissions are in, this gate falls through naturally. Skipped in tour mode,
-  // matching the old `useState(!isTourOpen)` seed — the tour never waits on a real fetch.
-  if (!isTourOpen && isPermissionsLoading) {
+  // returns. Once permissions are in, this gate falls through naturally. The Query permission
+  // decides whether the Queries tab exists, so a deep link to it must not resolve to Schema first.
+  if (isPermissionsLoading || isQueryResourcePermissionLoading) {
     return <EntityDetailsPageSkeleton />;
   }
 
-  if (!isTourDataset && !viewBasicPermission) {
+  if (!viewBasicPermission) {
     return (
       <div className="tw:relative tw:h-full tw:w-full tw:min-h-60 tw:rounded-xl tw:bg-surface">
         <PermissionPlaceholder
@@ -1019,9 +1022,11 @@ const TableDetailsPageV1: React.FC = () => {
       <Tabs.List
         actions={
           isExpandViewSupported && (
-            <AlignRightIconButton
-              className={isTabExpanded ? 'rotate-180' : ''}
-              title={isTabExpanded ? t('label.collapse') : t('label.expand')}
+            <ButtonUtility
+              data-testid="tab-expand-button"
+              icon={isTabExpanded ? Collapse : Expand}
+              size="lg"
+              tooltip={isTabExpanded ? t('label.collapse') : t('label.expand')}
               onClick={toggleTabExpanded}
             />
           )
@@ -1087,6 +1092,10 @@ const TableDetailsPageV1: React.FC = () => {
               onVersionClick={versionHandler}
             />
           </div>
+          <TableLinkedConcepts
+            columnFqn={columnFqn}
+            tableId={tableDetails.id}
+          />
           {/* Entity Tabs */}
           <div className="entity-details-page-tabs">{renderTabs()}</div>
           <LimitWrapper resource="table">

@@ -328,8 +328,43 @@ const noNestedEllipsisTooltipTrigger = {
   },
 };
 
+// No autofix: the semantic replacement depends on the styled property and theme.
+const omTokenUsage = {
+  meta: {
+    messages: {
+      deprecatedOmToken:
+        'Legacy token "{{token}}" is deprecated. Use tw: utilities or --tw-* theme variables. Migrate existing references when editing them; do not add new references.',
+    },
+    schema: [],
+    type: 'suggestion',
+  },
+  create(context) {
+    const checkString = (node, value) => {
+      if (typeof value !== 'string') {
+        return;
+      }
+      // Match the prefix too: computed names must not bypass the migration gate.
+      for (const [token] of value.matchAll(/--om-[\w-]*/g)) {
+        context.report({
+          node,
+          messageId: 'deprecatedOmToken',
+          data: { token },
+        });
+      }
+    };
+
+    return {
+      Literal: (node) => checkString(node, node.value),
+      TemplateElement: (node) =>
+        checkString(node, node.value.cooked ?? node.value.raw),
+    };
+  },
+};
+
 export default {
   rules: {
+    'deprecated-om-tokens': omTokenUsage,
+    'no-new-om-tokens': omTokenUsage,
     'no-raw-title-attribute': noRawTitleAttribute,
     'no-non-adaptive-palette': noNonAdaptivePalette,
     'no-nested-ellipsis-tooltip-trigger': noNestedEllipsisTooltipTrigger,

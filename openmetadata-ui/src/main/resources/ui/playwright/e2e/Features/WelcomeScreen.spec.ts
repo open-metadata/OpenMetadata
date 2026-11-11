@@ -12,21 +12,53 @@
  */
 import { Page } from '@playwright/test';
 import { DOMAIN_TAGS } from '../../constant/config';
-import { clickIgnoringToasts } from '../../utils/common';
+import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
+import { UserClass } from '../../support/user/UserClass';
+import {
+  clickIgnoringToasts,
+  getWorkerAdminAPIContext,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { expect, test } from '../fixtures/pages';
+import { expect, test as base } from '../fixtures/pages';
 import { enableAiAppMode } from '../Utils/appMode';
 
-// The shared admin session seeds `loggedInUsers`, which is how every other spec
-// keeps the welcome screen away. Drop it once per page — the session flag keeps
-// a reload from dropping it again — so this page is the user's first login.
-const asFirstLogin = (page: Page) =>
-  page.addInitScript(() => {
-    if (!sessionStorage.getItem('__pw_first_login')) {
-      localStorage.removeItem('loggedInUsers');
-      sessionStorage.setItem('__pw_first_login', '1');
-    }
+// The welcome screen is remembered on the user (`isFirstTimeUser`), so a
+// first login needs an account that has never reached a home route: a fresh
+// admin per test (admin so the connect button renders), signed in without the
+// `loggedInUsers` seed and landing away from home.
+const signInAsFirstLogin = async (page: Page, user: UserClass) => {
+  await installServerLoadReducers(page.context());
+  await user.signIn(page, undefined, undefined, {
+    suppressWelcomeScreen: false,
+    landingPath: '/explore',
   });
+};
+
+const test = base.extend<{ firstLoginUser: UserClass; firstLoginPage: Page }>({
+  // eslint-disable-next-line no-empty-pattern -- Created through the worker's admin API context, not a browser.
+  firstLoginUser: async ({}, use) => {
+    const apiContext = await getWorkerAdminAPIContext();
+    const user = new UserClass(undefined, true);
+    await user.create(apiContext);
+
+    try {
+      await use(user);
+    } finally {
+      await user.delete(apiContext);
+    }
+  },
+
+  firstLoginPage: async ({ browser, firstLoginUser }, use) => {
+    const page = await browser.newPage();
+
+    try {
+      await signInAsFirstLogin(page, firstLoginUser);
+      await use(page);
+    } finally {
+      await page.close();
+    }
+  },
+});
 
 // The add-service route differs by distribution (Collate nests it under
 // /connections in AI mode), so the connect tests check which connectors the
@@ -41,14 +73,25 @@ test.describe(
   { tag: ['@Features', DOMAIN_TAGS.PLATFORM] },
   () => {
     test('shows once on the classic home and closes to the landing page', async ({
-      page,
+      browser,
+      firstLoginPage: page,
+      firstLoginUser,
     }) => {
-      await asFirstLogin(page);
+      // The home records the welcome screen on the user in the background; the
+      // later steps read it back from the server, so they wait for that write.
+      const welcomeRecorded = page.waitForResponse(
+        (response) =>
+          response.request().method() === 'PATCH' &&
+          response
+            .url()
+            .includes(`/api/v1/users/${firstLoginUser.responseData.id}`)
+      );
       await openHome(page, '/my-data');
 
       await test.step('the first visit shows the welcome screen', async () => {
         await expect(page.getByTestId('welcome-screen')).toBeVisible();
         await expect(page.getByTestId('welcome-screen-img')).toBeVisible();
+        expect((await welcomeRecorded).status()).toBe(200);
       });
 
       await test.step('closing it shows the landing page', async () => {
@@ -65,12 +108,29 @@ test.describe(
         await expect(page.getByTestId('home-page-surface')).toBeVisible();
         await expect(page.getByTestId('welcome-screen')).toBeHidden();
       });
+
+      await test.step('it does not come back in another browser', async () => {
+        const otherBrowserPage = await browser.newPage();
+
+        try {
+          await signInAsFirstLogin(otherBrowserPage, firstLoginUser);
+          await openHome(otherBrowserPage, '/my-data');
+
+          await expect(
+            otherBrowserPage.getByTestId('home-page-surface')
+          ).toBeVisible();
+          await expect(
+            otherBrowserPage.getByTestId('welcome-screen')
+          ).toBeHidden();
+        } finally {
+          await otherBrowserPage.close();
+        }
+      });
     });
 
     test('classic: connect a data source opens the database service wizard', async ({
-      page,
+      firstLoginPage: page,
     }) => {
-      await asFirstLogin(page);
       await openHome(page, '/my-data');
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-connect-btn'));
@@ -81,19 +141,24 @@ test.describe(
       await expect(connectors.getByTestId('Looker')).toBeHidden();
     });
 
-    test('classic: take a product tour opens the tour', async ({ page }) => {
-      await asFirstLogin(page);
+    test('classic: take a product tour opens the tour', async ({
+      firstLoginPage: page,
+    }) => {
       await openHome(page, '/my-data');
 
       await clickIgnoringToasts(page.getByTestId('welcome-screen-tour-btn'));
 
-      await expect(page).toHaveURL(/\/tour/);
+      // /tour only starts the tour, which opens on Home with the welcome
+      // screen gone.
+      await expect(page.locator('.product-tour-helper')).toContainText(
+        'Topics to catch up on'
+      );
+      await expect(page.getByTestId('welcome-screen')).toHaveCount(0);
     });
 
     test('AI mode: shows on the home, opens every connector, and stays dismissed', async ({
-      page,
+      firstLoginPage: page,
     }) => {
-      await asFirstLogin(page);
       await enableAiAppMode(page);
       await openHome(page, '/');
 

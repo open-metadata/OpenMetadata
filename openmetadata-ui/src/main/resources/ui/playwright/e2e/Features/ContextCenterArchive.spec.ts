@@ -228,7 +228,8 @@ test.describe('Context Center - Archive Page', () => {
     // ── 14. Soft delete restored document again ───────────────────────────────
 
     await test.step('soft delete the restored document', async () => {
-      await navigateToDocuments(page);
+      // Stay on step 12's search result: the unfiltered list is paged, and
+      // files from parallel workers can push this one off the first page.
       await softDeleteDocument(page, `document-row-${documentId}`);
     });
 
@@ -452,7 +453,11 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
-      await waitForDocumentInArchive(apiContext, documentId);
+      try {
+        await waitForDocumentInArchive(apiContext, documentId);
+      } finally {
+        await afterAction();
+      }
       await navigateToArchive(page);
       const archiveRow = page.getByTestId(`archive-row-${documentId}`);
       if (!(await archiveRow.isVisible())) {

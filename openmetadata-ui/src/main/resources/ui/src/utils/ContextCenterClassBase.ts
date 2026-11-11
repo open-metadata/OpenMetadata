@@ -84,6 +84,13 @@ class ContextCenterClassBase {
     return ROUTES.CONTEXT_CENTER_DOCUMENTS;
   }
 
+  /** A document opens in the documents list, previewed. */
+  public getDocumentPath(documentId: string): string {
+    return `${this.getDocumentsListPath()}?document=${encodeURIComponent(
+      documentId
+    )}`;
+  }
+
   public getMemoriesListPath(): string {
     return ROUTES.CONTEXT_CENTER_MEMORIES;
   }

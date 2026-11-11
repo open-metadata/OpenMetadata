@@ -64,6 +64,36 @@ describe('MemoryDerivedTerm', () => {
     expect(onNavigate).toHaveBeenCalledTimes(1);
   });
 
+  // A new-tab click leaves this page, and the memory still in its URL, as they were.
+  it('keeps the memory open when the term opens in a new tab', () => {
+    const onNavigate = jest.fn();
+    render(
+      <MemoryRouter>
+        <MemoryDerivedTerm
+          isViewOnly
+          memory={memory([
+            {
+              id: 'term-id',
+              type: 'glossaryTerm',
+              name: 'churn',
+              displayName: 'Churn',
+              fullyQualifiedName: 'Business.churn',
+            },
+          ])}
+          onNavigate={onNavigate}
+        />
+      </MemoryRouter>
+    );
+
+    const link = screen.getByRole('link', { name: 'Churn' });
+    fireEvent.click(link, { metaKey: true });
+    fireEvent.click(link, { ctrlKey: true });
+    fireEvent.click(link, { shiftKey: true });
+    fireEvent.click(link, { button: 1 });
+
+    expect(onNavigate).not.toHaveBeenCalled();
+  });
+
   it('renders derived terms as plain text while the memory is being edited', () => {
     const onNavigate = jest.fn();
     render(

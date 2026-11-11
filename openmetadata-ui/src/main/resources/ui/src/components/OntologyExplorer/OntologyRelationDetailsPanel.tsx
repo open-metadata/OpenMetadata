@@ -399,9 +399,9 @@ export const OntologyRelationDetailsPanel = ({
           {t('label.relationship')}
         </span>
         <ButtonUtility
-          className="tw:shrink-0 tw:border-0 tw:bg-transparent tw:p-0 tw:text-fg-quaternary hover:tw:text-fg-secondary"
+          className="tw:shrink-0"
           icon={XClose}
-          size="xs"
+          size="lg"
           tooltip={t('label.close')}
           onClick={onClose}
         />

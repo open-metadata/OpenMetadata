@@ -25,7 +25,7 @@ inputs:
     required: false
     default: "true"
   fast-mode:
-    description: Restore a pre-seeded PostgreSQL/OpenSearch fixture and start the server on the host
+    description: Restore a pre-seeded Playwright fixture (PostgreSQL/OpenSearch or MySQL/Elasticsearch) and start the server on the host
     required: false
     default: "false"
   fixture-path:
@@ -127,8 +127,8 @@ runs:
     # import undeclared packages. Cache miss = fresh install, always.
     # Skipped in fast-mode / lightweight-ingestion — those consumers restore
     # a pre-seeded fixture and never touch the venv.
-    # Restore and save are separate steps so the fork guard below can gate the
-    # write without also denying forks the read.
+    # Restore and save are separate steps so the event gate below can block the
+    # write without also denying those events the read.
     - name: Compute ingestion venv cache key
       id: venv-cache-key
       if: ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' }}
@@ -178,8 +178,7 @@ runs:
       shell: bash
 
     # Saved here rather than at job end so a later failure (server startup,
-    # tests) still leaves the venv cached. Fork PRs under pull_request_target
-    # skip the save — actions/cache-poisoning; their restore above still runs.
+    # tests) still leaves the venv cached.
     # merge_group and pull_request are excluded: a queue ref dies after the
     # run and a PR ref is visible only to that PR's own re-runs, but both
     # copies (~300 MB per Python version) count against the shared 10 GB
@@ -193,9 +192,7 @@ runs:
         ${{ inputs.fast-mode != 'true' && inputs.lightweight-ingestion != 'true' &&
         steps.cache-python-venv.outputs.cache-hit != 'true' &&
         github.event_name != 'merge_group' &&
-        github.event_name != 'pull_request' &&
-        !(github.event_name == 'pull_request_target' &&
-          github.event.pull_request.head.repo.full_name != github.repository) }}
+        github.event_name != 'pull_request' }}
       continue-on-error: true
       uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
       with:
@@ -222,6 +219,19 @@ runs:
         max_attempts: 2
         retry_on: error
         command: ${{ inputs.startup-script }} ${{ inputs.args }}
+
+    # ADR:2026-10-28-playwright-fast-mode-pulls-images-outside-the-startup-budget
+    - name: Pull fast Playwright environment images
+      if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}
+      run: |
+        # Assigned rather than read through process substitution, whose exit
+        # status is lost: an unreadable fixture must fail here, not skip the pull.
+        manifest=$(tar --zstd --occurrence=1 -xOf "${{ inputs.fixture-path }}" ./fixture-manifest.json)
+        database_image=$(jq -er '.databaseImage' <<<"$manifest")
+        search_image=$(jq -er '.searchImage' <<<"$manifest")
+        timeout --signal=TERM --kill-after=30s 15m \
+          ./.github/scripts/pull_playwright_fixture_images.sh "$database_image" "$search_image"
+      shell: bash
 
     - name: Restore fast Playwright environment
       if: ${{ inputs.install-server == 'true' && inputs.fast-mode == 'true' }}

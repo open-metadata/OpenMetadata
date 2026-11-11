@@ -13,13 +13,16 @@
 
 package org.openmetadata.service.config.source;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.settings.SettingsType.AUTHENTICATION_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.EMAIL_CONFIGURATION;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.BadRequestException;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -99,6 +102,44 @@ class SettingsSecretsTest {
         AUTHENTICATION_CONFIGURATION, updated, oidcConfiguration("s3cret"));
 
     assertEquals("new-secret", updated.getOidcConfiguration().getSecret());
+  }
+
+  /** It would be stored as sent and decrypted on use, revealing whatever secret it came from. */
+  @Test
+  void refusesAnEncryptedSecretTheSettingDoesNotHold() {
+    String othersToken = Fernet.getInstance().encrypt("another-setting's-secret");
+
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            SettingsSecrets.rejectForeignEncryptedSecrets(
+                AUTHENTICATION_CONFIGURATION,
+                oidcConfiguration(othersToken),
+                oidcConfiguration("s3cret")));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            SettingsSecrets.rejectForeignEncryptedSecrets(
+                AUTHENTICATION_CONFIGURATION, oidcConfiguration(othersToken), null));
+  }
+
+  @Test
+  void acceptsTypedMaskedAndHeldSecrets() {
+    String heldToken = Fernet.getInstance().encrypt("s3cret");
+    AuthenticationConfiguration original = oidcConfiguration(heldToken);
+
+    assertDoesNotThrow(
+        () ->
+            SettingsSecrets.rejectForeignEncryptedSecrets(
+                AUTHENTICATION_CONFIGURATION, oidcConfiguration("typed-in"), original));
+    assertDoesNotThrow(
+        () ->
+            SettingsSecrets.rejectForeignEncryptedSecrets(
+                AUTHENTICATION_CONFIGURATION, oidcConfiguration(MASK), original));
+    assertDoesNotThrow(
+        () ->
+            SettingsSecrets.rejectForeignEncryptedSecrets(
+                AUTHENTICATION_CONFIGURATION, oidcConfiguration(heldToken), original));
   }
 
   private static AuthenticationConfiguration oidcConfiguration(String secret) {

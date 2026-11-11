@@ -317,6 +317,50 @@ class OpenSearchRBACConditionEvaluatorTest {
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none should not exist");
   }
 
+  /** A {@code false} literal must match no document, as it does when evaluated in memory. */
+  @Test
+  void falseLiteralMakesAnAllowRuleMatchNothing() {
+    setupMockPolicies("isOwner() && false", "ALLOW");
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(jsonContext, "$.bool.must_not[?(@.match_all)]", "rule should match nothing");
+    assertFieldDoesNotExist(
+        jsonContext, "$..nested.query.term['owners.id']", "owner clause should not survive");
+  }
+
+  @Test
+  void falseLiteralDropsOutOfAnOr() {
+    setupMockPolicies("false || isOwner()", "ALLOW");
+    when(mockUser.getId()).thenReturn(UUID.randomUUID());
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(
+        jsonContext,
+        "$..nested.query.term['owners.id']",
+        "owner clause should be the whole Allow rule");
+    assertFieldDoesNotExist(jsonContext, "$..match_all", "false must not read as match_all");
+  }
+
+  @Test
+  void negatedFalseLiteralMatchesEverything() {
+    setupMockPolicies("!false", "ALLOW");
+
+    DocumentContext jsonContext = compiledQuery();
+
+    assertFieldExists(jsonContext, "$..match_all", "rule should match everything");
+    assertFieldDoesNotExist(jsonContext, "$..must_not", "nothing should be excluded");
+  }
+
+  private DocumentContext compiledQuery() {
+    return JsonPath.parse(
+        ((OpenSearchQueryBuilder) evaluator.evaluateConditions(mockSubjectContext))
+            .build()
+            .toJsonString());
+  }
+
   @Test
   void testOpenSearchComplexCombination() {
     setupMockPolicies(

@@ -27,10 +27,12 @@ import java.util.UUID;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 
 /**
  * Builds and merges structured change-preview data stored under the {@code proposedChanges} key in
@@ -224,9 +226,22 @@ public final class ChangePreviewUtils {
    */
   public static Object buildProposedChangesPayload(
       EntityInterface<?> entity, Object existingPayload, ChangeDescription pending) {
+    return buildProposedChangesPayload(entity, existingPayload, pending, null);
+  }
+
+  /**
+   * Same as {@link #buildProposedChangesPayload(EntityInterface, Object, ChangeDescription)} for a
+   * task that opens an approval cycle: {@code openingChange} is the change of the edit that started
+   * it, and the preview starts from it instead of the entity's latest hop, which is the workflow's
+   * own status write. A task that continues a cycle passes none and folds in the latest hop.
+   */
+  public static Object buildProposedChangesPayload(
+      EntityInterface<?> entity,
+      Object existingPayload,
+      ChangeDescription pending,
+      ChangeDescription openingChange) {
     if (entity == null) return existingPayload;
-    ChangeDescription changeDescription =
-        hasNoChanges(pending) ? pickIncrementalOrFull(entity) : pending;
+    ChangeDescription changeDescription = changeToPreview(entity, pending, openingChange);
     if (hasNoChanges(changeDescription)) {
       if (LOG.isDebugEnabled()) {
         LOG.debug(
@@ -241,6 +256,10 @@ public final class ChangePreviewUtils {
       // proposedChanges carried over from a prior revision's task.
       Map<String, FieldDiff> priorMap =
           hasNoChanges(pending) ? extractProposedChanges(existingPayload) : new LinkedHashMap<>();
+      if (entity instanceof McpServer) {
+        changeDescription = JsonUtils.deepCopy(changeDescription, ChangeDescription.class);
+        McpServerMasker.maskChangeDescription(changeDescription);
+      }
       Map<String, FieldDiff> newMap = buildChangeMap(changeDescription);
       Map<String, FieldDiff> merged = mergeChangeMaps(priorMap, newMap);
       if (hasNoChanges(pending)) {
@@ -274,6 +293,15 @@ public final class ChangePreviewUtils {
           e);
       return existingPayload;
     }
+  }
+
+  private static ChangeDescription changeToPreview(
+      EntityInterface<?> entity, ChangeDescription pending, ChangeDescription openingChange) {
+    ChangeDescription change = pending;
+    if (hasNoChanges(pending)) {
+      change = hasNoChanges(openingChange) ? pickIncrementalOrFull(entity) : openingChange;
+    }
+    return change;
   }
 
   /**

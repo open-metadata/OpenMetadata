@@ -94,6 +94,7 @@ export interface CreateTable {
     tableConstraints?:    TableConstraint[];
     tablePartition?:      TablePartition;
     tableProfilerConfig?: TableProfilerConfig;
+    tableSharding?:       TableSharding;
     tableType?:           TableType;
     /**
      * Tags for this table
@@ -626,7 +627,8 @@ export interface ColumnProfile {
     /**
      * No.of Rows that contain duplicates in a column.
      */
-    duplicateCount?: number;
+    duplicateCount?:  number;
+    executionSource?: TableExecutionSource;
     /**
      * First quartile of a column.
      */
@@ -764,6 +766,16 @@ export interface CustomMetricProfile {
      * Profiling results for the metric.
      */
     value?: number;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 export interface HistogramClass {
@@ -1189,6 +1201,22 @@ export interface Partitioning {
 }
 
 /**
+ * Daily shard family metadata. Columns describe the representative.
+ */
+export interface TableSharding {
+    firstShardDate: Date;
+    lastShardDate:  Date;
+    prefix:         string;
+    representative: TableExecutionSource;
+    shardCount:     number;
+    suffixFormat:   SuffixFormat;
+}
+
+export enum SuffixFormat {
+    Yyyymmdd = "YYYYMMDD",
+}
+
+/**
  * This schema defines the type used for describing different types of tables.
  */
 export enum TableType {
@@ -1203,6 +1231,7 @@ export enum TableType {
     Regular = "Regular",
     SecureView = "SecureView",
     SemanticView = "SemanticView",
+    Sharded = "Sharded",
     Stage = "Stage",
     Stream = "Stream",
     Transient = "Transient",

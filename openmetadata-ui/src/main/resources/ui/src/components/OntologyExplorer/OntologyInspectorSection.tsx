@@ -139,7 +139,7 @@ export const InspectorRemoveButton = ({
     data-testid={testId}
     icon={Trash01}
     isDisabled={isDisabled}
-    size="xs"
+    size="sm"
     tooltip={label}
     onClick={onRemove}
   />
@@ -184,7 +184,7 @@ export const InspectorForm = ({
         <ButtonUtility
           color="tertiary"
           icon={XClose}
-          size="xs"
+          size="sm"
           tooltip={t('label.cancel')}
           onClick={onCancel}
         />

@@ -250,21 +250,28 @@ test.describe(
       const schemaPath = `databaseSchema/${getEncodedFqn(
         schemaFqn(approvedSchemaTable)
       )}`;
+      // The poller's own "Created dataContract: <name>" event lands whenever it
+      // catches up, so the feed may hold one or two identical cards; the seed
+      // marker keeps the locator on exactly one of them.
+      const summary = `Created dataContract: ${
+        approvedSchemaContract.name
+      } (seed ${uuid()})`;
       const { apiContext, afterAction } = await performAdminLogin(browser);
       try {
         await seedContractActivity(
           apiContext,
           approvedSchemaContract,
-          `Created dataContract: ${approvedSchemaContract.name}`,
-          { eventType: 'EntityCreated' }
+          summary,
+          {
+            eventType: 'EntityCreated',
+          }
         );
       } finally {
         await afterAction();
       }
 
       await openActivityFeed(page, schemaPath);
-      const contractLink = page
-        .locator('#feedData')
+      const contractLink = feedEntry(page, summary)
         .getByTestId('entity-link')
         .filter({ hasText: approvedSchemaContract.name });
 

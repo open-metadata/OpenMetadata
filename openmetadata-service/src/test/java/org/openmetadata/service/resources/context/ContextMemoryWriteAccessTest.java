@@ -224,6 +224,18 @@ class ContextMemoryWriteAccessTest {
     }
   }
 
+  @Test
+  void aNameThatOnlyUpperCaseFoldingMatchesToAdminIsNotTheAdminAccount() {
+    String lookAlike = "admın";
+    try (MockedStatic<SubjectContext> subjects = Mockito.mockStatic(SubjectContext.class)) {
+      subjects
+          .when(() -> SubjectContext.getSubjectContext(lookAlike))
+          .thenReturn(new SubjectContext(new User().withName(lookAlike), null));
+
+      assertFalse(ContextMemoryWriteAccess.isPrivilegedWriter(lookAlike));
+    }
+  }
+
   private static EntityReference user(String name) {
     return new EntityReference().withId(UUID.randomUUID()).withType(Entity.USER).withName(name);
   }

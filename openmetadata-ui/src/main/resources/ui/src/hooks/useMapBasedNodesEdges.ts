@@ -41,8 +41,8 @@ const mergeNodeChangeIntoNode = (
           width: change.dimensions.width,
           height: change.dimensions.height,
           resizing: change.resizing,
-          ...(change.updateStyle !== undefined
-            ? { style: { ...node.style, ...change.updateStyle } }
+          ...(change.updateStyle
+            ? { style: { ...node.style, ...change.dimensions } }
             : {}),
         }
       : {};

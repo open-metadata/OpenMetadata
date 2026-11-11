@@ -47,7 +47,7 @@ export const RadioButtonBase = ({
           !isDisabled &&
           'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
-          'tw:cursor-not-allowed tw:border-disabled tw:bg-disabled_subtle',
+          'tw:cursor-not-allowed tw:border-disabled tw:bg-disabled_subtle tw:dark:bg-disabled',
         isFocusVisible &&
           'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
         className
@@ -128,7 +128,7 @@ export const RadioButton = forwardRef<
               !renderProps.isDisabled &&
               'tw:bg-brand-primary tw:after:outline-brand',
             renderProps.isDisabled &&
-              'tw:bg-disabled_subtle tw:after:outline-disabled',
+              'tw:bg-disabled_subtle tw:dark:bg-disabled tw:after:outline-disabled',
             renderProps.isFocusVisible &&
               'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
           ],

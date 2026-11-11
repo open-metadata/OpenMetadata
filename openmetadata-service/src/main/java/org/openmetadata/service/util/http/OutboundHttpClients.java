@@ -15,9 +15,12 @@ package org.openmetadata.service.util.http;
 
 import jakarta.ws.rs.client.Client;
 import jakarta.ws.rs.client.ClientBuilder;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import org.glassfish.jersey.client.ClientConfig;
 import org.glassfish.jersey.client.ClientProperties;
+import org.glassfish.jersey.client.HttpUrlConnectorProvider;
 import org.openmetadata.service.util.OutboundUrlPolicyFilter;
 
 /** HTTP clients for requests the server makes to URLs users configure. */
@@ -45,7 +48,23 @@ public final class OutboundHttpClients {
           effectiveReadTimeout);
     }
 
-    ClientBuilder clientBuilder = ClientBuilder.newBuilder();
+    // One exchange may take at most its two timeouts together, however the receiver behaves.
+    return newClient(
+        effectiveConnectTimeout,
+        effectiveReadTimeout,
+        Duration.ofSeconds((long) effectiveConnectTimeout + effectiveReadTimeout));
+  }
+
+  static Client newClient(
+      int effectiveConnectTimeout, int effectiveReadTimeout, Duration deadline) {
+    ClientConfig config =
+        new ClientConfig()
+            .connectorProvider(
+                (client, configuration) ->
+                    new DeadlineConnector(
+                        new HttpUrlConnectorProvider().getConnector(client, configuration),
+                        deadline));
+    ClientBuilder clientBuilder = ClientBuilder.newBuilder().withConfig(config);
     clientBuilder.connectTimeout(effectiveConnectTimeout, TimeUnit.SECONDS);
     clientBuilder.readTimeout(effectiveReadTimeout, TimeUnit.SECONDS);
     // A redirect is a failure for a callback, and following one would skip the policy check below

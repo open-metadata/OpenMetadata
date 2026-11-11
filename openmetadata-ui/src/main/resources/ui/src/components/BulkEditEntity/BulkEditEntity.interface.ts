@@ -61,6 +61,8 @@ export interface BulkEditEntityProps {
   pushToUndoStack: (dataSource: Record<string, string>[]) => void;
   handleOnRowsChange: (updatedRows: Record<string, string>[]) => void;
   searchText: string;
+  /** Height an open editor needs, so its row grows instead of the editor covering rows below. */
+  editingRowHeight?: { rowIdx: number; height: number } | null;
   /** dataSource filtered by searchText; the rows the grid renders. */
   visibleRows: Record<string, string>[];
   onSearchTextChange: (searchText: string) => void;

@@ -215,6 +215,7 @@ test.describe('Ontology scoped query mode', { tag: ['@ontology-rdf'] }, () => {
       await page
         .getByRole('option', { name: target.responseData.displayName })
         .click();
+      await page.getByTestId('ontology-builder-toggle-sparql').click();
       await expect(page.getByTestId('ontology-generated-sparql')).toContainText(
         target.responseData.fullyQualifiedName
       );

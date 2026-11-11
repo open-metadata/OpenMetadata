@@ -17,6 +17,7 @@ import { enableAiAppMode } from '../e2e/Utils/appMode';
 import { TeamClass } from '../support/team/TeamClass';
 import { UserClass } from '../support/user/UserClass';
 import { redirectToHomePage, uuid } from './common';
+import { AI_SHELL_TIMEOUT } from './inbox';
 import { waitForResponseWithStatus } from './waitHelpers';
 
 /**
@@ -31,11 +32,19 @@ export const openAiProfile = async (
   await enableAiAppMode(page);
   await redirectToHomePage(page);
 
-  await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible();
+  // The trigger is the AI shell's first paint, which can exceed the 15s
+  // default under CPU contention (see inbox.ts).
+  await expect(page.getByTestId('ask-ai-user-menu-trigger')).toBeVisible({
+    timeout: AI_SHELL_TIMEOUT,
+  });
 
   await page.getByTestId('ask-ai-user-menu-trigger').click();
   await page.getByTestId('ai-user-menu-profile').click();
-  await page.getByTestId('ai-profile-page').waitFor();
+  // The modal body is a lazy chunk, exposed to the same boot contention as the
+  // Inbox (see openInboxFromSidebar).
+  await expect(page.getByTestId('ai-profile-page')).toBeVisible({
+    timeout: AI_SHELL_TIMEOUT,
+  });
 
   if (navId) {
     await page.getByTestId(navId).click();
@@ -71,19 +80,29 @@ export const openOrganizationTeams = async (page: Page): Promise<void> => {
 
 /**
  * Drill from the Organization team into a specific child team via its row link.
- * All child teams are fetched in one page (no server-side paging), so the link
- * is always present in the DOM.
+ * Sub-teams are paged, so the team is searched for first. The search is
+ * ES-backed and a freshly-created team can lag the index — re-issue the search
+ * until its link appears.
  */
 export const openTeamByLink = async (
   page: Page,
   teamName: string
 ): Promise<void> => {
+  const searchInput = page.getByTestId('team-detail').getByTestId('searchbar');
+  const teamLink = page.getByTestId(`team-link-${teamName}`);
+
+  await expect(async () => {
+    await searchInput.fill('');
+    await searchInput.fill(teamName);
+    await expect(teamLink).toBeVisible({ timeout: 5000 });
+  }).toPass({ timeout: 30000 });
+
   const teamResponse = page.waitForResponse((response) =>
     response
       .url()
       .includes(`/api/v1/teams/name/${encodeURIComponent(teamName)}`)
   );
-  await page.getByTestId(`team-link-${teamName}`).click();
+  await teamLink.click();
   await teamResponse;
 
   await expect(page.getByTestId('team-detail')).toBeVisible();
@@ -94,7 +113,12 @@ export const openTeamTab = async (
   page: Page,
   tabName: RegExp
 ): Promise<void> => {
-  await page.getByRole('tab', { name: tabName }).click();
+  // Scoped: route-cached pages (e.g. /my-data's summary panel) stay mounted and
+  // render same-named tabs.
+  await page
+    .getByTestId('team-detail')
+    .getByRole('tab', { name: tabName })
+    .click();
 };
 
 /** Open the Users list panel from the Members landing. */
@@ -163,10 +187,12 @@ export const openCreatedTeam = async (
 
 /** Wait for the PATCH that updates a given team. */
 export const waitForTeamPatch = (page: Page, teamId: string) =>
-  page.waitForResponse(
+  waitForResponseWithStatus(
+    page,
     (response) =>
       response.url().includes(`/api/v1/teams/${teamId}`) &&
-      response.request().method() === 'PATCH'
+      response.request().method() === 'PATCH',
+    'ok'
   );
 
 /** Wait for the PATCH that updates a given user (entity-id scoped for parallel safety). */

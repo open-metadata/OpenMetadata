@@ -444,7 +444,7 @@ public class StorageServiceResource
       @Valid CreateStorageService update) {
     StorageService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (StorageService) response.getEntity());
     return response;
   }

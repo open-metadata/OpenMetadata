@@ -367,7 +367,10 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
           page
             .getByRole('listbox')
             .getByRole('option', { name: /metric/i })
-            .first()
+            .first(),
+          page
+            .getByTestId('context-rule-entity-type')
+            .getByRole('button', { name: /metric/i })
         );
         await saveRule(page);
         await toastNotification(page, /AI context rule saved\./);
@@ -475,13 +478,17 @@ test.describe.serial('Persona AI Context — Rule Builder', () => {
         // Each option carries its EntityType as data-key. Matching the
         // "Knowledge" supporting text instead would match all three knowledge
         // types and leave DOM order to decide which one the test exercises.
+        // Assert on the trigger's name: the test-id root also wraps react-aria's
+        // hidden <select> holding every option, so toContainText always passes.
+        const glossaryTermSelected = page
+          .getByTestId('context-rule-entity-type')
+          .getByRole('button', { name: /Glossary Term/ });
         await chooseSelectOption(
           page.getByTestId('context-rule-entity-type'),
-          page.getByRole('listbox').locator('[data-key="glossaryTerm"]')
+          page.getByRole('listbox').locator('[data-key="glossaryTerm"]'),
+          glossaryTermSelected
         );
-        await expect(
-          page.getByTestId('context-rule-entity-type')
-        ).toContainText('Glossary Term');
+        await expect(glossaryTermSelected).toBeVisible();
       });
 
       await test.step('Fully rendered switch must be checked and disabled', async () => {

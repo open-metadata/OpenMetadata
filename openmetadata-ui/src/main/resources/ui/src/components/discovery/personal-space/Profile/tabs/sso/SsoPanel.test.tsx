@@ -58,6 +58,8 @@ jest.mock('../../../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+const mockTestLoginBack = jest.fn();
+
 // The form owns its own save flow (see SsoConfigureForm.test); here it only has to be routed to.
 jest.mock('./SsoConfigureForm', () =>
   jest.fn(
@@ -67,12 +69,17 @@ jest.mock('./SsoConfigureForm', () =>
       showHint,
       isReadOnly,
       managedPaths,
+      onSubPageChange,
     }: {
       selectedProvider?: string;
       securityConfig?: { authenticationConfiguration: { provider: string } };
       showHint: boolean;
       isReadOnly?: boolean;
       managedPaths?: Record<string, string[]>;
+      onSubPageChange?: (subPage?: {
+        label: string;
+        onBack: () => void;
+      }) => void;
     }) => (
       <div
         data-managed-paths={JSON.stringify(managedPaths)}
@@ -82,8 +89,18 @@ jest.mock('./SsoConfigureForm', () =>
         }
         data-read-only={String(Boolean(isReadOnly))}
         data-show-hint={String(showHint)}
-        data-testid="sso-configure-form"
-      />
+        data-testid="sso-configure-form">
+        <button
+          aria-label="label.test-login"
+          data-testid="mock-open-test-login"
+          onClick={() =>
+            onSubPageChange?.({
+              label: 'label.test-login',
+              onBack: mockTestLoginBack,
+            })
+          }
+        />
+      </div>
     )
   )
 );
@@ -225,12 +242,37 @@ describe('SsoPanel', () => {
     expect(mockSetHash).toHaveBeenCalledWith('sso', 'providers');
   });
 
-  it('switches tabs through the hash', async () => {
+  it('shows the Overview / Configure tabs in the header and switches them through the hash', async () => {
     await renderPanel(OKTA_CONFIG);
+    await waitFor(() => expect(lastHeader().tabs).toBeDefined());
 
-    fireEvent.click(await screen.findByTestId('sso-tab-configure'));
+    render(<>{lastHeader().tabs}</>);
+    fireEvent.click(screen.getByTestId('sso-tab-configure'));
 
     expect(mockSetHash).toHaveBeenCalledWith('sso', 'configure');
+  });
+
+  it('shows Test Login as a sub page in the breadcrumb, without tabs or actions', async () => {
+    mockSubPath = 'configure';
+    await renderPanel(OKTA_CONFIG);
+
+    fireEvent.click(await screen.findByTestId('mock-open-test-login'));
+
+    await waitFor(() =>
+      expect(lastHeader().breadcrumbs).toEqual([
+        { id: 'settings', label: 'label.setting-plural' },
+        { id: 'sso', label: 'label.single-sign-on' },
+        { id: 'provider', label: 'Okta' },
+        { id: 'current', label: 'label.test-login' },
+      ])
+    );
+
+    expect(lastHeader().tabs).toBeUndefined();
+    expect(lastHeader().actions).toBeUndefined();
+
+    lastHeader().onBreadcrumbAction?.('provider');
+
+    expect(mockTestLoginBack).toHaveBeenCalled();
   });
 
   describe('when the deployment owns part of the configuration', () => {

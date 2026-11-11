@@ -1,38 +1,31 @@
 {
   "abbreviation": "FIBO",
+  "attribution": "Financial Industry Business Ontology (FIBO) production quickstart 2026Q2. Copyright 2018-2026 EDM Council Inc. Copyright 2018-2025 Object Management Group, Inc. Licensed under the MIT License. Redistributed without changes.",
   "bundled": true,
-  "description": "A compact OpenMetadata starter subset aligned to the Financial Industry Business Ontology.",
+  "description": "The Financial Industry Business Ontology production release as one merged file, including the OMG Commons and Languages, Countries and Codes terms. Published verbatim.",
   "id": "fibo",
+  "industry": "finance",
+  "layer": "L2",
   "license": "MIT",
-  "licenseUrl": "https://spec.edmcouncil.org/fibo/page/how-to-contribute",
+  "licenseUrl": "https://opensource.org/licenses/MIT",
   "modules": [
     {
-      "conceptCount": 4,
+      "conceptCount": 2413,
       "dependencies": [],
-      "description": "Foundational financial concepts, instruments, contracts, and markets.",
+      "description": "All production FIBO modules merged into one ontology.",
       "format": "turtle",
-      "id": "foundations",
-      "name": "Foundations",
-      "relationshipCount": 3,
-      "resourcePath": "rdf/ontology-packs/fibo/foundations.ttl",
+      "id": "fibo-quickstart",
+      "name": "FIBO production quickstart",
+      "relationshipCount": 4455,
+      "resourcePath": "rdf/ontology-packs/fibo/fibo-quickstart.ttl",
       "selectedByDefault": true,
-      "sha256": "ef63c4aefed09c66a2b8c35172a20b47758d4b8f7ba372c3463b912c50f839d2"
-    },
-    {
-      "conceptCount": 4,
-      "dependencies": ["foundations"],
-      "description": "Business and legal entity concepts used in financial models.",
-      "format": "turtle",
-      "id": "business-entities",
-      "name": "Business entities",
-      "relationshipCount": 3,
-      "resourcePath": "rdf/ontology-packs/fibo/business-entities.ttl",
-      "selectedByDefault": true,
-      "sha256": "db9f978224c768373d47a9ab853c78c6d2eb8a82d4af604c2b923b5111cfa6c6"
+      "sha256": "5cd164c787cdfb2d7c1c386bc21bb3410f5963199bc547dc000a70b3c0e195b1",
+      "sourceUrl": "https://spec.edmcouncil.org/fibo/ontology/master/2026Q2/prod.fibo-quickstart.ttl"
     }
   ],
-  "name": "FIBO Starter",
+  "name": "FIBO",
+  "publisher": "EDM Council and OMG",
   "sourceUrl": "https://spec.edmcouncil.org/fibo/",
-  "standard": "Financial Industry Business Ontology",
-  "version": "2025Q1-om1"
+  "standard": "Financial Industry Business Ontology, production quickstart",
+  "version": "2026Q2"
 }

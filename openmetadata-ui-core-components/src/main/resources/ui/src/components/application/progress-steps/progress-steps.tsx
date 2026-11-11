@@ -144,7 +144,9 @@ const titleStatusStyles = sortCx({
 const attachCircleStatusStyles = sortCx({
   complete: 'tw:bg-success-solid tw:text-fg-white',
   current: 'tw:bg-brand-solid tw:text-fg-white',
-  incomplete: 'tw:bg-disabled tw:text-disabled',
+  // Incomplete is a state, not a disabled control: dark text-disabled is ~2.9:1
+  // on the gray-700 disabled fill, so the step number takes quaternary there.
+  incomplete: 'tw:bg-disabled tw:text-disabled tw:dark:text-quaternary',
 });
 
 const attachTitleStatusStyles = sortCx({

@@ -17,6 +17,7 @@ import { MetricClass } from '../../support/entity/MetricClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
+import { openMetricDefinitionEditor } from '../../utils/metric';
 import { performUserLogin } from '../../utils/user';
 
 /**
@@ -268,9 +269,7 @@ test.describe('Metric Governance', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     try {
       await metric.create(apiContext);
       await metric.visitEntityPage(page);
-      await page.getByTestId('metric-definition-edit').click();
-      const dialog = page.getByTestId('metric-definition-edit-dialog');
-      await expect(dialog).toBeVisible();
+      const dialog = await openMetricDefinitionEditor(page);
       await dialog
         .getByRole('textbox', { name: /Code/ })
         .fill(updatedExpression);

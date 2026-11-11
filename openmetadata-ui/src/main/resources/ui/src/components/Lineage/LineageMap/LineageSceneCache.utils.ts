@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import LRUCache from 'lru-cache';
+import { LRUCache } from 'lru-cache';
 import type { LineageScene } from '../../../generated/api/lineage/lineageScene';
 
 const SCENE_CACHE_LIMIT = 50;
@@ -52,7 +52,7 @@ export class LineageSceneCache {
           },
           (error: unknown) => {
             if (this.entries.peek(key) === entry) {
-              this.entries.del(key);
+              this.entries.delete(key);
             }
 
             throw error;
@@ -65,6 +65,6 @@ export class LineageSceneCache {
   }
 
   clear(): void {
-    this.entries.reset();
+    this.entries.clear();
   }
 }

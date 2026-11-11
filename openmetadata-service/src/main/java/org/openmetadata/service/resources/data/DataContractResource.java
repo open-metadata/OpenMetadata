@@ -18,6 +18,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.jdbi3.DataContractRepository.RESULT_EXTENSION;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.dataformat.yaml.YAMLFactory;
@@ -73,14 +74,19 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.PipelineServiceClientInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
+import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.datacontract.odcs.ODCSExportService;
 import org.openmetadata.service.datacontract.odcs.ODCSImportAnalyzer;
+import org.openmetadata.service.datacontract.odcs.ODCSImportIssues;
 import org.openmetadata.service.datacontract.odcs.ODCSLenientReader;
+import org.openmetadata.service.datacontract.odcs.ODCSNativeCustomProperties;
 import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleExporter;
 import org.openmetadata.service.datacontract.odcs.ODCSQualityRuleImporter;
 import org.openmetadata.service.datacontract.odcs.ODCSTestCaseMaterializer;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.DataContractRepository;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
@@ -111,14 +117,18 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
 
   private static final String REPLACE_MODE = "replace";
   private static final String TEST_DEFINITION_FIELD = "testDefinition";
-  private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+  private static final ObjectMapper JSON_MAPPER =
+      new ObjectMapper().enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS);
   private static final ObjectMapper YAML_MAPPER =
       new ObjectMapper(new YAMLFactory())
+          .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
           .setSerializationInclusion(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL);
 
   private final ODCSQualityRuleImporter qualityRuleImporter;
   private final ODCSQualityRuleExporter qualityRuleExporter;
+  private final ODCSExportService exportService;
   private final ODCSImportAnalyzer importAnalyzer;
+  private final ODCSNativeCustomProperties nativeCustomProperties;
 
   @Override
   public DataContract addHref(UriInfo uriInfo, DataContract dataContract) {
@@ -136,13 +146,21 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             new ODCSTestCaseMaterializer(
                 (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE)),
             DataContractResource::loadTableWithColumns);
+    this.nativeCustomProperties =
+        new ODCSNativeCustomProperties(
+            name -> TypeRegistry.instance().getSchema(Entity.DATA_CONTRACT, name) != null,
+            values -> EntityRepository.validateAndTransformExtension(values, Entity.DATA_CONTRACT));
     this.importAnalyzer =
-        new ODCSImportAnalyzer(qualityRuleImporter, repository::validateContractWithoutThrowing);
+        new ODCSImportAnalyzer(
+            qualityRuleImporter,
+            repository::validateContractWithoutThrowing,
+            nativeCustomProperties);
     this.qualityRuleExporter =
         new ODCSQualityRuleExporter(
             testCase ->
                 Entity.getEntityOrNull(testCase, TEST_DEFINITION_FIELD, Include.NON_DELETED),
             DataContractResource::loadTableWithColumns);
+    this.exportService = new ODCSExportService(qualityRuleExporter::nativeTestCaseRules);
   }
 
   private static Table loadTableWithColumns(EntityReference table) {
@@ -732,6 +750,32 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  /**
+   * EntityResource.createOrUpdate prepares an entity before it authorizes the PUT, and
+   * DataContractRepository.prepare creates, edits or deletes the contract's test suite, so a
+   * contract PUT is authorized first. The generic checks still run after prepare. A request whose
+   * entity reference is missing, incomplete or of an unsupported type is left to prepare, which
+   * refuses it before it writes anything.
+   */
+  @Override
+  public Response createOrUpdate(
+      UriInfo uriInfo, SecurityContext securityContext, DataContract dataContract) {
+    if (hasSupportedTarget(dataContract.getEntity())) {
+      repository.setFullyQualifiedName(dataContract);
+      ResourceContext<DataContract> stored =
+          getResourceContextByName(dataContract.getFullyQualifiedName());
+      authorizeContractWrite(securityContext, dataContract, (DataContract) stored.getEntity());
+    }
+    return super.createOrUpdate(uriInfo, securityContext, dataContract);
+  }
+
+  private boolean hasSupportedTarget(EntityReference target) {
+    return target != null
+        && target.getId() != null
+        && target.getType() != null
+        && repository.isEntityTypeSupported(target.getType());
+  }
+
   private DataContract getDataContract(CreateDataContract create, String user) {
     return DataContractMapper.createEntity(create, user);
   }
@@ -783,20 +827,25 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
     EntityTimeSeriesDAO timeSeriesDAO = Entity.getCollectionDAO().entityExtensionTimeSeriesDao();
+    final long start = startTs != null ? startTs : 0L;
+    final long end = endTs != null ? endTs : System.currentTimeMillis();
     List<String> jsonResults =
-        timeSeriesDAO.listBetweenTimestampsByOrder(
-            dataContract.getFullyQualifiedName(),
-            "dataContract.dataContractResult",
-            startTs != null ? startTs : 0L,
-            endTs != null ? endTs : System.currentTimeMillis(),
-            EntityTimeSeriesDAO.OrderBy.DESC);
+        limitParam > 0
+            ? timeSeriesDAO.listBetweenTimestampsByOrderWithLimit(
+                dataContract.getFullyQualifiedName(),
+                "dataContract.dataContractResult",
+                start,
+                end,
+                EntityTimeSeriesDAO.OrderBy.DESC,
+                limitParam)
+            : timeSeriesDAO.listBetweenTimestampsByOrder(
+                dataContract.getFullyQualifiedName(),
+                "dataContract.dataContractResult",
+                start,
+                end,
+                EntityTimeSeriesDAO.OrderBy.DESC);
 
     List<DataContractResult> results = JsonUtils.readObjects(jsonResults, DataContractResult.class);
-
-    // Apply limit
-    if (limitParam > 0 && results.size() > limitParam) {
-      results = results.subList(0, limitParam);
-    }
 
     return new ResultList<>(
         results, String.valueOf(startTs), String.valueOf(endTs), results.size());
@@ -1002,18 +1051,16 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
         new ResourceContext<>(Entity.DATA_CONTRACT, id, null);
     authorizer.authorize(securityContext, operationContext, resourceContext);
 
-    // Get the effective contract (with inherited properties from data products) for validation
     EntityInterface<?> entity =
         Entity.getEntity(
             dataContract.getEntity().getType(),
             dataContract.getEntity().getId(),
             "*",
             Include.NON_DELETED);
-    DataContract effectiveContract = repository.getEffectiveDataContract(entity);
+    DataContract effectiveContract = repository.getEffectiveDataContract(entity, dataContract);
 
-    // Use the effective contract for validation to include inherited semantics
     RestUtil.PutResponse<DataContractResult> result =
-        repository.validateContract(effectiveContract != null ? effectiveContract : dataContract);
+        repository.validateContractWithEffective(dataContract, effectiveContract);
     return result.toResponse();
   }
 
@@ -1077,7 +1124,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
   @Operation(
       operationId = "exportDataContractToODCS",
       summary = "Export data contract to ODCS format",
-      description = "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 format.",
+      description = "Export a data contract to the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1085,10 +1132,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ODCSDataContract.class))),
+                    schema =
+                        @Schema(
+                            type = "object",
+                            description = "ODCS document matching the requested export version"))),
         @ApiResponse(responseCode = "404", description = "Data contract not found")
       })
-  public ODCSDataContract exportToODCS(
+  public JsonNode exportToODCS(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the data contract", schema = @Schema(type = "UUID"))
@@ -1098,11 +1148,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam) {
-    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
+          String fieldsParam,
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
+          @QueryParam("odcsVersion")
+          @DefaultValue(ODCSExportService.DEFAULT_VERSION)
+          String odcsVersion) {
+    String fields =
+        (fieldsParam == null || fieldsParam.isEmpty())
+            ? EXPORT_FIELDS
+            : EXPORT_FIELDS + "," + fieldsParam;
     DataContract dataContract =
         getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
-    return toODCS(dataContract);
+    return toODCS(dataContract, odcsVersion);
   }
 
   @GET
@@ -1112,7 +1171,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSYaml",
       summary = "Export data contract to ODCS YAML format",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 YAML format.",
+          "Export a data contract as YAML for the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1130,11 +1189,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam) {
-    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
+          String fieldsParam,
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
+          @QueryParam("odcsVersion")
+          @DefaultValue(ODCSExportService.DEFAULT_VERSION)
+          String odcsVersion) {
+    String fields =
+        (fieldsParam == null || fieldsParam.isEmpty())
+            ? EXPORT_FIELDS
+            : EXPORT_FIELDS + "," + fieldsParam;
     DataContract dataContract =
         getInternal(uriInfo, securityContext, id, fields, Include.NON_DELETED);
-    ODCSDataContract odcs = toODCS(dataContract);
+    JsonNode odcs = toODCS(dataContract, odcsVersion);
     try {
       String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
@@ -1149,7 +1217,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSByFQN",
       summary = "Export data contract to ODCS format by FQN",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 format by fully qualified name.",
+          "Export a data contract by fully qualified name to the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1157,10 +1225,13 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
             content =
                 @Content(
                     mediaType = "application/json",
-                    schema = @Schema(implementation = ODCSDataContract.class))),
+                    schema =
+                        @Schema(
+                            type = "object",
+                            description = "ODCS document matching the requested export version"))),
         @ApiResponse(responseCode = "404", description = "Data contract not found")
       })
-  public ODCSDataContract exportToODCSByFqn(
+  public JsonNode exportToODCSByFqn(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(
@@ -1172,11 +1243,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam) {
-    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
+          String fieldsParam,
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
+          @QueryParam("odcsVersion")
+          @DefaultValue(ODCSExportService.DEFAULT_VERSION)
+          String odcsVersion) {
+    String fields =
+        (fieldsParam == null || fieldsParam.isEmpty())
+            ? EXPORT_FIELDS
+            : EXPORT_FIELDS + "," + fieldsParam;
     DataContract dataContract =
         getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
-    return toODCS(dataContract);
+    return toODCS(dataContract, odcsVersion);
   }
 
   @GET
@@ -1186,7 +1266,7 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       operationId = "exportDataContractToODCSYamlByFQN",
       summary = "Export data contract to ODCS YAML format by FQN",
       description =
-          "Export a data contract to Open Data Contract Standard (ODCS) v3.1.0 YAML format by fully qualified name.",
+          "Export a data contract by fully qualified name as YAML for the requested ODCS version; the default is v3.1.0.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -1206,11 +1286,20 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
               description = "Fields requested in the returned resource",
               schema = @Schema(type = "string", example = FIELDS))
           @QueryParam("fields")
-          String fieldsParam) {
-    String fields = (fieldsParam == null || fieldsParam.isEmpty()) ? EXPORT_FIELDS : fieldsParam;
+          String fieldsParam,
+      @Parameter(
+              description =
+                  "Requested ODCS export version; only profiles with published schemas are supported")
+          @QueryParam("odcsVersion")
+          @DefaultValue(ODCSExportService.DEFAULT_VERSION)
+          String odcsVersion) {
+    String fields =
+        (fieldsParam == null || fieldsParam.isEmpty())
+            ? EXPORT_FIELDS
+            : EXPORT_FIELDS + "," + fieldsParam;
     DataContract dataContract =
         getByNameInternal(uriInfo, securityContext, fqn, fields, Include.NON_DELETED);
-    ODCSDataContract odcs = toODCS(dataContract);
+    JsonNode odcs = toODCS(dataContract, odcsVersion);
     try {
       String yamlContent = YAML_MAPPER.writeValueAsString(odcs);
       return Response.ok(yamlContent, "application/yaml").build();
@@ -1663,8 +1752,12 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
    * Values the model cannot read, such as a logical type from a newer ODCS version, are left out
    * rather than failing the import; the validate endpoint reports them.
    */
-  private static ODCSDataContract readODCS(ObjectMapper mapper, String content, String format) {
-    return ODCSLenientReader.readOrReject(mapper, readTree(mapper, content, format));
+  private record ODCSImportDocument(ODCSDataContract contract, JsonNode original) {}
+
+  private static ODCSImportDocument readODCS(ObjectMapper mapper, String content, String format) {
+    JsonNode original = readTree(mapper, content, format);
+    return new ODCSImportDocument(
+        ODCSLenientReader.readOrReject(mapper, original.deepCopy()), original);
   }
 
   private static JsonNode readTree(ObjectMapper mapper, String content, String format) {
@@ -1680,8 +1773,15 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       UriInfo uriInfo,
       SecurityContext securityContext,
       ODCSImportRequest request,
-      ODCSDataContract odcs) {
-    DataContract contract = ODCSConverter.fromODCS(odcs, request.entityRef(), request.objectName());
+      ODCSImportDocument document) {
+    DataContract contract =
+        ODCSConverter.fromODCS(
+            document.contract(),
+            request.entityRef(),
+            request.objectName(),
+            ODCSImportIssues.discarding(),
+            document.original());
+    nativeCustomProperties.apply(contract, document.original(), ODCSImportIssues.discarding());
     qualityRuleImporter.resolveSlaColumn(contract);
     importQualityRules(securityContext, request, contract, null);
     stampUpdate(contract, securityContext);
@@ -1693,8 +1793,15 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
       SecurityContext securityContext,
       ODCSImportRequest request,
       String mode,
-      ODCSDataContract odcs) {
-    DataContract imported = ODCSConverter.fromODCS(odcs, request.entityRef(), request.objectName());
+      ODCSImportDocument document) {
+    DataContract imported =
+        ODCSConverter.fromODCS(
+            document.contract(),
+            request.entityRef(),
+            request.objectName(),
+            ODCSImportIssues.discarding(),
+            document.original());
+    nativeCustomProperties.apply(imported, document.original(), ODCSImportIssues.discarding());
     qualityRuleImporter.resolveSlaColumn(imported);
     DataContract existing = loadExistingContract(request.entityRef());
     importQualityRules(securityContext, request, imported, existing);
@@ -1775,8 +1882,8 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     contract.setUpdatedAt(System.currentTimeMillis());
   }
 
-  private ODCSDataContract toODCS(DataContract contract) {
-    return ODCSConverter.toODCS(contract, qualityRuleExporter.nativeTestCaseRules(contract));
+  private JsonNode toODCS(DataContract contract, String version) {
+    return exportService.export(contract, version).requireValid();
   }
 
   private DataContract loadExistingContract(EntityReference entityRef) {

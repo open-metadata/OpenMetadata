@@ -148,7 +148,7 @@ export const useSsoConfiguration = ({
   managedPaths,
   isReadOnly = false,
   scrollContainer = '.resizable-first-panel > .overflow-y-auto',
-  errorSelector = '.field-error.has-error, .ant-form-item-explain-error',
+  errorSelector = '.field-error.has-error, .form-field-error',
 }: UseSsoConfigurationOptions) => {
   const { t } = useTranslation();
   const { setIsAuthenticated, setCurrentUser } = useApplicationStore();

@@ -2,7 +2,7 @@
   "$id": "https://open-metadata.org/schema/type/ontologyConceptBindingsResponse.json",
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OntologyConceptBindingsResponse",
-  "description": "Current bindings filtered by canonical catalog visibility. Hidden and deleted assets contribute no associations, paths, or counts.",
+  "description": "One page of a concept's bindings, ordered by asset id and filtered by canonical catalog visibility. Hidden and deleted assets contribute no associations, paths, or counts.",
   "type": "object",
   "javaType": "org.openmetadata.schema.type.OntologyConceptBindingsResponse",
   "definitions": {
@@ -45,6 +45,10 @@
         "assetType": { "$ref": "ontologyConceptBindings.json#/definitions/assetType" },
         "assetId": { "$ref": "basic.json#/definitions/uuid" },
         "asset": { "$ref": "entityReference.json" },
+        "serviceType": {
+          "description": "Service type of the asset, for asset types that record one.",
+          "type": "string"
+        },
         "columns": {
           "type": "array",
           "items": { "$ref": "#/definitions/columnBinding" },
@@ -61,8 +65,11 @@
     "assets": {
       "type": "array",
       "items": { "$ref": "#/definitions/assetBinding" },
-      "maxItems": 100,
       "default": []
+    },
+    "after": {
+      "description": "Cursor for the next page. Absent when no rows follow. One request examines a bounded number of rows, so a page can hold fewer than limit assets while a cursor follows, and the last page can be empty.",
+      "type": "string"
     }
   },
   "required": ["revision", "assets"],

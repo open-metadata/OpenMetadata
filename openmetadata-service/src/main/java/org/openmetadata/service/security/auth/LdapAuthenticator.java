@@ -16,7 +16,6 @@ import static org.openmetadata.service.util.UserUtil.getRoleListFromUser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.unboundid.ldap.sdk.Attribute;
-import com.unboundid.ldap.sdk.BindResult;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.GetEntryLDAPConnectionPoolHealthCheck;
 import com.unboundid.ldap.sdk.LDAPConnection;
@@ -214,7 +213,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   /** Assign directory roles to a user that is about to be created. */
   private void assignLdapRoles(String userDn, User user) {
     try {
-      getRoleForLdap(userDn, user, false);
+      getRoleForLdap(userDn, user);
     } catch (JsonProcessingException ex) {
       LOG.error(
           "Failed to assign roles from LDAP for user {} due to {}",
@@ -223,15 +222,18 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
+  /** Returns whether the roles or the admin flag changed, so the provisioner saves either. */
   private boolean syncLdapRoles(String userDn, User user) {
     List<EntityReference> previousRoles = normalizeRoles(user.getRoles());
+    boolean wasAdmin = Boolean.TRUE.equals(user.getIsAdmin());
     try {
-      getRoleForLdap(userDn, user, false);
+      getRoleForLdap(userDn, user);
     } catch (JsonProcessingException ex) {
       LOG.error(
           "Failed to sync roles from LDAP for user {} due to {}", user.getName(), ex.getMessage());
     }
-    return !Objects.equals(previousRoles, normalizeRoles(user.getRoles()));
+    return !Objects.equals(previousRoles, normalizeRoles(user.getRoles()))
+        || wasAdmin != Boolean.TRUE.equals(user.getIsAdmin());
   }
 
   private List<EntityReference> normalizeRoles(List<EntityReference> roles) {
@@ -283,37 +285,50 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   private void performLdapBind(String userDn, String reqPassword, User dummy) {
-    BindResult bindingResult = null;
+    ResultCode resultCode = bind(userDn, reqPassword);
+    if (ResultCode.SUCCESS.equals(resultCode)) {
+      LoginAttemptCache.getInstance().recordSuccessfulLogin(dummy.getEmail());
+      return;
+    }
+    if (ResultCode.INVALID_CREDENTIALS.equals(resultCode)) {
+      recordFailedLogin(dummy);
+      throw new CustomExceptionMessage(
+          UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
+    }
+    LOG.error("LDAP bind failed with unexpected result: {}", resultCode.getName());
+    throw new CustomExceptionMessage(
+        INTERNAL_SERVER_ERROR, "LDAP_AUTH_ERROR", "Authentication failed: " + resultCode.getName());
+  }
+
+  /**
+   * The bind's result code. UnboundID reports a rejected bind by throwing rather than by returning a
+   * result, so a wrong password arrives as an exception carrying {@code INVALID_CREDENTIALS}.
+   */
+  ResultCode bind(String userDn, String reqPassword) {
     LDAPConnection userConnection = null;
     try {
       userConnection = openConnection(ldapConfiguration, new LDAPConnectionOptions());
-
-      // Perform the bind operation
-      bindingResult = userConnection.bind(userDn, reqPassword);
-      if (Objects.equals(bindingResult.getResultCode().getName(), ResultCode.SUCCESS.getName())) {
-        return;
+      return userConnection.bind(userDn, reqPassword).getResultCode();
+    } catch (LDAPException ex) {
+      if (ResultCode.INVALID_CREDENTIALS.equals(ex.getResultCode())) {
+        return ResultCode.INVALID_CREDENTIALS;
       }
-
-      if (Objects.equals(
-          bindingResult.getResultCode().getName(), ResultCode.INVALID_CREDENTIALS.getName())) {
-        recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
-        throw new CustomExceptionMessage(
-            UNAUTHORIZED, INVALID_USER_OR_PASSWORD, INVALID_EMAIL_PASSWORD);
-      }
+      throw ldapFailure(ex);
     } catch (Exception ex) {
-      handleLdapException(ex);
+      throw ldapFailure(ex);
     } finally {
       if (userConnection != null) {
         userConnection.close();
       }
     }
+  }
 
-    LOG.error(
-        "LDAP bind failed with unexpected result: {}", bindingResult.getResultCode().getName());
-    throw new CustomExceptionMessage(
-        INTERNAL_SERVER_ERROR,
-        "LDAP_AUTH_ERROR",
-        "Authentication failed: " + bindingResult.getResultCode().getName());
+  private void recordFailedLogin(User dummy) {
+    try {
+      recordFailedLoginAttempt(dummy.getEmail(), dummy.getName());
+    } catch (TemplateException | IOException e) {
+      LOG.warn("Could not send the failed-login notice for {}", dummy.getName(), e);
+    }
   }
 
   @Override
@@ -376,7 +391,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
         }
 
         String ldapEmail = emailAttr.getValue();
-        if (!email.equalsIgnoreCase(ldapEmail)) {
+        if (!SecurityUtil.sameIdentifier(email, ldapEmail)) {
           throw new CustomExceptionMessage(FORBIDDEN, INVALID_USER_OR_PASSWORD, LDAP_MISSING_ATTR);
         }
 
@@ -436,10 +451,10 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   /**
-   * Getting user's roles according to the mapping between ldap groups and roles
+   * Sets the user's roles and admin flag from the directory groups the user is in now, a user in no
+   * group included. The caller saves the user. A configured admin principal stays admin.
    */
-  private void getRoleForLdap(String userDn, User user, Boolean reAssign)
-      throws JsonProcessingException {
+  private void getRoleForLdap(String userDn, User user) throws JsonProcessingException {
     // Get user's groups from LDAP server using the DN of the user
     try {
       Filter groupFilter =
@@ -456,21 +471,14 @@ public class LdapAuthenticator implements AuthenticatorHandler {
               ldapConfiguration.getAllAttributeName());
       SearchResult searchResult = ldapLookupConnectionPool.search(searchRequest);
 
-      // if user don't belong to any group, assign empty role list to it
-      if (CollectionUtils.isEmpty(searchResult.getSearchEntries())) {
-        if (Boolean.TRUE.equals(reAssign)) {
-          user.setRoles(this.getReassignRoles(user, new ArrayList<>(0), Boolean.FALSE));
-          UserUtil.addOrUpdateUser(user);
-        }
-        return;
-      }
-
-      // get the role mapping from LDAP configuration
       Map<String, List<String>> roleMapping =
-          JsonUtils.readValue(ldapConfiguration.getAuthRolesMapping(), new TypeReference<>() {});
+          CollectionUtils.isEmpty(searchResult.getSearchEntries())
+              ? Map.of()
+              : JsonUtils.readValue(
+                  ldapConfiguration.getAuthRolesMapping(), new TypeReference<>() {});
       List<EntityReference> roleReferenceList = new ArrayList<>();
 
-      boolean adminFlag = Boolean.FALSE;
+      boolean adminFlag = isUserAdmin(user.getEmail(), user.getName());
 
       // match the user's ldap groups with the role mapping according to groupDN
       for (SearchResultEntry searchResultEntry : searchResult.getSearchEntries()) {
@@ -510,10 +518,6 @@ public class LdapAuthenticator implements AuthenticatorHandler {
                           LinkedHashMap::new))
                   .values());
       user.setRoles(this.getReassignRoles(user, roleReferenceList, adminFlag));
-
-      if (Boolean.TRUE.equals(reAssign)) {
-        UserUtil.addOrUpdateUser(user);
-      }
     } catch (Exception ex) {
       LOG.warn(
           "Failed to get user's groups from LDAP server using the DN of the user {} due to {}",
@@ -674,14 +678,12 @@ public class LdapAuthenticator implements AuthenticatorHandler {
       throw new AuthenticationException("Refresh token expired. Please login again.");
     }
 
-    // just delete the existing token
-    tokenRepository.deleteToken(requestRefreshToken);
-    // we use rotating refresh token , generate new token
+    // Used once, as in BasicAuthenticator: a token deleted while this request ran is not renewed.
     RefreshToken newRefreshToken =
         TokenUtil.getRefreshTokenForLDAP(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
-
+    if (!tokenRepository.replaceToken(requestRefreshToken, newRefreshToken)) {
+      throw new AuthenticationException("Refresh token is no longer valid. Please login again.");
+    }
     return newRefreshToken;
   }
 
@@ -703,7 +705,7 @@ public class LdapAuthenticator implements AuthenticatorHandler {
     }
   }
 
-  private void handleLdapException(Exception ex) {
+  private CustomExceptionMessage ldapFailure(Exception ex) {
     if (ex instanceof LDAPException ldapEx) {
       ResultCode resultCode = ldapEx.getResultCode();
       String errorMessage = ldapEx.getMessage();
@@ -717,23 +719,23 @@ public class LdapAuthenticator implements AuthenticatorHandler {
           || errorMessage.contains("Connection reset")
           || errorMessage.contains("No route to host")) {
         LOG.error("LDAP connection error during authentication: {}", errorMessage);
-        throw new CustomExceptionMessage(
+        return new CustomExceptionMessage(
             SERVICE_UNAVAILABLE,
             "LDAP_CONNECTION_ERROR",
             "Unable to connect to authentication server. Please try again later.");
       }
       LOG.error("LDAP error during authentication: {}", errorMessage);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR, "LDAP_ERROR", "Authentication server error: " + errorMessage);
     } else if (ex instanceof GeneralSecurityException) {
       LOG.error("SSL/TLS error during LDAP authentication", ex);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
           "LDAP_SSL_ERROR",
           "SSL/TLS configuration error: " + ex.getMessage());
     } else {
       LOG.error("Unexpected error during LDAP authentication", ex);
-      throw new CustomExceptionMessage(
+      return new CustomExceptionMessage(
           INTERNAL_SERVER_ERROR,
           "LDAP_UNEXPECTED_ERROR",
           "Unexpected authentication error: " + ex.getMessage());

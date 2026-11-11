@@ -119,7 +119,10 @@ public class DistributedIndexingStrategy {
 
     searchIndexSink =
         searchRepository.createBulkSink(
-            config.batchSize(), config.maxConcurrentRequests(), config.payloadSize());
+            config.batchSize(),
+            config.maxConcurrentRequests(),
+            config.payloadSize(),
+            config.bulkRetryPolicy());
 
     RecreateIndexHandler stagedIndexHandler = searchRepository.createReindexHandler();
     if (stagedIndexHandler instanceof DefaultRecreateHandler defaultHandler) {

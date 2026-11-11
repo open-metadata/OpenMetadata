@@ -294,18 +294,16 @@
   justify-content: center;
   border: @global-border;
   border-radius: @border-rad-base;
-  width: 100%;
-
-  .more-menu-items > .ant-btn-compact-first-item,
-  .headings-dropdown > .ant-btn-compact-first-item {
-    display: none;
-  }
+  // v3 positions this element itself; there is no tippy box to size or stack it.
+  width: max-content;
+  max-width: 400px;
+  z-index: 1000;
 }
 
 .slash-menu-wrapper {
   max-height: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--tw-color-bg-overlay-surface);
+  background-color: var(--tw-background-color-floating);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -330,7 +328,7 @@
   max-height: 300px;
   max-width: 300px;
   padding: var(--om-space-12) 0;
-  background-color: var(--tw-color-bg-overlay-surface);
+  background-color: var(--tw-background-color-floating);
   border: @global-border;
   border-radius: @border-rad-base;
   overflow-y: auto;
@@ -439,7 +437,6 @@
 }
 
 .is-format-active {
-  .ant-typography,
   .format-label {
     color: var(--tw-color-text-link);
   }
@@ -458,13 +455,6 @@
 
 .om-image-node-popover {
   min-width: 400px;
-
-  .ant-popover-inner-content {
-    width: auto;
-  }
-}
-.om-node-image-upload > .ant-upload-select {
-  width: 100%;
 }
 .om-image-node-uploaded {
   width: 100%;
@@ -473,7 +463,7 @@
 }
 .om-image-node-action {
   width: 100%;
-  :is(.ant-space-item, .layout-space-item) {
+  .layout-space-item {
     width: 100%;
   }
 }

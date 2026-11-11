@@ -26,6 +26,7 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   connectEdgeBetweenNodesViaAPI,
   dismissLineageMapOnboarding,
+  fitToScreen,
   performZoomOut,
   visitLineageTab,
 } from '../../../utils/lineage';
@@ -253,5 +254,97 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await emptyTable.delete(apiContext);
       await afterAction();
     });
+  });
+});
+
+test.describe('Node drag', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+  test('Verify holding a dragged node at the canvas edge auto-pans and hides only its edges', async ({
+    page,
+  }) => {
+    const { apiContext, afterAction } = await getApiContext(page);
+    const root = new TableClass();
+    const dragged = new TopicClass();
+    const sibling = new TableClass();
+    const getFqn = (entity: TableClass | TopicClass) =>
+      get(entity, 'entityResponseData.fullyQualifiedName', '');
+
+    try {
+      await Promise.all([
+        root.create(apiContext),
+        dragged.create(apiContext),
+        sibling.create(apiContext),
+      ]);
+      await Promise.all([
+        connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: root.entityResponseData.id, type: 'table' },
+          { id: dragged.entityResponseData.id, type: 'topic' }
+        ),
+        connectEdgeBetweenNodesViaAPI(
+          apiContext,
+          { id: root.entityResponseData.id, type: 'table' },
+          { id: sibling.entityResponseData.id, type: 'table' }
+        ),
+      ]);
+      await root.visitEntityPage(page);
+      await visitLineageTab(page);
+      await fitToScreen(page);
+
+      const draggedNode = page.getByTestId(`lineage-node-${getFqn(dragged)}`);
+      const draggedEdge = page.getByTestId(
+        `edge-${getFqn(root)}-${getFqn(dragged)}`
+      );
+      const siblingEdge = page.getByTestId(
+        `edge-${getFqn(root)}-${getFqn(sibling)}`
+      );
+      const canvas = page.locator('.react-flow__pane');
+      const viewport = page.locator('.react-flow__viewport');
+      await expect(draggedEdge).toHaveCount(1);
+      await expect(siblingEdge).toHaveCount(1);
+
+      const nodeBox = await draggedNode.boundingBox();
+      const canvasBox = await canvas.boundingBox();
+      if (!nodeBox || !canvasBox) {
+        throw new Error('Lineage node or canvas has no bounding box');
+      }
+      const getPanY = async () =>
+        Number(
+          /translate\([^,]+,\s*(-?[\d.]+)px/.exec(
+            (await viewport.getAttribute('style')) ?? ''
+          )?.[1] ?? 0
+        );
+      const startPanY = await getPanY();
+      const grabX = nodeBox.x + nodeBox.width / 2;
+
+      await page.mouse.move(grabX, nodeBox.y + 8);
+      await page.mouse.down();
+      await page.mouse.move(grabX, canvasBox.y + 4, { steps: 10 });
+
+      // Auto-pan keeps scrolling while the pointer rests at the edge; hold
+      // until it has panned far enough to have run for many frames.
+      await expect
+        .poll(async () => (await getPanY()) - startPanY, { timeout: 15_000 })
+        .toBeGreaterThan(1500);
+      // Only the dragged node's edges are hidden while it moves.
+      await expect(draggedEdge).toHaveCount(0);
+      await expect(siblingEdge).toHaveCount(1);
+      await page.mouse.up();
+
+      // A "Maximum update depth exceeded" crash unmounts the canvas.
+      await expect(canvas).toBeVisible();
+      await expect(draggedEdge).toHaveCount(1);
+      // The drop position was committed: the node stays under the pointer
+      // instead of snapping back to where the drag started.
+      await expect
+        .poll(async () => (await draggedNode.boundingBox())?.y ?? Infinity)
+        .toBeLessThan(canvasBox.y + 50);
+    } finally {
+      await Promise.all([
+        root.delete(apiContext),
+        dragged.delete(apiContext),
+        sibling.delete(apiContext),
+      ]);
+      await afterAction();
+    }
   });
 });

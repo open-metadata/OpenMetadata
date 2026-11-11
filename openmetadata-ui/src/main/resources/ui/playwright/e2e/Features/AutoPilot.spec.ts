@@ -15,7 +15,6 @@ import { isEmpty } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
-import KafkaIngestionClass from '../../support/entity/ingestion/KafkaIngestionClass';
 import MetabaseIngestionClass from '../../support/entity/ingestion/MetabaseIngestionClass';
 import MlFlowIngestionClass from '../../support/entity/ingestion/MlFlowIngestionClass';
 import MysqlIngestionClass from '../../support/entity/ingestion/MySqlIngestionClass';
@@ -43,7 +42,9 @@ const services = [
   // S3IngestionClass,
   MetabaseIngestionClass,
   MysqlIngestionClass,
-  KafkaIngestionClass,
+  // Skipping Kafka while its test broker moves off EC2 to the connectors cluster
+  // Remove the comment when the migration is done: https://github.com/open-metadata/k8s-manifests/pull/429
+  // KafkaIngestionClass,
   MlFlowIngestionClass,
 ];
 

@@ -86,7 +86,11 @@
     "schemaFilterPattern":{
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^information_schema$", "^crdb_internal$", "^pg_extension$"]
+      }
     },
     "tableFilterPattern": {
       "title": "Default Table Filter Pattern",
@@ -96,7 +100,11 @@
     "databaseFilterPattern": {
       "title": "Default Database Filter Pattern",
       "description": "Regex to only include/exclude databases that matches the pattern.",
-      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern",
+      "default": {
+        "includes": [],
+        "excludes": ["^system$"]
+      }
     },
     "supportsMetadataExtraction": {
       "title": "Supports Metadata Extraction",

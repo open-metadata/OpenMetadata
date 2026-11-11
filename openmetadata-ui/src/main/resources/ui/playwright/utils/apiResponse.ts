@@ -12,6 +12,34 @@
  */
 import { APIRequestContext, APIResponse } from '@playwright/test';
 
+export type EntityIdentity = { id: string; fullyQualifiedName: string };
+
+export const requireEntityIdentity = <T extends object>(
+  entity: T,
+  label: string
+): T & EntityIdentity => {
+  if (
+    !entity ||
+    typeof entity !== 'object' ||
+    !('id' in entity) ||
+    typeof entity.id !== 'string' ||
+    !entity.id ||
+    !('fullyQualifiedName' in entity) ||
+    typeof entity.fullyQualifiedName !== 'string' ||
+    !entity.fullyQualifiedName
+  ) {
+    throw new Error(
+      `${label}: entity response is missing id or fullyQualifiedName`
+    );
+  }
+
+  return {
+    ...entity,
+    id: entity.id,
+    fullyQualifiedName: entity.fullyQualifiedName,
+  };
+};
+
 // Preserved for the many support classes that still call withNotFoundRetry
 // against just-created entity ids where the server occasionally answers 404
 // briefly (row is committed, reference lookup lags ~15ms). See withNotFoundRetry
@@ -51,13 +79,49 @@ export const settleAll = async (operations: Iterable<unknown>) => {
 // the caller lacks permission, which is a real test-setup bug.
 const CLEANUP_TOLERATED_STATUSES = new Set([400, 401, 404]);
 
+const RETAINED_RELEASES_REFUSAL = 'has retained releases';
+
+/**
+ * An ontology that captured a release cannot be permanently deleted
+ * (ADR:2026-10-14-ontology-releases-seal-canonical-sql-members); archiving it
+ * is the delete the rule allows, so the fixture does not stay active.
+ */
+const archiveInsteadOfPurge = async (
+  apiContext: APIRequestContext,
+  url: string,
+  refusal: APIResponse,
+  options?: Parameters<APIRequestContext['delete']>[1]
+): Promise<APIResponse> => {
+  const isOntologyPurge =
+    url.includes('/api/v1/ontologies/') && url.includes('hardDelete=true');
+  if (
+    !isOntologyPurge ||
+    refusal.status() !== 400 ||
+    !(await refusal.text()).includes(RETAINED_RELEASES_REFUSAL)
+  ) {
+    return refusal;
+  }
+
+  const [path, query = ''] = url.split('?');
+  const params = new URLSearchParams(query);
+  params.delete('hardDelete');
+
+  return apiContext.delete(`${path}?${params}`, options);
+};
+
 /** Cleanup is idempotent, but a real HTTP error must not silently leak a fixture. */
 export const deleteFixtureEntity = async (
   apiContext: APIRequestContext,
   url: string,
   options?: Parameters<APIRequestContext['delete']>[1]
 ): Promise<APIResponse> => {
-  const response = await apiContext.delete(url, options);
+  const attempt = await apiContext.delete(url, options);
+  const response = await archiveInsteadOfPurge(
+    apiContext,
+    url,
+    attempt,
+    options
+  );
   const status = response.status();
   if (!response.ok() && !CLEANUP_TOLERATED_STATUSES.has(status)) {
     throw new Error(

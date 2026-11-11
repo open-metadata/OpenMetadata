@@ -17,11 +17,11 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Icon } from '@openmetadata/ui-core-components/icon';
+import { Globe01 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { get, isUndefined, noop } from 'lodash';
 import { Fragment, lazy, ReactNode } from 'react';
 import { Link } from 'react-router-dom';
-import { ReactComponent as DomainIcon } from '../assets/svg/entity/domain.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
 import type {
@@ -409,7 +409,7 @@ export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
 
 export const getDomainIcon = (iconURL?: string) => (
   <Icon
-    fallback={<DomainIcon className="tw:text-quaternary" />}
+    fallback={<Globe01 className="tw:text-quaternary" size={24} />}
     iconValue={iconURL}
     imageClassName="tw:h-6 tw:w-6 tw:text-quaternary"
     size={24}

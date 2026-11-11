@@ -93,6 +93,6 @@ yarn start                    # dev server on :3000
 yarn test [path/to.spec.ts]   # Jest (add :watch, :coverage)
 yarn lint / yarn lint:fix     # ESLint
 yarn ui-checkstyle:changed    # CI checkstyle for changed files (excludes tsc)
-npx tsc --noEmit              # type check
+yarn tsc:check              # type check
 yarn build                    # production build (Vite)
 ```

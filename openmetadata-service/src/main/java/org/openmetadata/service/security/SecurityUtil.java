@@ -22,6 +22,7 @@ import static org.openmetadata.service.security.JwtFilter.USERNAME_CLAIM_KEY;
 import com.auth0.jwt.interfaces.Claim;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableMap.Builder;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.ws.rs.WebApplicationException;
 import jakarta.ws.rs.client.Invocation;
@@ -36,18 +37,21 @@ import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.Collection;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
+import org.openmetadata.schema.auth.LoginRequest;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exception.WebServiceException;
@@ -61,12 +65,38 @@ public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
   public static final String ISSUER_CLAIM = "iss";
   public static final String EMAIL_VERIFIED_CLAIM = "email_verified";
+  // A login body is an email and a password, so a larger one is refused before it is parsed.
+  // ADR:2026-11-02-password-login-bodies-are-capped-at-16-kib
+  public static final int MAX_LOGIN_BODY_BYTES = 16 * 1024;
 
   private SecurityUtil() {}
 
+  /**
+   * Whether two user names, emails or email domains identify the same thing. Compares the {@link
+   * Locale#ROOT} lower-case forms, the normalization names get when they are stored, so a token
+   * that carries the original casing still matches. {@link String#equalsIgnoreCase} must not be
+   * used for this: it also compares upper-case forms, which equates characters such as {@code ı}
+   * with {@code i} and {@code ſ} with {@code s}, so two different stored names would compare
+   * equal.
+   */
+  public static boolean sameIdentifier(String first, String second) {
+    return first != null
+        && second != null
+        && first.toLowerCase(Locale.ROOT).equals(second.toLowerCase(Locale.ROOT));
+  }
+
+  /**
+   * The authentication filters build the principal from the account name, so the name is used whole:
+   * a user named {@code admin/x} is not the user {@code admin}.
+   */
   public static String getUserName(SecurityContext securityContext) {
     Principal principal = securityContext.getUserPrincipal();
-    return principal == null ? null : principal.getName().split("[/@]")[0];
+    return principal == null ? null : principal.getName();
+  }
+
+  public static boolean isImpersonated(SecurityContext securityContext) {
+    return securityContext instanceof CatalogSecurityContext catalogSecurityContext
+        && catalogSecurityContext.impersonatedUser() != null;
   }
 
   public static String getImpersonatedByUser(SecurityContext securityContext) {
@@ -250,7 +280,7 @@ public final class SecurityUtil {
       return false;
     }
     String domain = email.substring(email.indexOf('@') + 1);
-    return allowedRegistrationDomains.stream().anyMatch(domain::equalsIgnoreCase);
+    return allowedRegistrationDomains.stream().anyMatch(d -> sameIdentifier(d, domain));
   }
 
   /**
@@ -289,14 +319,16 @@ public final class SecurityUtil {
   }
 
   /**
-   * Mirrors the {@code email} definition in {@code openmetadata-spec .../type/basic.json}, whose
-   * pattern reduces to this: its character class lists punctuation that {@code \S} already covers.
-   * The two must agree — a stricter check here would let an account be created through the API and
-   * then refuse to authenticate it, which is what a locale-specific address (apostrophes, accented
-   * characters) would have hit.
+   * The {@code email} definition in {@code openmetadata-spec .../type/basic.json}. The two must
+   * agree — a stricter check here would let an account be created through the API and then refuse
+   * to authenticate it, which is what a locale-specific address (apostrophes, accented characters)
+   * would have hit. Each part stops at the first separator it cannot contain, so matching is linear
+   * in the input (ADR:2026-11-03-input-parsing-is-bounded).
    */
+  private static final Pattern EMAIL = Pattern.compile("^\\S[^\\s@]*@\\S[^\\s.]*\\.\\S+$");
+
   public static boolean isValidEmail(String email) {
-    return email.matches("^\\S+@\\S+\\.\\S+$");
+    return EMAIL.matcher(email).matches();
   }
 
   public static String getClaimOrObject(Object obj) {
@@ -521,7 +553,8 @@ public final class SecurityUtil {
       if (nullOrEmpty(expectedDomains)) {
         expectedDomains = nullOrEmpty(principalDomain) ? Set.of() : Set.of(principalDomain);
       }
-      if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+      String tokenDomain = domain;
+      if (expectedDomains.stream().noneMatch(d -> sameIdentifier(d, tokenDomain))) {
         throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
     }
@@ -533,6 +566,37 @@ public final class SecurityUtil {
     response.setCharacterEncoding("UTF-8");
     response.getOutputStream().print(message);
     response.getOutputStream().flush();
+  }
+
+  /**
+   * Reads the login request of the basic and LDAP login endpoints, which need no credentials.
+   * Reads at most one byte past {@link #MAX_LOGIN_BODY_BYTES} and returns null for a longer body,
+   * which the handlers answer as an invalid request.
+   */
+  public static LoginRequest parseLoginRequest(HttpServletRequest req) throws IOException {
+    if (!"POST".equalsIgnoreCase(req.getMethod())) {
+      // GET requests are not supported for security reasons
+      throw new IllegalArgumentException("GET method not supported for login. Use POST method.");
+    }
+    byte[] body = req.getInputStream().readNBytes(MAX_LOGIN_BODY_BYTES + 1);
+    return body.length > MAX_LOGIN_BODY_BYTES ? null : readLoginRequest(body);
+  }
+
+  private static LoginRequest readLoginRequest(byte[] body) {
+    LoginRequest loginRequest =
+        JsonUtils.readValue(new String(body, StandardCharsets.UTF_8), LoginRequest.class);
+
+    // Decode base64 password as per existing api/v1/users/login behavior
+    if (loginRequest.getPassword() != null) {
+      byte[] decodedBytes;
+      try {
+        decodedBytes = Base64.getDecoder().decode(loginRequest.getPassword());
+      } catch (Exception ex) {
+        throw new IllegalArgumentException("Password needs to be encoded in Base-64.");
+      }
+      loginRequest.withPassword(new String(decodedBytes));
+    }
+    return loginRequest;
   }
 
   public static void writeErrorResponse(HttpServletResponse response, int status, String message)
@@ -835,7 +899,7 @@ public final class SecurityUtil {
 
     String domain = normalizedEmail.substring(normalizedEmail.indexOf("@") + 1);
 
-    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> d.equalsIgnoreCase(domain));
+    boolean allowed = allowedEmailDomains.stream().anyMatch(d -> sameIdentifier(d, domain));
 
     if (!allowed) {
       throw new AuthenticationException(

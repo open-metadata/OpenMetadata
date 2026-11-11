@@ -13,6 +13,7 @@ import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.OAuthClientMetadata;
 import org.openmetadata.mcp.auth.exception.RegistrationException;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
+import org.openmetadata.mcp.server.auth.util.UriUtils;
 
 /**
  * Handler for OAuth 2.0 Dynamic Client Registration (RFC 7591).
@@ -41,7 +42,6 @@ public class RegistrationHandler {
   // per RFC 8252 Section 7.1 (e.g. cursor://, vscode://, claude-desktop://)
   private static final Set<String> BLOCKED_REDIRECT_SCHEMES =
       Set.of("javascript", "data", "file", "blob", "vbscript");
-  private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "::1");
   private static final String SCHEME_HTTP = "http";
 
   private final OAuthClientRepository clientRepository;
@@ -222,6 +222,7 @@ public class RegistrationHandler {
   }
 
   private void validateRedirectUri(URI uri) throws RegistrationException {
+    validateUriFieldLength(uri, "redirect_uri");
     String scheme = uri.getScheme();
     if (scheme == null || BLOCKED_REDIRECT_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
       throw new RegistrationException(
@@ -231,14 +232,10 @@ public class RegistrationHandler {
       throw new RegistrationException(
           "invalid_redirect_uri", "redirect_uri must not contain a fragment: " + uri);
     }
-    if (SCHEME_HTTP.equalsIgnoreCase(scheme) && !isLoopback(uri)) {
+    if (SCHEME_HTTP.equalsIgnoreCase(scheme) && !UriUtils.isLoopback(uri)) {
       throw new RegistrationException(
           "invalid_redirect_uri", "http redirect_uri must use localhost/loopback address: " + uri);
     }
-  }
-
-  private boolean isLoopback(URI uri) {
-    return uri.getHost() != null && LOOPBACK_HOSTS.contains(uri.getHost());
   }
 
   private boolean isSupportedGrantType(String grantType) {

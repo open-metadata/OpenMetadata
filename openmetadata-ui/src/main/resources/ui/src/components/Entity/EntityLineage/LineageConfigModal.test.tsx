@@ -12,6 +12,9 @@
  */
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { PipelineViewMode } from '../../../generated/configuration/lineageSettings';
+import { User } from '../../../generated/entity/teams/user';
+import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import LineageConfigModal from './LineageConfigModal';
 
 const onCancel = jest.fn();
@@ -93,6 +96,89 @@ describe('LineageConfigModal', () => {
         nodesPerLayer: 7,
         pipelineViewMode: PipelineViewMode.Node,
       });
+    });
+  });
+
+  describe('show temporary tables', () => {
+    beforeEach(() => {
+      useApplicationStore.setState({
+        currentUser: { id: 'u-admin', name: 'admin' } as User,
+      });
+    });
+
+    afterEach(() => {
+      usePersistentStorage.getState().clearUserPreference('admin');
+    });
+
+    const renderModal = () =>
+      render(
+        <LineageConfigModal
+          showTempTablesToggle
+          visible
+          config={config}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+    it('is absent where temp tables are not drawn', async () => {
+      render(
+        <LineageConfigModal
+          visible
+          config={config}
+          onCancel={onCancel}
+          onSave={onSave}
+        />
+      );
+
+      await screen.findByTestId('field-upstream');
+
+      expect(
+        screen.queryByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      ).not.toBeInTheDocument();
+    });
+
+    it('is on when the user has not chosen', async () => {
+      renderModal();
+
+      expect(
+        await screen.findByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      ).toBeChecked();
+    });
+
+    it('reflects the saved preference', async () => {
+      usePersistentStorage
+        .getState()
+        .setUserPreference('admin', { showLineageTempTables: false });
+      renderModal();
+
+      expect(
+        await screen.findByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      ).not.toBeChecked();
+    });
+
+    it('saves the switch to the user preference, not the lineage config', async () => {
+      renderModal();
+
+      fireEvent.click(
+        await screen.findByRole('switch', {
+          name: /label.show-temporary-table-plural/,
+        })
+      );
+      fireEvent.click(screen.getByRole('button', { name: 'label.ok' }));
+
+      await waitFor(() => expect(onSave).toHaveBeenCalledWith(config));
+
+      expect(
+        usePersistentStorage.getState().getUserPreference('admin')
+          .showLineageTempTables
+      ).toBe(false);
     });
   });
 

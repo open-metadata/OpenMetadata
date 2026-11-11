@@ -216,6 +216,8 @@ describe('OntologyVisualQueryBuilder component', () => {
       expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
     );
 
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
     expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
       'FinancialRiskCompliance.Compliance.AntiMoneyLaundering'
     );
@@ -326,6 +328,8 @@ describe('OntologyVisualQueryBuilder component', () => {
     fireEvent.click(
       await screen.findByRole('option', { name: 'Organization' })
     );
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
     const generated = screen.getByTestId('ontology-generated-sparql');
 
     expect(generated).toHaveTextContent(
@@ -444,5 +448,36 @@ describe('OntologyVisualQueryBuilder component', () => {
     expect(screen.getByText('Know Your Customer')).toBeVisible();
     expect(mockListRelationshipTypes).not.toHaveBeenCalled();
     expect(mockGetGlossaryTerms).not.toHaveBeenCalled();
+  });
+
+  it('keeps the generated SPARQL out of sight until it is asked for', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    expect(
+      screen.queryByTestId('ontology-generated-sparql')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByTestId('ontology-builder-toggle-sparql')
+    ).toHaveTextContent('label.show-sparql');
+
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
+    expect(screen.getByTestId('ontology-generated-sparql')).toHaveTextContent(
+      'SELECT ?concept ?conceptFqn WHERE'
+    );
+    expect(
+      screen.getByTestId('ontology-builder-toggle-sparql')
+    ).toHaveTextContent('label.hide-sparql');
+
+    fireEvent.click(screen.getByTestId('ontology-builder-toggle-sparql'));
+
+    expect(
+      screen.queryByTestId('ontology-generated-sparql')
+    ).not.toBeInTheDocument();
   });
 });

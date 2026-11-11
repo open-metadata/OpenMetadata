@@ -160,7 +160,7 @@ const DataModelTable = ({
           );
         },
       },
-      ...descriptionTableObject({ width: 400 }),
+      ...descriptionTableObject<ServicePageData>({ width: 400 }),
       {
         title: t('label.data-model-type'),
         dataIndex: TABLE_COLUMNS_KEYS.DATA_MODEL_TYPE,

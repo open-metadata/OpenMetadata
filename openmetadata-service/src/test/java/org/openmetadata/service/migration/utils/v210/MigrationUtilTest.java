@@ -17,11 +17,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.utils.JsonUtils;
 
 class MigrationUtilTest {
 
@@ -80,5 +84,45 @@ class MigrationUtilTest {
 
     assertTrue(MigrationUtil.addQueryDomainRuleExemption(settings));
     assertEquals(1, queryCount(multiDomain));
+  }
+
+  @Test
+  void addsTheSeededBotTargetDenyRuleToAStoredRestrictedPolicy() throws Exception {
+    Policy seed = seededBotNonAdminImpersonationPolicy();
+    Rule seededRule = rule(seed, MigrationUtil.DENY_BOT_USERS_RULE_NAME);
+    Policy stored = JsonUtils.deepCopy(seed, Policy.class);
+    stored.getRules().removeIf(r -> MigrationUtil.DENY_BOT_USERS_RULE_NAME.equals(r.getName()));
+
+    assertTrue(MigrationUtil.addDenyBotUsersRule(stored));
+
+    assertEquals(seededRule, rule(stored, MigrationUtil.DENY_BOT_USERS_RULE_NAME));
+    assertFalse(MigrationUtil.addDenyBotUsersRule(stored));
+    assertEquals(seed.getRules().size(), stored.getRules().size());
+  }
+
+  @Test
+  void leavesARestrictedPolicyAnAdminLoosenedAlone() throws Exception {
+    Policy loosened = seededBotNonAdminImpersonationPolicy();
+    loosened
+        .getRules()
+        .removeIf(r -> r.getName().startsWith("BotNonAdminImpersonationPolicy-Deny"));
+
+    assertFalse(MigrationUtil.addDenyBotUsersRule(loosened));
+    assertEquals(1, loosened.getRules().size());
+  }
+
+  private static Policy seededBotNonAdminImpersonationPolicy() throws Exception {
+    try (InputStream in =
+        MigrationUtilTest.class.getResourceAsStream(
+            "/json/data/policy/BotNonAdminImpersonationPolicy.json")) {
+      return JsonUtils.readValue(new String(in.readAllBytes()), Policy.class);
+    }
+  }
+
+  private static Rule rule(Policy policy, String name) {
+    return policy.getRules().stream()
+        .filter(r -> name.equals(r.getName()))
+        .findFirst()
+        .orElseThrow();
   }
 }

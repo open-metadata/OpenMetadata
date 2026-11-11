@@ -70,20 +70,10 @@
   }
 
   .rdg-cell-tags {
-    :is(.ant-space, .layout-space) {
-      :is(.ant-space-item, .layout-space-item):first-child {
+    .layout-space {
+      .layout-space-item:first-child {
         flex: 1;
       }
-    }
-
-    .ant-select-selector {
-      border: none;
-    }
-  }
-
-  .rdg-cell-glossaryTerms {
-    .ant-select-selector {
-      border: none;
     }
   }
 
@@ -96,21 +86,12 @@
   .rdg-cell-entityType {
     &.rdg-editor-container {
       padding: var(--om-space-2) @size-xxs;
-
-      .ant-select-focused .ant-select-selector {
-        border: none;
-        box-shadow: none;
-      }
     }
 
-    :is(.ant-space, .layout-space) {
-      :is(.ant-space-item, .layout-space-item):first-child {
+    .layout-space {
+      .layout-space-item:first-child {
         flex: 1;
       }
-    }
-
-    .ant-select-selector {
-      border: none;
     }
   }
 }

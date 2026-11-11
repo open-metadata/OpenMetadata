@@ -11,12 +11,27 @@
  *  limitations under the License.
  */
 
-import { Button } from '@openmetadata/ui-core-components';
-import { SwitchVertical01 } from '@openmetadata/ui-core-components/icons';
-import { ReactNode, useState } from 'react';
+import {
+  Button,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  Select,
+} from '@openmetadata/ui-core-components';
+import {
+  Download01,
+  SwitchVertical01,
+} from '@openmetadata/ui-core-components/icons';
+import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ResourceEntity } from '../../enums/permissions.enum';
 import { Glossary } from '../../generated/entity/data/glossary';
 import { Ontology } from '../../generated/entity/data/ontology';
+import { useOntologyDraftGuard } from '../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useIsAiMode } from '../../hooks/useAppMode';
+import { useEntityPermissions } from '../../hooks/useEntityPermissions/useEntityPermissions';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import OntologyNativeImportDialog from '../governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
 import OntologyReleaseExportModal from '../governance/ontology/OntologyReleaseExportModal/OntologyReleaseExportModal';
 import OntologyImportExportModal from './OntologyImportExportModal';
 
@@ -37,36 +52,125 @@ interface NativeOntologyExportProps {
   readonly ontology: Ontology;
   readonly canImport: boolean;
   readonly onApplied: () => void;
+  readonly onOpen?: () => void;
 }
 
 type OntologyImportExportMenuProps =
   | GlossaryImportExportProps
-  | NativeOntologyExportProps;
+  | NativeOntologyExportProps
+  | {
+      readonly kind: 'allOntologies';
+      readonly isCatalogEmpty: boolean;
+      readonly ontologies: Ontology[];
+      readonly onApplied: () => void;
+    };
 
 const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [isOpen, setIsOpen] = useState(false);
-  let modal: ReactNode = null;
-  if (isOpen) {
-    modal =
-      props.kind === 'ontology' ? (
+  const guard = useOntologyDraftGuard();
+  const [selectedOwner, setSelectedOwner] = useState<Ontology>();
+  const { canEditAll } = useEntityPermissions(
+    ResourceEntity.ONTOLOGY,
+    { id: selectedOwner?.id ?? '' },
+    {
+      enabled: props.kind === 'allOntologies' && Boolean(selectedOwner),
+      deleted: selectedOwner?.deleted,
+    }
+  );
+  const options = useMemo(
+    () =>
+      props.kind === 'allOntologies'
+        ? props.ontologies.map((owner) => ({
+            id: owner.id,
+            label: getEntityName(owner),
+            isDisabled: owner.deleted,
+          }))
+        : [],
+    [props]
+  );
+  const renderModal = (): ReactNode => {
+    if (!isOpen) {
+      return null;
+    }
+    if (props.kind === 'allOntologies') {
+      if (props.isCatalogEmpty) {
+        return <OntologyNativeImportDialog onClose={() => setIsOpen(false)} />;
+      }
+      if (selectedOwner) {
+        return (
+          <OntologyReleaseExportModal
+            canImport={canEditAll}
+            ontology={selectedOwner}
+            onApplied={props.onApplied}
+            onClose={() => {
+              setSelectedOwner(undefined);
+              setIsOpen(false);
+            }}
+          />
+        );
+      }
+
+      return (
+        <ModalOverlay
+          isDismissable
+          isOpen
+          onOpenChange={(open) => setIsOpen(open)}>
+          <Modal>
+            <Dialog
+              dividers="scroll"
+              title={t('label.import-export')}
+              onClose={() => setIsOpen(false)}>
+              <Dialog.Content>
+                <Select
+                  data-testid="ontology-import-target-picker"
+                  items={options}
+                  label={t('label.select-entity', {
+                    entity: t('label.ontology'),
+                  })}
+                  selectedKey={null}
+                  onSelectionChange={(key) =>
+                    setSelectedOwner(
+                      props.ontologies.find((owner) => owner.id === key)
+                    )
+                  }>
+                  {(item) => (
+                    <Select.Item
+                      id={item.id}
+                      isDisabled={item.isDisabled}
+                      label={item.label}
+                    />
+                  )}
+                </Select>
+              </Dialog.Content>
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      );
+    }
+    if (props.kind === 'ontology') {
+      return (
         <OntologyReleaseExportModal
           canImport={props.canImport}
           ontology={props.ontology}
           onApplied={props.onApplied}
           onClose={() => setIsOpen(false)}
         />
-      ) : (
-        <OntologyImportExportModal
-          glossaries={props.glossaries}
-          glossary={props.glossary}
-          isAdminUser={props.isAdminUser}
-          relationCount={props.relationCount}
-          termCount={props.termCount}
-          onClose={() => setIsOpen(false)}
-        />
       );
-  }
+    }
+
+    return (
+      <OntologyImportExportModal
+        glossaries={props.glossaries}
+        glossary={props.glossary}
+        isAdminUser={props.isAdminUser}
+        relationCount={props.relationCount}
+        termCount={props.termCount}
+        onClose={() => setIsOpen(false)}
+      />
+    );
+  };
 
   return (
     <>
@@ -74,12 +178,19 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         aria-label={t('label.import-export')}
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={SwitchVertical01}
+        iconLeading={isAiMode ? Download01 : SwitchVertical01}
         size="sm"
         tooltip={t('label.import-export')}
-        onPress={() => setIsOpen(true)}
+        onPress={() =>
+          guard(() => {
+            if (props.kind === 'ontology') {
+              props.onOpen?.();
+            }
+            setIsOpen(true);
+          })
+        }
       />
-      {modal}
+      {renderModal()}
     </>
   );
 };

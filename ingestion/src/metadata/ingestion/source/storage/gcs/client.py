@@ -36,6 +36,9 @@ class MultiProjectClient:
         **client_kwargs,
     ):
         self.default_project = None
+        # Mirrors storage.Client._credentials so file readers handed this wrapper (the storage
+        # sampler does) find the same identity; also stops __getattr__ answering for it.
+        self._credentials = client_kwargs.get("credentials")
         if project_ids:
             self.clients = {project_id: client_class(project=project_id, **client_kwargs) for project_id in project_ids}
         else:

@@ -75,12 +75,26 @@ export const formatSamplingNote = (
  * "…falls outside 90 – 110, allowing a deviation of 5% (effective range
  * 85.5 – 115.5)" — the effective range is the number users reason about, and
  * showing it is what makes the zero-bound degenerate case visible.
+ *
+ * A dynamic assertion learns its bounds at run time, so the sentence quotes
+ * none of them — it says the tolerance applies around whatever is learned.
  */
 const formatStatisticalSentence = (
   data: ThresholdPreviewData,
   t: TFunction
 ): string => {
-  const { bound, effectiveRange, isPercentage, threshold } = data;
+  const { bound, effectiveRange, isBoundLearned, isPercentage, threshold } =
+    data;
+
+  if (isBoundLearned) {
+    return threshold > 0
+      ? t('message.dq-threshold-preview-statistical-learned-deviation', {
+          amount: isPercentage
+            ? t('label.percentage-value', { value: threshold })
+            : String(threshold),
+        })
+      : t('message.dq-threshold-preview-statistical-learned');
+  }
 
   if (!effectiveRange) {
     return t('message.dq-threshold-preview-statistical', { bound });

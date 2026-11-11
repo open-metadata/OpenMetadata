@@ -41,10 +41,14 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -96,7 +100,6 @@ import org.openmetadata.service.security.policyevaluator.TestCaseResourceContext
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 import org.openmetadata.service.util.RestUtil.DeleteResponse;
 import org.openmetadata.service.util.RestUtil.PatchResponse;
@@ -114,6 +117,8 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
 @Collection(name = "TestCases")
 public class TestCaseResource extends EntityResource<TestCase, TestCaseRepository> {
   public static final String COLLECTION_PATH = "/v1/dataQuality/testCases/";
+  private static final List<MetadataOperation> VIEW_TESTS_ONLY =
+      List.of(MetadataOperation.VIEW_TESTS);
   private final TestCaseMapper mapper = new TestCaseMapper();
   private final TestCaseResultMapper testCaseResultMapper = new TestCaseResultMapper();
   static final String FIELDS =
@@ -142,6 +147,40 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     // assignment). It is advertised separately from EditTests/EditAll so that a role can grant
     // incident management without granting edit rights on the test case itself.
     return listOf(MetadataOperation.EDIT_STATUS);
+  }
+
+  /**
+   * A listed test case is authorized as its item endpoint authorizes it: ViewTests on the entity it
+   * tests. The test suite a listing names does not stand in for its rows, since a logical suite
+   * spans many tables, and each tested entity on a page is decided once.
+   */
+  @Override
+  protected RowAuthorization<TestCase> rowAuthorization(Fields fields) {
+    return new RowAuthorization<>(Entity.TABLE, VIEW_TESTS_ONLY, this::withViewableTests);
+  }
+
+  private List<TestCase> withViewableTests(SecurityContext securityContext, List<TestCase> rows) {
+    Map<EntityLink, Boolean> testsViewable = new HashMap<>();
+    return rows.stream()
+        .filter(
+            row ->
+                testsViewable.computeIfAbsent(
+                    testedEntity(row), tested -> mayViewTestsOf(securityContext, tested)))
+        .toList();
+  }
+
+  private boolean mayViewTestsOf(SecurityContext securityContext, EntityLink tested) {
+    return viewPermissionFilter.isPermitted(
+        securityContext,
+        Entity.TABLE,
+        VIEW_TESTS_ONLY,
+        TestCaseResourceContext.builder().entityLink(tested).build());
+  }
+
+  /** The entity a test case tests, without the column a column test names. */
+  private static EntityLink testedEntity(TestCase testCase) {
+    EntityLink link = EntityLink.parse(testCase.getEntityLink());
+    return new EntityLink(link.getEntityType(), link.getEntityFQN());
   }
 
   public static class TestCaseList extends ResultList<TestCase> {
@@ -605,8 +644,17 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().id(id).build();
     RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
-    return getInternal(
-        uriInfo, securityContext, id, fields, relationIncludes, operationContext, resourceContext);
+    return PIIMasker.getTestCase(
+        getInternal(
+            uriInfo,
+            securityContext,
+            id,
+            fields,
+            relationIncludes,
+            operationContext,
+            resourceContext),
+        authorizer,
+        securityContext);
   }
 
   @GET
@@ -658,8 +706,22 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
         new OperationContext(Entity.TABLE, MetadataOperation.VIEW_TESTS);
     ResourceContextInterface resourceContext = TestCaseResourceContext.builder().name(fqn).build();
     RelationIncludes relationIncludes = new RelationIncludes(include, includeRelations);
-    return getByNameInternal(
-        uriInfo, securityContext, fqn, fields, relationIncludes, operationContext, resourceContext);
+    return PIIMasker.getTestCase(
+        getByNameInternal(
+            uriInfo,
+            securityContext,
+            fqn,
+            fields,
+            relationIncludes,
+            operationContext,
+            resourceContext),
+        authorizer,
+        securityContext);
+  }
+
+  @Override
+  protected Optional<UnaryOperator<TestCase>> snapshotRedaction(SecurityContext securityContext) {
+    return Optional.of(testCase -> PIIMasker.getTestCase(testCase, authorizer, securityContext));
   }
 
   @GET
@@ -890,32 +952,29 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid CreateTestCase create) {
-    EntityLink entityLink = EntityLink.parse(create.getEntityLink());
-    OperationContext tableOpContext =
-        new OperationContext(Entity.TABLE, MetadataOperation.EDIT_TESTS);
-    ResourceContextInterface tableResourceContext =
-        TestCaseResourceContext.builder().entityLink(entityLink).build();
-    OperationContext testCaseOpCreate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.CREATE);
-    ResourceContextInterface testCaseRC =
-        TestCaseResourceContext.builder()
-            .name(FullyQualifiedName.add(entityLink.getEntityFQN(), create.getName()))
-            .build();
-    OperationContext testCaseOpUpdate =
-        new OperationContext(Entity.TEST_CASE, MetadataOperation.EDIT_ALL);
-
-    List<AuthRequest> requests =
-        List.of(
-            new AuthRequest(tableOpContext, tableResourceContext),
-            new AuthRequest(testCaseOpCreate, testCaseRC),
-            new AuthRequest(testCaseOpUpdate, testCaseRC));
-    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     TestCase test = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    // Only the FQN before authorizing: prepare creates the table's test suite if it is missing.
+    repository.setFullyQualifiedName(test);
+    List<AuthRequest> requests = createOrUpdateRequests(test);
+    authorizer.authorizeRequests(securityContext, requests, AuthorizationLogic.ANY);
     repository.prepareInternal(test, true);
     PutResponse<TestCase> response =
         repository.createOrUpdate(uriInfo, test, securityContext.getUserPrincipal().getName());
     addHref(uriInfo, response.getEntity());
     return response.toResponse();
+  }
+
+  /**
+   * A new test case is checked as a create, an existing one as an update. Checked by FQN first:
+   * AuthorizationLogic.ANY evaluates every request, so a new test case must not get the update
+   * requests, which look the test case up by name.
+   */
+  private List<AuthRequest> createOrUpdateRequests(TestCase test) {
+    boolean testCaseExists =
+        repository.findByNameOrNull(test.getFullyQualifiedName(), Include.ALL) != null;
+    return testCaseExists
+        ? TestCaseWriteAuthRequests.forUpdate(test)
+        : TestCaseWriteAuthRequests.forCreate(test);
   }
 
   @DELETE

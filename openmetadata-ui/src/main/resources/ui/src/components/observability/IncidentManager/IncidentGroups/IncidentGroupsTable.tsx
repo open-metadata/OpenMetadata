@@ -14,7 +14,7 @@
 import {
   AvatarGroup,
   Box,
-  Button,
+  ButtonUtility,
   Checkbox,
   Table,
   toOwnerRefs,
@@ -268,7 +268,9 @@ const IncidentGroupsTable = ({
         </Table.Cell>
         <Table.Cell>
           <StackedCell
-            caption={t('label.open-lowercase')}
+            caption={t('label.incident-open-lowercase', {
+              count: group.incidentCount,
+            })}
             value={group.incidentCount}
             valueTestId="group-incident-count"
           />
@@ -295,13 +297,12 @@ const IncidentGroupsTable = ({
           />
         </Table.Cell>
         <Table.Cell>
-          <Button
-            aria-label={t('label.view-entity', { entity: groupName })}
-            color="tertiary"
+          <ButtonUtility
             data-testid={`group-open-${rowId}`}
-            iconLeading={ChevronRight}
-            size="sm"
-            onPress={() => onGroupOpen(group)}
+            icon={ChevronRight}
+            size="xs"
+            tooltip={t('label.view-entity', { entity: groupName })}
+            onClick={() => onGroupOpen(group)}
           />
         </Table.Cell>
       </Table.Row>

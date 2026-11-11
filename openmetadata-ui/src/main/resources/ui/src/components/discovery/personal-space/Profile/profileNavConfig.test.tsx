@@ -53,9 +53,6 @@ jest.mock('./tabs/sso/SsoPanel', () => ({
   __esModule: true,
   default: () => null,
 }));
-jest.mock('../../../../assets/svg/entity/bot.svg', () => ({
-  ReactComponent: () => null,
-}));
 
 import { UIPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ResourceEntity } from '../../../../enums/permissions.enum';

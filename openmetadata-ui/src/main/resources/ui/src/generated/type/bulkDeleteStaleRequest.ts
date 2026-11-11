@@ -16,6 +16,14 @@
  */
 export interface BulkDeleteStaleRequest {
     /**
+     * When true, an empty seenFqns is authoritative and every entity in the scope is stale. A
+     * connector sets it only when it confirmed its listing of the source was complete and
+     * nothing in it survived the filters. When false (default), an empty seenFqns deletes
+     * nothing, because it cannot be told apart from a run whose listing failed. See
+     * ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing.
+     */
+    allowEmptySeenFqns?: boolean;
+    /**
      * When true, the response lists entities that would be deleted without performing the
      * deletion.
      */

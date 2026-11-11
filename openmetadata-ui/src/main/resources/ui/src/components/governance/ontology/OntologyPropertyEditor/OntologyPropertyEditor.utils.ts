@@ -34,6 +34,7 @@ export interface OntologyPropertyFormValues {
   inverse: string;
   propertyChain: string;
   disjointWith: string;
+  superProperties: string;
   characteristics: { id: Characteristic; label: string }[];
   enumValues: { value: string; datatypeIri: string }[];
   unit: string;
@@ -54,6 +55,7 @@ export const propertyFormValues = (
     inverse = '',
     propertyChain = [],
     disjointWith = [],
+    superProperties = [],
     characteristics = [],
     enumValues = [],
     unit = '',
@@ -71,6 +73,7 @@ export const propertyFormValues = (
     inverse,
     propertyChain: propertyChain.join('\n'),
     disjointWith: disjointWith.join('\n'),
+    superProperties: superProperties.join('\n'),
     characteristics: characteristics.map((id) => ({ id, label: id })),
     enumValues: enumValues.map((value) => ({
       ...value,
@@ -99,6 +102,7 @@ export const propertyRequest = (
   ontology,
   domain: iriLines(values.domain),
   range: iriLines(values.range),
+  superProperties: iriLines(values.superProperties),
   ...(values.kind.id !== Kind.Annotation && {
     disjointWith: iriLines(values.disjointWith),
     characteristics: values.characteristics
@@ -135,6 +139,7 @@ export const propertyPatch = (
     'inverse',
     'propertyChain',
     'disjointWith',
+    'superProperties',
     'characteristics',
     'enumValues',
     'unit',
@@ -147,6 +152,11 @@ export const propertyPatch = (
     : [{ op: 'test', path: '/version', value: property.version }, ...changes];
 };
 
+const IRI_LIST_HINT: Record<string, string> = {
+  true: 'message.ontology-iri-chain-per-line',
+  false: 'message.ontology-iri-per-line',
+};
+
 export const propertyFormFields = (
   t: ReturnType<typeof useTranslation>['t'],
   kind: Kind,
@@ -156,12 +166,13 @@ export const propertyFormFields = (
   const iriField = (
     name: string,
     label: string,
-    multiple = false
+    multiple = false,
+    ordered = false
   ): FieldProp => ({
     name,
     label,
     type: multiple ? FieldTypes.TEXTAREA : FieldTypes.TEXT,
-    placeholder: multiple ? t('message.ontology-iri-per-line') : undefined,
+    placeholder: multiple ? t(IRI_LIST_HINT[String(ordered)]) : undefined,
     rules: {
       validate: (value: string) =>
         (multiple
@@ -211,8 +222,6 @@ export const propertyFormFields = (
       ...iriField('iri', t('label.property-iri')),
       props: { isDisabled: editing },
     },
-    iriField('domain', t('label.property-domain'), true),
-    iriField('range', t('label.range'), true),
   ];
   if (kind !== Kind.Annotation) {
     fields.push(
@@ -233,7 +242,7 @@ export const propertyFormFields = (
   if (kind === Kind.Object) {
     fields.push(
       iriField('inverse', t('label.inverse')),
-      iriField('propertyChain', t('label.property-chain'), true)
+      iriField('propertyChain', t('label.property-chain'), true, true)
     );
   }
   if (kind === Kind.Data) {

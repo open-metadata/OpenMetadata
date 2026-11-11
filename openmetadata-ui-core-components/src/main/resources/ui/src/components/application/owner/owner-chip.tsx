@@ -17,6 +17,7 @@ import { Teams as TeamsIcon } from '../../../icons/Teams';
 import { cx } from '@/utils/cx';
 import { Avatar } from '../../base/avatar/avatar';
 import type { AvatarProps } from '../../base/avatar/avatar';
+import { OwnerInheritedBadge } from './owner-inherited-badge';
 import { getOwnerRenderer, resolveOwnerHref } from './owner-renderer';
 import type { OwnerChipProps } from './owner.types';
 
@@ -81,6 +82,11 @@ export const OwnerChip = ({
   const avatar = (
     <Avatar
       alt={typeof displayName === 'string' ? displayName : owner.name}
+      badge={
+        owner.inherited ? (
+          <OwnerInheritedBadge size={resolvedSize} />
+        ) : undefined
+      }
       className={isTeam ? undefined : USER_AVATAR_CLASSES}
       contrastBorder={!isTeam}
       initials={

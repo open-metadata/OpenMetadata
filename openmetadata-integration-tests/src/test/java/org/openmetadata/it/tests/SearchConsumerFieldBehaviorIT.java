@@ -231,6 +231,17 @@ class SearchConsumerFieldBehaviorIT {
   }
 
   @Test
+  void aiGeneratedSourceFiltersReturnAssetInAllLanguages() throws Exception {
+    assertFeatureWorksInAllLanguages(
+        "Collate AI insights drill-down (exists on descriptionSources.Suggested, "
+            + "tagSources.Generated, tierSources.Generated)",
+        language ->
+            hits(topicIndex(language), existsQuery("descriptionSources.Suggested")) == 1
+                && hits(topicIndex(language), existsQuery("tagSources.Generated")) == 1
+                && hits(topicIndex(language), existsQuery("tierSources.Generated")) == 1);
+  }
+
+  @Test
   void dataQualityStatusAggregationHasBucketInAllLanguages() throws Exception {
     assertFeatureWorksInAllLanguages(
         "Data Quality status aggregation (Test Suite execution summary, DQ status filter)",
@@ -560,6 +571,9 @@ class SearchConsumerFieldBehaviorIT {
             Map.entry("deleted", false),
             Map.entry("entityType", "topic"),
             Map.entry("fqnParts", List.of("svc", "ns", FQN_PART)),
+            Map.entry("descriptionSources", Map.of("Suggested", 1, "Ingested", 2)),
+            Map.entry("tagSources", Map.of("Generated", 1)),
+            Map.entry("tierSources", Map.of("Generated", 1)),
             Map.entry("tags", List.of(tagLabel(TAG_FQN))),
             Map.entry("tier", tagLabel(TIER_FQN)),
             Map.entry("certification", Map.of("tagLabel", Map.of("tagFQN", CERTIFICATION_FQN))),
@@ -674,6 +688,10 @@ class SearchConsumerFieldBehaviorIT {
         "labelType", "Manual",
         "source", "Classification",
         "state", "Confirmed");
+  }
+
+  private String existsQuery(String field) throws Exception {
+    return mapper.writeValueAsString(Map.of("query", Map.of("exists", Map.of("field", field))));
   }
 
   private String termQuery(String field, String value) throws Exception {

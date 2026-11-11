@@ -16,6 +16,7 @@ import {
   expect,
   Locator,
   Page,
+  Request,
   Response,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
@@ -52,15 +53,6 @@ export interface BulkIdsRequest {
   ids?: string[];
 }
 
-interface UploadMultipart {
-  file: {
-    name: string;
-    mimeType: string;
-    buffer: Buffer;
-  };
-  folder?: string;
-}
-
 interface CapturedDownload {
   download: string;
   href: string;
@@ -81,17 +73,14 @@ export const uploadDocument = async (
   buffer: Buffer,
   folderFqn?: string
 ): Promise<ContextCenterDocument> => {
-  const multipart: UploadMultipart = {
+  const multipart = {
     file: {
       name,
       mimeType: 'text/plain',
       buffer,
     },
+    ...(folderFqn ? { folder: folderFqn } : {}),
   };
-
-  if (folderFqn) {
-    multipart.folder = folderFqn;
-  }
 
   const response = await apiContext.post(
     '/api/v1/contextCenter/drive/files/upload',
@@ -137,7 +126,7 @@ export const responseMatchesRequestPath = (
   response: Response,
   expectedPath: string
 ): boolean => {
-  let request = response.request();
+  let request: Request | null = response.request();
 
   while (request) {
     if (request.url().includes(expectedPath)) {
@@ -333,6 +322,8 @@ export const navigateToArchive = async (page: Page) => {
 
 export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
   page.getByRole('treegrid', { name: 'Folders' }).getByRole('row', {
+    // Exact: an expanded empty folder renders a child row "<name> is empty".
+    exact: true,
     name: folderName,
   });
 
@@ -1255,6 +1246,18 @@ export const patchMemory = async (
   return res.json();
 };
 
+/** A memory's stage as stored, read by id rather than from the search index the lists read. */
+export const getMemoryStatus = async (
+  apiContext: APIRequestContext,
+  id: string
+): Promise<string> => {
+  const response = await apiContext.get(`${MEMORIES_API}/${id}`);
+  const body = await response.text();
+  expect(response.status(), body).toBe(200);
+
+  return parseResponseJson<{ entityStatus: string }>(body).entityStatus;
+};
+
 /**
  * Sets a memory's outcome counters through the admin-only outcome write, the only write that
  * changes them: a PATCH keeps the stored counts.
@@ -1297,7 +1300,11 @@ export const createMemoryViaApi = async (
   apiContext: APIRequestContext,
   overrides: Record<string, unknown>
 ) => {
-  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  // OSS defaults a new memory to Approved, Collate to Unprocessed (hidden from
+  // non-owners). Pin Approved so fixtures behave the same on both distributions.
+  const res = await apiContext.post(MEMORIES_API, {
+    data: { ...overrides, entityStatus: overrides.entityStatus ?? 'Approved' },
+  });
   expect(res.status()).toBe(201);
 
   return res.json();

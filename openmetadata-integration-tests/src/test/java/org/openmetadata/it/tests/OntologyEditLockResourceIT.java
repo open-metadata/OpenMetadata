@@ -62,7 +62,7 @@ import org.openmetadata.service.Entity;
 /**
  * Integration tests for the renewable Ontology authoring leases exposed under
  * {@code /v1/ontologyEditLocks} (acquire / renew / get / release). Exercises first-acquire, cross
- * session contention, lease renewal and release semantics, and the {@code EDIT_GLOSSARY_TERMS}
+ * session contention, lease renewal and release semantics, and the {@code EDIT_ALL}
  * authorization guard on every verb.
  */
 @Execution(ExecutionMode.CONCURRENT)
@@ -153,7 +153,7 @@ public class OntologyEditLockResourceIT {
   }
 
   @Test
-  void acquireRequiresGlossaryTermEditPermission(TestNamespace ns) throws Exception {
+  void acquireRequiresEditAllOnGlossaryTerms(TestNamespace ns) throws Exception {
     GlossaryTerm term = createTerm(ns);
     User nonPrivileged = createUserDeniedGlossaryTermEdits(ns);
 
@@ -161,9 +161,7 @@ public class OntologyEditLockResourceIT {
         acquire(tokenFor(nonPrivileged), leaseRequest(term.getId(), "denied-session"));
 
     assertEquals(
-        HTTP_FORBIDDEN,
-        response.statusCode(),
-        "acquire must require EDIT_GLOSSARY_TERMS: " + response.body());
+        HTTP_FORBIDDEN, response.statusCode(), "acquire must require EDIT_ALL: " + response.body());
   }
 
   @Test
@@ -281,7 +279,7 @@ public class OntologyEditLockResourceIT {
         new Rule()
             .withName(prefix + "Rule")
             .withResources(List.of(Entity.ALL_RESOURCES))
-            .withOperations(List.of(MetadataOperation.EDIT_GLOSSARY_TERMS))
+            .withOperations(List.of(MetadataOperation.EDIT_ALL))
             .withEffect(Rule.Effect.DENY);
     return admin
         .policies()

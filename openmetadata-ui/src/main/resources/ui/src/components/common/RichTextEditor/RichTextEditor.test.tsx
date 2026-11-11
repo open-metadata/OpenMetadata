@@ -35,6 +35,7 @@ jest.mock('../../../utils/BlockEditorUtils', () => {
 });
 
 interface BlockEditorMockProps {
+  menuType?: string;
   content?: string;
   onChange?: (content: string) => void;
   autoFocus?: boolean;

@@ -16,16 +16,6 @@
 @box-shadow-color: var(--om-legacy-color-0-0-0-0-06);
 @left-panel-border-color: var(--om-color-gray-neutral-200);
 
-.display-name {
-  .ant-typography {
-    margin-bottom: 0;
-  }
-
-  .ant-btn {
-    padding: 0;
-  }
-}
-
 .input-width {
   width: 100%;
 }
@@ -41,35 +31,9 @@
 }
 
 .manage-button {
-  :is(.ant-space-item, .layout-space-item):first-child {
+  .layout-space-item:first-child {
     width: 40px;
     align-self: baseline;
-  }
-}
-
-.glossary-manage-dropdown-list-container {
-  .ant-dropdown-menu {
-    padding: var(--om-space-8) 0;
-    background: var(--tw-color-bg-primary);
-    border: 1px solid var(--om-legacy-color-dde3ea);
-    box-shadow: 1px 1px 3px var(--om-legacy-color-0-0-0-0-12);
-    border-radius: var(--om-radius-sm);
-
-    .ant-dropdown-menu-item {
-      padding: var(--om-space-5) var(--om-space-16);
-    }
-  }
-}
-
-.glossary-tree-container {
-  .ant-tree-node-content-wrapper {
-    overflow: hidden;
-    white-space: nowrap;
-    gap: var(--om-space-4);
-  }
-
-  .ant-tree-title {
-    width: calc(100% - 8px);
   }
 }
 
@@ -99,14 +63,12 @@
     margin-bottom: 0;
   }
 
-  .left-panel-content
-    > :is(.ant-col, .layout-column):last-child
-    > :is(.ant-row, .layout-row) {
+  .left-panel-content > .layout-column:last-child > .layout-row {
     flex: 1 1 auto;
     min-height: 0;
     flex-flow: column nowrap;
 
-    > :is(.ant-col, .layout-column) {
+    > .layout-column {
       flex: 1 1 auto;
       min-height: 0;
       display: flex;
@@ -118,18 +80,6 @@
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
-  }
-
-  .glossary-terms-table {
-    .ant-table-body {
-      max-height: none !important;
-    }
-
-    .ant-table-header {
-      position: sticky;
-      top: 0;
-      z-index: var(--om-z-2);
-    }
   }
 }
 
@@ -151,12 +101,12 @@
   }
 }
 
-.glossary-page-tabs .left-panel-content:is(.ant-row, .layout-row) {
+.glossary-page-tabs .left-panel-content.layout-row {
   flex-direction: column;
   flex-wrap: nowrap;
   align-content: stretch;
 
-  > :is(.ant-col, .layout-column) {
+  > .layout-column {
     flex: 0 0 auto;
     max-width: 100%;
 

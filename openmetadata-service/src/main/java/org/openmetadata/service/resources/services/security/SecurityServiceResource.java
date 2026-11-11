@@ -394,7 +394,7 @@ public class SecurityServiceResource
       @Valid CreateSecurityService update) {
     SecurityService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (SecurityService) response.getEntity());
     return response;
   }

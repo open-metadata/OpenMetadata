@@ -21,6 +21,7 @@ import {
   RESOURCE_TYPE_VALUES,
   SOURCE_URL_PLACEHOLDERS,
 } from '../../../../../../constants/Learning.constants';
+import { getSafeHttpUrl } from '../../../../../../utils/StringUtils';
 import { ResourceTypeIcon } from '../../../../../Learning/ResourceTypeIcon/ResourceTypeIcon';
 import {
   CATEGORY_ITEMS,
@@ -29,7 +30,6 @@ import {
   LearningResourceFormValues,
   STATUS_ITEMS,
 } from './LearningResourceSettings.utils';
-import { isValidUrl } from './ThemeSettings.utils';
 
 /** The learning-resource form fields, shared by the AI settings panel and the classic drawer. */
 export const useLearningResourceFields = (
@@ -112,8 +112,10 @@ export const useLearningResourceFields = (
         props: { 'data-testid': 'source-url-input' },
         rules: {
           ...required('label.source-url'),
+          // http(s) only: the player renders this URL in a frame or as a link,
+          // where a javascript: or data: URL would run script.
           validate: (value: string) =>
-            isValidUrl(value) || t('label.invalid-url'),
+            Boolean(getSafeHttpUrl(value)) || t('label.invalid-url'),
         },
       },
       {

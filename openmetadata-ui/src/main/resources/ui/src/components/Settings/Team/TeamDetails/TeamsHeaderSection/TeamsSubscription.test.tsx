@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { MASKED_PASSWORD_VALUE } from '../../../../../constants/Secrets.constants';
 import TeamsSubscription from './TeamsSubscription.component';
 
 describe('TeamsSubscription', () => {
@@ -78,6 +79,27 @@ describe('TeamsSubscription', () => {
       webhook: 'slack',
       endpoint: 'https://hooks.slack.com/x',
     });
+  });
+
+  it('should keep a masked endpoint for the webhook it is stored for', async () => {
+    render(
+      <TeamsSubscription
+        {...teamProps}
+        subscription={{ slack: { endpoint: MASKED_PASSWORD_VALUE } }}
+      />
+    );
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('edit-team-subscription'));
+    });
+    await act(async () => {
+      fireEvent.click(screen.getByText('label.confirm'));
+    });
+
+    expect(mockUpdateTeamSubscription).toHaveBeenCalledWith({
+      webhook: 'slack',
+      endpoint: MASKED_PASSWORD_VALUE,
+    });
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
   });
 
   it('should reject an invalid endpoint', async () => {

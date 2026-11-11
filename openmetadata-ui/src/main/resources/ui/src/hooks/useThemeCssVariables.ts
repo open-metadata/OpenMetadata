@@ -16,15 +16,15 @@ import { generatePalette } from '../styles/colorPallet';
 import { useApplicationStore } from './useApplicationStore';
 
 // The LESS reads the brand and status colours through these variables
-// (`@primary-color: var(--ant-primary-color)`, `@success-color`, ...). The
+// (`@primary-color: var(--theme-primary-color)`, `@success-color`, ...). The
 // antd stylesheet still supplies their defaults; only the configured ones are
 // written, as antd's ConfigProvider.config did.
 const THEME_COLOR_VARIABLES = {
-  primaryColor: '--ant-primary-color',
-  successColor: '--ant-success-color',
-  warningColor: '--ant-warning-color',
-  errorColor: '--ant-error-color',
-  infoColor: '--ant-info-color',
+  primaryColor: '--theme-primary-color',
+  successColor: '--theme-success-color',
+  warningColor: '--theme-warning-color',
+  errorColor: '--theme-error-color',
+  infoColor: '--theme-info-color',
 } as const;
 
 /** Writes the configured theme into the app-wide CSS variables. */
@@ -58,41 +58,47 @@ export const useThemeCssVariables = () => {
     palette.forEach((color, index) => {
       switch (index) {
         case 0:
-          document.documentElement.style.setProperty(`--ant-primary-25`, color);
+          document.documentElement.style.setProperty(
+            `--theme-primary-25`,
+            color
+          );
 
           break;
         case 1:
-          document.documentElement.style.setProperty(`--ant-primary-50`, color);
+          document.documentElement.style.setProperty(
+            `--theme-primary-50`,
+            color
+          );
 
           break;
         case 2:
           document.documentElement.style.setProperty(
-            `--ant-primary-1`,
+            `--theme-primary-1`,
             hoverColor
           );
 
           break;
         case 8:
           document.documentElement.style.setProperty(
-            `--ant-primary-7`,
+            `--theme-primary-7`,
             selectedColor
           );
 
           break;
         default:
           document.documentElement.style.setProperty(
-            `--ant-primary-${index - 1}`,
+            `--theme-primary-${index - 1}`,
             color
           );
       }
     });
 
     document.documentElement.style.setProperty(
-      `--ant-primary-color-hover`,
+      `--theme-primary-color-hover`,
       palette[6]
     );
     document.documentElement.style.setProperty(
-      `--ant-primary-color-active`,
+      `--theme-primary-color-active`,
       selectedColor
     );
   }, [

@@ -205,3 +205,41 @@ describe('CustomMetricGraphs', () => {
     expect(screen.queryByText(name2)).not.toBeInTheDocument();
   });
 });
+
+it('shows the recorded source for the hovered custom metric', () => {
+  const first = mockProps.customMetricsGraphData.CountOfFRAddress[0];
+  const latest = mockProps.customMetricsGraphData.CountOfFRAddress[1];
+  render(
+    <CustomMetricGraphs
+      {...mockProps}
+      isSharded
+      profiles={[
+        {
+          timestamp: first.timestamp,
+          executionSource: {
+            databaseName: 'demo_db',
+            schemaName: 'demo_schema',
+            tableName: 'events_20260101',
+          },
+        },
+        {
+          timestamp: latest.timestamp,
+          executionSource: {
+            databaseName: 'demo_db',
+            schemaName: 'demo_schema',
+            tableName: 'events_20260102',
+          },
+        },
+      ]}
+    />
+  );
+  const content = areaCalls().at(-1)?.tooltip?.render?.([], first);
+  render(<>{content}</>);
+
+  expect(
+    screen.getByText('demo_db.demo_schema.events_20260101')
+  ).toBeInTheDocument();
+  expect(
+    screen.queryByText('demo_db.demo_schema.events_20260102')
+  ).not.toBeInTheDocument();
+});

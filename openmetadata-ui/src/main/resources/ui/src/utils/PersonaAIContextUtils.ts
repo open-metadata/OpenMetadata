@@ -32,12 +32,14 @@ import {
   CacheState,
   PersonaContextStatus,
 } from '../generated/type/personaContextStatus';
-import { ExploreSearchIndex } from '../interface/discovery/explore.interface';
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import type { TreeNode } from './queryBuilder/url';
 import { withExploreFieldKeys } from './queryBuilder/url';
-import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
+import {
+  getJsonTreeFromQueryFilter,
+  isQueryFilterFullyRepresentable,
+} from './QueryBuilderPureUtils';
 import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
 
@@ -125,30 +127,53 @@ export const getRuleFilterTree = (
   }
 };
 
+// False when the editor can show only part of the saved filter (or none of it): a
+// persisted tree is exact, a reconstructed one may have dropped conditions.
+export const isRuleFilterFullyRendered = (
+  filterJsonTree?: string,
+  queryFilter?: string
+): boolean => {
+  if (!queryFilter || parseRuleFilterTree(filterJsonTree)) {
+    return true;
+  }
+  try {
+    const parsedFilter: unknown = JSON.parse(queryFilter);
+
+    return (
+      Boolean(parsedFilter) &&
+      typeof parsedFilter === 'object' &&
+      !Array.isArray(parsedFilter) &&
+      isQueryFilterFullyRepresentable(parsedFilter as QueryFilterInterface)
+    );
+  } catch {
+    return false;
+  }
+};
+
 export const getRuleExplorePath = (
   entityType: string,
   filterJsonTree?: string,
   queryFilter?: string
 ): string => {
   const tree = getRuleFilterTree(filterJsonTree, queryFilter);
-  const searchIndex = searchClassBase.getEntityTypeSearchIndexMapping()[
-    entityType
-  ] as ExploreSearchIndex | undefined;
-  const tab = searchIndex
-    ? searchClassBase.getTabsInfo()[searchIndex]?.path
-    : undefined;
-
   // Explore validates the deep-linked tree against its own config and silently resets when a field is unknown.
   const exploreTree = tree
     ? withExploreFieldKeys(tree as unknown as TreeNode, entityType)
     : tree;
 
   return getExplorePath({
-    extraParameters: exploreTree
-      ? { queryFilter: JSON.stringify(exploreTree) }
-      : undefined,
+    extraParameters: {
+      quickFilter: JSON.stringify({
+        query: {
+          bool: {
+            must: [{ bool: { should: [{ term: { entityType } }] } }],
+          },
+        },
+      }),
+      ...(exploreTree ? { queryFilter: JSON.stringify(exploreTree) } : {}),
+    },
     isPersistFilters: false,
-    tab,
+    search: '',
   });
 };
 

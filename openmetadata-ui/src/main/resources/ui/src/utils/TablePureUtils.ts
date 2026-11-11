@@ -23,6 +23,7 @@ import {
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { CERTIFICATION_CATEGORY, TIER_CATEGORY } from '../constants/constants';
+import { CUSTOM_PROPERTY_COLUMN_KEY_PREFIX } from '../constants/TableKeys.constants';
 import { EntityType, FqnPart } from '../enums/entity.enum';
 import { PrimaryTableDataTypes } from '../enums/table.enum';
 import type {
@@ -171,12 +172,13 @@ export const searchInFields = <T extends SearchIndexField | Column>(
   searchIndex: Array<T>,
   searchText: string
 ): Array<T> => {
+  const searchLowerCase = lowerCase(searchText);
   const searchedValue: Array<T> = searchIndex.reduce(
     (searchedFields, field) => {
       const isContainData =
-        lowerCase(field.name).includes(searchText) ||
-        lowerCase(field.description).includes(searchText) ||
-        lowerCase(getDataTypeString(field.dataType)).includes(searchText);
+        lowerCase(field.name).includes(searchLowerCase) ||
+        lowerCase(field.description).includes(searchLowerCase) ||
+        lowerCase(getDataTypeString(field.dataType)).includes(searchLowerCase);
 
       if (isContainData) {
         return [...searchedFields, field];
@@ -844,6 +846,9 @@ export const getHighlightedRowClassName = <
 
   return '';
 };
+
+export const getCustomPropertyColumnKey = (propertyName: string): string =>
+  `${CUSTOM_PROPERTY_COLUMN_KEY_PREFIX}${propertyName}`;
 
 export const getNestedSectionTitle = (
   entityType: EntityType | undefined

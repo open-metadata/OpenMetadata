@@ -12,10 +12,10 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
+import { User01 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import { Fragment } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as IconUser } from '../../../assets/svg/user.svg';
 import { TERM_ADMIN } from '../../../constants/constants';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import './roles-element.styles.less';
@@ -28,17 +28,15 @@ const RolesElement = ({ userData }: RolesElementProps) => {
     <Fragment>
       {userData.isAdmin && (
         <div className="mb-2 d-flex items-center gap-2">
-          <IconUser className="tw:size-4 tw:shrink-0" />
+          <User01 className="tw:shrink-0" size={16} />
 
           <span>{TERM_ADMIN}</span>
         </div>
       )}
       {userData?.roles?.map((role) => (
         <div className="mb-2 d-flex items-center gap-2" key={role.id}>
-          <IconUser className="tw:size-4 tw:shrink-0" />
-          <Typography
-            className="ant-typography-ellipsis-custom w-48"
-            ellipsis={{ tooltip: true }}>
+          <User01 className="tw:shrink-0" size={16} />
+          <Typography className="w-48" ellipsis={{ tooltip: true }}>
             {getEntityName(role)}
           </Typography>
         </div>

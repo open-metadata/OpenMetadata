@@ -106,7 +106,10 @@ export const RUN_STATUS_LABEL_KEY: Record<StatusType, string> = {
   [StatusType.Pending]: 'label.pending',
 };
 
-export const PIPELINE_STATUS_TONE = {
+export const PIPELINE_STATUS_TONE: {
+  icon: typeof Dataflow03;
+  tile: string;
+} = {
   icon: Dataflow03,
   tile: TOPIC_BLUE_TILE_CLASSES,
 };

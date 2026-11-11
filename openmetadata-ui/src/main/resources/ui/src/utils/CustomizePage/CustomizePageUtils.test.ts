@@ -339,6 +339,20 @@ describe('CustomizePageUtils', () => {
 
       expect(result).toEqual(widgets);
     });
+
+    it('should return the same reference when the height is unchanged', () => {
+      const widgets = [
+        { i: 'widget-1', h: 50 },
+        { i: 'widget-2', h: 75, children: [{ i: 'child-1', h: 30 }] },
+      ] as WidgetConfig[];
+
+      expect(updateWidgetHeightRecursively('widget-1', 50, widgets)).toBe(
+        widgets
+      );
+      expect(updateWidgetHeightRecursively('child-1', 30, widgets)).toBe(
+        widgets
+      );
+    });
   });
 
   // Registry-consistency invariant: getGlossaryTermDefaultTabs() seeds the

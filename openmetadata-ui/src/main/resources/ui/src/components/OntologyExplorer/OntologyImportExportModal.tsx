@@ -816,7 +816,7 @@ const OntologyImportExportModal = ({
       <Button
         color="primary"
         data-testid="ontology-run-export"
-        iconLeading={<Download01 className="tw:size-4" />}
+        iconLeading={Download01}
         isDisabled={!targetGlossaries.length}
         isLoading={isExporting}
         onPress={handleExport}>

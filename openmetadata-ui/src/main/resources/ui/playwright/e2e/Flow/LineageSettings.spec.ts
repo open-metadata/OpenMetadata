@@ -26,6 +26,7 @@ import { TopicClass } from '../../support/entity/TopicClass';
 import { performAdminLogin } from '../../utils/admin';
 import {
   clickOutside,
+  getApiContext,
   redirectToHomePage,
   selectOptionWithRetry,
   toastNotification,
@@ -132,6 +133,48 @@ test.describe.serial(
 
     test.beforeEach(async ({ page }) => {
       await redirectToHomePage(page);
+    });
+
+    test('Saving the lineage config keeps the settings the form does not edit', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const settingsUrl = '/api/v1/system/settings/lineageSettings';
+      const stored = await (await apiContext.get(settingsUrl)).json();
+      // A value the form cannot produce, so only a save that keeps the field
+      // can leave it in place.
+      const graphPerformanceConfig = {
+        ...stored.config_value.graphPerformanceConfig,
+        cacheTTLSeconds: 600,
+      };
+      await apiContext.put('/api/v1/system/settings', {
+        data: {
+          config_type: 'lineageSettings',
+          config_value: { ...stored.config_value, graphPerformanceConfig },
+        },
+      });
+
+      try {
+        await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);
+        await page.getByTestId('field-upstream').fill('2');
+        const saveRes = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/api/v1/system/settings') &&
+            response.request().method() === 'PUT'
+        );
+        await page.getByTestId('save-button').click();
+        expect((await saveRes).ok()).toBeTruthy();
+
+        const saved = await (await apiContext.get(settingsUrl)).json();
+
+        expect(saved.config_value.upstreamDepth).toBe(2);
+        expect(saved.config_value.graphPerformanceConfig).toEqual(
+          graphPerformanceConfig
+        );
+      } finally {
+        await apiContext.put('/api/v1/system/settings', { data: stored });
+        await afterAction();
+      }
     });
 
     test('Verify global lineage config', async ({ page }) => {

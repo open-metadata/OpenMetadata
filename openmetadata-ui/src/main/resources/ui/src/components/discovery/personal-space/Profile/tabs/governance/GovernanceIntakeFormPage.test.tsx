@@ -194,7 +194,7 @@ describe('GovernanceIntakeFormPage — edit mode', () => {
     mockGetIntakeFormById.mockReturnValue(new Promise(() => {}));
     renderEdit();
 
-    expect(screen.getByText('label.loading')).toBeInTheDocument();
+    expect(screen.getByTestId('intake-form-page-loader')).toBeInTheDocument();
   });
 
   const renderEditAndWait = async () => {

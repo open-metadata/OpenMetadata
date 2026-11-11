@@ -18,9 +18,11 @@ import { ReactionType } from '../../../../generated/type/reaction';
 import ActivityEventFooter from './ActivityEventFooter';
 
 const mockUpdateActivityReaction = jest.fn();
+const mockShowActivityDrawer = jest.fn();
 
 jest.mock('../../ActivityFeedProvider/ActivityFeedProvider', () => ({
   useActivityFeedProvider: () => ({
+    showActivityDrawer: mockShowActivityDrawer,
     updateActivityReaction: mockUpdateActivityReaction,
   }),
 }));
@@ -141,23 +143,32 @@ describe('ActivityEventFooter', () => {
       fireEvent.click(screen.getByTestId('comment-button'));
 
       expect(mockOnActivityClick).toHaveBeenCalledWith(activity);
+      expect(mockShowActivityDrawer).not.toHaveBeenCalled();
     });
 
-    it('should NOT call onActivityClick when isForFeedTab is false', () => {
+    // Regression: on the entity Activity tab this press opened nothing.
+    // Opening the drawer selects the activity, so the click stops short of
+    // the card, whose own click would fetch its replies a second time.
+    it('opens the activity in the reply drawer when isForFeedTab is false', () => {
       const activity = createMockActivity();
       const mockOnActivityClick = jest.fn();
+      const mockContainerClick = jest.fn();
 
       render(
-        <ActivityEventFooter
-          activity={activity}
-          isForFeedTab={false}
-          onActivityClick={mockOnActivityClick}
-        />
+        <div role="presentation" onClick={mockContainerClick}>
+          <ActivityEventFooter
+            activity={activity}
+            isForFeedTab={false}
+            onActivityClick={mockOnActivityClick}
+          />
+        </div>
       );
 
       fireEvent.click(screen.getByTestId('comment-button'));
 
+      expect(mockShowActivityDrawer).toHaveBeenCalledWith(activity);
       expect(mockOnActivityClick).not.toHaveBeenCalled();
+      expect(mockContainerClick).not.toHaveBeenCalled();
     });
 
     it('lets the click reach the card container behind the footer', () => {

@@ -23,14 +23,13 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Globe01, Share07 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { startCase, toString } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DomainIcon } from '../../assets/svg/ic-domain.svg';
-import { ReactComponent as ShareIcon } from '../../assets/svg/ic-share.svg';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import ColorPicker from '../../components/common/ColorPicker/ColorPicker.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -388,7 +387,10 @@ const AppearanceConfigSettingsPage = () => {
                                       borderColor: currentColor,
                                       color: currentColor,
                                     }}>
-                                    <ShareIcon className="tw:size-3.5 tw:shrink-0" />
+                                    <Share07
+                                      className="tw:shrink-0"
+                                      size={14}
+                                    />
                                   </span>
                                   <span
                                     className="tw:inline-flex tw:h-9 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:px-3 tw:text-sm tw:font-semibold"
@@ -400,11 +402,11 @@ const AppearanceConfigSettingsPage = () => {
                                       toString(field.name).replace('Color', '')
                                     )}
                                   </span>
-                                  <DomainIcon
+                                  <Globe01
+                                    size={32}
                                     style={{
                                       color: currentColor,
                                     }}
-                                    width={32}
                                   />
                                   <span
                                     className="tw:inline-flex tw:items-center tw:text-sm tw:font-semibold"

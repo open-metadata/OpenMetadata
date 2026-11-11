@@ -13,6 +13,7 @@
 
 import {
   Box,
+  Button,
   Owner,
   ProgressStepItem,
   ProgressSteps,
@@ -67,7 +68,12 @@ const getStepIcon = (
 
 const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
   const { t } = useTranslation();
-  const { testCaseResolutionStatus } = useActivityFeedProvider();
+  const {
+    testCaseResolutionStatus,
+    incidentAfter,
+    loadMoreIncidentHistory,
+    isTestCaseResolutionLoading,
+  } = useActivityFeedProvider();
 
   const testCaseResolutionStepper = useMemo<ProgressStepItem[]>(() => {
     const updatedData = [...testCaseResolutionStatus];
@@ -161,6 +167,15 @@ const TaskTabIncidentManagerHeaderNewFromTask = ({ task }: { task: Task }) => {
       data-testid="incident-manager-task-header-container"
       direction="col"
       gap={4}>
+      {incidentAfter && (
+        <Button
+          color="secondary"
+          isDisabled={isTestCaseResolutionLoading}
+          isLoading={isTestCaseResolutionLoading}
+          onClick={loadMoreIncidentHistory}>
+          {t('label.load-more')}
+        </Button>
+      )}
       <div className="task-resolution-steps-container">
         <ProgressSteps
           // Fixed-width steps scroll inside the container, as the antd Steps did,

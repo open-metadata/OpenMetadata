@@ -12,7 +12,6 @@
  */
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import { Table } from '../../../generated/entity/data/table';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -35,13 +34,10 @@ const INCIDENT_LIMIT = 50;
 const ASSET_HEALTH_QUERY_KEY = 'asset-health';
 
 export const useAssetHealth = (table?: Table): UseAssetHealthResult => {
-  const { isTourPage } = useTourProvider();
-  // The tour's table is mock data: with no table every query below stays disabled.
-  const healthTable = isTourPage ? undefined : table;
-  const tableId = healthTable?.id;
-  const testSuiteId = healthTable?.testSuite?.id;
-  const serviceFqn = healthTable?.service?.fullyQualifiedName;
-  const tableFqn = healthTable?.fullyQualifiedName;
+  const tableId = table?.id;
+  const testSuiteId = table?.testSuite?.id;
+  const serviceFqn = table?.service?.fullyQualifiedName;
+  const tableFqn = table?.fullyQualifiedName;
 
   const summaryQuery = useQuery({
     queryKey: [ASSET_HEALTH_QUERY_KEY, 'test-summary', testSuiteId],

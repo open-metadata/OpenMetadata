@@ -76,12 +76,14 @@ describe('TopicFilterChips', () => {
     expect(screen.queryByTestId('topic-filter-all')).toBeNull();
   });
 
-  it('sets the label and count at 12px, the count tucked against its label', () => {
+  it('sets the label and count at 12px, the medium-weight count spaced from its label', () => {
     renderChips();
 
     const count = screen.getByTestId('domains-filter-all-count');
 
-    expect(count.parentElement).toHaveClass('tw:text-xs', 'tw:gap-1');
+    expect(count.parentElement).toHaveClass('tw:text-xs', 'tw:gap-1.5');
+    expect(count).toHaveClass('tw:font-medium');
+    expect(count).not.toHaveClass('tw:font-semibold');
     expect(count.parentElement).toHaveTextContent('All30');
     expect(screen.getByTestId('domains-filter-all')).toHaveClass(
       'tw:px-2.5',

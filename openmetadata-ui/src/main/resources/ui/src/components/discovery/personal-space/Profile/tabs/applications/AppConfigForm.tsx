@@ -23,18 +23,23 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Hint } from '@openmetadata/ui-core-components/icons';
 import { IChangeEvent } from '@rjsf/core';
-import { FieldProps, FieldTemplateProps, RJSFSchema } from '@rjsf/utils';
+import {
+  FieldProps,
+  FieldTemplateProps,
+  RJSFSchema,
+  UiSchema,
+} from '@rjsf/utils';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { App } from '../../../../../../generated/entity/applications/app';
 import { AppMarketPlaceDefinition } from '../../../../../../generated/entity/applications/marketplace/appMarketPlaceDefinition';
 import { EntityReference } from '../../../../../../generated/entity/type';
+import { useFormFieldDocs } from '../../../../../../hooks/useFormFieldDocs';
 import { formatFormDataForSubmit } from '../../../../../../utils/JSONSchemaFormUtils';
 import FormBuilderV1 from '../../../../../common/FormBuilderV1/FormBuilderV1';
 import { getFormDisplayLabel } from '../../../../../common/FormBuilderV1/formBuilderV1LabelUtils';
 import { CoreFieldTemplate } from '../../../../../common/FormBuilderV1/templates/CoreFieldTemplate';
 import applicationsClassBase from '../../../../../Settings/Applications/AppDetails/ApplicationsClassBase';
-import { useFormFieldDocs } from '../platform-settings/useFormFieldDocs';
 import { AppFooter } from './AppFooter';
 
 export interface AppConfigFormProps {
@@ -46,6 +51,8 @@ export interface AppConfigFormProps {
   cancelLabel?: string;
   /** Render the form without edit controls (user lacks edit permission). */
   isReadOnly?: boolean;
+  /** Overrides the default app UI schema, e.g. to lock fields managed elsewhere. */
+  uiSchema?: UiSchema;
   onCancel?: () => void;
   onSave: (data: {
     formData: Record<string, unknown>;
@@ -96,7 +103,10 @@ export const AppToggleCardField = ({
   const label = schema.title ?? getFormDisplayLabel(name);
 
   return (
-    <Card data-testid={`toggle-card-${getFieldName(idSchema.$id)}`} size="sm">
+    <Card
+      data-testid={`toggle-card-${getFieldName(idSchema.$id)}`}
+      size="sm"
+      variant="muted">
       <Card.Content>
         <Box align="center" direction="row" gap={4} justify="between">
           <Box className="tw:min-w-0" direction="col">
@@ -153,6 +163,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
   submitLabel,
   cancelLabel,
   isReadOnly = false,
+  uiSchema = applicationsClassBase.getJSONUISchema(),
   onCancel,
   onSave,
 }) => {
@@ -182,7 +193,7 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
         readonly={isReadOnly}
         schema={jsonSchema}
         templates={APP_FORM_TEMPLATES}
-        uiSchema={applicationsClassBase.getJSONUISchema()}
+        uiSchema={uiSchema}
         onSubmit={handleSubmit}
       />
       {!isReadOnly && (
@@ -206,8 +217,14 @@ const AppConfigForm: FC<AppConfigFormProps> = ({
           </Button>
         </AppFooter>
       )}
-      {/* Full-width fields leave no room beside them, so the hint opens above. */}
-      <FieldDocPopover placement="top end" />
+      {/* Full-width fields leave no room beside them, so the hint opens below
+          the field. Never flipped above, where the first field's hint covered
+          the modal header; short of room below, the card shrinks and scrolls. */}
+      <FieldDocPopover
+        placement="bottom end"
+        shouldFlip={false}
+        variant="muted"
+      />
     </FieldDocProvider>
   );
 };

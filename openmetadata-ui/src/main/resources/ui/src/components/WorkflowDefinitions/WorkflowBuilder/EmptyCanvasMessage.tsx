@@ -12,9 +12,9 @@
  */
 
 import { Card, Typography } from '@openmetadata/ui-core-components';
+import { Trigger } from '@openmetadata/ui-core-components/icons';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClickIcon } from '../../../assets/svg/ic_click.svg';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
 import { EmptyCanvasMessageProps } from '../../../interface/workflow-builder-components.interface';
 
@@ -32,7 +32,7 @@ export const EmptyCanvasMessage: React.FC<EmptyCanvasMessageProps> = ({
   return (
     <div className="tw:absolute tw:top-1/2 tw:left-1/2 tw:-translate-x-1/2 tw:-translate-y-1/2 tw:pointer-events-none tw:z-1">
       <Card className="tw:flex tw:flex-col tw:items-center tw:justify-center tw:px-6 tw:py-5">
-        <ClickIcon />
+        <Trigger className="tw:text-utility-gray-600" size={60} />
         <Typography
           className="tw:m-0 tw:text-primary tw:text-center"
           size="text-sm">

@@ -14,6 +14,7 @@ import static org.openmetadata.service.search.SearchClient.UPDATE_GLOSSARY_TERM_
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
@@ -30,6 +31,7 @@ import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
+import es.co.elastic.clients.elasticsearch.core.DeleteByQueryRequest;
 import es.co.elastic.clients.elasticsearch.core.DeleteByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.DeleteResponse;
 import es.co.elastic.clients.elasticsearch.core.GetResponse;
@@ -39,6 +41,7 @@ import es.co.elastic.clients.elasticsearch.core.UpdateByQueryResponse;
 import es.co.elastic.clients.elasticsearch.core.UpdateRequest;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.search.Hit;
+import es.co.elastic.clients.elasticsearch.tasks.GetTasksResponse;
 import es.co.elastic.clients.json.JsonData;
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
@@ -73,6 +76,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -100,6 +104,7 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
   // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
   // stalled search backend can't hold the thread indefinitely; the async result is still handled.
   private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
+  private static final int MAX_SCRIPT_DELETE_ATTEMPTS = 3;
 
   public ElasticSearchEntityManager(ElasticsearchClient client) {
     this.client = client;
@@ -318,34 +323,56 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexName)
-                    .query(
-                        q ->
-                            q.script(
-                                s ->
-                                    s.script(
-                                        script ->
-                                            script
-                                                .source(ss -> ss.scriptString(scriptTxt))
-                                                .lang(ScriptLanguage.Painless)
-                                                .params(convertToJsonDataMap(params)))))
-                    .refresh(true));
-
-    LOG.info(
-        "DeleteByQuery by script response from ES - Deleted: {}, Failures: {}",
-        response.deleted(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkIndexByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
+    DeleteByQueryRequest request = buildDeleteByScriptRequest(indexName, scriptTxt, params);
+    for (int attempt = 1; attempt <= MAX_SCRIPT_DELETE_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        client.indices().refresh(r -> r.index(request.index()));
+      }
+      DeleteByQueryResponse response = client.deleteByQuery(request);
+      LOG.info(
+          "DeleteByQuery by script response from ES - Attempt: {}, Deleted: {}, Version conflicts: {}, Failures: {}",
+          attempt,
+          response.deleted(),
+          response.versionConflicts(),
+          response.failures().size());
+      if (!response.failures().isEmpty() || Boolean.TRUE.equals(response.timedOut())) {
+        LOG.error(
+            "DeleteByQuery script on {} failed: {}, timed out: {}",
+            indexName,
+            response.failures(),
+            response.timedOut());
+        break;
+      }
+      if (zeroIfNull(response.versionConflicts()) == 0) {
+        break;
+      }
+      if (attempt == MAX_SCRIPT_DELETE_ATTEMPTS) {
+        LOG.warn(
+            "DeleteByQuery script on {} left {} version conflict(s) after {} attempts",
+            indexName,
+            response.versionConflicts(),
+            attempt);
+      }
     }
+  }
+
+  DeleteByQueryRequest buildDeleteByScriptRequest(
+      String indexName, String scriptTxt, Map<String, Object> params) {
+    return DeleteByQueryRequest.of(
+        d ->
+            d.index(indexName)
+                .query(
+                    q ->
+                        q.script(
+                            s ->
+                                s.script(
+                                    script ->
+                                        script
+                                            .source(ss -> ss.scriptString(scriptTxt))
+                                            .lang(ScriptLanguage.Painless)
+                                            .params(convertToJsonDataMap(params)))))
+                .conflicts(Conflicts.Proceed)
+                .refresh(true));
   }
 
   @Override
@@ -497,12 +524,67 @@ public class ElasticSearchEntityManager implements EntityManagementClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates)
       throws IOException {
-    if (!isClientAvailable) {
+    updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    String taskId = null;
+    if (isClientAvailable) {
+      taskId =
+          client
+              .updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates))
+              .task();
+      LOG.info(
+          "Successfully submitted child update in ElasticSearch for indices: {} (task {})",
+          indexNames,
+          taskId);
+    } else {
       LOG.error("ElasticSearch client is not available. Cannot update children for indices.");
-      return;
     }
-    submitChildUpdate(indexNames, fieldAndValue, updates);
-    LOG.info("Successfully submitted child update in ElasticSearch for indices: {}", indexNames);
+    return taskId;
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return childUpdateStatusOf(client.tasks().get(g -> g.taskId(taskId)));
+  }
+
+  // A task that ran to the end can still have failed: the engine reports a refused scroll as the
+  // task's error, and per-document failures in its response.
+  static ChildUpdateStatus childUpdateStatusOf(GetTasksResponse task) {
+    ChildUpdateStatus status = ChildUpdateStatus.running();
+    if (task.completed()) {
+      JsonNode response =
+          task.response() == null
+              ? JsonUtils.getObjectNode()
+              : JsonUtils.readTree(task.response().toJson().toString());
+      List<String> failures = new ArrayList<>();
+      if (task.error() != null) {
+        failures.add(describe(task.error()));
+      }
+      response.path("failures").forEach(failure -> failures.add(failure.toString()));
+      if (response.path("timed_out").asBoolean(false)) {
+        failures.add("timed out");
+      }
+      status =
+          failures.isEmpty()
+              ? ChildUpdateStatus.succeeded()
+              : new ChildUpdateStatus(true, String.join("; ", failures));
+    }
+    return status;
+  }
+
+  // The engine wraps the reason a task stopped, e.g. too_many_scroll_contexts_exception, inside a
+  // search_phase_execution_exception; report both.
+  private static String describe(ErrorCause error) {
+    String cause =
+        error.causedBy() == null ? "" : " caused by %s".formatted(describe(error.causedBy()));
+    return "%s: %s%s".formatted(error.type(), error.reason(), cause);
   }
 
   private void submitChildUpdate(

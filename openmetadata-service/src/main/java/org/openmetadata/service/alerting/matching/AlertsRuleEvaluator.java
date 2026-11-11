@@ -19,7 +19,9 @@ import static org.openmetadata.service.Entity.THREAD;
 import static org.openmetadata.service.Entity.USER;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -97,6 +99,8 @@ public class AlertsRuleEvaluator {
   private final ChangeEvent changeEvent;
   private EntityReference feedSubject;
   private boolean feedSubjectResolved;
+  private EntityInterface<?> eventEntity;
+  private List<MessageParser.EntityLink> mentions;
 
   public AlertsRuleEvaluator(ChangeEvent event) {
     this.changeEvent = event;
@@ -140,7 +144,7 @@ public class AlertsRuleEvaluator {
       matched =
           isFeedEvent()
               ? feedSubjectMatchesOwner(ownerNameList)
-              : matchesEntityOrTestSuiteOwner(getEntity(changeEvent), ownerNameList);
+              : matchesEntityOrTestSuiteOwner(eventEntity(), ownerNameList);
     }
     return matched;
   }
@@ -189,7 +193,7 @@ public class AlertsRuleEvaluator {
       return feedSubjectMatchesFqn(entityFqns);
     }
 
-    EntityInterface<?> entity = getEntity(changeEvent);
+    EntityInterface<?> entity = eventEntity();
     if (matchesFqnOrDescendant(entity.getFullyQualifiedName(), entityFqns)) {
       return true;
     }
@@ -235,7 +239,7 @@ public class AlertsRuleEvaluator {
       return feedSubjectMatchesId(entityIds);
     }
 
-    return matchesAnyId(getEntity(changeEvent).getId(), entityIds);
+    return matchesAnyId(eventEntity().getId(), entityIds);
   }
 
   @Function(
@@ -344,7 +348,7 @@ public class AlertsRuleEvaluator {
         && changeEvent.getChangeDescription() != null
         && TEST_CASE.equals(changeEvent.getEntityType())) {
       List<TestSuite> testSuites =
-          resolveTestSuites((TestCase) getEntity(changeEvent), Entity.FIELD_TEST_SUITES);
+          resolveTestSuites((TestCase) eventEntity(), Entity.FIELD_TEST_SUITES);
       matched = matchesAnyTestSuiteFqn(testSuites, testSuiteList) && matchTestResult(testResults);
     }
     return matched;
@@ -489,7 +493,7 @@ public class AlertsRuleEvaluator {
       matched =
           isFeedEvent()
               ? feedSubjectMatchesDomain(fieldChangeUpdate)
-              : matchesEntityOrTestSuiteDomain(getEntity(changeEvent), fieldChangeUpdate);
+              : matchesEntityOrTestSuiteDomain(eventEntity(), fieldChangeUpdate);
     }
     return matched;
   }
@@ -600,11 +604,18 @@ public class AlertsRuleEvaluator {
       return true;
     }
 
-    List<MessageParser.EntityLink> mentions =
-        isTask
-            ? getTaskMentions(getTask(changeEvent))
-            : getConversationMentions(getConversation(changeEvent));
-    return matchesMentionedUserOrTeam(mentions, usersOrTeamName);
+    return matchesMentionedUserOrTeam(mentions(isTask), usersOrTeamName);
+  }
+
+  // The links in the feed text, read once: every mention filter in one evaluation reads the same.
+  private List<MessageParser.EntityLink> mentions(boolean isTask) {
+    if (mentions == null) {
+      mentions =
+          isTask
+              ? getTaskMentions(getTask(changeEvent))
+              : getConversationMentions(getConversation(changeEvent));
+    }
+    return mentions;
   }
 
   private List<MessageParser.EntityLink> getConversationMentions(Conversation conversation) {
@@ -652,17 +663,30 @@ public class AlertsRuleEvaluator {
     return null;
   }
 
+  // A user's or team's name is its fully qualified name, so a link can only resolve to a listed
+  // name when it is spelled as one. Only those links are looked up, each once, so the lookups are
+  // bounded by the alert's list rather than by how many links the message holds.
   private boolean matchesMentionedUserOrTeam(
       List<MessageParser.EntityLink> mentions, List<String> usersOrTeamName) {
     Set<String> names =
         usersOrTeamName.stream().map(EntityInterfaceUtil::unquoteName).collect(Collectors.toSet());
+    Set<String> spellings =
+        names.stream().map(AlertsRuleEvaluator::spelling).collect(Collectors.toSet());
+    Set<List<String>> lookedUp = new HashSet<>();
     for (MessageParser.EntityLink entityLink : mentions) {
       String fqn = entityLink.getEntityFQN();
-      if (names.contains(mentionedName(entityLink.getEntityType(), fqn))) {
+      boolean couldMatch =
+          spellings.contains(spelling(fqn))
+              && lookedUp.add(List.of(String.valueOf(entityLink.getEntityType()), fqn));
+      if (couldMatch && names.contains(mentionedName(entityLink.getEntityType(), fqn))) {
         return true;
       }
     }
     return false;
+  }
+
+  private static String spelling(String fqn) {
+    return fqn == null ? "" : EntityInterfaceUtil.unquoteName(fqn).toLowerCase(Locale.ROOT);
   }
 
   private static String mentionedName(String entityType, String fqn) {
@@ -755,6 +779,15 @@ public class AlertsRuleEvaluator {
     return false;
   }
 
+  // The event's entity, read once: every matcher in one evaluation asks for the same one, and it
+  // can be as large as the asset that changed.
+  private EntityInterface<?> eventEntity() {
+    if (eventEntity == null) {
+      eventEntity = getEntity(changeEvent);
+    }
+    return eventEntity;
+  }
+
   // Scoping filters on a feed event are about its parent entity, not the feed entity itself.
   // Memoized: every matcher in one evaluation asks for the same subject.
   private EntityReference feedSubject() {
@@ -783,7 +816,7 @@ public class AlertsRuleEvaluator {
     return switch (changeEvent.getEntityType()) {
       case null -> null;
       case THREAD, CONVERSATION -> feedSubjectOfType(entityType);
-      default -> entityType.equals(changeEvent.getEntityType()) ? getEntity(changeEvent) : null;
+      default -> entityType.equals(changeEvent.getEntityType()) ? eventEntity() : null;
     };
   }
 

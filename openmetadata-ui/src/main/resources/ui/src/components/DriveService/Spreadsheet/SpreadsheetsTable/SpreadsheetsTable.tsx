@@ -27,9 +27,9 @@ import {
 } from '../../../../constants/TableKeys.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { SearchIndex } from '../../../../enums/search.enum';
+import { Spreadsheet } from '../../../../generated/entity/data/spreadsheet';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { useTableFilters } from '../../../../hooks/useTableFilters';
-import { ServicePageData } from '../../../../interface/platform/service.interface';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { buildSchemaQueryFilter } from '../../../../utils/DatabaseSchemaDetailsUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -117,15 +117,15 @@ function SpreadsheetsTable({
     [paging]
   );
 
-  const tableColumn: ColumnsType<ServicePageData> = useMemo(
+  const tableColumn: ColumnsType<Spreadsheet> = useMemo(
     () => [
       {
         title: t('label.name'),
         dataIndex: TABLE_COLUMNS_KEYS.NAME,
         key: TABLE_COLUMNS_KEYS.NAME,
         width: 300,
-        sorter: getColumnSorter<ServicePageData, 'name'>('name'),
-        render: (_, record: ServicePageData) => {
+        sorter: getColumnSorter<Spreadsheet, 'name'>('name'),
+        render: (_, record: Spreadsheet) => {
           const spreadsheetDisplayName = getEntityName(record);
 
           return (
@@ -145,8 +145,8 @@ function SpreadsheetsTable({
           );
         },
       },
-      ...descriptionTableObject<ServicePageData>({ width: 400 }),
-      ...tagTableObject<ServicePageData>(),
+      ...descriptionTableObject<Spreadsheet>({ width: 400 }),
+      ...tagTableObject<Spreadsheet>(),
     ],
     [searchValue, t]
   );

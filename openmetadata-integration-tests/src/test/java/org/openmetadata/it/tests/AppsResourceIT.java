@@ -15,18 +15,26 @@ package org.openmetadata.it.tests;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
+import static org.openmetadata.service.apps.scheduler.AppScheduler.ON_DEMAND_JOB;
+import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_IMPERSONATION_ROLE;
 import static org.openmetadata.service.jdbi3.AppRepository.APP_BOT_ROLE;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.time.Duration;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+import java.util.Date;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -38,6 +46,7 @@ import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
 import org.openmetadata.schema.entity.app.AppRunRecord;
@@ -49,16 +58,33 @@ import org.openmetadata.schema.entity.app.NativeAppPermission;
 import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.app.ScheduleType;
 import org.openmetadata.schema.entity.app.ScheduledExecutionContext;
+import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.BackfillConfiguration;
+import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
+import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.ConflictException;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
+import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
+import org.quartz.JobBuilder;
+import org.quartz.JobDetail;
+import org.quartz.JobExecutionContext;
+import org.quartz.TriggerBuilder;
+import org.quartz.impl.JobExecutionContextImpl;
+import org.quartz.spi.OperableTrigger;
+import org.quartz.spi.TriggerFiredBundle;
 
 /**
  * Integration tests for Apps API.
@@ -79,6 +105,111 @@ public class AppsResourceIT {
   @BeforeAll
   static void setup() {
     Apps.setDefaultClient(SdkClients.adminClient());
+  }
+
+  @Test
+  void dataInsights_scheduledRunIgnoresIncompleteBackfill(TestNamespace ns) {
+    RecordingDataInsightsApp app =
+        runDataInsights(
+            ns, ScheduleTimeline.DAILY.value(), new BackfillConfiguration().withEnabled(true));
+
+    assertEquals(AppRunRecord.Status.COMPLETED, app.reported.getStatus());
+    assertNull(app.reported.getFailureContext());
+    assertTrue(app.getBackfill().isEmpty());
+  }
+
+  @Test
+  void dataInsights_manualRunReportsIncompleteBackfillAsFailed(TestNamespace ns) {
+    RecordingDataInsightsApp app =
+        runDataInsights(ns, ON_DEMAND_JOB, new BackfillConfiguration().withEnabled(true));
+
+    assertEquals(AppRunRecord.Status.FAILED, app.reported.getStatus());
+    IndexingError failure =
+        (IndexingError) app.reported.getFailureContext().getAdditionalProperties().get("failure");
+    assertTrue(failure.getMessage().contains("Backfill requires both startDate and endDate"));
+  }
+
+  @Test
+  void dataInsights_manualRunUsesValidBackfill(TestNamespace ns) {
+    String date = LocalDate.now(ZoneOffset.UTC).toString();
+    RecordingDataInsightsApp app =
+        runDataInsights(
+            ns,
+            ON_DEMAND_JOB,
+            new BackfillConfiguration().withEnabled(true).withStartDate(date).withEndDate(date));
+
+    assertEquals(AppRunRecord.Status.COMPLETED, app.reported.getStatus());
+    assertNull(app.reported.getFailureContext());
+    assertEquals(new DataInsightsApp.Backfill(date, date), app.getBackfill().orElseThrow());
+  }
+
+  @Test
+  void dataInsights_manualRunIgnoresDisabledBackfill(TestNamespace ns) {
+    RecordingDataInsightsApp app =
+        runDataInsights(ns, ON_DEMAND_JOB, new BackfillConfiguration().withEnabled(false));
+
+    assertEquals(AppRunRecord.Status.COMPLETED, app.reported.getStatus());
+    assertNull(app.reported.getFailureContext());
+    assertTrue(app.getBackfill().isEmpty());
+  }
+
+  private RecordingDataInsightsApp runDataInsights(
+      TestNamespace ns, String runType, BackfillConfiguration backfill) {
+    DataInsightsAppConfig config =
+        new DataInsightsAppConfig()
+            .withBackfillConfiguration(backfill)
+            .withModuleConfiguration(
+                new ModuleConfiguration()
+                    .withDataAssets(new DataAssetsConfig().withEnabled(false))
+                    .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
+                    .withCostAnalysis(new CostAnalysisConfig().withEnabled(false)));
+    RecordingDataInsightsApp application = new RecordingDataInsightsApp();
+    JobExecutionContext context = dataInsightsContext(ns, runType, application);
+    try {
+      application.init(
+          new App()
+              .withName(ns.shortPrefix("di_backfill"))
+              .withAppConfiguration(JsonUtils.getMap(config)));
+      assertTrue(application.getBackfill().isEmpty());
+      application.startApp(context);
+      assertNotNull(application.reported, "the run must publish its final status");
+      return application;
+    } finally {
+      application.uninstall();
+    }
+  }
+
+  private JobExecutionContext dataInsightsContext(
+      TestNamespace ns, String runType, DataInsightsApp application) {
+    JobDetail jobDetail =
+        JobBuilder.newJob(DataInsightsApp.class).usingJobData(TRIGGER_TYPE_KEY, runType).build();
+    OperableTrigger trigger =
+        (OperableTrigger) TriggerBuilder.newTrigger().forJob(jobDetail).startNow().build();
+    trigger.setFireInstanceId(ns.shortPrefix("di_backfill_run"));
+    Date now = new Date();
+    TriggerFiredBundle bundle =
+        new TriggerFiredBundle(jobDetail, trigger, null, false, now, now, null, null);
+    return new JobExecutionContextImpl(null, bundle, application);
+  }
+
+  private static class RecordingDataInsightsApp extends DataInsightsApp {
+    private final AppRunRecord record = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+    private AppRunRecord reported;
+
+    private RecordingDataInsightsApp() {
+      super(Entity.getCollectionDAO(), Entity.getSearchRepository());
+    }
+
+    @Override
+    protected AppRunRecord getJobRecord(JobExecutionContext context) {
+      return record;
+    }
+
+    @Override
+    protected void pushAppStatusUpdates(
+        JobExecutionContext context, AppRunRecord appRecord, boolean update) {
+      reported = appRecord;
+    }
   }
 
   private void waitForAppJobCompletion(String appName) {
@@ -460,6 +591,100 @@ public class AppsResourceIT {
                 httpClient.execute(
                     HttpMethod.POST, "/v1/apps/trigger/" + appName, config, Void.class));
     assertTrue(exception.getMessage().contains("thisShouldFail"));
+  }
+
+  /**
+   * The seeded DataSteward role may trigger any app but edit none. Its holder may pass a declared
+   * runtime parameter, but changing a configuration key, even one the stored config leaves unset,
+   * needs EditAll. Both requests fail before a run starts, so the shared indexing app never
+   * reindexes.
+   */
+  @Test
+  void test_triggerApp_triggerOnlyPrincipalCannotOverrideConfiguration(TestNamespace ns) {
+    String trigger = "/v1/apps/trigger/SearchIndexingApplication";
+    HttpClient dataSteward = dataStewardClient(ns).getHttpClient();
+
+    Map<String, Object> configurationKey = new HashMap<>();
+    configurationKey.put("notAConfiguredKey", true);
+    OpenMetadataException denied =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, configurationKey, Void.class));
+    assertEquals(403, denied.getStatusCode());
+    assertTrue(denied.getMessage().contains("EditAll"), denied.getMessage());
+
+    // The runtime parameter clears both authorization checks; search indexing then rejects it as an
+    // unknown key during configuration validation, before anything is scheduled.
+    Map<String, Object> runtimeParameter = new HashMap<>();
+    runtimeParameter.put("entityLink", "<#E::table::" + ns.prefix("svc") + ".db.schema.table>");
+    OpenMetadataException rejected =
+        assertThrows(
+            OpenMetadataException.class,
+            () -> dataSteward.execute(HttpMethod.POST, trigger, runtimeParameter, Void.class));
+    assertNotEquals(403, rejected.getStatusCode(), rejected.getMessage());
+  }
+
+  /**
+   * An app's bot is the account named after the app. When a person already holds that name,
+   * installing the app must refuse rather than turn the person's account into the bot, which would
+   * hand the app's privileges to whoever signs in as that person.
+   */
+  @Test
+  void test_installApp_doesNotAdoptAPersonsAccountAsItsBot(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+    String appName = "BotNameTaken" + suffix;
+    String botName = appName + "Bot";
+    admin
+        .getHttpClient()
+        .execute(
+            HttpMethod.POST,
+            "/v1/apps/marketplace",
+            new CreateAppMarketPlaceDefinitionReq()
+                .withName(appName)
+                .withDisplayName("Bot Name Taken")
+                .withDescription("An app whose bot name a person already holds")
+                .withFeatures("test features")
+                .withDeveloper("Test Developer")
+                .withDeveloperUrl("https://www.example.com")
+                .withPrivacyPolicyUrl("https://www.example.com/privacy")
+                .withSupportEmail("support@example.com")
+                .withClassName("org.openmetadata.service.resources.apps.TestApp")
+                .withAppType(AppType.Internal)
+                .withScheduleType(ScheduleType.Scheduled)
+                .withRuntime(new ScheduledExecutionContext().withEnabled(true))
+                .withAppConfiguration(new HashMap<>())
+                .withPermission(NativeAppPermission.All),
+            AppMarketPlaceDefinition.class);
+    CreateUser createPerson =
+        new CreateUser().withName(botName).withEmail("bot_name_taken_" + suffix + "@test.om.org");
+    User person = ns.trackRoot(Entity.USER, admin.users().create(createPerson));
+
+    OpenMetadataException refused =
+        assertThrows(OpenMetadataException.class, () -> Apps.install().name(appName).execute());
+    assertEquals(400, refused.getStatusCode(), refused.getMessage());
+
+    User saved = admin.users().get(person.getId().toString());
+    assertNotEquals(Boolean.TRUE, saved.getIsBot());
+    assertEquals(person.getVersion(), saved.getVersion());
+    assertThrows(OpenMetadataException.class, () -> admin.bots().getByName(botName));
+    assertThrows(OpenMetadataException.class, () -> Apps.getByName(appName));
+  }
+
+  /**
+   * A user of its own holding the seeded DataSteward role. The shared data-steward client only mints
+   * a token, so its account exists only if another test happened to create it first.
+   */
+  private static OpenMetadataClient dataStewardClient(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String name = "trigger_steward_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateUser createUser = new CreateUser();
+    createUser.setName(name);
+    createUser.setEmail(name + "@test.om.org");
+    createUser.setRoles(List.of(admin.roles().getByName("DataSteward").getId()));
+    User steward = ns.trackRoot(Entity.USER, admin.users().create(createUser));
+    return SdkClients.createClient(
+        steward.getName(), steward.getEmail(), new String[] {"DataSteward"});
   }
 
   @Test

@@ -210,7 +210,9 @@ export interface TreeItemContentProps {
    * Optional icon component rendered between the chevron and the label.
    * Accepts any icon component from `@openmetadata/ui-core-components/icons`.
    */
-  icon?: ComponentType<HTMLAttributes<HTMLOrSVGElement>>;
+  icon?: ComponentType<
+    Pick<HTMLAttributes<HTMLOrSVGElement>, 'className' | 'aria-hidden'>
+  >;
   /** Additional CSS class name applied to the icon. */
   iconClassName?: string;
   /**
@@ -281,7 +283,7 @@ const TreeItemContentComponent = ({
             {showGuideLines && level >= 2 && (
               <span
                 aria-hidden="true"
-                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-gray-blue-100 tw:dark:bg-gray-blue-800 tw:pointer-events-none"
+                className="tw:absolute tw:top-0 tw:bottom-0 tw:w-px tw:bg-utility-gray-300 tw:pointer-events-none"
                 style={{ left: `${-Math.round(indentPerLevel / 2)}px` }}
               />
             )}

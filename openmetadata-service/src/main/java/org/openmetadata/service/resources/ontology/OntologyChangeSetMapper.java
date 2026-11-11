@@ -42,6 +42,7 @@ public final class OntologyChangeSetMapper
                 : Entity.getEntityReferenceByName(
                     Entity.ONTOLOGY, request.getOntology(), Include.NON_DELETED))
         .withBaseWorkingRevision(request.getBaseWorkingRevision())
+        .withSourcePack(request.getSourcePack())
         .withState(OntologyChangeSetState.DRAFT)
         .withOperations(request.getOperations())
         .withUndoCursor(request.getOperations() == null ? 0 : request.getOperations().size())

@@ -59,7 +59,9 @@ import org.openmetadata.schema.type.LayerPaging;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkConnectionBudget;
 import org.openmetadata.service.jdbi3.KnowledgePageRepository;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchAggregation;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchHealthStatus;
@@ -117,6 +119,9 @@ public class OpenSearchClient implements SearchClient {
   private final OpenSearchTransport transport;
   private final SdkHttpClient awsHttpClient; // Stored for cleanup on close()
 
+  /** Caps bulk requests in flight on this client's connection pool, across all bulk sinks. */
+  @Getter private final BulkConnectionBudget bulkConnectionBudget;
+
   private volatile OSLineageGraphBuilder lineageGraphBuilder;
   private final OSEntityRelationshipGraphBuilder entityRelationshipGraphBuilder;
 
@@ -143,9 +148,11 @@ public class OpenSearchClient implements SearchClient {
       this.transport =
           MeteredOpenSearchTransport.wrap(
               createAwsSdk2Transport(config, awsConfig, this.awsHttpClient));
+      this.bulkConnectionBudget = BulkConnectionBudget.forAwsSdkClient();
     } else {
       this.awsHttpClient = null;
       this.transport = MeteredOpenSearchTransport.wrap(createApacheHttpClient5Transport(config));
+      this.bulkConnectionBudget = BulkConnectionBudget.forHttpClientPool(config);
     }
 
     this.newClient = createOpenSearchNewClient(transport);
@@ -160,7 +167,8 @@ public class OpenSearchClient implements SearchClient {
     entityManager = new OpenSearchEntityManager(newClient);
     genericManager = new OpenSearchGenericManager(newClient, transport);
     aggregationManager = new OpenSearchAggregationManager(newClient, rbacConditionEvaluator);
-    dataInsightAggregatorManager = new OpenSearchDataInsightAggregatorManager(newClient);
+    dataInsightAggregatorManager =
+        new OpenSearchDataInsightAggregatorManager(newClient, rbacConditionEvaluator);
     searchManager =
         new OpenSearchSearchManager(newClient, rbacConditionEvaluator, clusterAlias, nlqService);
   }
@@ -344,6 +352,12 @@ public class OpenSearchClient implements SearchClient {
   public SearchResultListMapper searchForExport(
       SearchRequest request, SubjectContext subjectContext) throws IOException {
     return searchManager.searchForExport(request, subjectContext);
+  }
+
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    return searchManager.searchSimilarContextMemories(text, filterJson, size);
   }
 
   @Override
@@ -767,6 +781,20 @@ public class OpenSearchClient implements SearchClient {
   }
 
   @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    return entityManager.updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return entityManager.childUpdateStatus(taskId);
+  }
+
+  @Override
   public void updateChildren(
       List<String> indexNames,
       String field,
@@ -903,6 +931,17 @@ public class OpenSearchClient implements SearchClient {
       @NotNull DataInsightCustomChart diChart, long start, long end, boolean live)
       throws IOException {
     return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live);
+  }
+
+  @Override
+  public DataInsightCustomChartResultList buildDIChart(
+      @NotNull DataInsightCustomChart diChart,
+      long start,
+      long end,
+      boolean live,
+      SubjectContext caller)
+      throws IOException {
+    return dataInsightAggregatorManager.buildDIChart(diChart, start, end, live, caller);
   }
 
   /**

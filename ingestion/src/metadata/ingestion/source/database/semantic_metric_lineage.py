@@ -39,6 +39,46 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 # A (source column name, view column name) pair proposed by a connector.
 ColumnPair = tuple[str, str]
 
+# Bare words a semantic-layer expression can contain that are never column references.
+# Resolution against the source table's real columns is the authoritative filter.
+SQL_KEYWORDS = frozenset(
+    {
+        "and",
+        "as",
+        "asc",
+        "between",
+        "by",
+        "case",
+        "cast",
+        "desc",
+        "distinct",
+        "else",
+        "end",
+        "false",
+        "filter",
+        "following",
+        "from",
+        "in",
+        "interval",
+        "is",
+        "like",
+        "not",
+        "null",
+        "or",
+        "order",
+        "over",
+        "partition",
+        "preceding",
+        "range",
+        "rows",
+        "then",
+        "true",
+        "unbounded",
+        "when",
+        "where",
+    }
+)
+
 
 def table_reference(entity: Table) -> EntityReference:
     """A table ``EntityReference`` for one end of a lineage edge."""

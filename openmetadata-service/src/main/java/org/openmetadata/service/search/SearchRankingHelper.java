@@ -837,6 +837,8 @@ public final class SearchRankingHelper {
           .withIncludeSourceFields(IDENTITY_FIELDS)
           .withExcludeSourceFields(List.of())
           .withIncludeAggregations(false)
+          // ADR:2026-10-29-explore-top-hit-hint-is-the-identity-probe
+          .withIncludeHighlights(false)
           .withExplain(false)
           .withSortFieldParam(DEFAULT_SORT_FIELD)
           .withSortOrder(DEFAULT_SORT_ORDER);

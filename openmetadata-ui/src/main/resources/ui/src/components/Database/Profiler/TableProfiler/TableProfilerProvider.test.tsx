@@ -38,9 +38,6 @@ jest.mock('react-router-dom', () => ({
   useParams: jest.fn().mockReturnValue({ subTab: 'data-quality' }),
 }));
 
-jest.mock('../../../../context/TourProvider/TourProvider', () => ({
-  useTourProvider: jest.fn().mockReturnValue({ isTourOpen: false }),
-}));
 // Create a mock for usePaging that tracks state changes
 const mockPagingState = { total: 0 };
 const mockHandlePagingChange = jest.fn((newPaging) => {
@@ -73,9 +70,6 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 jest.mock('../../../../utils/TablePureUtils', () => ({
   generateEntityLink: jest.fn().mockReturnValue('entityLink'),
-}));
-jest.mock('../../../../constants/mockTourData.constants', () => ({
-  mockDatasetData: { tableDetails: {} },
 }));
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: jest.fn().mockReturnValue('table1'),

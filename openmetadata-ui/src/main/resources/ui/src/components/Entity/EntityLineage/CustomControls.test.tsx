@@ -23,6 +23,7 @@ import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { useLineageHandlers } from '../../Lineage/Lineage/LineageHandlersContext';
 import { EImpactLevel } from '../../LineageTable/LineageTable.interface';
 import CustomControlsComponent from './CustomControls.component';
+import LineageConfigModal from './LineageConfigModal';
 
 const mockOnExportClick = jest.fn();
 const mockOnLineageConfigUpdate = jest.fn();
@@ -105,25 +106,8 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, as: Tag = 'span', className }) => (
       <Tag className={className}>{children}</Tag>
     )),
-  ButtonUtility: jest
-    .fn()
-    .mockImplementation(
-      ({
-        children,
-        onClick,
-        disabled,
-        'aria-label': ariaLabel,
-        'data-testid': testId,
-      }) => (
-        <button
-          aria-label={ariaLabel}
-          data-testid={testId}
-          disabled={disabled}
-          onClick={onClick}>
-          {children}
-        </button>
-      )
-    ),
+  ButtonUtility: jest.requireActual('@openmetadata/ui-core-components')
+    .ButtonUtility,
   Tabs: Object.assign(
     jest.fn().mockImplementation(({ children, onSelectionChange }) => (
       <div
@@ -423,6 +407,46 @@ describe('CustomControls', () => {
     await waitFor(() => {
       expect(mockOnLineageConfigUpdate).toHaveBeenCalledWith(mockLineageConfig);
     });
+  });
+
+  it.each([
+    ['lineage', true],
+    ['impact_analysis', false],
+  ])(
+    'offers the temp-table switch only where temp tables are drawn (%s)',
+    (mode, offered) => {
+      (useCustomLocation as jest.Mock).mockImplementation(() => ({
+        search: `?mode=${mode}&depth=3&dir=downstream`,
+      }));
+      render(<CustomControlsComponent {...defaultProps} />, {
+        wrapper: Wrapper,
+      });
+
+      expect(LineageConfigModal).toHaveBeenLastCalledWith(
+        expect.objectContaining({ showTempTablesToggle: offered }),
+        expect.anything()
+      );
+    }
+  );
+
+  it('does not update the lineage config when the dialog saves it unchanged', async () => {
+    (useLineageStore as unknown as jest.Mock).mockImplementation(
+      mockStoreImplementation({ lineageConfig: { ...mockLineageConfig } })
+    );
+    render(<CustomControlsComponent {...defaultProps} />, {
+      wrapper: Wrapper,
+    });
+
+    fireEvent.click(screen.getByTestId('lineage-config'));
+    fireEvent.click(screen.getByText('Save'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('lineage-config-modal')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(mockOnLineageConfigUpdate).not.toHaveBeenCalled();
   });
 
   it('toggles fullscreen mode when fullscreen button is clicked', () => {

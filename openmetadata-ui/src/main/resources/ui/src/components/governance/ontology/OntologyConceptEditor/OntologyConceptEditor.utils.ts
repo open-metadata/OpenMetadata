@@ -43,21 +43,21 @@ export interface OntologyConceptFormValues {
 }
 
 export const conceptFormValues = (
-  concept?: OntologyConcept
+  concept: OntologyConcept
 ): OntologyConceptFormValues => ({
-  name: concept?.name ?? '',
-  displayName: concept?.displayName ?? '',
-  description: concept?.description ?? '',
-  iri: concept?.iri ?? '',
+  name: concept.name ?? '',
+  displayName: concept.displayName ?? '',
+  description: concept.description ?? '',
+  iri: concept.iri ?? '',
   conceptType: {
-    id: concept?.conceptType ?? OntologyConceptType.OwlClass,
-    label: concept?.conceptType ?? OntologyConceptType.OwlClass,
+    id: concept.conceptType ?? OntologyConceptType.OwlClass,
+    label: concept.conceptType ?? OntologyConceptType.OwlClass,
   },
-  synonyms: (concept?.synonyms ?? []).map((value) => ({
+  synonyms: (concept.synonyms ?? []).map((value) => ({
     id: value,
     label: value,
   })),
-  conceptMappings: (concept?.conceptMappings ?? []).map((mapping) => ({
+  conceptMappings: (concept.conceptMappings ?? []).map((mapping) => ({
     conceptIri: mapping.conceptIri,
     mappingType: { id: mapping.mappingType, label: mapping.mappingType },
     schemeIri: mapping.schemeIri ?? '',
@@ -153,7 +153,6 @@ export const mappingFormFields = (
 
 export const conceptFormFields = (
   t: ReturnType<typeof useTranslation>['t'],
-  editing: boolean,
   disabled: boolean
 ): FieldProp[] => {
   const fields: FieldProp[] = [
@@ -162,7 +161,7 @@ export const conceptFormFields = (
       label: t('label.name'),
       type: FieldTypes.TEXT,
       required: true,
-      props: { isDisabled: editing },
+      props: { isDisabled: true },
       rules: {
         validate: (value: string) =>
           Boolean(value.trim()) ||
@@ -199,7 +198,7 @@ export const conceptFormFields = (
       name: 'iri',
       label: t('label.concept-iri'),
       type: FieldTypes.TEXT,
-      props: { isDisabled: editing },
+      props: { isDisabled: true },
       rules: {
         validate: (value: string) =>
           !value.trim() ||

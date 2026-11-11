@@ -1,9 +1,9 @@
 # Native ontology imports use working drafts
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity)
+- **Revisions:** v1 2026-10-19 (initial) · v2 2026-10-19 (native library preview) · v3 2026-10-19 (library installation and retry identity) · v4 2026-10-22 (durable library installation) · v5 2026-10-23 (complete visible catalogue) · v6 2026-10-22 (format detection, native CSV, dry-run counts, target-free preview, import into a new ontology) · v7 2026-10-23 (validate bundled installation plans) · v8 2026-11-03 (a new target takes a readable name and an `onto/` IRI) · v9 2026-11-06 (RDF import skips and reports what the native model cannot hold) · v10 2026-11-06 (library installation is a resumable background job) · v11 2026-11-06 (bounded preview listing, installs up to 50,000 members) · v12 2026-11-07 (`rdfs:subPropertyOf` imports as `superProperties`) · v13 2026-11-07 (a description that is a resource or markup is skipped) · v14 2026-11-10 (a deadlocked install slice is retried)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** NativeOntologyImportPreviewIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest
+- **Guard:** NativeOntologyImportPreviewIT, NativeOntologyImportIntoNewOntologyIT, IndependentOntologyWorkingDiffIT, OntologyReleaseProjectionTest, OntologyFormatDetectorTest, NativeOntologyCsvCodecTest, OntologyPackInstallationsTest, NativeOntologyPackInstallStateIT, NativeOntologyPackInstallJobIT, OntologyPackSlicePlanTest, OntologyPackModelsTest, NativeOntologyRdfImporterTest, UpstreamOntologyImportTest
 - **Related:** Ontology Studio publication and release contracts
 
 ## Context
@@ -12,13 +12,13 @@ An RDF file can contain only part of an ontology. Replacing an ontology or activ
 
 ## Decision
 
-`GET /v1/ontologies/{id}/working/diff` returns a bounded, revision-bound page of working changes. A cursor from another working or activation revision returns 412. `POST /v1/ontologies/{id}/imports/preview` accepts Turtle, RDF/XML, N-Triples, or JSON-LD and returns a regular `CreateOntologyChangeSet` request. The existing create, lease, apply, validate, capture, and activate paths remain authoritative. Import matches definitions by exact IRI and axioms by semantic content, consumes duplicate equivalent axioms by count, preserves catalog identity and metadata, leaves definitions absent from the file untouched, and refuses RDF that it cannot represent. A source ontology header supplies export scaffolding; it never replaces the chosen target ontology. Capture may require the activation revision observed during review.
+`GET /v1/ontologies/{id}/working/diff` returns a bounded, revision-bound page of working changes. A cursor from another working or activation revision returns 412. `POST /v1/ontologies/{id}/imports/preview` accepts Turtle, RDF/XML, N-Triples, or JSON-LD and returns a regular `CreateOntologyChangeSet` request. The existing create, lease, apply, validate, capture, and activate paths remain authoritative. Import matches definitions by exact IRI and axioms by semantic content, consumes duplicate equivalent axioms by count, preserves catalog identity and metadata, leaves definitions absent from the file untouched, and skips and reports RDF that it cannot represent (see the last amendment). A source ontology header supplies export scaffolding; it never replaces the chosen target ontology. Capture may require the activation revision observed during review.
 
 The preview parser accepts at most 10 MiB of source, 100,000 RDF statements, 1,000 changed definitions, and 30 seconds of parsing. Native JSON-LD requires inline contexts; identifiers and context strings are limited to 2,048 bytes, and a conservative estimate based on raw nodes and the sum of context identifiers is capped at 64 MiB before expansion. Working snapshots are request scoped and bounded to 10,000 definitions and 64 MiB of serialized member data. These limits keep preview and capture within an interactive request and prevent untrusted input from becoming an unbounded in-memory job.
 
 ## Consequences
 
-Import is reviewable and retryable through the existing draft workflow. Unsupported statements fail the whole preview instead of disappearing. Larger files require an explicit future bulk-import design with its own storage and execution model.
+Import is reviewable and retryable through the existing draft workflow. Statements the native model cannot hold are skipped and reported in the preview instead of failing it or disappearing. Larger files require an explicit future bulk-import design with its own storage and execution model.
 
 ## Amendment
 
@@ -33,3 +33,137 @@ Library installation defaults to a new native ontology with a unique pack-prefix
 One install action resolves the target, checks its edit permission, previews the selected modules, and applies the resulting working draft under its lease. The client freezes the target request and draft plan for retries. A lost target-create response is resolved by name and exact IRI. Every returned draft must match the frozen name, native owner, working revision, operations, and active undo cursor; an omitted preview cursor means all operations, matching server normalization. The client reads and validates the draft again under its acquired lease immediately before applying. Changed drafts cannot be applied or reported as this installation's completion. Draft lookup streams at most 100 pages of 100 records to bound recovery work. A failed, repeated, or incomplete cursor lookup cannot justify another create. Confirmed absence permits retrying the same unique identity. An unchanged already-applied draft completes without another apply. A no-op preview creates no draft.
 
 Completion returns to the catalog. Installed state retains the actual target and module selection for the mounted library session, bounded by the verified catalog. Closing during a mutation is disabled. Closing after a settled error preserves server objects, and browser reload recovery is outside this session-scoped contract. `OntologyLibrary.native.test.tsx`, `useOntologyChangeSetApply.test.tsx`, and `OntologyNativeOperations.spec.ts` guard these transitions.
+
+## Amendment
+
+Installed state is durable on the target ontology. It replaces the mounted-session installed state of the previous amendment, so a reload and every other user see the same marks. Completion returns to the catalog, which reads installed state from the server again.
+
+The library preview stamps `sourcePack` on the change-set request it returns: the pack ID, its catalog version, and the selected module IDs with their dependencies, in catalog order. Creating a change set accepts `sourcePack` only for a native scope and only when it matches the verified catalog, and the stamp cannot change afterwards. Applying a change set with `sourcePack` records an `ontologyPackInstallation` in the ontology's `installedPacks` in the same transaction as its operations. The write goes through the ontology's versioned updater, so the root version advances and a write that read the ontology before the install fails with 412 instead of dropping the record. The server stamps the module checksums, license, and source from the catalog, and the time and user from the apply. An apply whose `sourcePack` version the catalog no longer serves returns 412 before any operation runs. A failed or rolled-back apply records nothing. A no-op preview creates no draft, so it records nothing either.
+
+The ontology keeps one entry per pack ID. A later install of the same version adds its modules to the entry. An install of another version replaces it. Clients cannot write `installedPacks`: create starts it empty, PUT keeps the stored value, and a PATCH that changes it returns 400. `sourcePack` is provenance that the client carries from the preview. The record states what an editor of that ontology installed. It does not prove that the ontology's definitions still match the pack.
+
+`GET /v1/ontologyPacks` lists, for each pack, the non-deleted ontologies with an entry that the caller may view under the same check as `GET /v1/ontologies/{id}`. One catalog read considers at most 1,000 such ontologies, which keeps it an interactive request. `GET /v1/ontologyPacks/{packId}/sample` returns at most 60 concepts, starting from the top of the hierarchy, and the relations among them, from the selected verified modules and with no target ontology. Packs carry an `industry` for the catalog filter and the `layer` at which the client creates a new target. `NativeOntologyPackInstallStateIT` and `NativeOntologyLibraryPreviewIT` guard this behavior.
+
+## Amendment
+
+The catalogue's total 1,000-ontology cap in the durable-installation amendment is replaced by keyset pages of at most 1,000 raw installed ontologies. Each page batch-loads the fields used by authorization, and the scan advances by its final raw ID even when the caller cannot view any row on that page. The response contains every visible installation; a hidden or later row cannot make a pack appear uninstalled. Response size and scan time grow with installations. If that cost becomes too large for an interactive request, the API and client need explicit pagination rather than a silent total cap.
+
+## Amendment
+
+Import accepts a fifth format, the native CSV defined in `docs/native-ontology-csv.md`, and `format` becomes optional on `PreviewNativeOntologyImport`. When omitted, `OntologyFormatDetector` decides from the first 65,536 characters: content signatures first (JSON-LD, RDF/XML, the native CSV header, N-Triples, Turtle), the file extension only when the content has none. A detected N-Triples source parses with the Turtle grammar, because detection sees a window and every N-Triples file is valid Turtle. `POST /v1/ontologies/imports/detect` exposes the same detector, so the browser never re-encodes its rules.
+
+`POST /v1/ontologies/{id}/imports/preview` now returns `{summary, changeSet}`. The summary names the format the server parsed with and counts, from the same classification that produces the operations, new and updated concepts and properties, new relations (axioms), new mappings, skipped definitions identical to the stored ones, and skipped relations. `POST /v1/ontologies/imports/preview` classifies against an empty target, requires `Create` on ontologies, and returns the summary without a change set. Neither writes. CSV rows count toward the 1,000 changed-definition limit, CSV parsing is strict, and the first malformed row fails the whole preview with its row and column.
+
+Import into a new ontology has no endpoint. The client uses the library installation flow above: create the target with a unique name from the file's label and a `urn:openmetadata:ontology:<uuid>` identity, preview against it, then apply the change set under its lease with the same retry identity. Source definition IRIs stay unchanged. `NativeOntologyImportIntoNewOntologyIT` guards the create, preview, apply, and lost-create-response paths.
+
+## Amendment
+
+Applying a stamped library draft recomputes the selected bundled import against the locked working revision before any definition or installation write. The complete, nonempty active plan must match that import. Comparison ignores only independently generated operation IDs and new definition IDs. Target IDs, base versions, payloads, attribution, operation multiplicity, and ordered property chains remain significant. Empty, altered, or partially undone stamped plans return 412. Restoring the unchanged full plan restores eligibility. Ordinary unstamped drafts retain their existing behavior.
+
+Preparation runs within the bounded snapshot read. Application runs after that read returns, under the same outer transaction and ontology lock, so definition writes do not consume the snapshot's read deadline. Valid partial reinstalls retain the existing same-version module union. No-op previews still create no draft, and an already applied draft remains a client recovery read rather than another application.
+
+## Amendment
+
+A library install or an import into a new ontology no longer creates the target with a
+`urn:openmetadata:ontology:<uuid>` identity by default. The client names it the way the Studio
+create dialog does: a readable name from the pack name or the file's label, and a
+`<baseUri>/onto/<prefix>` IRI with the namespace `<iri>#`
+(ADR:2026-10-30-studio-created-ontologies-take-onto-iris, v2). The `urn:openmetadata:ontology:<uuid>`
+identity and its UUID-suffixed name remain the fallback when the RDF base URI or the ontology list
+is unavailable. Source definition IRIs stay unchanged, and the retry and recovery rules above still
+apply to the request the client froze for that attempt.
+
+## Amendment
+
+RDF parsing is no longer strict. A real-world OWL, RDFS, or SKOS file states far more than the native model holds, and failing on the first such statement meant none of 18 published upstream files imported. The reader now keeps what the native model can represent and records what it leaves out. `NativeOntologyImportSummary.skippedStatements` returns the total, at most 100 groups (largest first) and the count of omitted groups. A group is a reason and a predicate (plus the object for `rdf:type`) with a count and the three lexicographically first subjects, so the report is the same on every parse. The reasons are `NON_PREFERRED_LANGUAGE`, `EXTRA_VALUE`, `UNSUPPORTED_ANNOTATION`, `UNSUPPORTED_STRUCTURE`, `INDIVIDUAL`, and `IMPORTS`. Blank-node structure under a skipped statement belongs to that statement and is not counted again. A native export re-imported skips nothing, and CSV sources report an empty list. The Studio preview shows the report as a disclosure.
+
+Determinism is the constraint behind every choice below, because the pack installer re-runs the importer and requires an identical plan:
+
+- Text (`rdfs:label`, `rdfs:comment`, `skos:prefLabel`, `skos:altLabel`, `skos:definition`) keeps the untagged value when a subject has one, else the `en` value, else the lexicographically first `en-*` tag, else the lexicographically first tag. Kept values lose their tag. Other languages are `NON_PREFERRED_LANGUAGE`.
+- A single-valued field with several values keeps the lexicographically first value by lexical form and datatype; the rest are `EXTRA_VALUE`. When `skos:definition` and `rdfs:comment` (or `skos:prefLabel` and `rdfs:label`) differ, the SKOS value wins and the other is `EXTRA_VALUE`. Several property chains keep the first by its IRIs.
+- `rdfs:Class` declares a concept like `owl:Class`. `rdf:Property` declares an object property, or a data property when a range is an `xsd:` datatype, `rdfs:Literal`, or an `rdfs:Datatype`. A subject declared as several property kinds is one property, with object over data over annotation. A kind keeps only the characteristics, inverse, chain, and disjointness it may carry; the rest is reported instead of refused at apply.
+- `owl:imports` is skipped and reported; the importer never fetches a document. Bundled packs ship merged files.
+- The native model has no individuals. A `owl:NamedIndividual` that is not a class, concept, or property is skipped with every statement about it as one `INDIVIDUAL` group. A native export is the exception, because its assertion axioms name individuals and re-import must be lossless.
+- `rdfs:domain` and `rdfs:range` lists are intersections, which is how export writes several of them. A union (`owl:unionOf`) or `schema:domainIncludes` / `rangeIncludes` is a union, so it cannot be stored faithfully as that list. They are skipped and reported, never narrowed to one class. A range the data property cannot keep, such as `xsd:date` outside the OWL datatype map or a named enumerated datatype whose IRI cannot be preserved, is skipped the same way, so a preview never counts a property that apply refuses.
+- A well-formed expression the model cannot state (a complement, an inverse property in `owl:onProperty`, a literal `owl:oneOf` in class position, a facet restriction) skips the statement that holds it. A malformed expression (a restriction without `owl:onProperty`, a cycle, a broken list, a cardinality that is negative or not an integer) still fails the preview. Any integer datatype states a cardinality, not only `xsd:nonNegativeInteger`. An annotation of a triple the file does not assert is skipped with its node.
+- An annotation value that is not an IRI where one is required (`dct:source`, `dct:isReplacedBy`, mappings) is skipped, not guessed at. Annotations the model has no field for (`rdfs:isDefinedBy`, `rdfs:seeAlso`, `skos:scopeNote`, `dct:*`, `vann:*`, SHACL shapes) are `UNSUPPORTED_ANNOTATION` or `UNSUPPORTED_STRUCTURE`.
+- A plan the importer returns must apply. After classification the importer checks every new or changed property and axiom as apply will, against the target as the surviving plan would leave it, and refuses what fails (a property whose domain or range names a class nothing declares, an axiom or property that names a refused or undeclared property). Refusing one definition can strand another, so the check repeats until nothing more is refused. A refused definition appears in the preview as a skipped definition or relation with the reason apply would give; it is not part of the statement report. Concepts are never refused, so a stored concept a file touches keeps what it holds.
+
+The size and time limits of this record are unchanged. The SKOS, OWL, RDF, and RDFS vocabularies stay reserved, so importing `skos.rdf` itself reads no definitions.
+
+Library installation is a background job, so packs larger than one import can install. `POST /v1/ontologies/{id}/library/{packId}/install` takes module ids, checks the same `EDIT_ALL` permission as the old install, and queues one `ONTOLOGY_PACK_INSTALL` row on `background_jobs`. `GET /v1/ontologies/{id}/library/jobs/{jobId}` reads its status and `PUT .../cancel` asks it to stop after the current slice. A job is readable only through its own ontology. The row stores the pack id, version, module ids, target ontology id and a pack digest. It never stores the pack body. The review endpoint stays as the dry run.
+
+The handler loads the bundled modules, checks each module checksum, and parses them once with `SafeRdfModelParser.parseTrusted`. Trusted content keeps the absolute-IRI, no-named-graph and no-DOCTYPE checks but runs under a 64 MiB, 2,000,000 triple and 120 second backstop. User uploads keep the 10 MiB, 100,000 triple and 30 second limits above. The handler reconciles once against the target's working snapshot, orders the operations concepts, then properties, then axioms, and cuts them into slices of at most 1,000 members. Each slice is validated alone, and a property that names an undeclared inverse, replacement, chain member or disjoint property is refused, so inside the concepts and inside the properties a definition follows the definitions it names (`replacedBy`, `inverse`, `propertyChain`, `disjointWith`), parents before children. Definitions that name each other, such as an inverse pair, are one unit that is never split across slices, and a unit larger than a slice fails the plan before anything applies. Ties break by IRI, so the order and the plan digest do not depend on how the importer lists its output. Subclass links are axioms, which come after every declaration. Superproperty links (`superProperties`, ADR:2026-11-07-ontology-property-hierarchies-are-superproperty-fields) order a property after the properties it specializes, the same way. Each slice is applied as its own change set through the regular `OntologyChangeApplicationService` path, stamped with `sourcePack.slice` (job id, index, count, plan digest). `MAX_MEMBERS` stays 1,000. The write-closure bounds that used to reuse it are named in `OntologyWriteClosureLimits` with unchanged values.
+
+The plan digest is the SHA-256 of the pack digest and the ordered slice digests. A slice digest is the SHA-256 of its sorted canonical operations without generated ids. The job records the plan digest and slice digests in its result column. Applying a stamped slice checks the stamp against that record instead of parsing and reconciling the whole pack again. Only the recorded slice, with its recorded digest, can apply.
+
+Job states are QUEUED, RUNNING, COMPLETED, FAILED and CANCELLED. `installedPacks` is written only after the final slice. A failed or cancelled job is terminal. Installing again starts a new job, which reconciles again; the importer skips definitions that already match, so the new plan holds only what is missing and a finished pack yields zero slices. Starting an install that is identical to the running one for the same ontology returns that job, so a lost response is safe to repeat. The check and the insert run in one transaction that holds a lock on the ontology row, so two concurrent starts cannot both queue a job. A different install while one runs returns 409. The UI starts the job, polls it every second and shows slices and definitions applied. Resuming against an ontology above the 10,000 definition snapshot cap waits for a separate bulk-snapshot design.
+
+## Amendment
+
+v11, 2026-11-06: a preview lists at most 5,000 items and reports the rest in `omittedItems`.
+`counts` still covers every parsed definition. When the budget is short, ALREADY_EXISTS items are
+left out first, since nothing can be done with them, and the selection logic in the import panel
+only follows NEW concepts; a user upload cannot change more than 1,000 definitions, so the listing
+holds every NEW, UPDATE, DUPLICATE and SKIPPED item in practice and only a re-import of an
+installed standard trims. The panel says how many were left unlisted. The user upload limits of
+this record (10 MiB, 100,000 statements, 1,000 changed definitions, 30 s) are unchanged.
+
+The working snapshot that reconcile, preview, working diff and validation read now allows 50,000
+definitions and pages 1,000 per query, and those readers no longer hold the `ontology_state` row
+lock (ADR:2026-10-14-ontology-releases-seal-canonical-sql-members). On MySQL,
+`NativeOntologyCapacityPerfIT` installed a FHIR-shaped synthetic ontology of 10,000 members in
+76 s as 10 slices of 6.9 s to 8.6 s with the old reads and in 60 s with the new ones;
+35,000 members installed in 223 s as 35 slices with a median of
+6.5 s. The slice time is flat in the ontology size, so an install is linear in its
+members. The per-write closure bounds in `OntologyWriteClosureLimits` stay at 10,000: a synthetic
+hub of 20,000 members, one class with 9,999 direct subclasses, installed, diffed, captured and
+activated, and only deleting its hub concept exceeded the deletion-impact bound. No shipped
+standard has a class with that many direct dependents, so that bound was not raised. The import preview of the 10,000-member file took 6.1 s and 1.0 s.
+
+The upstream files themselves do not install yet, for reasons outside the size limits: the FHIR
+R5 vocabulary fails the OWL 2 profile check on a data range (`OwlProfileGuard`, "A data range
+requires supported OWL 2 datatypes or their intersection/union") after its first slice applies,
+and the FIBO production quickstart plans a slice whose operation needs
+`https://www.omg.org/spec/Commons/TextDatatype/Text`, a datatype the plan does not declare as a
+concept (`OntologyChangePreflight`). Both are importer defects to fix in the library install
+change, not capacity limits.
+
+## Amendment
+
+v12, 2026-11-07: `rdfs:subPropertyOf` between declared properties of the same kind imports as
+`superProperties` instead of being skipped. A link to a property that neither the file nor the
+target declares is dropped and counted under the new skip reason `UNDECLARED_REFERENCE`; a link
+to a property of another kind, or to the property itself, is `UNSUPPORTED_STRUCTURE`. The
+property itself still imports. The refusal loop prunes links after each pass, so a link to a
+refused superproperty never refuses the subproperty. Of the upstream fixtures, DCAT keeps 3 of its
+18 links (15 name `dcterms:` and `prov:` properties the file does not declare), PROV-O 41 of 41,
+ORG 6 of 9 (2 name undeclared properties, 1 sits on a property the import refuses), OWL-Time 13
+of 13, ODRL 22 of 22 and FOAF 12 of 13. The rules, their OWL 2 DL consequences and the FIBO,
+FHIR, GS1 and schema.org counts are in
+ADR:2026-11-07-ontology-property-hierarchies-are-superproperty-fields.
+
+## Amendment
+
+v13, 2026-11-07: a `skos:definition` or `rdfs:comment` whose value is a resource (an IRI or a
+blank node) or an `rdf:HTML` or `rdf:XMLLiteral` literal is skipped as `UNSUPPORTED_STRUCTURE`
+instead of failing the preview with "Expected a plain RDF literal". The concept still imports
+and keeps its other description, so a resource `skos:definition` falls back to a plain
+`rdfs:comment`. Blank-node structure under the skipped value is removed with it and not counted
+again, as for every skipped statement. Rendering markup to text or following a definition node
+would guess at what the source means. English ESCO states its 13 `skos:definition` values that
+are not literals as `esco:NodeLiteral` resources, and 76 of its node literals carry HTML. Any
+other literal of the wrong shape, such as `skos:definition 17`, still fails the preview, and the
+rule for labels is unchanged.
+
+## Amendment
+
+v14, 2026-11-10: a library install slice that the database rolls back as a deadlock or
+serialization victim (`SQLTransactionRollbackException`, or any SQLState in class `40`) is
+applied again, at most 3 attempts per slice, with a cancellation check between attempts and no
+wait. Any other failure ends the job as FAILED. Concurrent writes to the reference index of other
+ontologies can pick a slice as the victim. The retry is safe because the apply of a slice is one
+transaction, so the rollback undoes every operation in it. Creating the slice's change set is a
+separate, earlier commit, so each attempt creates its own stamped `pack-install-<job>-<index>-<random>`
+change set, and an earlier attempt's change set stays behind as APPLY_FAILED, or as a draft when
+the rollback happened outside an operation.

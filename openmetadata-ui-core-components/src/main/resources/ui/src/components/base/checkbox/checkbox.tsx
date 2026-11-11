@@ -34,7 +34,7 @@ export const CheckboxBase = ({
         (isSelected || isIndeterminate) &&
           'tw:bg-brand-solid tw:after:outline-brand-solid',
         isDisabled &&
-          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:after:outline-disabled',
+          'tw:cursor-not-allowed tw:bg-disabled_subtle tw:dark:bg-disabled tw:after:outline-disabled',
         isFocusVisible &&
           'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',
         className
@@ -123,7 +123,8 @@ export const Checkbox = forwardRef<
       {...ariaCheckboxProps}
       className={(state) =>
         cx(
-          'tw:flex tw:items-start',
+          // relative contains react-aria's absolutely positioned hidden input.
+          'tw:relative tw:flex tw:items-start',
           state.isDisabled && 'tw:cursor-not-allowed',
           sizes[size].root,
           typeof className === 'function' ? className(state) : className

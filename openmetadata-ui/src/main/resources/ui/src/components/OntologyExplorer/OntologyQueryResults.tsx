@@ -14,28 +14,46 @@
 import {
   Badge,
   Box,
+  Button,
   Table,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle } from '@openmetadata/ui-core-components/icons';
+import {
+  CheckCircle,
+  Copy01,
+  Download01,
+} from '@openmetadata/ui-core-components/icons';
 import { Key, ReactElement, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { RDFTerm } from '../../generated/api/rdf/sparqlResponse';
 import { RelationshipType } from '../../generated/entity/data/relationshipType';
+import { useClipboard } from '../../hooks/useClipBoard';
 import { SparqlPlaygroundResult } from '../../rest/rdfAPI';
+import { downloadCsv } from '../../utils/Export/ExportUtils';
 import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import { LayoutType } from './OntologyExplorer.constants';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
 import { buildGraphFromSparqlBindings } from './OntologyQueryResultGraph.utils';
+import {
+  buildCsv,
+  buildTsv,
+  toCsvFileName,
+} from './OntologyQueryResults.utils';
 
 interface OntologyQueryResultsProps {
   graphData: OntologyGraphData | null;
   relationshipTypes: RelationshipType[];
   result: SparqlPlaygroundResult;
+  /** What the query ran against, such as "clinical · v1.0.0"; shown beside the row count. */
+  scopeLabel?: string;
+  /** The CSV file is named after this, usually the query's title. */
+  exportName?: string;
 }
+
+const META_SEPARATOR = ' · ';
 
 type ResultView = 'graph' | 'table';
 
@@ -76,6 +94,7 @@ interface ResultBodyParams {
   relationshipTypes: RelationshipType[];
   emptyText: string;
   tableLabel: string;
+  askAnswer?: boolean;
 }
 
 function renderResultBody({
@@ -88,8 +107,20 @@ function renderResultBody({
   relationshipTypes,
   emptyText,
   tableLabel,
+  askAnswer,
 }: ResultBodyParams): ReactElement {
   const showGraphView = resultView === 'graph' && hasResultGraph;
+
+  if (askAnswer !== undefined) {
+    return (
+      <Typography
+        data-testid="ontology-sparql-ask"
+        size="display-xs"
+        weight="semibold">
+        {String(askAnswer)}
+      </Typography>
+    );
+  }
 
   if (showGraphView) {
     return (
@@ -178,16 +209,33 @@ function renderResultBody({
   }
 
   return (
-    <pre className="tw:m-0 tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary">
+    <pre
+      className="tw:m-0 tw:max-h-96 tw:overflow-auto tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary"
+      data-testid="ontology-sparql-graph-text">
       {result.body}
     </pre>
   );
+}
+
+function getResultSummary(
+  result: SparqlPlaygroundResult,
+  rowCount: number,
+  rowLabel: string
+): string {
+  if (typeof result.parsed?.boolean === 'boolean') {
+    return `${result.durationMs} ms`;
+  }
+  const subject = result.parsed ? `${rowCount} ${rowLabel}` : result.format;
+
+  return `${subject}${META_SEPARATOR}${result.durationMs} ms`;
 }
 
 const OntologyQueryResults = ({
   graphData,
   relationshipTypes,
   result,
+  scopeLabel,
+  exportName,
 }: OntologyQueryResultsProps) => {
   const { t } = useTranslation();
   const [resultView, setResultView] = useState<ResultView>('table');
@@ -224,6 +272,21 @@ const OntologyQueryResults = ({
     return values;
   }, [resultTable]);
   const hasResultGraph = resultGraph.edges.length > 0;
+  const askAnswer = result.parsed?.boolean;
+  const isTable = result.parsed !== undefined && askAnswer === undefined;
+  const copyText = useMemo(() => {
+    if (askAnswer !== undefined) {
+      return String(askAnswer);
+    }
+
+    return isTable
+      ? buildTsv(resultTable.variables, resultTable.rows)
+      : result.body;
+  }, [askAnswer, isTable, result.body, resultTable]);
+  const { hasCopied, onCopyToClipBoard } = useClipboard(copyText);
+  const rowLabel = t(
+    resultTable.rows.length === 1 ? 'label.row' : 'label.row-plural'
+  ).toLocaleLowerCase();
 
   useEffect(() => {
     setResultView('table');
@@ -231,31 +294,64 @@ const OntologyQueryResults = ({
 
   return (
     <Box data-testid="ontology-sparql-result" direction="col" gap={3}>
-      <Box align="center" gap={3} justify="between">
-        <Box align="center" className="tw:text-utility-success-700" gap={2}>
-          <CheckCircle aria-hidden="true" className="tw:size-4" />
-          <Typography
-            data-testid="ontology-sparql-result-status"
-            size="text-sm"
-            weight="medium">
-            {resultTable.rows.length}{' '}
-            {t('label.result-plural').toLocaleLowerCase()}{' '}
-            {/* eslint-disable-next-line i18next/no-literal-string -- decorative separator dot and ms unit */}
-            <span aria-hidden="true">·</span> {result.durationMs} ms
-          </Typography>
+      <Box align="center" gap={3} justify="between" wrap="wrap">
+        <Box align="center" gap={3} wrap="wrap">
+          <Box align="center" className="tw:text-utility-success-700" gap={2}>
+            <CheckCircle aria-hidden="true" className="tw:size-4" />
+            <Typography
+              data-testid="ontology-sparql-result-status"
+              size="text-sm"
+              weight="medium">
+              {getResultSummary(result, resultTable.rows.length, rowLabel)}
+            </Typography>
+          </Box>
+          {scopeLabel ? (
+            <Badge
+              color="gray"
+              data-testid="ontology-sparql-result-scope"
+              size="sm"
+              type="pill-color">
+              {scopeLabel}
+            </Badge>
+          ) : null}
         </Box>
-        {hasResultGraph ? (
-          <Tabs
-            selectedKey={resultView}
-            onSelectionChange={(key) => setResultView(toResultView(key))}>
-            <Tabs.List size="sm" type="button-border">
-              <Tabs.Item id="table" label={t('label.table')} />
-              <Tabs.Item id="graph" label={t('label.graph')} />
-            </Tabs.List>
-            <Tabs.Panel className="tw:hidden" id="table" />
-            <Tabs.Panel className="tw:hidden" id="graph" />
-          </Tabs>
-        ) : null}
+        <Box align="center" gap={2}>
+          {hasResultGraph ? (
+            <Tabs
+              selectedKey={resultView}
+              onSelectionChange={(key) => setResultView(toResultView(key))}>
+              <Tabs.List size="sm" type="button-border">
+                <Tabs.Item id="table" label={t('label.table')} />
+                <Tabs.Item id="graph" label={t('label.graph')} />
+              </Tabs.List>
+              <Tabs.Panel className="tw:hidden" id="table" />
+              <Tabs.Panel className="tw:hidden" id="graph" />
+            </Tabs>
+          ) : null}
+          <Button
+            color="secondary"
+            data-testid="ontology-sparql-copy"
+            iconLeading={Copy01}
+            size="sm"
+            onClick={() => void onCopyToClipBoard(copyText)}>
+            {hasCopied ? t('label.copied') : t('label.copy')}
+          </Button>
+          {isTable ? (
+            <Button
+              color="secondary"
+              data-testid="ontology-sparql-csv"
+              iconLeading={Download01}
+              size="sm"
+              onClick={() =>
+                downloadCsv(
+                  buildCsv(resultTable.variables, resultTable.rows),
+                  toCsvFileName(exportName)
+                )
+              }>
+              {t('label.csv')}
+            </Button>
+          ) : null}
+        </Box>
       </Box>
 
       {renderResultBody({
@@ -268,6 +364,7 @@ const OntologyQueryResults = ({
         relationshipTypes,
         emptyText: t('message.query-ran-without-results'),
         tableLabel: t('label.result-plural'),
+        askAnswer,
       })}
     </Box>
   );

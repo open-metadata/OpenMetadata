@@ -11,12 +11,13 @@
  *  limitations under the License.
  */
 import { Button, Divider, Typography } from '@openmetadata/ui-core-components';
+import {
+  LineageDownstream,
+  LineageUpstream,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DownstreamIcon } from '../../../assets/svg/lineage-downstream-icon.svg';
-import { ReactComponent as UpstreamIcon } from '../../../assets/svg/lineage-upstream-icon.svg';
-import { useTourProvider } from '../../../context/TourProvider/TourProvider';
 import { LineagePagingInfo } from '../../../interface/lineage.interface';
 import { getLineagePagingData } from '../../../rest/lineageAPI';
 import { getEntityCountAtDepth } from '../../../utils/EntityLineageNodeUtils';
@@ -40,7 +41,7 @@ const LineageItem = React.memo<LineageItemProps>(function LineageItem({
       className="tw:gap-2.5"
       color="link-color"
       data-testid={`${type}-lineage`}
-      iconLeading={<Icon height={14} width={14} />}
+      iconLeading={Icon}
       size="sm"
       onClick={onClick}>
       <div className="tw:flex tw:flex-row tw:gap-1">
@@ -67,11 +68,10 @@ const LineageSection: React.FC<LineageSectionProps> = ({
   const [lineagePagingInfo, setLineagePagingInfo] =
     useState<LineagePagingInfo | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const { isTourPage } = useTourProvider();
 
   useEffect(() => {
     const fetchLineagePagingData = async () => {
-      if (!entityFqn || !entityType || isTourPage) {
+      if (!entityFqn || !entityType) {
         setIsLoading(false);
         setLineagePagingInfo(null);
 
@@ -95,7 +95,7 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     };
 
     fetchLineagePagingData();
-  }, [entityFqn, entityType, isTourPage]);
+  }, [entityFqn, entityType]);
 
   const { upstreamCount, downstreamCount } = useMemo(() => {
     const upstream = getEntityCountAtDepth(
@@ -132,14 +132,14 @@ const LineageSection: React.FC<LineageSectionProps> = ({
     return (
       <div className="tw:flex tw:flex-row tw:flex-wrap tw:items-center tw:gap-x-4 tw:gap-y-2">
         <LineageItem
-          Icon={UpstreamIcon}
+          Icon={LineageUpstream}
           count={upstreamCount}
           type="upstream"
           onClick={handleClick}
         />
         <Divider className="tw:self-center tw:h-5" orientation="vertical" />
         <LineageItem
-          Icon={DownstreamIcon}
+          Icon={LineageDownstream}
           count={downstreamCount}
           type="downstream"
           onClick={handleClick}

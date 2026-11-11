@@ -57,7 +57,7 @@ test(
     /**
      * Step 1: Create a new pipeline
      * @description Navigates to Data Observability → Table Profile, creates a test case, opens Pipeline tab,
-     * selects the new test case, sets a weekly schedule, deploys, and verifies success modal.
+     * selects the new test case in the Add Pipeline drawer, sets a weekly schedule, deploys, and verifies the new row.
      */
     await test.step('Create a new pipeline', async () => {
       await page
@@ -95,42 +95,36 @@ test(
       await ingestionPipelinesListResponse;
       await page.getByTestId('add-pipeline-button').click();
 
-      await page.fill('[data-testid="pipeline-name"]', pipelineName);
+      const pipelineDrawer = page.getByTestId(
+        'test-suite-pipeline-form-drawer'
+      );
+      await pipelineDrawer.getByTestId('pipeline-name').fill(pipelineName);
 
-      await page.getByTestId(testCaseName).click();
+      await pipelineDrawer.getByTestId(testCaseName).click();
 
       await selectScheduleFrequency(page, 'week');
 
-      await expect(page.getByTestId('deploy-button')).toBeVisible();
+      await expect(pipelineDrawer.getByTestId('deploy-button')).toBeVisible();
 
       const deployResponse = page.waitForResponse(
         '/api/v1/services/ingestionPipelines/deploy/*'
       );
-      await page.getByTestId('deploy-button').click();
-      await deployResponse;
-
-      await page.getByTestId('body-text').waitFor({
-        state: 'detached',
-      });
-
-      await expect(page.getByTestId('success-line')).toContainText(
-        /has been created and deployed successfully/
-      );
-      await expect(page.getByTestId('view-service-button')).toContainText(
-        'View Test Suite'
-      );
-      await expect(page.getByTestId('view-service-button')).toBeVisible();
-
       const ingestionPipelinesListResponse2 =
         waitForTestSuiteIngestionPipelinesListResponse(page);
-      await page.getByTestId('view-service-button').click();
+      await pipelineDrawer.getByTestId('deploy-button').click();
+      await deployResponse;
       await ingestionPipelinesListResponse2;
+
+      await expect(pipelineDrawer).not.toBeVisible();
+      await expect(
+        page.getByRole('row', { name: new RegExp(pipelineName) })
+      ).toBeVisible();
     });
 
     /**
      * Step 2: Update the pipeline
-     * @description Opens pipeline actions, enters edit flow, changes the weekly day selection, deploys, and
-     * validates the updated success messaging before returning to the service view.
+     * @description Opens pipeline actions, edits the pipeline in the drawer, changes the weekly day selection,
+     * deploys, and verifies the drawer closes back onto the refreshed list.
      */
     await test.step('Verify test case count column displays correct values', async () => {
       // Verify the pipeline with selected test case shows count "1"
@@ -163,26 +157,26 @@ test(
         )
         .click();
 
+      const pipelineDrawer = page.getByTestId(
+        'test-suite-pipeline-form-drawer'
+      );
+      await expect(pipelineDrawer).toBeVisible();
+      await expect(pipelineDrawer.getByTestId('pipeline-name')).toHaveValue(
+        pipelineName
+      );
+
       await expectScheduleFrequencySelected(page, 'week');
       await selectScheduleDayOfWeek(page, 'Wednesday');
       const updateDeployResponse = page.waitForResponse(
         '/api/v1/services/ingestionPipelines/deploy/*'
       );
-      await page.getByTestId('deploy-button').click();
-      await updateDeployResponse;
-
-      await page.getByTestId('body-text').waitFor({
-        state: 'detached',
-      });
-
-      await expect(page.getByTestId('success-line')).toContainText(
-        /has been updated and deployed successfully/
-      );
-
       const ingestionPipelinesListResponse =
         waitForTestSuiteIngestionPipelinesListResponse(page);
-      await page.getByTestId('view-service-button').click();
+      await pipelineDrawer.getByTestId('deploy-button').click();
+      await updateDeployResponse;
       await ingestionPipelinesListResponse;
+
+      await expect(pipelineDrawer).not.toBeVisible();
     });
 
     /**
@@ -302,24 +296,17 @@ test(
       page.getByTestId(`checkbox-${testCaseNames[0]}`)
     ).not.toBeChecked();
 
+    const pipelineDrawer = page.getByTestId('test-suite-pipeline-form-drawer');
     const editDeployResponse = page.waitForResponse(
       '/api/v1/services/ingestionPipelines/deploy/*'
     );
-    await page.getByTestId('deploy-button').click();
-    await editDeployResponse;
-
-    await page.getByTestId('body-text').waitFor({
-      state: 'detached',
-    });
-
-    await expect(page.getByTestId('success-line')).toContainText(
-      /has been updated and deployed successfully/
-    );
-
     const ingestionPipelinesListResponse2 =
       waitForTestSuiteIngestionPipelinesListResponse(page);
-    await page.getByTestId('view-service-button').click();
+    await pipelineDrawer.getByTestId('deploy-button').click();
+    await editDeployResponse;
     await ingestionPipelinesListResponse2;
+
+    await expect(pipelineDrawer).not.toBeVisible();
 
     // Verify the pipeline now shows count "1" after unchecking one test case
     const updatedPipelineRow = page.getByRole('row', {

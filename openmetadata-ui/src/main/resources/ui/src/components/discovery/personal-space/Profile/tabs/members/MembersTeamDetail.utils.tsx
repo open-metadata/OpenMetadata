@@ -14,9 +14,11 @@
 import {
   Button,
   ButtonUtility,
+  ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import type { TFunction } from 'i18next';
 import { TabSpecificField } from '../../../../../../enums/entity.enum';
 import { Team, TeamType } from '../../../../../../generated/entity/teams/team';
 import { User } from '../../../../../../generated/entity/teams/user';
@@ -41,6 +43,8 @@ export const TEAM_FIELDS = [
   TabSpecificField.USER_COUNT,
   TabSpecificField.DOMAINS,
   TabSpecificField.OWNERS,
+  // The subscription widget reads and saves the team's webhook from it.
+  TabSpecificField.PROFILE,
   // Resolved recursively on read (excludes the team itself); needed to scope the
   // users search to the whole subtree, mirroring the legacy UserTab search.
   TabSpecificField.DESCENDANT_TEAMS,
@@ -207,10 +211,11 @@ export const getChildTeamColumns = (
 ];
 
 export const getUserColumns = (
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
   canEditAll: boolean,
   goTo: (target: ProfileHashTarget) => void,
-  onRemoveUser: (record: User) => void
+  parentName: string,
+  onRemoveUser: (record: User) => Promise<boolean>
 ): ColumnsType<User> => [
   {
     title: t('label.username'),
@@ -253,15 +258,25 @@ export const getUserColumns = (
           key: 'actions',
           width: 80,
           render: (_: unknown, record: User) => (
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`remove-user-${record.name}`}
-              icon={Trash01}
-              size="xs"
-              tooltip={t('label.remove')}
-              tooltipPlacement="left"
-              onClick={() => onRemoveUser(record)}
-            />
+            <ConfirmPopover
+              confirmText={t('label.remove')}
+              data-testid="remove-from-team-popover"
+              description={t(
+                'message.are-you-sure-you-want-to-remove-child-from-parent',
+                { child: getEntityName(record), parent: parentName }
+              )}
+              title={t('label.remove-entity', {
+                entity: getEntityName(record),
+              })}
+              onConfirm={() => onRemoveUser(record)}>
+              <ButtonUtility
+                data-testid={`remove-user-${record.name}`}
+                icon={Trash01}
+                size="lg"
+                tooltip={t('label.remove')}
+                tooltipPlacement="left"
+              />
+            </ConfirmPopover>
           ),
         },
       ]
@@ -269,11 +284,12 @@ export const getUserColumns = (
 ];
 
 export const getEntityRefColumns = (
-  t: (key: string, options?: Record<string, unknown>) => string,
+  t: TFunction,
   canEditAll: boolean,
   isSavingInline: boolean,
   goTo: (target: ProfileHashTarget) => void,
-  onRemove: (ref: EntityReference) => void,
+  parentName: string,
+  onRemove: (ref: EntityReference) => Promise<boolean>,
   nameHashOf: (ref: EntityReference) => ProfileHashTarget
 ): ColumnsType<EntityReference> => [
   {
@@ -308,16 +324,26 @@ export const getEntityRefColumns = (
           key: 'actions',
           width: 80,
           render: (_: unknown, record: EntityReference) => (
-            <ButtonUtility
-              color="tertiary"
-              data-testid={`remove-${getEntityName(record)}`}
-              icon={Trash01}
-              isDisabled={isSavingInline}
-              size="xs"
-              tooltip={t('label.remove')}
-              tooltipPlacement="left"
-              onClick={() => onRemove(record)}
-            />
+            <ConfirmPopover
+              confirmText={t('label.remove')}
+              data-testid="remove-from-team-popover"
+              description={t(
+                'message.are-you-sure-you-want-to-remove-child-from-parent',
+                { child: getEntityName(record), parent: parentName }
+              )}
+              title={t('label.remove-entity', {
+                entity: getEntityName(record),
+              })}
+              onConfirm={() => onRemove(record)}>
+              <ButtonUtility
+                data-testid={`remove-${getEntityName(record)}`}
+                icon={Trash01}
+                isDisabled={isSavingInline}
+                size="lg"
+                tooltip={t('label.remove')}
+                tooltipPlacement="left"
+              />
+            </ConfirmPopover>
           ),
         },
       ]

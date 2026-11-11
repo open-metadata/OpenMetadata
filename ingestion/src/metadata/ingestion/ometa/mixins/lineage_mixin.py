@@ -204,26 +204,35 @@ class OMetaLineageMixin(Generic[T]):
         original: Sequence[dict[str, Any] | ColumnLineage] | None,
         updated: Sequence[dict[str, Any] | ColumnLineage] | None,
     ) -> list[dict[str, Any]]:
-        flat_original_result = set()
-        flat_updated_result = set()
+        """Union of the stored and incoming column lineage, keyed by (fromColumns, toColumn).
+
+        The incoming ``function`` wins for a pair both sides carry; an incoming pair without one
+        keeps the stored ``function``.
+        """
         original_data: list[dict[str, Any]] = [
             column.model_dump() if isinstance(column, ColumnLineage) else column for column in original or []
         ]
+        original_result: dict[tuple, Any] = {}
+        merged_result: dict[tuple, Any] = {}
         try:
             for column in original_data:
                 if column.get("toColumn") and column.get("fromColumns"):
-                    flat_original_result.add((*column.get("fromColumns", []), column.get("toColumn")))
+                    original_result[(*column.get("fromColumns", []), column.get("toColumn"))] = column.get("function")
+            merged_result.update(original_result)
             for column in updated or []:
                 data = column.model_dump() if isinstance(column, ColumnLineage) else column
                 if data.get("toColumn") and data.get("fromColumns"):
-                    flat_updated_result.add((*data.get("fromColumns", []), data.get("toColumn")))
+                    key = (*data.get("fromColumns", []), data.get("toColumn"))
+                    merged_result[key] = data.get("function") or merged_result.get(key)
         except Exception as exc:
             logger.debug(f"Error while merging column lineage: {exc}")
             logger.debug(traceback.format_exc())
-        union_result = flat_original_result.union(flat_updated_result)
-        if flat_original_result == union_result:
+        if merged_result == original_result:
             return original_data
-        return [{"fromColumns": list(col_data[:-1]), "toColumn": col_data[-1]} for col_data in union_result]
+        return [
+            {"fromColumns": list(key[:-1]), "toColumn": key[-1], **({"function": function} if function else {})}
+            for key, function in merged_result.items()
+        ]
 
     def _update_cache(self, request: AddLineageRequest, response: dict[str, Any]):
         try:

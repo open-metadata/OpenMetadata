@@ -22,6 +22,21 @@
       "resources": ["All"],
       "operations": ["All"],
       "condition": "hasDomain()"
+    },
+    {
+      "name": "DomainAccessDenyAdministrationRule",
+      "description": "Deny changing policies, roles, bots and apps, which control access, whatever their domain",
+      "effect": "deny",
+      "resources": ["policy", "role", "bot", "app"],
+      "operations": ["Create", "Delete", "EditAll", "Deploy"]
+    },
+    {
+      "name": "DomainAccessDenyTeamAndUserRule",
+      "description": "Deny changing teams and users that are in no domain, and bot users",
+      "effect": "deny",
+      "resources": ["team", "user"],
+      "operations": ["Create", "Delete", "EditAll"],
+      "condition": "noDomain() || isBotUser()"
     }
   ]
 }

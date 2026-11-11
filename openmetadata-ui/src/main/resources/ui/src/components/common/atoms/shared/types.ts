@@ -44,6 +44,7 @@ export interface UrlStateHook {
   setPageSize: (pageSize: number) => void;
   resetFilters: () => void;
   resetAll: () => void;
+  resetPaging: () => void;
 }
 
 export interface DataFetchingConfig<T> {
@@ -156,6 +157,7 @@ export interface ListingData<T> {
   handleClearAll: () => void;
   handlePageChange: (page: number) => void;
   handlePageSizeChange?: (pageSize: number) => void;
+  resetPaging?: () => void;
   refetch: (options?: { silent?: boolean }) => void | Promise<void>;
 }
 

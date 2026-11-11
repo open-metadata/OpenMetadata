@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { AxiosResponse } from 'axios';
+import { AxiosResponse, isAxiosError } from 'axios';
 import { Operation } from 'fast-json-patch';
 import { PagingResponse } from 'Models';
 import { InferenceMaterializationResult } from '../generated/api/configuration/rdf/inferenceMaterializationResult';
@@ -31,7 +31,12 @@ import { CreateOntologyConcept } from '../generated/api/data/createOntologyConce
 import { CreateOntologyProperty } from '../generated/api/data/createOntologyProperty';
 import { CreateRelationshipType } from '../generated/api/data/createRelationshipType';
 import { DeleteOntologyResource } from '../generated/api/data/deleteOntologyResource';
+import { InstallNativeOntologyPack } from '../generated/api/data/installNativeOntologyPack';
 import { InstallOntologyPack } from '../generated/api/data/installOntologyPack';
+import type { NativeOntologyDataGraphPage } from '../generated/api/data/nativeOntologyDataGraphPage';
+import type { NativeOntologyDataGraphPageRequest } from '../generated/api/data/nativeOntologyDataGraphPageRequest';
+import type { NativeOntologyImportDetection } from '../generated/api/data/nativeOntologyImportDetection';
+import type { NativeOntologyImportSummary } from '../generated/api/data/nativeOntologyImportSummary';
 import { OntologyBulkJob } from '../generated/api/data/ontologyBulkJob';
 import { OntologyBulkJobList } from '../generated/api/data/ontologyBulkJobList';
 import { OntologyBulkRequest } from '../generated/api/data/ontologyBulkRequest';
@@ -39,6 +44,11 @@ import { OntologyBulkResultArtifact } from '../generated/api/data/ontologyBulkRe
 import { OntologyBulkSubmission } from '../generated/api/data/ontologyBulkSubmission';
 import { OntologyBulkTemplate } from '../generated/api/data/ontologyBulkTemplate';
 import { OntologyChangeSetCommand } from '../generated/api/data/ontologyChangeSetCommand';
+import { OntologyConceptDeleteImpact } from '../generated/api/data/ontologyConceptDeleteImpact';
+import type {
+  Hop,
+  OntologyConceptQuery,
+} from '../generated/api/data/ontologyConceptQuery';
 import { OntologyDeleteResult } from '../generated/api/data/ontologyDeleteResult';
 import { OntologyDomainDraftRequest } from '../generated/api/data/ontologyDomainDraftRequest';
 import {
@@ -52,20 +62,25 @@ import { OntologyMappingSuggestionList } from '../generated/api/data/ontologyMap
 import { OntologyMappingSuggestionRequest } from '../generated/api/data/ontologyMappingSuggestionRequest';
 import { OntologyNaturalLanguageQueryRequest } from '../generated/api/data/ontologyNaturalLanguageQueryRequest';
 import { OntologyNaturalLanguageQueryResult } from '../generated/api/data/ontologyNaturalLanguageQueryResult';
+import { OntologyPackInstallJob } from '../generated/api/data/ontologyPackInstallJob';
 import { OntologyPackInstallResult } from '../generated/api/data/ontologyPackInstallResult';
 import { OntologyPackList } from '../generated/api/data/ontologyPackList';
 import { OntologyPackManifest } from '../generated/api/data/ontologyPackManifest';
+import type { OntologyPackSample } from '../generated/api/data/ontologyPackSample';
 import { OntologyProfileReport } from '../generated/api/data/ontologyProfileReport';
 import { OntologyRelationshipSuggestionList } from '../generated/api/data/ontologyRelationshipSuggestionList';
 import { OntologyRelationshipSuggestionRequest } from '../generated/api/data/ontologyRelationshipSuggestionRequest';
 import type { OntologyReleaseDiff } from '../generated/api/data/ontologyReleaseDiff';
+import type { OntologyReleaseExportOptions } from '../generated/api/data/ontologyReleaseExportOptions';
+import type { OntologyReleaseReview } from '../generated/api/data/ontologyReleaseReview';
+import { OntologyReleaseReviewList } from '../generated/api/data/ontologyReleaseReviewList';
 import type { OntologyReleaseStructureReport } from '../generated/api/data/ontologyReleaseStructureReport';
+import type { OntologyReleaseValidation } from '../generated/api/data/ontologyReleaseValidation';
 import type { OntologyWorkingDiff } from '../generated/api/data/ontologyWorkingDiff';
 import type { PreviewNativeOntologyImport } from '../generated/api/data/previewNativeOntologyImport';
 import { PreviewNativeOntologyPack } from '../generated/api/data/previewNativeOntologyPack';
 import { RDFEntityDiff } from '../generated/api/data/rdfEntityDiff';
 import { UpdateOntologyChangeSet } from '../generated/api/data/updateOntologyChangeSet';
-import { UpdateOntologyConceptBinding } from '../generated/api/data/updateOntologyConceptBinding';
 import type { Ontology } from '../generated/entity/data/ontology';
 import { OntologyAxiom } from '../generated/entity/data/ontologyAxiom';
 import {
@@ -76,6 +91,7 @@ import type { OntologyConcept } from '../generated/entity/data/ontologyConcept';
 import type { OntologyProperty } from '../generated/entity/data/ontologyProperty';
 import type { OntologyRelease } from '../generated/entity/data/ontologyRelease';
 import { RelationshipType } from '../generated/entity/data/relationshipType';
+import { OntologyAssetConceptLinks } from '../generated/type/ontologyAssetConceptLinks';
 import { OntologyConceptBindingsResponse } from '../generated/type/ontologyConceptBindingsResponse';
 import { OntologyEditLock } from '../generated/type/ontologyEditLock';
 import { OntologyReleaseEvent } from '../generated/type/ontologyReleaseEvent';
@@ -85,9 +101,17 @@ import {
 } from '../generated/type/ontologyReleaseMember';
 import { OntologyState } from '../generated/type/ontologyState';
 import { ListParams } from '../interface/API.interface';
+import {
+  BindingSnapshot,
+  RemoveAsset,
+  ReplaceAsset,
+} from '../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './axiosClient';
-import { EXPORT_FORMAT_TO_ACCEPT_HEADER, OntologyExportFormat } from './rdfAPI';
+import {
+  NATIVE_EXPORT_MEDIA_TYPES,
+  OntologyReleaseExportFormat,
+} from './ontologyExport.constants';
 
 const RELATIONSHIP_TYPES_PATH = '/relationshipTypes';
 const ONTOLOGIES_PATH = '/ontologies';
@@ -106,6 +130,26 @@ const ONTOLOGY_REASONING_PATH = '/ontology/reasoning';
 
 const JSON_PATCH_CONTENT_TYPE = 'application/json-patch+json';
 
+const collectOntologyConceptBindings = async (
+  id: string,
+  firstPage: OntologyConceptBindingsResponse,
+  signal?: AbortSignal
+): Promise<BindingSnapshot> => {
+  const assets = [...firstPage.assets];
+  let after = firstPage.after;
+  while (after) {
+    const { data } = await APIClient.get<OntologyConceptBindingsResponse>(
+      `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/bindings`,
+      { params: { after, limit: 100 }, signal }
+    );
+    assets.push(...data.assets);
+    after = data.after;
+  }
+
+  // Keep the starting revision so a write conflicts if bindings changed during paging.
+  return { kind: 'complete', revision: firstPage.revision, assets };
+};
+
 export const getOntologyConceptBindings = async (
   id: string,
   signal?: AbortSignal
@@ -115,28 +159,67 @@ export const getOntologyConceptBindings = async (
     { signal }
   );
 
-  return response.data;
+  return collectOntologyConceptBindings(id, response.data, signal);
 };
 
-export const putOntologyConceptBinding = async (
-  id: string,
-  request: UpdateOntologyConceptBinding
+export const getOntologyConceptsBoundToAsset = async (
+  assetType: string,
+  assetId: string,
+  signal?: AbortSignal
 ) => {
-  const response = await APIClient.put<OntologyConceptBindingsResponse>(
-    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/bindings`,
-    request
+  const { data } = await APIClient.get<OntologyAssetConceptLinks>(
+    `${ONTOLOGY_CONCEPTS_PATH}/boundTo/${encodeURIComponent(
+      assetType
+    )}/${encodeURIComponent(assetId)}`,
+    { signal }
+  );
+
+  return data;
+};
+
+export const generateOntologyConceptQuery = async (
+  id: string,
+  hops: Hop[],
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.post<OntologyConceptQuery>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/query`,
+    { hops },
+    { signal }
   );
 
   return response.data;
 };
 
+export const getNativeOntologyDataGraphPage = async (
+  ontologyId: string,
+  request: NativeOntologyDataGraphPageRequest,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.post<NativeOntologyDataGraphPage>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/dataGraph/pages`,
+    request,
+    { signal }
+  );
+
+  return response.data;
+};
+
+export const putOntologyConceptBinding = async (
+  id: string,
+  request: ReplaceAsset
+): Promise<void> => {
+  await APIClient.put(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/bindings`,
+    request
+  );
+};
+
 export const deleteOntologyConceptBinding = async (
   id: string,
-  assetType: string,
-  assetId: string,
-  expectedRevision: number
-) => {
-  const response = await APIClient.delete<OntologyConceptBindingsResponse>(
+  { assetType, assetId, expectedRevision }: RemoveAsset
+): Promise<void> => {
+  await APIClient.delete(
     `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(
       id
     )}/bindings/${encodeURIComponent(assetType)}/${encodeURIComponent(
@@ -144,8 +227,6 @@ export const deleteOntologyConceptBinding = async (
     )}`,
     { params: { expectedRevision } }
   );
-
-  return response.data;
 };
 
 export const listOntologyReleaseHistory = async (
@@ -188,6 +269,13 @@ export const createOntology = async (request: CreateOntology) => {
   return response.data;
 };
 
+/** Archives the ontology with its contents; a permanent delete is refused once it has releases. */
+export const deleteOntology = async (id: string) => {
+  await APIClient.delete(`${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`, {
+    params: { recursive: true },
+  });
+};
+
 export const patchOntology = async (id: string, patch: Operation[]) => {
   const response = await APIClient.patch<Ontology>(
     `${ONTOLOGIES_PATH}/${encodeURIComponent(id)}`,
@@ -198,10 +286,92 @@ export const patchOntology = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
+export const getOntologyConcept = async (
+  id: string,
+  fields?: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}`,
+    { params: { fields }, signal }
+  );
+
+  return response.data;
+};
+
 export const createOntologyConcept = async (request: CreateOntologyConcept) => {
   const response = await APIClient.post<OntologyConcept>(
     ONTOLOGY_CONCEPTS_PATH,
     request
+  );
+
+  return response.data;
+};
+
+/** Hard deletes, so the name is free again; a soft delete keeps it reserved. */
+export const hardDeleteOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  try {
+    await APIClient.delete(`${path}/${encodeURIComponent(id)}`, {
+      params: { hardDelete: true },
+    });
+  } catch (error) {
+    if (!(isAxiosError(error) && error.response?.status === 404)) {
+      throw error;
+    }
+  }
+};
+
+export const softDeleteOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  await APIClient.delete(`${path}/${encodeURIComponent(id)}`, {
+    params: { hardDelete: false },
+  });
+};
+
+export const getOntologyConceptDeleteImpact = async (
+  id: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyConceptDeleteImpact>(
+    `${ONTOLOGY_CONCEPTS_PATH}/${encodeURIComponent(id)}/deleteImpact`,
+    { signal }
+  );
+
+  return response.data;
+};
+
+export const restoreOntologyDefinition = async (
+  type: 'concept' | 'property' | 'axiom',
+  id: string
+) => {
+  const path = {
+    concept: ONTOLOGY_CONCEPTS_PATH,
+    property: ONTOLOGY_PROPERTIES_PATH,
+    axiom: ONTOLOGY_AXIOMS_PATH,
+  }[type];
+  await APIClient.put(`${path}/restore`, { id });
+};
+
+/** Reads with include=all so a soft-deleted concept still holding the name is found. */
+export const getOntologyConceptByName = async (fqn: string) => {
+  const response = await APIClient.get<OntologyConcept>(
+    `${ONTOLOGY_CONCEPTS_PATH}/name/${getEncodedFqn(fqn)}`,
+    { params: { include: 'all' } }
   );
 
   return response.data;
@@ -325,7 +495,7 @@ export const getOntologyState = async (
 
 export const getOntologyWorkingDiff = async (
   ontologyId: string,
-  params: Pick<ListParams, 'limit' | 'after'> = {},
+  params: Pick<ListParams, 'limit' | 'after'> & { groupBy?: 'concept' } = {},
   signal?: AbortSignal
 ) => {
   const response = await APIClient.get<OntologyWorkingDiff>(
@@ -336,12 +506,43 @@ export const getOntologyWorkingDiff = async (
   return response.data;
 };
 
+/**
+ * The generated preview type carries its own copy of the change-set enums, which
+ * do not unify with the ones the apply flow takes; the wire shape is the same.
+ */
+export interface NativeOntologyImportPreview {
+  summary: NativeOntologyImportSummary;
+  changeSet: CreateOntologyChangeSet;
+}
+
 export const previewNativeOntologyImport = async (
   ontologyId: string,
   request: PreviewNativeOntologyImport
 ) => {
-  const response = await APIClient.post<CreateOntologyChangeSet>(
+  const response = await APIClient.post<NativeOntologyImportPreview>(
     `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const previewNativeOntologyImportWithoutTarget = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportSummary>(
+    `${ONTOLOGIES_PATH}/imports/preview`,
+    request
+  );
+
+  return response.data;
+};
+
+export const detectNativeOntologyImportFormat = async (
+  request: PreviewNativeOntologyImport
+) => {
+  const response = await APIClient.post<NativeOntologyImportDetection>(
+    `${ONTOLOGIES_PATH}/imports/detect`,
     request
   );
 
@@ -389,18 +590,84 @@ export const getOntologyRelease = async (
   return response.data;
 };
 
+export const getOntologyReleaseReview = async (
+  releaseId: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyReleaseReview>(
+    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/review`,
+    { signal }
+  );
+
+  return response.data;
+};
+
+export const getOntologyReleaseValidation = async (
+  releaseId: string,
+  signal?: AbortSignal
+) => {
+  const response = await APIClient.get<OntologyReleaseValidation>(
+    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/validation`,
+    { signal }
+  );
+
+  return response.data;
+};
+
+/** The gated export answers 422 with the validation report as JSON, which a text response leaves unparsed. */
+const parseGateReport = (error: unknown) => {
+  if (
+    isAxiosError<string>(error) &&
+    error.response?.status === 422 &&
+    typeof error.response.data === 'string'
+  ) {
+    try {
+      error.response.data = JSON.parse(error.response.data);
+    } catch {
+      return error;
+    }
+  }
+
+  return error;
+};
+
 export const exportOntologyRelease = async (
   releaseId: string,
-  format: OntologyExportFormat,
+  format: OntologyReleaseExportFormat,
+  options: OntologyReleaseExportOptions = {},
+  signal?: AbortSignal
+) => {
+  try {
+    const response = await APIClient.get<string>(
+      `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
+      {
+        params: { format, ...options },
+        headers: { Accept: NATIVE_EXPORT_MEDIA_TYPES[format] },
+        responseType: 'text',
+        signal,
+      }
+    );
+
+    return response.data;
+  } catch (error) {
+    throw parseGateReport(error);
+  }
+};
+
+/** The unpublished working content, written in the same formats as a release. */
+export const exportOntologyDraft = async (
+  ontologyId: string,
+  format: OntologyReleaseExportFormat,
+  options: Pick<OntologyReleaseExportOptions, 'includeInverses'> = {},
   signal?: AbortSignal
 ) => {
   const response = await APIClient.get<string>(
-    `${ONTOLOGY_RELEASES_PATH}/${encodeURIComponent(releaseId)}/export`,
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/export`,
     {
-      params: { format },
-      headers: { Accept: EXPORT_FORMAT_TO_ACCEPT_HEADER[format] },
+      params: { format, ...options },
+      headers: { Accept: NATIVE_EXPORT_MEDIA_TYPES[format] },
       responseType: 'text',
-      ...(signal ? { signal } : {}),
+      signal,
     }
   );
 
@@ -524,8 +791,13 @@ export const patchRelationshipType = async (id: string, patch: Operation[]) => {
   return response.data;
 };
 
-export const deleteRelationshipType = async (id: string) => {
-  await APIClient.delete(`${RELATIONSHIP_TYPES_PATH}/${id}`);
+export const deleteRelationshipType = async (
+  id: string,
+  hardDelete = false
+) => {
+  await APIClient.delete(`${RELATIONSHIP_TYPES_PATH}/${id}`, {
+    params: { hardDelete },
+  });
 };
 
 export const listOntologyAxioms = async (
@@ -546,6 +818,14 @@ export const validateOntologyAxiom = async (request: CreateOntologyAxiom) => {
     CreateOntologyAxiom,
     AxiosResponse<OntologyProfileReport>
   >(`${ONTOLOGY_AXIOMS_PATH}/validate`, request);
+
+  return response.data;
+};
+
+export const getOntologyWorkingValidation = async (ontologyId: string) => {
+  const response = await APIClient.get<OntologyProfileReport>(
+    `${ONTOLOGIES_PATH}/${encodeURIComponent(ontologyId)}/working/validation`
+  );
 
   return response.data;
 };
@@ -574,6 +854,9 @@ export const listOntologyChangeSets = async (
     // Several states are sent comma-separated, which the server accepts.
     state?: OntologyChangeSetState | OntologyChangeSetState[];
     memorySourced?: boolean;
+    // Naming the ontology lets an ontology editor list without type-wide rights.
+    ontology?: string;
+    ontologyId?: string;
   }
 ) => {
   const response = await APIClient.get<PagingResponse<OntologyChangeSet[]>>(
@@ -784,6 +1067,18 @@ export const listOntologyPacks = async () => {
   return response.data;
 };
 
+export const getOntologyPackSample = async (
+  packId: string,
+  moduleIds: string[]
+): Promise<OntologyPackSample> => {
+  const response = await APIClient.get<OntologyPackSample>(
+    `${ONTOLOGY_PACKS_PATH}/${encodeURIComponent(packId)}/sample`,
+    { params: { moduleIds: moduleIds.join(',') } }
+  );
+
+  return response.data;
+};
+
 export const getOntologyPack = async (packId: string) => {
   const response = await APIClient.get<OntologyPackManifest>(
     `${ONTOLOGY_PACKS_PATH}/${encodeURIComponent(packId)}`
@@ -867,10 +1162,10 @@ export const submitOntologyBulkOperation = async (
   return response.data;
 };
 
-export const listOntologyBulkJobs = async (limit = 20) => {
+export const listOntologyBulkJobs = async (glossaryId: string, limit = 20) => {
   const response = await APIClient.get<OntologyBulkJobList>(
     `${ONTOLOGY_BULK_PATH}/jobs`,
-    { params: { limit } }
+    { params: { glossaryId, limit } }
   );
 
   return response.data;
@@ -909,6 +1204,74 @@ export const previewNativeOntologyPack = async (
   const response = await APIClient.post<CreateOntologyChangeSet>(
     `/ontologies/${ontologyId}/library/${packId}/preview`,
     request
+  );
+
+  return response.data;
+};
+
+/** Queues the library install as a background job; a repeat of the running install returns that job. */
+export const installNativeOntologyPack = async (
+  ontologyId: string,
+  packId: string,
+  request: InstallNativeOntologyPack
+): Promise<OntologyPackInstallJob> => {
+  const response = await APIClient.post<OntologyPackInstallJob>(
+    `/ontologies/${ontologyId}/library/${packId}/install`,
+    request
+  );
+
+  return response.data;
+};
+
+export const getNativeOntologyPackInstallJob = async (
+  ontologyId: string,
+  jobId: number
+): Promise<OntologyPackInstallJob> => {
+  const response = await APIClient.get<OntologyPackInstallJob>(
+    `/ontologies/${ontologyId}/library/jobs/${jobId}`
+  );
+
+  return response.data;
+};
+
+/** Stops the job after its current slice; what already landed stays installed. */
+export const cancelNativeOntologyPackInstallJob = async (
+  ontologyId: string,
+  jobId: number
+): Promise<OntologyPackInstallJob> => {
+  const response = await APIClient.put<OntologyPackInstallJob>(
+    `/ontologies/${ontologyId}/library/jobs/${jobId}/cancel`
+  );
+
+  return response.data;
+};
+
+/** Bounded definition statuses and any clash the pack install would add to the current draft. */
+export const reviewNativeOntologyPack = async (
+  ontologyId: string,
+  packId: string,
+  request: PreviewNativeOntologyPack
+): Promise<NativeOntologyImportSummary> => {
+  const response = await APIClient.post<NativeOntologyImportSummary>(
+    `/ontologies/${ontologyId}/library/${packId}/summary`,
+    request
+  );
+
+  return response.data;
+};
+
+export const getOntologyReleaseReviews = async (
+  params: {
+    view: 'assigned' | 'created' | 'pending';
+    ontologyId?: string;
+    limit: number;
+    after?: string;
+  },
+  signal?: AbortSignal
+): Promise<OntologyReleaseReviewList> => {
+  const response = await APIClient.get<OntologyReleaseReviewList>(
+    ONTOLOGIES_PATH + '/reviews',
+    { params, signal }
   );
 
   return response.data;

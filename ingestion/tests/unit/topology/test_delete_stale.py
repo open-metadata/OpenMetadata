@@ -20,7 +20,7 @@ import pytest
 from pydantic import BaseModel
 
 from metadata.generated.schema.type.bulkOperationResult import BulkOperationResult
-from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.delete import SourceListing, delete_entity_from_source
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.ometa.client import APIError
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -173,6 +173,7 @@ class TestDeleteEntityFromSource:
             scope_params={"databaseSchema": "svc.db.sch"},
             live_fqns={"svc.db.sch.t1"},
             recursive=True,
+            allow_empty_seen=False,
         )
         # The connector must not paginate the API itself when the server handled it.
         metadata.list_all_entities.assert_not_called()
@@ -301,3 +302,106 @@ class TestServiceScopeIsSentAsFqn:
         body = metadata.client.delete.call_args.kwargs["json"]
         assert body["scopeFqn"] == '"Looker- 2.0 Test"'
         assert body["scopeEntityType"] == "service"
+
+
+class TestSourceListing:
+    """An empty run is trusted only when the connector proves its listing was complete."""
+
+    @pytest.mark.parametrize(
+        "listing, confirmed",
+        [
+            (SourceListing(is_complete=True), True),
+            (SourceListing(listed=2, filtered=2, is_complete=True), True),
+            (SourceListing(), False),
+            (SourceListing(listed=2, filtered=2), False),
+            (SourceListing(listed=2, filtered=2, is_complete=True, has_failed=True), False),
+            (SourceListing(listed=2, filtered=1, is_complete=True), False),
+        ],
+        ids=[
+            "complete-and-empty",
+            "complete-and-everything-filtered",
+            "never-confirmed",
+            "everything-filtered-but-unconfirmed",
+            "a-fetch-failed",
+            "an-entity-survived-the-filters",
+        ],
+    )
+    def test_confirms_nothing_to_ingest(self, listing, confirmed):
+        assert listing.confirms_nothing_to_ingest is confirmed
+
+    def test_counts_build_up_through_the_listing_api(self):
+        listing = SourceListing()
+        listing.count_listed()
+        listing.count_listed()
+        listing.count_filtered()
+        listing.count_filtered()
+        listing.mark_complete()
+
+        assert listing.confirms_nothing_to_ingest is True
+
+
+def _body_on_the_wire(entity_source_state, source_listing):
+    """Run a stale deletion through the real client and return the request body it sent."""
+    metadata = MagicMock()
+    metadata.get_suffix.return_value = "/dashboard/datamodels"
+    metadata.client.delete.return_value = {
+        "status": "success",
+        "numberOfRowsProcessed": 0,
+        "numberOfRowsPassed": 0,
+        "numberOfRowsFailed": 0,
+    }
+    metadata.delete_stale_entities = lambda **kwargs: OpenMetadata.delete_stale_entities(metadata, **kwargs)
+    list(
+        delete_entity_from_source(
+            metadata=metadata,
+            entity_type=MockEntity,
+            entity_source_state=entity_source_state,
+            params={"service": "powerbi"},
+            source_listing=source_listing,
+        )
+    )
+    return metadata.client.delete.call_args.kwargs["json"]
+
+
+class TestConfirmedEmptyListing:
+    """
+    The server deletes nothing for an empty seen-set unless the request marks the empty run
+    authoritative, which the client does only when the connector confirmed its listing.
+    """
+
+    def test_confirmed_empty_listing_marks_the_empty_run_authoritative(self):
+        body = _body_on_the_wire(set(), SourceListing(listed=3, filtered=3, is_complete=True))
+
+        assert body["seenFqns"] == []
+        assert body["allowEmptySeenFqns"] is True
+
+    def test_unconfirmed_listing_leaves_the_empty_run_ambiguous(self):
+        body = _body_on_the_wire(set(), SourceListing(listed=3, filtered=3))
+
+        assert "allowEmptySeenFqns" not in body
+
+    def test_no_listing_leaves_the_empty_run_ambiguous(self):
+        body = _body_on_the_wire(set(), None)
+
+        assert "allowEmptySeenFqns" not in body
+
+    def test_flag_is_sent_only_with_an_empty_seen_set(self):
+        """Servers that predate the field reject it, so it goes out only where it changes the outcome."""
+        metadata = MagicMock()
+        metadata.get_suffix.return_value = "/dashboard/datamodels"
+        metadata.client.delete.return_value = {
+            "status": "success",
+            "numberOfRowsProcessed": 1,
+            "numberOfRowsPassed": 1,
+            "numberOfRowsFailed": 0,
+        }
+
+        OpenMetadata.delete_stale_entities(
+            metadata,
+            entity=MockEntity,
+            scope_params={"service": "powerbi"},
+            live_fqns={"powerbi.model.ds-1"},
+            allow_empty_seen=True,
+        )
+
+        assert "allowEmptySeenFqns" not in metadata.client.delete.call_args.kwargs["json"]

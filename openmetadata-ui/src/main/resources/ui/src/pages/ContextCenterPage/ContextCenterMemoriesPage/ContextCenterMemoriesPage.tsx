@@ -18,6 +18,7 @@ import {
   Input,
   PageLayout,
   PaginationCardMinimal,
+  selectedTriggerClassName,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -27,6 +28,7 @@ import {
   ChevronRight,
   FilePlus02,
   FilterFunnel01,
+  Memories,
   Plus,
   Search,
   Share05,
@@ -34,11 +36,10 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
+import { TFunction } from 'i18next';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
-import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
-import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import FeaturesPlaceholder from '../../../components/common/EmptyPlaceholder/FeaturesPlaceholder';
@@ -53,11 +54,11 @@ import {
 } from '../../../components/ContextCenter/MemoriesView/MemoriesView.interface';
 import { DataAssetOption } from '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import DataAssetSelectList from '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList';
+import ApprovePendingMemoriesButton from '../../../components/discovery/context-center/ApprovePendingMemoriesButton/ApprovePendingMemoriesButton';
 import MemoryConflictReviews from '../../../components/discovery/context-center/MemoryConflictReviews/MemoryConflictReviews';
 import { INBOX_OPEN_TASK_COUNT_QUERY_KEY } from '../../../components/discovery/personal-space/inbox.constants';
 import {
   DEFAULT_MEMORY_LIST_STATUSES,
-  MEMORIES_PER_PAGE,
   MEMORY_FIELDS,
   MEMORY_STATUS_LABEL_KEYS,
 } from '../../../constants/ContextCenter.constants';
@@ -69,6 +70,8 @@ import {
   ContextMemoryStatus,
 } from '../../../generated/entity/context/contextMemory';
 import { useMemoryConflictReviews } from '../../../hooks/discovery/context-center/useMemoryConflictReviews';
+import { usePageForSize } from '../../../hooks/paging/usePageForSize';
+import { useSavedPageSize } from '../../../hooks/paging/useSavedPageSize';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useIsAiMode } from '../../../hooks/useAppMode';
 import { queryClient } from '../../../queryClient';
@@ -161,6 +164,25 @@ const searchOutsideReview = (
 const isEmptyOnceLoaded = (isLoading: boolean, count: number) =>
   !isLoading && count === 0;
 
+/** One picked status shows its name; several show how many are picked. */
+const getStatusFilterValue = (
+  selectedStatuses: ContextMemoryStatus[],
+  t: TFunction
+): string => {
+  if (selectedStatuses.length !== 1) {
+    return `${selectedStatuses.length} ${t('label.status-plural')}`;
+  }
+  const labelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
+
+  return labelKey ? t(labelKey) : selectedStatuses[0];
+};
+
+const isStatusFilterChanged = (selectedStatuses: ContextMemoryStatus[]) =>
+  selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
+  DEFAULT_MEMORY_LIST_STATUSES.some(
+    (status) => !selectedStatuses.includes(status)
+  );
+
 const getMemoriesViewFlags = ({
   selectedAsset,
   selectedAuthor,
@@ -183,12 +205,7 @@ const getMemoriesViewFlags = ({
   reviewCount: number;
 }) => {
   const hasActiveFilters = Boolean(
-    selectedAsset ||
-      selectedAuthor ||
-      selectedStatuses.length !== DEFAULT_MEMORY_LIST_STATUSES.length ||
-      DEFAULT_MEMORY_LIST_STATUSES.some(
-        (status) => !selectedStatuses.includes(status)
-      )
+    selectedAsset || selectedAuthor || isStatusFilterChanged(selectedStatuses)
   );
   const isMemoriesSearching = Boolean(debouncedSearch.trim());
   const isMemoriesFilteredOnly = Boolean(
@@ -223,6 +240,7 @@ interface ContextCenterMemoriesModalsProps {
   memoryToView?: ContextMemory;
   memoryToDelete?: ContextMemory;
   onModalClose: () => void;
+  onModalNavigate: () => void;
   onModalSuccess: () => void;
   onViewModalClose: () => void;
   onEditMemory: (memory: ContextMemory) => void;
@@ -243,6 +261,7 @@ const ContextCenterMemoriesModals = ({
   memoryToView,
   memoryToDelete,
   onModalClose,
+  onModalNavigate,
   onModalSuccess,
   onViewModalClose,
   onEditMemory,
@@ -265,6 +284,7 @@ const ContextCenterMemoriesModals = ({
         onClose={onModalClose}
         onCreated={onModalSuccess}
         onDeleted={onModalSuccess}
+        onNavigate={onModalNavigate}
         onUpdated={onModalSuccess}
       />
 
@@ -282,6 +302,7 @@ const ContextCenterMemoriesModals = ({
           onCreated={onViewModalClose}
           onDeleted={onModalSuccess}
           onEditMemory={onEditMemory}
+          onNavigate={onModalNavigate}
           onUpdated={onModalSuccess}
         />
       )}
@@ -336,7 +357,8 @@ const ContextCenterMemoriesPage: FC = () => {
   const [selectedStatuses, setSelectedStatuses] = useState<
     ContextMemoryStatus[]
   >(DEFAULT_MEMORY_LIST_STATUSES);
-  const [currentPage, setCurrentPage] = useState(1);
+  const { savedPageSize: memoriesPerPage } = useSavedPageSize();
+  const [currentPage, setCurrentPage] = usePageForSize(memoriesPerPage);
   const [selectedAsset, setSelectedAsset] = useState<DataAssetOption>();
   const [selectedAuthor, setSelectedAuthor] = useState<MemoryFilterOption>();
   const [authorOptions, setAuthorOptions] = useState<MemoryFilterOption[]>([]);
@@ -435,8 +457,8 @@ const ContextCenterMemoriesPage: FC = () => {
             ? currentUser?.id ?? currentUser?.name
             : selectedAuthor?.id;
         const response = await getListContextMemories({
-          limit: MEMORIES_PER_PAGE,
-          offset: (currentPage - 1) * MEMORIES_PER_PAGE,
+          limit: memoriesPerPage,
+          offset: (currentPage - 1) * memoriesPerPage,
           fields: MEMORY_FIELDS,
           q: debouncedSearch.trim() || undefined,
           assets: selectedAsset?.id,
@@ -461,6 +483,7 @@ const ContextCenterMemoriesPage: FC = () => {
       activeFilter,
       applyMemoryListResponse,
       currentPage,
+      memoriesPerPage,
       currentUser?.id,
       currentUser?.name,
       debouncedSearch,
@@ -602,7 +625,7 @@ const ContextCenterMemoriesPage: FC = () => {
     void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
-  const totalPages = Math.max(1, Math.ceil(totalMemories / MEMORIES_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(totalMemories / memoriesPerPage));
 
   const {
     hasActiveFilters,
@@ -692,7 +715,7 @@ const ContextCenterMemoriesPage: FC = () => {
     }
     setIsDeletingMemory(true);
     try {
-      await deleteContextMemory(memoryToDelete.id);
+      await deleteContextMemory(memoryToDelete.id, true);
       void queryClient.invalidateQueries({
         queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
       });
@@ -709,6 +732,15 @@ const ContextCenterMemoriesPage: FC = () => {
       setIsDeletingMemory(false);
     }
   }, [memoryToDelete, fetchMemories, fetchMemoryCounts, t]);
+
+  const handlePendingApproved = useCallback(async () => {
+    void queryClient.invalidateQueries({
+      queryKey: CONTEXT_CENTER_MEMORIES_COUNT_QUERY_KEY,
+    });
+    void refreshMemoryReviews();
+    await fetchMemories();
+    await fetchMemoryCounts();
+  }, [fetchMemories, fetchMemoryCounts]);
 
   const fetchCompleteMemory = useCallback(async (memory: ContextMemory) => {
     try {
@@ -754,11 +786,16 @@ const ContextCenterMemoriesPage: FC = () => {
     void fetchMemoryCounts();
   }, [fetchMemoryCounts]);
 
-  const handleModalClose = useCallback(() => {
+  // Following a link out of a memory keeps ?memory in history, so Back reopens it.
+  const handleModalNavigate = useCallback(() => {
     setIsCreateModalOpen(false);
     setMemoryToEdit(undefined);
     setIsViewModalOpen(false);
     setMemoryToView(undefined);
+  }, []);
+
+  const handleModalClose = useCallback(() => {
+    handleModalNavigate();
     if (memoryName !== null) {
       setSearchParams((prev) => {
         const next = new URLSearchParams(prev);
@@ -767,7 +804,7 @@ const ContextCenterMemoriesPage: FC = () => {
         return next;
       });
     }
-  }, [memoryName, setSearchParams]);
+  }, [handleModalNavigate, memoryName, setSearchParams]);
 
   useEffect(() => {
     if (!memoryName) {
@@ -838,10 +875,6 @@ const ContextCenterMemoriesPage: FC = () => {
     entity: t('label.asset-plural'),
   });
   const allAuthorsLabel = t('label.all-entity', { entity: t('label.author') });
-  const selectedStatusLabelKey = MEMORY_STATUS_LABEL_KEYS[selectedStatuses[0]];
-  const selectedStatusLabel = selectedStatusLabelKey
-    ? t(selectedStatusLabelKey)
-    : selectedStatuses[0];
 
   const headerActions = (
     <Button
@@ -865,7 +898,9 @@ const ContextCenterMemoriesPage: FC = () => {
       <PageLayout
         className={pageLayoutClassNames.root}
         data-testid="context-center-page-layout">
-        <PageLayout.Header className={pageLayoutClassNames.header}>
+        <PageLayout.Header
+          className={pageLayoutClassNames.header}
+          data-tour-step="memories">
           <ContextCenterHeader
             actionsSlot={headerActions}
             breadcrumbs={[
@@ -905,7 +940,7 @@ const ContextCenterMemoriesPage: FC = () => {
                 features={[
                   {
                     key: 'write',
-                    icon: <MemoryIcon className="tw:text-fg-brand-primary" />,
+                    icon: <Memories className="tw:text-fg-brand-primary" />,
                     title: t('label.write-the-fact'),
                     description: t(
                       'message.context-center-memories-empty-feature-write'
@@ -993,6 +1028,11 @@ const ContextCenterMemoriesPage: FC = () => {
                   gap={2}>
                   <Dropdown.Root>
                     <Button
+                      className={
+                        isStatusFilterChanged(selectedStatuses)
+                          ? selectedTriggerClassName(true)
+                          : undefined
+                      }
                       color="secondary"
                       data-testid="memory-status-filter"
                       iconLeading={
@@ -1001,11 +1041,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       iconTrailing={ChevronDown}
                       size="md">
                       {t('label.status')}:{' '}
-                      {selectedStatuses.length === 1
-                        ? selectedStatusLabel
-                        : `${selectedStatuses.length} ${t(
-                            'label.status-plural'
-                          )}`}
+                      {getStatusFilterValue(selectedStatuses, t)}
                     </Button>
                     <Dropdown.Popover className="tw:w-56">
                       <Dropdown.Menu
@@ -1070,7 +1106,7 @@ const ContextCenterMemoriesPage: FC = () => {
                       className="tw:max-w-64"
                       color="secondary"
                       data-testid="author-filter-button"
-                      iconLeading={<User01 className="tw:shrink-0" size={14} />}
+                      iconLeading={User01}
                       iconTrailing={ChevronDown}
                       size="md">
                       {selectedAuthor?.label ?? allAuthorsLabel}
@@ -1080,6 +1116,7 @@ const ContextCenterMemoriesPage: FC = () => {
                         <Input
                           // eslint-disable-next-line jsx-a11y/no-autofocus -- focus search on dropdown open
                           autoFocus
+                          autoComplete="off"
                           className="tw:w-full"
                           icon={Search}
                           placeholder={t('label.search-entity', {
@@ -1171,6 +1208,12 @@ const ContextCenterMemoriesPage: FC = () => {
                     'tw:hidden': isReviewing,
                   })}
                   gap={4}>
+                  <ApprovePendingMemoriesButton
+                    isAdmin={currentUser?.isAdmin}
+                    isLoading={isMemoriesLoading}
+                    memories={memories}
+                    onApproved={handlePendingApproved}
+                  />
                   {hasActiveFilters && (
                     <Button
                       color="link-color"
@@ -1182,7 +1225,7 @@ const ContextCenterMemoriesPage: FC = () => {
                   <Dropdown.Root>
                     <Button
                       color="secondary"
-                      iconLeading={FunnelIcon}
+                      iconLeading={FilterFunnel01}
                       iconTrailing={ChevronDown}
                       size="md">
                       {t('label.sort')}: {getSortLabel(SORT_OPTIONS, sortBy)}
@@ -1270,6 +1313,7 @@ const ContextCenterMemoriesPage: FC = () => {
         onConfirmDelete={handleConfirmDelete}
         onEditMemory={handleEditMemory}
         onModalClose={handleModalClose}
+        onModalNavigate={handleModalNavigate}
         onModalSuccess={handleModalSuccess}
         onViewModalClose={handleModalClose}
       />

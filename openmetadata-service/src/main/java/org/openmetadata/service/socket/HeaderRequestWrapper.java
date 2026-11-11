@@ -17,34 +17,63 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletRequestWrapper;
 import java.util.Collections;
 import java.util.Enumeration;
-import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeMap;
+import java.util.TreeSet;
 
+/**
+ * Overlays the handshake identity the filter validated on top of the client's headers. HTTP header
+ * names are case-insensitive, so overrides and suppressions match that way: a client cannot slip a
+ * {@code userid} past a {@code UserId} override.
+ */
 public class HeaderRequestWrapper extends HttpServletRequestWrapper {
 
   public HeaderRequestWrapper(HttpServletRequest request) {
     super(request);
   }
 
-  private final Map<String, String> headerMap = new HashMap<>();
+  private final Map<String, String> headerMap = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+  private final Set<String> suppressed = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
 
   public void addHeader(String name, String value) {
+    suppressed.remove(name);
     headerMap.put(name, value);
+  }
+
+  /**
+   * Hides the client's values for a header entirely: it is absent from every accessor until {@link
+   * #addHeader} sets a validated value. Used for identity headers the handshake could not establish,
+   * so the client's own value never reaches the servlet behind the filter.
+   */
+  public void removeHeader(String name) {
+    headerMap.remove(name);
+    suppressed.add(name);
   }
 
   @Override
   public String getHeader(String name) {
-    String headerValue = super.getHeader(name);
-    if (headerMap.containsKey(name)) {
-      headerValue = headerMap.get(name);
+    if (suppressed.contains(name)) {
+      return null;
     }
-    return headerValue;
+    if (headerMap.containsKey(name)) {
+      return headerMap.get(name);
+    }
+    return super.getHeader(name);
   }
 
   @Override
   public Enumeration<String> getHeaderNames() {
-    List<String> names = Collections.list(super.getHeaderNames());
+    Set<String> names = new LinkedHashSet<>();
+    Enumeration<String> clientNames = super.getHeaderNames();
+    while (clientNames != null && clientNames.hasMoreElements()) {
+      String name = clientNames.nextElement();
+      if (!suppressed.contains(name) && !headerMap.containsKey(name)) {
+        names.add(name);
+      }
+    }
     names.addAll(headerMap.keySet());
     return Collections.enumeration(names);
   }
@@ -56,6 +85,9 @@ public class HeaderRequestWrapper extends HttpServletRequestWrapper {
     // would let a caller reading element 0 (engine.io Polling -> WebSocketManager) impersonate
     // another user / bypass session revalidation. See
     // SocketAddressFilterSpoofRevalidationBypassTest.
+    if (suppressed.contains(name)) {
+      return Collections.emptyEnumeration();
+    }
     if (headerMap.containsKey(name)) {
       return Collections.enumeration(List.of(headerMap.get(name)));
     }

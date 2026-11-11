@@ -28,6 +28,7 @@ import {
   AuthenticationConfiguration,
   AuthProvider,
   ClientType,
+  TokenValidationAlgorithm,
 } from '../../../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../../../generated/configuration/authorizerConfiguration';
 import { Status as TestLoginStatus } from '../../../generated/system/testLoginResult';
@@ -1141,17 +1142,17 @@ describe('SSOConfigurationForm', () => {
     it('should handle field-specific validation errors without showing toast', async () => {
       // Field-specific errors have a field property and don't trigger toast
       const mockValidationData = {
-        status: 'failed',
+        status: VALIDATION_STATUS.FAILED,
         message: 'Validation failed',
         results: [
           {
             component: 'authenticationConfiguration.oidcConfiguration.id',
-            status: 'failed',
+            status: VALIDATION_STATUS.FAILED,
             message: 'Client ID is required',
           },
           {
             component: 'authenticationConfiguration.oidcConfiguration.secret',
-            status: 'failed',
+            status: VALIDATION_STATUS.FAILED,
             message: 'Client Secret is required',
           },
         ],
@@ -1526,12 +1527,12 @@ describe('SSOConfigurationForm', () => {
 
     it('should handle validation errors from response', async () => {
       const mockValidationData = {
-        status: 'failed',
+        status: VALIDATION_STATUS.FAILED,
         message: 'Validation failed',
         results: [
           {
             component: 'authenticationConfiguration.clientId',
-            status: 'failed',
+            status: VALIDATION_STATUS.FAILED,
             message: 'Client ID is required',
           },
         ],
@@ -1562,13 +1563,13 @@ describe('SSOConfigurationForm', () => {
       const axiosError = {
         response: {
           data: {
-            status: 'failed',
+            status: VALIDATION_STATUS.FAILED,
             message: 'Validation failed',
             results: [
               {
                 component:
                   'authenticationConfiguration.oidcConfiguration.secret',
-                status: 'failed',
+                status: VALIDATION_STATUS.FAILED,
                 message: 'Secret is required',
               },
             ],
@@ -1596,7 +1597,7 @@ describe('SSOConfigurationForm', () => {
 
     it('should handle errors with both field and general messages', async () => {
       const mockMixedErrorsData = {
-        status: 'failed',
+        status: VALIDATION_STATUS.FAILED,
         message: 'General validation error',
         errors: [
           {
@@ -1906,10 +1907,17 @@ describe('SSOConfigurationForm', () => {
           jwtPrincipalClaims: [],
           jwtPrincipalClaimsMapping: [],
           publicKeyUrls: [],
-          tokenValidationAlgorithm: '',
+          tokenValidationAlgorithm: TokenValidationAlgorithm.Rs256,
           enableSelfSignup: false,
         },
-        authorizerConfiguration: {} as unknown as AuthorizerConfiguration,
+        authorizerConfiguration: {
+          adminPrincipals: [],
+          className: 'org.openmetadata.service.security.DefaultAuthorizer',
+          containerRequestFilter: 'org.openmetadata.service.security.JwtFilter',
+          principalDomain: '',
+          enforcePrincipalDomain: false,
+          enableSecureSocketConnection: false,
+        },
       };
 
       mockGetSecurityConfiguration.mockResolvedValue(

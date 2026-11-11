@@ -1,6 +1,6 @@
 services:
   postgresql:
-    image: ${PW_POSTGRES_IMAGE:-postgres:15}
+    image: ${PW_DATABASE_IMAGE:-postgres:15}
     pull_policy: missing
     restart: "no"
     command:
@@ -29,7 +29,7 @@ services:
       - work_mem=32MB
     volumes:
       - type: bind
-        source: ${PW_POSTGRES_DATA_DIR:?PW_POSTGRES_DATA_DIR is required}
+        source: ${PW_DATABASE_DATA_DIR:?PW_DATABASE_DATA_DIR is required}
         target: /var/lib/postgresql/data
     healthcheck:
       interval: 2s
@@ -47,7 +47,7 @@ services:
         compress: "false"
 
   opensearch:
-    image: ${PW_OPENSEARCH_IMAGE:-opensearchproject/opensearch:3.4.0}
+    image: ${PW_SEARCH_IMAGE:-opensearchproject/opensearch:3.4.0}
     restart: "no"
     environment:
       discovery.type: single-node
@@ -57,7 +57,7 @@ services:
       plugins.security.disabled: "true"
     volumes:
       - type: bind
-        source: ${PW_OPENSEARCH_DATA_DIR:?PW_OPENSEARCH_DATA_DIR is required}
+        source: ${PW_SEARCH_DATA_DIR:?PW_SEARCH_DATA_DIR is required}
         target: /usr/share/opensearch/data
     healthcheck:
       interval: 2s

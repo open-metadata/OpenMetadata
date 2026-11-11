@@ -2,7 +2,6 @@ package org.openmetadata.service.alerting;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
@@ -201,7 +200,7 @@ class DispatchOrderTest {
   private static CollectionDAO daoWithThreeEventsAfterSeven() {
     ChangeEventDAO changeEvents = mock(ChangeEventDAO.class);
     when(changeEvents.getLatestOffset()).thenReturn(10L);
-    when(changeEvents.listWithOffset(anyInt(), anyLong()))
+    when(changeEvents.listWithOffset(anyLong(), anyLong()))
         .thenReturn(
             List.of(
                 new ChangeEventRecord(8L, JsonUtils.pojoToJson(FIRST)),

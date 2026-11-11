@@ -15,10 +15,10 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import TabsLabel from './TabsLabel.component';
 import { TabsLabelProps } from './TabsLabel.interface';
 
-const mockProps: TabsLabelProps = {
+const mockProps = {
   name: 'Test tab',
   id: 'test-id',
-};
+} satisfies TabsLabelProps;
 
 describe('TabsLabel component', () => {
   it('Component should render', async () => {

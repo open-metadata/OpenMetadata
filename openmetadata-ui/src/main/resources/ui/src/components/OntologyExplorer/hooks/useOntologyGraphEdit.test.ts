@@ -63,6 +63,31 @@ describe('useOntologyGraphEdit', () => {
     expect(result.current.cursor).toEqual({ x: 100, y: 0 });
   });
 
+  it('connects a drag release without the armed state having rendered yet', () => {
+    const { result } = setup();
+
+    act(() =>
+      result.current.connect('a', { x: 0, y: 0 }, 'b', { x: 100, y: 40 })
+    );
+
+    expect(result.current.pendingRelation).toEqual({
+      from: { x: 0, y: 0 },
+      fromId: 'a',
+      to: { x: 100, y: 40 },
+      toId: 'b',
+      at: { x: 50, y: 20 },
+    });
+    expect(result.current.armedFromId).toBeNull();
+  });
+
+  it('draws nothing when a drag is released on its own source', () => {
+    const { result } = setup();
+
+    act(() => result.current.connect('a', { x: 0, y: 0 }, 'a', { x: 5, y: 5 }));
+
+    expect(result.current.pendingRelation).toBeNull();
+  });
+
   it('creates a pending relation when a valid target is selected', () => {
     const { result } = setup();
 
@@ -92,14 +117,14 @@ describe('useOntologyGraphEdit', () => {
     });
   });
 
-  it('does not create a pending relation when the source is selected', () => {
+  it('cancels without persistence when the source is selected', () => {
     const { result } = setup();
 
     act(() => result.current.startArm('a', { x: 0, y: 0 }));
     act(() => result.current.selectTarget('a'));
 
     expect(result.current.pendingRelation).toBeNull();
-    expect(result.current.armedFromId).toBe('a');
+    expect(result.current.armedFromId).toBeNull();
   });
 
   it('cancels the gesture on Escape', () => {

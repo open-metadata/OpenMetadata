@@ -49,12 +49,12 @@ public class LengthHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("length")
         .withDescription("Get length of array or string")
-        .withCursorOffset(10)
+        .withCursorOffset(9)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{length }}")
                     .withExample(
-                        "{{#if (gt (length failedTests) 0)}}Found {{length failedTests}} failures{{/if}}")));
+                        "{{#if (gt (length entity.tags) 0)}}{{length entity.tags}} tags{{/if}}")));
   }
 }

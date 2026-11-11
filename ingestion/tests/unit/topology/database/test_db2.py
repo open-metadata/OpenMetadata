@@ -234,13 +234,12 @@ class Db2UnitTest(TestCase):
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [either.right for either in self.db2.yield_database(MOCK_DATABASE.name.root)]  # noqa: SIM300
-        self.db2.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     def test_yield_schema(self):
+        self.db2.context.get().__dict__["database"] = MOCK_DATABASE.name.root
         assert EXPECTED_DATABASE_SCHEMA == [  # noqa: SIM300
             either.right for either in self.db2.yield_database_schema(MOCK_DATABASE_SCHEMA.name.root)
         ]
-        self.db2.context.get().__dict__["database_schema"] = MOCK_DATABASE_SCHEMA.name.root
 
 
 class Db2ColumnTypeParserTest(TestCase):

@@ -141,6 +141,7 @@ class TestExtractDirRecreatedBeforeDownload:
         gcs_config.pbitFilesExtractDir = str(extract_dir)
         gcs_config.prefixConfig = None
         gcs_config.securityConfig = MagicMock()
+        gcs_config.securityConfig.gcpImpersonateServiceAccount = None
         mock_storage.return_value.list_buckets.return_value = []
 
         get_pbit_files(gcs_config)

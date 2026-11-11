@@ -1,0 +1,448 @@
+{
+  "properties": [
+    {
+      "name": "visual_string",
+      "displayName": "string property",
+      "description": "Finance metadata stored as string.",
+      "propertyType": {
+        "id": "d7788752-c2a3-534e-a5a7-639088c86a09",
+        "name": "string",
+        "fullyQualifiedName": "string",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_integer",
+      "displayName": "integer property",
+      "description": "Finance metadata stored as integer.",
+      "propertyType": {
+        "id": "1fa419f4-39f6-537e-84a8-d2469dec50f8",
+        "name": "integer",
+        "fullyQualifiedName": "integer",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_number",
+      "displayName": "number property",
+      "description": "Finance metadata stored as number.",
+      "propertyType": {
+        "id": "6a22cb8b-cdd8-55e6-a954-22fefb5ff3cd",
+        "name": "number",
+        "fullyQualifiedName": "number",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_email",
+      "displayName": "email property",
+      "description": "Finance metadata stored as email.",
+      "propertyType": {
+        "id": "d0636078-ed30-5fd1-a2a7-2d6ba00d7af8",
+        "name": "email",
+        "fullyQualifiedName": "email",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_timestamp",
+      "displayName": "timestamp property",
+      "description": "Finance metadata stored as timestamp.",
+      "propertyType": {
+        "id": "a5b853b4-eeea-52ca-ba03-50d6d3e06e42",
+        "name": "timestamp",
+        "fullyQualifiedName": "timestamp",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_duration",
+      "displayName": "duration property",
+      "description": "Finance metadata stored as duration.",
+      "propertyType": {
+        "id": "2f78acf8-68ce-561a-a47a-2323471f5211",
+        "name": "duration",
+        "fullyQualifiedName": "duration",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_date_cp",
+      "displayName": "date cp property",
+      "description": "Finance metadata stored as date-cp.",
+      "propertyType": {
+        "id": "f277d2fa-c8cc-50ae-8c2d-5cdf01174d29",
+        "name": "date-cp",
+        "fullyQualifiedName": "date-cp",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": "yyyy-MM-dd"
+      }
+    },
+    {
+      "name": "visual_dateTime_cp",
+      "displayName": "dateTime cp property",
+      "description": "Finance metadata stored as dateTime-cp.",
+      "propertyType": {
+        "id": "7264c4b1-cb06-5406-bf43-a664b5be6003",
+        "name": "dateTime-cp",
+        "fullyQualifiedName": "dateTime-cp",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": "yyyy-MM-dd HH:mm:ss"
+      }
+    },
+    {
+      "name": "visual_time_cp",
+      "displayName": "time cp property",
+      "description": "Finance metadata stored as time-cp.",
+      "propertyType": {
+        "id": "4c33d63d-4f1d-55f0-ac77-ed1082efd8b3",
+        "name": "time-cp",
+        "fullyQualifiedName": "time-cp",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": "HH:mm:ss"
+      }
+    },
+    {
+      "name": "visual_enum",
+      "displayName": "enum property",
+      "description": "Finance metadata stored as enum.",
+      "propertyType": {
+        "id": "d9519835-340b-56b7-a421-32021dae89e2",
+        "name": "enum",
+        "fullyQualifiedName": "enum",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": {
+          "values": ["Gold", "Silver", "Bronze"],
+          "multiSelect": true
+        }
+      }
+    },
+    {
+      "name": "visual_enum_single",
+      "displayName": "enum single property",
+      "description": "Finance metadata stored as enum-single.",
+      "propertyType": {
+        "id": "d9519835-340b-56b7-a421-32021dae89e2",
+        "name": "enum",
+        "fullyQualifiedName": "enum",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": {
+          "values": ["Gold", "Silver", "Bronze"],
+          "multiSelect": false
+        }
+      }
+    },
+    {
+      "name": "visual_hyperlink_cp",
+      "displayName": "hyperlink cp property",
+      "description": "Finance metadata stored as hyperlink-cp.",
+      "propertyType": {
+        "id": "e6fbc192-5e58-568c-90f8-5ec4fa935d22",
+        "name": "hyperlink-cp",
+        "fullyQualifiedName": "hyperlink-cp",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_entityReference",
+      "displayName": "entityReference property",
+      "description": "Finance metadata stored as entityReference.",
+      "propertyType": {
+        "id": "31b81895-3f33-55e7-9e5c-5e64efff3361",
+        "name": "entityReference",
+        "fullyQualifiedName": "entityReference",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": ["table", "dashboard", "pipeline", "topic"]
+      }
+    },
+    {
+      "name": "visual_entityReferenceList",
+      "displayName": "entityReferenceList property",
+      "description": "Finance metadata stored as entityReferenceList.",
+      "propertyType": {
+        "id": "d78b890e-fd39-55af-9b63-fcf3af9f126d",
+        "name": "entityReferenceList",
+        "fullyQualifiedName": "entityReferenceList",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": ["table", "dashboard", "pipeline", "topic"]
+      }
+    },
+    {
+      "name": "visual_timeInterval",
+      "displayName": "timeInterval property",
+      "description": "Finance metadata stored as timeInterval.",
+      "propertyType": {
+        "id": "16f927cf-b593-56a4-8bf9-bb6bc22ab669",
+        "name": "timeInterval",
+        "fullyQualifiedName": "timeInterval",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_table_cp",
+      "displayName": "table cp property",
+      "description": "Finance metadata stored as table-cp.",
+      "propertyType": {
+        "id": "8399c2db-b493-54a6-9b69-18c3b4d9bc76",
+        "name": "table-cp",
+        "fullyQualifiedName": "table-cp",
+        "type": "type"
+      },
+      "customPropertyConfig": {
+        "config": {
+          "columns": ["Source", "Purpose"]
+        }
+      }
+    },
+    {
+      "name": "visual_sqlQuery",
+      "displayName": "sqlQuery property",
+      "description": "Finance metadata stored as sqlQuery.",
+      "propertyType": {
+        "id": "bec748d5-e506-5b30-9a65-1fb227814aac",
+        "name": "sqlQuery",
+        "fullyQualifiedName": "sqlQuery",
+        "type": "type"
+      }
+    },
+    {
+      "name": "visual_markdown",
+      "displayName": "markdown property",
+      "description": "Finance metadata stored as markdown.",
+      "propertyType": {
+        "id": "727ab730-e6d6-5c6c-b8ef-7548813db296",
+        "name": "markdown",
+        "fullyQualifiedName": "markdown",
+        "type": "type"
+      }
+    }
+  ],
+  "extension": {
+    "visual_string": "Certified finance reporting",
+    "visual_integer": 42,
+    "visual_number": 93.5,
+    "visual_email": "finance@example.com",
+    "visual_timestamp": 1768471200000,
+    "visual_duration": "P7D",
+    "visual_date_cp": "2026-01-15",
+    "visual_dateTime_cp": "2026-01-15 10:30:00",
+    "visual_time_cp": "10:30:00",
+    "visual_enum": ["Gold", "Silver"],
+    "visual_enum_single": ["Gold"],
+    "visual_hyperlink_cp": {
+      "url": "https://example.com/finance/runbook",
+      "displayText": "Finance runbook"
+    },
+    "visual_entityReference": {
+      "id": "3f4619c5-1428-5f44-aedb-51a71f08293d",
+      "name": "orders",
+      "displayName": "Orders",
+      "fullyQualifiedName": "visual_warehouse.finance.public.orders",
+      "type": "table"
+    },
+    "visual_entityReferenceList": [
+      {
+        "id": "3f4619c5-1428-5f44-aedb-51a71f08293d",
+        "name": "orders",
+        "displayName": "Orders",
+        "fullyQualifiedName": "visual_warehouse.finance.public.orders",
+        "type": "table"
+      },
+      {
+        "displayName": "Sales dashboard",
+        "id": "0b200084-5cc1-5440-8248-abe442c830c0",
+        "name": "sales",
+        "fullyQualifiedName": "visual_looker.sales",
+        "type": "dashboard"
+      }
+    ],
+    "visual_timeInterval": {
+      "start": 1768027363000,
+      "end": 1768927057000
+    },
+    "visual_table_cp": {
+      "columns": ["Source", "Purpose"],
+      "rows": [
+        {
+          "Source": "Orders",
+          "Purpose": "Revenue reconciliation"
+        },
+        {
+          "Source": "Customers",
+          "Purpose": "Segmentation"
+        }
+      ]
+    },
+    "visual_sqlQuery": "SELECT order_id, revenue\nFROM finance.public.orders\nWHERE revenue > 0;",
+    "visual_markdown": "## Revenue policy\n\n**Approved** for certified reporting.\n\n- Refresh daily\n- Contact the finance steward"
+  },
+  "fieldTypes": [
+    {
+      "id": "d7788752-c2a3-534e-a5a7-639088c86a09",
+      "name": "string",
+      "fullyQualifiedName": "string",
+      "type": "type",
+      "displayName": "string",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    },
+    {
+      "id": "1fa419f4-39f6-537e-84a8-d2469dec50f8",
+      "name": "integer",
+      "fullyQualifiedName": "integer",
+      "type": "type",
+      "displayName": "integer",
+      "category": "field",
+      "schema": "{\"type\":\"integer\"}"
+    },
+    {
+      "id": "6a22cb8b-cdd8-55e6-a954-22fefb5ff3cd",
+      "name": "number",
+      "fullyQualifiedName": "number",
+      "type": "type",
+      "displayName": "number",
+      "category": "field",
+      "schema": "{\"type\":\"number\"}"
+    },
+    {
+      "id": "d0636078-ed30-5fd1-a2a7-2d6ba00d7af8",
+      "name": "email",
+      "fullyQualifiedName": "email",
+      "type": "type",
+      "displayName": "email",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    },
+    {
+      "id": "a5b853b4-eeea-52ca-ba03-50d6d3e06e42",
+      "name": "timestamp",
+      "fullyQualifiedName": "timestamp",
+      "type": "type",
+      "displayName": "timestamp",
+      "category": "field",
+      "schema": "{\"type\":\"integer\"}"
+    },
+    {
+      "id": "2f78acf8-68ce-561a-a47a-2323471f5211",
+      "name": "duration",
+      "fullyQualifiedName": "duration",
+      "type": "type",
+      "displayName": "duration",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    },
+    {
+      "id": "f277d2fa-c8cc-50ae-8c2d-5cdf01174d29",
+      "name": "date-cp",
+      "fullyQualifiedName": "date-cp",
+      "type": "type",
+      "displayName": "date-cp",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    },
+    {
+      "id": "7264c4b1-cb06-5406-bf43-a664b5be6003",
+      "name": "dateTime-cp",
+      "fullyQualifiedName": "dateTime-cp",
+      "type": "type",
+      "displayName": "dateTime-cp",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    },
+    {
+      "id": "4c33d63d-4f1d-55f0-ac77-ed1082efd8b3",
+      "name": "time-cp",
+      "fullyQualifiedName": "time-cp",
+      "type": "type",
+      "displayName": "time-cp",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    },
+    {
+      "id": "d9519835-340b-56b7-a421-32021dae89e2",
+      "name": "enum",
+      "fullyQualifiedName": "enum",
+      "type": "type",
+      "displayName": "enum",
+      "category": "field",
+      "schema": "{\"type\":\"array\",\"items\":{\"type\":\"string\"}}"
+    },
+    {
+      "id": "e6fbc192-5e58-568c-90f8-5ec4fa935d22",
+      "name": "hyperlink-cp",
+      "fullyQualifiedName": "hyperlink-cp",
+      "type": "type",
+      "displayName": "hyperlink-cp",
+      "category": "field",
+      "schema": "{\"type\":\"object\"}"
+    },
+    {
+      "id": "31b81895-3f33-55e7-9e5c-5e64efff3361",
+      "name": "entityReference",
+      "fullyQualifiedName": "entityReference",
+      "type": "type",
+      "displayName": "entityReference",
+      "category": "field",
+      "schema": "{\"type\":\"object\"}"
+    },
+    {
+      "id": "d78b890e-fd39-55af-9b63-fcf3af9f126d",
+      "name": "entityReferenceList",
+      "fullyQualifiedName": "entityReferenceList",
+      "type": "type",
+      "displayName": "entityReferenceList",
+      "category": "field",
+      "schema": "{\"type\":\"array\",\"items\":{\"type\":\"object\"}}"
+    },
+    {
+      "id": "16f927cf-b593-56a4-8bf9-bb6bc22ab669",
+      "name": "timeInterval",
+      "fullyQualifiedName": "timeInterval",
+      "type": "type",
+      "displayName": "timeInterval",
+      "category": "field",
+      "schema": "{\"type\":\"object\"}"
+    },
+    {
+      "id": "8399c2db-b493-54a6-9b69-18c3b4d9bc76",
+      "name": "table-cp",
+      "fullyQualifiedName": "table-cp",
+      "type": "type",
+      "displayName": "table-cp",
+      "category": "field",
+      "schema": "{\"type\":\"object\"}"
+    },
+    {
+      "id": "bec748d5-e506-5b30-9a65-1fb227814aac",
+      "name": "sqlQuery",
+      "fullyQualifiedName": "sqlQuery",
+      "type": "type",
+      "displayName": "sqlQuery",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    },
+    {
+      "id": "727ab730-e6d6-5c6c-b8ef-7548813db296",
+      "name": "markdown",
+      "fullyQualifiedName": "markdown",
+      "type": "type",
+      "displayName": "markdown",
+      "category": "field",
+      "schema": "{\"type\":\"string\"}"
+    }
+  ]
+}

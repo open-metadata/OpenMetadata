@@ -18,7 +18,14 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import userEvent from '@testing-library/user-event';
+import {
+  MemoryRouter,
+  Route,
+  Routes,
+  useLocation,
+  useNavigate,
+} from 'react-router-dom';
 import DataQualityClassBase from './DataQualityClassBase';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
@@ -52,9 +59,46 @@ const dataQualityPageAt = (initialPath: string) => (
 const renderDataQualityPage = (initialPath: string) =>
   render(dataQualityPageAt(initialPath));
 
+// Renders the live URL so tab switches can be asserted on the real router's
+// location instead of on navigate-call wiring.
+const LocationProbe = () => {
+  const location = useLocation();
+
+  return (
+    <span data-testid="location-probe">
+      {location.pathname}
+      {location.search}
+    </span>
+  );
+};
+
+// Drives the URL the same ways real users do: a filter change pushes a new
+// search onto the history, and browser back jumps across entries, both
+// bypassing the page's own tab handler.
+const UrlMutator = () => {
+  const navigate = useNavigate();
+
+  return (
+    <>
+      <button
+        aria-label="Mutate search"
+        data-testid="mutate-search"
+        onClick={() => navigate({ search: '?testSuiteFqn=suite1' })}
+      />
+      <button
+        aria-label="Go back"
+        data-testid="go-back"
+        onClick={() => navigate(-2)}
+      />
+    </>
+  );
+};
+
 // Mock navigation function
 const mockNavigate = jest.fn();
 const mockShowModal = jest.fn();
+// Tab-preservation tests drive the real router; the rest assert on mockNavigate.
+let mockUseRealNavigate = false;
 const HOOK_ERROR =
   /Do not call Hooks|change in the order of Hooks|Rendered (more|fewer) hooks/;
 
@@ -140,7 +184,13 @@ jest.mock('../../hoc/withPageLayout', () => ({
 
 jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
+  useNavigate: jest
+    .fn()
+    .mockImplementation((...args) =>
+      mockUseRealNavigate
+        ? jest.requireActual('react-router-dom').useNavigate(...args)
+        : mockNavigate
+    ),
 }));
 
 jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
@@ -181,10 +231,10 @@ jest.mock('../../components/PageHeader/PageHeader.component', () => ({
   __esModule: true,
   default: jest.fn().mockImplementation(({ data }) => (
     <div className="page-header-container" data-testid="page-header-container">
-      <h5 className="ant-typography heading" data-testid="heading">
+      <h5 className="heading" data-testid="heading">
         {data?.header}
       </h5>
-      <div className="ant-typography sub-heading" data-testid="sub-heading">
+      <div className="sub-heading" data-testid="sub-heading">
         {data?.subHeader}
       </div>
     </div>
@@ -228,6 +278,7 @@ jest.mock(
 describe('DataQualityPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseRealNavigate = false;
   });
 
   describe('Component Rendering', () => {
@@ -398,6 +449,110 @@ describe('DataQualityPage', () => {
         await screen.findByTestId('data-quality-add-button-menu')
       ).toBeInTheDocument();
       expect(screen.getByText('label.add')).toBeInTheDocument();
+    });
+
+    it('should restore each tab query string when switching between tabs', async () => {
+      mockUseRealNavigate = true;
+      const initialSearch =
+        '?testCaseStatus%5B%5D=Failed&lastRunRange%5BstartTs%5D=100&lastRunRange%5BendTs%5D=200';
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const dataQualityTabs = (activeTab: string) => (
+        <MemoryRouter initialEntries={[activeTab]}>
+          <LocationProbe />
+          <Routes>
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab/:subTab"
+            />
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab"
+            />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      render(
+        dataQualityTabs(`${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`)
+      );
+
+      await screen.findByTestId('tabs');
+
+      // Leaving Test Cases must not carry its filters into the next tab. The
+      // full-URL equality catches a leaked query string, which a substring
+      // match on the path alone would let through.
+      await user.click(screen.getByRole('tab', { name: 'Test Suites' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        DATA_QUALITY_TEST_PATHS.testSuites
+      );
+
+      // Coming back must re-send the filters the user had selected.
+      await user.click(screen.getByRole('tab', { name: 'Test Cases' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`
+      );
+    });
+
+    it('should restore a tab latest URL even when the user left it via history back', async () => {
+      mockUseRealNavigate = true;
+      const initialSearch = '?testCaseStatus%5B%5D=Failed';
+      const user = userEvent.setup({
+        advanceTimers: jest.advanceTimersByTime,
+      });
+      const dataQualityTabs = (initialPath: string) => (
+        <MemoryRouter initialEntries={[initialPath]}>
+          <LocationProbe />
+          <UrlMutator />
+          <Routes>
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab/:subTab"
+            />
+            <Route
+              element={<DataQualityPage {...mockProps} />}
+              path="/data-quality/:tab"
+            />
+          </Routes>
+        </MemoryRouter>
+      );
+
+      render(
+        dataQualityTabs(`${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`)
+      );
+
+      await screen.findByTestId('tabs');
+
+      // Switching to Test Suites records its (empty) search.
+      await user.click(screen.getByRole('tab', { name: 'Test Suites' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        DATA_QUALITY_TEST_PATHS.testSuites
+      );
+
+      // A filter change on Test Suites rewrites its URL…
+      await user.click(screen.getByTestId('mutate-search'));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testSuites}?testSuiteFqn=suite1`
+      );
+
+      // …and leaving Test Suites via history back (not a tab click) must not
+      // lose that search — returning to the tab must restore the latest URL.
+      await user.click(screen.getByTestId('go-back'));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testCases}${initialSearch}`
+      );
+
+      await user.click(screen.getByRole('tab', { name: 'Test Suites' }));
+
+      expect((await screen.findByTestId('location-probe')).textContent).toBe(
+        `${DATA_QUALITY_TEST_PATHS.testSuites}?testSuiteFqn=suite1`
+      );
     });
 
     it('should read the export modal hook outside the export button memo and hand its showModal to the builder', async () => {

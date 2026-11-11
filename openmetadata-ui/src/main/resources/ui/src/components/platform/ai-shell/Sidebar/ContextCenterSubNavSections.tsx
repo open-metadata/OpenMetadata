@@ -56,7 +56,7 @@ type PageEntry = {
   displayName?: string;
   name?: string;
   pageType?: PageType;
-  page?: { url?: string };
+  page?: KnowledgePage['page'];
 };
 
 const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
@@ -162,7 +162,13 @@ const ContextCenterSubNavSections: FC<ContextCenterSubNavSectionsProps> = ({
       const Icon = isQuickLink ? Link03 : File06;
 
       const handleClick = () => {
-        const safeUrl = getSafeHttpUrl(page.page?.url);
+        const url =
+          page.page && typeof page.page === 'object' && 'url' in page.page
+            ? page.page.url
+            : undefined;
+        const safeUrl = getSafeHttpUrl(
+          typeof url === 'string' ? url : undefined
+        );
         if (isQuickLink && safeUrl) {
           window.open(safeUrl, '_blank', 'noopener,noreferrer');
         } else {

@@ -40,7 +40,6 @@ const ThemeController = ({ children }: { children: ReactNode }) => {
 const TestThemeProvider = ({ children }: { children: ReactNode }) => (
   <ThemeProvider
     brandColors={activeBrandColors}
-    defaultTheme="light"
     storageKey={TEST_THEME_STORAGE_KEY}>
     <ThemeController>{children}</ThemeController>
   </ThemeProvider>

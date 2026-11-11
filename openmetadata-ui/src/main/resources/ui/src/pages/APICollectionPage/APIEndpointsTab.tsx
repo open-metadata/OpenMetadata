@@ -197,7 +197,7 @@ function APIEndpointsTab({
           );
         },
       },
-      ...descriptionTableObject(),
+      ...descriptionTableObject<APIEndpoint>(),
     ],
     [searchValue, t]
   );

@@ -110,7 +110,7 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
       handler.onStart(makeSuggestionProps(() => null) as SuggestionProps);
 
       const [, options] = mockTippy.mock.calls[0];
-      const result = options.getReferenceClientRect?.();
+      const result = options?.getReferenceClientRect?.();
 
       expect(result).toBeInstanceOf(DOMRect);
     });
@@ -122,7 +122,7 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
       handler.onStart(makeSuggestionProps(() => rect) as SuggestionProps);
 
       const [, options] = mockTippy.mock.calls[0];
-      const result = options.getReferenceClientRect?.();
+      const result = options?.getReferenceClientRect?.();
 
       expect(result).toBe(rect);
     });
@@ -134,7 +134,8 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
 
       const [, options] = mockTippy.mock.calls[0];
 
-      expect(() => options.getReferenceClientRect?.()).not.toThrow();
+      expect(options?.getReferenceClientRect).toEqual(expect.any(Function));
+      expect(() => options?.getReferenceClientRect?.()).not.toThrow();
     });
   });
 
@@ -158,8 +159,7 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
 
       handler.onUpdate(makeSuggestionProps(() => null) as SuggestionProps);
 
-      const { getReferenceClientRect } =
-        mockTippyInstance.setProps.mock.calls[0][0];
+      const { getReferenceClientRect } = mockSetProps.mock.calls[0][0];
       const result = getReferenceClientRect();
 
       expect(result).toBeInstanceOf(DOMRect);
@@ -174,8 +174,7 @@ describe('hashtagSuggestion getReferenceClientRect null safety', () => {
 
       handler.onUpdate(makeSuggestionProps(() => rect) as SuggestionProps);
 
-      const { getReferenceClientRect } =
-        mockTippyInstance.setProps.mock.calls[0][0];
+      const { getReferenceClientRect } = mockSetProps.mock.calls[0][0];
 
       expect(getReferenceClientRect()).toBe(rect);
     });

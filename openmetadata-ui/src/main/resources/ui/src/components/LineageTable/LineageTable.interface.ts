@@ -22,6 +22,8 @@ export enum EImpactLevel {
   ColumnLevel = 'column',
 }
 
+export type LineageTableRow = LineageNode | ColumnLevelLineageNode;
+
 export interface LineageTableState {
   filterNodes: LineageNode[];
   loading: boolean;

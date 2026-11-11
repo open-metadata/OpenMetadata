@@ -1,5 +1,7 @@
 package org.openmetadata.service.resources.query;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,10 +21,17 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.data.CreateQueryCostRecord;
 import org.openmetadata.schema.entity.data.QueryCostRecord;
 import org.openmetadata.schema.entity.data.QueryCostSearchResult;
+import org.openmetadata.schema.entity.data.QueryGroup;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ListFilter;
@@ -30,6 +39,7 @@ import org.openmetadata.service.jdbi3.QueryCostRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityTimeSeriesResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -47,9 +57,11 @@ public class QueryCostResource
   public static final String COLLECTION_PATH = "/v1/queryCostRecord";
 
   private final QueryCostRecordMapper mapper = new QueryCostRecordMapper();
+  private final ViewPermissionFilter viewPermissionFilter;
 
   public QueryCostResource(Authorizer authorizer) {
     super(Entity.QUERY_COST_RECORD, authorizer);
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
   }
 
   @GET
@@ -138,6 +150,50 @@ public class QueryCostResource
     ListFilter filter = new ListFilter(null);
     ResourceContext resourceContext = filter.getResourceContext(Entity.QUERY);
     authorizer.authorize(securityContext, operationContext, resourceContext);
-    return repository.getQueryCostAggData(serviceName);
+    return dropUnviewableGroups(securityContext, repository.getQueryCostAggData(serviceName));
+  }
+
+  /**
+   * Each group carries the SQL of a query, so a caller sees a group only if they may view its
+   * query — the generic VIEW_QUERIES check above does not scope to a domain or a deny rule.
+   */
+  private QueryCostSearchResult dropUnviewableGroups(
+      SecurityContext securityContext, QueryCostSearchResult result) {
+    List<QueryGroup> groups = listOrEmpty(result.getQueryGroups());
+    if (groups.isEmpty()) {
+      return result;
+    }
+    Map<QueryGroup, UUID> queryIds = new LinkedHashMap<>();
+    for (QueryGroup group : groups) {
+      UUID queryId = queryIdOf(group);
+      if (queryId != null) {
+        queryIds.put(group, queryId);
+      }
+    }
+    Set<UUID> viewable =
+        viewPermissionFilter.viewableIds(
+            securityContext,
+            queryIds.values().stream()
+                .distinct()
+                .map(id -> new EntityReference().withId(id).withType(Entity.QUERY))
+                .collect(Collectors.toList()));
+    // A group whose query id could not be read is dropped: better to omit a group than leak its
+    // SQL.
+    return result.withQueryGroups(
+        groups.stream()
+            .filter(group -> viewable.contains(queryIds.get(group)))
+            .collect(Collectors.toList()));
+  }
+
+  private static UUID queryIdOf(QueryGroup group) {
+    if (group.getQueryDetails() == null || group.getQueryDetails().getQuery() == null) {
+      return null;
+    }
+    Object id = group.getQueryDetails().getQuery().getAdditionalProperties().get("id");
+    try {
+      return id == null ? null : UUID.fromString(id.toString());
+    } catch (IllegalArgumentException e) {
+      return null;
+    }
   }
 }

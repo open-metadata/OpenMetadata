@@ -54,6 +54,7 @@ import org.openmetadata.service.config.StartupConfiguration;
 import org.openmetadata.service.jdbi3.HikariCPDataSourceFactory;
 import org.openmetadata.service.migration.MigrationConfiguration;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
+import org.openmetadata.service.security.credentials.CredentialVerificationConfig;
 import org.openmetadata.service.swagger.SwaggerBundleConfiguration;
 
 @Getter
@@ -217,6 +218,18 @@ public class OpenMetadataApplicationConfig extends Configuration {
       cacheConfig = new org.openmetadata.service.cache.CacheConfig();
     }
     return cacheConfig;
+  }
+
+  @JsonProperty("credentialVerification")
+  @Valid
+  private CredentialVerificationConfig credentialVerification =
+      CredentialVerificationConfig.defaults();
+
+  public CredentialVerificationConfig getCredentialVerification() {
+    if (credentialVerification == null) {
+      credentialVerification = CredentialVerificationConfig.defaults();
+    }
+    return credentialVerification;
   }
 
   @JsonProperty("bulkOperation")

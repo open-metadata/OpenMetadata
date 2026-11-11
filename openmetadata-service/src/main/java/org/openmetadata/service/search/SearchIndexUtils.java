@@ -23,6 +23,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -36,6 +37,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.ColumnsEntityInterface;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.Datum;
 import org.openmetadata.schema.tests.type.DataQualityReportMetadata;
@@ -1301,6 +1303,39 @@ public final class SearchIndexUtils {
       if (childrenObj instanceof List) {
         List<Map<String, Object>> children = (List<Map<String, Object>>) childrenObj;
         transformColumnExtensionsRecursive(children, columnEntityType);
+      }
+    }
+  }
+
+  /**
+   * The tag FQNs search access control matches a tag condition on a table or its columns against:
+   * every tag the table's own endpoints decide on.
+   */
+  public static List<String> policyTagFqns(Table table) {
+    // The tags TableRepository.allTags merges, collected by FQN alone: merging the labels
+    // themselves
+    // scans the merged list once per tag, which on a wide table is the cost of every column.
+    Set<String> fqns = new LinkedHashSet<>();
+    addTagFqns(fqns, table.getTags());
+    addColumnTagFqns(fqns, table.getColumns());
+    if (table.getDataModel() != null) {
+      addTagFqns(fqns, table.getDataModel().getTags());
+      addColumnTagFqns(fqns, table.getDataModel().getColumns());
+    }
+    return List.copyOf(fqns);
+  }
+
+  private static void addColumnTagFqns(Set<String> fqns, List<Column> columns) {
+    for (Column column : listOrEmpty(columns)) {
+      addTagFqns(fqns, column.getTags());
+      addColumnTagFqns(fqns, column.getChildren());
+    }
+  }
+
+  private static void addTagFqns(Set<String> fqns, List<TagLabel> tags) {
+    for (TagLabel tag : listOrEmpty(tags)) {
+      if (tag.getTagFQN() != null) {
+        fqns.add(tag.getTagFQN());
       }
     }
   }

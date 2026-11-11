@@ -64,10 +64,13 @@ const shardGrep = shardPlan?.grep ? new RegExp(shardPlan.grep) : undefined;
 // ChangeRequestReviewLifecycle.spec.ts deploys an Enforce-mode glossary workflow, which makes
 // glossary a gated entity type server-wide while it runs, so it shares the single-worker
 // GlobalSettings lane instead of racing the glossary specs on chromium.
+// LineageSettings.spec.ts saves the global default lineage layer and depth, which every lineage
+// spec reads when its page boots; a co-scheduled LineageInteraction test opened on Column.
 const dedicatedStateTestIgnore = hasDedicatedIngestionLane
   ? [
       '**/SearchSettings.spec.ts',
       '**/ChangeRequestReviewLifecycle.spec.ts',
+      '**/LineageSettings.spec.ts',
       '**/SearchSeparation/**',
       '**/*AfterReindex.spec.ts',
       '**/SearchIndexApplication.spec.ts',
@@ -345,10 +348,13 @@ export default defineConfig({
     {
       name: 'visual-regression',
       testMatch: '**/VisualRegression/**/*.spec.ts',
+      grep: shardGrep,
       dependencies: ['setup', 'entity-data-setup'],
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 900 },
+        locale: 'en-US',
+        timezoneId: 'UTC',
         storageState: 'playwright/.auth/admin.json',
         // Snapshots are captured under the default motion path.
         reducedMotion: 'no-preference',
@@ -556,6 +562,7 @@ export default defineConfig({
             testMatch: [
               '**/SearchSettings.spec.ts',
               '**/ChangeRequestReviewLifecycle.spec.ts',
+              '**/LineageSettings.spec.ts',
             ],
             grep: shardGrep,
             use: { ...devices['Desktop Chrome'] },

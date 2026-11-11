@@ -286,7 +286,7 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     name: tableName,
   } = table.entityResponseData;
 
-  if (!service || !database || !databaseSchema) {
+  if (!service?.name || !database?.name || !databaseSchema?.name) {
     throw new Error(
       `Table metadata (service, database, or databaseSchema) is missing for ${table.entity.name}`
     );

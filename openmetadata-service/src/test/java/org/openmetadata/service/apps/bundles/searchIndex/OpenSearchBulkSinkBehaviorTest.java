@@ -11,6 +11,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -72,6 +73,9 @@ class OpenSearchBulkSinkBehaviorTest {
     indexMapping = mock(IndexMapping.class);
 
     when(searchRepository.getSearchClient()).thenReturn(searchClient);
+    lenient()
+        .when(searchClient.getBulkConnectionBudget())
+        .thenReturn(BulkConnectionBudget.forPoolCapacity(1_000));
     when(searchRepository.getIndexMapping(ENTITY_TYPE)).thenReturn(indexMapping);
     when(searchRepository.getClusterAlias()).thenReturn("cluster");
     when(indexMapping.getIndexName("cluster")).thenReturn("table_index");

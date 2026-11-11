@@ -13,15 +13,15 @@
 import { Badge, Box, Grid, Typography } from '@openmetadata/ui-core-components';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 
+import { CheckCircle02, XCircle } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FailedIcon } from '../../../assets/svg/fail-badge.svg';
-import { ReactComponent as CompletedIcon } from '../../../assets/svg/ic-check-circle-colored.svg';
-import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
+import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { EntityType } from '../../../enums/entity.enum';
 import { Column } from '../../../generated/entity/data/table';
 import { SchemaValidation } from '../../../generated/entity/datacontract/dataContractResult';
+import { usePageSizeState } from '../../../hooks/paging/usePageSizeState';
 import { getContractStatusType } from '../../../utils/DataContract/DataContractUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import StatusBadgeV2 from '../../common/StatusBadge/StatusBadgeV2.component';
@@ -40,14 +40,14 @@ const ContractSchemaTable: React.FC<{
 }> = ({ schemaDetail, contractStatus, latestSchemaValidationResult }) => {
   const { t } = useTranslation();
   const { entityType } = useRequiredParams<{ entityType: EntityType }>();
+  const [pageSize] = usePageSizeState();
 
   const tablePaginationProps: TablePaginationConfig = useMemo(
     () => ({
       size: 'default',
-      hideOnSinglePage: true,
-      pageSize: LIST_SIZE,
+      pageSize,
     }),
-    []
+    [pageSize]
   );
 
   const schemaColumns: ColumnsType<Column> = useMemo(
@@ -116,15 +116,19 @@ const ContractSchemaTable: React.FC<{
                   latestSchemaValidationResult?.failedFields?.includes(name);
                 const iconClass = isColumnFailed ? 'failed' : 'success';
 
-                const StatusIcon = isColumnFailed ? FailedIcon : CompletedIcon;
+                const StatusIcon = isColumnFailed ? XCircle : CheckCircle02;
 
                 return (
                   <StatusIcon
-                    className={classNames('column-status-icon', iconClass)}
+                    className={classNames(
+                      'column-status-icon',
+                      iconClass,
+                      isColumnFailed
+                        ? 'tw:text-utility-error-600'
+                        : 'tw:text-utility-success-700'
+                    )}
                     data-testid={`schema-column-${name}-${iconClass}`}
-                    fill="currentColor"
-                    height="1em"
-                    width="1em"
+                    size={16}
                   />
                 );
               },

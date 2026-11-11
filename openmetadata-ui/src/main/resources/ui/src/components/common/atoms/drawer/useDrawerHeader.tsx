@@ -11,12 +11,21 @@
  *  limitations under the License.
  */
 
-import { SlideoutMenu, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  FeaturedIcon,
+  SlideoutMenu,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
-import { ReactNode, useMemo } from 'react';
+import { FC, ReactNode, useMemo } from 'react';
 
 export interface DrawerHeaderConfig {
   title?: string | ReactNode;
+  /** Secondary line under the title. */
+  subtitle?: ReactNode;
+  /** Glyph shown in a featured icon before the title. */
+  icon?: FC<{ className?: string }>;
   showCloseButton?: boolean;
   onClose?: () => void;
   actions?: ReactNode;
@@ -24,10 +33,31 @@ export interface DrawerHeaderConfig {
 }
 
 export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
-  const { title, showCloseButton = true, onClose, actions, className } = config;
+  const {
+    title,
+    subtitle,
+    icon,
+    showCloseButton = true,
+    onClose,
+    actions,
+    className,
+  } = config;
 
-  const drawerHeader = useMemo(
-    () => (
+  const drawerHeader = useMemo(() => {
+    const titleNode =
+      typeof title === 'string' ? (
+        <Typography
+          as="h4"
+          data-testid="form-heading"
+          size="text-md"
+          weight="medium">
+          {title}
+        </Typography>
+      ) : (
+        title
+      );
+
+    return (
       // Flex row keeps actions beside the title; the top margin (not padding)
       // centres the close button on it. A caller's className overrides these.
       <SlideoutMenu.Header
@@ -36,26 +66,39 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
           className
         )}
         onClose={showCloseButton ? onClose : undefined}>
-        <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">
-          {typeof title === 'string' ? (
-            <Typography
-              as="h4"
-              data-testid="form-heading"
-              size="text-md"
-              weight="medium">
-              {title}
-            </Typography>
+        <div
+          className={
+            icon
+              ? 'tw:flex tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3'
+              : 'tw:flex tw:items-center tw:gap-2 tw:flex-1'
+          }>
+          {icon && (
+            <FeaturedIcon
+              color="gray"
+              icon={icon}
+              radius="md"
+              shape="square"
+              size="md"
+              theme="light"
+            />
+          )}
+          {subtitle ? (
+            <Box className="tw:min-w-0" direction="col">
+              {titleNode}
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {subtitle}
+              </Typography>
+            </Box>
           ) : (
-            title
+            titleNode
           )}
         </div>
         {actions && (
           <div className="tw:flex tw:items-center tw:gap-1">{actions}</div>
         )}
       </SlideoutMenu.Header>
-    ),
-    [title, showCloseButton, onClose, actions, className]
-  );
+    );
+  }, [title, subtitle, icon, showCloseButton, onClose, actions, className]);
 
   return {
     drawerHeader,

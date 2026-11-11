@@ -13,16 +13,19 @@
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
 import { ReactNode } from 'react';
 import { Ontology } from '../../../generated/entity/data/ontology';
 import {
   OntologyConcept,
   OntologyConceptType,
 } from '../../../generated/entity/data/ontologyConcept';
+import { OntologyDefinitionStatus } from '../../../generated/type/ontologyDefinitionStatus';
 import {
   listOntologyAxioms,
   listOntologyConcepts,
   listOntologyProperties,
+  listOntologyReleaseMembers,
 } from '../../../rest/ontologyAPI';
 import {
   useAllOntologyStudioModels,
@@ -109,6 +112,58 @@ describe('useOntologyStudioModel', () => {
     );
   });
 
+  it('retains server lifecycle status in the owner model', async () => {
+    mockListOntologyConcepts.mockImplementation(async (params) => ({
+      data: [
+        {
+          ...concept('Order'),
+          ...(params?.fields?.includes('lifecycleStatus') && {
+            lifecycleStatus: OntologyDefinitionStatus.Draft,
+          }),
+        },
+      ],
+      paging: { total: 1 },
+    }));
+
+    const { result } = renderHook(() => useOntologyStudioModel(ontology), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.model).toBeDefined());
+
+    expect(result.current.model?.concepts[0].lifecycleStatus).toBe(
+      OntologyDefinitionStatus.Draft
+    );
+  });
+
+  it('loads an ontology larger than ten pages of a kind', async () => {
+    const pages = 35;
+    mockListOntologyConcepts.mockImplementation(async (params) => {
+      const pageNumber = Number(params?.after ?? 0);
+
+      return {
+        data: Array.from({ length: 1000 }, (_, index) =>
+          concept(`C${pageNumber * 1000 + index}`)
+        ),
+        paging:
+          pageNumber + 1 < pages
+            ? { after: String(pageNumber + 1), total: pages * 1000 }
+            : { total: pages * 1000 },
+      };
+    });
+
+    const { result } = renderHook(() => useOntologyStudioModel(ontology), {
+      wrapper,
+    });
+
+    await waitFor(() => expect(result.current.model).toBeDefined(), {
+      timeout: 10_000,
+    });
+
+    expect(result.current.model?.concepts).toHaveLength(pages * 1000);
+    expect(mockListOntologyConcepts).toHaveBeenCalledTimes(pages);
+  });
+
   it('fails visibly when a cursor repeats instead of returning a truncated model', async () => {
     const page = Array.from({ length: 5_000 }, () => concept('Repeated'));
     mockListOntologyConcepts.mockResolvedValue({
@@ -165,6 +220,30 @@ describe('all native ontology models', () => {
       ontology.id,
       second.id,
     ]);
+  });
+
+  it('retains server lifecycle status in the aggregate models', async () => {
+    mockListOntologyConcepts.mockImplementation(async (params) => ({
+      data: [
+        {
+          ...concept('Order'),
+          ...(params?.fields?.includes('lifecycleStatus') && {
+            lifecycleStatus: OntologyDefinitionStatus.Draft,
+          }),
+        },
+      ],
+      paging: { total: 1 },
+    }));
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([ontology], true),
+      { wrapper }
+    );
+
+    await waitFor(() => expect(result.current.models).toBeDefined());
+
+    expect(result.current.models?.[0].concepts[0].lifecycleStatus).toBe(
+      OntologyDefinitionStatus.Draft
+    );
   });
 
   it('fails instead of issuing an unscoped definition request for a missing name', async () => {
@@ -231,6 +310,63 @@ describe('all native ontology models', () => {
     expect(result.current.graph).toBeNull();
   });
 
+  describe('without edit rights on the ontology', () => {
+    const forbidden = () =>
+      new AxiosError('Forbidden', '403', undefined, undefined, {
+        status: 403,
+      } as AxiosResponse);
+    const published: Ontology = {
+      ...ontology,
+      publicationStatus: { active: { releaseId: 'release-1' } },
+    } as Ontology;
+
+    it('reads the active release when the working definitions are refused', async () => {
+      mockListOntologyConcepts.mockRejectedValue(forbidden());
+      (
+        listOntologyReleaseMembers as jest.MockedFunction<
+          typeof listOntologyReleaseMembers
+        >
+      ).mockImplementation(async (_id, kind) => ({
+        data:
+          kind === 'CONCEPT'
+            ? [
+                {
+                  memberId: 'concept-Order',
+                  memberKind: kind,
+                  payload: concept('Order'),
+                  payloadBytes: 1,
+                  payloadDigest: 'x',
+                  releaseId: 'release-1',
+                },
+              ]
+            : [],
+        paging: { total: 0 },
+      }));
+
+      const { result } = renderHook(() => useOntologyStudioModel(published), {
+        wrapper,
+      });
+      await waitFor(() => expect(result.current.model).toBeDefined());
+
+      expect(result.current.model?.concepts.map(({ name }) => name)).toEqual([
+        'Order',
+      ]);
+      expect(result.current.isError).toBe(false);
+    });
+
+    it('reads an unpublished ontology as empty instead of failing', async () => {
+      mockListOntologyConcepts.mockRejectedValue(forbidden());
+
+      const { result } = renderHook(() => useOntologyStudioModel(ontology), {
+        wrapper,
+      });
+      await waitFor(() => expect(result.current.model).toBeDefined());
+
+      expect(result.current.model?.concepts).toEqual([]);
+      expect(result.current.isError).toBe(false);
+    });
+  });
+
   it('never returns a partial graph when one model fails', async () => {
     mockListOntologyAxioms.mockRejectedValue(new Error('Forbidden'));
     const { result } = renderHook(
@@ -240,5 +376,85 @@ describe('all native ontology models', () => {
     await waitFor(() => expect(result.current.isError).toBe(true));
 
     expect(result.current.graph).toBeNull();
+  });
+
+  it.each([
+    ['while counting definitions', 1],
+    ['while loading its model', 2],
+  ])('skips an ontology deleted %s', async (_, failingCall) => {
+    const deleted = {
+      ...ontology,
+      id: 'deleted',
+      name: 'Deleted',
+      fullyQualifiedName: 'Deleted',
+    };
+    const calls = { count: 0 };
+    mockListOntologyConcepts.mockImplementation(async (params) => {
+      if (params?.ontology === deleted.fullyQualifiedName) {
+        calls.count += 1;
+        if (calls.count === failingCall) {
+          throw new AxiosError('Not found', '404', undefined, undefined, {
+            status: 404,
+          } as AxiosResponse);
+        }
+      }
+
+      return {
+        data: [{ ...concept('Order'), id: params?.ontology + '-order' }],
+        paging: { total: 1 },
+      };
+    });
+    const { result } = renderHook(
+      () => useAllOntologyStudioModels([deleted, ontology], true),
+      { wrapper }
+    );
+    await waitFor(() => expect(result.current.graph).not.toBeNull());
+
+    expect(result.current.isError).toBe(false);
+    expect(result.current.models?.map((model) => model.ontology.id)).toEqual([
+      ontology.id,
+    ]);
+  });
+
+  describe('reading a release', () => {
+    it('builds the model from the release members, not the working draft', async () => {
+      const released = { ...concept('Order'), description: 'As released' };
+      (
+        listOntologyReleaseMembers as jest.MockedFunction<
+          typeof listOntologyReleaseMembers
+        >
+      ).mockImplementation(async (_id, kind) => ({
+        data:
+          kind === 'CONCEPT'
+            ? [
+                {
+                  memberId: released.id,
+                  memberKind: kind,
+                  payload: released,
+                  payloadBytes: 1,
+                  payloadDigest: 'x',
+                  releaseId: 'release-1',
+                },
+              ]
+            : [],
+        paging: { total: 0 },
+      }));
+      mockListOntologyConcepts.mockResolvedValue({
+        data: [{ ...concept('Order'), description: 'Working draft' }],
+        paging: { total: 1 },
+      });
+
+      const { result } = renderHook(
+        () => useOntologyStudioModel(ontology, 'release-1'),
+        { wrapper }
+      );
+
+      await waitFor(() => expect(result.current.model).toBeDefined());
+
+      expect(result.current.model?.concepts.map((c) => c.description)).toEqual([
+        'As released',
+      ]);
+      expect(mockListOntologyConcepts).not.toHaveBeenCalled();
+    });
   });
 });

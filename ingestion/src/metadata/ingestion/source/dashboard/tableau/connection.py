@@ -21,7 +21,7 @@ import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
 from tableauserverclient.server.endpoint.exceptions import (
     InternalServerError,
-    ServerResponseError,
+    XMLError,
 )
 
 from metadata.core.connections.test_connection import (
@@ -78,13 +78,14 @@ def _status_of(error: BaseException) -> int | None:
     """Return the HTTP status a Tableau error carries, if any.
 
     Only the two Tableau error types whose ``.code`` is HTTP-ish are trusted -
-    ``ServerResponseError.code`` is a string whose first three digits are the
-    status (e.g. ``401002``), ``InternalServerError.code`` is the status itself -
+    ``XMLError.code`` is a string whose first three digits are the status (e.g.
+    ``401002``), ``InternalServerError.code`` is the status itself -
     plus a raw ``requests`` error's ``.response.status_code``. Reading ``.code``
     off any exception would misclassify an unrelated app code the chain happens
-    to carry.
+    to carry. ``XMLError`` covers both ``ServerResponseError`` and the
+    ``FailedSignInError`` a rejected token, password or site raises at sign-in.
     """
-    if isinstance(error, ServerResponseError) and error.code[:3].isdigit():
+    if isinstance(error, XMLError) and error.code[:3].isdigit():
         status = int(error.code[:3])
     elif isinstance(error, InternalServerError) and isinstance(error.code, int):
         status = error.code

@@ -13,10 +13,16 @@
 
 import { fireEvent, render, screen } from '@testing-library/react';
 import { ExpressionKind } from '../../generated/api/data/createOntologyAxiom';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import OntologyExpressionEditor, {
   defaultExpression,
   getExpressionRenderKey,
 } from './OntologyExpressionEditor';
+
+jest.mock('../../hooks/useAppMode', () => ({
+  ...jest.requireActual('../../hooks/useAppMode'),
+  useIsAiMode: jest.fn().mockReturnValue(false),
+}));
 
 describe('OntologyExpressionEditor', () => {
   it('normalizes named individuals in an OWL enumeration', () => {
@@ -79,5 +85,42 @@ describe('OntologyExpressionEditor', () => {
     });
     expect(getExpressionRenderKey(updatedExpression)).toBe(renderKey);
     expect(JSON.stringify(updatedExpression)).not.toContain(renderKey);
+  });
+
+  it('keeps nested operands, add and remove working in AI mode', () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    const onChange = jest.fn();
+    const onRemove = jest.fn();
+    render(
+      <OntologyExpressionEditor
+        expression={{
+          kind: ExpressionKind.Union,
+          operands: [{ classIri: '', kind: ExpressionKind.NamedClass }],
+        }}
+        onChange={onChange}
+        onRemove={onRemove}
+      />
+    );
+
+    expect(screen.getByTestId('ontology-expression-0')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-expression-1')).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.add label.constraint' })
+    );
+
+    expect(onChange).toHaveBeenCalledWith({
+      kind: ExpressionKind.Union,
+      operands: [
+        { classIri: '', kind: ExpressionKind.NamedClass },
+        { classIri: '', kind: ExpressionKind.NamedClass },
+      ],
+    });
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'label.remove' })[0]);
+
+    expect(onRemove).toHaveBeenCalled();
+
+    (useIsAiMode as jest.Mock).mockReturnValue(false);
   });
 });

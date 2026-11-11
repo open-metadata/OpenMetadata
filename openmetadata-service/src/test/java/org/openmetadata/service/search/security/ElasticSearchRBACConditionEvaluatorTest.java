@@ -248,6 +248,25 @@ class ElasticSearchRBACConditionEvaluatorTest {
   }
 
   @Test
+  void aTagConditionMatchesADocumentsOwnLabelsOrItsPolicyTags() {
+    setupMockPolicies("matchAnyTag('PII.Sensitive') && matchAllTags('Tier.Tier1')", "DENY");
+
+    DocumentContext jsonContext =
+        JsonPath.parse(
+            serializeQueryToJson(
+                ((ElasticQueryBuilder) evaluator.evaluateConditions(mockSubjectContext)).build()));
+
+    for (String path :
+        List.of(
+            "$..bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
+            "$..bool.should[?(@.term['policyTags'].value=='PII.Sensitive')]",
+            "$..bool.should[?(@.term['tier.tagFQN'].value=='Tier.Tier1')]",
+            "$..bool.should[?(@.term['policyTags'].value=='Tier.Tier1')]")) {
+      assertFieldExists(jsonContext, path, path);
+    }
+  }
+
+  @Test
   void testComplexCondition() {
     setupMockPolicies(
         "(matchAnyTag('PII.Sensitive') || matchAllTags('Test.Test1', 'Test.Test2')) && (!isOwner() || noOwner())",
@@ -282,17 +301,17 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[0].bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
+        "$.bool.must[0].bool.should[*].bool.should[?(@.term['tags.tagFQN'].value=='PII.Sensitive')]",
         "PII.Sensitive tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[0].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test1')]",
+        "$.bool.must[0].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Test.Test1')]",
         "Test.Test1 tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[0].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Test.Test2')]",
+        "$.bool.must[0].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Test.Test2')]",
         "Test.Test2 tag");
 
     assertFieldExists(
@@ -309,8 +328,8 @@ class ElasticSearchRBACConditionEvaluatorTest {
     JsonNode rootNode = objectMapper.readTree(generatedQuery);
     AtomicInteger boolQueryCount = new AtomicInteger(0);
     countBoolQueries(rootNode, boolQueryCount);
-    assertEquals(
-        6, boolQueryCount.get(), "There should be no more than 5 'bool' clauses in the query.");
+    // Each of the three tags adds one should over its own labels and policyTags.
+    assertEquals(9, boolQueryCount.get(), "Unexpected number of 'bool' clauses in the query.");
   }
 
   @Test
@@ -477,7 +496,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "tags.tagFQN 'Sensitive'");
 
     assertFieldDoesNotExist(jsonContext, "$.bool[?(@.match_none)]", "match_none");
@@ -663,11 +682,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.must_not[0].bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "Sensitive");
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.must_not[0].bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal");
     assertFieldExists(
         jsonContext,
@@ -823,17 +842,17 @@ class ElasticSearchRBACConditionEvaluatorTest {
     // matchAllTags('Confidential', 'Internal')
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
+        "$.bool.must[1].bool.should[*].bool.should[?(@.term['tags.tagFQN'].value=='Finance')]",
         "Finance tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must[1].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must[1].bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.must[1].bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal tag");
 
     // Ensure no must_not for inAnyTeam('Data') since the user is in 'Engineering'
@@ -874,16 +893,16 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.must_not[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "Sensitive");
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Classified')]",
+        "$.bool.must_not[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Classified')]",
         "Classified");
 
     assertFieldExists(
         jsonContext,
-        "$.bool.must_not[0].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.must_not[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential");
 
     // Ownership (isOwner condition) should be in `should`
@@ -937,7 +956,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "$.bool.must[?(@.terms._index && @.terms._index[?(@ == 'table')])]",
         "Index filtering for 'Table' resource");
     assertFieldExists(
-        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+        jsonContext,
+        "$.bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "Sensitive tag");
   }
 
   @Test
@@ -966,7 +987,9 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "Index filtering for 'Table' resource");
 
     assertFieldExists(
-        jsonContext, "$.bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]", "Sensitive tag");
+        jsonContext,
+        "$.bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "Sensitive tag");
     assertFieldExists(
         jsonContext,
         "$..bool.should[?(@.term['domains.id'].value=='" + domain.getId().toString() + "')]",
@@ -1008,7 +1031,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "match_all for hasAnyRole 'Admin'");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Sensitive')]",
+        "$.bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Sensitive')]",
         "Sensitive tag");
 
     assertFieldExists(
@@ -1021,11 +1044,11 @@ class ElasticSearchRBACConditionEvaluatorTest {
         "match_all for inAnyTeam 'Engineering'");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Confidential')]",
+        "$.bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Confidential')]",
         "Confidential tag");
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Internal')]",
+        "$.bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Internal')]",
         "Internal tag");
   }
 
@@ -1066,7 +1089,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[0].bool.must[?(@.term['tags.tagFQN'].value=='Public')]",
+        "$.bool.should[0].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Public')]",
         "Public tag");
   }
 
@@ -1114,7 +1137,7 @@ class ElasticSearchRBACConditionEvaluatorTest {
 
     assertFieldExists(
         jsonContext,
-        "$.bool.should[1].bool.must[?(@.term['tags.tagFQN'].value=='Critical')]",
+        "$.bool.should[1].bool.must[*].bool.should[?(@.term['tags.tagFQN'].value=='Critical')]",
         "Critical tag");
   }
 

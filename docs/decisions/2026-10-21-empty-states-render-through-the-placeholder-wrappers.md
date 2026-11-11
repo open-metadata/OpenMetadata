@@ -1,7 +1,7 @@
 # UI empty states render through the EmptyPlaceholder wrappers, never core EmptyPlaceholder directly
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-21 (initial) · v2 2026-10-22 (copy stays in its slot, no invented heading; brand icon colour)
+- **Revisions:** v1 2026-10-21 (initial) · v2 2026-10-22 (copy stays in its slot, no invented heading; brand icon colour) · v3 2026-10-30 (`FeaturesPlaceholder` features take an optional `action`)
 - **Deciders:** shah-harshit
 - **Guard:** reviewer
 - **Related:** open-metadata/OpenMetadata#35730, open-metadata/openmetadata-collate#7571, open-metadata/openmetadata-collate#7689
@@ -51,3 +51,14 @@ text colour, so a host that tints its text (a table's empty row) cannot turn the
 description grey. The icon-colour rule was added at the same time, when 16 OSS and about 40
 Collate call sites dropped grey icon overrides. Collate follows all of these rules through the
 same wrappers.
+
+## Amendment
+v3, 2026-10-30. `FeaturesPlaceholder` now adds one behaviour, so "adds no behaviour today" in the Decision above
+no longer holds. A feature may carry an optional `action`, typed
+`Omit<EmptyPlaceholderAction, 'key' | 'label'> & { 'data-testid'?: string }`. When present, the
+wrapper renders the feature's title as a core `Button` (`size="sm"`, overridable) that takes the
+action's props, so the title is the accessible name and `isDisabled` disables it natively. A feature
+without `action` maps to the same title and props as before, so every existing caller renders
+unchanged. The Ontology Studio first-run screen uses it to offer three ways to start. Nothing else
+in the Decision changes: a page that needs a look no wrapper covers still extends a wrapper rather
+than importing the core component.

@@ -12,10 +12,6 @@
  */
 
 import {
-  parseCustomPropertiesHash,
-  viewToSubPath as customPropsViewToSubPath,
-} from '../components/discovery/personal-space/Profile/panels/CustomPropertiesPanel/CustomPropertiesPanel.utils';
-import {
   hashSubPathToView as accessHashToView,
   viewToSubPath as accessViewToSubPath,
 } from '../components/discovery/personal-space/Profile/tabs/access-control/AccessControl.utils';
@@ -23,6 +19,10 @@ import {
   hashSubPathToView as appsHashToView,
   viewToSubPath as appsViewToSubPath,
 } from '../components/discovery/personal-space/Profile/tabs/applications/Applications.utils';
+import {
+  parseCustomPropertiesHash,
+  viewToSubPath as customPropsViewToSubPath,
+} from '../components/discovery/personal-space/Profile/tabs/custom-properties/CustomPropertiesPanel.utils';
 import {
   hashSubPathToView as governanceHashToView,
   viewToSubPath as governanceViewToSubPath,
@@ -103,6 +103,8 @@ describe('settingsPathToHash', () => {
     ['/settings/bots', 'bots'],
     ['/bots/ingestion-bot', 'bots/ingestion-bot'],
     ['/create-user/bot', 'bots/add'],
+    // Collate's AI onboarding card links the create-user page.
+    ['/create-user', 'members/users/create'],
     ['/settings/apps', 'applications'],
     ['/settings/apps/Data%20Insights', 'applications/Data%20Insights'],
     ['/marketplace', 'applications/marketplace'],
@@ -185,7 +187,6 @@ describe('settingsPathToHash', () => {
   });
 
   it.each([
-    '/create-user',
     '/settings/services/databases',
     '/settings/governance/workflow-definitions',
     '/settings/preferences/unknown',
@@ -210,6 +211,10 @@ describe('settingsPathToHash', () => {
     expect(
       membersHashToView(subPath('/settings/members/teams/Org%2FA'))
     ).toEqual({ type: 'team-detail', fqn: 'Org/A', name: 'Org/A' });
+    expect(membersHashToView(subPath('/create-user'))).toEqual({
+      type: 'user-create',
+      isAdmin: false,
+    });
     expect(
       accessHashToView(
         subPath('/settings/access/policies/OrgPolicy/edit-rule/my%20rule')

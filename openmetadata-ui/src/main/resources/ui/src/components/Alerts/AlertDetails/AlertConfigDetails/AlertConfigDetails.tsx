@@ -41,7 +41,6 @@ import AlertFormSourceItem from '../../AlertFormSourceItem/AlertFormSourceItem';
 import DestinationFormItem from '../../DestinationFormItem/DestinationFormItem.component';
 import ObservabilityFormFiltersItem from '../../ObservabilityFormFiltersItem/ObservabilityFormFiltersItem';
 import ObservabilityFormTriggerItem from '../../ObservabilityFormTriggerItem/ObservabilityFormTriggerItem';
-import './alert-config-details.less';
 import {
   AlertConfigDetailsProps,
   AlertConfigLoadingState,

@@ -19,11 +19,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.entity.services.McpService;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.McpServerResource;
+import org.openmetadata.service.secrets.masker.McpServerMasker;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -69,9 +73,7 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   }
 
   @Override
-  public void clearFields(McpServer mcpServer, Fields fields) {
-    // No additional fields to clear
-  }
+  public void clearFields(McpServer mcpServer, Fields fields) {}
 
   @Override
   public void restorePatchAttributes(McpServer original, McpServer updated) {
@@ -118,6 +120,20 @@ public class McpServerRepository extends EntityRepository<McpServer> {
   public EntityRepository<McpServer>.EntityUpdater getUpdater(
       McpServer original, McpServer updated, Operation operation, ChangeSource changeSource) {
     return new McpServerUpdater(original, updated, operation);
+  }
+
+  @Override
+  protected void createAndInsertChangeEvent(
+      McpServer original,
+      McpServer updated,
+      ChangeDescription changeDescription,
+      EventType eventType) {
+    final McpServer eventEntity = JsonUtils.deepCopy(updated, McpServer.class);
+    eventEntity.setChangeDescription(
+        JsonUtils.deepCopy(changeDescription, ChangeDescription.class));
+    McpServerMasker.mask(eventEntity);
+    super.createAndInsertChangeEvent(
+        original, eventEntity, eventEntity.getChangeDescription(), eventType);
   }
 
   @Override

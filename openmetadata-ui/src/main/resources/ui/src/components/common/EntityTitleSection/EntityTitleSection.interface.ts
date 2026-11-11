@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Placement } from '@react-types/overlays';
+import { Tooltip } from '@openmetadata/ui-core-components';
+import { ComponentProps } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 
 export interface EntityTitleSectionProps {
@@ -26,7 +27,7 @@ export interface EntityTitleSectionProps {
   };
   entityLink: string | { pathname: string };
   entityType?: EntityType;
-  tooltipPlacement?: Placement;
+  tooltipPlacement?: ComponentProps<typeof Tooltip>['placement'];
   testId?: string;
   className?: string;
   /** Drop the tinted title box, for a title that sits on its drawer's surface. */

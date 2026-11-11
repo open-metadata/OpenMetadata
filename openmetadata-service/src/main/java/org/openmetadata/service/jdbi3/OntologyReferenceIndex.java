@@ -24,8 +24,16 @@ final class OntologyReferenceIndex {
     this.dao = dao.ontologyReferenceDAO();
   }
 
-  void replace(final String sourceType, final UUID sourceId, final OntologyDefinition current) {
-    dao.delete(sourceType, sourceId);
+  void replace(
+      final String sourceType,
+      final UUID sourceId,
+      final boolean existed,
+      final OntologyDefinition current) {
+    // Deleting a source that has no rows still takes a MySQL gap lock, and two concurrent creates
+    // then deadlock on their inserts.
+    if (existed) {
+      dao.delete(sourceType, sourceId);
+    }
     if (current != null) {
       for (final OntologyReference reference : OntologyReferences.collect(current)) {
         dao.insert(reference, DigestUtils.sha256Hex(reference.getIri().toString()));

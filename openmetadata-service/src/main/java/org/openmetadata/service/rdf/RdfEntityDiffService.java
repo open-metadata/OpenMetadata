@@ -38,6 +38,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.ontology.RdfBlankNodeCanonicalizer;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
+import org.openmetadata.service.rdf.translator.LiveTagLookup;
+import org.openmetadata.service.rdf.translator.ReferenceScope;
 
 /** Creates deterministic, typed RDF statement diffs from database entity history. */
 public final class RdfEntityDiffService {
@@ -49,7 +51,9 @@ public final class RdfEntityDiffService {
   public RdfEntityDiffService(final String baseUri) {
     this(
         RdfEntityDiffService::readVersion,
-        new JsonLdTranslator(JsonUtils.getObjectMapper(), baseUri)::toRdf,
+        new JsonLdTranslator(
+                JsonUtils.getObjectMapper(), baseUri, LiveTagLookup.database(), ReferenceScope.ALL)
+            ::toRdf,
         new RdfBlankNodeCanonicalizer(),
         RdfEntityTypeValidator::requireKnown);
   }

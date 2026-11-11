@@ -15,6 +15,8 @@ import { uuid } from '../utils/common';
 
 export const ALERT_DESCRIPTION = 'This is alert description';
 export const ALERT_UPDATED_DESCRIPTION = 'New alert description';
+// What the API returns for a destination endpoint, header or credential it keeps secret.
+export const ALERT_MASKED_SECRET = '*********';
 export const TEST_SUITE_NAME = `0-pw-test-suite-${uuid()}`;
 export const TEST_CASE_NAME = `0-pw-test-case-${uuid()}`;
 

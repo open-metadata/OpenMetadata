@@ -404,7 +404,7 @@ public class DatabaseServiceResource
       @Valid CreateDatabaseService update) {
     DatabaseService service =
         mapper.createToEntity(update, securityContext.getUserPrincipal().getName());
-    Response response = createOrUpdate(uriInfo, securityContext, unmask(service));
+    Response response = createOrUpdate(uriInfo, securityContext, unmask(securityContext, service));
     decryptOrNullify(securityContext, (DatabaseService) response.getEntity());
     return response;
   }

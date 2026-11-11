@@ -25,4 +25,6 @@ export interface SystemAnnouncementFormProps {
   announcement?: AnnouncementEntity;
   onCancel: () => void;
   onSaved: (announcement: AnnouncementEntity) => void;
+  /** Center the form horizontally; the settings modal opts in. */
+  centered?: boolean;
 }

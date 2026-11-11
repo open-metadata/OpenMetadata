@@ -112,7 +112,7 @@ function AddWidgetTabContent({
             className="tw:px-8 tw:mt-4"
             color="primary"
             data-testid="add-widget-button"
-            iconLeading={<Plus />}
+            iconLeading={Plus}
             isDisabled={!widgetAddable}
             onPress={getAddWidgetHandler(widget, selectedWidgetSize)}>
             {t('label.add')}

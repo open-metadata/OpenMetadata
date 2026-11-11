@@ -31,6 +31,12 @@ export interface MCPConfiguration {
      */
     connectTimeout?: number;
     /**
+     * Names of MCP tools to turn off for every user, admins included. A disabled tool is
+     * refused on every call right away and leaves tools/list after a restart; enabling it again
+     * applies after a restart. A name that matches no tool is ignored.
+     */
+    disabledTools?: string[];
+    /**
      * Enable or disable the MCP server
      */
     enabled?: boolean;
@@ -61,6 +67,12 @@ export interface MCPConfiguration {
      * Base path for MCP endpoints
      */
     path?: string;
+    /**
+     * Expose only the MCP tools that do not change metadata (annotated readOnlyHint), for every
+     * user including admins. Turning it on blocks write tools right away; they leave tools/list
+     * after a restart, and turning it off applies after a restart.
+     */
+    readOnly?: boolean;
     /**
      * HTTP read timeout in milliseconds for SSO provider metadata fetching. Default: 30000ms
      * (30 seconds)

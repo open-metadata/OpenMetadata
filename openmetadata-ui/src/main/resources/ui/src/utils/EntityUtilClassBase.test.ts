@@ -434,6 +434,24 @@ describe('EntityUtilClassBase', () => {
     });
   });
 
+  describe('hasEntityLink', () => {
+    it('knows the types getEntityLink routes, the table included', () => {
+      expect(entityUtil.hasEntityLink(EntityType.TABLE)).toBe(true);
+      expect(entityUtil.hasEntityLink(EntityType.DASHBOARD)).toBe(true);
+      expect(entityUtil.hasEntityLink(EntityType.GLOSSARY_TERM)).toBe(true);
+    });
+
+    // getEntityLink sends any other type to a table page that does not exist.
+    it('does not claim a route for a type that falls back to a table', () => {
+      expect(entityUtil.hasEntityLink('contextFile')).toBe(false);
+      expect(entityUtil.hasEntityLink(EntityType.QUERY)).toBe(false);
+      expect(entityUtil.hasEntityLink('constructor')).toBe(false);
+      expect(entityUtil.hasEntityLink(EntityType.INGESTION_PIPELINE)).toBe(
+        false
+      );
+    });
+  });
+
   describe('shouldShowEntityStatus', () => {
     it('shows the status badge for metrics, which run an approval workflow', () => {
       expect(entityUtil.shouldShowEntityStatus(EntityType.METRIC)).toBe(true);

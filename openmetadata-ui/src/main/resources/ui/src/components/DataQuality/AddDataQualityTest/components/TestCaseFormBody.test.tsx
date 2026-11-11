@@ -219,7 +219,10 @@ let formRef: UseFormReturn<FormValues> | undefined;
 
 const renderBody = (
   props: Partial<Parameters<typeof TestCaseFormBody>[0]> = {},
-  defaultValues: Partial<FormValues> = { testLevel: TestLevel.TABLE }
+  defaultValues: Partial<FormValues> = {
+    testLevel: TestLevel.TABLE,
+    createPipeline: true,
+  }
 ) => {
   const Wrapper = () => {
     const form = useForm<FormValues>({
@@ -458,6 +461,44 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
   });
 
+  it('keeps a test type picked before the selected table details finish loading', async () => {
+    // A table missing from the search cache loads through getTableDetailsByFQN.
+    mockSearchQuery.mockResolvedValue({
+      hits: { total: { value: 0 }, hits: [] },
+    } as never);
+    let resolveTable: (table: Table) => void = jest.fn();
+    mockGetTableDetailsByFQN.mockReturnValue(
+      new Promise((resolve) => {
+        resolveTable = resolve;
+      }) as never
+    );
+
+    await act(async () => {
+      renderBody();
+    });
+
+    await act(async () => {
+      formRef?.setValue('selectedTable', TABLE_FQN);
+    });
+    await act(async () => {
+      formRef?.setValue('testTypeId', {
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      } as never);
+    });
+
+    expect(await screen.findByTestId('parameter-minValue')).toBeInTheDocument();
+
+    await act(async () => {
+      resolveTable(SELECTED_TABLE);
+    });
+
+    expect(screen.getByTestId('parameter-minValue')).toBeInTheDocument();
+    expect(formRef?.getValues('testTypeId')).toEqual(
+      expect.objectContaining({ id: TEST_DEFINITION_FQN })
+    );
+  });
+
   it('defaults the data quality dimension to the selected test definition one', async () => {
     mockGetListTestDefinitions.mockResolvedValue({
       data: [{ ...TEST_DEFINITION, dataQualityDimension: 'Accuracy' }],
@@ -641,6 +682,75 @@ describe('TestCaseFormBody', () => {
     });
   });
 
+  describe('failure threshold with a dynamic assertion', () => {
+    // threshold/thresholdUnit are not learned bounds — ingestion widens the
+    // bound they configure downstream of bound resolution, so they must stay
+    // editable when the assertion is dynamic.
+    const DYNAMIC_THRESHOLD_DEFINITION = {
+      ...DYNAMIC_DEFINITION,
+      parameterDefinition: [
+        ...(DYNAMIC_DEFINITION.parameterDefinition ?? []),
+        {
+          name: 'threshold',
+          displayName: 'Failure Threshold',
+          dataType: 'NUMBER',
+          required: false,
+        },
+        {
+          name: 'thresholdUnit',
+          displayName: 'Threshold Unit',
+          dataType: 'STRING',
+          required: false,
+          optionValues: ['ABSOLUTE', 'PERCENTAGE'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const renderWithDynamicAssertion = async () => {
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [DYNAMIC_THRESHOLD_DEFINITION],
+        paging: { total: 1 },
+      } as never);
+
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      expect(
+        await screen.findByTestId('parameter-minValue')
+      ).toBeInTheDocument();
+
+      await act(async () => {
+        formRef?.setValue('useDynamicAssertion', true);
+      });
+
+      await waitFor(() => {
+        expect(
+          screen.queryByTestId('parameter-minValue')
+        ).not.toBeInTheDocument();
+      });
+    };
+
+    it('keeps the threshold editable once the bounds are learned', async () => {
+      await renderWithDynamicAssertion();
+
+      expect(screen.getByTestId('threshold-row')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-threshold')).toBeInTheDocument();
+      expect(screen.getByTestId('parameter-thresholdUnit')).toBeInTheDocument();
+    });
+  });
+
   it('shows the compute-row-count switch only when the definition supports it', async () => {
     mockGetListTestDefinitions.mockResolvedValue({
       data: [ROW_LEVEL_DEFINITION],
@@ -748,6 +858,26 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('raise-on-error')).toBeInTheDocument();
   });
 
+  it('hides the pipeline settings and the pipeline notice when create pipeline is switched off', async () => {
+    await act(async () => {
+      renderBody({ table: SELECTED_TABLE });
+    });
+
+    expect(await screen.findByTestId('pipeline-name')).toBeInTheDocument();
+    expect(screen.getByRole('alert')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(
+        screen.getByRole('switch', { name: 'label.create-entity' })
+      );
+    });
+
+    expect(formRef?.getValues('createPipeline')).toBe(false);
+    expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('schedule-interval')).not.toBeInTheDocument();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
   it('does not render the scheduler section when a pipeline already exists', async () => {
     mockGetIngestionPipelines.mockResolvedValue({
       data: [{ id: 'pipeline-1' }],
@@ -780,7 +910,15 @@ describe('TestCaseFormBody', () => {
     });
 
     await waitFor(() => {
-      expect(formRef?.getValues('testCases')).toHaveLength(1);
+      // The picker's onChange now stores the raw AddTestCaseListChangePayload
+      // (preserving selectAll/includeIds/excludeIds) rather than collapsing
+      // it to an EntityReference[] — see TestCaseSchedulerSection.tsx.
+      expect(formRef?.getValues('testCases')).toEqual(
+        expect.objectContaining({
+          selectAll: false,
+          includeIds: ['test-case-1'],
+        })
+      );
     });
   });
 

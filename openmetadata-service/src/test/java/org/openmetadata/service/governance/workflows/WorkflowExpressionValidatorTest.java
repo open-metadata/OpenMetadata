@@ -52,13 +52,14 @@ class WorkflowExpressionValidatorTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"GlossaryTermCreated", "CheckIfGlossaryTermIsNew", "node_1"})
+  @ValueSource(strings = {"GlossaryTermCreated", "CheckIfGlossaryTermIsNew", "node_1", "1node"})
   void acceptsLegitimateNodeReferences(String reference) {
     assertTrue(WorkflowExpressionValidator.isSafeNodeReference(reference));
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"a' b", "foo.bar", "node-1", "has space", "${x}"})
+  @ValueSource(
+      strings = {"a' b", "foo.bar", "node-1", "has space", "${x}", "a\\b", "a(b)", "a=b", "\"a\""})
   void rejectsNodeReferencesWithDisallowedCharacters(String reference) {
     assertFalse(WorkflowExpressionValidator.isSafeNodeReference(reference));
   }
@@ -66,5 +67,71 @@ class WorkflowExpressionValidatorTest {
   @Test
   void rejectsNullNodeReference() {
     assertFalse(WorkflowExpressionValidator.isSafeNodeReference(null));
+  }
+
+  // Node references may legally start with a digit (the wider entityName contract they predate),
+  // which is exactly what distinguishes them from lone expression variables.
+  @ParameterizedTest
+  @ValueSource(strings = {"123", "1node"})
+  void acceptsNodeReferencesWithLeadingDigits(String reference) {
+    assertTrue(WorkflowExpressionValidator.isSafeNodeReference(reference));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"accessExpirationDate", "accessDuration", "node_1", "result", "_hidden"})
+  void acceptsBareProcessVariableNames(String variableName) {
+    assertTrue(WorkflowExpressionValidator.isSafeExpressionVariable(variableName));
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"a' b", "a\\b", "${x}", "T(java.lang.Runtime)", "a b", "a-1", "a.1", ""})
+  void rejectsNonReferenceValuesInsideExpressions(String variableName) {
+    assertFalse(WorkflowExpressionValidator.isSafeExpressionVariable(variableName));
+  }
+
+  // A lone non-reference value interpolates into ${<variable>} as a number literal instead of a
+  // process-variable lookup (a leading digit makes JUEL read the token as a number).
+  @ParameterizedTest
+  @ValueSource(strings = {"123", "123abc", "1abc", "0", "1_2"})
+  void rejectsExpressionVariablesJuelReadsAsNonReferences(String variableName) {
+    assertFalse(WorkflowExpressionValidator.isSafeExpressionVariable(variableName));
+  }
+
+  // Reserved tokens evaluate as literals or operators, never as a process-variable lookup.
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "true",
+        "false",
+        "null",
+        "empty",
+        "and",
+        "or",
+        "not",
+        "div",
+        "mod",
+        "instanceof",
+        "eq",
+        "ne",
+        "lt",
+        "le",
+        "gt",
+        "ge"
+      })
+  void rejectsReservedWords(String variableName) {
+    assertFalse(WorkflowExpressionValidator.isSafeExpressionVariable(variableName));
+  }
+
+  // Reserved words are matched exactly: a longer identifier that merely starts with one is a legal
+  // variable reference.
+  @ParameterizedTest
+  @ValueSource(strings = {"notEmpty", "anderson", "dividend", "modus", "truthy", "equality"})
+  void acceptsIdentifiersThatContainReservedWords(String variableName) {
+    assertTrue(WorkflowExpressionValidator.isSafeExpressionVariable(variableName));
+  }
+
+  @Test
+  void rejectsNullExpressionVariable() {
+    assertFalse(WorkflowExpressionValidator.isSafeExpressionVariable(null));
   }
 }

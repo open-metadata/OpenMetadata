@@ -22,6 +22,7 @@ import {
 import {
   Dataflow01,
   Table as TableIcon,
+  Trash01,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined } from 'lodash';
@@ -35,7 +36,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconDBTModel } from '../../../assets/svg/dbt-model.svg';
-import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
 import { EntityType } from '../../../enums/entity.enum';
 import { ModelType, Table } from '../../../generated/entity/data/table';
 import {
@@ -65,8 +65,6 @@ interface LineageNodeLabelProps {
   toggleOnlyShowColumnsWithLineageFilterActive?: () => void;
   isOnlyShowColumnsWithLineageFilterActive?: boolean;
   actions?: ReactNode;
-  /** Colour of the clickable title; the base node uses link-primary. */
-  titleColor?: 'link-gray' | 'link-primary';
 }
 
 const getFooterChildrenCount = (node: LineageNodeType) =>
@@ -100,11 +98,7 @@ const EntityLabel = ({
   actions,
   node,
   onEntityClick,
-  titleColor = 'link-gray',
-}: Pick<
-  LineageNodeLabelProps,
-  'actions' | 'node' | 'onEntityClick' | 'titleColor'
->) => {
+}: Pick<LineageNodeLabelProps, 'actions' | 'node' | 'onEntityClick'>) => {
   const { showDeletedIcon, showDbtIcon } = useMemo(() => {
     return {
       showDbtIcon:
@@ -187,7 +181,7 @@ const EntityLabel = ({
               <Button
                 ellipsis
                 className="nodrag nopan tw:max-w-full tw:justify-start tw:p-0"
-                color={titleColor}
+                color="link-primary"
                 size="sm"
                 onClick={onEntityClick}>
                 {entityName}
@@ -225,7 +219,7 @@ const EntityLabel = ({
         {showDeletedIcon && (
           <div className="flex-center p-xss custom-node-deleted-icon">
             <div className="d-flex text-danger" data-testid="node-deleted-icon">
-              <DeleteIcon height={16} width={16} />
+              <Trash01 size={16} />
             </div>
           </div>
         )}
@@ -374,9 +368,9 @@ const EntityFooter = ({
             'only-show-columns-with-lineage-filter-button',
             isOnlyShowColumnsWithLineageFilterActive && 'active'
           )}
-          color="tertiary"
           data-testid="lineage-filter-button"
           icon={Dataflow01}
+          size="sm"
           tooltip={t('message.only-show-columns-with-lineage')}
           tooltipPlacement="right"
           onClick={handleOnlyShowColumnsWithLineage}
@@ -390,7 +384,6 @@ const LineageNodeLabelV1 = ({
   actions,
   node,
   onEntityClick,
-  titleColor,
   isChildrenListExpanded,
   toggleColumnsList,
   toggleOnlyShowColumnsWithLineageFilterActive,
@@ -401,7 +394,6 @@ const LineageNodeLabelV1 = ({
       <EntityLabel
         actions={actions}
         node={node}
-        titleColor={titleColor}
         onEntityClick={onEntityClick}
       />
       <EntityFooter

@@ -17,8 +17,9 @@ Run profiler metrics on the table
 import traceback
 from abc import ABC, abstractmethod
 from collections import namedtuple
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import datetime as _datetime
+from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -32,7 +33,7 @@ from sqlalchemy import (
 )
 from sqlalchemy import text as sa_text
 from sqlalchemy.exc import ProgrammingError
-from sqlalchemy.sql.expression import ColumnOperators, and_, cte
+from sqlalchemy.sql.expression import ColumnElement, ColumnOperators, and_, cte
 from sqlalchemy.types import String
 
 from metadata.generated.schema.entity.data.table import Table as OMTable
@@ -167,13 +168,15 @@ class AbstractTableMetricComputer(ABC):
         Returns:
             Tuple[str, int]
         """
-        col_names = literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String).label(COLUMN_NAMES)
+        col_names = literal(",".join(col.name for col in inspect(self.runner.raw_dataset).c), type_=String).label(
+            COLUMN_NAMES
+        )
         col_count = literal(len(inspect(self.runner.raw_dataset).c)).label(COLUMN_COUNT)
         return col_names, col_count
 
     def _build_query(
         self,
-        columns: list[Column],
+        columns: Sequence[ColumnElement[Any]],
         table: Table,
         where_clause: list[ColumnOperators] | None = None,
     ):
@@ -494,7 +497,7 @@ class TimescaleTableMetricComputer(PostgresTableMetricComputer):
             ).first()
 
             if result and result.row_count is not None:
-                col_names_val = ",".join(inspect(self.runner.raw_dataset).c.keys())
+                col_names_val = ",".join(col.name for col in inspect(self.runner.raw_dataset).c)
                 col_count_val = len(inspect(self.runner.raw_dataset).c)
                 Row = namedtuple(
                     "Row",
@@ -872,9 +875,9 @@ class InformixTableMetricComputer(BaseTableMetricComputer):
         from metadata.profiler.metrics.static.column_count import ColumnCountFn
         from metadata.profiler.metrics.static.column_names import ColunNameFn
 
-        col_names = ColunNameFn(literal(",".join(inspect(self.runner.raw_dataset).c.keys()), type_=String)).label(
-            COLUMN_NAMES
-        )
+        col_names = ColunNameFn(
+            literal(",".join(col.name for col in inspect(self.runner.raw_dataset).c), type_=String)
+        ).label(COLUMN_NAMES)
         col_count = ColumnCountFn(literal(len(inspect(self.runner.raw_dataset).c))).label(COLUMN_COUNT)
         return col_names, col_count
 
@@ -989,32 +992,64 @@ class TeradataTableMetricComputer(BaseTableMetricComputer):
     """Teradata Table Metric Computer"""
 
     def compute(self):
-        """Compute table metrics for Teradata using DBC.TableSizeV.
+        """Compute table metrics for Teradata.
 
-        TableSizeV may return one row per AMP, so we SUM the values
-        to get the total row count and size.
+        DBC.TableSizeV is a space view with no RowCount column (selecting one
+        raises Teradata error 5628). The approximate row count comes from the
+        table's most recently collected statistics in DBC.TableStatsV; tables
+        without any collected statistics fall back to COUNT(*).
         """
-        columns = [
-            func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES),
-            func.sum(Column("RowCount")).cast(BigInteger).label(ROW_COUNT),
-            *self._get_col_names_and_count(),
-        ]
-        where_clause = [
+        Result = namedtuple("Result", [ROW_COUNT, SIZE_IN_BYTES, COLUMN_COUNT, COLUMN_NAMES])
+        stats_table = self._build_table("TableStatsV", "DBC")
+        filters = [
+            # Deliberately no IndexNumber filter: statistics not collected
+            # on an index carry a NULL IndexNumber, so restricting to
+            # index/table-level entries would push tables whose only
+            # collected stats are column stats into the COUNT(*) fallback.
             func.trim(Column("DatabaseName")) == self.schema_name,
             func.trim(Column("TableName")) == self.table_name,
         ]
-        query = self._build_query(
-            columns,
-            self._build_table("TableSizeV", "DBC"),
-            where_clause,
+        # TableStatsV keeps one entry per collected statistics definition, so
+        # a definition collected once against a larger table and never
+        # re-collected retains its stale count. Restricting to the latest
+        # collection timestamp reads the freshest estimate; a plain MAX would
+        # report the stale one. Older entries are excluded, and if no entry
+        # carries a timestamp at all nothing matches and the COUNT(*)
+        # fallback applies — correct, albeit slower.
+        latest_ts_subquery = (
+            select(func.max(Column("LastCollectTimeStamp"))).select_from(stats_table).where(*filters).scalar_subquery()
         )
-
-        res = self.runner._session.execute(query).first()
-        if not res:
-            return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        stats_query = self._build_query(
+            [func.max(Column("RowCount")).cast(BigInteger).label(ROW_COUNT)],
+            stats_table,
+            [*filters, Column("LastCollectTimeStamp") == latest_ts_subquery],
+        )
+        stats_res = self.runner._session.execute(stats_query).first()
+        if (
+            not stats_res
+            or stats_res.rowCount is None
+            or (stats_res.rowCount == 0 and self._entity.tableType == TableType.View)
+        ):
+            # no collected statistics: fall back to COUNT(*)
             return super().compute()
-        return res
+
+        size_query = self._build_query(
+            [func.sum(Column("CurrentPerm")).label(SIZE_IN_BYTES)],
+            self._build_table("TableSizeV", "DBC"),
+            [
+                func.trim(Column("DatabaseName")) == self.schema_name,
+                func.trim(Column("TableName")) == self.table_name,
+            ],
+        )
+        size_res = self.runner._session.execute(size_query).first()
+        size_in_bytes = size_res.sizeInBytes if size_res else None
+
+        return Result(
+            rowCount=stats_res.rowCount,
+            sizeInBytes=size_in_bytes,
+            columnNames=",".join(col.name for col in inspect(self.runner.raw_dataset).c),
+            columnCount=len(inspect(self.runner.raw_dataset).c),
+        )
 
 
 class _StatsBasedTableMetricComputer(BaseTableMetricComputer):
@@ -1022,12 +1057,12 @@ class _StatsBasedTableMetricComputer(BaseTableMetricComputer):
     (SHOW STATS, DESCRIBE FORMATTED, etc.) and fall back to COUNT(*)."""
 
     def _build_result(self, row_count: int):
-        col_keys = inspect(self.runner.raw_dataset).c.keys()
+        col_names = [col.name for col in inspect(self.runner.raw_dataset).c]
         Result = namedtuple("Result", [ROW_COUNT, COLUMN_COUNT, COLUMN_NAMES])
         return Result(
             rowCount=row_count,
-            columnCount=len(col_keys),
-            columnNames=",".join(col_keys),
+            columnCount=len(col_names),
+            columnNames=",".join(col_names),
         )
 
 

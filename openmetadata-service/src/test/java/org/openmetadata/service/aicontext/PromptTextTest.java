@@ -17,7 +17,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
 class PromptTextTest {
 
@@ -154,6 +157,23 @@ class PromptTextTest {
 
     assertFalse(prompt.contains("base64"));
     assertTrue(prompt.contains("Column is Map"));
+  }
+
+  @ParameterizedTest(name = "{index}")
+  @MethodSource("incompleteMarkup")
+  void incompleteMarkupIsPreserved(String description) {
+    assertEquals(description, PromptText.forPrompt(description));
+  }
+
+  private static Stream<String> incompleteMarkup() {
+    return Stream.of("<", "< >", "text <a", "a > b <a");
+  }
+
+  @Test
+  void angleBracketsInAttributesDoNotHideMarkup() {
+    String prompt = PromptText.forPrompt("<img alt=\"x < y\" src=\"data:image/png;base64,AAAA\">");
+
+    assertEquals("", prompt);
   }
 
   @Test

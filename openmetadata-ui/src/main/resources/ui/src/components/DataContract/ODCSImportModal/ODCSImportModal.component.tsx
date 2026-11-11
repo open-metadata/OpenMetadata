@@ -30,7 +30,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert,
   CheckCircle,
   CheckVerified01,
   File06,
@@ -1070,7 +1070,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       align="center"
                       gap={2}
                       key={`typemismatch-warning-${field}`}>
-                      <AlertTriangle
+                      <Alert
                         className="tw:text-utility-warning-600"
                         size={14}
                       />
@@ -1164,7 +1164,7 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
           className="tw:flex tw:items-start tw:gap-3 tw:p-3"
           color="warning"
           data-testid="existing-contract-warning">
-          <AlertTriangle
+          <Alert
             className="tw:text-warning-600 tw:mt-0.5 tw:shrink-0"
             size={16}
           />
@@ -1374,11 +1374,10 @@ const ContractImportModal: React.FC<ContractImportModalProps> = ({
                       </Box>
 
                       <ButtonUtility
-                        color="tertiary"
                         data-testid="remove-file-button"
-                        icon={<Trash01 size={16} />}
-                        size="sm"
-                        title={t('label.delete-entity', {
+                        icon={Trash01}
+                        size="lg"
+                        tooltip={t('label.delete-entity', {
                           entity: t('label.file'),
                         })}
                         onClick={handleRemoveFile}

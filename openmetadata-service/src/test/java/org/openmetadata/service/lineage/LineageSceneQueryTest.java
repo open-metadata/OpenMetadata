@@ -6,13 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.ws.rs.BadRequestException;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
-import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.QueryFilterParser;
 
@@ -61,9 +61,12 @@ class LineageSceneQueryTest {
     assertFalse(QueryFilterParser.matchesFilter(nonMatchingEntity, normalized));
   }
 
-  @Test
-  void malformedFiltersAreNotSilentlyDiscarded() {
-    assertThrows(
-        JsonParsingException.class, () -> LineageSceneQuery.parseQueryFilter("{\"query\":"));
+  @ParameterizedTest
+  @ValueSource(strings = {"{\"query\":", "{\"term\":{}}", "[\"not\",\"a\",\"query\"]"})
+  void malformedFiltersAreRejectedAsBadRequests(String filter) {
+    BadRequestException error =
+        assertThrows(BadRequestException.class, () -> LineageSceneQuery.parseQueryFilter(filter));
+
+    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
   }
 }

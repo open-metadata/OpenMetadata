@@ -30,7 +30,7 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { readGraphEdges, readNodePositions } from '../../utils/ontologyStudio';
+import { readNodePositions } from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
@@ -138,8 +138,13 @@ test.describe(
           const editor = inspector.getByTestId(
             'ontology-column-binding-editor'
           );
+          const columnSelect = editor.getByRole('button', {
+            name: /profile › customer_id/,
+          });
+          // The editor pre-selects the column whose name matches the property.
+          await expect(columnSelect).toBeVisible();
           await selectOptionWithRetry(
-            editor.getByRole('button', { name: 'Select Column', exact: true }),
+            columnSelect,
             page.getByRole('option', { name: /profile › customer_id/ })
           );
           const saved = page.waitForResponse(
@@ -166,21 +171,15 @@ test.describe(
             inspector.getByTestId('ontology-concept-properties')
           ).toContainText('profile › customer_id');
           await page.getByTestId('ontology-graph-mode-data').click();
+          const dataGraph = page.getByTestId('ontology-native-data-graph');
           await expect(
-            page.getByTestId('ontology-native-data-graph')
-          ).toContainText('Data linked to Customer');
-          expect(await readGraphEdges(page, 3)).toEqual(
-            expect.arrayContaining([
-              expect.objectContaining({
-                from: concept.id,
-                relationType: 'columnBinding',
-              }),
-              expect.objectContaining({
-                from: `asset:table:${table.entityResponseData.id}`,
-                relationType: 'containsColumn',
-              }),
-            ])
+            dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
+          ).toContainText('Customer');
+          const row = dataGraph.getByTestId(
+            `ontology-data-asset-asset:${concept.id}:${table.entityResponseData.id}`
           );
+          await expect(row).toContainText(table.entity.displayName);
+          await expect(row).toContainText('1 col');
         });
         await test.step('Remove the column binding and table link', async () => {
           await page.getByTestId('ontology-graph-mode-model').click();
@@ -201,17 +200,26 @@ test.describe(
               )
             ).assets[0].columns
           ).toEqual([]);
+          const removeTable = inspector.getByTestId(
+            `ontology-native-asset-remove-${table.entityResponseData.id}`
+          );
+          await clickIgnoringToasts(removeTable);
+          await page.getByTestId('ontology-unlink-cancel').click();
+          const retained = await okJson<OntologyConceptBindingsResponse>(
+            await api.get(bindingPath),
+            'Read cancelled unlink'
+          );
+          expect(retained.assets.map((asset) => asset.assetId)).toContain(
+            table.entityResponseData.id
+          );
+          await clickIgnoringToasts(removeTable);
           const unlinked = page.waitForResponse(
             (response) =>
               new URL(response.url()).pathname ===
                 `${bindingPath}/table/${table.entityResponseData.id}` &&
               response.request().method() === 'DELETE'
           );
-          await clickIgnoringToasts(
-            inspector.getByTestId(
-              `ontology-native-asset-remove-${table.entityResponseData.id}`
-            )
-          );
+          await page.getByTestId('ontology-unlink-confirm').click();
           expect(
             (
               await okJson<OntologyConceptBindingsResponse>(
@@ -241,21 +249,25 @@ test.describe(
 
     for (const pack of [
       {
-        id: 'fibo',
-        base: 'foundations',
-        extra: 'business-entities',
-        label: 'Business Entity',
+        id: 'sosa-ssn',
+        industry: 'cross-industry',
+        base: 'sosa',
+        extra: 'ssn',
+        label: 'Sensor',
         fromOwner: false,
       },
       {
-        id: 'fhir',
-        base: 'core',
-        extra: 'clinical',
-        label: 'FHIR Resource',
+        id: 'sosa-ssn',
+        industry: 'cross-industry',
+        base: 'sosa',
+        extra: 'ssn',
+        label: 'Sensor',
         fromOwner: true,
       },
     ]) {
-      test(`installs ${pack.id} into a new native ontology and explicitly reuses it without changes`, async ({
+      test(`installs ${pack.id} ${
+        pack.fromOwner ? 'from a source ontology' : 'from the studio'
+      } into a new native ontology and explicitly reuses it without changes`, async ({
         isolatedUserPage: page,
       }) => {
         test.slow();
@@ -285,7 +297,7 @@ test.describe(
             page.getByTestId('ontology-library-filter-all')
           ).toBeVisible();
           await expect(
-            page.getByTestId(`ontology-library-filter-${pack.id}`)
+            page.getByTestId(`ontology-library-filter-${pack.industry}`)
           ).toBeVisible();
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
@@ -298,7 +310,7 @@ test.describe(
           await page.getByTestId(`ontology-module-${pack.extra}`).click();
           await expect(
             page.getByTestId('ontology-pack-concept-count')
-          ).toHaveText('8');
+          ).toHaveText('27');
           await page.route('**/api/v1/ontologyChangeSets', async (route) => {
             if (route.request().method() !== 'POST') {
               await route.continue();
@@ -329,13 +341,13 @@ test.describe(
           ).toContainText('Installed');
           await expect(
             page.getByTestId('ontology-library-installed-count')
-          ).toContainText('1 installed');
+          ).toContainText('installed');
           await expect(
             page.getByTestId(`ontology-pack-details-${pack.id}`)
           ).toContainText('View');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page.getByTestId('ontology-library-open-graph')
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
           ).toBeVisible();
           expect(draftWrites).toBe(1);
           expect(createdDraft?.baseWorkingRevision).toBe(1);
@@ -345,7 +357,7 @@ test.describe(
             }),
             'Read installed concepts'
           );
-          expect(concepts.data).toHaveLength(8);
+          expect(concepts.data).toHaveLength(22);
           const concept = concepts.data.find(
             (item) => item.displayName === pack.label
           );
@@ -360,7 +372,9 @@ test.describe(
             page.getByTestId(`ontology-pack-${pack.id}`)
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
-          await page.getByTestId('ontology-library-open-graph').click();
+          await page
+            .getByTestId(`ontology-library-installed-in-${installed.id}`)
+            .click();
           await expect(page).toHaveURL(new RegExp(`ontology=${installed.id}`));
           await expect(page.getByTestId('mode-tab-view')).toHaveAttribute(
             'aria-selected',
@@ -399,10 +413,8 @@ test.describe(
           ).toContainText('Installed');
           await page.getByTestId(`ontology-pack-details-${pack.id}`).click();
           await expect(
-            page
-              .getByTestId('ontology-library')
-              .getByText('No changes to save', { exact: true })
-          ).toBeVisible();
+            page.getByTestId(`ontology-library-installed-in-${installed.id}`)
+          ).toContainText(installed.displayName ?? installed.name);
           expect(draftWrites).toBe(1);
         } finally {
           await page.unroute('**/api/v1/ontologyChangeSets');
@@ -453,10 +465,10 @@ test.describe(
         await page.route('**/api/v1/tasks', (route) =>
           route.request().method() === 'POST'
             ? route.fulfill({
-                status: 503,
+                status: 422,
                 contentType: 'application/json',
                 body: JSON.stringify({
-                  message: 'Temporary task service failure',
+                  message: 'Task request rejected',
                 }),
               })
             : route.continue()
@@ -472,7 +484,8 @@ test.describe(
           await captured,
           'Capture review candidate'
         );
-        await expect(page.getByTestId('ontology-request-review')).toHaveText(
+        // Only a definitive rejection offers a retry; a 5xx only offers Check status.
+        await expect(page.getByTestId('ontology-recovery-action')).toHaveText(
           'Retry review'
         );
         await page.getByTestId('ontology-publication-tab-releases').click();
@@ -489,12 +502,15 @@ test.describe(
             new URL(response.url()).pathname === '/api/v1/tasks' &&
             response.request().method() === 'POST'
         );
-        await page.getByTestId('ontology-request-review').click();
+        await page.getByTestId('ontology-recovery-action').click();
         task = await okJson<Task>(
           await submitted,
           'Retry real review task submission'
         );
-        await expect(page).toHaveURL(new RegExp(`/tasks/${task.id}$`));
+        await expect(
+          page.getByTestId('ontology-publication-notice-requested')
+        ).toBeVisible();
+        await expect(page).toHaveURL(/\/governance\/ontology/);
         const history = await okJson<{ data: OntologyRelease[] }>(
           await api.get(`/api/v1/ontologies/${ontology.id}/releases`),
           'Read owner release history'

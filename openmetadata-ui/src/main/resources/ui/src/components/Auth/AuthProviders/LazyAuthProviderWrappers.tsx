@@ -57,11 +57,14 @@ export const LazyAuth0ProviderWrapper = ({
   cacheLocation,
 }: Auth0ProviderWrapperProps) => {
   return (
+    // auth0-react v2 turned the iframe fallback off by default; keep it on so
+    // a reload (memory cache, no refresh token) still renews silently.
     <Auth0ProviderComponent
+      useRefreshTokensFallback
+      authorizationParams={{ redirect_uri: redirectUri }}
       cacheLocation={cacheLocation}
       clientId={clientId}
       domain={domain}
-      redirectUri={redirectUri}
       useRefreshTokens={useRefreshTokens}>
       {children}
     </Auth0ProviderComponent>

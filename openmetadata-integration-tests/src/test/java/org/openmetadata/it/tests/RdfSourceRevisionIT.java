@@ -24,6 +24,7 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -96,7 +97,7 @@ public class RdfSourceRevisionIT {
   }
 
   @Test
-  void aPipelineRunRecordedInTheGraphRecordsOneUntrackedWrite(final TestNamespace ns) {
+  void aPipelineRunReachesTheGraphThroughTheLiveWriteQueue(final TestNamespace ns) {
     final Pipeline pipeline =
         SdkClients.adminClient()
             .pipelines()
@@ -106,18 +107,29 @@ public class RdfSourceRevisionIT {
                     .withService(
                         PipelineServiceTestFactory.createAirflow(ns).getFullyQualifiedName()));
 
-    final long recorded =
+    final long timestamp = System.currentTimeMillis();
+    final List<String> queued = new ArrayList<>();
+    final long untracked =
         untrackedWritesDuring(
-            () ->
-                SdkClients.adminClient()
-                    .pipelines()
-                    .addPipelineStatus(
-                        pipeline.getFullyQualifiedName(),
-                        new PipelineStatus()
-                            .withExecutionStatus(StatusType.Successful)
-                            .withTimestamp(System.currentTimeMillis())));
+            () -> {
+              SdkClients.adminClient()
+                  .pipelines()
+                  .addPipelineStatus(
+                      pipeline.getFullyQualifiedName(),
+                      new PipelineStatus()
+                          .withExecutionStatus(StatusType.Successful)
+                          .withTimestamp(timestamp));
+              queued.addAll(queuedPayloads());
+            });
 
-    assertEquals(1, recorded);
+    assertEquals(0, untracked, "the queue tracks the run, so no write bypasses it");
+    assertTrue(
+        queued.stream().anyMatch(payload -> payload.contains("\"pipelineExecution\"")),
+        () -> "The run was not queued: " + queued);
+    // The queue replays the run from its stored status; a lookup that misses would drop it quietly.
+    Awaitility.await("The queued run reaches the graph")
+        .atMost(Duration.ofSeconds(60))
+        .until(() -> RdfTestUtils.executeSparqlAsk(askForRun(pipeline, timestamp)));
   }
 
   @Test
@@ -150,7 +162,7 @@ public class RdfSourceRevisionIT {
       drainGuard.begin();
       try {
         drainGuard
-            .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain' FOR UPDATE")
+            .createQuery("SELECT id FROM rdf_live_write_guard WHERE id = 'drain-v2' FOR UPDATE")
             .mapTo(String.class)
             .one();
         final RdfLiveWriteStore liveWrites =
@@ -175,6 +187,23 @@ public class RdfSourceRevisionIT {
                     .bind("id", id)
                     .mapTo(Long.class)
                     .list());
+  }
+
+  private static List<String> queuedPayloads() {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery("SELECT payload FROM rdf_live_write_queue ORDER BY id")
+                    .mapTo(String.class)
+                    .list());
+  }
+
+  /** The run is written without a graph, so it lands in the stored default graph. */
+  private static String askForRun(final Pipeline pipeline, final long timestamp) {
+    final String run = "<" + BASE_URI + "execution/" + pipeline.getId() + "/" + timestamp + ">";
+    final String isRun = run + " a <" + BASE_URI + "ontology/PipelineExecution>";
+    return "ASK { { " + isRun + " } UNION { GRAPH <urn:x-arq:DefaultGraph> { " + isRun + " } } }";
   }
 
   private static String insertData() {

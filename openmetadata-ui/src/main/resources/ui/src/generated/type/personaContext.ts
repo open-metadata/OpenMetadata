@@ -31,8 +31,9 @@ export interface PersonaContext {
     searchScope?:     SearchScope;
     sharedKnowledge?: SharedKnowledge;
     /**
-     * Whether at least one selected entity was compacted or omitted, or required knowledge
-     * exceeded the configured budget.
+     * Whether selection stopped before all caller-visible matches were counted, at least one
+     * selected entity was compacted or omitted, or required knowledge exceeded the configured
+     * budget.
      */
     truncated?: boolean;
 }
@@ -56,6 +57,8 @@ export enum Reason {
  * EntityReference is used for capturing relationships from one entity to another. For
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
+ *
+ * For a metric found by find_context, the parent metric it is a variant of.
  *
  * Resolved first-class relationship type.
  *
@@ -110,9 +113,13 @@ export interface EntityReference {
  * Materialization result for one persona context rule.
  */
 export interface RuleResult {
-    entities?:        AIContext[];
-    entityType?:      string;
-    manifestOnly?:    number;
+    entities?:     AIContext[];
+    entityType?:   string;
+    manifestOnly?: number;
+    /**
+     * Total matches visible to the caller. Absent when selection stopped at maxAssets before
+     * all candidates were checked; the document is then truncated.
+     */
     matched?:         number;
     renderedCompact?: number;
     renderedFull?:    number;
@@ -224,6 +231,10 @@ export interface AIContext {
  */
 export interface KnowledgeItem {
     /**
+     * For a metric found by find_context, how many non-deleted variants (child metrics) it has.
+     */
+    childrenCount?: number;
+    /**
      * The definition, business rule, metric expression, or article body for this item. May be a
      * bounded lead excerpt when contentTruncated is true, or null when omitted to stay within
      * the context budget.
@@ -241,6 +252,10 @@ export interface KnowledgeItem {
      */
     id?:   string;
     name?: string;
+    /**
+     * For a metric found by find_context, the parent metric it is a variant of.
+     */
+    parent?: EntityReference;
     /**
      * True when read-time trust signals indicate this item may no longer reflect the asset it
      * is attached to (e.g. the asset changed after the knowledge was last updated, or the
@@ -685,11 +700,22 @@ export interface TableData {
     /**
      * List of local column names (not fully qualified column names) of the table.
      */
-    columns?: string[];
+    columns?:         string[];
+    executionSource?: TableExecutionSource;
     /**
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Physical execution target.
+ */
+export interface TableExecutionSource {
+    databaseName: string;
+    schemaName:   string;
+    shardDate?:   Date;
+    tableName:    string;
 }
 
 /**

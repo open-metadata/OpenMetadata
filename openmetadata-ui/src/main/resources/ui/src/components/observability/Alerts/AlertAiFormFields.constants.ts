@@ -11,10 +11,9 @@
  *  limitations under the License.
  */
 
-import { ModifiedDestination } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedDestination } from '../../../utils/AlertsClassBase.interface';
 
 export const ALERT_AI_DEFAULT_CONNECTION_TIMEOUT = 10;
-export const ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH = 1;
 export const ALERT_AI_DESCRIPTION_TEXT_AREA_ROWS = 5;
 export const ALERT_AI_DESTINATION_TEXT_AREA_ROWS = 2;
 export const ALERT_AI_OAUTH_TOKEN_URL_PLACEHOLDER =
@@ -37,8 +36,7 @@ export const EMPTY_ALERT_AI_DESTINATION = {} as ModifiedDestination;
 export const ALERT_AI_FORM_CLASS_NAMES = {
   actionButton: 'tw:h-9 tw:w-fit tw:min-w-[112px]',
   advancedConfigHeader: 'tw:flex tw:items-center tw:gap-2',
-  alertDescriptionCard:
-    'tw:rounded-xl tw:border tw:border-secondary tw:p-[18px]',
+  alertDescriptionCard: 'tw:rounded-xl tw:border tw:border-secondary tw:p-4.5',
   autocompleteField:
     'tw:[&_[role=group]>div>span]:min-w-0 tw:[&_[role=group]>div>span]:max-w-full',
   card: 'tw:rounded-lg tw:border tw:border-secondary tw:bg-secondary tw:px-4 tw:py-3',
@@ -55,8 +53,6 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   field: 'tw:min-w-0',
   fieldFill: 'tw:flex-1',
   formStack: 'tw:gap-5',
-  removeButton:
-    'tw:h-9 tw:w-9 tw:min-w-[36px] tw:shrink-0 tw:p-0 tw:hover:text-error-600 tw:hover:*:data-icon:text-error-600 tw:focus:text-error-600 tw:focus:*:data-icon:text-error-600',
   ruleArgumentsField: 'tw:mr-12 tw:w-auto',
   ruleControlField: 'tw:w-full',
   ruleControlGroup: 'tw:w-full',
@@ -68,12 +64,11 @@ export const ALERT_AI_FORM_CLASS_NAMES = {
   sectionRequiredMarker: 'tw:ml-0.5 tw:text-error-primary',
   sectionRoot: 'tw:w-full tw:items-stretch tw:gap-1.5',
   teamUserHint: 'tw:mt-1 tw:text-sm tw:text-fg-error-secondary',
-  teamUserSelectDropdown:
-    'tw:absolute tw:z-50 tw:mt-1 tw:w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:p-2 tw:shadow-lg',
   teamUserSelectEmptyText: 'tw:p-2 tw:text-center tw:text-tertiary',
   teamUserSelectOptionButton:
     'tw:flex tw:w-full tw:cursor-pointer tw:items-center tw:justify-start tw:gap-2 tw:rounded-md tw:px-2 tw:py-1.5 tw:text-left tw:hover:bg-secondary',
   teamUserSelectOptionLabel: 'tw:truncate tw:text-primary',
+  teamUserSelectOptionRow: 'tw:flex tw:min-w-0 tw:items-center tw:gap-2',
   teamUserSelectOptions: 'tw:mt-2 tw:max-h-48 tw:overflow-y-auto',
   teamUserSelectRoot: 'tw:relative tw:w-full',
   teamUserSelectSkeletonWrapper: 'tw:space-y-1 tw:p-2',

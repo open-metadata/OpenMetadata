@@ -201,6 +201,26 @@ describe('Custom property renderers', () => {
       );
     });
 
+    it('blocks saving a half-typed time instead of storing midnight', async () => {
+      const { onValueSave } = renderCard(
+        createProperty('time-cp', 'HH:mm:ss'),
+        undefined
+      );
+
+      await user.click(screen.getByTestId('add-value-button'));
+      const [hours] = within(screen.getByTestId('time-picker')).getAllByRole(
+        'spinbutton'
+      );
+      await user.click(hours);
+      await user.keyboard('09');
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).not.toHaveBeenCalled();
+      expect(
+        screen.getByText('message.enter-a-complete-time')
+      ).toBeInTheDocument();
+    });
+
     it('edits a time value with hour, minute and second segments', async () => {
       const { onValueSave } = renderCard(
         createProperty('time-cp', 'HH:mm:ss'),
@@ -305,6 +325,30 @@ describe('Custom property renderers', () => {
       await user.click(screen.getByTestId('inline-save-btn'));
 
       expect(onValueSave).toHaveBeenCalledWith(expect.anything(), ['Silver']);
+    });
+
+    it('edits a single-select as one value without the multi-select counter', async () => {
+      const { onValueSave } = renderCard(
+        createProperty('enum', {
+          values: ['Gold', 'Silver', 'Tier 1'],
+          multiSelect: false,
+        }),
+        ['Gold']
+      );
+
+      await user.click(screen.getByTestId('edit-icon'));
+
+      expect(
+        screen.queryByText('message.count-of-total-selected')
+      ).not.toBeInTheDocument();
+      expect(
+        within(screen.getByTestId('enum-select')).getByRole('combobox')
+      ).toHaveValue('Gold');
+
+      await user.click(screen.getByTestId('combobox-clear'));
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(expect.anything(), []);
     });
   });
 
@@ -512,6 +556,38 @@ describe('Custom property renderers', () => {
       await user.click(screen.getByTestId('edit-icon'));
 
       await waitFor(() => expect(showErrorToast).toHaveBeenCalledWith(error));
+    });
+  });
+
+  describe('integer', () => {
+    it.each(['1.5', '9007199254740993'])(
+      'rejects %s and keeps the editor open',
+      async (typed) => {
+        const { onValueSave } = renderCard(createProperty('integer'), 7);
+
+        await user.click(screen.getByTestId('edit-icon'));
+        const input = screen.getByTestId('value-input');
+        await user.clear(input);
+        await user.type(input, typed);
+        await user.click(screen.getByTestId('inline-save-btn'));
+
+        expect(onValueSave).not.toHaveBeenCalled();
+        expect(
+          screen.getByText('message.integer-value-out-of-range')
+        ).toBeInTheDocument();
+      }
+    );
+
+    it('saves a whole number', async () => {
+      const { onValueSave } = renderCard(createProperty('integer'), 7);
+
+      await user.click(screen.getByTestId('edit-icon'));
+      const input = screen.getByTestId('value-input');
+      await user.clear(input);
+      await user.type(input, '-42');
+      await user.click(screen.getByTestId('inline-save-btn'));
+
+      expect(onValueSave).toHaveBeenCalledWith(expect.anything(), '-42');
     });
   });
 

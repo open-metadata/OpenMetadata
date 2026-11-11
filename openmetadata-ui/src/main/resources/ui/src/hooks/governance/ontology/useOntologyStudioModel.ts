@@ -11,12 +11,18 @@
  *  limitations under the License.
  */
 import { useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useMemo } from 'react';
 import { Ontology } from '../../../generated/entity/data/ontology';
+import { OntologyAxiom } from '../../../generated/entity/data/ontologyAxiom';
+import { OntologyConcept } from '../../../generated/entity/data/ontologyConcept';
+import { OntologyProperty } from '../../../generated/entity/data/ontologyProperty';
+import { MemberKind } from '../../../generated/type/ontologyReleaseMember';
 import {
   listOntologyAxioms,
   listOntologyConcepts,
   listOntologyProperties,
+  listOntologyReleaseMembers,
 } from '../../../rest/ontologyAPI';
 import { listAllPages } from '../../../utils/governance/ontology/OntologyPaging.utils';
 import {
@@ -27,8 +33,12 @@ import {
 
 export const ONTOLOGY_STUDIO_MODEL_QUERY_KEY = 'ontology-studio-model';
 
+export const WORKING_CONCEPT_FIELDS =
+  'conceptMappings,lifecycleStatus,owners,subClasses,superClasses';
+
 const PAGE_SIZE = 1000;
-const MAX_DEFINITIONS = 10000;
+/** Mirrors the server's release member cap (`OntologyReleaseManifest.MAX_MEMBERS`). */
+const MAX_DEFINITIONS = 50_000;
 const MAX_DEFINITION_PAGES = MAX_DEFINITIONS / PAGE_SIZE;
 
 class AggregateCapacityError extends Error {}
@@ -37,7 +47,20 @@ class AggregateCapacityError extends Error {}
 const MAX_AGGREGATE_ONTOLOGIES = 20;
 const MAX_AGGREGATE_DEFINITIONS = 2000;
 
-const loadOntologyStudioModel = async (
+// Another session can delete an ontology between the list and its definition requests.
+const skipDeleted = async <T>(load: () => Promise<T>) => {
+  try {
+    return await load();
+  } catch (error) {
+    if (isAxiosError(error) && error.response?.status === 404) {
+      return undefined;
+    }
+
+    throw error;
+  }
+};
+
+const loadWorkingModel = async (
   ontology: Ontology,
   signal: AbortSignal,
   consume?: (count: number) => void
@@ -60,7 +83,7 @@ const loadOntologyStudioModel = async (
           {
             ...params,
             after,
-            fields: 'conceptMappings,owners,subClasses,superClasses',
+            fields: WORKING_CONCEPT_FIELDS,
           },
           signal
         ),
@@ -80,6 +103,106 @@ const loadOntologyStudioModel = async (
   return { ontology, axioms, concepts, properties };
 };
 
+/** Reads the definitions a sealed release froze, so a reader sees what was published. */
+const loadReleaseModel = async (
+  ontology: Ontology,
+  releaseId: string,
+  signal: AbortSignal
+): Promise<OntologyStudioModel> => {
+  const loadKind = async <T>(kind: MemberKind): Promise<T[]> => {
+    const members = await listAllPages(
+      (after) =>
+        listOntologyReleaseMembers(
+          releaseId,
+          kind,
+          { limit: PAGE_SIZE, after },
+          signal
+        ),
+      MAX_DEFINITION_PAGES
+    );
+
+    return members.map((member) => member.payload as T);
+  };
+  const [concepts, properties, axioms] = await Promise.all([
+    loadKind<OntologyConcept>(MemberKind.Concept),
+    loadKind<OntologyProperty>(MemberKind.Property),
+    loadKind<OntologyAxiom>(MemberKind.Axiom),
+  ]);
+
+  return { ontology, axioms, concepts, properties };
+};
+
+const isForbidden = (error: unknown) =>
+  isAxiosError(error) && error.response?.status === 403;
+
+/**
+ * Working definitions are readable only with edit rights on the ontology. A reader without them
+ * sees what the active release published, and an ontology nothing has published yet reads empty.
+ */
+const loadOntologyStudioModel = async (
+  ontology: Ontology,
+  signal: AbortSignal,
+  consume?: (count: number) => void
+): Promise<OntologyStudioModel> => {
+  try {
+    return await loadWorkingModel(ontology, signal, consume);
+  } catch (error) {
+    if (!isForbidden(error)) {
+      throw error;
+    }
+    const releaseId = ontology.publicationStatus?.active?.releaseId;
+
+    return releaseId
+      ? loadReleaseModel(ontology, releaseId, signal)
+      : { ontology, axioms: [], concepts: [], properties: [] };
+  }
+};
+
+/** Checks the aggregate budget and returns the ontologies that still exist. */
+const countAggregateOntologies = async (
+  ontologies: Ontology[],
+  signal: AbortSignal
+) => {
+  let total = 0;
+  const present: Ontology[] = [];
+  for (const ontology of ontologies) {
+    if (!ontology.fullyQualifiedName) {
+      throw new Error('Missing ontology name');
+    }
+    const params = { ontology: ontology.fullyQualifiedName, limit: 1 };
+    const countPages = () =>
+      Promise.all([
+        listOntologyConcepts(params, signal),
+        listOntologyProperties(params, signal),
+        listOntologyAxioms(ontology.id, { limit: 1 }, signal),
+      ]);
+    const pages = await skipDeleted(() =>
+      countPages().catch((error: unknown) => {
+        if (isForbidden(error)) {
+          return [];
+        }
+
+        throw error;
+      })
+    ); // NOSONAR sequential: the budget check stops further requests
+    if (!pages) {
+      continue;
+    }
+    present.push(ontology);
+    for (const page of pages) {
+      if (!Number.isFinite(page.paging.total) || page.paging.total < 0) {
+        throw new Error('Missing definition count');
+      }
+      total += page.paging.total;
+    }
+    if (total > MAX_AGGREGATE_DEFINITIONS) {
+      throw new AggregateCapacityError();
+    }
+  }
+
+  return present;
+};
+
 export const useAllOntologyStudioModels = (
   ontologies: Ontology[],
   enabled: boolean
@@ -97,27 +220,7 @@ export const useAllOntologyStudioModels = (
       if (ontologies.length > MAX_AGGREGATE_ONTOLOGIES) {
         throw new AggregateCapacityError();
       }
-      let total = 0;
-      for (const ontology of ontologies) {
-        if (!ontology.fullyQualifiedName) {
-          throw new Error('Missing ontology name');
-        }
-        const params = { ontology: ontology.fullyQualifiedName, limit: 1 };
-        const pages = await Promise.all([
-          listOntologyConcepts(params, signal),
-          listOntologyProperties(params, signal),
-          listOntologyAxioms(ontology.id, { limit: 1 }, signal),
-        ]);
-        for (const page of pages) {
-          if (!Number.isFinite(page.paging.total) || page.paging.total < 0) {
-            throw new Error('Missing definition count');
-          }
-          total += page.paging.total;
-        }
-        if (total > MAX_AGGREGATE_DEFINITIONS) {
-          throw new AggregateCapacityError();
-        }
-      }
+      const present = await countAggregateOntologies(ontologies, signal);
       let loaded = 0;
       const consume = (count: number) => {
         loaded += count;
@@ -126,8 +229,13 @@ export const useAllOntologyStudioModels = (
         }
       };
       const models: OntologyStudioModel[] = [];
-      for (const ontology of ontologies) {
-        models.push(await loadOntologyStudioModel(ontology, signal, consume));
+      for (const ontology of present) {
+        const loadModel = () =>
+          loadOntologyStudioModel(ontology, signal, consume);
+        const model = await skipDeleted(loadModel); // NOSONAR sequential: the definition budget stops further loads
+        if (model) {
+          models.push(model);
+        }
       }
 
       return models;
@@ -156,10 +264,16 @@ export const useAllOntologyStudioModels = (
   };
 };
 
-/** Loads a native ontology's working concepts, properties and axioms as one model. */
-export const useOntologyStudioModel = (ontology?: Ontology) => {
+/**
+ * Loads a native ontology's working concepts, properties and axioms as one model, or, given a
+ * release id, the definitions that release froze.
+ */
+export const useOntologyStudioModel = (
+  ontology?: Ontology,
+  releaseId?: string
+) => {
   const query = useQuery({
-    queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY, ontology?.id],
+    queryKey: [ONTOLOGY_STUDIO_MODEL_QUERY_KEY, ontology?.id, releaseId],
     enabled: Boolean(ontology),
     gcTime: 30_000,
     staleTime: 30_000,
@@ -169,7 +283,9 @@ export const useOntologyStudioModel = (ontology?: Ontology) => {
         throw new Error('Missing ontology');
       }
 
-      return loadOntologyStudioModel(ontology, signal);
+      return releaseId
+        ? loadReleaseModel(ontology, releaseId, signal)
+        : loadOntologyStudioModel(ontology, signal);
     },
   });
 

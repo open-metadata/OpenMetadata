@@ -175,7 +175,7 @@ const PermissionsTab: React.FC<PermissionsTabProps> = ({
   const stats = getPermissionSummaryStats(debugInfo?.summary);
   const { allowedOperations, deniedOperations } = stats;
 
-  const sections: React.ReactNode[] = [
+  const sections: React.ReactElement[] = [
     <SectionBlock key="membership" title={t('label.membership')}>
       <MembershipSection
         canEditTeams={canEditTeams}

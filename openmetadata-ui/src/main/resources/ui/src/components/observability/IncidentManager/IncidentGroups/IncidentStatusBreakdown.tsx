@@ -65,10 +65,11 @@ const IncidentStatusBreakdown = ({
         data-testid="group-status-counts"
         size="text-xs">
         {segments
-          .map(
-            ({ status, count }) =>
-              `${count} ${t(INCIDENT_GROUP_STATUS_LABELS[status] ?? status)}`
-          )
+          .map(({ status, count }) => {
+            const labelKey = INCIDENT_GROUP_STATUS_LABELS[status];
+
+            return labelKey ? t(labelKey, { count }) : `${count} ${status}`;
+          })
           .join(INCIDENT_GROUP_SEPARATOR)}
       </Typography>
     </Box>

@@ -63,7 +63,6 @@ function ObservabilityAlertAiActions({
     <div className="tw:flex tw:items-center tw:gap-1">
       {alertPermission.edit && onEditAlert && (
         <ButtonUtility
-          color="tertiary"
           data-testid={`alert-edit-${record.name}`}
           icon={Edit01}
           isDisabled={record.provider === ProviderType.System}
@@ -78,7 +77,6 @@ function ObservabilityAlertAiActions({
       )}
       {alertPermission.delete && (
         <ButtonUtility
-          color="tertiary"
           data-testid={`alert-delete-${record.name}`}
           icon={Trash01}
           isDisabled={record.provider === ProviderType.System}

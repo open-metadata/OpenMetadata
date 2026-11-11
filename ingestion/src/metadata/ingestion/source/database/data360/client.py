@@ -131,18 +131,31 @@ def get_metadata_by_type(
     client: Salesforce,
     entity_type: str,
     dataspace_name: str,
-    pagination_limit: int,
     log_warning: Callable[[str], None],
 ) -> list[dict]:
-    """Fetches all metadata objects of the given type within a dataspace, across all pages."""
-    return _run_paginator(
+    """Fetches all metadata objects of the given type within a dataspace in one call.
+
+    ``ssot/metadata`` ignores ``limit`` and ``offset`` and returns no ``totalSize``, so
+    paging it would re-request the full listing once per page.
+    """
+    context = f"{entity_type} listing at ssot/metadata"
+    payload = _get(
         client=client,
-        object_type=MetadataTypesConstant.METADATA,
         path="ssot/metadata",
-        limit=pagination_limit,
+        params={"dataspace": dataspace_name, "entityType": entity_type},
+        metadata_type=MetadataTypesConstant.METADATA,
         log_warning=log_warning,
-        extra_params={"dataspace": dataspace_name, "entityType": entity_type},
     )
+    if payload is None:
+        raise Data360ResponseError(f"No response from Data 360 API for {context}")
+    paging = get_endpoint_paging(object_type=MetadataTypesConstant.METADATA)
+    page = PaginatedPage.from_payload(payload=payload, paging=paging, context=context)
+    if page.total_size > len(page.items):
+        # A partial listing would be reconciled as the full set and soft-delete the rest.
+        raise Data360ResponseError(
+            f"Data 360 reported {page.total_size} objects for {context} but returned {len(page.items)}"
+        )
+    return page.items
 
 
 def get_calculated_insight_by_name(

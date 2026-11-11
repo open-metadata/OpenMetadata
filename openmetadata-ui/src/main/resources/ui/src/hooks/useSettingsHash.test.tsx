@@ -21,9 +21,13 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import { LIST_PAGE_SIZE_OPTIONS } from '../constants/constants';
+import { User } from '../generated/entity/teams/user';
 import { getSettingsLink } from '../utils/SettingsModalLinkUtils';
+import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from './useApplicationStore';
 import { useAppModeStore } from './useAppMode';
-import { useSettingsHash } from './useSettingsHash';
+import { useHashPagingParams, useSettingsHash } from './useSettingsHash';
 
 // Real MemoryRouter (no react-router mock): the hook drives navigation through
 // react-router and reads the live URL hash from `globalThis.location`, so tests
@@ -98,6 +102,32 @@ describe('useSettingsHash', () => {
 
     expect(result.current.state.tab).toBe('notification');
     expect(result.current.state.params).toEqual({ page: '2' });
+  });
+
+  it('should merge updateParams into the current view params', () => {
+    const { result } = renderHook(() => useSettingsHash(), { wrapper });
+
+    act(() =>
+      result.current.setHash('members', 'users', { pageSize: '25', page: '3' })
+    );
+    act(() => result.current.updateParams({ page: '1' }));
+
+    expect(result.current.state.subPath).toBe('users');
+    expect(result.current.state.params).toEqual({ pageSize: '25', page: '1' });
+  });
+
+  it('should drop a stale updateParams once the view has navigated away', () => {
+    const { result } = renderHook(() => useSettingsHash(), { wrapper });
+
+    act(() => result.current.setHash('members', 'users'));
+    // Captured before navigating, like a debounced search's page reset.
+    const staleUpdateParams = result.current.updateParams;
+    act(() => result.current.setHash('access-control', 'roles/DataSteward'));
+    act(() => staleUpdateParams({ page: '1' }));
+
+    expect(result.current.state.tab).toBe('access-control');
+    expect(result.current.state.subPath).toBe('roles/DataSteward');
+    expect(result.current.state.params).toEqual({});
   });
 
   it('should preserve the surrounding query string when setting a hash', () => {
@@ -404,5 +434,104 @@ describe('useSettingsHash', () => {
       expect(result.current.location.pathname).toBe('/explore');
       expect(result.current.settings.state.tab).toBeNull();
     });
+  });
+});
+
+describe('useHashPagingParams', () => {
+  beforeEach(() => {
+    globalThis.location.hash = '';
+    const { result, unmount } = renderHook(() => useSettingsHash(), {
+      wrapper,
+    });
+    act(() => result.current.clearHash());
+    unmount();
+  });
+
+  const renderPaging = (options?: number[]) =>
+    renderHook(
+      () => ({ paging: useHashPagingParams(options), hash: useSettingsHash() }),
+      { wrapper }
+    );
+
+  it('keeps the page, cursor and size of a link on the picker scale', () => {
+    globalThis.location.hash =
+      '#notification/events?page=3&pageSize=25&cursorType=after&cursor=abc';
+
+    const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+    expect(result.current.paging.page).toBe(3);
+    expect(result.current.paging.pageSize).toBe(25);
+    expect(result.current.paging.cursor).toBe('abc');
+  });
+
+  it('opens an off-scale link on page 1 and rewrites the hash to match', () => {
+    // An older link: its page 3 was counted at 10 per page, so at the saved 15 it would request an
+    // offset past the data and show an empty page with no pager to page back with.
+    globalThis.location.hash =
+      '#notification/events?page=3&pageSize=10&cursorType=after&cursor=abc';
+
+    const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+    expect(result.current.paging.page).toBe(1);
+    expect(result.current.paging.pageSize).toBeUndefined();
+    expect(result.current.paging.cursor).toBeUndefined();
+    expect(result.current.paging.cursorType).toBeUndefined();
+    expect(result.current.hash.state.params).toEqual({});
+  });
+
+  describe('the resolved page size', () => {
+    const previousUser = useApplicationStore.getState().currentUser;
+
+    beforeEach(() => {
+      useApplicationStore.setState({
+        currentUser: { ...previousUser, name: 'hash-user' } as User,
+      });
+      usePersistentStorage
+        .getState()
+        .setUserPreference('hash-user', { globalPageSize: 50 });
+    });
+
+    afterEach(() => {
+      usePersistentStorage.getState().clearUserPreference('hash-user');
+      useApplicationStore.setState({ currentUser: previousUser });
+    });
+
+    it('is the hash size when the picker offers it', () => {
+      globalThis.location.hash = '#notification/events?pageSize=25';
+
+      const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+      expect(result.current.paging.resolvedPageSize).toBe(25);
+    });
+
+    it('falls back to the saved size when the hash carries none or an off-scale one', () => {
+      globalThis.location.hash = '#notification/events?pageSize=10';
+
+      const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+      expect(result.current.paging.resolvedPageSize).toBe(50);
+    });
+
+    it('saves a picked size for the next panel that opens without one', () => {
+      const { result } = renderPaging(LIST_PAGE_SIZE_OPTIONS);
+
+      act(() => result.current.paging.savePageSize(25));
+
+      expect(result.current.paging.resolvedPageSize).toBe(25);
+      expect(
+        usePersistentStorage.getState().preferences['hash-user'].globalPageSize
+      ).toBe(25);
+    });
+  });
+
+  it('puts a caller that declares no options on the list scale', () => {
+    globalThis.location.hash =
+      '#notification/events?page=2&pageSize=24&cursorType=after&cursor=abc';
+
+    const { result } = renderPaging();
+
+    expect(result.current.paging.page).toBe(1);
+    expect(result.current.paging.cursor).toBeUndefined();
+    expect(result.current.paging.resolvedPageSize).toBe(15);
   });
 });

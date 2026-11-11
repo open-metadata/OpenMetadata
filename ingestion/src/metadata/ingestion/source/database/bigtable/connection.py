@@ -33,7 +33,10 @@ from metadata.ingestion.connections.test_connections import (
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigtable.client import MultiProjectClient
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    get_gcp_impersonate_credentials_or_none,
+    set_google_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -91,7 +94,12 @@ class BigTableConnection(BaseConnection[BigTableConnectionConfig, MultiProjectCl
                 else connection.credentials.gcpConfig.projectId.root  # pyright: ignore[reportOptionalMemberAccess]
             )
         # admin=True is required to list instances and tables
-        return MultiProjectClient(client_class=Client, project_ids=project_ids, admin=True)
+        return MultiProjectClient(
+            client_class=Client,
+            project_ids=project_ids,
+            admin=True,
+            credentials=get_gcp_impersonate_credentials_or_none(connection.credentials),
+        )
 
     def test_connection(
         self,

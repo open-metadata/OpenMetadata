@@ -12,6 +12,7 @@
  */
 
 import { expect } from '@playwright/test';
+import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { EXTENDED_TEST_TIMEOUT } from '../../constant/common';
 import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
@@ -25,6 +26,7 @@ import { ClassificationClass } from '../../support/tag/ClassificationClass';
 import { TagClass } from '../../support/tag/TagClass';
 import { UserClass } from '../../support/user/UserClass';
 import {
+  clickIgnoringToasts,
   createNewPage,
   getApiContext,
   redirectToHomePage,
@@ -39,9 +41,12 @@ import {
   cleanupCurrentArticle,
   createArticleFromButton,
   createArticleViaApi,
+  createMemoryViaApi,
   deleteArticleByFqn,
   getArticleFqnFromUrl,
   getLoggedInUser,
+  getMemoryStatus,
+  MEMORIES_API,
   navigateToArticle,
   navigateToArticles,
   navigateToDashboard,
@@ -77,6 +82,7 @@ import {
 } from '../../utils/KnowledgeCenter';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
+import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 import { test } from '../fixtures/pages';
 import { navigateToKCEntity } from '../Utils/ExplorePageRightPanelUtils';
 import {
@@ -97,7 +103,9 @@ let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
 
 let articleEntity: KnowledgeCenterClass;
 // Unique part of the article's title: searching the whole title also matches
-// every newer "CC Article" from other workers (see verifyArticleSearch).
+// every newer "CC Article" from other workers (see verifyArticleSearch). Letters
+// only: the page index fuzzy-matches ngrams, and digit grams match thousands of
+// pages, pushing this beforeAll-created article off the first "Recently updated" page.
 let articleSearchTerm: string;
 let articleTagClassification: ClassificationClass;
 let articleTags: TagClass[] = [];
@@ -125,7 +133,10 @@ test.describe('Context Center Articles', () => {
     DRAFT_ARTICLE_A_DISPLAY_NAME = `Draft Persist A ${uuid()}`;
     DRAFT_ARTICLE_B_DISPLAY_NAME = `Draft Persist B ${uuid()}`;
 
-    articleSearchTerm = uuid();
+    articleSearchTerm = cryptoRandomString({
+      length: 8,
+      characters: 'abcdefghijklmnopqrstuvwxyz',
+    });
     articleEntity = new KnowledgeCenterClass({
       displayName: `CC Article ${articleSearchTerm}`,
       name: `cc_article_${uuid()}`,
@@ -467,6 +478,24 @@ test.describe('Context Center Articles', () => {
     page,
   }) => {
     test.slow();
+    // Our own tag, indexed before use: the seeded KnowledgeCenter.QuickLink is
+    // only searchable if the CI fixture's tag index is complete, and a fixture
+    // snapshotted mid-reindex (Oct 25) dropped it, failing every attempt.
+    const quickLinkTag = new TagClass({
+      classification: articleTagClassification.data.name,
+    });
+    const { apiContext, afterAction } = await getApiContext(page);
+    try {
+      await quickLinkTag.create(apiContext);
+      await waitForSearchIndexed(
+        apiContext,
+        quickLinkTag.responseData.fullyQualifiedName,
+        'tag'
+      );
+    } finally {
+      await afterAction();
+    }
+
     const testQuickLink = {
       displayName: `CC QL Test ${uuid()}`,
       updatedDisplayName: `CC QL Test Updated ${uuid()}`,
@@ -474,8 +503,8 @@ test.describe('Context Center Articles', () => {
       updatedDescription: 'Quick link updated from Playwright modal',
       url: RELATED_QUICK_LINK_URL,
       updatedUrl: UPDATED_QUICK_LINK_URL,
-      tag: 'QuickLink',
-      tagFqn: 'KnowledgeCenter.QuickLink',
+      tag: quickLinkTag.data.displayName,
+      tagFqn: quickLinkTag.responseData.fullyQualifiedName,
     };
 
     await navigateToArticles(page);
@@ -1118,6 +1147,112 @@ test.describe('Context Center Articles', () => {
     expect(pageErrors).toEqual([]);
   });
 
+  test('approving extracted memories from an article persists their approved status', async ({
+    page,
+    browser,
+  }) => {
+    test.slow();
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const articleName = `cc_approval_article_${uuid()}`;
+    const memoryName = `cc_article_memory_${uuid()}`;
+    try {
+      const article = await createArticleViaApi(apiContext, {
+        name: articleName,
+        displayName: `Article approval ${uuid()}`,
+      });
+      const source = { id: article.id, type: 'page' };
+      const memory = await createMemoryViaApi(apiContext, {
+        name: memoryName,
+        title: 'Article refund policy',
+        question: 'What is the refund window?',
+        answer: '30 days',
+        sourceType: 'PageExtraction',
+        sourceEntity: source,
+        primaryEntity: source,
+        entityStatus: 'Unprocessed',
+        shareConfig: { visibility: 'Entity' },
+      });
+
+      await navigateToArticle(page, article.fullyQualifiedName);
+      const card = page
+        .getByTestId('knowledge-page-right-panel')
+        .getByTestId('extracted-memories-card');
+      await expect(
+        card.getByTestId(`extracted-memory-${memory.id}`)
+      ).toBeVisible();
+      const approve = card.getByTestId('approve-extracted-memories-btn');
+      await expect(approve).toHaveText(/\b1 pending\b/);
+      const nextApprovalPreview = () =>
+        waitForResponseWithStatus(
+          page,
+          (response) => {
+            const url = new URL(response.url());
+
+            return (
+              response.request().method() === 'GET' &&
+              url.pathname === `${MEMORIES_API}/extractedApproval` &&
+              url.searchParams.get('sourceId') === article.id
+            );
+          },
+          200
+        ).then((response) => response.json());
+      const refreshedApproval = nextApprovalPreview();
+      const approved = waitForResponseWithStatus(
+        page,
+        (response) =>
+          response.request().method() === 'PUT' &&
+          new URL(response.url()).pathname ===
+            `${MEMORIES_API}/extractedApproval`,
+        200
+      );
+      await clickIgnoringToasts(approve);
+
+      expect(await (await approved).json()).toMatchObject({
+        approved: 1,
+        failed: 0,
+        needsDecision: [],
+      });
+      expect(await getMemoryStatus(apiContext, memory.id)).toBe('Approved');
+      // Finish the mutation's refresh before a reload can discard its response body.
+      expect(await refreshedApproval).toMatchObject({
+        approved: 0,
+        approvable: [],
+      });
+      const reloadedApproval = nextApprovalPreview();
+      await page.reload();
+      expect(await reloadedApproval).toMatchObject({
+        approved: 0,
+        approvable: [],
+      });
+      await expect(
+        card.getByTestId(`extracted-memory-${memory.id}`)
+      ).toBeVisible();
+      await expect(approve).toHaveCount(0);
+    } finally {
+      try {
+        const results = [
+          ...(await Promise.allSettled([
+            apiContext
+              .delete(`${MEMORIES_API}/name/${memoryName}?hardDelete=true`)
+              .then(async (response) => {
+                expect([200, 404], await response.text()).toContain(
+                  response.status()
+                );
+              }),
+          ])),
+          ...(await Promise.allSettled([
+            deleteArticleByFqn(apiContext, articleName),
+          ])),
+        ];
+        expect(
+          results.filter((result) => result.status === 'rejected')
+        ).toEqual([]);
+      } finally {
+        await afterAction();
+      }
+    }
+  });
+
   test('Article detail layout, drawer, activity tab, and version page work', async ({
     page,
     browser,
@@ -1408,12 +1543,13 @@ test.describe('Context Center Articles', () => {
       await page.locator('[data-testid="send-button"]').click();
       const createdConversationResponse = await feedResponse;
       const createdConversation = await createdConversationResponse.json();
-      await expect(page.getByText(conversationMessage)).toBeVisible();
-
+      // A card still mounting its preview also holds the text in an sr-only
+      // skeleton span, so a page-wide getByText resolves to two elements.
       const mainMessage = page.locator(
         `[data-testid="feed-card-v2-sidebar"][data-conversation-id="${createdConversation.id}"]`
       );
       await expect(mainMessage).toBeVisible();
+      await expect(mainMessage).toContainText(conversationMessage);
       await mainMessage.getByTestId('add-reactions').click();
       const reactionResponse = page.waitForResponse(
         (response) =>
@@ -1433,41 +1569,37 @@ test.describe('Context Center Articles', () => {
         page.getByTestId('popover-content').filter({ hasText: /admin/i }).last()
       ).toContainText(/admin/i);
 
-      await mainMessage.hover();
-      const resolveResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes(`/api/v1/conversations/${createdConversation.id}`) &&
-          response.request().method() === 'PATCH'
-      );
-      await mainMessage.getByTestId('toggle-resolved').click();
-      await resolveResponse;
-      await mainMessage.hover();
-      await expect(mainMessage.getByTestId('toggle-resolved')).toHaveAttribute(
-        'aria-label',
-        'Open'
-      );
+      // The reply count opens the conversation inside the drawer. That view
+      // already lists the replies, so it shows no reply count of its own.
+      await mainMessage.getByTestId('reply-button').click();
+      await expect(page.getByTestId('comments-input-field')).toBeVisible();
+      await expect(mainMessage.getByTestId('reply-button')).toHaveCount(0);
+      await page.getByTestId('thread-back').click();
+      await expect(mainMessage.getByTestId('reply-button')).toBeVisible();
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('edit-message').click();
+      // In the drawer a conversation's Edit / Delete sit in its menu, which
+      // renders in a popover outside the card.
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Edit' }).click();
 
       const updatedMessage = `Updated Thread Message ${uuid()}`;
-      await editor.click();
-      await editor.clear();
-      await editor.fill(updatedMessage);
+      const editForm = mainMessage.getByTestId('edit-message-editor');
+      const editEditor = editForm.locator('[contenteditable="true"]');
+      await editEditor.click();
+      await editEditor.clear();
+      await editEditor.fill(updatedMessage);
 
       const updateThreadPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&
           response.request().method() === 'PATCH'
       );
-      await page.locator('[data-testid="save-button"]').click();
+      await editForm.getByTestId('send-button').click();
       await updateThreadPromise;
-      await expect(page.getByText(updatedMessage)).toBeVisible();
+      await expect(mainMessage).toContainText(updatedMessage);
 
-      await mainMessage.hover();
-      await mainMessage.getByTestId('delete-message').click();
+      await mainMessage.getByTestId('conversation-actions').click();
+      await page.getByRole('menuitem', { name: 'Delete' }).click();
       const deletePostPromise = page.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/conversations') &&
@@ -1995,7 +2127,7 @@ test.describe('Context Center Articles', () => {
         await navigateToArticle(page, articleToDelete.fullyQualifiedName);
 
         const deleteResponse = page.waitForResponse(
-          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=false`
+          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=true`
         );
 
         await page.getByTestId('manage-button').first().click();

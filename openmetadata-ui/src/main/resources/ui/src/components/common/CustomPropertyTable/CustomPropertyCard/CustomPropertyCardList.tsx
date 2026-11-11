@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Typography } from '@openmetadata/ui-core-components';
+import { Box } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import NoSearchResultsPlaceholder from '../../EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { CustomPropertyLayoutItem } from '../CustomPropertiesWidget/CustomPropertiesWidget.interface';
 import {
   applyPropertyLayout,
@@ -103,15 +104,17 @@ export const CustomPropertyCardList = ({
             ))}
           </div>
         ) : (
-          <Typography
-            className="tw:py-8 tw:text-center tw:text-tertiary"
-            data-testid="no-matching-custom-properties"
-            size="text-sm">
-            {t('message.no-entity-found-for-name', {
-              entity: t('label.property-plural'),
-              name: searchText,
-            })}
-          </Typography>
+          <Box
+            className="tw:relative tw:min-h-80"
+            data-testid="no-matching-custom-properties">
+            <NoSearchResultsPlaceholder
+              description={t('message.check-spelling-or-try-shorter-term')}
+              title={t('message.no-entity-found-for-name', {
+                entity: t('label.property-plural'),
+                name: searchText,
+              })}
+            />
+          </Box>
         )}
       </Box>
     </Box>

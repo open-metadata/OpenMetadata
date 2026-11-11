@@ -1044,8 +1044,23 @@
   vertical-align: middle;
 }
 .ql-mention-list-item.selected {
-  background-color: var(--ant-primary-1);
+  background-color: var(--theme-primary-1);
   text-decoration: none;
+}
+
+// Dark: the legacy white surface and light-blue selection above never flip, leaving
+// near-white names on white. Match the other floating menus (bg-raised). Light is unchanged.
+.dark-mode {
+  .ql-mention-list-container {
+    background-color: var(--tw-background-color-floating);
+    border-color: var(--tw-border-color-secondary_alt);
+  }
+  .ql-mention-list-item {
+    color: var(--tw-text-color-secondary);
+  }
+  .ql-mention-list-item.selected {
+    background-color: var(--tw-background-color-primary_hover);
+  }
 }
 
 .ql-snow.ql-toolbar .ql-formats:nth-child(5) {

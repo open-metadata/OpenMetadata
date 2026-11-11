@@ -21,11 +21,12 @@ const options = [
   { value: 'last30days', label: 'Last 30 days', icon: Icon },
 ];
 
-const renderMenu = (triggerLabel?: string) => {
+const renderMenu = (triggerLabel?: string, iconOnly?: boolean) => {
   const onChange = jest.fn();
   render(
     <ActivityToolbarMenu
       data-testid="date-menu"
+      iconOnly={iconOnly}
       options={options}
       title="Date"
       triggerIcon={Icon}
@@ -49,6 +50,15 @@ describe('ActivityToolbarMenu', () => {
     renderMenu('Group');
 
     expect(screen.getByTestId('date-menu')).toHaveTextContent('Group');
+  });
+
+  it('names an icon-only trigger without showing the text', () => {
+    renderMenu('Sort: Newest first', true);
+
+    const trigger = screen.getByTestId('date-menu');
+
+    expect(trigger).toHaveAccessibleName('Sort: Newest first');
+    expect(trigger).toHaveTextContent('');
   });
 
   it('opens on a heading and its options, and reports the one picked', () => {

@@ -22,6 +22,7 @@ import {
 import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
+import { waitForAriaOverlayToSettle } from '../../../utils/waitHelpers';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
 const TEST_DEFINITION_DISPLAY_NAME = `Aaro Custom Test Definition ${uuid()}`;
@@ -975,14 +976,11 @@ test.describe(
         await expect(
           page.getByTestId('test-definition-form-body')
         ).toBeVisible();
+        // A tag-remove click that lands while the drawer is still sliding in
+        // is swallowed: the button takes focus but onPress never fires.
+        await waitForAriaOverlayToSettle(page);
 
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'Mysql' })
-          .getByRole('button')
-          .first()
-          .click();
+        await page.getByRole('button', { name: 'Remove Mysql' }).click();
 
         await expect(
           page
@@ -1069,14 +1067,9 @@ test.describe(
         await expect(
           page.getByTestId('test-definition-form-body')
         ).toBeVisible();
+        await waitForAriaOverlayToSettle(page);
 
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'Postgres' })
-          .getByRole('button')
-          .first()
-          .click();
+        await page.getByRole('button', { name: 'Remove Postgres' }).click();
 
         await expect(
           page
@@ -1084,13 +1077,7 @@ test.describe(
             .getByText('Postgres', { exact: true })
         ).toHaveCount(0);
 
-        await page
-          .getByTestId('supported-services')
-          .locator('div')
-          .filter({ hasText: 'BigQuery' })
-          .getByRole('button')
-          .first()
-          .click();
+        await page.getByRole('button', { name: 'Remove BigQuery' }).click();
 
         await expect(
           page

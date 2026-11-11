@@ -37,7 +37,7 @@ public class AlertingConfiguration {
    * When true, an event waits for the mail server's answer to each of its emails, up to the time
    * left in the tick's budget, and a rejection or a wait that runs out is a failed outcome.
    */
-  @JsonProperty private boolean awaitEmailOutcome = false;
+  @JsonProperty private boolean awaitEmailOutcome = true;
 
   /** How many of one event's targets are sent to at the same time. 1 sends one after another. */
   @JsonProperty private int targetSendConcurrency = 1;

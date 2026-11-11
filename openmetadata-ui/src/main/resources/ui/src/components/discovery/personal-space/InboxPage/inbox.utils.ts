@@ -342,6 +342,14 @@ export enum ActivityFilter {
   Following = 'following',
 }
 
+const ACTIVITY_FILTERS = new Set<string>(Object.values(ActivityFilter));
+
+/** A link's `?filter=` value as an Activity sub-tab; anything else is ignored. */
+export const parseActivityFilter = (
+  value?: string | null
+): ActivityFilter | undefined =>
+  value && ACTIVITY_FILTERS.has(value) ? (value as ActivityFilter) : undefined;
+
 export enum ActivityGrouping {
   Day = 'day',
   Asset = 'asset',

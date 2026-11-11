@@ -13,8 +13,8 @@
 
 import { Button } from '@openmetadata/ui-core-components';
 import {
-  Building01,
-  GlossaryTerm as GlossaryTermIcon,
+  IntakeForms,
+  KnowledgePanels,
   Policy as GovernanceIcon,
 } from '@openmetadata/ui-core-components/icons';
 import type { Key } from 'react';
@@ -133,12 +133,12 @@ const GovernancePanel: FC<GovernancePanelProps> = ({ onHeaderChange }) => {
       FC<{ className?: string }>
     > = {
       landing: GovernanceIcon,
-      [VIEW_GLOSSARY_LIST]: GlossaryTermIcon,
-      'glossary-add': GlossaryTermIcon,
-      'glossary-edit': GlossaryTermIcon,
-      [VIEW_INTAKE_LIST]: Building01,
-      'intake-add': Building01,
-      'intake-edit': Building01,
+      [VIEW_GLOSSARY_LIST]: KnowledgePanels,
+      'glossary-add': KnowledgePanels,
+      'glossary-edit': KnowledgePanels,
+      [VIEW_INTAKE_LIST]: IntakeForms,
+      'intake-add': IntakeForms,
+      'intake-edit': IntakeForms,
     };
 
     const titleByView: Record<GovernanceView['type'], string> = {

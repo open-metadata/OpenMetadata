@@ -32,6 +32,7 @@ import {
 } from '../../../../../../generated/api/policies/createPolicy';
 import { addPolicy } from '../../../../../../rest/rolesAPIV1';
 import { getIsErrorMatch } from '../../../../../../utils/APIUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   showErrorToast,
   showSuccessToast,
@@ -104,11 +105,15 @@ const AccessControlAddPolicyForm: React.FC<AccessControlAddPolicyFormProps> = ({
           description,
           rules: [condition ? { ...rest, condition } : rest],
         };
-        await addPolicy(payload);
+        const policy = await addPolicy(payload);
         showSuccessToast(
           t('server.create-entity-success', { entity: t('label.policy') })
         );
-        onNavigate({ type: 'policies' });
+        onNavigate({
+          type: 'policies-detail',
+          fqn: policy.fullyQualifiedName ?? policy.name,
+          name: getEntityName(policy),
+        });
       } catch (error) {
         showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)

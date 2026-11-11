@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Toggle } from '@openmetadata/ui-core-components';
+import { ConfirmPopover, Toggle } from '@openmetadata/ui-core-components';
+import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { globalSettings as NUMBER_SETTINGS } from '../../../../../../../constants/SearchSettings.constant';
 import { GlobalSettings } from '../../../../../../../generated/configuration/searchSettings';
@@ -27,8 +28,6 @@ interface GlobalSearchSettingsProps {
     update: Partial<GlobalSettings>,
     successMessage?: string
   ) => Promise<boolean>;
-  /** Turning column indexing off is confirmed first: it drops column search. */
-  onDisableColumnIndexing: () => void;
 }
 
 /** Toggles and limits that apply to every index, each saved on change. */
@@ -36,11 +35,13 @@ const GlobalSearchSettings = ({
   globalSettings,
   isDisabled,
   onUpdate,
-  onDisableColumnIndexing,
 }: GlobalSearchSettingsProps) => {
   const { t } = useTranslation();
   // Installs that predate the setting have no stored value, and they index columns.
   const columnIndexing = globalSettings.enableColumnIndexing ?? true;
+  const columnToggleRef = useRef<HTMLDivElement>(null);
+  // Turning column indexing off is confirmed first: it drops column search.
+  const [isDisableConfirmOpen, setIsDisableConfirmOpen] = useState(false);
 
   return (
     <SettingsSection title={t('label.global-setting-plural')}>
@@ -57,19 +58,31 @@ const GlobalSearchSettings = ({
         title={t('label.enable-entity', {
           entity: t('label.column-indexing'),
         })}>
-        <Toggle
-          aria-label={t('label.column-indexing')}
-          data-testid="enable-column-indexing-switch"
-          isDisabled={isDisabled}
-          isSelected={columnIndexing}
-          onChange={() =>
-            columnIndexing
-              ? onDisableColumnIndexing()
-              : onUpdate(
-                  { enableColumnIndexing: true },
-                  t('message.column-indexing-enabled-reindex')
-                )
-          }
+        <div ref={columnToggleRef}>
+          <Toggle
+            aria-label={t('label.column-indexing')}
+            data-testid="enable-column-indexing-switch"
+            isDisabled={isDisabled}
+            isSelected={columnIndexing}
+            onChange={() =>
+              columnIndexing
+                ? setIsDisableConfirmOpen(true)
+                : onUpdate(
+                    { enableColumnIndexing: true },
+                    t('message.column-indexing-enabled-reindex')
+                  )
+            }
+          />
+        </div>
+        <ConfirmPopover
+          confirmText={t('label.disable')}
+          data-testid="disable-column-indexing-popover"
+          description={t('message.disable-column-indexing-confirmation')}
+          isOpen={isDisableConfirmOpen}
+          title={t('label.column-indexing')}
+          triggerRef={columnToggleRef}
+          onConfirm={() => onUpdate({ enableColumnIndexing: false })}
+          onOpenChange={setIsDisableConfirmOpen}
         />
       </ReadOnlyRow>
       {NUMBER_SETTINGS.map(({ key, label, min, max }) => (
