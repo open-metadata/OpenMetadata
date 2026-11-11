@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
+import { get } from 'lodash';
+import { SamlSSOClientConfig } from '../../generated/security/client/samlSSOClientConfig';
 import { AuthProvider } from '../../generated/settings/settings';
 import {
   applySecurityConfiguration,
@@ -20,6 +22,7 @@ import {
   validateSecurityConfiguration,
 } from '../../rest/securityConfigAPI';
 import { showSuccessToast } from '../../utils/ToastUtils';
+import { FormData } from './SSOConfigurationForm/SSOConfigurationForm.interface';
 import { useSsoConfiguration } from './useSsoConfiguration';
 
 jest.mock('react-i18next', () => ({
@@ -250,5 +253,52 @@ describe('useSsoConfiguration', () => {
 
     expect(onChangeProvider).toHaveBeenCalled();
     expect(result.current.internalData).toBeUndefined();
+  });
+
+  it('offers the SAML signing switches only while Strict Mode is on', async () => {
+    const { result } = renderHook(() =>
+      useSsoConfiguration({ selectedProvider: AuthProvider.Saml })
+    );
+    await waitFor(() => expect(result.current.internalData).toBeDefined());
+    const securityUiSchema = () =>
+      get(
+        result.current.uiSchema,
+        'authenticationConfiguration.samlConfiguration.security'
+      );
+
+    expect(securityUiSchema().wantMessagesSigned).toEqual({
+      'ui:widget': 'hidden',
+      'ui:hideError': true,
+    });
+    expect(securityUiSchema().wantAssertionsSigned).toEqual({
+      'ui:widget': 'hidden',
+      'ui:hideError': true,
+    });
+
+    act(() => {
+      const data = result.current.internalData as FormData;
+      const samlConfiguration = data.authenticationConfiguration
+        .samlConfiguration as SamlSSOClientConfig | undefined;
+      const withStrictMode: FormData = {
+        ...data,
+        authenticationConfiguration: {
+          ...data.authenticationConfiguration,
+          samlConfiguration: {
+            ...samlConfiguration,
+            security: { ...samlConfiguration?.security, strictMode: true },
+          },
+        },
+      };
+      result.current.handleOnChange({
+        formData: withStrictMode,
+      } as Parameters<typeof result.current.handleOnChange>[0]);
+    });
+
+    expect(securityUiSchema().wantMessagesSigned).toEqual({
+      'ui:title': 'Want Messages Signed',
+    });
+    expect(securityUiSchema().wantAssertionsSigned).toEqual({
+      'ui:title': 'Want Assertions Signed',
+    });
   });
 });

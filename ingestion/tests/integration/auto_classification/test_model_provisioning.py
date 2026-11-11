@@ -22,10 +22,6 @@ WHEEL_ENVIRONMENT_VARIABLE = "OM_MODEL_PROVISIONING_WHEEL"
 pytestmark = [
     pytest.mark.slow,
     pytest.mark.skipif(
-        os.getenv("OM_SKIP_CLASSIFICATION_MODELS") == "true",
-        reason="Classification model provisioning is temporarily disabled by OM_SKIP_CLASSIFICATION_MODELS",
-    ),
-    pytest.mark.skipif(
         not os.getenv(WHEEL_ENVIRONMENT_VARIABLE),
         reason=(
             "requires a candidate ingestion wheel and network access; set "
@@ -47,7 +43,7 @@ def test_provisions_and_reuses_models_in_a_clean_environment(tmp_path: Path):
     assert wheel.is_file(), f"Candidate wheel does not exist: {wheel}"
 
     environment = tmp_path / "model-provisioning"
-    venv.EnvBuilder(with_pip=True).create(environment)
+    venv.EnvBuilder(with_pip=True, symlinks=True).create(environment)
     python = environment / "bin" / "python"
 
     _run([str(python), "-m", "pip", "install", f"{wheel}[pii-processor]"])
