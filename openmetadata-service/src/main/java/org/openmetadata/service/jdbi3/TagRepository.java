@@ -26,6 +26,7 @@ import static org.openmetadata.service.search.SearchConstants.TAGS_FQN;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getId;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -75,6 +76,8 @@ import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
 public class TagRepository extends EntityRepository<Tag> {
+  private static final String PREDEFINED_RECOGNIZER_TYPE = "predefined";
+  private static final String SUPPORTED_LANGUAGE = "supportedLanguage";
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
 
   public TagRepository() {
@@ -221,6 +224,7 @@ public class TagRepository extends EntityRepository<Tag> {
     if (recognizer.getRecognizerConfig() == null) {
       throw new IllegalArgumentException("recognizerConfig is required");
     }
+    validateSupportedLanguage(recognizer);
 
     if (recognizer.getConfidenceThreshold() != null) {
       double threshold = recognizer.getConfidenceThreshold();
@@ -231,6 +235,22 @@ public class TagRepository extends EntityRepository<Tag> {
 
     if (recognizer.getId() == null) {
       throw new IllegalArgumentException("Can't create recognizer without an ID");
+    }
+  }
+
+  /**
+   * The ingestion client's Tag model requires supportedLanguage on every recognizer type but
+   * predefined, and one recognizer it cannot parse drops every tag of the classification from
+   * auto-classification.
+   */
+  static void validateSupportedLanguage(Recognizer recognizer) {
+    JsonNode config = JsonUtils.valueToTree(recognizer.getRecognizerConfig());
+    boolean languageOptional = PREDEFINED_RECOGNIZER_TYPE.equals(config.path("type").asText());
+    if (!languageOptional && !config.hasNonNull(SUPPORTED_LANGUAGE)) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Recognizer '%s' must set recognizerConfig.%s",
+              recognizer.getName(), SUPPORTED_LANGUAGE));
     }
   }
 

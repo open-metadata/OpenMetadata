@@ -1,5 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -14,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
@@ -440,5 +442,31 @@ public class TagRepositoryUnitTest {
     assertNotSame(seeded, missing.getFirst());
     assertNotNull(missing.getFirst().getId());
     assertNull(seeded.getId());
+  }
+
+  private static Recognizer recognizerWithConfig(Map<String, Object> config) {
+    return new Recognizer().withName("Government_ID").withRecognizerConfig(config);
+  }
+
+  @Test
+  void test_validateSupportedLanguage_rejectsPatternConfigWithoutLanguage() {
+    Recognizer recognizer = recognizerWithConfig(Map.of("type", "pattern", "patterns", List.of()));
+
+    IllegalArgumentException error =
+        assertThrows(
+            IllegalArgumentException.class,
+            () -> TagRepository.validateSupportedLanguage(recognizer));
+    assertTrue(error.getMessage().contains("Government_ID"));
+  }
+
+  @Test
+  void test_validateSupportedLanguage_acceptsConfigsTheIngestionClientCanParse() {
+    Map<String, Object> pattern = Map.of("type", "pattern", "supportedLanguage", "any");
+    Map<String, Object> predefined = Map.of("type", "predefined", "name", "EmailRecognizer");
+
+    assertDoesNotThrow(
+        () -> TagRepository.validateSupportedLanguage(recognizerWithConfig(pattern)));
+    assertDoesNotThrow(
+        () -> TagRepository.validateSupportedLanguage(recognizerWithConfig(predefined)));
   }
 }

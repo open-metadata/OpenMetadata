@@ -1965,6 +1965,37 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
   }
 
   @Test
+  void patch_recognizerWithoutSupportedLanguage_rejected(TestNamespace ns) {
+    // The ingestion client cannot parse a pattern recognizer without supportedLanguage, and one
+    // such recognizer drops the whole classification from auto-classification.
+    Map<String, Object> config = new LinkedHashMap<>();
+    config.put("type", "pattern");
+    config.put("patterns", List.of(Map.of("name", "id", "regex", "^id$", "score", 0.8)));
+    config.put("regexFlags", Map.of("dotAll", true, "multiline", true, "ignoreCase", true));
+    config.put("supportedLanguage", "any");
+    CreateTag request =
+        tagIn(ns.shortPrefix("recognized"), createClassification(ns))
+            .withRecognizers(
+                List.of(new Recognizer().withName("Government_ID").withRecognizerConfig(config)));
+    Tag tag = createEntity(request);
+
+    JsonNode dropLanguage =
+        JsonUtils.valueToTree(
+            List.of(
+                Map.of(
+                    "op", "remove", "path", "/recognizers/0/recognizerConfig/supportedLanguage")));
+    assertThrows(
+        InvalidRequestException.class,
+        () -> SdkClients.adminClient().tags().patch(tag.getId(), dropLanguage));
+
+    Tag reloaded = getEntityWithFields(tag.getId().toString(), "recognizers");
+    Map<?, ?> storedConfig =
+        JsonUtils.convertValue(
+            reloaded.getRecognizers().getFirst().getRecognizerConfig(), Map.class);
+    assertEquals("any", storedConfig.get("supportedLanguage"));
+  }
+
+  @Test
   void post_tagWithParentFromAnotherClassification_rejected(TestNamespace ns) {
     Classification named = createClassification(ns);
     Classification other = createClassification(ns);
