@@ -500,6 +500,19 @@
                 "definition": {
                     "type": "string"
                 },
+                "filters": {
+                    "description": "Metrics only: the SQL conditions the metric is defined under, each to be applied with the definition. The number is wrong without them.",
+                    "type": "array",
+                    "items": { "type": "string" }
+                },
+                "granularity": {
+                    "description": "Metrics only: the time grain the metric is reported at (DAY, MONTH, ...).",
+                    "type": "string"
+                },
+                "unit": {
+                    "description": "Metrics only: the unit the value is measured in. The custom unit when unitOfMeasurement is OTHER, otherwise the unitOfMeasurement value.",
+                    "type": "string"
+                },
                 "synonyms": {
                     "type": "array",
                     "items": { "type": "string" }
