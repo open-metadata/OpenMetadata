@@ -249,7 +249,6 @@ const declaredProperties = (model: OntologyStudioModel): DeclaredProperty => {
   return (iri) => byIri.get(iri);
 };
 
-/** Adds the domain and range the ontology declares for an object property, as concept ids. */
 /** Each concept with every concept below it, through the hierarchy the model draws. */
 const descendantsOf = (model: OntologyStudioModel) => {
   const children = new Map<string, string[]>();
@@ -273,6 +272,7 @@ const descendantsOf = (model: OntologyStudioModel) => {
   };
 };
 
+/** Adds the domain and range the ontology declares for an object property, as concept ids. */
 const scopeOf = (model: OntologyStudioModel) => {
   const concepts = new Map(
     model.concepts.map((concept) => [concept.iri, concept])

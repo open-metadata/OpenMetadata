@@ -221,4 +221,26 @@ describe('OntologyNativeDataCanvas', () => {
 
     expect(onPaneClick).toHaveBeenCalledTimes(1);
   });
+
+  it('clears the selection with Escape from a focused card, and ignores a right-click on the canvas', () => {
+    const { onPaneClick } = renderCanvas();
+    const pane = screen.getByTestId('ontology-data-cluster-medication');
+    const card = screen.getByTestId(
+      'ontology-data-asset-asset:medication:orders'
+    );
+
+    // jsdom has no PointerEvent, so a MouseEvent carries the secondary button.
+    fireEvent(
+      pane,
+      new MouseEvent('pointerdown', { bubbles: true, button: 2 })
+    );
+    fireEvent(pane, new MouseEvent('pointerup', { bubbles: true, button: 2 }));
+
+    expect(onPaneClick).not.toHaveBeenCalled();
+
+    card.focus();
+    fireEvent.keyDown(card, { key: 'Escape' });
+
+    expect(onPaneClick).toHaveBeenCalledTimes(1);
+  });
 });

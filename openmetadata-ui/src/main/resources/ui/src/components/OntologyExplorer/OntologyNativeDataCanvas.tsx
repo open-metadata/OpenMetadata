@@ -491,6 +491,8 @@ const OntologyNativeDataCanvas = ({
   const [view, setView] = useState(INITIAL_VIEW);
   const [isPanning, setIsPanning] = useState(false);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const paneClickRef = useRef(onPaneClick);
+  paneClickRef.current = onPaneClick;
   const wheelCleanupRef = useRef<(() => void) | null>(null);
   const panRef = useRef<{
     capturing: boolean;
@@ -603,9 +605,18 @@ const OntologyNativeDataCanvas = ({
         };
       });
     };
+    // Escape from any focused card clears the selection, as the old focusable canvas did.
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        paneClickRef.current();
+      }
+    };
     node.addEventListener('wheel', handleWheel, { passive: false });
-    wheelCleanupRef.current = () =>
+    node.addEventListener('keydown', handleKeyDown);
+    wheelCleanupRef.current = () => {
       node.removeEventListener('wheel', handleWheel);
+      node.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const zoomAtCenter = (factor: number) => {
@@ -640,6 +651,10 @@ const OntologyNativeDataCanvas = ({
   };
 
   const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    // Only the primary button pans or clears; a right-click keeps the selection.
+    if (event.button > 0) {
+      return;
+    }
     if (
       (event.target as HTMLElement).closest(
         'button, a, [role="menu"], [data-testid="ontology-data-graph-controls"]'
