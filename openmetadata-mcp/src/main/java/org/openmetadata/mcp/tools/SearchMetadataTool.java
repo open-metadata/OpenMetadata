@@ -12,10 +12,12 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.UnaryOperator;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
@@ -42,8 +44,20 @@ public class SearchMetadataTool implements McpTool {
   private static final Set<String> REFERENCE_LIST_FIELDS = Set.of("owners", "domains");
   private static final Set<String> TAG_FIELDS = Set.of("tier", "tags");
   private static final String CERTIFICATION_FIELD = "certification";
+  private static final String UPSTREAM_LINEAGE_FIELD = "upstreamLineage";
+  private static final String FROM_ENTITY_KEY = "fromEntity";
+  private static final String PIPELINE_KEY = "pipeline";
+  private static final String PIPELINE_ENTITY_TYPE_KEY = "pipelineEntityType";
+  private static final String FQN_KEY = "fullyQualifiedName";
+  private static final String TYPE_KEY = "type";
+  private static final Map<String, UnaryOperator<Object>> SINGLE_FIELD_SLIMMERS =
+      Map.of(
+          CERTIFICATION_FIELD,
+          value -> McpResponseTrim.slimCertification(value, System.currentTimeMillis()),
+          UPSTREAM_LINEAGE_FIELD,
+          SearchMetadataTool::slimLineageEdges);
   private static final Set<String> BULK_FIELDS =
-      Set.of("columns", "columnNames", "charts", "tasks");
+      Set.of("columns", "columnNames", "charts", "tasks", UPSTREAM_LINEAGE_FIELD);
   private static final int MAX_BULK_ITEMS = 60;
   private static final String DESCRIPTION_TRUNCATED_KEY = "descriptionTruncated";
   private static final String TEST_CASE_ENTITY = "testCase";
@@ -520,7 +534,7 @@ public class SearchMetadataTool implements McpTool {
     // whole nested label, with expiry as epoch millis, on every hit.
     for (String field : requestedFields) {
       if (source.containsKey(field)) {
-        result.put(field, capBulkField(field, slimField(field, source.get(field)), result));
+        result.put(field, slimField(field, capBulkField(field, source.get(field), result)));
       }
     }
 
@@ -678,10 +692,50 @@ public class SearchMetadataTool implements McpTool {
       result = McpResponseTrim.slimRefs(value);
     } else if (TAG_FIELDS.contains(field)) {
       result = McpResponseTrim.slimTag(value);
-    } else if (CERTIFICATION_FIELD.equals(field)) {
-      result = McpResponseTrim.slimCertification(value, System.currentTimeMillis());
+    } else {
+      result = SINGLE_FIELD_SLIMMERS.getOrDefault(field, UnaryOperator.identity()).apply(value);
     }
     return result;
+  }
+
+  /**
+   * A requested upstreamLineage keeps each edge's source asset, and its pipeline when there is one,
+   * as FQN and type. {@code fromEntity.fullyQualifiedName} stays where a queryFilter finds it.
+   * Column mappings and SQL were most of each edge; get_entity_lineage returns them, and pages every
+   * edge. ADR:2026-11-06-search-metadata-returns-requested-lineage-as-edge-ends
+   */
+  private static Object slimLineageEdges(Object value) {
+    Object result = value;
+    if (value instanceof List<?> edges) {
+      result = edges.stream().map(SearchMetadataTool::slimLineageEdge).toList();
+    }
+    return result;
+  }
+
+  private static Object slimLineageEdge(Object edge) {
+    Object result = edge;
+    if (edge instanceof Map<?, ?> fields) {
+      Map<String, Object> slim = new LinkedHashMap<>();
+      if (fields.get(FROM_ENTITY_KEY) instanceof Map<?, ?> from) {
+        slim.put(FROM_ENTITY_KEY, edgeEnd(from.get(FQN_KEY), from.get(TYPE_KEY)));
+      }
+      // The pipeline is indexed as its whole entity, which has no type; the edge carries it.
+      if (fields.get(PIPELINE_KEY) instanceof Map<?, ?> pipeline) {
+        slim.put(
+            PIPELINE_KEY, edgeEnd(pipeline.get(FQN_KEY), fields.get(PIPELINE_ENTITY_TYPE_KEY)));
+      }
+      result = slim;
+    }
+    return result;
+  }
+
+  private static Map<String, Object> edgeEnd(Object fullyQualifiedName, Object type) {
+    Map<String, Object> end = new LinkedHashMap<>();
+    end.put(FQN_KEY, fullyQualifiedName);
+    if (type != null) {
+      end.put(TYPE_KEY, type);
+    }
+    return end;
   }
 
   public static Map<String, Object> cleanSearchResponseObject(Map<String, Object> object) {
