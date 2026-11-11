@@ -666,15 +666,27 @@ public interface FeedDAOs {
     @SqlQuery("SELECT count(*) FROM conversation_entity c <condition>")
     int count(@Define("condition") String condition, @BindMap Map<String, Object> params);
 
-    /** The rows under {@code condition} counted per entity they are about, for up to limit. */
+    /** The rows under {@code condition} counted per type of entity they are about. */
+    @SqlQuery(
+        "SELECT c.entityType AS entityType, count(*) AS conversations "
+            + "FROM conversation_entity c <condition> GROUP BY c.entityType")
+    @RegisterRowMapper(ConversationTypeCountMapper.class)
+    List<ConversationTypeCount> countByEntityType(
+        @Define("condition") String condition, @BindMap Map<String, Object> params);
+
+    /**
+     * The rows under {@code condition} about entities of {@code entityTypes}, counted per entity,
+     * for up to limit entities.
+     */
     @SqlQuery(
         "SELECT c.entityType AS entityType, c.entityId AS entityId, count(*) AS conversations "
-            + "FROM conversation_entity c <condition> "
+            + "FROM conversation_entity c <condition> AND c.entityType IN (<entityTypes>) "
             + "GROUP BY c.entityType, c.entityId LIMIT :limit")
     @RegisterRowMapper(ConversationEntityCountMapper.class)
     List<ConversationEntityCount> countByEntity(
         @Define("condition") String condition,
         @BindMap Map<String, Object> params,
+        @BindList("entityTypes") List<String> entityTypes,
         @Bind("limit") int limit);
 
     @ConnectionAwareSqlUpdate(
@@ -928,6 +940,15 @@ public interface FeedDAOs {
   }
 
   record ConversationEntityCount(String entityType, UUID entityId, int conversations) {}
+
+  class ConversationTypeCountMapper implements RowMapper<ConversationTypeCount> {
+    @Override
+    public ConversationTypeCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+      return new ConversationTypeCount(rs.getString("entityType"), rs.getInt("conversations"));
+    }
+  }
+
+  record ConversationTypeCount(String entityType, int conversations) {}
 
   class ConversationReplyMapper implements RowMapper<ConversationReplyRow> {
     @Override

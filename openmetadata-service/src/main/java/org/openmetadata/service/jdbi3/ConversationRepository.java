@@ -34,6 +34,8 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.function.IntSupplier;
+import java.util.function.Predicate;
+import java.util.function.ToIntFunction;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
@@ -70,6 +72,7 @@ import org.openmetadata.service.security.policyevaluator.ConversationResourceCon
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -87,6 +90,9 @@ public class ConversationRepository {
 
   /** Entities checked to count a listing's viewable total; a bound between cost and accuracy. */
   static final int MAX_VIEWABLE_COUNT_ENTITIES = 10_000;
+
+  private static final List<MetadataOperation> VIEW_BASIC_ONLY =
+      List.of(MetadataOperation.VIEW_BASIC);
 
   static final String ROOT_TARGET = "Root";
   static final String REPLY_TARGET = "Reply";
@@ -175,21 +181,42 @@ public class ConversationRepository {
       return page;
     }
     ViewPermissionFilter viewFilter = new ViewPermissionFilter(authorizer);
-    List<EntityReference> targets =
-        page.getData().stream().map(Conversation::getEntityRef).filter(Objects::nonNull).toList();
-    Set<UUID> viewable = viewFilter.viewableIds(securityContext, targets);
-    List<Conversation> visible =
+    Predicate<String> mayHide = typesThatMayHide(securityContext);
+    List<EntityReference> toCheck =
         page.getData().stream()
-            .filter(c -> c.getEntityRef() == null || viewable.contains(c.getEntityRef().getId()))
+            .map(Conversation::getEntityRef)
+            .filter(about -> about != null && mayHide.test(about.getType()))
             .toList();
+    Set<UUID> viewable =
+        toCheck.isEmpty() ? Set.of() : viewFilter.viewableIds(securityContext, toCheck);
+    List<Conversation> visible =
+        page.getData().stream().filter(c -> isShown(c.getEntityRef(), mayHide, viewable)).toList();
     page.getPaging()
         .setTotal(
             viewableTotal(
                 page.getPaging().getTotal(),
                 visible.size(),
-                () -> viewableCount(securityContext, viewFilter, countSql)));
+                () -> viewableCount(securityContext, viewFilter, mayHide, countSql)));
     page.setData(visible);
     return page;
+  }
+
+  /**
+   * Whether a rule could hide an entity of a type from the caller. A type no rule can hide is never
+   * checked entity by entity, as for task subjects (e.g. a caller with an unconditional view grant).
+   */
+  private static Predicate<String> typesThatMayHide(SecurityContext securityContext) {
+    SubjectContext subject = getSubjectContext(securityContext);
+    Map<String, Boolean> byType = new HashMap<>();
+    return type ->
+        type == null
+            || byType.computeIfAbsent(
+                type, key -> RowDecisionGate.mayDiffer(subject, key, VIEW_BASIC_ONLY));
+  }
+
+  private static boolean isShown(
+      EntityReference about, Predicate<String> mayHide, Set<UUID> viewable) {
+    return about == null || !mayHide.test(about.getType()) || viewable.contains(about.getId());
   }
 
   /**
@@ -200,18 +227,49 @@ public class ConversationRepository {
     return total > visibleOnPage ? Math.max(recount.getAsInt(), visibleOnPage) : total;
   }
 
-  /**
-   * Conversations under {@code countSql} about entities the caller may view, counted per entity so
-   * each entity is checked once, over at most {@link #MAX_VIEWABLE_COUNT_ENTITIES} entities: past
-   * that it is a lower bound.
-   */
+  /** Conversations under {@code countSql} about entities the caller may view. */
   private int viewableCount(
       SecurityContext securityContext,
       ViewPermissionFilter viewFilter,
+      Predicate<String> mayHide,
       ConversationFilter.Sql countSql) {
+    return viewableCount(
+        conversationDAO.countByEntityType(countSql.condition(), countSql.params()),
+        mayHide,
+        types -> viewableOfTypes(securityContext, viewFilter, countSql, types));
+  }
+
+  /**
+   * Rows of a type no rule can hide count as they are; only the types left over are checked, and
+   * only when there are any.
+   */
+  static int viewableCount(
+      List<FeedDAOs.ConversationTypeCount> byType,
+      Predicate<String> mayHide,
+      ToIntFunction<List<String>> viewableOfTypes) {
+    List<String> checked =
+        byType.stream().map(FeedDAOs.ConversationTypeCount::entityType).filter(mayHide).toList();
+    int unchecked =
+        byType.stream()
+            .filter(row -> !mayHide.test(row.entityType()))
+            .mapToInt(FeedDAOs.ConversationTypeCount::conversations)
+            .sum();
+    return checked.isEmpty() ? unchecked : unchecked + viewableOfTypes.applyAsInt(checked);
+  }
+
+  /**
+   * Conversations about viewable entities of {@code types}, counted per entity so each entity is
+   * checked once, over at most {@link #MAX_VIEWABLE_COUNT_ENTITIES} entities: past that it is a
+   * lower bound.
+   */
+  private int viewableOfTypes(
+      SecurityContext securityContext,
+      ViewPermissionFilter viewFilter,
+      ConversationFilter.Sql countSql,
+      List<String> types) {
     List<FeedDAOs.ConversationEntityCount> counts =
         conversationDAO.countByEntity(
-            countSql.condition(), countSql.params(), MAX_VIEWABLE_COUNT_ENTITIES);
+            countSql.condition(), countSql.params(), types, MAX_VIEWABLE_COUNT_ENTITIES);
     List<EntityReference> entities =
         counts.stream()
             .map(row -> new EntityReference().withType(row.entityType()).withId(row.entityId()))

@@ -177,6 +177,34 @@ class ConversationRepositoryTest {
   }
 
   @Test
+  void aRecountChecksEntitiesOnlyOfTypesARuleCouldHide() {
+    List<FeedDAOs.ConversationTypeCount> byType =
+        List.of(
+            new FeedDAOs.ConversationTypeCount(Entity.TABLE, 7),
+            new FeedDAOs.ConversationTypeCount(Entity.DATABASE_SCHEMA, 3));
+
+    assertEquals(
+        10,
+        ConversationRepository.viewableCount(
+            byType,
+            type -> false,
+            types -> {
+              throw new AssertionError("no type can hide a row, so no entity is checked");
+            }),
+        "a caller no rule restricts");
+    assertEquals(
+        5,
+        ConversationRepository.viewableCount(
+            byType,
+            Entity.TABLE::equals,
+            types -> {
+              assertEquals(List.of(Entity.TABLE), types);
+              return 2;
+            }),
+        "only tables are checked; schemas count as they are");
+  }
+
+  @Test
   void hydrationQueryCountIsConstantWithPageSize() {
     CollectionDAO.ConversationDAO dao = mock(CollectionDAO.ConversationDAO.class);
     ConversationRepository queryRepository = new ConversationRepository(dao, null);
