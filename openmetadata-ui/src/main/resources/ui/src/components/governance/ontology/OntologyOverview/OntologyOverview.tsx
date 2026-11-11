@@ -28,16 +28,28 @@ import { useQuery } from '@tanstack/react-query';
 import { TFunction } from 'i18next';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ChangeType,
+  MemberChange,
+  MemberKind,
+} from '../../../../generated/api/data/ontologyWorkingDiff';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { EntityReference } from '../../../../generated/entity/type';
 import { OntologyPublicationStatus } from '../../../../generated/type/ontologyPublicationStatus';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
-import { getOntologyWorkingValidation } from '../../../../rest/ontologyAPI';
+import {
+  getOntologyWorkingDiff,
+  getOntologyWorkingValidation,
+} from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../../common/Loader/Loader';
 import { buildNativeTreeIndex } from '../../../OntologyExplorer/OntologyStudio.utils';
 import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
+import {
+  overviewValidationQueryKey,
+  RECENT_CHANGES_SHOWN,
+} from './OntologyOverview.constants';
 
 export type OntologyOverviewTab = 'concept' | 'property' | 'axiom';
 
@@ -48,7 +60,117 @@ interface OntologyOverviewProps {
   readonly status?: OntologyPublicationStatus;
   /** Given inside the Ontology tabs: a card opens the tab it summarises. */
   readonly onOpenTab?: (tab: OntologyOverviewTab) => void;
+  /** Opens Review & publish; the Recent changes card shows only when given. */
+  readonly onOpenPublication?: () => void;
 }
+
+const MEMBER_KIND_LABELS: Partial<Record<MemberKind, string>> = {
+  [MemberKind.Concept]: 'label.concept',
+  [MemberKind.Axiom]: 'label.rule',
+  [MemberKind.Property]: 'label.property',
+  [MemberKind.Association]: 'label.relationship',
+};
+const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
+  [ChangeType.Added]: 'label.added',
+  [ChangeType.Changed]: 'label.changed',
+  [ChangeType.Removed]: 'label.removed',
+  [ChangeType.Deprecated]: 'label.deprecated',
+};
+
+const ChangeRow = ({ change }: { change: MemberChange }) => {
+  const { t } = useTranslation();
+  const kindLabel = MEMBER_KIND_LABELS[change.memberKind];
+
+  return (
+    <Box
+      align="center"
+      className="tw:border-t tw:border-secondary tw:py-2.5 tw:first:border-t-0"
+      data-testid="ontology-overview-change"
+      gap={3}>
+      {kindLabel ? (
+        <Badge className="tw:shrink-0" color="gray" size="sm" type="pill-color">
+          {t(kindLabel)}
+        </Badge>
+      ) : null}
+      <Box className="tw:min-w-0 tw:flex-1">
+        <Typography ellipsis size="text-sm">
+          {getEntityName(change.entity)}
+        </Typography>
+      </Box>
+      <Typography color="secondary" size="text-xs">
+        {t(CHANGE_TYPE_LABELS[change.changeType])}
+      </Typography>
+    </Box>
+  );
+};
+
+/** The newest unpublished changes; hidden for a reader who may not see the draft. */
+const RecentChangesCard = ({
+  ontologyId,
+  onOpenPublication,
+}: {
+  ontologyId: string;
+  onOpenPublication: () => void;
+}) => {
+  const { t } = useTranslation();
+  const diff = useQuery({
+    queryKey: ['ontology-overview-recent-changes', ontologyId],
+    queryFn: ({ signal }) =>
+      getOntologyWorkingDiff(
+        ontologyId,
+        { limit: RECENT_CHANGES_SHOWN },
+        signal
+      ),
+    retry: false,
+  });
+
+  if (!diff.data) {
+    return null;
+  }
+  const total = diff.data.paging.total ?? diff.data.data.length;
+
+  return (
+    <Card data-testid="ontology-overview-recent-changes">
+      <Card.Header
+        extra={
+          <Typography color="secondary" size="text-sm">
+            {t('message.ontology-n-unpublished', { count: total })}
+          </Typography>
+        }
+        title={t('label.recent-change-plural')}
+      />
+      <Card.Content>
+        <Box direction="col" gap={4}>
+          {total === 0 ? (
+            <Typography color="secondary" size="text-sm">
+              {t('message.ontology-no-unpublished-changes')}
+            </Typography>
+          ) : (
+            <Box direction="col">
+              {diff.data.data.map((change) => (
+                <ChangeRow
+                  change={change}
+                  key={`${change.memberKind}-${change.entity.id}`}
+                />
+              ))}
+            </Box>
+          )}
+          {total > 0 ? (
+            <Box justify="end">
+              <Button
+                color="primary"
+                data-testid="ontology-overview-review-publish"
+                size="sm"
+                onPress={onOpenPublication}>
+                {t('label.review-publish')}
+              </Button>
+            </Box>
+          ) : null}
+        </Box>
+      </Card.Content>
+    </Card>
+  );
+};
 
 const formatPeople = (people: EntityReference[] | undefined, none: string) =>
   people?.length ? people.map(getEntityName).join(', ') : none;
@@ -96,7 +218,7 @@ const StatCard = ({
           {onOpen ? (
             <Button
               aria-label={label}
-              color="tertiary"
+              color="secondary"
               iconLeading={ArrowUpRight}
               size="xs"
               onPress={onOpen}
@@ -322,6 +444,7 @@ const OntologyOverview = ({
   releaseId,
   status,
   onOpenTab,
+  onOpenPublication,
 }: OntologyOverviewProps) => {
   const { t } = useTranslation();
   const { graph, isError, isLoading, model, relations } =
@@ -329,7 +452,7 @@ const OntologyOverview = ({
   const validation = useQuery({
     enabled: !releaseId,
     queryFn: () => getOntologyWorkingValidation(ontology.id),
-    queryKey: ['ontology-working-validation', ontology.id, 'overview'],
+    queryKey: overviewValidationQueryKey(ontology.id),
     retry: false,
   });
   const treeIndex = useMemo(
@@ -441,6 +564,12 @@ const OntologyOverview = ({
           total={model.concepts.length}
           onReview={openTab('concept')}
         />
+        {releaseId || !onOpenPublication ? null : (
+          <RecentChangesCard
+            ontologyId={ontology.id}
+            onOpenPublication={onOpenPublication}
+          />
+        )}
       </div>
       <Box direction="col" gap={3}>
         {details.map(([key, label, value]) => (

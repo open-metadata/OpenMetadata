@@ -994,7 +994,7 @@ test.describe(
       }
     });
 
-    test('lists Broader and Narrower under Relationships, not Properties', async ({
+    test('filters Broader and Narrower under the Object kind, apart from data properties', async ({
       isolatedUserPage: page,
     }) => {
       test.slow();
@@ -1029,17 +1029,22 @@ test.describe(
           .getByRole('tab', { name: 'Properties', exact: true })
           .click();
 
+        // One table lists every kind; the Kind filter separates relationships from values.
         const properties = page.getByTestId(
           'ontology-definition-group-property'
         );
-        const relationships = page.getByTestId(
-          'ontology-definition-group-relationship'
-        );
+        const kinds = page.getByTestId('ontology-definition-kind-filter');
+        await expect(properties).toContainText('legalName');
+        await expect(properties).toContainText('broader');
+
+        await kinds.getByRole('tab', { name: 'Object', exact: true }).click();
+        await expect(properties).toContainText('broader');
+        await expect(properties).toContainText('narrower');
+        await expect(properties).not.toContainText('legalName');
+
+        await kinds.getByRole('tab', { name: 'Data', exact: true }).click();
         await expect(properties).toContainText('legalName');
         await expect(properties).not.toContainText('broader');
-        await expect(properties).not.toContainText('narrower');
-        await expect(relationships).toContainText('broader');
-        await expect(relationships).toContainText('narrower');
       } finally {
         await fixture.cleanup();
       }

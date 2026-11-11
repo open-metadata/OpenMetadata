@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { screen } from '@testing-library/react';
+import { fireEvent, screen } from '@testing-library/react';
+import {
+  ChangeType,
+  MemberKind,
+} from '../../../../generated/api/data/ontologyWorkingDiff';
 import { Ontology } from '../../../../generated/entity/data/ontology';
-import { getOntologyWorkingValidation } from '../../../../rest/ontologyAPI';
+import {
+  getOntologyWorkingDiff,
+  getOntologyWorkingValidation,
+} from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import OntologyOverview from './OntologyOverview';
 
@@ -30,6 +37,7 @@ jest.mock(
 );
 
 jest.mock('../../../../rest/ontologyAPI', () => ({
+  getOntologyWorkingDiff: jest.fn(),
   getOntologyWorkingValidation: jest.fn(),
 }));
 
@@ -80,5 +88,61 @@ describe('OntologyOverview validation', () => {
     expect(
       screen.getByText('message.ontology-overview-in-conflict')
     ).toBeInTheDocument();
+  });
+});
+
+describe('OntologyOverview recent changes', () => {
+  beforeEach(() => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      violations: [],
+    });
+  });
+
+  it('lists the newest unpublished changes and opens Review & publish', async () => {
+    const onOpenPublication = jest.fn();
+    (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          changeType: ChangeType.Added,
+          memberKind: MemberKind.Concept,
+          entity: { id: 'c1', type: 'ontologyConcept', name: 'Nurse' },
+        },
+      ],
+      paging: { total: 7 },
+    });
+    renderWithQueryClient(
+      <OntologyOverview
+        ontology={ontology}
+        onOpenPublication={onOpenPublication}
+      />
+    );
+
+    const card = await screen.findByTestId('ontology-overview-recent-changes');
+
+    expect(card).toHaveTextContent('message.ontology-n-unpublished');
+    expect(screen.getByTestId('ontology-overview-change')).toHaveTextContent(
+      /label\.concept.*Nurse.*label\.added/
+    );
+    expect(getOntologyWorkingDiff).toHaveBeenCalledWith(
+      ontology.id,
+      { limit: 5 },
+      expect.anything()
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-overview-review-publish'));
+
+    expect(onOpenPublication).toHaveBeenCalled();
+  });
+
+  it('leaves the card out when the page cannot open Review & publish', async () => {
+    renderWithQueryClient(<OntologyOverview ontology={ontology} />);
+
+    expect(
+      await screen.findByText('message.ontology-validate-all-clean')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-overview-recent-changes')
+    ).not.toBeInTheDocument();
+    expect(getOntologyWorkingDiff).not.toHaveBeenCalled();
   });
 });

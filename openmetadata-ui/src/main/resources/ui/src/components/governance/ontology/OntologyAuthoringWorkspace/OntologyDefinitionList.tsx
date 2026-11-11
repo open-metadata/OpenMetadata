@@ -12,7 +12,6 @@
  */
 import {
   Alert,
-  Badge,
   Box,
   Button,
   ButtonUtility,
@@ -21,38 +20,48 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, XClose } from '@openmetadata/ui-core-components/icons';
-import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { PagingResponse } from 'Models';
 import { Fragment, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
-import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { ListParams } from '../../../../interface/API.interface';
 import { restoreOntologyDefinition } from '../../../../rest/ontologyAPI';
-import { formatDate } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { humanizeName } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
+import { pageCount, pageOf } from './OntologyDefinitionTable.utils';
+
+export interface DefinitionColumn<T> {
+  readonly id: string;
+  readonly label: string;
+  readonly render: (item: T) => ReactNode;
+}
 
 interface OntologyDefinitionListProps<T> {
   ontology: Ontology;
   canCreate: boolean;
   definitionType: 'concept' | 'property' | 'axiom';
-  load: (
-    params: ListParams & { ontology?: string },
-    signal?: AbortSignal
-  ) => Promise<PagingResponse<T[]>>;
-  onWorkingChange?: () => void;
+  /** The rows after the tab's search and filters; undefined while the model loads. */
+  items?: readonly T[];
+  isError?: boolean;
+  onRetry?: () => void;
+  /** Called after a create, save, delete or undo so the tab reloads its rows. */
+  onChanged?: () => void;
+  /** Columns after Name. */
+  columns: readonly DefinitionColumn<T>[];
+  /** Search and filters, left of the count. */
+  toolbar?: ReactNode;
+  /** "6 concepts" or "3 of 8", right of the filters. */
+  summary?: ReactNode;
+  /** Replaces the side editor for a row, e.g. to open a concept on the graph. */
+  onOpen?: (item: T) => void;
   /** Replaces the inline editor for a new definition; `saved` is set once, to keep the new one open. */
   renderCreate?: (actions: {
     close: () => void;
@@ -76,16 +85,6 @@ const DEFINITION_ENTITIES = {
   axiom: EntityType.ONTOLOGY_AXIOM,
 };
 
-const definitionKind = (definition: object) => {
-  const { conceptType, kind, axiomType } = definition as {
-    conceptType?: string;
-    kind?: string;
-    axiomType?: string;
-  };
-
-  return conceptType ?? kind ?? axiomType;
-};
-
 const OntologyDefinitionList = <
   T extends Pick<
     OntologyConcept,
@@ -95,9 +94,15 @@ const OntologyDefinitionList = <
   ontology,
   canCreate,
   definitionType,
-  load,
+  items,
+  isError,
+  onRetry,
+  onChanged,
+  columns,
+  toolbar,
+  summary,
+  onOpen,
   children,
-  onWorkingChange,
   renderCreate,
 }: OntologyDefinitionListProps<T>) => {
   const { t } = useTranslation();
@@ -105,9 +110,7 @@ const OntologyDefinitionList = <
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
   const entityLabel = t(`label.${label}`);
   const pluralLabel = t(`label.${label}-plural`);
-  const [pagination, setPagination] = useState<
-    Pick<ListParams, 'after' | 'before'>
-  >({});
+  const [page, setPage] = useState(0);
   const [selected, setSelected] = useState<T | 'new'>();
   const [isDeleting, setIsDeleting] = useState(false);
   const definition = selected === 'new' ? undefined : selected;
@@ -119,34 +122,14 @@ const OntologyDefinitionList = <
       deleted: definition?.deleted,
     }
   );
-  const page = useQuery({
-    queryKey: ['ontology-definitions', definitionType, ontology.id, pagination],
-    queryFn: ({ signal }) =>
-      load(
-        {
-          ontology: ontology.fullyQualifiedName,
-          limit: 25,
-          fields: 'owners',
-          ...pagination,
-        },
-        signal
-      ),
-    retry: false,
-    gcTime: 0,
-  });
-
-  if (page.isError) {
+  if (isError) {
     return (
       <Alert variant="error">
         <Box direction="col" gap={2}>
           {t('server.entity-fetch-error', {
             entity: pluralLabel,
           })}
-          <Button
-            color="secondary"
-            onPress={() => {
-              void page.refetch();
-            }}>
+          <Button color="secondary" onPress={onRetry}>
             {t('label.retry')}
           </Button>
         </Box>
@@ -165,8 +148,7 @@ const OntologyDefinitionList = <
       async () => {
         try {
           await restore();
-          void page.refetch();
-          onWorkingChange?.();
+          onChanged?.();
         } catch (error) {
           showErrorToast(
             isAxiosError(error) ? error : t('server.unexpected-error')
@@ -178,8 +160,7 @@ const OntologyDefinitionList = <
   const closeAfterDelete = () => {
     setIsDeleting(false);
     setSelected(undefined);
-    void page.refetch();
-    onWorkingChange?.();
+    onChanged?.();
   };
 
   const renderDeleteDialog = () => {
@@ -236,8 +217,7 @@ const OntologyDefinitionList = <
         selected === 'new' ? canCreate : permission.canEditAll,
         (saved) => {
           setSelected(saved);
-          void page.refetch();
-          onWorkingChange?.();
+          onChanged?.();
         }
       )}
       <div className="tw:flex tw:empty:hidden">{renderDelete()}</div>
@@ -251,8 +231,7 @@ const OntologyDefinitionList = <
         if (saved) {
           setSelected(saved);
         }
-        void page.refetch();
-        onWorkingChange?.();
+        onChanged?.();
       },
     });
 
@@ -331,28 +310,32 @@ const OntologyDefinitionList = <
     );
   };
 
+  const total = items?.length ?? 0;
+  const lastPage = pageCount(total) - 1;
+  const currentPage = Math.min(page, lastPage);
+
   const renderPagination = () => (
     <>
       <Button
         color="secondary"
-        isDisabled={page.isFetching || !page.data?.paging.before}
+        isDisabled={currentPage === 0}
         size="sm"
         onPress={() =>
           guard(() => {
             setSelected(undefined);
-            setPagination({ before: page.data?.paging.before });
+            setPage(currentPage - 1);
           })
         }>
         {t('label.previous')}
       </Button>
       <Button
         color="secondary"
-        isDisabled={page.isFetching || !page.data?.paging.after}
+        isDisabled={currentPage >= lastPage}
         size="sm"
         onPress={() =>
           guard(() => {
             setSelected(undefined);
-            setPagination({ after: page.data?.paging.after });
+            setPage(currentPage + 1);
           })
         }>
         {t('label.next')}
@@ -360,40 +343,22 @@ const OntologyDefinitionList = <
     </>
   );
 
-  const groupsOf = (items: T[]) =>
-    definitionType === 'property'
-      ? [
-          {
-            id: 'property',
-            items: items.filter((item) => definitionKind(item) !== Kind.Object),
-            label: pluralLabel,
-          },
-          {
-            id: 'relationship',
-            items: items.filter((item) => definitionKind(item) === Kind.Object),
-            label: t('label.relationship-plural'),
-          },
-        ].filter((group, index) => index === 0 || group.items.length > 0)
-      : [{ id: definitionType, items, label: pluralLabel }];
+  const openRow = (item: T) =>
+    guard(() => (onOpen ? onOpen(item) : setSelected(item)));
 
-  const renderAiTable = (
-    items: T[],
-    label: string,
-    groupId: string,
-    hasPagination: boolean
-  ) => (
+  const renderTable = (rows: readonly T[]) => (
     <TableCard.Root
-      data-testid={`ontology-definition-group-${groupId}`}
+      data-testid={`ontology-definition-group-${definitionType}`}
       size="sm">
-      <Table aria-label={label} size="sm">
+      <Table aria-label={pluralLabel} size="sm">
         <Table.Header>
           <Table.Head isRowHeader id="name" label={t('label.name')} />
-          <Table.Head id="type" label={t('label.type')} />
-          <Table.Head id="description" label={t('label.description')} />
-          <Table.Head id="updated" label={t('label.last-edited')} />
+          {columns.map((column) => (
+            <Table.Head id={column.id} key={column.id} label={column.label} />
+          ))}
         </Table.Header>
         <Table.Body
-          items={items}
+          items={rows}
           renderEmptyState={() => (
             <div className="tw:m-4 tw:rounded-lg tw:bg-secondary_alt tw:p-4">
               <Typography as="p" size="text-sm" weight="medium">
@@ -404,41 +369,28 @@ const OntologyDefinitionList = <
           {(item) => (
             <Table.Row id={item.id}>
               <Table.Cell>
-                <Button
-                  color="link-gray"
-                  size="sm"
-                  onPress={() => guard(() => setSelected(item))}>
-                  {getEntityName(item)}
-                </Button>
+                <Box align="center" className="tw:max-w-120 tw:min-w-0" gap={2}>
+                  <span
+                    aria-hidden
+                    className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
+                  />
+                  <Button
+                    className="tw:min-w-0"
+                    color="link-gray"
+                    size="sm"
+                    onPress={() => openRow(item)}>
+                    <span className="tw:truncate">{getEntityName(item)}</span>
+                  </Button>
+                </Box>
               </Table.Cell>
-              <Table.Cell>
-                {definitionKind(item) ? (
-                  <Badge color="gray" size="sm" type="pill-color">
-                    {humanizeName(definitionKind(item) ?? '')}
-                  </Badge>
-                ) : null}
-              </Table.Cell>
-              <Table.Cell>
-                <Typography
-                  as="span"
-                  className="tw:line-clamp-1"
-                  size="text-sm">
-                  {(item as { description?: string }).description}
-                </Typography>
-              </Table.Cell>
-              <Table.Cell>
-                <Typography
-                  as="span"
-                  className="tw:whitespace-nowrap tw:text-tertiary"
-                  size="text-sm">
-                  {formatDate((item as { updatedAt?: number }).updatedAt)}
-                </Typography>
-              </Table.Cell>
+              {columns.map((column) => (
+                <Table.Cell key={column.id}>{column.render(item)}</Table.Cell>
+              ))}
             </Table.Row>
           )}
         </Table.Body>
       </Table>
-      {hasPagination ? (
+      {lastPage > 0 ? (
         <div className="tw:flex tw:items-center tw:justify-between tw:gap-2 tw:border-t tw:border-secondary tw:px-4 tw:py-3">
           {renderPagination()}
         </div>
@@ -446,35 +398,27 @@ const OntologyDefinitionList = <
     </TableCard.Root>
   );
 
-  const renderAiTables = (items: T[]) => {
-    const groups = groupsOf(items);
-
-    return groups.map((group, index) => (
-      <Box direction="col" gap={2} key={group.id}>
-        {groups.length > 1 ? (
-          <Typography as="h3" size="text-sm" weight="semibold">
-            {group.label}
+  return (
+    <Box direction="col" gap={4}>
+      <Box align="center" gap={3} wrap="wrap">
+        <Box
+          align="center"
+          className="tw:min-w-0 tw:flex-1"
+          gap={2}
+          wrap="wrap">
+          {toolbar}
+        </Box>
+        {summary ? (
+          <Typography
+            color="secondary"
+            data-testid="ontology-definition-summary"
+            size="text-sm">
+            {summary}
           </Typography>
         ) : null}
-        {renderAiTable(
-          group.items,
-          group.label,
-          group.id,
-          index === groups.length - 1
-        )}
-      </Box>
-    ));
-  };
-
-  return (
-    <Box direction="col" gap={5}>
-      <Box align="center" gap={3} justify="between">
-        <Typography as="h2" size="text-md" weight="semibold">
-          {pluralLabel}
-        </Typography>
         {canCreate && (
           <Button
-            color="secondary"
+            color={definitionType === 'axiom' ? 'primary' : 'secondary'}
             data-testid={`ontology-add-${definitionType}`}
             iconLeading={Plus}
             size="sm"
@@ -483,10 +427,10 @@ const OntologyDefinitionList = <
           </Button>
         )}
       </Box>
-      {page.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
+      {items ? (
+        renderTable(pageOf(items, currentPage))
       ) : (
-        renderAiTables(page.data.data)
+        <Typography role="status">{t('label.loading')}</Typography>
       )}
       {renderEditor()}
     </Box>

@@ -102,7 +102,7 @@ export const conceptPatch = (
     : [{ op: 'test', path: '/version', value: concept.version }, ...changes];
 };
 
-const CONCEPT_TYPE_LABELS: Record<OntologyConceptType, string> = {
+export const CONCEPT_TYPE_LABELS: Record<OntologyConceptType, string> = {
   [OntologyConceptType.OwlClass]: 'label.class-owl',
   [OntologyConceptType.SkosConcept]: 'label.concept-skos',
   [OntologyConceptType.Both]: 'label.both-owl-skos',

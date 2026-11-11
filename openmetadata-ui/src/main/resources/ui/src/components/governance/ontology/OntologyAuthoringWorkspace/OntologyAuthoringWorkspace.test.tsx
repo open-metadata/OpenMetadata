@@ -22,7 +22,6 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
-import { humanizeName } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import OntologyAuthoringWorkspace from './OntologyAuthoringWorkspace';
 
 let mockPermissions = {
@@ -66,6 +65,37 @@ const concept = {
   iri: 'urn:sales:customer',
   version: 0.1,
 };
+
+const allow = (operations: string[]) => ({
+  data: {
+    permissions: operations.map((operation) => ({
+      operation,
+      access: Access.Allow,
+    })),
+  },
+});
+
+/** Answers the model's three list calls; anything else falls through to `rest`. */
+const routeLists = (
+  lists: { concepts?: object[]; properties?: object[]; axioms?: object[] },
+  rest: (path: string) => unknown = () => allow(['ViewAll', 'EditAll'])
+) =>
+  get.mockImplementation(async (path) => {
+    const page = (data: object[] = []) => ({
+      data: { data, paging: { total: data.length } },
+    });
+    if (path === '/ontologyConcepts') {
+      return page(lists.concepts);
+    }
+    if (path === '/ontologyProperties') {
+      return page(lists.properties);
+    }
+    if (path?.startsWith('/ontologyAxioms')) {
+      return page(lists.axioms);
+    }
+
+    return rest(path as string) as never;
+  });
 
 runQueryNotificationsSynchronously();
 
@@ -129,7 +159,7 @@ describe('OntologyAuthoringWorkspace', () => {
     expect(get).toHaveBeenCalledWith(
       '/ontologyConcepts',
       expect.objectContaining({
-        params: expect.objectContaining({ ontology: 'Sales', limit: 25 }),
+        params: expect.objectContaining({ ontology: 'Sales' }),
       })
     );
     expect(get.mock.calls.some(([path]) => path?.includes('glossar'))).toBe(
@@ -223,31 +253,22 @@ describe('OntologyAuthoringWorkspace', () => {
     );
   });
 
-  it('lists relationship-backed properties under Relationships, apart from data properties', async () => {
+  it('lists every property kind in one table and narrows it with the Kind filter', async () => {
     const property = (id: string, name: string, kind: Kind) => ({
       id,
       name,
       kind,
       fullyQualifiedName: 'Sales.' + name,
       iri: 'urn:sales:' + name,
+      domain: [concept.iri],
       ontology: { id: ontology.id, type: 'ontology' },
     });
-    const defaultGet = get.getMockImplementation();
-    get.mockImplementation(async (path, config) => {
-      if (path === '/ontologyProperties') {
-        return {
-          data: {
-            data: [
-              property('p-name', 'customerName', Kind.Data),
-              property('p-broader', 'broader', Kind.Object),
-              property('p-narrower', 'narrower', Kind.Object),
-            ],
-            paging: { total: 3 },
-          },
-        };
-      }
-
-      return defaultGet?.(path, config);
+    routeLists({
+      concepts: [concept],
+      properties: [
+        property('p-name', 'customerName', Kind.Data),
+        property('p-broader', 'broader', Kind.Object),
+      ],
     });
     renderWithQueryClient(
       <OntologyAuthoringWorkspace
@@ -257,19 +278,20 @@ describe('OntologyAuthoringWorkspace', () => {
     );
     await flushReactQuery();
 
-    const properties = await screen.findByTestId(
+    const table = await screen.findByTestId(
       'ontology-definition-group-property'
     );
-    const relationships = screen.getByTestId(
-      'ontology-definition-group-relationship'
-    );
 
-    expect(properties).toHaveTextContent('customerName');
-    expect(properties).not.toHaveTextContent('broader');
-    expect(properties).not.toHaveTextContent('narrower');
-    expect(relationships).toHaveTextContent('broader');
-    expect(relationships).toHaveTextContent('narrower');
-    expect(relationships).not.toHaveTextContent('customerName');
+    expect(table).toHaveTextContent('customerName');
+    expect(table).toHaveTextContent('broader');
+    expect(table).toHaveTextContent('Customer');
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('tab', { name: 'label.object' }));
+    });
+
+    expect(table).toHaveTextContent('broader');
+    expect(table).not.toHaveTextContent('customerName');
   });
 
   it('shows a failed list with retry and hides unavailable data', async () => {
@@ -296,17 +318,13 @@ describe('OntologyAuthoringWorkspace', () => {
   });
 
   it('does not show a selected definition when its read permission is denied', async () => {
-    get
-      .mockResolvedValueOnce({
-        data: { data: [concept], paging: { total: 1 } },
-      })
-      .mockResolvedValueOnce({
-        data: { permissions: [{ operation: 'ViewAll', access: Access.Deny }] },
-      });
+    routeLists({ concepts: [concept] }, () => ({
+      data: { permissions: [{ operation: 'ViewAll', access: Access.Deny }] },
+    }));
     renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
     await flushReactQuery();
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: 'Customer' }));
+      fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
     });
 
     expect(await screen.findByRole('alert')).toBeInTheDocument();
@@ -315,41 +333,93 @@ describe('OntologyAuthoringWorkspace', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('uses the server cursor to browse the next page', async () => {
-    get
-      .mockResolvedValueOnce({
-        data: { data: [concept], paging: { total: 2, after: 'next-cursor' } },
-      })
-      .mockResolvedValueOnce({
-        data: {
-          data: [{ ...concept, id: 'account', name: 'Account' }],
-          paging: { total: 2, before: 'previous-cursor' },
-        },
-      });
+  it('pages the loaded concepts 25 at a time', async () => {
+    routeLists({
+      concepts: Array.from({ length: 26 }, (_, index) => ({
+        ...concept,
+        id: `concept-${index}`,
+        name: `Concept${index}`,
+        iri: `urn:sales:c${index}`,
+      })),
+    });
     renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
     await flushReactQuery();
+
+    expect(
+      await screen.findByRole('button', { name: 'Concept0' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Concept25' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: 'label.previous' })
+    ).toBeDisabled();
+
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
     });
 
     expect(
-      await screen.findByRole('button', { name: 'Account' })
+      screen.getByRole('button', { name: 'Concept25' })
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'label.next' })).toBeDisabled();
+  });
+
+  it('searches across every concept and shows the computed columns', async () => {
+    routeLists({
+      concepts: [
+        { ...concept, description: 'A buyer' },
+        {
+          ...concept,
+          id: 'vip',
+          name: 'Vip',
+          iri: 'urn:sales:vip',
+          superClasses: [concept.iri],
+        },
+      ],
+    });
+    renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
+    await flushReactQuery();
+
+    const table = await screen.findByTestId(
+      'ontology-definition-group-concept'
+    );
+    const vipRow = screen.getByRole('row', { name: /Vip/ });
+
+    expect(vipRow).toHaveTextContent('Customer');
+    expect(table).toHaveTextContent('label.class-owl');
+    expect(screen.getByTestId('ontology-definition-summary')).toHaveTextContent(
+      '2'
+    );
+
+    fireEvent.change(screen.getByTestId('ontology-definition-search'), {
+      target: { value: 'vi' },
+    });
+
     expect(
       screen.queryByRole('button', { name: 'Customer' })
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByRole('button', { name: 'label.previous' })
-    ).toBeEnabled();
-    expect(get).toHaveBeenLastCalledWith(
-      '/ontologyConcepts',
-      expect.objectContaining({
-        params: expect.objectContaining({
-          after: 'next-cursor',
-          ontology: 'Sales',
-        }),
-      })
+    expect(screen.getByRole('button', { name: 'Vip' })).toBeInTheDocument();
+  });
+
+  it('opens a concept on the graph when the page gives a handler', async () => {
+    const onOpenConcept = jest.fn();
+    routeLists({ concepts: [concept] });
+    renderWithQueryClient(
+      <OntologyAuthoringWorkspace
+        ontology={ontology}
+        onOpenConcept={onOpenConcept}
+      />
     );
+    await flushReactQuery();
+    await act(async () => {
+      fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
+    });
+
+    expect(onOpenConcept).toHaveBeenCalledWith(concept.id);
+    expect(
+      screen.queryByTestId('ontology-definition-drawer')
+    ).not.toBeInTheDocument();
   });
 
   it('keeps create actions hidden for a reader', async () => {
@@ -378,33 +448,16 @@ describe('OntologyAuthoringWorkspace', () => {
     afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
 
     it('lists definitions in a table and opens the editor with delete from a row', async () => {
-      get.mockImplementation(async (path) => {
-        if (path === '/ontologyConcepts') {
-          return {
-            data: {
-              data: [{ ...concept, description: 'A buyer' }],
-              paging: { total: 1 },
-            },
-          };
-        }
-
-        return {
-          data: {
-            permissions: [
-              { operation: 'ViewAll', access: Access.Allow },
-              { operation: 'EditAll', access: Access.Allow },
-              { operation: 'Delete', access: Access.Allow },
-            ],
-          },
-        };
-      });
+      routeLists({ concepts: [{ ...concept, description: 'A buyer' }] }, () =>
+        allow(['ViewAll', 'EditAll', 'Delete'])
+      );
       renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
       await flushReactQuery();
 
       expect(await screen.findByRole('grid')).toBeInTheDocument();
-      expect(
-        screen.getByText(humanizeName(OntologyConceptType.OwlClass))
-      ).toBeInTheDocument();
+      expect(screen.getByRole('row', { name: /Customer/ })).toHaveTextContent(
+        'label.class-owl'
+      );
       expect(screen.getByText('A buyer')).toBeInTheDocument();
       expect(screen.getByTestId('ontology-add-concept')).toBeInTheDocument();
 
@@ -418,39 +471,6 @@ describe('OntologyAuthoringWorkspace', () => {
       expect(
         await screen.findByRole('button', { name: 'label.delete' })
       ).toBeInTheDocument();
-    });
-
-    it('pages with the server cursor from the table footer', async () => {
-      get
-        .mockResolvedValueOnce({
-          data: { data: [concept], paging: { total: 2, after: 'next-cursor' } },
-        })
-        .mockResolvedValueOnce({
-          data: {
-            data: [{ ...concept, id: 'account', name: 'Account' }],
-            paging: { total: 2, before: 'previous-cursor' },
-          },
-        });
-      renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
-      await flushReactQuery();
-
-      expect(
-        await screen.findByRole('button', { name: 'label.previous' })
-      ).toBeDisabled();
-
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
-      });
-
-      expect(
-        await screen.findByRole('button', { name: 'Account' })
-      ).toBeInTheDocument();
-      expect(get).toHaveBeenLastCalledWith(
-        '/ontologyConcepts',
-        expect.objectContaining({
-          params: expect.objectContaining({ after: 'next-cursor' }),
-        })
-      );
     });
   });
 });

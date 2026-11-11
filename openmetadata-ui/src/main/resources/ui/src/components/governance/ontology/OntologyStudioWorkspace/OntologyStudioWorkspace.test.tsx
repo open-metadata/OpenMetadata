@@ -99,15 +99,24 @@ describe('OntologyStudioWorkspace', () => {
     mockAxioms.mockResolvedValue({ data: [], paging: { total: 8 } });
   });
 
-  it('keeps classic definitions tabs without a header or count requests', async () => {
+  it('shows the ontology header and counts each tab from one model load', async () => {
+    mockConcepts.mockResolvedValue({
+      data: [
+        { id: 'c1', name: 'Drug', iri: 'urn:pharmacy#Drug' },
+        { id: 'c2', name: 'Dose', iri: 'urn:pharmacy#Dose' },
+      ],
+      paging: { total: 2 },
+    });
     renderDefinitions();
     await flushReactQuery();
 
     expect(
-      screen.getByRole('tab', { name: 'label.concept-plural' })
+      screen.getByRole('heading', { name: 'Hospital Pharmacy' })
     ).toBeInTheDocument();
-    expect(screen.queryByText('Hospital Pharmacy')).not.toBeInTheDocument();
-    expect(mockConcepts).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole('tab', { name: 'label.concept-plural' })
+    ).toHaveTextContent('2');
+    expect(mockConcepts).toHaveBeenCalledTimes(1);
   });
 
   describe('AI mode', () => {
@@ -115,7 +124,7 @@ describe('OntologyStudioWorkspace', () => {
 
     afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
 
-    it('shows the ontology header with the same tabs and no extra list requests', async () => {
+    it('shows the ontology header with the same tabs and one request per definition type', async () => {
       renderDefinitions();
       await flushReactQuery();
 
@@ -135,9 +144,9 @@ describe('OntologyStudioWorkspace', () => {
         expect(screen.getByRole('tab', { name })).toBeInTheDocument()
       );
 
-      expect(mockConcepts).not.toHaveBeenCalled();
-      expect(mockProperties).not.toHaveBeenCalled();
-      expect(mockAxioms).not.toHaveBeenCalled();
+      expect(mockConcepts).toHaveBeenCalledTimes(1);
+      expect(mockProperties).toHaveBeenCalledTimes(1);
+      expect(mockAxioms).toHaveBeenCalledTimes(1);
     });
 
     it('switches between every definition panel', async () => {

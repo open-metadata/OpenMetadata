@@ -17,6 +17,7 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyPublicationStatus } from '../../../../generated/type/ontologyPublicationStatus';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -45,6 +46,7 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: (conceptId?: string) => void;
+  onOpenPublication?: () => void;
   editConceptRequest?: string;
   onEditConceptRequestHandled?: () => void;
   onRequestGraphSurface: () => void;
@@ -81,6 +83,7 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onOpenPublication,
   editConceptRequest,
   onEditConceptRequestHandled,
   onRequestGraphSurface,
@@ -95,6 +98,12 @@ const OntologyStudioWorkspace = ({
     'concept'
   );
   const [revision, setRevision] = useState(0);
+  const { model } = useOntologyStudioModel(
+    mode === 'definitions' ? ontology : undefined
+  );
+  const openConcept = onRequestEdit
+    ? (conceptId: string) => onRequestEdit(conceptId)
+    : undefined;
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ontology.id },
@@ -106,45 +115,60 @@ const OntologyStudioWorkspace = ({
       case 'definitions':
         return (
           <Tabs
-            className={isAiMode ? 'tw:gap-5' : undefined}
+            className="tw:gap-5"
             selectedKey={definitionTab}
             onSelectionChange={(key) => guard(() => setDefinitionTab(key))}>
-            {isAiMode ? (
-              <Box direction="col" gap={1}>
+            <Box direction="col" gap={1}>
+              <Typography
+                as="h2"
+                className="not-prose tw:m-0"
+                size="text-lg"
+                weight="semibold">
+                {getEntityName(ontology)}
+              </Typography>
+              {ontology.description ? (
                 <Typography
-                  as="h2"
-                  className="not-prose tw:m-0"
-                  size="text-lg"
-                  weight="semibold">
-                  {getEntityName(ontology)}
+                  color="secondary"
+                  ellipsis={{ rows: 2 }}
+                  size="text-sm">
+                  {ontology.description}
                 </Typography>
-                {ontology.description ? (
-                  <Typography
-                    color="secondary"
-                    ellipsis={{ rows: 2 }}
-                    size="text-sm">
-                    {ontology.description}
-                  </Typography>
-                ) : null}
-              </Box>
-            ) : null}
+              ) : null}
+            </Box>
             <Tabs.List aria-label={t('label.definition')} type="underline">
               <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
-              <Tabs.Item id="concept">{t('label.concept-plural')}</Tabs.Item>
-              <Tabs.Item id="property">{t('label.property-plural')}</Tabs.Item>
-              <Tabs.Item id="axiom">{t('label.constraint-plural')}</Tabs.Item>
+              <Tabs.Item
+                aria-label={t('label.concept-plural')}
+                badge={model?.concepts.length}
+                id="concept">
+                {t('label.concept-plural')}
+              </Tabs.Item>
+              <Tabs.Item
+                aria-label={t('label.property-plural')}
+                badge={model?.properties.length}
+                id="property">
+                {t('label.property-plural')}
+              </Tabs.Item>
+              <Tabs.Item
+                aria-label={t('label.constraint-plural')}
+                badge={model?.axioms.length}
+                id="axiom">
+                {t('label.constraint-plural')}
+              </Tabs.Item>
               <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
             </Tabs.List>
             <Tabs.Panel id="overview">
               <OntologyOverview
                 ontology={ontology}
                 status={publicationStatus}
+                onOpenPublication={onOpenPublication}
                 onOpenTab={(tab) => guard(() => setDefinitionTab(tab))}
               />
             </Tabs.Panel>
             <Tabs.Panel id="concept">
               <OntologyAuthoringWorkspace
                 ontology={ontology}
+                onOpenConcept={openConcept}
                 onWorkingChange={onWorkingChange}
               />
             </Tabs.Panel>
@@ -158,6 +182,7 @@ const OntologyStudioWorkspace = ({
             <Tabs.Panel id="axiom">
               <OntologyAxiomWorkspace
                 ontology={ontology}
+                onOpenConcept={openConcept}
                 onWorkingChange={onWorkingChange}
               />
             </Tabs.Panel>

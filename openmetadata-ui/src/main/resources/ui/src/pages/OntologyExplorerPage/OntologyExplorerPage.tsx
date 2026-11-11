@@ -2327,6 +2327,10 @@ const OntologyExplorerContent: React.FC = () => {
           )
         }
         onEditConceptRequestHandled={() => setEditConceptRequest(undefined)}
+        onOpenPublication={() => {
+          setPublicationTab('changes');
+          setIsPublicationOpen(true);
+        }}
         onRequestCreateConcept={() => guard(handleAddConcept)}
         onRequestEdit={(conceptId) => {
           setEditConceptRequest(conceptId);
