@@ -11,6 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.it.util.SearchDocs.awaitDoc;
+import static org.openmetadata.it.util.SearchDocs.tagFqns;
 import static org.openmetadata.service.util.RestUtil.PENDING_CHANGE_HEADER;
 import static org.openmetadata.service.util.TestUtils.simulateWork;
 
@@ -6607,6 +6609,32 @@ public class WorkflowDefinitionResourceIT {
         termById(fixture.grandchild()).getFullyQualifiedName());
   }
 
+  // Accepting a held move rewrites the term's tagged assets after the review returns, as an unheld
+  // move does: an update-by-query across every index can outlast the request on a large cluster.
+  @Test
+  void test_approvedGlossaryTermMoveRewritesTaggedAssetsInSearch(TestNamespace ns)
+      throws Exception {
+    MoveFixture fixture = moveFixture(ns, "moveTagged");
+    Table table = tableTaggedWith(ns, fixture.moved());
+    awaitDoc(
+        "table_search_index",
+        table.getId(),
+        doc -> tagFqns(doc).contains(fixture.moved().getFullyQualifiedName()));
+    deployTermGateWorkflow(fixture.moved(), List.of("parent", "glossary"));
+
+    HttpResponse<String> response = moveTerm(fixture.moved(), "glossaryTerm", fixture.costs());
+
+    assertEquals(202, response.statusCode(), response.body());
+    String requestId = response.headers().firstValue(PENDING_CHANGE_HEADER).orElseThrow();
+    approve(awaitRequestTask(requestId, fixture.moved().getFullyQualifiedName()));
+    awaitRequestStatus(requestId, "Applied");
+    String movedFqn =
+        "%s.%s".formatted(fixture.costs().getFullyQualifiedName(), fixture.moved().getName());
+    JsonNode doc =
+        awaitDoc("table_search_index", table.getId(), d -> tagFqns(d).contains(movedFqn));
+    assertFalse(tagFqns(doc).contains(fixture.moved().getFullyQualifiedName()));
+  }
+
   @Test
   void test_rejectedGlossaryTermMoveLeavesTheTermInPlace(TestNamespace ns) throws Exception {
     MoveFixture fixture = moveFixture(ns, "moveRejected");
@@ -9154,6 +9182,19 @@ public class WorkflowDefinitionResourceIT {
                 .withGlossary(glossary.getFullyQualifiedName())
                 .withParent(parent == null ? null : parent.getFullyQualifiedName())
                 .withDescription("%s definition".formatted(name)));
+  }
+
+  private static Table tableTaggedWith(TestNamespace ns, GlossaryTerm term) {
+    Table table =
+        TableTestFactory.createWithName(
+            ns, DatabaseSchemaTestFactory.createSimple(ns).getFullyQualifiedName(), "termAsset");
+    table.setTags(
+        List.of(
+            new TagLabel()
+                .withTagFQN(term.getFullyQualifiedName())
+                .withSource(TagLabel.TagSource.GLOSSARY)
+                .withLabelType(TagLabel.LabelType.MANUAL)));
+    return SdkClients.adminClient().tables().update(table.getId().toString(), table);
   }
 
   private static GlossaryTerm termById(GlossaryTerm term) {
