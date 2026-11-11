@@ -44,7 +44,7 @@ test('filters, previews, and keeps a native pack installed across reload', async
     await expect(page.getByTestId('ontology-pack-sample-node-0')).toBeVisible();
     await expect(page.getByTestId('ontology-pack-sample-edge-0')).toBeVisible();
     await expect(page.getByTestId('ontology-pack-detail')).toContainText(
-      'Aligned to Semantic Sensor Network Ontology'
+      'Aligned to SOSA/SSN'
     );
 
     const smallerSample = page.waitForResponse(
