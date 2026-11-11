@@ -156,7 +156,7 @@ public class ConversationRepository {
   /**
    * A listing that spans entities (e.g. a user's mentions) keeps only conversations about entities
    * the caller may view, as the activity feeds do. The cursors are taken from the full page so
-   * paging still walks every row.
+   * paging still walks every row; the total leaves out the rows hidden on this page.
    */
   private static ResultList<Conversation> viewableOnly(
       SecurityContext securityContext, Authorizer authorizer, ResultList<Conversation> page) {

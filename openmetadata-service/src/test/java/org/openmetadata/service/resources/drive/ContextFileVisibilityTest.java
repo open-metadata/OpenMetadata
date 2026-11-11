@@ -44,7 +44,7 @@ class ContextFileVisibilityTest {
   private static final int TOTAL = 7;
 
   @Test
-  void aFilteredPageKeepsItsCursorsAndCountsOnlyWhatItShows() {
+  void aFilteredPageKeepsItsCursorsAndDropsItsHiddenFilesFromTheTotal() {
     ResultList<ContextFile> page =
         new ResultList<>(
             List.of(fileOwnedBy(ALICE, MemoryVisibility.PRIVATE), fileOwnedBy(BOB, null)),
