@@ -47,6 +47,22 @@ const initialValue = {
 } as unknown as IntakeForm;
 
 describe('IntakeFormDesignerBody', () => {
+  it('warns that intake forms are deprecated', () => {
+    (getCustomPropertiesByEntityType as jest.Mock).mockResolvedValue([]);
+    render(
+      <IntakeFormDesignerBody
+        open
+        entityType={TargetEntityType.Domain}
+        initialValue={initialValue}
+        onSubmit={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.getByTestId('intake-form-deprecated-alert')
+    ).toHaveTextContent('message.intake-form-deprecated');
+  });
+
   it('keeps what was typed when the custom properties load afterwards', async () => {
     let loadProperties: (properties: CustomProperty[]) => void = jest.fn();
     (getCustomPropertiesByEntityType as jest.Mock).mockReturnValue(

@@ -5205,6 +5205,7 @@
     "intake-form-created-successfully": "접수 양식이 성공적으로 생성되었습니다",
     "intake-form-custom-properties-help": "양식에 포함할 사용자 지정 속성을 선택한 다음 반드시 입력해야 하는 필드를 표시하세요. 사용자 지정 속성 카탈로그는 설정 → 사용자 지정 속성에서 관리하세요.",
     "intake-form-deleted-successfully": "접수 양식이 성공적으로 삭제되었습니다",
+    "intake-form-deprecated": "인테이크 양식은 더 이상 사용되지 않으며 다음 릴리스에서 제거됩니다. 대신 Playbooks와 수명 주기 워크플로를 사용하여 필수 필드를 적용하세요.",
     "intake-form-description-placeholder": "선택 사항 — 이 접수 양식이 적용하는 거버넌스 정책을 설명하세요",
     "intake-form-enabled-help": "비활성화하면 접수 양식은 저장되지만 API 계층에서 적용되지 않습니다.",
     "intake-form-native-fields-help": "스키마 필수 필드(이름, 설명 등)는 항상 적용되며 여기에 표시되지 않습니다. 이 접수 양식은 스키마 수준에서 선택 사항인 필드만 필수로 승격할 수 있습니다.",

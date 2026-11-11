@@ -12,6 +12,7 @@
  */
 
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -251,6 +252,11 @@ const IntakeFormsPage = () => {
       <Box direction="col" gap={4}>
         <TitleBreadcrumb titleLinks={breadcrumbs} />
         {headerBar}
+        <Alert
+          data-testid="intake-forms-deprecated-alert"
+          title={t('message.intake-form-deprecated')}
+          variant="warning"
+        />
 
         {!loading && forms.length === 0 ? (
           <div className="tw:relative tw:min-h-90">

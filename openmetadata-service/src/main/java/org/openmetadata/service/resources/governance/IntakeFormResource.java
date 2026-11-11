@@ -63,7 +63,9 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 @Tag(
     name = "IntakeForms",
     description =
-        "An IntakeForm declares fields shown for a governance entity and which are required. "
+        "Deprecated: IntakeForms will be removed in the next release; use Playbooks and "
+            + "Lifecycle workflows instead. "
+            + "An IntakeForm declares fields shown for a governance entity and which are required. "
             + "Required fields are enforced at the API layer, layered on top of the entity's "
             + "schema-required fields.")
 @Produces(MediaType.APPLICATION_JSON)
@@ -81,6 +83,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @GET
   @Operation(
       operationId = "listIntakeForms",
+      deprecated = true,
       summary = "List IntakeForms",
       responses = {
         @ApiResponse(
@@ -119,6 +122,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @Path("/{id}")
   @Operation(
       operationId = "getIntakeFormByID",
+      deprecated = true,
       summary = "Get an IntakeForm by ID",
       responses = {
         @ApiResponse(
@@ -149,6 +153,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @Path("/name/{name}")
   @Operation(
       operationId = "getIntakeFormByName",
+      deprecated = true,
       summary = "Get an IntakeForm by name",
       responses = {
         @ApiResponse(
@@ -179,6 +184,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @Path("/entityType/{entityType}")
   @Operation(
       operationId = "getIntakeFormByEntityType",
+      deprecated = true,
       summary = "Get the IntakeForm configured for a specific entity type",
       responses = {
         @ApiResponse(
@@ -210,6 +216,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @Path("/{id}/versions")
   @Operation(
       operationId = "listIntakeFormVersions",
+      deprecated = true,
       summary = "List versions of an IntakeForm",
       responses = {
         @ApiResponse(
@@ -231,6 +238,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @Path("/{id}/versions/{version}")
   @Operation(
       operationId = "getIntakeFormVersion",
+      deprecated = true,
       summary = "Get a specific version of an IntakeForm",
       responses = {
         @ApiResponse(
@@ -252,6 +260,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @POST
   @Operation(
       operationId = "createIntakeForm",
+      deprecated = true,
       summary = "Create a new IntakeForm",
       responses = {
         @ApiResponse(
@@ -274,6 +283,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @PUT
   @Operation(
       operationId = "createOrUpdateIntakeForm",
+      deprecated = true,
       summary = "Create or update an IntakeForm",
       responses = {
         @ApiResponse(
@@ -297,6 +307,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @Path("/{id}")
   @Operation(
       operationId = "patchIntakeForm",
+      deprecated = true,
       summary = "Patch an IntakeForm",
       responses = {
         @ApiResponse(
@@ -330,6 +341,7 @@ public class IntakeFormResource extends EntityResource<IntakeForm, IntakeFormRep
   @Path("/{id}")
   @Operation(
       operationId = "deleteIntakeForm",
+      deprecated = true,
       summary = "Delete an IntakeForm",
       responses = {
         @ApiResponse(responseCode = "200", description = "Deleted"),

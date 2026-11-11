@@ -5205,6 +5205,7 @@
     "intake-form-created-successfully": "Aufnahmeformular erfolgreich erstellt",
     "intake-form-custom-properties-help": "Wählen Sie die benutzerdefinierten Eigenschaften aus, die im Formular enthalten sein sollen, und markieren Sie anschließend die Pflichtfelder. Verwalten Sie den Katalog benutzerdefinierter Eigenschaften unter Einstellungen → Benutzerdefinierte Eigenschaften.",
     "intake-form-deleted-successfully": "Aufnahmeformular erfolgreich gelöscht",
+    "intake-form-deprecated": "Intake-Formulare sind veraltet und werden im nächsten Release entfernt. Verwenden Sie stattdessen Playbooks und Lifecycle-Workflows, um Pflichtfelder durchzusetzen.",
     "intake-form-description-placeholder": "Optional – erläutern Sie die Governance-Richtlinie, die dieses Aufnahmeformular durchsetzt",
     "intake-form-enabled-help": "Wenn deaktiviert, wird das Aufnahmeformular gespeichert, aber nicht auf API-Ebene durchgesetzt.",
     "intake-form-native-fields-help": "Schemapflichtige Felder (Name, Beschreibung usw.) werden immer durchgesetzt und hier nicht angezeigt. Nur Felder, die auf Schemaebene optional sind, können durch dieses Aufnahmeformular zu Pflichtfeldern gemacht werden.",

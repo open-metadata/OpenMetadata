@@ -293,6 +293,11 @@ const IntakeFormDesignerBody = forwardRef<
       direction="col"
       gap={6}>
       <Alert
+        data-testid="intake-form-deprecated-alert"
+        title={t('message.intake-form-deprecated')}
+        variant="warning"
+      />
+      <Alert
         title={t('message.intake-form-one-per-type-help', {
           entityType: t(ENTITY_TYPE_LABEL_KEYS[entityType]),
         })}
