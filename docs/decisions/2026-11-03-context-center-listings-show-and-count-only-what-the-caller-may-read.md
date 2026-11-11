@@ -1,10 +1,10 @@
 # Context Center listings show and count only what the caller may read
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-11 (file listings count the same way)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryVisibilityTest`, `ContextMemorySearchVisibilityTest`,
-  `ContextMemoryResourceTest`
+  `ContextMemoryResourceTest`, `ContextFileIT.testListingCountsOnlyFilesTheCallerMaySee`
 - **Related:** ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request;
   ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review;
   ADR:ai-platform/2026-10-11-explicit-memory-delete-searches-every-status
@@ -46,3 +46,13 @@ count-only call (`limit=0`) and on any page that hid none itself.
   includes everyone's.
 - A plain-list page that does not show every counted row costs one bounded extra read, plus one
   ownership lookup per document whose pending pills are on it.
+
+## Amendment
+
+### v2 2026-11-11 — file listings count the same way
+
+The plain file listing (`/v1/contextCenter/drive/files`) reports its `paging.total` by the same
+rule as the plain memory list: it stands only when the page shows every counted row, and otherwise
+the files the caller may see are recounted over at most `MAX_VISIBLE_COUNT_SCAN` rows, never less
+than the page. The recount reads the rows straight from the repository and applies the listing's
+row check and the file sharing rules; the caller's teams and domains are resolved once per list.

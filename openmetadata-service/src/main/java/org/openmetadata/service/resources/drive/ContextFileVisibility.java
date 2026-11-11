@@ -23,6 +23,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Predicate;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
@@ -53,10 +55,21 @@ public final class ContextFileVisibility {
   private ContextFileVisibility() {}
 
   public static boolean isVisibleToUser(ContextFile file, String userName, boolean isAdmin) {
-    return isAdmin
-        || isOrgWide(file)
-        || isOwnedBy(file, userName)
-        || isSharedWithUser(file.getShareConfig(), userName);
+    return visibleTo(userName, isAdmin).test(file);
+  }
+
+  /** The test for one caller over many files, resolving their teams and domains at most once. */
+  private static Predicate<ContextFile> visibleTo(String userName, boolean isAdmin) {
+    Supplier<Set<String>> principalIds = ContextMemoryVisibility.principalIdsOf(userName);
+    return file ->
+        isAdmin
+            || isOrgWide(file)
+            || isOwnedBy(file, userName)
+            || isSharedWithUser(file.getShareConfig(), principalIds);
+  }
+
+  private static Predicate<ContextFile> visibleTo(SecurityContext securityContext) {
+    return visibleTo(callerName(securityContext), isAdmin(securityContext));
   }
 
   /** Whether everyone may read the file: nothing restricts it, or its visibility is Entity. */
@@ -67,9 +80,10 @@ public final class ContextFileVisibility {
         || share.getVisibility() == MemoryVisibility.ENTITY;
   }
 
-  private static boolean isSharedWithUser(MemoryShareConfig share, String userName) {
+  private static boolean isSharedWithUser(
+      MemoryShareConfig share, Supplier<Set<String>> principalIds) {
     return share.getVisibility() == MemoryVisibility.SHARED
-        && ContextMemoryVisibility.isSharedWith(share.getSharedWith(), userName);
+        && ContextMemoryVisibility.isSharedWith(share.getSharedWith(), principalIds);
   }
 
   public static void enforceVisibility(ContextFile file, SecurityContext securityContext) {
@@ -115,34 +129,28 @@ public final class ContextFileVisibility {
   }
 
   /**
-   * Drops the files this caller may not see, keeping the page's cursors. A filtered page can come
-   * back shorter than the limit asked for; the cursors still walk every file, which is what keeps
-   * the next page from skipping any.
+   * Drops the files this caller may not see, keeping the page's cursors and total. A filtered page
+   * can come back shorter than the limit asked for; the cursors still walk every file, which is
+   * what keeps the next page from skipping any.
    */
   public static ResultList<ContextFile> filterByVisibility(
       ResultList<ContextFile> files, SecurityContext securityContext) {
     if (files == null || nullOrEmpty(files.getData())) {
       return files;
     }
-    String userName = callerName(securityContext);
-    boolean admin = isAdmin(securityContext);
     // ResultList.filter rebuilds the paging for an offset read and leaves the cursors out.
-    ResultList<ContextFile> visible =
-        files.filter(file -> isVisibleToUser(file, userName, admin)).setPaging(files.getPaging());
-    // The total leaves out the files dropped from this page.
-    if (visible.getPaging() != null && visible.getPaging().getTotal() != null) {
-      int dropped = files.getData().size() - visible.getData().size();
-      visible.getPaging().setTotal(visible.getPaging().getTotal() - dropped);
-    }
-    return visible;
+    return files.filter(visibleTo(securityContext)).setPaging(files.getPaging());
   }
 
   /** Drops the files this caller may not see from an unpaged list, such as a folder's children. */
   public static List<ContextFile> filterVisible(
       List<ContextFile> files, SecurityContext securityContext) {
-    String userName = callerName(securityContext);
-    boolean admin = isAdmin(securityContext);
-    return files.stream().filter(file -> isVisibleToUser(file, userName, admin)).toList();
+    return files.stream().filter(visibleTo(securityContext)).toList();
+  }
+
+  /** Whether the caller sees every file without filtering, as an admin does. */
+  public static boolean seesEveryFile(SecurityContext securityContext) {
+    return isAdmin(securityContext);
   }
 
   /**

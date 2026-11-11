@@ -44,7 +44,7 @@ class ContextFileVisibilityTest {
   private static final int TOTAL = 7;
 
   @Test
-  void aFilteredPageKeepsItsCursorsAndDropsItsHiddenFilesFromTheTotal() {
+  void aFilteredPageKeepsItsCursorsAndTotal() {
     ResultList<ContextFile> page =
         new ResultList<>(
             List.of(fileOwnedBy(ALICE, MemoryVisibility.PRIVATE), fileOwnedBy(BOB, null)),
@@ -59,7 +59,7 @@ class ContextFileVisibilityTest {
     assertNotNull(page.getPaging().getAfter());
     assertEquals(page.getPaging().getBefore(), visible.getPaging().getBefore());
     assertEquals(page.getPaging().getAfter(), visible.getPaging().getAfter());
-    assertEquals(TOTAL - 1, visible.getPaging().getTotal());
+    assertEquals(TOTAL, visible.getPaging().getTotal());
   }
 
   @Test
@@ -174,6 +174,37 @@ class ContextFileVisibilityTest {
       assertEquals(
           List.of(own, orgWide),
           ContextFileVisibility.filterVisible(List.of(teamOwned, own, orgWide), caller));
+    }
+  }
+
+  @Test
+  void aListResolvesTheCallersTeamsAndDomainsOnce() {
+    EntityReference team =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEAM).withName("team");
+    MemoryShareConfig sharedWithTeam =
+        new MemoryShareConfig()
+            .withVisibility(MemoryVisibility.SHARED)
+            .withSharedWith(List.of(new MemorySharedPrincipal().withPrincipal(team)));
+    List<ContextFile> shared =
+        List.of(
+            fileOwnedBy(ALICE, null).withShareConfig(sharedWithTeam),
+            fileOwnedBy(ALICE, null).withShareConfig(sharedWithTeam),
+            fileOwnedBy(ALICE, null).withShareConfig(sharedWithTeam));
+    SecurityContext caller = securityContextFor(BOB);
+    try (MockedStatic<DefaultAuthorizer> authorizer = Mockito.mockStatic(DefaultAuthorizer.class);
+        MockedStatic<Entity> entities = Mockito.mockStatic(Entity.class)) {
+      authorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(caller))
+          .thenReturn(new SubjectContext(new User().withName(BOB), null, null));
+      entities
+          .when(
+              () -> Entity.getEntityByName(Entity.USER, BOB, "teams,domains", Include.NON_DELETED))
+          .thenReturn(new User().withId(UUID.randomUUID()).withName(BOB).withTeams(List.of(team)));
+
+      assertEquals(shared, ContextFileVisibility.filterVisible(shared, caller));
+      entities.verify(
+          () -> Entity.getEntityByName(Entity.USER, BOB, "teams,domains", Include.NON_DELETED),
+          Mockito.times(1));
     }
   }
 

@@ -61,6 +61,7 @@ import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.type.Paging;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.api.BulkResponse;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -80,6 +81,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -203,6 +205,9 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
     if (orderBy == null || orderBy.isBlank()) {
       return visibleOnly(
+          uriInfo,
+          securityContext,
+          filter,
           super.listInternal(
               uriInfo,
               securityContext,
@@ -210,8 +215,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
               filter,
               limit,
               before,
-              after),
-          securityContext);
+              after));
     }
 
     RestUtil.validateCursors(before, after);
@@ -223,17 +227,51 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     ResultList<ContextFile> resultList =
         repository.listByUpdatedAt(
             uriInfo, fields, filter, limit, before, after, resolveOrderBy(orderBy));
-    return visibleOnly(addHref(uriInfo, resultList), securityContext);
+    return visibleOnly(uriInfo, securityContext, filter, addHref(uriInfo, resultList));
   }
 
   /**
    * Drops the files this caller may not see. A page is filtered after it is read, so it can come
    * back shorter than {@code limit} — the paging cursors still walk every file, which is what keeps
-   * the next page from skipping any.
+   * the next page from skipping any. The total counts only files the caller may see, as Context
+   * Center memories do (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
   private ResultList<ContextFile> visibleOnly(
-      ResultList<ContextFile> files, SecurityContext securityContext) {
-    return ContextFileVisibility.filterByVisibility(files, securityContext);
+      UriInfo uriInfo,
+      SecurityContext securityContext,
+      ListFilter filter,
+      ResultList<ContextFile> files) {
+    ResultList<ContextFile> visible =
+        ContextFileVisibility.filterByVisibility(files, securityContext);
+    Paging paging = visible.getPaging();
+    if (paging != null
+        && paging.getTotal() != null
+        && !ContextFileVisibility.seesEveryFile(securityContext)) {
+      paging.setTotal(
+          ContextMemoryResource.listedTotal(
+              paging.getTotal(),
+              visible.getData().size(),
+              () -> visibleCount(uriInfo, securityContext, filter)));
+    }
+    return visible;
+  }
+
+  /**
+   * How many files under {@code filter} the caller may see, counted over at most {@link
+   * ContextMemoryResource#MAX_VISIBLE_COUNT_SCAN} rows: past that it is a lower bound. Rows are
+   * read straight from the repository and pass the same row and sharing checks as a listed page.
+   */
+  private int visibleCount(UriInfo uriInfo, SecurityContext securityContext, ListFilter filter) {
+    Fields fields = getFields(ContextFileVisibility.guardFields(null));
+    List<ContextFile> scanned =
+        repository
+            .listAfter(uriInfo, fields, filter, ContextMemoryResource.MAX_VISIBLE_COUNT_SCAN, null)
+            .getData();
+    List<ContextFile> readable =
+        rowsMayDiffer(securityContext, fields)
+            ? rowAuthorization(fields).readable().apply(securityContext, scanned)
+            : scanned;
+    return ContextFileVisibility.filterVisible(readable, securityContext).size();
   }
 
   @GET

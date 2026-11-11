@@ -553,6 +553,55 @@ class ContextFileIT {
   }
 
   @Test
+  void testListingCountsOnlyFilesTheCallerMaySee(TestNamespace ns) throws Exception {
+    RestClient admin = RestClient.admin();
+    User owner = DriveTestUsers.createUser(ns, "o-list");
+    User reader = DriveTestUsers.createUser(ns, "r-list");
+    Folder folder = createFolder(admin, new CreateFolder().withName(ns.prefix("listing-total")));
+    ContextFile orgWide = createFile(admin, ownedFileIn(folder, ns.prefix("a-org-wide"), owner));
+    ContextFile privateFile = createFile(admin, ownedFileIn(folder, ns.prefix("b-private"), owner));
+    String original = JsonUtils.pojoToJson(privateFile);
+    privateFile.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    admin.patch(FILE_PATH, privateFile.getId(), original, privateFile, ContextFile.class);
+    RestClient readerRest = RestClient.forUser(reader.getEmail(), new String[] {});
+
+    // One file per page: every page reports the same total, including the page that hides nothing
+    // itself, and so does a count-only read.
+    List<String> listed = new ArrayList<>();
+    String after = null;
+    for (int page = 0; page < 2; page++) {
+      JsonNode onePerPage = listFiles(readerRest, folder.getId(), 1, after);
+      assertEquals(1, onePerPage.get("paging").get("total").asInt(), "total on page " + page);
+      onePerPage.get("data").forEach(node -> listed.add(node.get("id").asText()));
+      after = onePerPage.get("paging").path("after").asText(null);
+    }
+    assertEquals(List.of(orgWide.getId().toString()), listed);
+    assertEquals(
+        1, listFiles(readerRest, folder.getId(), 0, null).get("paging").get("total").asInt());
+
+    RestClient ownerRest = RestClient.forUser(owner.getEmail(), new String[] {});
+    assertEquals(
+        2, listFiles(ownerRest, folder.getId(), 1, null).get("paging").get("total").asInt());
+  }
+
+  private static CreateContextFile ownedFileIn(Folder folder, String name, User owner) {
+    return new CreateContextFile()
+        .withName(name)
+        .withFolder(folder.getFullyQualifiedName())
+        .withOwners(List.of(owner.getEntityReference()))
+        .withProcessingStatus(ProcessingStatus.Uploaded);
+  }
+
+  private static JsonNode listFiles(RestClient rest, UUID folderId, int limit, String after) {
+    String page = after == null ? "" : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+    try (Response response =
+        rest.rawGet(FILE_PATH + "?folderId=" + folderId + "&limit=" + limit + page)) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readTree(response.readEntity(String.class));
+    }
+  }
+
+  @Test
   void testProcessingUpdateKeepsConsolidatedMetadataEdits(TestNamespace ns) throws Exception {
     RestClient rest = RestClient.admin();
     ContextFile file =
