@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Test bounded RDF schema discovery and SigV4 SPARQL requests."""
 
+import re
 from unittest.mock import Mock, patch
 
 import pytest
@@ -24,6 +25,7 @@ from metadata.ingestion.source.database.neptune.rdf import (
     NeptuneRDFSchemaError,
     NeptuneRDFStatisticsUnavailableError,
     build_class_query,
+    get_graph_summary,
     iri_names,
     parse_class_properties,
     parse_graph_summary,
@@ -106,6 +108,19 @@ class TestRDFSummary:
         with pytest.raises(NeptuneRDFStatisticsUnavailableError, match=r"db\.t3\.medium"):
             read_graph_schema(NoStatistics([PERSON]), 10, 10, 10, 5)
 
+    def test_summary_check_error_translation_is_shared(self):
+        error = ClientError(
+            {"Error": {"Code": "StatisticsNotAvailableException", "Message": "statistics are not available"}},
+            "GetRDFGraphSummary",
+        )
+
+        class NoStatistics:
+            def get_rdf_graph_summary(self, mode: str = "basic") -> dict:
+                raise error
+
+        with pytest.raises(NeptuneRDFStatisticsUnavailableError, match=r"db\.t4g\.medium"):
+            get_graph_summary(NoStatistics())
+
 
 class TestRDFQueries:
     def test_class_query_has_sample_predicate_and_timeout_limits(self):
@@ -135,9 +150,10 @@ class TestRDFQueries:
 
         assert not truncated
         by_name = {prop.name: prop for prop in properties}
-        assert by_name["name"].types == (XSD_STRING,)
-        assert by_name["knows"].target_classes == (PERSON,)
-        assert rdf_data_type(by_name["name"].types) == DataType.STRING
+        property_names = iri_names([NAME, KNOWS])
+        assert by_name[property_names[NAME]].types == (XSD_STRING,)
+        assert by_name[property_names[KNOWS]].target_classes == (PERSON,)
+        assert rdf_data_type(by_name[property_names[NAME]].types) == DataType.STRING
         assert rdf_data_type(("iri",)) == DataType.STRING
         assert rdf_data_type((RDF_LANG_STRING,)) == DataType.STRING
         assert rdf_data_type((XSD_STRING, "iri")) == DataType.UNKNOWN
@@ -154,7 +170,18 @@ class TestRDFQueries:
         assert len(set(names.values())) == len(iris)
         assert names == iri_names(list(reversed(iris)))
         assert all(name.replace("_", "").isalnum() for name in names.values())
-        assert names["http://one.example/Name-Value"] == "name_value"
+        assert names["http://one.example/Name-Value"].startswith("name_value_")
+
+    def test_iri_name_is_stable_when_the_selected_class_set_changes(self):
+        iri = "http://one.example/Person"
+
+        assert iri_names([iri])[iri] == iri_names([iri, "https://two.example/Person"])[iri]
+
+    def test_long_iri_local_names_fit_the_openmetadata_name_limit(self):
+        name = iri_names(["http://example.org/" + "a" * 300])["http://example.org/" + "a" * 300]
+
+        assert len(name) <= 256
+        assert re.fullmatch(r"[a-z0-9_]+", name)
 
     def test_class_and_predicate_caps_are_applied(self):
         client = FakeRDFClient(

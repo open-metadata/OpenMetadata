@@ -14,8 +14,10 @@ topology and the test-connection checks, with the neptunedata client faked at th
 Payloads follow the examples in the Neptune property graph schema documentation.
 """
 
+import json
 from collections.abc import Callable
 from copy import deepcopy
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
@@ -23,7 +25,7 @@ from botocore.exceptions import ClientError
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
-from metadata.core.connections.test_connection.check import CheckError
+from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
 from metadata.generated.schema.entity.data.table import Column, DataType, TableType
 from metadata.generated.schema.entity.services.connections.database.neptuneConnection import (
@@ -52,7 +54,10 @@ from metadata.ingestion.source.database.neptune.queries import (
     NEPTUNE_PG_SCHEMA,
     NEPTUNE_PG_SCHEMA_COMPUTE,
 )
-from metadata.ingestion.source.database.neptune.rdf import NeptuneRDFStatisticsUnavailableError
+from metadata.ingestion.source.database.neptune.rdf import (
+    NeptuneRDFStatisticsUnavailableError,
+    iri_names,
+)
 from metadata.ingestion.source.database.neptune.schema import (
     NeptuneSchemaError,
     NeptuneSchemaFailedError,
@@ -645,13 +650,21 @@ class TestRDFSource:
         assert source.get_schema_name_list() == ["classes"]
 
         tables = tables_in(source, "classes")
-        person = tables["person"]
+        person_name = iri_names(["http://example.org/Person"])["http://example.org/Person"]
+        property_names = iri_names(["http://example.org/name", "http://example.org/knows"])
+        person = tables[person_name]
         assert person.description.root == "RDF class IRI: http://example.org/Person"
         assert person.databaseSchema.root == "local_neptune.default.classes"
         columns = columns_of(person)
-        assert columns["name"].dataType == DataType.STRING
-        assert columns["name"].description.root == "RDF predicate IRI: http://example.org/name"
-        assert "Observed linked RDF classes (sampled): http://example.org/Person" in columns["knows"].description.root
+        assert columns[property_names["http://example.org/name"]].dataType == DataType.STRING
+        assert (
+            columns[property_names["http://example.org/name"]].description.root
+            == "RDF predicate IRI: http://example.org/name"
+        )
+        assert (
+            "Observed linked RDF classes (sampled): http://example.org/Person"
+            in columns[property_names["http://example.org/knows"]].description.root
+        )
 
     def test_rdf_metadata_uses_summary_then_bounded_class_query(self):
         client = FakeRDFNeptune()
@@ -708,3 +721,31 @@ class TestRDFConnectionChecks:
         assert "1.2.1.0" in diagnosis.remediation
         assert "db.t3.medium" in diagnosis.remediation
         assert "db.t4g.medium" in diagnosis.remediation
+
+    def test_statistics_errors_use_the_actionable_diagnosis_in_the_summary_check(self):
+        class NoStatistics(FakeRDFNeptune):
+            def get_rdf_graph_summary(self, mode="basic"):
+                raise client_error("StatisticsNotAvailableException")
+
+        with pytest.raises(CheckError) as error:
+            self.checks(NoStatistics()).get_rdf_graph_summary()
+
+        assert isinstance(error.value.cause, NeptuneRDFStatisticsUnavailableError)
+        diagnosis = NEPTUNE_RDF_ERRORS.classify(error.value.cause)
+        assert diagnosis.title == "RDF graph summary unavailable"
+        assert "1.2.1.0" in diagnosis.remediation
+
+    def test_definition_has_checks_for_both_graph_models(self):
+        definition_path = (
+            Path(__file__).parents[5]
+            / "openmetadata-service/src/main/resources/json/data/testConnections/database/neptune.json"
+        )
+        definition = json.loads(definition_path.read_text(encoding="utf-8"))
+        steps = {step["name"]: step for step in definition["steps"]}
+        property_graph_checks = TestConnectionChecks().checks(FakeNeptune([]))
+        rdf_checks = self.checks(FakeRDFNeptune())
+
+        assert steps["GetPropertyGraphSchema"]["mandatory"] is True
+        assert steps["GetRDFGraphSummary"]["mandatory"] is True
+        assert set(steps) == set(collect_checks(property_graph_checks))
+        assert set(steps) == set(collect_checks(rdf_checks))

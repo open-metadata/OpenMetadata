@@ -98,6 +98,27 @@ def parse_graph_summary(response: Mapping[str, Any]) -> RDFGraphSummary:
     return RDFGraphSummary(classes=tuple(sorted(set(classes))), num_quads=num_quads)
 
 
+def get_graph_summary(client: Any) -> Mapping[str, Any]:
+    """Fetch the RDF summary and translate Neptune's unavailable-statistics error."""
+    try:
+        response = client.get_rdf_graph_summary(mode="basic")
+    except Exception as exc:
+        error_response = getattr(exc, "response", None)
+        error = error_response.get("Error") if isinstance(error_response, Mapping) else None
+        error_code = error.get("Code") if isinstance(error, Mapping) else None
+        if error_code == "StatisticsNotAvailableException":
+            raise NeptuneRDFStatisticsUnavailableError(
+                "Neptune RDF graph statistics are unavailable. Graph summary requires engine 1.2.1.0 or later "
+                "and DFE statistics; statistics are disabled on db.t3.medium and db.t4g.medium instances. "
+                "Wait for automatic statistics generation or use a supported instance. The connector does not "
+                "trigger statistics recomputation."
+            ) from exc
+        raise
+    if not isinstance(response, Mapping):
+        raise NeptuneRDFSchemaError("Neptune returned an invalid RDF graph summary response.")
+    return response
+
+
 def sparql_iri_ref(iri: str) -> str:
     """Escape an endpoint-provided IRI for safe use in a SPARQL IRIREF."""
     return f"<{quote(iri, safe=_IRI_SAFE)}>"
@@ -181,32 +202,13 @@ def parse_class_properties(
 
 
 def iri_names(iris: list[str] | tuple[str, ...]) -> dict[str, str]:
-    """Create stable OpenMetadata names and suffix colliding local names with IRI hashes."""
-    bases = {iri: _base_name(iri) for iri in set(iris)}
-    by_base: dict[str, list[str]] = defaultdict(list)
-    for iri, base in bases.items():
-        by_base[base].append(iri)
-
-    names: dict[str, str] = {}
-    used: set[str] = set()
-    for base in sorted(by_base):
-        group = sorted(by_base[base])
-        for iri in group:
-            name = base
-            if len(group) > 1 or name in used:
-                digest = hashlib.sha256(iri.encode("utf-8")).hexdigest()
-                length = 8
-                name = f"{base}_{digest[:length]}"
-                while name in used:
-                    length += 4
-                    name = f"{base}_{digest[:length]}"
-                    if length > len(digest):
-                        name = f"{base}_{digest}_{len(used)}"
-                        while name in used:
-                            name += "_"
-            names[iri] = name
-            used.add(name)
-    return names
+    """Create IRI-stable names independent of other classes or predicates in a run."""
+    suffix_length = 65
+    max_base_length = 256 - suffix_length
+    return {
+        iri: f"{_base_name(iri)[:max_base_length].rstrip('_')}_{hashlib.sha256(iri.encode('utf-8')).hexdigest()}"
+        for iri in set(iris)
+    }
 
 
 def _base_name(iri: str) -> str:
@@ -262,22 +264,7 @@ def read_graph_schema(
     timeout_seconds: int,
 ) -> RDFGraphSchema:
     """Read the RDF summary, then sample each class with bounded SPARQL."""
-    try:
-        response = client.get_rdf_graph_summary(mode="basic")
-    except Exception as exc:
-        error_response = getattr(exc, "response", None)
-        error = error_response.get("Error") if isinstance(error_response, Mapping) else None
-        error_code = error.get("Code") if isinstance(error, Mapping) else None
-        if error_code == "StatisticsNotAvailableException":
-            raise NeptuneRDFStatisticsUnavailableError(
-                "Neptune RDF graph statistics are unavailable. Graph summary requires engine 1.2.1.0 or later "
-                "and DFE statistics; statistics are disabled on db.t3.medium and db.t4g.medium instances. "
-                "Wait for automatic statistics generation or use a supported instance. The connector does not "
-                "trigger statistics recomputation."
-            ) from exc
-        raise
-
-    summary = parse_graph_summary(response)
+    summary = parse_graph_summary(get_graph_summary(client))
     selected_classes = summary.classes[:max_classes]
     classes = []
     class_names = iri_names(selected_classes)

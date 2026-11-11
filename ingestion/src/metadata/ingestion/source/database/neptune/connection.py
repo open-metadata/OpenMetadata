@@ -41,6 +41,7 @@ from metadata.ingestion.source.database.neptune.queries import NEPTUNE_PG_SCHEMA
 from metadata.ingestion.source.database.neptune.rdf import (
     NeptuneRDFSchemaError,
     NeptuneRDFStatisticsUnavailableError,
+    get_graph_summary,
     parse_graph_summary,
 )
 from metadata.ingestion.source.database.neptune.schema import (
@@ -272,6 +273,10 @@ class NeptuneChecks:
             raise CheckError(cause, Evidence(command=NEPTUNE_PG_SCHEMA)) from cause
         return Evidence(summary=enumerated(len(names), noun), command=NEPTUNE_PG_SCHEMA)
 
+    @check(NeptuneStep.GetRDFGraphSummary)
+    def get_rdf_graph_summary(self) -> Evidence:
+        return Evidence(summary="Not applicable to property graphs.")
+
 
 class NeptuneConnection(BaseConnection[NeptuneConnectionConfig, Any]):
     def _get_client(self) -> Any:
@@ -296,6 +301,18 @@ class NeptuneRDFChecks:
         self._client = client
         self._connection = connection
 
+    @check(NeptuneStep.GetPropertyGraphSchema)
+    def get_property_graph_schema(self) -> Evidence:
+        return Evidence(summary="Not applicable to RDF graphs.")
+
+    @check(NeptuneStep.GetNodeLabels)
+    def get_node_labels(self) -> Evidence:
+        return Evidence(summary="Not applicable to RDF graphs.")
+
+    @check(NeptuneStep.GetRelationshipTypes)
+    def get_relationship_types(self) -> Evidence:
+        return Evidence(summary="Not applicable to RDF graphs.")
+
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
         probe_or_fail(*host_and_port(self._connection.hostPort))
@@ -312,7 +329,7 @@ class NeptuneRDFChecks:
     def get_rdf_graph_summary(self) -> Evidence:
         command = "get_rdf_graph_summary(mode='basic')"
         try:
-            summary = parse_graph_summary(self._client.client.get_rdf_graph_summary(mode="basic"))
+            summary = parse_graph_summary(get_graph_summary(self._client.client))
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
         return Evidence(summary=f"{len(summary.classes)} RDF classes available", command=command)

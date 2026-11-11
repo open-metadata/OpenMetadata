@@ -1,19 +1,25 @@
 {
   "name": "Neptune",
   "displayName": "Neptune Test Connection",
-  "description": "This Test Connection validates the access against Neptune and the availability of the property graph schema, node labels and edge labels.",
+  "description": "This Test Connection validates access against Neptune and the availability of the configured graph model.",
   "steps": [
     {
       "name": "CheckAccess",
-      "description": "Validate that we can reach the Neptune endpoint and run an openCypher query with the configured AWS credentials.",
+      "description": "Validate that we can reach the Neptune endpoint and run a query for the configured graph model with the configured AWS credentials.",
       "errorMessage": "Failed to connect to Neptune, please validate the host, port, AWS credentials and the neptune-db:ReadDataViaQuery permission.",
       "mandatory": true,
       "shortCircuit": true
     },
     {
       "name": "GetPropertyGraphSchema",
-      "description": "Read the property graph schema via neptune.graph.pg_schema() without starting a computation.",
+      "description": "Property graphs only: read neptune.graph.pg_schema() without starting a computation.",
       "errorMessage": "Failed to read the property graph schema, please validate that the engine supports neptune.graph.pg_schema().",
+      "mandatory": true
+    },
+    {
+      "name": "GetRDFGraphSummary",
+      "description": "RDF graphs only: read the RDF graph summary in basic mode.",
+      "errorMessage": "Failed to read the RDF graph summary; check neptune-db:GetGraphSummary and DFE statistics.",
       "mandatory": true
     },
     {
