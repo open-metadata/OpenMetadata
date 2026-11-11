@@ -22,32 +22,32 @@ import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
-    createOntologyAxiom,
-    patchOntologyAxiom
+  createOntologyAxiom,
+  patchOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
 import { generateUUID, getErrorText } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyFormFooter from '../OntologyFormFooter/OntologyFormFooter';
 import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
-    AdvancedRuleFields,
-    AxiomDetailFields,
-    axiomFormValues,
-    AxiomModeSwitch,
-    AxiomOutcome,
-    AxiomPreview,
-    collectAxiomProblems,
-    previewSentence,
-    QuickRuleFields
+  AdvancedRuleFields,
+  AxiomDetailFields,
+  axiomFormValues,
+  AxiomModeSwitch,
+  AxiomOutcome,
+  AxiomPreview,
+  collectAxiomProblems,
+  previewSentence,
+  QuickRuleFields,
 } from './OntologyAxiomEditor.parts';
 import {
-    buildOntologyAxiomRequest,
-    isOntologyAxiomReady,
-    OntologyAxiomFormState
+  buildOntologyAxiomRequest,
+  isOntologyAxiomReady,
+  OntologyAxiomFormState,
 } from './OntologyAxiomEditor.utils';
 import {
-    isQuickRuleReady,
-    ruleNameFromSentence
+  isQuickRuleReady,
+  ruleNameFromSentence,
 } from './OntologyAxiomQuickRule.utils';
 import { useOntologyAxiomRule } from './useOntologyAxiomRule';
 import { useOntologyAxiomValidation } from './useOntologyAxiomValidation';
@@ -59,6 +59,15 @@ interface OntologyAxiomEditorProps {
   canEdit: boolean;
   onSaved?: (axiom: OntologyAxiom) => void;
 }
+
+/** The footer status: not run yet, passed, or failed. */
+const validationStatusKey = (valid?: boolean) => {
+  if (valid === undefined) {
+    return 'label.not-validated';
+  }
+
+  return valid ? 'label.validation-passed' : 'label.validation-failed';
+};
 
 const OntologyAxiomEditor = ({
   ontology,
@@ -159,13 +168,6 @@ const OntologyAxiomEditor = ({
     canEdit &&
     Boolean(validation.current?.report?.valid) &&
     (!isQuick || isQuickRuleReady(rule.quick));
-  const report = validation.current?.report;
-  let validationStatus = t('label.not-validated');
-  if (report) {
-    validationStatus = t(
-      report.valid ? 'label.validation-passed' : 'label.validation-failed'
-    );
-  }
   const cancel = () => {
     const next = axiomFormValues(axiom);
     form.reset(next);
@@ -214,7 +216,7 @@ const OntologyAxiomEditor = ({
           canSubmit={isSavable}
           isDirty={form.formState.isDirty}
           isSaving={form.formState.isSubmitting}
-          status={validationStatus}
+          status={t(validationStatusKey(validation.current?.report?.valid))}
           submitLabel={t('label.save')}
           submitTestId="ontology-axiom-submit"
           testId="ontology-axiom-footer"
