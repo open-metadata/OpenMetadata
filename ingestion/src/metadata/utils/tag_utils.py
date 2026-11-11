@@ -164,11 +164,10 @@ def get_tag_label(
 
         # Check if the tag exists
         tag = metadata.get_by_name(entity=tag_type, fqn=tag_fqn)
-        # Only Approved glossary terms may be applied to assets; a missing status
-        # means a server that predates term approval, so keep applying those.
-        status = getattr(tag, "entityStatus", None) if tag_type == GlossaryTerm else None
-        if status and status != EntityStatus.Approved:
-            logger.warning(f"Glossary term '{tag_fqn}' is {status.value}, not Approved. Skipping it.")
+        # Only Approved glossary terms may be applied to assets, matching the server's CSV import rule.
+        if tag_type == GlossaryTerm and tag and tag.entityStatus != EntityStatus.Approved:
+            status = tag.entityStatus.value if tag.entityStatus else "missing a status"
+            logger.warning(f"Glossary term '{tag_fqn}' is {status}, not Approved. Skipping it.")
             return None
         if tag:
             return TagLabel(

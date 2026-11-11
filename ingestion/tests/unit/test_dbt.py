@@ -1561,17 +1561,17 @@ class DbtUnitTest(TestCase):
         assert columns[0].tags == []
 
     def _glossary_terms_by_status(self):
-        """FQN -> GlossaryTerm for every status, plus one FQN the server does not know"""
+        """FQN -> GlossaryTerm for every status and for no status, plus one FQN the server does not know"""
         terms = {
-            f"Gloss.{status.name}": GlossaryTerm(
+            f"Gloss.{name}": GlossaryTerm(
                 id=uuid.uuid4(),
-                name=status.name,
-                fullyQualifiedName=f"Gloss.{status.name}",
+                name=name,
+                fullyQualifiedName=f"Gloss.{name}",
                 description="term",
                 glossary=EntityReference(id=uuid.uuid4(), type="glossary"),
                 entityStatus=status,
             )
-            for status in EntityStatus
+            for name, status in [*((status.name, status) for status in EntityStatus), ("NoStatus", None)]
         }
         return terms, [*terms, "Gloss.Missing"]
 
