@@ -23,7 +23,6 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { Link } from 'react-router-dom';
 import PermissionPlaceholder from '../../../../../components/common/EmptyPlaceholder/PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
@@ -40,6 +39,7 @@ import {
   TaskCategory,
 } from '../../../../../generated/entity/tasks/task';
 import { EntityReference } from '../../../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../../../hooks/useApplicationStore';
 import { TaskFormSchema } from '../../../../../rest/taskFormSchemasAPI';
 import {
   addTaskComment,
@@ -62,8 +62,8 @@ import {
 import { isOntologyReviewTask } from '../../../../../utils/TaskUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import CommentComposer from '../../../../common/CommentComposer/CommentComposer';
-import TaskReviewVotes from '../../../../Entity/Task/TaskReviewVotes/TaskReviewVotes';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import TaskReviewVotes from '../../../../Entity/Task/TaskReviewVotes/TaskReviewVotes';
 import OntologyReviewPanel from '../../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import { useApplicationsProvider } from '../../../../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import { formatInboxDate, isTaskOpen } from '../inbox.utils';

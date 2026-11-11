@@ -313,6 +313,27 @@ describe('TaskFeedCardFromTask', () => {
     expect(onTaskClick).toHaveBeenCalledWith(MOCK_TASK);
   });
 
+  it('hides quick Approve/Reject from an unassigned admin on a workflow change-request review', async () => {
+    const { useAuth } = require('../../../hooks/authHooks');
+    useAuth.mockReturnValue({ isAdminUser: true });
+    const reviewTask: Task = {
+      ...MOCK_TASK,
+      workflowInstanceId: 'wf-1',
+      payload: { ...MOCK_TASK.payload, changeRequestId: 'cr-1' },
+      assignees: [{ id: 'other-id', type: 'user', name: 'other' }],
+    };
+
+    await act(async () => {
+      render(<TaskFeedCardFromTask task={reviewTask} />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(screen.queryByTestId('approve-button')).not.toBeInTheDocument();
+
+    useAuth.mockReturnValue({ isAdminUser: false });
+  });
+
   it('drops quick Approve/Reject once the assignee voted in the current stage', async () => {
     const votedTask: Task = {
       ...MOCK_TASK,

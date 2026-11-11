@@ -159,12 +159,12 @@ import { EditorContentRef } from '../../../common/RichTextEditor/RichTextEditor.
 import OntologyReviewPanel from '../../../governance/ontology/OntologyReviewPanel/OntologyReviewPanel';
 import ChangeRequestChangesById from '../../../PendingChanges/ChangeRequestChanges/ChangeRequestChangesById.component';
 import LifecycleApprovalCard from '../LifecycleApprovalCard/LifecycleApprovalCard';
-import TaskReviewVotes from '../TaskReviewVotes/TaskReviewVotes';
 import { getLifecycleMove } from '../LifecycleApprovalCard/LifecycleApprovalCard.utils';
 import {
   getTaskTypeMessageKey,
   isRevisionRequest,
 } from '../MetadataCompletionTask/MetadataCompletionTask.utils';
+import TaskReviewVotes from '../TaskReviewVotes/TaskReviewVotes';
 import TaskTabIncidentManagerHeaderNewFromTask from '../TaskTabIncidentManagerHeader/TasktabIncidentManagerHeaderNewFromTask';
 import './task-tab-new.less';
 import TaskActionSplitButton, {
