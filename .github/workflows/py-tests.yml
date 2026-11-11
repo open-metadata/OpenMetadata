@@ -45,7 +45,6 @@ jobs:
     if: ${{ !github.event.pull_request.draft }}
     outputs:
       python: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.python }}
-      e2e: ${{ (github.event_name == 'workflow_dispatch' || github.event_name == 'schedule') && 'true' || steps.filter.outputs.e2e }}
       integration: ${{ steps.matrix.outputs.run-integration }}
       versions: ${{ steps.matrix.outputs.versions }}
       static-version: ${{ steps.matrix.outputs.static-version }}
@@ -81,17 +80,6 @@ jobs:
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchMessageBodyReader.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/JsonPatchProvider.java'
               - 'openmetadata-service/src/main/java/org/openmetadata/service/ResourceRegistry.java'
-            e2e:
-              - 'ingestion/tests/cli_e2e_v2/**'
-              - 'ingestion/pyproject.toml'
-              - 'ingestion/setup.py'
-              - 'ingestion/src/_openmetadata_testutils/pytest_openmetadata/**'
-              - 'openmetadata-spec/src/main/resources/json/schema/**'
-              - '.github/workflows/py-tests.yml'
-              - '.github/workflows/py-tests-shared.yml'
-              - '.github/workflows/py-cli-e2e-tests-v2.yml'
-              - '.github/workflows/py-cli-e2e-tests.yml'
-              - '.github/actions/setup-openmetadata-test-environment/action.yml'
 
       - id: matrix
         env:
@@ -175,9 +163,10 @@ jobs:
     with:
       python-versions: ${{ needs.changes.outputs.versions }}
       static-python: ${{ needs.changes.outputs.static-version }}
+      latest-python: ${{ needs.changes.outputs.latest-version }}
       coverage-python: ${{ needs.changes.outputs.coverage-version }}
       run-integration: ${{ needs.changes.outputs.integration == 'true' }}
-      run-e2e: ${{ needs.changes.outputs.e2e == 'true' }}
+      run-e2e-meta: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.mode == 'nightly') }}
 
   cli-e2e:
     needs: [changes, prepare-spacy-model, build-distribution]

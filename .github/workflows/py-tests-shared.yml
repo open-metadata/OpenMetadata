@@ -22,6 +22,10 @@ on:
         description: Lowest supported Python version for static checks
         required: true
         type: string
+      latest-python:
+        description: Highest supported Python version for nightly E2E meta tests
+        required: true
+        type: string
       coverage-python:
         description: Selected Python version for combined coverage
         required: true
@@ -30,8 +34,8 @@ on:
         description: Run both database integration suites
         type: boolean
         default: false
-      run-e2e:
-        description: Run offline E2E framework tests
+      run-e2e-meta:
+        description: Run offline E2E framework tests for nightly workloads
         type: boolean
         default: false
 
@@ -87,10 +91,8 @@ jobs:
           classification-models: 'true'
           install-server: 'false'
 
-      # The job checks out the PR head, which can predate the cli_e2e_v2 framework,
-      # so skip when the suite isn't checked out.
       - name: Run offline E2E framework tests
-        if: ${{ matrix.py-version == inputs.coverage-python && inputs.run-e2e && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
+        if: ${{ matrix.py-version == inputs.latest-python && inputs.run-e2e-meta && hashFiles('ingestion/tests/cli_e2e_v2/meta/**') != '' }}
         run: |
           source env/bin/activate
           cd ingestion

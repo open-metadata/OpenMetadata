@@ -35,8 +35,9 @@ For relevant changes, select these workloads:
 `py-tests.yml` owns event triggers, path selection and the required `py-tests-status` check.
 The nightly runs at 01:00 UTC. Manual dispatch selects `pull-request`, `merge-queue` or `nightly`
 workloads, defaulting to `nightly`; it bypasses path filtering and does not simulate a merge-group
-commit. Relevant offline E2E framework meta-tests continue to run with unit tests on PRs and
-merge-queue runs; they are distinct from connector E2E execution.
+commit. Offline E2E framework meta-tests run only in scheduled and manual nightly workloads,
+once on the highest supported interpreter. They are distinct from connector E2E execution;
+their failures still fail the nightly status and trigger its Slack notification.
 
 Prepare classification models once in the entrypoint, restoring immutable default-branch cache
 entries and preparing misses. Upload one uncompressed, one-day `classification-models` artifact
@@ -64,8 +65,10 @@ on main. Use distinct connector coverage and result names to avoid overwriting o
 
 PRs avoid integration infrastructure and the full compatibility matrix. Merge queue still gates
 on both integration databases at the highest supported version; failures specific to lower
-supported versions surface in nightly runs. Connector E2E runs once per connector, rather than
-across the Python/database matrix, and still requires isolated server environments.
+supported versions surface in nightly runs. E2E meta-suite runtime stays out of PR and merge-queue
+checks; framework regressions may therefore remain undetected until nightly. Connector E2E runs
+once per connector, rather than across the Python/database matrix, and still requires isolated
+server environments.
 
 Shared preparation removes repeated model preparation and backend builds. A preparation failure
 blocks its consumers and fails the required status. Manual dispatch validates the workloads;
