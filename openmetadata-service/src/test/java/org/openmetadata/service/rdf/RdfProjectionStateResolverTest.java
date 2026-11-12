@@ -14,10 +14,15 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.stream.Stream;
@@ -28,12 +33,14 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 
 class RdfProjectionStateResolverTest {
+  private static final int PAGE = RdfProjectionStateResolver.RUN_PAGE_SIZE;
   private final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
   private final AtomicBoolean degraded = new AtomicBoolean();
   private final RdfProjectionStateResolver resolver =
@@ -41,7 +48,7 @@ class RdfProjectionStateResolverTest {
 
   @Test
   void reportsRebuildingUntilTheFirstPostMigrationRun() {
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status")).thenReturn(List.of());
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status")).thenReturn(List.of());
 
     assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
   }
@@ -49,7 +56,7 @@ class RdfProjectionStateResolverTest {
   @Test
   void reportsRebuildingWhileTheFirstRunIsStarting() {
     final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.STARTED);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
 
     assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
@@ -58,7 +65,7 @@ class RdfProjectionStateResolverTest {
   @Test
   void reportsReadyOnceTheFirstRunSucceedsOnAnEmptyCatalog() {
     final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
 
     assertEquals(RdfProjectionState.READY, resolver.resolve());
@@ -69,7 +76,7 @@ class RdfProjectionStateResolverTest {
   void mapsLatestApplicationRunState(
       final AppRunRecord.Status runStatus, final RdfProjectionState expectedState) {
     final AppRunRecord run = new AppRunRecord().withStatus(runStatus);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
 
     assertEquals(expectedState, resolver.resolve());
@@ -79,7 +86,7 @@ class RdfProjectionStateResolverTest {
   void resolveConfiguredReadsTheRunStoreOfTheRunningServer() {
     RdfProjectionHealth.markReady();
     final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
     final CollectionDAO dao = mock(CollectionDAO.class);
     when(dao.appExtensionTimeSeriesDao()).thenReturn(runStore);
@@ -93,7 +100,7 @@ class RdfProjectionStateResolverTest {
 
   @Test
   void reportsDegradedForMalformedRunState() {
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
         .thenReturn(List.of("not-json"));
 
     assertEquals(RdfProjectionState.DEGRADED, resolver.resolve());
@@ -102,11 +109,70 @@ class RdfProjectionStateResolverTest {
   @Test
   void reportsDegradedWhenAnIncrementalWriteFailsAfterACompletedRebuild() {
     final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.COMPLETED);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
     degraded.set(true);
 
     assertEquals(RdfProjectionState.DEGRADED, resolver.resolve());
+  }
+
+  @Test
+  void aRunSkippedForTheLockLeavesTheStateOfTheRunBeforeIt() {
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
+        .thenReturn(List.of(skippedRun(), run(AppRunRecord.Status.COMPLETED)));
+
+    assertEquals(RdfProjectionState.READY, resolver.resolve());
+  }
+
+  @Test
+  void onlySkippedRunsReportRebuilding() {
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
+        .thenReturn(List.of(skippedRun()));
+
+    assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
+  }
+
+  @Test
+  void aRunStoppedWhileIndexingStillReportsDegraded() {
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
+        .thenReturn(List.of(run(AppRunRecord.Status.STOPPED), run(AppRunRecord.Status.COMPLETED)));
+
+    assertEquals(RdfProjectionState.DEGRADED, resolver.resolve());
+  }
+
+  @Test
+  void readsPastAFullPageOfSkippedRuns() {
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
+        .thenReturn(Collections.nCopies(PAGE, skippedRun()));
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, PAGE, "status"))
+        .thenReturn(List.of(run(AppRunRecord.Status.FAILED)));
+
+    assertEquals(RdfProjectionState.DEGRADED, resolver.resolve());
+  }
+
+  @Test
+  void stopsPagingAfterTheCapAndReportsRebuilding() {
+    when(runStore.listAppExtensionByName(eq("RdfIndexApp"), eq(PAGE), anyInt(), eq("status")))
+        .thenReturn(Collections.nCopies(PAGE, skippedRun()));
+
+    assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
+    verify(runStore, times(RdfProjectionStateResolver.MAX_RUN_PAGES))
+        .listAppExtensionByName(eq("RdfIndexApp"), eq(PAGE), anyInt(), eq("status"));
+  }
+
+  private static String run(final AppRunRecord.Status status) {
+    return JsonUtils.pojoToJson(new AppRunRecord().withStatus(status));
+  }
+
+  private static String skippedRun() {
+    final IndexingError held =
+        new IndexingError()
+            .withErrorSource(IndexingError.ErrorSource.JOB)
+            .withMessage("Skipped: another RDF reindex is running");
+    return JsonUtils.pojoToJson(
+        new AppRunRecord()
+            .withStatus(AppRunRecord.Status.STOPPED)
+            .withFailureContext(RdfProjectionStateResolver.failureContext(held, true)));
   }
 
   private static Stream<Arguments> projectionStates() {
@@ -116,6 +182,7 @@ class RdfProjectionStateResolverTest {
         Arguments.of(AppRunRecord.Status.RUNNING, RdfProjectionState.REBUILDING),
         Arguments.of(AppRunRecord.Status.PENDING, RdfProjectionState.REBUILDING),
         Arguments.of(AppRunRecord.Status.FAILED, RdfProjectionState.DEGRADED),
-        Arguments.of(AppRunRecord.Status.ACTIVE_ERROR, RdfProjectionState.DEGRADED));
+        Arguments.of(AppRunRecord.Status.ACTIVE_ERROR, RdfProjectionState.DEGRADED),
+        Arguments.of(AppRunRecord.Status.STOPPED, RdfProjectionState.DEGRADED));
   }
 }
