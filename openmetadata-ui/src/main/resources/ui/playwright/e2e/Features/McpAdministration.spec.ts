@@ -68,6 +68,9 @@ test(
       expect((await apiContext.post('/mcp', { data: {} })).status()).toBe(503);
       await page.reload();
       await expect(serverSwitch).not.toBeChecked();
+      await page
+        .getByRole('tab', { name: 'Registered MCP clients', exact: true })
+        .click();
       const table = page.getByRole('table', { name: 'Registered MCP clients' });
       const row = table
         .getByRole('row')
@@ -99,6 +102,9 @@ test(
       await dialog.getByRole('button', { name: 'Revoke', exact: true }).click();
       expect((await removed).status()).toBe(204);
       await expect(row).toHaveCount(0);
+      await page
+        .getByRole('tab', { name: 'Configuration', exact: true })
+        .click();
       await serverSwitch.check();
       await page
         .getByRole('switch', {

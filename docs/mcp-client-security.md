@@ -7,7 +7,8 @@ registration and revoke access through the following settings and endpoints.
 ## Admin page
 
 Open **Settings → Applications → MCP Server → Configuration** as an administrator.
-The page controls the MCP server switch and registration policy, and lists registered clients
+The Configuration tab controls the MCP server switch and registration policy. The adjacent
+Registered MCP clients tab lists registered clients
 with their IDs, callback URLs and registration dates. Use **Revoke** on a client and confirm to
 remove its registration and all grants. Refresh and cursor navigation load the current inventory;
 client administration remains available while MCP is disabled.

@@ -23,7 +23,6 @@ import FormBuilderV1 from '../../../common/FormBuilderV1/FormBuilderV1';
 import Loader from '../../../common/Loader/Loader';
 import ResizablePanels from '../../../common/ResizablePanels/ResizablePanels';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
-import McpClientsTable from '../../../platform/settings/mcp/McpClientsTable/McpClientsTable';
 import SettingsSourceBanner from '../../../platform/settings/SettingsSourceBanner/SettingsSourceBanner';
 import { useMcpConfiguration } from './useMcpConfiguration';
 
@@ -94,7 +93,6 @@ const McpApplicationConfiguration = ({
           saveMcpConfig(formatFormDataForSubmit(formData ?? {}))
         }
       />
-      <McpClientsTable />
     </>
   );
 

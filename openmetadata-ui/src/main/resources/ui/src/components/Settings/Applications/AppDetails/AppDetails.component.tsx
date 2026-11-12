@@ -75,6 +75,7 @@ import { ManageButtonItemLabel } from '../../../common/ManageButtonContentItem/M
 import TabsLabel from '../../../common/TabsLabel/TabsLabel.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import PageLayoutV1 from '../../../PageLayoutV1/PageLayoutV1';
+import McpClientsTable from '../../../platform/settings/mcp/McpClientsTable/McpClientsTable';
 import { useApplicationsProvider } from '../ApplicationsProvider/ApplicationsProvider';
 import AppLiveIndexing from '../AppLiveIndexing/AppLiveIndexing.component';
 import AppLogo from '../AppLogo/AppLogo.component';
@@ -465,6 +466,25 @@ const AppDetails = () => {
       ];
     };
 
+    const buildMcpClientsTab = () => {
+      if (!showMcpConfigTab) {
+        return [];
+      }
+
+      return [
+        {
+          label: (
+            <TabsLabel
+              id={ApplicationTabs.REGISTERED_CLIENTS}
+              name={t('label.mcp-registered-clients')}
+            />
+          ),
+          key: ApplicationTabs.REGISTERED_CLIENTS,
+          children: <McpClientsTable />,
+        },
+      ];
+    };
+
     const buildScheduleTab = () => {
       if (!showScheduleTab) {
         return [];
@@ -548,6 +568,7 @@ const AppDetails = () => {
     return [
       ...buildScheduleTab(),
       ...buildConfigurationTab(),
+      ...buildMcpClientsTab(),
       ...buildRecentRunsTab(),
       ...buildLiveIndexingTab(),
     ];
