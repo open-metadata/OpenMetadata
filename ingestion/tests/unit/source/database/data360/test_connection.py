@@ -41,7 +41,7 @@ DB_CONFIG = Data360ConnectionConfig(
 PIPELINE_CONFIG = Data360PipelineConnectionConfig(
     consumerKey="consumer_key",
     consumerSecret="consumer_secret",
-    salesforceDomain="login",
+    salesforceDomain="mycompany.my",
     salesforceApiVersion="63.0",
 )
 
@@ -82,7 +82,7 @@ class TestConnectionOwner:
         kwargs = mock_salesforce.call_args.kwargs
         assert kwargs["consumer_key"] == "consumer_key"
         assert kwargs["consumer_secret"] == "consumer_secret"
-        assert kwargs["domain"] == "login"
+        assert kwargs["domain"] == config.salesforceDomain
         assert kwargs["version"] == "63.0"
 
     def test_the_client_is_built_once_and_cached(self, owner_class, config, module):

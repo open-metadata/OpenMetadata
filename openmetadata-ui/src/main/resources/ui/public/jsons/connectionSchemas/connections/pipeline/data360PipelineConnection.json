@@ -43,9 +43,8 @@
     },
     "salesforceDomain": {
       "title": "Salesforce Domain",
-      "description": "Domain of Salesforce instance",
-      "type": "string",
-      "default": "login"
+      "description": "My Domain of the Salesforce org, without `.salesforce.com`, e.g. `mycompany.my` or `mycompany--sandbox.sandbox.my`. The OAuth client credentials flow only works on the org's My Domain, so `login` and `test` are rejected.",
+      "type": "string"
     },
     "data360DbServiceName": {
       "title": "Data 360 Database Service Name",
@@ -80,20 +79,22 @@
     },
     "supportsLineageExtraction": {
       "title": "Supports Lineage Extraction",
+      "$comment": "Lineage and run status are extracted by the metadata agent, as for every other pipeline service. Kept, defaulting to false, so stored connections still validate and the UI and AutoPilot stop offering separate Lineage and Usage agents.",
       "description": "Supports Lineage Extraction.",
       "type": "boolean",
-      "default": true
+      "default": false
     },
     "supportsUsageExtraction": {
       "title": "Supports Operational data Extraction",
       "description": "Supports Usage Extraction.",
       "type": "boolean",
-      "default": true
+      "default": false
     }
   },
   "additionalProperties": false,
   "required": [
     "consumerKey",
-    "consumerSecret"
+    "consumerSecret",
+    "salesforceDomain"
   ]
 }

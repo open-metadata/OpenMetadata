@@ -9,7 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Exceptions for the Salesforce Data 360 pipeline lineage and operational sources.
+Exceptions for the Salesforce Data 360 pipeline connection and sources.
 """
 
 
@@ -19,3 +19,8 @@ class ResourceNotFoundException(Exception):  # noqa: N818
 
 class QueryParseException(Exception):  # noqa: N818
     """Raised when a Calculated Insight SQL expression cannot be parsed for lineage."""
+
+
+class InvalidDomainException(Exception):  # noqa: N818
+    """Raised when the Salesforce Domain is not the org's My Domain, which the OAuth
+    client credentials flow requires."""

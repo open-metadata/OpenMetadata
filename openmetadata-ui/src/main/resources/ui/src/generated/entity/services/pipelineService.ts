@@ -593,7 +593,9 @@ export interface AirflowConnectionObject {
      */
     salesforceApiVersion?: string;
     /**
-     * Domain of Salesforce instance
+     * My Domain of the Salesforce org, without `.salesforce.com`, e.g. `mycompany.my` or
+     * `mycompany--sandbox.sandbox.my`. The OAuth client credentials flow only works on the
+     * org's My Domain, so `login` and `test` are rejected.
      */
     salesforceDomain?: string;
     /**
@@ -601,9 +603,15 @@ export interface AirflowConnectionObject {
      * that holds it, used to resolve the upstream entity of a Data Stream. Example:
      * {"S3_Connector": "my-s3-service"}
      */
-    serviceMapping?:            string;
+    serviceMapping?: string;
+    /**
+     * Supports Lineage Extraction.
+     */
     supportsLineageExtraction?: boolean;
-    supportsUsageExtraction?:   boolean;
+    /**
+     * Supports Usage Extraction.
+     */
+    supportsUsageExtraction?: boolean;
     /**
      * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
      * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.

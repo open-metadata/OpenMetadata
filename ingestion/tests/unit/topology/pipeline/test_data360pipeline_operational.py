@@ -70,7 +70,7 @@ def _iso(days_ago: float) -> str:
 
 def _build_source() -> Data360PipelineOperationalSource:
     with (
-        patch("metadata.ingestion.source.pipeline.data360pipeline.metadata.Data360PipelineSource.test_connection"),
+        patch("metadata.ingestion.source.pipeline.data360pipeline.base.Data360PipelineBaseSource.test_connection"),
         patch("metadata.ingestion.source.pipeline.data360pipeline.connection.Salesforce"),
     ):
         config = OpenMetadataWorkflowConfig.model_validate(MOCK_CONFIG)
@@ -186,11 +186,12 @@ class TestCalculatedInsightAndDataStreamStatus:
         task = results[0].right.pipeline_status.taskStatus[0]
         assert task.startTime.root == task.endTime.root == 1704067200000
 
-    def test_a_datastream_that_never_refreshed_is_dropped_with_a_warning(self):
+    def test_a_datastream_that_never_refreshed_is_dropped_quietly(self):
+        # Never having run is a normal state, not something to warn about on every run.
         source = _build_source()
         details = DataStreamDetails(name="ds1", lastRunStatus="SUCCESS")
         assert list(source.yield_datastream_status(details)) == []
-        assert len(source.status.warnings) == 1
+        assert not source.status.warnings
 
 
 class TestYieldPipelineStatusDispatch:

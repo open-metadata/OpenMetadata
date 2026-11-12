@@ -981,3 +981,15 @@ WHERE entity_type IN ('user')
 UPDATE entity_extension SET json = JSON_REMOVE(json, '$.authenticationMechanism')
 WHERE extension LIKE 'user.version.%'
   AND JSON_CONTAINS_PATH(json, 'one', '$.authenticationMechanism');
+
+-- Data 360 Pipeline extracts lineage and run status in its metadata agent. Stored services
+-- still carry the old `true` flags, which make the UI and AutoPilot offer separate Lineage
+-- and Usage agents that cannot run on a pipeline service.
+UPDATE pipeline_service_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.supportsLineageExtraction', false,
+    '$.connection.config.supportsUsageExtraction', false
+)
+WHERE serviceType = 'Data360Pipeline'
+  AND JSON_EXTRACT(json, '$.connection.config') IS NOT NULL;
