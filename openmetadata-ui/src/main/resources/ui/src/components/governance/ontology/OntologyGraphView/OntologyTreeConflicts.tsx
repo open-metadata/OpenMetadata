@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Alert,
+  Box,
+  Button,
+  Dot,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import {
   ChevronDown,
   ChevronRight,
@@ -52,16 +58,17 @@ const ConflictRow = ({
       <Box align="center" className="tw:min-h-14 tw:px-3" gap={3}>
         <Button
           aria-expanded={isOpen}
-          aria-label={toggleLabel}
+          aria-label={`${toggleLabel}: ${violation.message}`}
           color="tertiary"
           data-testid="ontology-tree-conflict-toggle"
           iconLeading={isOpen ? ChevronDown : ChevronRight}
           size="sm"
           onPress={() => setIsOpen(!isOpen)}
         />
-        <span
+        <Dot
           aria-hidden="true"
-          className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-error-primary"
+          className="tw:shrink-0 tw:text-fg-error-primary"
+          size="sm"
         />
         <Typography className="tw:min-w-0 tw:flex-1" size="text-sm">
           {violation.message}
@@ -81,13 +88,7 @@ const ConflictRow = ({
       </Box>
       {isOpen ? (
         <Box className="tw:px-4 tw:pb-4">
-          <Box
-            className="tw:w-full tw:rounded-lg tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:px-4 tw:py-3"
-            direction="col"
-            gap={2}>
-            <Typography color="danger" size="text-sm">
-              {violation.message}
-            </Typography>
+          <Alert title={violation.message} variant="error">
             <Box gap={4} wrap="wrap">
               {conceptIds.map((conceptId) => (
                 <Button
@@ -102,7 +103,7 @@ const ConflictRow = ({
                 </Button>
               ))}
             </Box>
-          </Box>
+          </Alert>
         </Box>
       ) : null}
     </li>

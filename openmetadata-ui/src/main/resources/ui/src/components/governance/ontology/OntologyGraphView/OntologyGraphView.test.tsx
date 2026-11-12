@@ -3246,6 +3246,13 @@ describe('OntologyGraphView', () => {
       'tw:pr-92'
     );
 
+    // Each toggle names the conflict it opens, not just "Expand".
+    expect(
+      within(conflict).getByTestId('ontology-tree-conflict-toggle')
+    ).toHaveAccessibleName(
+      'label.expand: Customer is disjoint with its ancestor Party'
+    );
+
     fireEvent.click(
       within(conflict).getByTestId('ontology-tree-conflict-toggle')
     );
