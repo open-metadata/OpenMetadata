@@ -64,7 +64,8 @@ putting its path in `hostPort` produced `<path>/MicroStrategyLibrary/api` and a 
 
 - `hostPort` is the MicroStrategy server root, with no path.
 - `libraryPath` names the Library web app. It defaults to `MicroStrategyLibrary`; surrounding
-  slashes are stripped, and an empty value falls back to the default (`DEFAULT_LIBRARY_PATH`).
+  whitespace and slashes are stripped, and an empty value falls back to the default
+  (`DEFAULT_LIBRARY_PATH`).
 - The connector calls `<hostPort>/<libraryPath>/api` for login and every REST call, and builds
   dashboard source URLs as `<hostPort>/<libraryPath>/app/<projectId>/<dossierId>`.
 - A login that answers 404 says to check Host Port and Library Path, not the credentials.
