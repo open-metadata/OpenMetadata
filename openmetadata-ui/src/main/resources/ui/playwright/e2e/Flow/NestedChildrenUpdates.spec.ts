@@ -81,7 +81,7 @@ for (const [
         await expect(
           page
             .locator(`[data-row-key="${level1Key}"]`)
-            .getByTestId('viewer-container')
+            .getByTestId('description')
         ).toContainText(newDescription);
       });
 
@@ -204,7 +204,7 @@ for (const [
         await expect(
           page
             .locator(`[data-row-key="${level2Key}"]`)
-            .getByTestId('viewer-container')
+            .getByTestId('description')
         ).toContainText(newDescription);
       });
 
