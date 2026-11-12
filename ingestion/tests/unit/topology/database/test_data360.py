@@ -14,12 +14,16 @@ Test Salesforce Data 360 database source using the topology
 
 from unittest.mock import patch
 
+import pytest
+from simple_salesforce.exceptions import SalesforceAuthenticationFailed
+
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
 from metadata.generated.schema.type.filterPattern import FilterPattern
+from metadata.ingestion.connections.test_connections import SourceConnectionException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.data360.constant import (
     Constant,
@@ -137,6 +141,27 @@ def _build_source() -> Data360Source:
     source.context.get().__dict__["database"] = "customer_360"
     source.context.get().__dict__["database_schema"] = Constant.DATA_LAKE_OBJECTS
     return source
+
+
+def test_a_failed_login_raises_the_salesforce_error_from_create():
+    """
+    The client logs in before the connection test runs, so a bad secret
+    surfaces Salesforce's message rather than a bare CheckAccess failure.
+    """
+    config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360_CONFIG)
+    login_error = SalesforceAuthenticationFailed("invalid_client", "invalid client credentials")
+    with (
+        patch("metadata.ingestion.source.database.data360.connection.Salesforce", side_effect=login_error),
+        patch(
+            "metadata.ingestion.source.database.data360.metadata.Data360Source.test_connection",
+            side_effect=SourceConnectionException("Failed to run the test connection step: CheckAccess"),
+        ),
+        pytest.raises(SalesforceAuthenticationFailed, match="invalid client credentials"),
+    ):
+        Data360Source.create(
+            MOCK_DATA360_CONFIG["source"],
+            OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
+        )
 
 
 class TestData360Source:
