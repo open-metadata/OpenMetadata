@@ -398,9 +398,7 @@ test.describe(
           .map((cell) => (row === 0 ? cell.replace(/^\?/, '') : cell))
       );
 
-      expect(copied).toBe(
-        exported.map((cells) => cells.join('\t')).join('\n')
-      );
+      expect(copied).toBe(exported.map((cells) => cells.join('\t')).join('\n'));
 
       const download = page.waitForEvent('download');
       await page.getByTestId('ontology-sparql-csv').click();

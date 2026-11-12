@@ -12,62 +12,62 @@
  */
 
 import {
-    Alert,
-    Box,
-    Button,
-    ButtonGroup,
-    ButtonGroupItem,
-    Card,
-    FieldTypes,
-    getField,
-    Input,
-    Select,
-    Typography
+  Alert,
+  Box,
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
+  Card,
+  FieldTypes,
+  getField,
+  Input,
+  Select,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { pick } from 'lodash';
 import { Key } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
-    AxiomType,
-    ExpressionKind,
-    OntologyExpression
+  AxiomType,
+  ExpressionKind,
+  OntologyExpression,
 } from '../../../../generated/api/data/createOntologyAxiom';
 import {
-    OntologyProfileReport,
-    Severity
+  OntologyProfileReport,
+  Severity,
 } from '../../../../generated/api/data/ontologyProfileReport';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import OntologyExpressionEditor, {
-    defaultExpression,
-    getExpressionRenderKey
+  defaultExpression,
+  getExpressionRenderKey,
 } from '../../../OntologyExplorer/OntologyExpressionEditor';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { ONTOLOGY_DATATYPE_OPTIONS } from '../OntologyIriInput/OntologyIriInput.constants';
 import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
-    AXIOM_LABELS,
-    EMPTY_AXIOM_FORM,
-    formatOntologyExpression,
-    isClassExpressionAxiom,
-    OntologyAxiomFormState
+  AXIOM_LABELS,
+  EMPTY_AXIOM_FORM,
+  formatOntologyExpression,
+  isClassExpressionAxiom,
+  OntologyAxiomFormState,
 } from './OntologyAxiomEditor.utils';
 import {
-    AxiomProblem,
-    EMPTY_QUICK_RULE,
-    formToQuickRule,
-    QuickQuantifier,
-    QuickRule,
-    QuickRuleKind,
-    quickRuleSentence,
-    quickRuleToForm,
-    QUICK_QUANTIFIERS,
-    QUICK_QUANTIFIER_LABELS,
-    QUICK_RULE_HELP,
-    QUICK_RULE_LABELS,
-    routeAxiomProblems,
-    RoutedAxiomProblems
+  AxiomProblem,
+  EMPTY_QUICK_RULE,
+  formToQuickRule,
+  QuickQuantifier,
+  QuickRule,
+  QuickRuleKind,
+  quickRuleSentence,
+  quickRuleToForm,
+  QUICK_QUANTIFIERS,
+  QUICK_QUANTIFIER_LABELS,
+  QUICK_RULE_HELP,
+  QUICK_RULE_LABELS,
+  routeAxiomProblems,
+  RoutedAxiomProblems,
 } from './OntologyAxiomQuickRule.utils';
 import { AxiomEditorMode } from './useOntologyAxiomRule';
 

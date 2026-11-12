@@ -206,7 +206,8 @@ const OntologyReleasePanel = ({
   const [cursorRevision, setCursorRevision] = useState<string>();
   const [changeFilter, setChangeFilter] = useState<ChangeFilter>('all');
   const [changeSearch, setChangeSearch] = useState('');
-  // The header counts releases on both tabs, so the history loads with the dialog.
+  // History loads only when Releases is open, as before, so the header shows
+  // the release count once that tab has loaded it.
   const publication = useOntologyPublication(
     ontology.id,
     canEdit,
