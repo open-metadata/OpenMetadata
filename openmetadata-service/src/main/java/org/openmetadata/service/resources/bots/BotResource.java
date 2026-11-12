@@ -121,16 +121,21 @@ public class BotResource extends EntityResource<Bot, BotRepository> {
   }
 
   private static void seedBotUser(User botUser, String domain) {
+    UserUtil.addOrUpdateBotUser(toSeededBotUser(botUser, domain));
+  }
+
+  static User toSeededBotUser(User botUser, String domain) {
     // Seeded grant applies on first creation only: UserUpdater preserves the stored value on
     // every subsequent PUT, so restarts never upgrade an already-created bot's token holders.
     User user =
         UserUtil.user(botUser.getName(), domain, botUser.getName())
+            .withDisplayName(botUser.getDisplayName())
             .withIsBot(true)
             .withIsAdmin(false)
             .withAllowImpersonation(botUser.getAllowImpersonation());
     user.setRoles(
         listOrEmpty(botUser.getRoles()).stream().map(BotResource::toRoleReference).toList());
-    UserUtil.addOrUpdateBotUser(user);
+    return user;
   }
 
   private static EntityReference toRoleReference(EntityReference roleReference) {
