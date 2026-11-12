@@ -591,3 +591,30 @@ describe('OntologyAxiomEditor advanced assertions', () => {
     expect(screen.getByRole('textbox', { name: /^Value/ })).not.toBeRequired();
   });
 });
+
+describe('OntologyAxiomEditor footer', () => {
+  it('keeps Save disabled on a validated saved rule until it is edited', async () => {
+    renderEditor({ axiom: savedAxiom() });
+    fireEvent.click(screen.getByTestId('ontology-axiom-validate'));
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-axiom-footer-status')
+      ).toHaveTextContent('Validation Passed')
+    );
+
+    expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
+  });
+
+  it('closes the drawer on Cancel while the rule is unchanged', () => {
+    const onCancel = jest.fn();
+    renderEditor({ axiom: savedAxiom(), onCancel });
+    const cancel = screen.getByTestId('ontology-axiom-footer-cancel');
+
+    expect(cancel).toBeEnabled();
+
+    fireEvent.click(cancel);
+
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});

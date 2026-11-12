@@ -32,6 +32,7 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getTaskDetailPath } from '../../../../utils/TaskUtils';
 import {
+  countChangesByKind,
   flattenConceptChanges,
   suggestVersion,
   type ChangeKindCounts,
@@ -87,6 +88,23 @@ const flattenWorkingDiff = (working: WorkingDiffPage) => [
 
 export const getWorkingChanges = (working: WorkingDiffPage | undefined) =>
   working ? flattenWorkingDiff(working) : [];
+
+/**
+ * The changes the review dialog counts, per kind and in total. A truncated diff
+ * only holds its first page, so its total is the server's unpublished count.
+ */
+export const getWorkingChangeCounts = (
+  working: WorkingDiffPage | undefined,
+  unpublishedChanges: number | undefined,
+  isFirstRelease: boolean
+) => {
+  const counts = countChangesByKind(getWorkingChanges(working));
+  if (working?.paging?.after && unpublishedChanges !== undefined) {
+    counts.total = Math.max(unpublishedChanges - Number(isFirstRelease), 0);
+  }
+
+  return counts;
+};
 
 export const suggestWorkingVersion = (
   changes: ReturnType<typeof getWorkingChanges>,

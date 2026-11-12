@@ -29,6 +29,8 @@ import {
 import {
   clickGraphNode,
   findOntologyInScopeMenu,
+  openExportAdvanced,
+  openOntologyTransfer,
   readGraphEdges,
   readNodePositions,
 } from '../../utils/ontologyStudio';
@@ -375,7 +377,7 @@ test.describe(
         });
 
         await test.step('Save, reload, and remove a concept mapping', async () => {
-          await page.getByTestId('ontology-concept-edit').click();
+          // Edit mode opens the selected concept already editable.
           const editor = page.getByTestId('ontology-concept-editor');
           await editor
             .getByRole('button', { name: 'Add mapping', exact: true })
@@ -413,7 +415,6 @@ test.describe(
           await page.reload();
           await page.getByTestId('mode-tab-edit').click();
           await clickGraphNode(page, customer.id);
-          await page.getByTestId('ontology-concept-edit').click();
           await expect(
             mappingEditor.getByRole('combobox', { name: /^Concept IRI/ })
           ).toHaveValue(mapping.conceptIri);
@@ -539,7 +540,8 @@ test.describe(
             page.getByTestId('ontology-publication-modal')
           ).not.toBeVisible();
 
-          await page.getByTestId('ontology-import-export-trigger').click();
+          await openOntologyTransfer(page);
+          await openExportAdvanced(page);
           await expect(
             page.getByRole('dialog').getByTestId('ontology-export-scope')
           ).toContainText('Current draft');
@@ -548,7 +550,12 @@ test.describe(
               .getByRole('dialog')
               .getByTestId('ontology-release-export-preview')
           ).toContainText('owl:Ontology');
-          await page.getByTestId('ontology-native-import-tab').click();
+          await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Close', exact: true })
+            .click();
+          await expect(page.getByRole('dialog')).not.toBeVisible();
+          await openOntologyTransfer(page, 'import');
           await expect(
             page.getByTestId('ontology-native-import-file')
           ).toBeVisible();

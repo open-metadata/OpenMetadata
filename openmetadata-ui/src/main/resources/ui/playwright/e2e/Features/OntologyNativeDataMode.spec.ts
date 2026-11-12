@@ -340,9 +340,13 @@ test.describe(
           [customer, tables[0], tables[1]],
           [order, tables[1], tables[0]],
         ] as const) {
-          if (concept !== customer) {
-            await page.getByTestId('ontology-data-concept-change').click();
-          }
+          await page
+            .getByTestId(
+              concept === customer
+                ? 'ontology-data-concept-picker-trigger'
+                : 'ontology-data-concept-change'
+            )
+            .click();
           await page
             .getByTestId(`ontology-data-concept-option-${concept.id}`)
             .click();
@@ -640,7 +644,7 @@ test.describe(
         const concept = await createConcept(api, ontology, 'Customer');
         await bindTables(api, concept, tables);
         await openData(page, ontology);
-        await page.getByTestId('ontology-data-concept-picker').click();
+        await page.getByTestId('ontology-data-concept-picker-trigger').click();
 
         const startedAt = Date.now();
         await page
