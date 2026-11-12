@@ -237,6 +237,7 @@ public class RoleResourceIT extends BaseEntityIT<Role, CreateRole> {
                       .getHttpClient()
                       .execute(HttpMethod.PUT, "/v1/roles", request, Role.class));
       assertEquals(400, putError.getStatusCode());
+      assertTrue(putError.getMessage().contains("is reserved"), putError.getMessage());
     }
   }
 

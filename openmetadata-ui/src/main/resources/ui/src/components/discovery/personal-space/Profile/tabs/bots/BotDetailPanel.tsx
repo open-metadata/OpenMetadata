@@ -751,10 +751,12 @@ const BotDetailPanel: FC<BotDetailPanelProps> = ({
     () =>
       selectedRoles.map((id) => {
         const match = roleItems.find((r) => r.id === id);
+        const fallbackLabel =
+          id === toLower(TERM_ADMIN) ? t('label.admin-superuser') : id;
 
-        return { id, label: match?.label || id };
+        return { id, label: match?.label || fallbackLabel };
       }),
-    [selectedRoles, roleItems]
+    [selectedRoles, roleItems, t]
   );
 
   useDetailHeaderInjection({

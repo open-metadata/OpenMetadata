@@ -205,10 +205,9 @@ public class RoleRepository extends EntityRepository<Role> {
   }
 
   /**
-   * "Admin" is the {@code isAdmin} flag, not a role: SSO role sync reads an "Admin" claim as that
-   * flag and never maps it to a role, and the role editors list the flag as "Admin". Checked here
-   * because POST and PUT both create through this method, and roles cannot be renamed. Existing
-   * roles with the name stay editable.
+   * "Admin" is the {@code isAdmin} flag, not a role, so no new role may take the name
+   * (ADR:2026-11-12-admin-is-a-reserved-role-name). Checked here because POST and PUT both create
+   * through this method, and roles cannot be renamed. Existing roles with the name stay editable.
    */
   @Override
   protected Role createNewEntity(Role role) {
