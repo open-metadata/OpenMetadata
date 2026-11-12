@@ -12,7 +12,6 @@
  */
 
 import {
-  Alert,
   Box,
   Breadcrumbs,
   Button,
@@ -948,17 +947,11 @@ const LineageMapEmptyPlaceholder = ({
   );
 };
 
-const LineageMapStatusPanel = ({
-  scene,
-  error,
-}: {
-  scene: LineageScene;
-  error?: AxiosError;
-}) => {
+const LineageMapStatusPanel = ({ scene }: { scene: LineageScene }) => {
   const { t } = useTranslation();
   const { hiddenNodeCount = 0, sampled, nodes } = scene;
   const hasHiddenNodes = hiddenNodeCount > 0;
-  if (!hasHiddenNodes && !sampled && !error) {
+  if (!hasHiddenNodes && !sampled) {
     return null;
   }
 
@@ -966,27 +959,22 @@ const LineageMapStatusPanel = ({
     <Panel
       className="lineage-map-status-panel tw:z-10 tw:flex tw:flex-col tw:items-end tw:gap-2"
       position="top-right">
-      {(sampled || hasHiddenNodes) && (
-        <Box
-          align="center"
-          className="tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5 tw:shadow-xs"
-          data-testid="lineage-map-truncated-notice"
-          gap={2}>
-          <InfoCircle
-            aria-hidden="true"
-            className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
-          />
-          <Typography as="span" className="tw:text-secondary" size="text-sm">
-            {t('label.showing-count-of-total-assets', {
-              count: nodes.length,
-              total: nodes.length + hiddenNodeCount,
-            })}
-          </Typography>
-        </Box>
-      )}
-      {error && (
-        <Alert title={t('message.something-went-wrong')} variant="error" />
-      )}
+      <Box
+        align="center"
+        className="tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5 tw:shadow-xs"
+        data-testid="lineage-map-truncated-notice"
+        gap={2}>
+        <InfoCircle
+          aria-hidden="true"
+          className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
+        />
+        <Typography as="span" className="tw:text-secondary" size="text-sm">
+          {t('label.showing-count-of-total-assets', {
+            count: nodes.length,
+            total: nodes.length + hiddenNodeCount,
+          })}
+        </Typography>
+      </Box>
     </Panel>
   );
 };
@@ -2011,7 +1999,12 @@ const LineageMapCanvas = ({
     []
   );
 
-  if (!scene || scene.nodes.length === 0) {
+  const emptyState = getLineageMapEmptyState({
+    scene,
+    loading,
+    hasError: Boolean(sceneError),
+  });
+  if (!scene || emptyState) {
     const emptyStates: Record<LineageMapEmptyState, ReactNode> = {
       loading: <LineageSkeleton />,
       error: (
@@ -2031,15 +2024,7 @@ const LineageMapCanvas = ({
     // keeps them to the canvas rather than the card that also holds the toolbar.
     return (
       <div className="tw:relative tw:h-full tw:w-full">
-        {
-          emptyStates[
-            getLineageMapEmptyState({
-              scene,
-              loading,
-              hasError: Boolean(sceneError),
-            })
-          ]
-        }
+        {emptyStates[emptyState ?? 'empty']}
       </div>
     );
   }
@@ -2114,7 +2099,7 @@ const LineageMapCanvas = ({
               scene={scene}
               onBreadcrumbFocus={handleBreadcrumbFocus}
             />
-            <LineageMapStatusPanel error={sceneError} scene={scene} />
+            <LineageMapStatusPanel scene={scene} />
           </>
         )}
 

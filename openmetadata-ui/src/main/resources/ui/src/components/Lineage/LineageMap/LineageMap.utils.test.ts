@@ -1153,12 +1153,12 @@ describe('getLineageMapEmptyState', () => {
     );
   });
 
-  it('shows the empty state for a scene with no nodes, even on a failed refetch', () => {
+  it('shows the empty state for a scene with no nodes', () => {
     expect(
       getLineageMapEmptyState({
         scene: emptyScene,
         loading: false,
-        hasError: true,
+        hasError: false,
       })
     ).toBe('empty');
     expect(
@@ -1174,5 +1174,106 @@ describe('getLineageMapEmptyState', () => {
     expect(getLineageMapEmptyState({ loading: false, hasError: false })).toBe(
       'empty'
     );
+  });
+
+  const tableNode = (fqn: string, isFocus = false) =>
+    ({
+      id: `table:${fqn}`,
+      label: fqn,
+      fullyQualifiedName: fqn,
+      entityType: 'table',
+      band: LineageBand.Asset,
+      levelKind: LineageLevelKind.Table,
+      isFocus,
+      isOrigin: isFocus,
+    } as LineageSceneNode);
+
+  const drawnScene = {
+    lens: LineageLens.Service,
+    band: LineageBand.Asset,
+    focusFqn: 'svc.db.s.orders',
+    focusEntityType: 'table',
+    nodes: [tableNode('svc.db.s.orders', true), tableNode('svc.db.s.fact')],
+    edges: [
+      {
+        id: 'orders-to-fact',
+        from: 'table:svc.db.s.orders',
+        to: 'table:svc.db.s.fact',
+      },
+    ],
+  } as unknown as LineageScene;
+
+  it('draws a scene that has lineage', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: drawnScene,
+        loading: false,
+        hasError: false,
+      })
+    ).toBeUndefined();
+    expect(
+      getLineageMapEmptyState({
+        scene: drawnScene,
+        loading: true,
+        hasError: false,
+      })
+    ).toBeUndefined();
+  });
+
+  it('replaces a drawn scene with the error state when the next load fails', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: drawnScene,
+        loading: false,
+        hasError: true,
+      })
+    ).toBe('error');
+    expect(
+      getLineageMapEmptyState({
+        scene: emptyScene,
+        loading: false,
+        hasError: true,
+      })
+    ).toBe('error');
+  });
+
+  it('shows the skeleton while a reload after a failed load is in flight', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: drawnScene,
+        loading: true,
+        hasError: true,
+      })
+    ).toBe('loading');
+  });
+
+  it('shows the empty state for a focused asset that has no lineage', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: {
+          ...drawnScene,
+          nodes: [tableNode('svc.db.s.orders', true)],
+          edges: [],
+        },
+        loading: false,
+        hasError: false,
+      })
+    ).toBe('empty');
+  });
+
+  it('draws a focused container whose assets have no lineage between them', () => {
+    expect(
+      getLineageMapEmptyState({
+        scene: {
+          ...drawnScene,
+          focusFqn: 'svc.db.s',
+          focusEntityType: 'databaseSchema',
+          nodes: [tableNode('svc.db.s.orders'), tableNode('svc.db.s.fact')],
+          edges: [],
+        },
+        loading: false,
+        hasError: false,
+      })
+    ).toBeUndefined();
   });
 });

@@ -633,7 +633,17 @@ export const LINEAGE_MAP_RAIL_STOPS = [
 
 export type LineageMapEmptyState = 'loading' | 'error' | 'empty';
 
-/** Which placeholder the map shows while it has no nodes to draw. */
+// A focused asset with no lineage comes back as its own card alone.
+const isSceneWithoutLineage = (scene: LineageScene) =>
+  scene.nodes.length === 0 ||
+  (scene.edges.length === 0 &&
+    scene.nodes.every((node) => node.isFocus || node.isOrigin));
+
+/**
+ * Which placeholder the map shows instead of the canvas, or undefined to draw
+ * the scene. A failed load replaces whatever scene was drawn before it: that
+ * scene answered an earlier request, so keeping it would show the wrong map.
+ */
 export const getLineageMapEmptyState = ({
   scene,
   loading,
@@ -642,15 +652,15 @@ export const getLineageMapEmptyState = ({
   scene?: LineageScene;
   loading: boolean;
   hasError: boolean;
-}): LineageMapEmptyState => {
-  if (scene) {
-    return 'empty';
+}): LineageMapEmptyState | undefined => {
+  if (hasError) {
+    return loading ? 'loading' : 'error';
   }
-  if (loading) {
-    return 'loading';
+  if (!scene) {
+    return loading ? 'loading' : 'empty';
   }
 
-  return hasError ? 'error' : 'empty';
+  return isSceneWithoutLineage(scene) ? 'empty' : undefined;
 };
 
 export const getRailStop = (scene: LineageScene): LineageBand => {
