@@ -60,6 +60,8 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityDataDAOs.QueryDAO;
+import org.openmetadata.service.jdbi3.QueryRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
@@ -197,6 +199,17 @@ class GetEntityToolTest {
     assertThat(result.get("relatedEntities").toString()).contains("erp.payroll", "payroll");
   }
 
+  @Test
+  void owningAMemoryDoesNotRevealAnUnreadableDocumentItCites() throws Exception {
+    EntityReference document = queryReference().withType(Entity.CONTEXT_FILE);
+
+    Map<String, Object> result =
+        readMemoryCiting(document, mock(Authorizer.class), securityContextFor("alice"));
+
+    assertThat(result.get("relatedEntities"))
+        .isEqualTo(List.of(Map.of("id", document.getId().toString(), "type", Entity.CONTEXT_FILE)));
+  }
+
   private static EntityReference queryReference() {
     return new EntityReference()
         .withId(UUID.randomUUID())
@@ -214,6 +227,12 @@ class GetEntityToolTest {
     ContextMemory memory = privateMemoryOwnedBy("alice", fqn).withRelatedEntities(List.of(query));
     try (MockedStatic<Entity> entities = mockStatic(Entity.class);
         MockedStatic<DefaultAuthorizer> subjects = mockStatic(DefaultAuthorizer.class)) {
+      QueryRepository queries = mock(QueryRepository.class);
+      QueryDAO queryDao = mock(QueryDAO.class);
+      entities.when(() -> Entity.getEntityRepository(Entity.QUERY)).thenReturn(queries);
+      when(queries.getDao()).thenReturn(queryDao);
+      when(queryDao.getTableName()).thenReturn("query_entity");
+      when(queryDao.exists("query_entity", query.getId())).thenReturn(true);
       entities
           .when(
               () -> Entity.getEntityByName(eq(Entity.CONTEXT_MEMORY), eq(fqn), anyString(), any()))

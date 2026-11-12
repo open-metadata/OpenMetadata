@@ -2275,9 +2275,13 @@ public class SearchRepository {
   }
 
   public void updateEntity(EntityReference entityReference) {
+    updateEntity(entityReference, Include.NON_DELETED);
+  }
+
+  public void updateEntity(EntityReference entityReference, Include include) {
     if (deferSearchWrite(
         new DeferredSearchWrite(
-            () -> updateEntity(entityReference),
+            () -> updateEntity(entityReference, include),
             "updateEntity",
             entityReference.getId() != null ? entityReference.getId().toString() : null,
             entityReference.getFullyQualifiedName(),
@@ -2294,7 +2298,11 @@ public class SearchRepository {
         String.join(",", searchIndexFactory.getReindexFieldsFor(entityReference.getType()));
     EntityInterface<?> entity =
         entityRepository.get(
-            null, entityReference.getId(), entityRepository.getOnlySupportedFields(fields));
+            null,
+            entityReference.getId(),
+            entityRepository.getOnlySupportedFields(fields),
+            include,
+            false);
     clearChangeDescriptions(entity);
     updateEntityIndex(entity);
   }

@@ -3349,13 +3349,40 @@ class SearchRepositoryBehaviorTest {
     try (var entityMock = mockStatic(Entity.class)) {
       entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(entityRepository);
       when(entityRepository.getFields("*")).thenReturn(null);
-      Mockito.<EntityInterface<?>>when(entityRepository.get(null, entityReference.getId(), null))
+      Mockito.<EntityInterface<?>>when(
+              entityRepository.get(null, entityReference.getId(), null, Include.NON_DELETED, false))
           .thenReturn(entity);
 
       spyRepository.updateEntity(entityReference);
     }
 
     verify(spyRepository).updateEntityIndex(entity);
+  }
+
+  @Test
+  void updateEntityIncludingArchivedKeepsTheDeletedEntity() {
+    SearchRepository spyRepository = spy(repository);
+    EntityReference reference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.CONTEXT_MEMORY);
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> entityRepository = mock(EntityRepository.class);
+    EntityInterface<?> archived = mockEntity(Entity.CONTEXT_MEMORY, reference.getId(), "archived");
+    when(archived.getDeleted()).thenReturn(true);
+    doNothing().when(spyRepository).updateEntityIndex(archived);
+
+    try (var entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.CONTEXT_MEMORY))
+          .thenReturn(entityRepository);
+      Mockito.<EntityInterface<?>>when(
+              entityRepository.get(null, reference.getId(), null, Include.ALL, false))
+          .thenReturn(archived);
+
+      spyRepository.updateEntity(reference, Include.ALL);
+    }
+
+    verify(spyRepository).updateEntityIndex(archived);
+    assertTrue(archived.getDeleted());
   }
 
   @Test

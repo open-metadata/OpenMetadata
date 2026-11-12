@@ -946,7 +946,8 @@ public interface SearchClient
           "tier",
           "changeDescription");
 
-  Set<String> FIELDS_TO_REMOVE_WHEN_NULL = Set.of("tier", "certification", "metricGroup");
+  Set<String> FIELDS_TO_REMOVE_WHEN_NULL =
+      Set.of("tier", "certification", "metricGroup", "primaryEntity", "sourceEntity", "sourceFile");
 
   String FIELDS_TO_REMOVE = "fieldsToRemove";
 

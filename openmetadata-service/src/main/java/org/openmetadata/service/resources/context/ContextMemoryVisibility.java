@@ -435,7 +435,7 @@ public final class ContextMemoryVisibility {
    * An anonymous caller matches no owner, shared principal or anchor reader, so it keeps only the
    * unanchored ENTITY memories; search's unresolvable-subject fallback keeps every ENTITY memory.
    */
-  private static String callerName(SecurityContext securityContext) {
+  static String callerName(SecurityContext securityContext) {
     return securityContext == null || securityContext.getUserPrincipal() == null
         ? null
         : securityContext.getUserPrincipal().getName();

@@ -1,5 +1,6 @@
 package org.openmetadata.service.context.center;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -8,6 +9,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -1049,6 +1051,26 @@ class ContextMemoryReconcilerTest {
     assertEquals(1, result.created());
     verify(memoryRepository).releaseExtractedMemory(gone.getId(), source);
     verify(memoryRepository, never()).updateIfCurrent(any(), any(), any(), any());
+  }
+
+  /**
+   * A release a decision overtook is left as is, as the run's own conditional writes are: the link
+   * stays for the next extraction, and the run goes on to land its other writes.
+   */
+  @Test
+  void aReleaseOvertakenByADecisionLeavesTheLinkAndTheRunGoesOn() {
+    ContextMemory gone =
+        pill("gone", "A", ContextMemorySourceType.FILE_EXTRACTION, ContextMemoryStatus.APPROVED);
+    existing(gone);
+    doThrow(new PreconditionFailedException("The memory has been modified."))
+        .when(memoryRepository)
+        .releaseExtractedMemory(gone.getId(), source);
+
+    ContextMemoryReconciler.ReconcileResult result =
+        assertDoesNotThrow(() -> reconcile(List.of(derived("fresh", "A"))));
+
+    assertEquals(1, result.created());
+    verify(memoryRepository).create(isNull(), any(ContextMemory.class));
   }
 
   @Test

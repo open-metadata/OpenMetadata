@@ -16,11 +16,13 @@ package org.openmetadata.service.search.indexes;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
@@ -28,6 +30,7 @@ import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.context.center.MemorySourceDisclosure;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 
 public class ContextMemoryIndex implements TaggableIndex {
@@ -61,6 +64,7 @@ public class ContextMemoryIndex implements TaggableIndex {
       Set.of(
           ContextMemoryRepository.FIELD_PRIMARY_ENTITY,
           ContextMemoryRepository.FIELD_RELATED_ENTITIES,
+          ContextMemoryRepository.FIELD_SOURCE_ENTITY,
           ContextMemoryRepository.FIELD_SOURCE_FILE);
 
   final ContextMemory memory;
@@ -192,12 +196,29 @@ public class ContextMemoryIndex implements TaggableIndex {
   }
 
   private void applyEntityReferences(Map<String, Object> doc) {
-    doc.put("primaryEntity", getEntityWithDisplayName(memory.getPrimaryEntity()));
-    List<EntityReference> related = getEntitiesWithDisplayName(memory.getRelatedEntities());
-    doc.put("relatedEntities", related);
+    Map<UUID, Boolean> publicFiles = new HashMap<>();
+    doc.put("primaryEntity", indexReference(memory.getPrimaryEntity(), publicFiles));
+    doc.put(
+        "relatedEntities",
+        listOrEmpty(memory.getRelatedEntities()).stream()
+            .map(reference -> indexReference(reference, publicFiles))
+            .toList());
     doc.put("rootMemory", getEntityWithDisplayName(memory.getRootMemory()));
     doc.put("parentMemory", getEntityWithDisplayName(memory.getParentMemory()));
-    doc.put("sourceFile", getEntityWithDisplayName(sourceFileOf(memory)));
+    doc.put("sourceEntity", indexReference(memory.getSourceEntity(), publicFiles));
+    doc.put("sourceFile", indexReference(sourceFileOf(memory), publicFiles));
+  }
+
+  /** A memory's search audience can include people who cannot read its source file. */
+  private EntityReference indexReference(
+      EntityReference reference, Map<UUID, Boolean> publicFiles) {
+    if (reference != null
+        && Entity.CONTEXT_FILE.equals(reference.getType())
+        && !publicFiles.computeIfAbsent(
+            reference.getId(), id -> MemorySourceDisclosure.everyoneMayRead(reference))) {
+      return new EntityReference().withId(reference.getId()).withType(reference.getType());
+    }
+    return getEntityWithDisplayName(reference);
   }
 
   /** A write carries the memory's source as its source entity; a reindex reads the file view. */
