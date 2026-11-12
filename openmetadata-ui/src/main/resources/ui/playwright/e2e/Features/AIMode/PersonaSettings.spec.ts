@@ -200,6 +200,8 @@ test.describe(
         ).toBeVisible();
         await page.getByTestId('sub-category-card-Table').click();
         await expectFullscreenView(page, 'entity-customize-overlay');
+        // The unsaved-changes guard arms once the default layout loads.
+        await expect(page.getByTestId('save-button')).toBeEnabled();
 
         await page.goBack();
         await discardUnsavedDefaultLayout(page);
