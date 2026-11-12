@@ -239,15 +239,23 @@ const AllOntologiesGraphView = ({
     );
   };
 
+  // Data mode lives on Graph only, so Tree keeps the card even when Graph was left in Data.
+  const showsHealth = !selected && (surface === 'tree' || graphMode !== 'data');
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        <OntologyTreeView
-          density="compact"
-          selectedNodeId={selectedConceptId}
-          source={{ kind: 'native', index: treeIndex }}
-          onSelect={selectNode}
-        />
+        // Leaves room on the right for the floating health card.
+        <div
+          className={showsHealth ? 'tw:h-full tw:pr-92' : 'tw:h-full'}
+          data-testid="ontology-tree-surface">
+          <OntologyTreeView
+            density="compact"
+            selectedNodeId={selectedConceptId}
+            source={{ kind: 'native', index: treeIndex }}
+            onSelect={selectNode}
+          />
+        </div>
       );
     }
     if (graphMode === 'data') {
@@ -298,7 +306,7 @@ const AllOntologiesGraphView = ({
   };
 
   const renderSearch = () => {
-    if (isAiMode && searchSlot) {
+    if (searchSlot) {
       return createPortal(
         <Input
           aria-label={t('label.find-concept')}
@@ -394,6 +402,9 @@ const AllOntologiesGraphView = ({
         {renderSearch()}
         {renderGraphMode()}
         {renderSurface()}
+        {showsHealth ? (
+          <OntologyHealthPanel isRaised health={health} onConnect={openOwner} />
+        ) : null}
       </div>
       {selected && model ? (
         <OntologyConceptInspector
@@ -412,13 +423,7 @@ const AllOntologiesGraphView = ({
           }}
           onSelectConcept={selectNode}
         />
-      ) : (
-        <OntologyHealthPanel
-          health={health}
-          placement="sidebar"
-          onConnect={openOwner}
-        />
-      )}
+      ) : null}
     </Box>
   );
 };

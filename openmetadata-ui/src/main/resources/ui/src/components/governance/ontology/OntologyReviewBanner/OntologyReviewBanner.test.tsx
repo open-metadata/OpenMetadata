@@ -40,7 +40,7 @@ it('shows an amber pending review and navigates using the UUID', () => {
     />
   );
 
-  expect(screen.getByRole('alert')).toHaveClass('tw:bg-warning-primary');
+  expect(screen.getByRole('status')).toHaveClass('tw:bg-utility-warning-50');
   expect(screen.getByText(/TASK-00042/)).toHaveTextContent('Commerce');
 
   fireEvent.click(screen.getByRole('button', { name: 'label.review-now' }));
@@ -59,7 +59,7 @@ it('shows the blue requester variant and hides prior voters and decided tasks', 
     />
   );
 
-  expect(screen.getByRole('alert')).toHaveClass('tw:bg-utility-blue-50');
+  expect(screen.getByRole('status')).toHaveClass('tw:bg-utility-brand-50');
   expect(
     screen.getByRole('button', { name: 'label.view-task' })
   ).toBeInTheDocument();
@@ -235,7 +235,7 @@ describe('pending banner text', () => {
       })
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(screen.getByRole('status')).toHaveTextContent(
       'Approved by bob · ready to publish'
     );
   });
@@ -243,10 +243,10 @@ describe('pending banner text', () => {
   it('says the review can be published when there are no reviewers at all', () => {
     render(asRequester({ assignees: [] }));
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(screen.getByRole('status')).toHaveTextContent(
       'In review · ready to publish'
     );
-    expect(screen.getByRole('alert')).not.toHaveTextContent(/waiting on\s*$/);
+    expect(screen.getByRole('status')).not.toHaveTextContent(/waiting on\s*$/);
   });
 
   it('says no reviewer is assigned when the ontology lists reviewers but the review has none left', () => {
@@ -260,7 +260,7 @@ describe('pending banner text', () => {
       />
     );
 
-    const banner = screen.getByRole('alert');
+    const banner = screen.getByRole('status');
 
     expect(banner).toHaveTextContent('In review · no reviewer assigned');
     expect(banner).not.toHaveTextContent('ready to publish');
@@ -306,7 +306,7 @@ describe('pending banner text', () => {
       />
     );
 
-    expect(screen.getByRole('alert')).toHaveTextContent(
+    expect(screen.getByRole('status')).toHaveTextContent(
       'Reviewer, a release is waiting for your review'
     );
   });
@@ -332,6 +332,33 @@ describe('open reviews in All ontologies', () => {
         status: AssigneeStatus.Pending,
       },
     ],
+  });
+
+  it('offers a dismiss control only when the host can hide the notice', () => {
+    const dismiss = jest.fn();
+    const { rerender } = render(
+      <OntologyOpenReviewsBanner
+        reviews={[reviewOn('Sales', 'TASK-1')]}
+        onOpenList={jest.fn()}
+        onOpenTask={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-review-dismiss')
+    ).not.toBeInTheDocument();
+
+    rerender(
+      <OntologyOpenReviewsBanner
+        reviews={[reviewOn('Sales', 'TASK-1')]}
+        onDismiss={dismiss}
+        onOpenList={jest.fn()}
+        onOpenTask={jest.fn()}
+      />
+    );
+    fireEvent.click(screen.getByTestId('ontology-review-dismiss'));
+
+    expect(dismiss).toHaveBeenCalledTimes(1);
   });
 
   it('names the ontology on each line and opens that review', () => {

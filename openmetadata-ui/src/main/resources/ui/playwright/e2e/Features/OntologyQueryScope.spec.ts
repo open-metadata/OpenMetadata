@@ -417,9 +417,9 @@ test.describe(
         page.getByTestId('ontology-query-picker-description')
       ).toContainText('one ontology at a time');
       const option = await findOntologyInQueryPicker(page, fixture.ontology);
-      await expect(
-        option.getByTestId('ontology-query-picker-counts')
-      ).toHaveText('2 concepts · 0 properties', { timeout: 30_000 });
+      await expect(option).toContainText('2 concepts · 0 properties', {
+        timeout: 30_000,
+      });
       await page.screenshot({ path: 'test-results/g16-all.png' });
 
       await option.click();

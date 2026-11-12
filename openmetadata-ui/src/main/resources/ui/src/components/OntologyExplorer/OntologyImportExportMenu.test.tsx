@@ -145,7 +145,7 @@ describe('OntologyImportExportMenu', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('opens the active-release export modal for a native ontology', () => {
+  it('opens the active-release export modal for a native ontology', async () => {
     render(
       <OntologyImportExportMenu
         canImport
@@ -158,6 +158,7 @@ describe('OntologyImportExportMenu', () => {
     fireEvent.click(
       screen.getByRole('button', { name: 'label.import-export' })
     );
+    fireEvent.click(await screen.findByTestId('ontology-export-menu-item'));
 
     expect(
       screen.getByTestId('ontology-release-export-modal-stub')

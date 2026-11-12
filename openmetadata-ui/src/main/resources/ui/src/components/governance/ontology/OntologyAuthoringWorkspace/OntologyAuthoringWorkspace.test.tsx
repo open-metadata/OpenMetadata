@@ -22,6 +22,7 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
+import { humanizeName } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import OntologyAuthoringWorkspace from './OntologyAuthoringWorkspace';
 
 let mockPermissions = {
@@ -402,7 +403,7 @@ describe('OntologyAuthoringWorkspace', () => {
 
       expect(await screen.findByRole('grid')).toBeInTheDocument();
       expect(
-        screen.getByText(OntologyConceptType.OwlClass)
+        screen.getByText(humanizeName(OntologyConceptType.OwlClass))
       ).toBeInTheDocument();
       expect(screen.getByText('A buyer')).toBeInTheDocument();
       expect(screen.getByTestId('ontology-add-concept')).toBeInTheDocument();

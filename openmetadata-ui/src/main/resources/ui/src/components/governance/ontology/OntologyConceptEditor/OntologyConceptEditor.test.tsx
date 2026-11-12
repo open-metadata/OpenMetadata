@@ -85,11 +85,11 @@ describe('OntologyConceptEditor', () => {
 
     expect(
       screen.getByRole('button', { name: /label\.type$/ })
-    ).toHaveTextContent('OWL_CLASS');
+    ).toHaveTextContent('label.class-owl');
 
     fireEvent.click(screen.getByRole('button', { name: /label\.type$/ }));
     fireEvent.click(
-      await screen.findByRole('option', { name: 'SKOS_CONCEPT' })
+      await screen.findByRole('option', { name: 'label.concept-skos' })
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
     await waitFor(() =>

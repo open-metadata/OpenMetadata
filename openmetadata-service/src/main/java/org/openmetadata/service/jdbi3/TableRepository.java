@@ -1102,14 +1102,14 @@ public class TableRepository extends EntityRepository<Table> {
           String storedSystemProfile =
               daoCollection
                   .profilerDataTimeSeriesDao()
-                  .getExtensionAtTimestampWithOperation(
+                  .getSystemProfileAtTimestamp(
                       table.getFullyQualifiedName(),
                       SYSTEM_PROFILE_EXTENSION,
                       systemProfile.getTimestamp(),
                       systemProfile.getOperation().value());
           daoCollection
               .profilerDataTimeSeriesDao()
-              .storeTimeSeriesWithOperation(
+              .storeSystemProfile(
                   table.getFullyQualifiedName(),
                   SYSTEM_PROFILE_EXTENSION,
                   "systemProfile",

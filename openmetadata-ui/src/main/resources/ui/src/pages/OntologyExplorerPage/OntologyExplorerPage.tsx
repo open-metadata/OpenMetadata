@@ -12,15 +12,19 @@
  */
 
 import {
-  Badge,
   BadgeWithDot,
   Box,
   Button,
+  Divider,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  ArrowRight,
+  Expand05,
   GitBranch01,
   Grid01,
+  Minimize02,
   Plus,
   Share07,
 } from '@openmetadata/ui-core-components/icons';
@@ -54,6 +58,8 @@ import { OntologyModelStats } from '../../components/governance/ontology/Ontolog
 import OntologyNativeImportDialog from '../../components/governance/ontology/OntologyNativeImportDialog/OntologyNativeImportDialog';
 import OntologyPublicationModal from '../../components/governance/ontology/OntologyPublicationModal/OntologyPublicationModal';
 import OntologyQueryPicker from '../../components/governance/ontology/OntologyQueryPicker/OntologyQueryPicker';
+import OntologySettingsDialog from '../../components/governance/ontology/OntologySettingsDialog/OntologySettingsDialog';
+import { OntologyStudioDrawerHostContext } from '../../components/governance/ontology/OntologyStudioDrawer/OntologyStudioDrawer.context';
 import OntologyStudioHeader from '../../components/governance/ontology/OntologyStudioHeader/OntologyStudioHeader';
 import OntologyStudioScopeMenu from '../../components/governance/ontology/OntologyStudioScopeMenu/OntologyStudioScopeMenu';
 import OntologyStudioSubBar from '../../components/governance/ontology/OntologyStudioSubBar/OntologyStudioSubBar';
@@ -73,6 +79,7 @@ import { getOntologyHealthSummary } from '../../components/OntologyExplorer/Onto
 import OntologyStudioQueryConsole from '../../components/OntologyExplorer/OntologyStudioQueryConsole';
 import OntologyVisualQueryBuilder from '../../components/OntologyExplorer/OntologyVisualQueryBuilder';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { FULLSCREEN_QUERY_PARAM_KEY } from '../../constants/constants';
 import OntologyDraftProvider from '../../context/OntologyDraft/OntologyDraftProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { UIPermission } from '../../context/PermissionProvider/PermissionProvider.interface';
@@ -413,15 +420,16 @@ function getSubModeConfiguration(
   },
   isRdfEnabled: boolean,
   isNativeOntology: boolean,
+  hasOntologySurfaces: boolean,
   t: TFunction
 ): StudioSubMode {
   const configByMode: Record<StudioMode, () => StudioSubMode> = {
     ai: () => ({ id: 'ai', items: [] }),
     edit: () => ({
-      id: isNativeOntology ? surfaces.editSurface : 'graph',
+      id: hasOntologySurfaces ? surfaces.editSurface : 'graph',
       items: [
         { id: 'graph', label: t('label.graph') },
-        ...(isNativeOntology
+        ...(hasOntologySurfaces
           ? [
               { id: 'tree', label: t('label.tree') },
               { id: 'definitions', label: t('label.ontology') },
@@ -438,7 +446,7 @@ function getSubModeConfiguration(
       ),
     review: () => ({ id: 'review', items: [] }),
     view: () =>
-      getViewSubModeConfiguration(surfaces.viewSurface, isNativeOntology, t),
+      getViewSubModeConfiguration(surfaces.viewSurface, hasOntologySurfaces, t),
   };
 
   return configByMode[mode]();
@@ -512,6 +520,48 @@ function getExplorerSurface(
   }
 
   return mode === 'edit' && editSurface === 'tree' ? 'tree' : 'graph';
+}
+
+/** One ontology shows its graph canvas in View and Edit, except on the Ontology tab. */
+function isNativeGraphCanvas(
+  mode: StudioMode,
+  explorerSurface: ViewSurface,
+  editSurface: EditSurface
+): boolean {
+  if (mode === 'edit') {
+    return explorerSurface === 'graph' && editSurface !== 'definitions';
+  }
+
+  return mode === 'view' && explorerSurface === 'graph';
+}
+
+function getShellClassName(isFullScreen: boolean) {
+  return classNames(
+    'tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased',
+    // Full screen covers the app shell; dialogs (z-50) still open above it.
+    isFullScreen ? 'tw:fixed tw:inset-0 tw:z-40' : 'tw:relative'
+  );
+}
+
+// Graph and Tree both mount the graph view, which opens New concept (Tree switches to Graph).
+function mountsGraphView(surface: string) {
+  return surface === 'graph' || surface === 'tree';
+}
+
+function offersOntologySurfaces(scope: ReturnType<typeof getStudioScope>) {
+  return scope.kind === 'allOntologies' || isOntologyScope(scope);
+}
+
+function getAggregateSurface(
+  mode: StudioMode,
+  viewSurface: ViewSurface,
+  editSurface: EditSurface
+): ViewSurface {
+  if (mode === 'edit') {
+    return editSurface === 'definitions' ? 'ontology' : editSurface;
+  }
+
+  return viewSurface;
 }
 
 function resolveViewSurfaceChange(
@@ -1000,10 +1050,7 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }, [publicationIdentity, selectedReviewTaskId]);
 
-  const [settingsRequest, setSettingsRequest] = useState({
-    ontologyId: '',
-    key: 0,
-  });
+  const [settingsOntology, setSettingsOntology] = useState<Ontology>();
   const [stats, setStats] = useState<string[]>([]);
   const [glossaries, setGlossaries] = useState<Glossary[]>([]);
   const [graphData, setGraphData] = useState<OntologyGraphData | null>(null);
@@ -1207,9 +1254,14 @@ const OntologyExplorerContent: React.FC = () => {
     isConceptPermissionLoading
   );
   const [editConceptRequest, setEditConceptRequest] = useState<string>();
-  const viewSurface = resolveViewSurface(urlState.view, isNativeOntology);
-  const editSurface = resolveEditSurface(urlState.view, isNativeOntology);
+  // All ontologies offers Tree and Ontology too; the Ontology surface there asks which one to open.
+  const hasOntologySurfaces = offersOntologySurfaces(studioScope);
+  const viewSurface = resolveViewSurface(urlState.view, hasOntologySurfaces);
+  const editSurface = resolveEditSurface(urlState.view, hasOntologySurfaces);
   const querySurface = resolveQuerySurface(urlState.view);
+  const aggregateSurface = getAggregateSurface(mode, viewSurface, editSurface);
+  const isFullScreen = searchParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
+  const [drawerHost, setDrawerHost] = useState<HTMLDivElement | null>(null);
   const [lastQuerySurface, setLastQuerySurface] =
     useState<QuerySurface>('console');
   useEffect(() => {
@@ -1387,6 +1439,7 @@ const OntologyExplorerContent: React.FC = () => {
     { editSurface, querySurface, viewSurface },
     isRdfEnabled,
     isNativeOntology,
+    hasOntologySurfaces,
     t
   );
 
@@ -1404,7 +1457,10 @@ const OntologyExplorerContent: React.FC = () => {
         setEditSurface(id);
       }
       if (mode === 'view') {
-        const nextViewSurface = resolveViewSurfaceChange(id, isNativeOntology);
+        const nextViewSurface = resolveViewSurfaceChange(
+          id,
+          hasOntologySurfaces
+        );
         if (nextViewSurface) {
           setViewSurface(nextViewSurface);
         }
@@ -1419,7 +1475,7 @@ const OntologyExplorerContent: React.FC = () => {
       }
     },
     [
-      isNativeOntology,
+      hasOntologySurfaces,
       mode,
       nativeAuthoringLocked,
       setEditSurface,
@@ -1610,13 +1666,7 @@ const OntologyExplorerContent: React.FC = () => {
           setIsGlossaryScopeMenuOpen(open && isGlossaryScope)
         }
         onOpenSettings={(ontology) =>
-          guard(() => {
-            setSettingsRequest(({ key }) => ({
-              ontologyId: ontology.id,
-              key: key + 1,
-            }));
-            selectOntology(ontology, undefined, 'edit', 'ontology');
-          })
+          guard(() => setSettingsOntology(ontology))
         }
         onRetry={() =>
           void (isGlossaryScope
@@ -1654,16 +1704,42 @@ const OntologyExplorerContent: React.FC = () => {
   const addConceptReasonId = useId();
   const headerActionSize = getHeaderActionSize(isAiMode);
 
+  // View on one ontology offers the step into Edit where Add concept would sit.
+  function renderEditOntologyAction() {
+    const canStartEditing = [
+      isNativeOntology,
+      Boolean(selectedOntology),
+      canOfferEdit,
+      canEnterEdit,
+    ].every(Boolean);
+
+    return canStartEditing ? (
+      <Button
+        color="primary"
+        data-testid="ontology-edit-ontology"
+        iconTrailing={ArrowRight}
+        size={headerActionSize}
+        onPress={() => guard(() => handleModeChange('edit'))}>
+        {t('label.edit-entity', { entity: t('label.ontology') })}
+      </Button>
+    ) : null;
+  }
+
   function renderPrimaryAction() {
     const canAddConcept = (() => {
       if (isAllOntologies) {
-        return canCreateNativeClass && availableOntologies.length > 0;
+        // The Ontology surface only asks which ontology to open; it has no concept drawer.
+        return [
+          canCreateNativeClass,
+          availableOntologies.length > 0,
+          aggregateSurface !== 'ontology',
+        ].every(Boolean);
       }
 
       return isNativeOntology
         ? canCreateNativeClass &&
             canEditNativeOntology &&
-            editSurface === 'graph'
+            mountsGraphView(editSurface)
         : canCreateConcept;
     })();
 
@@ -1693,6 +1769,10 @@ const OntologyExplorerContent: React.FC = () => {
           )}
         </>
       );
+    }
+
+    if (mode === 'view') {
+      return renderEditOntologyAction();
     }
 
     if (mode === 'query' && (isNativeOntology || isRdfEnabled)) {
@@ -1739,25 +1819,17 @@ const OntologyExplorerContent: React.FC = () => {
   }
 
   function renderPublicationLabel() {
-    if (!isAiMode) {
-      return (
-        <>
-          {t('label.publish')} ({publicationPendingCount()})
-        </>
-      );
+    if (isAllOntologies) {
+      return t('label.review-publish');
     }
 
     return (
-      <span className="tw:flex tw:items-center tw:whitespace-nowrap">
-        {t('label.publish')}
-        <Badge
-          className="tw:ml-1.5"
-          color="brand"
-          data-testid="ontology-publication-count"
-          size="sm"
-          type="pill-color">
+      <span className="tw:whitespace-nowrap">
+        {t('label.publish')} (
+        <span data-testid="ontology-publication-count">
           {publicationPendingCount()}
-        </Badge>
+        </span>
+        )
       </span>
     );
   }
@@ -1780,29 +1852,34 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <>
-        <Button
-          aria-describedby={isAllOntologies ? publishReasonId : undefined}
-          color={isAiMode ? 'secondary-brand' : 'primary'}
-          data-testid="ontology-publication-trigger"
-          iconLeading={GitBranch01}
-          isDisabled={isAllOntologies}
-          size={headerActionSize}
-          onPress={() => {
-            setPublicationTab('changes');
-            setIsPublicationOpen(true);
-          }}>
-          {renderPublicationLabel()}
-        </Button>
+        {/* Tooltip, not the Button prop: it keeps hover working while the button is disabled. */}
+        <Tooltip
+          isDisabled={!isAllOntologies}
+          title={t('message.ontology-choose-ontology-to-publish')}>
+          <Button
+            aria-describedby={isAllOntologies ? publishReasonId : undefined}
+            color="primary"
+            data-testid="ontology-publication-trigger"
+            iconLeading={GitBranch01}
+            isDisabled={isAllOntologies}
+            size={headerActionSize}
+            onPress={() => {
+              setPublicationTab('changes');
+              setIsPublicationOpen(true);
+            }}>
+            {renderPublicationLabel()}
+          </Button>
+        </Tooltip>
         {isAllOntologies && (
-          <Typography
-            as="span"
-            className="tw:font-body tw:text-xs tw:text-tertiary"
+          <span
+            className="tw:sr-only"
             data-testid="ontology-publication-reason"
             id={publishReasonId}>
             {t('message.ontology-choose-ontology-to-publish')}
-          </Typography>
+          </span>
         )}
-        {isolatedCount > 0 && (
+        {/* The AI header leaves the isolated count to the health card. */}
+        {!isAiMode && isolatedCount > 0 && (
           <BadgeWithDot color="warning" size="sm">
             {isolatedCount} {t('label.isolated')}
           </BadgeWithDot>
@@ -1894,20 +1971,30 @@ const OntologyExplorerContent: React.FC = () => {
     );
   }
 
+  // In AI mode Tasks sits in the sub-bar; with no sub-bar it stays in the header so it is never lost.
+  function showsTasksInSubBar() {
+    return [
+      isAiMode,
+      mode !== 'ai' && mode !== 'review',
+      !(ontologyId && !selectedOntology),
+      !isCatalogEmpty,
+    ].every(Boolean);
+  }
+
   function renderHeader(tasksAction: React.ReactNode) {
     return (
       <OntologyStudioHeader
         actions={
           <Box align="center" gap={2} wrap="wrap">
-            {isAiMode ? null : renderLibraryTrigger()}
+            {renderLibraryTrigger()}
             {renderImportExport()}
-            {isAiMode ? renderLibraryTrigger() : null}
+            {renderPrimaryAction()}
             {renderPublicationActions()}
-            {tasksAction}
+            {showsTasksInSubBar() ? null : tasksAction}
           </Box>
         }
         breadcrumb={
-          isAiMode ? (
+          isAiMode && isGlossaryScope ? (
             <HeaderBreadcrumb
               noMargin
               items={
@@ -1966,24 +2053,71 @@ const OntologyExplorerContent: React.FC = () => {
 
   function renderSearchSlot() {
     const hasNativeSlot =
-      isAiMode && !isGlossaryScope && (mode === 'view' || mode === 'edit');
+      !isGlossaryScope && (mode === 'view' || mode === 'edit');
     if (!(isGlossaryScope && showDefaultSurface) && !hasNativeSlot) {
       return null;
     }
 
     return (
       <div
-        className={
-          isAiMode
-            ? 'tw:w-81 tw:shrink-0 tw:border-l tw:border-secondary tw:pl-3.5 tw:empty:hidden'
-            : 'tw:min-w-35 tw:max-w-70 tw:flex-1 tw:border-l tw:border-secondary tw:pl-3 tw:empty:hidden'
-        }
+        className="tw:w-52 tw:shrink tw:empty:hidden"
+        data-testid="ontology-canvas-search-slot"
         ref={setSearchSlot}
       />
     );
   }
 
-  function renderSubModeNav() {
+  function toggleFullScreen() {
+    setSearchParams((previous) => {
+      const next = new URLSearchParams(previous);
+      if (isFullScreen) {
+        next.delete(FULLSCREEN_QUERY_PARAM_KEY);
+      } else {
+        next.set(FULLSCREEN_QUERY_PARAM_KEY, 'true');
+      }
+
+      return next;
+    });
+  }
+
+  // The floating toolbar along the canvas bottom: version, search and full screen.
+  function renderCanvasToolbar() {
+    if (mode !== 'view' && mode !== 'edit') {
+      return null;
+    }
+    const fullScreenLabel = t(
+      isFullScreen ? 'label.exit-full-screen' : 'label.full-screen-view'
+    );
+
+    return (
+      <div
+        className={classNames(
+          'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-3 tw:z-20 tw:flex tw:justify-center tw:pl-4',
+          // The concept panel takes the right of the canvas area; centre in what is left.
+          selectedConceptId ? 'tw:pr-112 tw:2xl:pr-154' : 'tw:pr-4'
+        )}
+        data-testid="ontology-canvas-toolbar">
+        <Box
+          align="center"
+          className="tw:pointer-events-auto tw:max-w-full tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-1.5 tw:shadow-lg"
+          gap={2}>
+          {renderVersionChip()}
+          {renderSearchSlot()}
+          <Button
+            aria-label={fullScreenLabel}
+            color="secondary"
+            data-testid="ontology-full-screen"
+            iconLeading={isFullScreen ? Minimize02 : Expand05}
+            size="sm"
+            tooltip={fullScreenLabel}
+            onPress={toggleFullScreen}
+          />
+        </Box>
+      </div>
+    );
+  }
+
+  function renderSubModeNav(tasksAction?: React.ReactNode) {
     if (mode === 'ai' || mode === 'review') {
       return null;
     }
@@ -2009,17 +2143,21 @@ const OntologyExplorerContent: React.FC = () => {
               className="tw:whitespace-nowrap"
               color="secondary"
               data-testid="ontology-explorer-stats"
-              size="text-xs">
+              size="text-sm">
               {statsLabel}
             </Typography>
+            {showsTasksInSubBar() && tasksAction ? (
+              <>
+                <Divider className="tw:h-6" orientation="vertical" />
+                {tasksAction}
+              </>
+            ) : null}
           </Box>
         }
         onSurfaceChange={(surface) =>
           guard(() => handleSubModeChange(surface))
         }>
-        {renderPrimaryAction()}
-        {renderVersionChip()}
-        {renderSearchSlot()}
+        {mode === 'query' ? renderVersionChip() : null}
       </OntologyStudioSubBar>
     );
   }
@@ -2187,9 +2325,6 @@ const OntologyExplorerContent: React.FC = () => {
         publicationStatus={releaseStatus}
         releaseId={publishedReleaseId}
         selectedConceptId={selectedConceptId}
-        settingsRequestKey={
-          settingsRequest.ontologyId === ontology.id ? settingsRequest.key : 0
-        }
         viewSurface={explorerSurface}
         onAuthoringLockChange={setNativeAuthoringLocked}
         onCreateConceptRequestHandled={() =>
@@ -2291,7 +2426,7 @@ const OntologyExplorerContent: React.FC = () => {
       return null;
     }
 
-    const listSurface = viewSurface === 'ontology' ? 'graph' : viewSurface;
+    const listSurface = aggregateSurface === 'tree' ? 'tree' : 'graph';
 
     return (
       <AllOntologiesGraphView
@@ -2374,9 +2509,36 @@ const OntologyExplorerContent: React.FC = () => {
     );
   };
 
-  const renderAggregateWorkspace = () => (
+  // The review banner floats over a graph canvas and sits above any other surface.
+  const renderCanvasArea = (
+    content: React.ReactNode,
+    banner: React.ReactNode,
+    isGraphCanvas: boolean
+  ) => (
+    <div
+      className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
+      ref={setDrawerHost}>
+      {banner ? (
+        <div
+          className={
+            isGraphCanvas
+              ? 'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:top-3 tw:z-20 tw:flex tw:justify-center tw:px-4 tw:*:pointer-events-auto'
+              : 'tw:flex tw:shrink-0 tw:justify-center tw:px-4 tw:pt-3'
+          }>
+          {banner}
+        </div>
+      ) : null}
+      {content}
+      {renderCanvasToolbar()}
+    </div>
+  );
+
+  const renderAggregateWorkspace = (
+    tasksAction: React.ReactNode,
+    banner: React.ReactNode
+  ) => (
     <>
-      {renderSubModeNav()}
+      {renderSubModeNav(tasksAction)}
       {mode === 'query' ? (
         <OntologyQueryPicker
           ontologies={availableOntologies}
@@ -2384,31 +2546,51 @@ const OntologyExplorerContent: React.FC = () => {
           onSelect={(ontology) => selectOntology(ontology, undefined, mode)}
         />
       ) : null}
-      {mode === 'query' ? null : (
-        <div className="tw:flex tw:min-h-0 tw:flex-1">
-          <div className="tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
-            {renderAllOntologies()}
-          </div>
-          {mode === 'edit' && isAggregateCreateOpen ? (
-            <OntologyAllOntologiesConceptDrawer
+      {mode !== 'query' && aggregateSurface === 'ontology'
+        ? renderCanvasArea(
+            <OntologyQueryPicker
               ontologies={availableOntologies}
-              onClose={() => guard(() => setIsAggregateCreateOpen(false))}
-              onCreated={(_ontology, done) => {
-                void studioScopes.refetchOntologies();
-                refreshNativeWorkingDiff();
-                void allModels.refetch();
-                if (done) {
-                  setIsAggregateCreateOpen(false);
-                }
-              }}
-            />
-          ) : null}
-        </div>
-      )}
+              surface="ontology"
+              onSelect={(ontology) =>
+                selectOntology(ontology, undefined, mode, 'ontology')
+              }
+            />,
+            banner,
+            false
+          )
+        : null}
+      {mode === 'query' || aggregateSurface === 'ontology'
+        ? null
+        : renderCanvasArea(
+            <div className="tw:flex tw:min-h-0 tw:flex-1">
+              <div className="tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
+                {renderAllOntologies()}
+              </div>
+              {mode === 'edit' && isAggregateCreateOpen ? (
+                <OntologyAllOntologiesConceptDrawer
+                  ontologies={availableOntologies}
+                  onClose={() => guard(() => setIsAggregateCreateOpen(false))}
+                  onCreated={(_ontology, done) => {
+                    void studioScopes.refetchOntologies();
+                    refreshNativeWorkingDiff();
+                    void allModels.refetch();
+                    if (done) {
+                      setIsAggregateCreateOpen(false);
+                    }
+                  }}
+                />
+              ) : null}
+            </div>,
+            banner,
+            aggregateSurface === 'graph'
+          )}
     </>
   );
 
-  const renderWorkspace = () => {
+  const renderWorkspace = (
+    tasksAction: React.ReactNode,
+    banner: React.ReactNode
+  ) => {
     if (ontologyId && !selectedOntology) {
       return renderOwnerLoading();
     }
@@ -2418,24 +2600,36 @@ const OntologyExplorerContent: React.FC = () => {
     }
 
     if (isAllOntologies) {
-      return renderAggregateWorkspace();
+      return renderAggregateWorkspace(tasksAction, banner);
     }
 
     if (selectedOntology) {
       return (
         <>
-          {renderSubModeNav()}
-          <section className="tw:flex tw:min-h-0 tw:flex-1 tw:bg-primary">
-            {renderNativeContent(selectedOntology)}
-          </section>
+          {renderSubModeNav(tasksAction)}
+          {renderCanvasArea(
+            <section className="tw:flex tw:min-h-0 tw:flex-1 tw:bg-primary">
+              {renderNativeContent(selectedOntology)}
+            </section>,
+            banner,
+            isNativeGraphCanvas(mode, explorerSurface, editSurface)
+          )}
         </>
       );
     }
 
     return (
       <>
-        {renderSubModeNav()}
-        {renderMainSection()}
+        {renderSubModeNav(tasksAction)}
+        {renderCanvasArea(
+          renderMainSection(),
+          banner,
+          [
+            isGlossaryScope,
+            showDefaultSurface,
+            explorerSurface === 'graph',
+          ].every(Boolean)
+        )}
       </>
     );
   };
@@ -2544,6 +2738,22 @@ const OntologyExplorerContent: React.FC = () => {
           onCreated={handleOntologyCreated}
         />
       ) : null}
+      {settingsOntology ? (
+        <OntologySettingsDialog
+          ontology={settingsOntology}
+          onClose={() => guard(() => setSettingsOntology(undefined))}
+          onSaved={(saved) => {
+            setSettingsOntology(undefined);
+            void queryClient.invalidateQueries({
+              queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+            });
+            refreshNativeWorkingDiff();
+            if (saved.id === selectedOntology?.id) {
+              reloadOntology();
+            }
+          }}
+        />
+      ) : null}
       {isEmptyImportOpen ? (
         <OntologyNativeImportDialog
           onClose={() => setIsEmptyImportOpen(false)}
@@ -2563,7 +2773,7 @@ const OntologyExplorerContent: React.FC = () => {
       })}
       pageTitle={t('label.ontology-studio')}>
       <main
-        className="tw:relative tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased"
+        className={getShellClassName(isFullScreen)}
         data-testid="ontology-studio-shell"
         style={ONTOLOGY_STUDIO_STYLE}>
         <OntologyTasksDrawer
@@ -2581,9 +2791,10 @@ const OntologyExplorerContent: React.FC = () => {
                   isAiMode &&
                     'tw:mx-2 tw:mb-2 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary'
                 )}>
-                {banner}
                 <OntologyGraphSearchSlotContext.Provider value={searchSlot}>
-                  {renderWorkspace()}
+                  <OntologyStudioDrawerHostContext.Provider value={drawerHost}>
+                    {renderWorkspace(tasksAction, banner)}
+                  </OntologyStudioDrawerHostContext.Provider>
                 </OntologyGraphSearchSlotContext.Provider>
               </div>
               {renderOverlays()}

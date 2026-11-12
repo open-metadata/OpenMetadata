@@ -35,6 +35,7 @@ import {
   getWorkerAdminAPIContext,
   uuid,
 } from '../../utils/common';
+import { openOntologyTransfer } from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -105,7 +106,7 @@ const approveAndActivate = async (
 const openExport = async (page: Page, ontology: Ontology) => {
   await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-  await page.getByTestId('ontology-import-export-trigger').click();
+  await openOntologyTransfer(page);
   await expect(
     page.getByTestId('ontology-release-export-preview')
   ).toBeVisible();
@@ -220,7 +221,7 @@ test.describe(
             expect(content).toContain(marker);
             expect(content).toContain(customer.iri);
             expect(content).not.toContain('Stranger');
-            await page.getByTestId('ontology-import-export-trigger').click();
+            await openOntologyTransfer(page);
           });
         }
 
