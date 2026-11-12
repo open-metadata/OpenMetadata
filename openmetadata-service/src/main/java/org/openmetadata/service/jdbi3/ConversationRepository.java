@@ -156,14 +156,16 @@ public class ConversationRepository {
     if (before != null) {
       Collections.reverse(conversations);
     }
-    hydrate(conversations, EMBEDDED_REPLY_LIMIT);
-    conversations.forEach(conversation -> withHref(uriInfo, conversation));
     ConversationFilter.Sql countSql = filter.build(false);
     int total = conversationDAO.count(countSql.condition(), countSql.params());
     ResultList<Conversation> page = rootResult(conversations, before, after, hasMore, total);
-    return nullOrEmpty(entityLink)
-        ? viewableOnly(securityContext, authorizer, page, countSql)
-        : page;
+    if (nullOrEmpty(entityLink)) {
+      page = viewableOnly(securityContext, authorizer, page, countSql);
+    }
+    // Hydrated after filtering, so replies and references load only for the rows returned.
+    hydrate(page.getData(), EMBEDDED_REPLY_LIMIT);
+    page.getData().forEach(conversation -> withHref(uriInfo, conversation));
+    return page;
   }
 
   /**
