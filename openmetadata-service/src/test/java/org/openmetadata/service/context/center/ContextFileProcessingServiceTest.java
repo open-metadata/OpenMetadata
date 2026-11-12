@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -60,6 +61,7 @@ import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -127,6 +129,26 @@ class ContextFileProcessingServiceTest {
   @AfterEach
   void serverIsRunningAgain() {
     ServerStopping.set(false);
+  }
+
+  @Test
+  void defaultProcessingReadsTheRepositorysAssetStore() {
+    file.setFileType(ContextFileType.CSV);
+    when(repository.readAsset(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream(
+                    "Osprey pallet weight cap,1150 kg per pallet".getBytes())));
+    try (var llm = mockStatic(LLMClientHolder.class)) {
+      llm.when(LLMClientHolder::isMemoryExtractionEnabled).thenReturn(false);
+
+      new ContextFileProcessingService(repository).process(fileId, contentId);
+
+      verify(repository).readAsset(asset);
+      verify(repository, times(2))
+          .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(UPLOADER));
+      assertEquals(ProcessingStatus.Processed, updatedFileCaptor.getValue().getProcessingStatus());
+    }
   }
 
   @Test
@@ -935,7 +957,10 @@ class ContextFileProcessingServiceTest {
       Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
     return new ContextFileProcessingService(
         repository,
-        assetServiceSupplier,
+        asset -> {
+          AssetService storage = assetServiceSupplier.get();
+          return storage == null ? null : storage.read(asset);
+        },
         executor,
         textExtractor,
         jobDao,

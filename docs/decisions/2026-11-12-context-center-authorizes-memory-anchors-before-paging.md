@@ -19,6 +19,7 @@ Search-backed context-memory listings evaluate the current reader's access to ev
 memory anchor before constructing the visibility filter. Anchors are read by UUID keyset in pages
 of 100, using the same live APPLIED_TO and legacy HAS edges as direct memory reads. Legacy domain
 assignment edges are excluded. The page size bounds each database read, not the authorized set.
+Authorized ids are split into terms clauses of at most 1,024 ids to stay below the engine's terms limit.
 
 Both Elasticsearch and OpenSearch admit Entity and Public memories anchored to that authorized set.
 Visibility and status filters run before the engine counts, sorts, or paginates results. Shared and

@@ -86,6 +86,7 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class ContextMemorySearchVisibility {
 
   private static final String MEMORY_INDEX_NAME = "context_memory_search_index";
+  private static final int MAX_ANCHOR_IDS_PER_TERMS_QUERY = 1024;
 
   /** listWithOffset receives the canonical index name, optionally prefixed by the cluster alias. */
   public static boolean isMemoryListingIndex(String index) {
@@ -434,14 +435,17 @@ public class ContextMemorySearchVisibility {
 
   /** The REST anchor rule for anchors already evaluated: Entity or Public, anchored to one. */
   private OMQueryBuilder anchoredToClause(Set<String> readableAnchorIds) {
-    return queryBuilderFactory
-        .boolQuery()
-        .must(
-            List.of(
-                entityOrPublicClause(),
-                queryBuilderFactory.termsQuery(
-                    ContextMemoryIndex.FIELD_ANCHOR_ID,
-                    readableAnchorIds.stream().sorted().toList())));
+    List<String> ids = readableAnchorIds.stream().sorted().toList();
+    List<OMQueryBuilder> chunks = new ArrayList<>();
+    for (int start = 0; start < ids.size(); start += MAX_ANCHOR_IDS_PER_TERMS_QUERY) {
+      chunks.add(
+          queryBuilderFactory.termsQuery(
+              ContextMemoryIndex.FIELD_ANCHOR_ID,
+              ids.subList(start, Math.min(start + MAX_ANCHOR_IDS_PER_TERMS_QUERY, ids.size()))));
+    }
+    OMQueryBuilder anchors =
+        chunks.size() == 1 ? chunks.getFirst() : queryBuilderFactory.boolQuery().should(chunks);
+    return queryBuilderFactory.boolQuery().must(List.of(entityOrPublicClause(), anchors));
   }
 
   private OMQueryBuilder entityOrPublicClause() {

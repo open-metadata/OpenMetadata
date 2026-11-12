@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadFactory;
@@ -27,8 +28,6 @@ import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.attachments.AssetService;
-import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.context.center.ContextProcessingEngine.ConditionalUpdateExhaustedException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -51,7 +50,7 @@ import org.openmetadata.service.util.RequestEntityCache;
 public class ContextFileProcessingService {
   private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
   private final ContextFileRepository repository;
-  private final Supplier<AssetService> assetServiceSupplier;
+  private final Function<Asset, CompletableFuture<InputStream>> assetReader;
   private final Executor executor;
   private final ContextFileTextExtractor textExtractor;
   private final JobDAO jobDao;
@@ -63,7 +62,7 @@ public class ContextFileProcessingService {
   public ContextFileProcessingService(ContextFileRepository repository) {
     this(
         repository,
-        AssetServiceFactory::getService,
+        repository::readAsset,
         DEFAULT_EXECUTOR,
         new ContextFileTextExtractor(),
         Entity.getJobDAO(),
@@ -74,7 +73,7 @@ public class ContextFileProcessingService {
 
   ContextFileProcessingService(
       ContextFileRepository repository,
-      Supplier<AssetService> assetServiceSupplier,
+      Function<Asset, CompletableFuture<InputStream>> assetReader,
       Executor executor,
       ContextFileTextExtractor textExtractor,
       JobDAO jobDao,
@@ -82,7 +81,7 @@ public class ContextFileProcessingService {
       Supplier<Boolean> llmEnabledSupplier,
       Supplier<FileContextProcessingEngine> fileEngineSupplier) {
     this.repository = repository;
-    this.assetServiceSupplier = assetServiceSupplier;
+    this.assetReader = assetReader;
     this.executor = executor;
     this.textExtractor = textExtractor;
     this.jobDao = jobDao;
@@ -279,14 +278,14 @@ public class ContextFileProcessingService {
         return null;
       }
 
-      AssetService assetService = assetServiceSupplier.get();
-      if (assetService == null) {
+      Asset asset = repository.getAssetRepository().getById(currentContent.getAssetId());
+      CompletableFuture<InputStream> read = assetReader.apply(asset);
+      if (read == null) {
         applyFailure(fileId, contentId, "Object storage is not configured for text extraction");
         return ProcessingStatus.Failed;
       }
 
-      Asset asset = repository.getAssetRepository().getById(currentContent.getAssetId());
-      try (InputStream inputStream = assetService.read(asset).join()) {
+      try (InputStream inputStream = read.join()) {
         if (inputStream == null) {
           applyFailure(fileId, contentId, "Unable to read file content from object storage");
           return ProcessingStatus.Failed;

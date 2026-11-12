@@ -32,9 +32,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
@@ -121,6 +125,31 @@ class ContextMemorySearchVisibilityTest {
     String query = ((OpenSearchQueryBuilder) filter).build().toJsonString();
     assertTrue(query.contains(readable));
     assertTrue(query.contains(ContextMemoryStatus.APPROVED.value()));
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void listingsSplitLargeAuthorizedAnchorSetsBelowTheEngineTermsLimit(boolean openSearch) {
+    Set<String> anchors =
+        IntStream.range(0, 65_537)
+            .mapToObj(index -> new UUID(0, index + 1).toString())
+            .collect(Collectors.toSet());
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            openSearch ? new OpenSearchQueryBuilderFactory() : new ElasticQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            name -> anchors);
+    OMQueryBuilder filter =
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+    String query =
+        openSearch
+            ? ((OpenSearchQueryBuilder) filter).build().toJsonString()
+            : serializeElasticQuery(((ElasticQueryBuilder) filter).build());
+    List<List<String>> chunks = JsonPath.parse(query).read("$..terms.anchorId");
+
+    assertEquals(anchors.size(), chunks.stream().mapToInt(List::size).sum());
+    assertTrue(chunks.stream().allMatch(chunk -> chunk.size() <= 1024));
   }
 
   @Test
