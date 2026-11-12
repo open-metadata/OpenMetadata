@@ -30,8 +30,10 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  chooseInspectorRelationType,
   clickGraphNode,
   findEmptyCanvasPoint,
+  openInspectorRelationChooser,
   readGraphPoints,
   readNodePositions,
   waitForGraphPoints,
@@ -172,6 +174,7 @@ const openRelationPicker = async (page: Page, conceptId: string) => {
   await clickGraphNode(page, conceptId);
   const inspector = page.getByTestId('ontology-concept-inspector');
   await inspector.getByTestId('ontology-add-relationship').click();
+  await openInspectorRelationChooser(page, inspector);
 
   return { inspector, picker: page.getByTestId('relationship-type-picker') };
 };
@@ -778,10 +781,11 @@ test.describe(
         await test.step('Change Subclass Of to Part Of', async () => {
           await expect(rows).toContainText('Alpha');
           await rows.getByTestId('ontology-relation-edit').click();
+          const editForm = rows.getByTestId('ontology-relationship-edit-form');
+          await expect(editForm).toBeVisible();
+          await chooseInspectorRelationType(page, editForm, PART_OF);
           await clickIgnoringToasts(
-            page
-              .getByTestId('relationship-type-picker')
-              .getByTestId(`relation-type-${PART_OF}`)
+            editForm.getByTestId('ontology-relationship-edit-save')
           );
           await expect
             .poll(async () =>

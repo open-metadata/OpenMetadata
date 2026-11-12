@@ -256,8 +256,8 @@ it('publishes the captured version and refreshes the live header, working count 
   });
 
   expect(
-    await screen.findByTestId('ontology-release-history-trigger')
-  ).toHaveAccessibleName(/1\.0\.0/);
+    await screen.findByTestId('ontology-version-published')
+  ).toHaveTextContent('1.0.0');
   expect(screen.getByTestId('ontology-publication-trigger')).toHaveTextContent(
     '(1)'
   );
@@ -281,9 +281,9 @@ it('publishes the captured version and refreshes the live header, working count 
   expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
     'label.published'
   );
-  expect(
-    screen.getByTestId('ontology-release-history-trigger')
-  ).toHaveAccessibleName(/1\.5\.0/);
+  expect(screen.getByTestId('ontology-version-published')).toHaveTextContent(
+    '1.5.0'
+  );
   expect(screen.getByTestId('ontology-publication-trigger')).toHaveTextContent(
     '(0)'
   );

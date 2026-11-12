@@ -27,6 +27,7 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  chooseInspectorRelationType,
   clickGraphNode,
   findOntologyInScopeMenu,
   openExportAdvanced,
@@ -304,7 +305,8 @@ test.describe(
           await inspector
             .getByTestId('ontology-property-name')
             .fill('customerNumber');
-          await inspector.getByTestId('ontology-property-type-integer').click();
+          await inspector.getByRole('button', { name: /Range/ }).click();
+          await page.getByTestId('ontology-property-type-integer').click();
           await inspector.getByTestId('ontology-property-identifier').click();
           const propertyCreated = page.waitForResponse(
             (response) =>
@@ -335,10 +337,10 @@ test.describe(
           ).toContainText('customer number');
 
           await inspector.getByTestId('ontology-add-relationship').click();
-          await clickIgnoringToasts(
-            page.getByTestId(
-              'relation-type-http://www.w3.org/2000/01/rdf-schema#subClassOf'
-            )
+          await chooseInspectorRelationType(
+            page,
+            inspector,
+            'http://www.w3.org/2000/01/rdf-schema#subClassOf'
           );
           const target = inspector.getByLabel('Target');
           await scrollIntoViewAndSettle(target);
@@ -420,6 +422,12 @@ test.describe(
           await page.reload();
           await page.getByTestId('mode-tab-edit').click();
           await clickGraphNode(page, customer.id);
+          // A saved mapping reads as a row; its fields open again through Edit.
+          const mappingRow = editor.getByTestId('ontology-concept-mapping-row');
+          await expect(mappingRow).toContainText(mapping.conceptIri);
+          await expect(mappingRow).toContainText(mapping.schemeIri);
+          await expect(mappingRow).toContainText(mapping.source);
+          await mappingRow.getByRole('button', { name: 'Edit' }).click();
           await expect(
             mappingEditor.getByRole('combobox', { name: /^Concept IRI/ })
           ).toHaveValue(mapping.conceptIri);
@@ -433,6 +441,9 @@ test.describe(
             mappingEditor.getByRole('textbox', { name: 'Source', exact: true })
           ).toHaveValue(mapping.source);
           await mappingEditor
+            .getByRole('button', { name: 'Cancel', exact: true })
+            .click();
+          await mappingRow
             .getByRole('button', { name: 'Remove', exact: true })
             .click();
           const removed = page.waitForResponse(
