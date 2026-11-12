@@ -1768,6 +1768,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         refreshAgentsList={refreshAgentsList}
         searchText={searchText}
         serviceDetails={serviceDetails}
+        servicePermission={servicePermission}
         statusFilter={statusFilter}
         typeFilter={typeFilter}
         workflowStartAt={workflowStatesData?.mainInstanceState.startedAt}
@@ -1780,6 +1781,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       airflowInformation,
       isIngestionPipelineLoading,
       serviceDetails,
+      servicePermission,
       ingestionPipelines,
       metadataAgents,
       ingestionPaging,

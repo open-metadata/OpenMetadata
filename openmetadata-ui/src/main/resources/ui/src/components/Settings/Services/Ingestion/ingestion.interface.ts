@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AirflowStatusContextType } from '../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import { ServiceAgentSubTabs } from '../../../../enums/service.enum';
 import { PipelineType } from '../../../../generated/api/services/ingestionPipelines/createIngestionPipeline';
@@ -53,6 +54,8 @@ export interface IngestionProps {
   agentCounts?: Record<ServiceAgentSubTabs, number>;
   refreshAgentsList: (agentListType: ServiceAgentSubTabs) => Promise<void>;
   workflowStartAt?: number;
+  /** The service's own permissions; agent creation is authorized against it. */
+  servicePermission?: OperationPermission;
 }
 
 export interface SelectedRowDetails {

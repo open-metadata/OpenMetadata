@@ -31,6 +31,7 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
+import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
@@ -54,6 +55,7 @@ const Ingestion: React.FC<IngestionProps> = ({
   agentCounts,
   refreshAgentsList,
   workflowStartAt,
+  servicePermission,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -115,12 +117,22 @@ const Ingestion: React.FC<IngestionProps> = ({
   const isAgentsLoading =
     Boolean(isLoading) && loadedServiceFQNRef.current !== decodedServiceFQN;
 
-  const showAddAgent = useMemo(
-    () =>
-      Boolean(permissions['ingestionPipeline']?.Create) &&
-      platform !== DISABLED,
-    [permissions, platform]
-  );
+  // The server authorizes creating an agent against its parent service, so a user who manages the
+  // service (Create or EditAll on it) can add agents without the global ingestionPipeline Create.
+  // The global flag stays as an additional grant for anyone who has it today.
+  const canAddAgent = useMemo(() => {
+    const service = servicePermission
+      ? getDerivedPermissionFlags(servicePermission)
+      : undefined;
+
+    return Boolean(
+      permissions['ingestionPipeline']?.Create ||
+        service?.canCreate ||
+        service?.canEditAll
+    );
+  }, [permissions, servicePermission]);
+
+  const showAddAgent = canAddAgent && platform !== DISABLED;
 
   const handleSubTabChange = useCallback(
     (key: Key) => {

@@ -371,6 +371,58 @@ describe('Ingestion', () => {
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
   });
 
+  describe('service-level permission', () => {
+    const noGlobalCreate = () =>
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        permissions: {
+          ingestionPipeline: { ...ENTITY_PERMISSIONS, Create: false },
+        },
+        getEntityPermissionByFqn: jest
+          .fn()
+          .mockResolvedValue(ENTITY_PERMISSIONS),
+      }));
+
+    const renderWith = async (servicePermission: Record<string, boolean>) => {
+      noGlobalCreate();
+      await act(async () => {
+        render(
+          <Ingestion
+            {...ingestionProps}
+            servicePermission={servicePermission as never}
+          />,
+          { wrapper: TestWrapper }
+        );
+      });
+    };
+
+    afterEach(() => {
+      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
+        permissions: { ingestionPipeline: ENTITY_PERMISSIONS },
+        getEntityPermissionByFqn: jest
+          .fn()
+          .mockResolvedValue(ENTITY_PERMISSIONS),
+      }));
+    });
+
+    it('shows Add when the service grants Create but the global permission does not', async () => {
+      await renderWith({ Create: true });
+
+      expect(screen.getByText('AddIngestionButton')).toBeInTheDocument();
+    });
+
+    it('shows Add when the service grants EditAll but the global permission does not', async () => {
+      await renderWith({ EditAll: true });
+
+      expect(screen.getByText('AddIngestionButton')).toBeInTheDocument();
+    });
+
+    it('hides Add when neither the service nor the global permission grants it', async () => {
+      await renderWith({ Create: false, EditAll: false });
+
+      expect(screen.queryByText('AddIngestionButton')).toBeNull();
+    });
+  });
+
   // Every agent action refetches the list — killing a run included. Treating that refetch as a
   // first load swapped the cards for skeletons, so the agents dropped off the list until the
   // request came back.
