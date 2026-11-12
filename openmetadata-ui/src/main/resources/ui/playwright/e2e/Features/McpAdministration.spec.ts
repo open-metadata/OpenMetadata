@@ -72,6 +72,7 @@ test(
       const row = table
         .getByRole('row')
         .filter({ hasText: client.client_name });
+      await expect(table).toBeVisible();
       const nextPage = page.getByRole('button', { name: 'Next', exact: true });
       while ((await row.count()) === 0 && (await nextPage.isEnabled())) {
         const loaded = page.waitForResponse(
