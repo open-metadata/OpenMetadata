@@ -12259,7 +12259,8 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
         return;
       }
       List<EntityReference> origExperts = getEntityReferences(original.getExperts());
-      List<EntityReference> updatedExperts = getEntityReferences(updated.getExperts());
+      List<EntityReference> updatedExperts =
+          keptWhenBotPutNamesNone(origExperts, getEntityReferences(updated.getExperts()));
       validateUsers(updatedExperts);
       updateToRelationships(
           FIELD_EXPERTS,
@@ -12273,12 +12274,23 @@ public abstract class EntityRepository<T extends EntityInterface<?>> {
       updated.setExperts(updatedExperts);
     }
 
+    /**
+     * Users curate reviewers and experts and no connector sends them, so a bot PUT that names none
+     * keeps the stored ones. See ADR:2026-11-12-a-bot-put-never-removes-reviewers-or-experts.
+     */
+    private List<EntityReference> keptWhenBotPutNamesNone(
+        List<EntityReference> stored, List<EntityReference> requested) {
+      boolean botPutNamesNone = operation.isPut() && updatedByBot() && nullOrEmpty(requested);
+      return botPutNamesNone ? new ArrayList<>(listOrEmpty(stored)) : requested;
+    }
+
     protected void updateReviewers() {
       if (!supportsReviewers) {
         return;
       }
       List<EntityReference> origReviewers = getEntityReferences(original.getReviewers());
-      List<EntityReference> updatedReviewers = getEntityReferences(updated.getReviewers());
+      List<EntityReference> updatedReviewers =
+          keptWhenBotPutNamesNone(origReviewers, getEntityReferences(updated.getReviewers()));
       validateReviewers(updatedReviewers);
       // Either all users or team which is one team at a time, assuming all ref to have same type,
       // validateReviewer checks it
