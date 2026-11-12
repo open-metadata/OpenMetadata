@@ -451,6 +451,25 @@ public class GlossaryTermApprovedTaggingIT {
                     .withTags(List.of(tags))));
   }
 
+  /** A bulk PUT that updates an existing table judges the term it adds the same way. */
+  @Test
+  void bulkPutAddingDeprecatedTermToExistingTable_failsThatTable(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    GlossaryTerm term = deprecatedTerm(client, ns);
+    CreateTable request = tableRequest(ns, schema(ns), "bulk_update_dep");
+    Table table = client.tables().create(request);
+    request.setTags(List.of(label(term)));
+
+    BulkOperationResult result = client.tables().bulkCreateOrUpdate(List.of(request));
+
+    assertEquals(ApiStatus.FAILURE, result.getStatus());
+    assertTrue(
+        result.getFailedRequest().get(0).getMessage().contains(NOT_APPROVED),
+        () -> "Unexpected failure: %s".formatted(result.getFailedRequest().get(0).getMessage()));
+    Table after = client.tables().get(table.getId().toString(), "tags");
+    assertTrue(after.getTags() == null || after.getTags().isEmpty());
+  }
+
   /**
    * The rule is about applying a term, not about holding one: a term that leaves Approved after it
    * was applied stays on the asset, and edits and re-sends that carry it unchanged still succeed.

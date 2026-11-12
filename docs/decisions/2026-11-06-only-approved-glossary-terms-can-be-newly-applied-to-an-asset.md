@@ -44,4 +44,5 @@ client applied the term. CSV import already rejected a non-Approved term on ever
 - `/columns/bulk-update-preview` has no per-column error, so a rejected term fails the whole
   preview with a 400.
 - CSV import keeps its stricter per-row check, which also rejects a non-Approved term the asset
-  already holds.
+  already holds. So does a term's `assets/add`: it exists only to apply the term, so a term that is
+  not Approved is rejected for every asset in the request, whether or not one already holds it.

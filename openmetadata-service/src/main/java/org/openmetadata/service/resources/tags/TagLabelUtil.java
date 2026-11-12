@@ -612,8 +612,9 @@ public class TagLabelUtil {
 
   /**
    * Only an Approved glossary term can be applied to a data asset, whichever API applies it: the UI
-   * offers no other. Callers pass the terms a write newly applies, so a term that leaves Approved
-   * later stays on the assets that already hold it.
+   * offers no other. Rejects every term in {@code termFqns} that is not Approved, whatever an asset
+   * already holds; {@code ApprovedGlossaryTermGuard} narrows a write
+   * to the terms it newly applies before calling this.
    */
   public static void checkGlossaryTermsApproved(Set<String> termFqns) {
     unapprovedGlossaryTerms(termFqns).stream()
