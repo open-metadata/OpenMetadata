@@ -972,6 +972,17 @@ UPDATE entity_extension SET json = json - 'authenticationMechanism'
 WHERE extension LIKE 'user.version.%'
   AND json -> 'authenticationMechanism' IS NOT NULL;
 
+-- Data 360 Pipeline extracts lineage and run status in its metadata agent. Stored services
+-- still carry the old `true` flags, which make the UI and AutoPilot offer separate Lineage
+-- and Usage agents that cannot run on a pipeline service.
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+    jsonb_set(json::jsonb, '{connection,config,supportsLineageExtraction}', 'false'::jsonb),
+    '{connection,config,supportsUsageExtraction}', 'false'::jsonb
+)
+WHERE serviceType = 'Data360Pipeline'
+  AND json -> 'connection' -> 'config' IS NOT NULL;
+
 -- Data Insights: keep test case definitions out of the data-asset charts.
 --
 -- testCase is now aliased into di-data-assets-* by dataInsightAliases so a chart can count test
@@ -1028,14 +1039,3 @@ WHERE name IN (
   )
   AND json -> 'chartDetails' ->> 'groupBy' = 'entityType.keyword'
   AND COALESCE(json -> 'chartDetails' -> 'excludeGroups', 'null'::jsonb) <> '["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]'::jsonb;
-
--- Data 360 Pipeline extracts lineage and run status in its metadata agent. Stored services
--- still carry the old `true` flags, which make the UI and AutoPilot offer separate Lineage
--- and Usage agents that cannot run on a pipeline service.
-UPDATE pipeline_service_entity
-SET json = jsonb_set(
-    jsonb_set(json::jsonb, '{connection,config,supportsLineageExtraction}', 'false'::jsonb),
-    '{connection,config,supportsUsageExtraction}', 'false'::jsonb
-)
-WHERE serviceType = 'Data360Pipeline'
-  AND json -> 'connection' -> 'config' IS NOT NULL;

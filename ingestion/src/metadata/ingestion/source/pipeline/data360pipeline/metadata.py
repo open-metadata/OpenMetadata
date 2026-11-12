@@ -20,7 +20,9 @@ from metadata.ingestion.source.pipeline.data360pipeline.operational import (
 )
 
 
-class Data360PipelineSource(Data360PipelineLineageMixin, Data360PipelineStatusMixin):
+class Data360PipelineSource(  # pyright: ignore[reportIncompatibleMethodOverride]
+    Data360PipelineLineageMixin, Data360PipelineStatusMixin
+):
     """
     Extracts DataStreams, Calculated Insights and DataTransforms as pipelines, with
     their run status and lineage, in one metadata run, as every other pipeline

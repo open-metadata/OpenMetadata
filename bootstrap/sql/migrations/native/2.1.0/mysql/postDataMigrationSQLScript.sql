@@ -982,6 +982,18 @@ UPDATE entity_extension SET json = JSON_REMOVE(json, '$.authenticationMechanism'
 WHERE extension LIKE 'user.version.%'
   AND JSON_CONTAINS_PATH(json, 'one', '$.authenticationMechanism');
 
+-- Data 360 Pipeline extracts lineage and run status in its metadata agent. Stored services
+-- still carry the old `true` flags, which make the UI and AutoPilot offer separate Lineage
+-- and Usage agents that cannot run on a pipeline service.
+UPDATE pipeline_service_entity
+SET json = JSON_SET(
+    json,
+    '$.connection.config.supportsLineageExtraction', false,
+    '$.connection.config.supportsUsageExtraction', false
+)
+WHERE serviceType = 'Data360Pipeline'
+  AND JSON_EXTRACT(json, '$.connection.config') IS NOT NULL;
+
 -- Data Insights: keep test case definitions out of the data-asset charts.
 --
 -- testCase is now aliased into di-data-assets-* by dataInsightAliases so a chart can count test
@@ -1038,15 +1050,3 @@ WHERE name IN (
   )
   AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.chartDetails.groupBy')) = 'entityType.keyword'
   AND COALESCE(JSON_EXTRACT(json, '$.chartDetails.excludeGroups'), CAST('null' AS JSON)) <> CAST('["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]' AS JSON);
-
--- Data 360 Pipeline extracts lineage and run status in its metadata agent. Stored services
--- still carry the old `true` flags, which make the UI and AutoPilot offer separate Lineage
--- and Usage agents that cannot run on a pipeline service.
-UPDATE pipeline_service_entity
-SET json = JSON_SET(
-    json,
-    '$.connection.config.supportsLineageExtraction', false,
-    '$.connection.config.supportsUsageExtraction', false
-)
-WHERE serviceType = 'Data360Pipeline'
-  AND JSON_EXTRACT(json, '$.connection.config') IS NOT NULL;
