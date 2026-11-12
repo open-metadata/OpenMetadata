@@ -60,6 +60,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ViewPermissionFilter;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -489,14 +490,19 @@ public class KnowledgePageRepository extends EntityRepository<Page> {
   public List<PageHierarchy> listHierarchy(
       ListFilter filter, int limit, SecurityContext securityContext, Authorizer authorizer) {
     List<PageHierarchy> pageHierarchyList = new ArrayList<>();
-    boolean admin = DefaultAuthorizer.getSubjectContext(securityContext).isAdmin();
+    // Each page is checked only when a rule could refuse one the listing's check allowed.
+    boolean rowsMayDiffer =
+        RowDecisionGate.mayDiffer(
+            DefaultAuthorizer.getSubjectContext(securityContext),
+            Entity.PAGE,
+            List.of(MetadataOperation.VIEW_BASIC));
     EntityUtil.Fields fields = getFields("parent,children");
-    if (!admin) {
+    if (rowsMayDiffer) {
       fields = ResourceContext.authorizationFields(this, fields);
     }
 
     List<Page> pages = listAfter(null, fields, filter, limit, null).getData();
-    if (!admin) {
+    if (rowsMayDiffer) {
       // Built from the pages the caller may view, so the tree and its child counts match what
       // opens.
       pages =
