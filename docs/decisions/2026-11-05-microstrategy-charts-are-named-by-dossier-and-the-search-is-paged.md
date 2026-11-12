@@ -1,9 +1,9 @@
 # MicroStrategy charts are named by dossier, and the dossier search is paged and project-scoped
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path) · v3 2026-11-12 (charts renamed by a server migration)
 - **Deciders:** OpenMetadata ingestion maintainers
-- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`)
+- **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
 - **Related:** ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing
 
 ## Context
@@ -19,7 +19,8 @@ project, labelled with the wrong project, and its definition read once per proje
 also asked for every result in one response (`limit=-1`).
 
 ## Decision
-- A chart is named `<dossierId>_<pageKey>_<visualizationKey>`. Page and visualization keys contain
+- A chart is named `<dossierId>_<pageKey><visualizationKey>`: the old name with the dossier id as
+  a prefix, so a migration can build it from what is stored. Page and visualization keys contain
   no underscore, so the name is unambiguous and needs no FQN quoting.
 - The search is scoped by the `X-MSTR-ProjectID` header and paged 500 results at a time
   (`SEARCH_PAGE_SIZE`). Projects are filtered by `projectFilterPattern` before their dossiers are
@@ -27,10 +28,16 @@ also asked for every result in one response (`limit=-1`).
 - When a dossier's existing dashboard or charts cannot be read from OpenMetadata, its dashboard
   and charts are left as they are and stale charts are not deleted in that run. A chart list
   built without that read would unlink them.
-- On the first run after the upgrade, a new chart takes the description, tags, glossary terms,
-  owners, domains, data products, custom properties and life cycle of the chart its dossier still
-  links under the old name. An old chart shared by several dossiers gives its metadata to each
-  of their new charts.
+- The 2.1.0 server migration (`MicroStrategyChartRename`) renames the charts already ingested, so
+  every upgrade to 2.1, from 1.x or 2.0.x, runs it. Every release since the connector was added
+  (1.6) named a dashboard by its dossier id and a chart `<pageKey><visualizationKey>`, so each chart
+  a dashboard links becomes `<dashboardName>_<oldName>` in place and keeps its id, tags, owners,
+  followers and threads. A chart the old names made shared by several dashboards is renamed for
+  the one whose id sorts first and copied, with its user-added metadata, for each of the others.
+  Copying it in the connector instead would keep one-off migration code in every run.
+- The migration reads charts through the repository, so it runs after the 2.1.0 conversation and
+  custom property migrations. A 2.0 backport registers it in 2.0.8, whose code matches that
+  schema; a chart already named after its dashboard is skipped, so it is safe to run twice.
 - A chart request names its dashboard once that dashboard exists. A chart update without
   `dashboards` deletes the dashboard → chart relationship server-side. A new dashboard is created
   after its charts and links them itself.
@@ -50,10 +57,10 @@ also asked for every result in one response (`limit=-1`).
   are not linked from the dashboard, so a run with such a dossier deletes no stale data model.
 
 ## Consequences
-- The upgrade renames every MicroStrategy chart. With `markDeletedCharts` on, the first run
-  soft-deletes the charts named the old way, except those linked to a dossier whose definition
-  cannot be read. Their user-added metadata moves to the new charts. Followers, votes,
-  certification and manually drawn lineage stay on the soft-deleted chart.
+- The upgrade renames every MicroStrategy chart, and the first ingestion run finds them under
+  their new names. A copy made for a shared chart has a new id, so its followers are copied but its
+  votes, threads and manually drawn lineage stay on the renamed original. A chart linked to no
+  dashboard keeps its old name and is soft-deleted as stale.
 - A server that keeps failing to render some definitions keeps stale data models until it renders
   them. Reverting that needs a per-dossier stale scope, which `deleteStale` does not have.
 

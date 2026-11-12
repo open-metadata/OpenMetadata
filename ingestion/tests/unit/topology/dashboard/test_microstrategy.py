@@ -29,10 +29,7 @@ from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
     MicroStrategyConnection,
 )
-from metadata.generated.schema.type.basic import Markdown, Uuid
-from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
-from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import SourceListing
 from metadata.ingestion.lineage.models import Dialect
 from metadata.ingestion.lineage.parser import LineageParser
@@ -532,44 +529,22 @@ class TestSource:
             names += [either.right.name.root for either in source.yield_dashboard_chart(details)]
 
         assert names == [
-            f"{OFFICE_ROYALE['id']}_K53_W63",
-            f"{OFFICE_ROYALE['id']}_K53_W64",
-            f"{AIRLINE['id']}_K53_W63",
+            f"{OFFICE_ROYALE['id']}_K53W63",
+            f"{OFFICE_ROYALE['id']}_K53W64",
+            f"{AIRLINE['id']}_K53W63",
         ]
 
-    def test_charts_name_their_existing_dashboard_and_inherit_legacy_metadata(self, client):
-        # A chart update that leaves out its dashboards unlinks them, and the charts that
-        # existed under the old `<pageKey><vizKey>` names hold metadata users added by hand.
+    def test_charts_name_their_existing_dashboard(self, client):
+        # A chart update that leaves out its dashboards unlinks them from it.
         source = _source(client)
-        legacy = SimpleNamespace(
-            description=Markdown("Written by hand"),
-            tags=[TagLabel(tagFQN="PII.Sensitive", source="Classification", labelType="Manual", state="Confirmed")],
-            owners=EntityReferenceList(root=[EntityReference(id=Uuid(USER_ID), type="user")]),
-            domains=EntityReferenceList(
-                root=[EntityReference(id=Uuid(USER_ID), type="domain", fullyQualifiedName="Sales")]
-            ),
-            dataProducts=None,
-            extension=None,
-            lifeCycle=None,
-        )
-        existing = SimpleNamespace(
+        source.metadata.get_by_name.return_value = SimpleNamespace(
             fullyQualifiedName=SimpleNamespace(root=f"mstr.{OFFICE_ROYALE['id']}"),
-            charts=SimpleNamespace(
-                root=[SimpleNamespace(name="K53W63", id=USER_ID), SimpleNamespace(name="other_new_name", id=USER_ID)]
-            ),
         )
-        source.metadata.get_by_name.return_value = existing
-        source.metadata.get_by_id.return_value = legacy
 
-        w63, w64 = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
+        charts = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
 
-        assert [d.root for d in w63.dashboards] == [f"mstr.{OFFICE_ROYALE['id']}"]
-        assert w63.description.root == "Written by hand"
-        assert [t.tagFQN.root for t in w63.tags] == ["PII.Sensitive"]
-        assert w63.owners == legacy.owners
-        assert [d.root for d in w63.domains] == ["Sales"]
-        assert w64.description is None
-        assert w64.tags is None
+        assert [[d.root for d in chart.dashboards] for chart in charts] == [[f"mstr.{OFFICE_ROYALE['id']}"]] * 2
+        assert all(chart.description is None and chart.tags is None for chart in charts)
 
     def test_a_failed_dashboard_lookup_leaves_the_dossier_and_its_charts_as_they_are(self, client):
         # A failed OpenMetadata read must not turn into an empty chart list, which would unlink
@@ -588,20 +563,6 @@ class TestSource:
             assert list(source.mark_charts_as_deleted()) == []
         delete.assert_not_called()
 
-    def test_a_failed_legacy_chart_read_only_skips_its_metadata(self, client):
-        source = _source(client)
-        source.metadata.get_by_name.return_value = SimpleNamespace(
-            fullyQualifiedName=SimpleNamespace(root=f"mstr.{OFFICE_ROYALE['id']}"),
-            charts=SimpleNamespace(root=[SimpleNamespace(name="K53W63", id=USER_ID)]),
-        )
-        source.metadata.get_by_id.side_effect = APIError({"code": 500, "message": "boom"})
-
-        charts = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
-
-        assert len(charts) == 2
-        assert all(chart.description is None for chart in charts)
-        assert not source.charts_unknown
-
     def test_a_failed_lookup_for_an_unreadable_dossier_keeps_its_dashboard(self, client):
         source = _source(client)
         source.dashboard_source_state = set()
@@ -616,7 +577,6 @@ class TestSource:
         charts = [either.right for either in source.yield_dashboard_chart(_details(source, OFFICE_ROYALE))]
 
         assert all(chart.dashboards is None for chart in charts)
-        source.metadata.get_by_id.assert_not_called()
 
     def test_dashboard_carries_description_and_owner(self, client):
         source = _source(client)
