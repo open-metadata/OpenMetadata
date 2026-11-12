@@ -38,7 +38,7 @@ import {
 } from '../../../../rest/queries/tableQuery';
 import {
   formatDateTime,
-  formatRunDuration,
+  formatDuration,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
@@ -83,7 +83,7 @@ const RunDuration = ({
 }) => {
   const { t } = useTranslation();
   // The slot stays for a run with no duration yet, a queued one, as in the mock.
-  const text = isUndefined(duration) ? NO_VALUE : formatRunDuration(duration);
+  const text = isUndefined(duration) ? NO_VALUE : formatDuration(duration);
 
   return (
     <Box

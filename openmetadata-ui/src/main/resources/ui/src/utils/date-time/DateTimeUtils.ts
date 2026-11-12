@@ -521,7 +521,7 @@ export const formatIsoDuration = (iso: string): string => {
   return d.toHuman() || iso;
 };
 
-export const formatRunDuration = (milliseconds: number) => {
+export const formatDuration = (milliseconds: number, length?: number) => {
   // Only clock skew between the runner and the server makes a negative duration.
   if (milliseconds < 0) {
     return '—';
@@ -540,7 +540,8 @@ export const formatRunDuration = (milliseconds: number) => {
   return seconds < 60
     ? `${seconds.toFixed(1)}s`
     : convertMillisecondsToHumanReadableFormat(
-        Math.round(milliseconds / 1000) * 1000
+        Math.round(milliseconds / 1000) * 1000,
+        length
       );
 };
 

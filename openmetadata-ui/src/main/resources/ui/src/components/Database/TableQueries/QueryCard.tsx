@@ -47,8 +47,8 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import { useFqn } from '../../../hooks/useFqn';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
-  convertMillisecondsToHumanReadableFormat,
   customFormatDateTime,
+  formatDuration,
 } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
@@ -114,7 +114,7 @@ const QueryCard: FC<QueryCardProp> = ({
     }
 
     if (durationInMilliSeconds >= ONE_MINUTE_IN_MILLISECOND) {
-      return `${t('label.runs-for')} ${convertMillisecondsToHumanReadableFormat(
+      return `${t('label.runs-for')} ${formatDuration(
         durationInMilliSeconds,
         2
       )}`;

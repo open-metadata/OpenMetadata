@@ -181,7 +181,7 @@ describe('RunHistoryDrawer', () => {
     const [oldest, middle] = screen.getAllByTestId('run-history-item');
 
     expect(oldest).toHaveTextContent('08:10 · 2h 45m');
-    expect(middle).toHaveTextContent('08:10 · 42s');
+    expect(middle).toHaveTextContent('08:10 · 42.0s');
     expect(
       screen.getByText(/message\.ran-for-duration:\{"duration":"2h 45m"\}/)
     ).toBeInTheDocument();

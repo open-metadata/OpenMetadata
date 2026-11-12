@@ -28,7 +28,7 @@ import { isEmpty } from 'lodash';
 import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  convertMillisecondsToHumanReadableFormat,
+  formatDuration,
   getUtcOffsetLabel,
 } from '../../../utils/date-time/DateTimeUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
@@ -150,7 +150,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
             </div>
             <div className="tw:mt-px tw:text-xs tw:leading-tight tw:text-quaternary">
               {startTime ? `${startTime} · ` : ''}
-              {convertMillisecondsToHumanReadableFormat(r.durationMs, 2)}
+              {formatDuration(r.durationMs, 2)}
             </div>
           </button>
         );
@@ -200,10 +200,7 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
             {/* eslint-disable-next-line i18next/no-literal-string -- decorative middot separator */}
             {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
             {t('message.ran-for-duration', {
-              duration: convertMillisecondsToHumanReadableFormat(
-                run.durationMs,
-                2
-              ),
+              duration: formatDuration(run.durationMs, 2),
             })}
           </div>
         </div>

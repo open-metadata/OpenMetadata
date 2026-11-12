@@ -24,7 +24,7 @@ import {
 } from '../generated/entity/data/pipeline';
 import { TreeNode } from '../interface/tree.interface';
 import { getLayoutGutter } from './common/layout.utils';
-import { formatDateTime, formatRunDuration } from './date-time/DateTimeUtils';
+import { formatDateTime, formatDuration } from './date-time/DateTimeUtils';
 import { t } from './i18next/LocalUtil';
 import {
   getStatusBadgeClassName,
@@ -123,9 +123,9 @@ export const getTableViewData = (
       // a column (ADR:2026-11-04-pipeline-execution-metric-columns-render-only-when-reported).
       let duration = '--';
       if (startTime && endTime) {
-        duration = formatRunDuration(endTime - startTime);
+        duration = formatDuration(endTime - startTime);
       } else if (!isUndefined(executionTimeMs)) {
-        duration = formatRunDuration(executionTimeMs);
+        duration = formatDuration(executionTimeMs);
       }
 
       viewData.push({

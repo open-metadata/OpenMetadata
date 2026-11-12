@@ -13,7 +13,7 @@
 
 import { StatusType, Task } from '../generated/entity/data/pipeline';
 import { TreeNode } from '../interface/tree.interface';
-import { formatRunDuration } from './date-time/DateTimeUtils';
+import { formatDuration } from './date-time/DateTimeUtils';
 import {
   buildCompleteTree,
   getTableViewData,
@@ -57,7 +57,7 @@ describe('getTableViewData', () => {
     expect(rows).toHaveLength(2);
     expect(rows?.[0]).toMatchObject({
       name: 'load_orders',
-      duration: formatRunDuration(2000),
+      duration: formatDuration(2000),
       rowsRead: 1234,
       rowsWritten: 1200,
       logLink: 'https://orchestrator.example/runs/1',
@@ -92,8 +92,8 @@ describe('getTableViewData', () => {
       undefined
     );
 
-    expect(rows?.[0].duration).toBe(formatRunDuration(2000));
-    expect(rows?.[1].duration).toBe(formatRunDuration(90000));
+    expect(rows?.[0].duration).toBe(formatDuration(2000));
+    expect(rows?.[1].duration).toBe(formatDuration(90000));
   });
 });
 
