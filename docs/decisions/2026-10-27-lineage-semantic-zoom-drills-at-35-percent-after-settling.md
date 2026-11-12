@@ -2,11 +2,12 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-27 (initial); v2 2026-11-04 (a settled zoom is judged against the
-  zoom it last rested at)
-- **Deciders:** Chirag Madlani
+  zoom it last rested at); v3 2026-11-12 (a zoom-out at the minimum zoom goes up a level)
+- **Deciders:** Chirag Madlani; Mohit Yadav (v3)
 - **Guard:** `LineageMap.utils.test.ts` (threshold either side of 35%, nearest-centre box,
   drillable-with-children predicate); `PlatformLineage.spec.ts` (a fast zoom-in past the maximum
-  still drills); the settle delay and targeting are `reviewer`
+  still drills); `LineageMap.component.test.tsx` (wheel and button zoom-out at the minimum zoom);
+  the settle delay and targeting are `reviewer`
 - **Related:** #36363, #36370
 
 ## Context
@@ -28,8 +29,11 @@ pause would drill when a pinch overshoots while the user only zooms in to read a
   (`SEMANTIC_ZOOM_IN_SETTLE_MS`); any further move, a pan included, restarts that wait. When the
   viewport settles, it is compared with the zoom it last rested at, not with the move before:
   once the zoom reaches its maximum, the wheel keeps sending moves that no longer change the zoom.
-- Zooming out is unchanged: it returns to the parent level as soon as the graph fills less than a
-  third of the canvas.
+- Zooming out returns to the parent level as soon as the graph fills less than a third of the
+  canvas, or once the zoom reaches its minimum. At the minimum, d3-zoom drops a wheel gesture that
+  cannot change the zoom and the zoom-out button changes nothing, so no move arrives; a wheel-out or
+  zoom-out press there goes up a level directly. While a new scene settles and during the cooldown
+  it does nothing, so a zoom that reached the minimum then is not stuck there afterwards.
 
 ## Consequences
 Drilling takes about half the wheel steps it did. A user zooming in only to read a card drills a

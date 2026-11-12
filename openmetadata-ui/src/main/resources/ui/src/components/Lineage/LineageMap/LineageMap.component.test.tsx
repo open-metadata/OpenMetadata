@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { ReactNode, useEffect } from 'react';
 import { EntityType } from '../../../enums/entity.enum';
 import {
@@ -27,8 +33,9 @@ import LineageMap from './LineageMap.component';
 
 const mockNavigate = jest.fn();
 let mockSearch = '';
+let mockZoom = 1;
 const mockFlowInstance = {
-  getZoom: () => 1,
+  getZoom: () => mockZoom,
   setViewport: jest.fn(),
   fitBounds: jest.fn(),
   fitView: jest.fn(),
@@ -123,7 +130,13 @@ jest.mock(
 
 jest.mock(
   '../../Entity/EntityLineage/LineageControlButtons/LineageControlButtons',
-  () => () => null
+  () =>
+    ({ onZoomOut }: { onZoomOut?: () => void }) =>
+      (
+        <button data-testid="zoom-out" onClick={onZoomOut}>
+          zoom-out
+        </button>
+      )
 );
 
 jest.mock(
@@ -222,6 +235,7 @@ describe('LineageMap', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSearch = '';
+    mockZoom = 1;
     useLineageStore.getState().reset();
     document.cookie = 'lineageMapsOnboardingSeen=true; path=/';
   });
@@ -267,5 +281,71 @@ describe('LineageMap', () => {
     expect(getLineageScene).toHaveBeenLastCalledWith(
       expect.objectContaining({ lens: LineageLens.Domain })
     );
+  });
+
+  describe('zooming out at the minimum zoom', () => {
+    const waitForSceneToSettle = async () => {
+      expect(
+        await screen.findByTestId('lineage-map-canvas')
+      ).toBeInTheDocument();
+
+      // Opening a scene holds semantic zoom off while its landing settles.
+      act(() => {
+        jest.advanceTimersByTime(1300);
+      });
+    };
+
+    beforeEach(() => {
+      mockSearch = `?lineageBand=${LineageBand.Field}`;
+      (getLineageScene as jest.Mock).mockResolvedValue(
+        sceneWithLineage(LineageBand.Field)
+      );
+    });
+
+    const parentSceneNavigation = expect.objectContaining({
+      search: expect.stringContaining(`lineageBand=${LineageBand.Asset}`),
+    });
+
+    it('goes up a level on a wheel-out that can no longer change the zoom', async () => {
+      render(renderMap());
+      await waitForSceneToSettle();
+      mockZoom = 0.1;
+
+      fireEvent.wheel(screen.getByTestId('react-flow'), { deltaY: 120 });
+
+      expect(mockNavigate).toHaveBeenCalledWith(parentSceneNavigation, {
+        replace: true,
+      });
+    });
+
+    it('goes up a level from the zoom-out button', async () => {
+      render(renderMap());
+      await waitForSceneToSettle();
+      mockZoom = 0.1;
+
+      fireEvent.click(screen.getByTestId('zoom-out'));
+
+      expect(mockNavigate).toHaveBeenCalledWith(parentSceneNavigation, {
+        replace: true,
+      });
+    });
+
+    it('stays on the level above the minimum zoom, on a wheel-in, and while the scene settles', async () => {
+      render(renderMap());
+
+      expect(
+        await screen.findByTestId('lineage-map-canvas')
+      ).toBeInTheDocument();
+
+      mockZoom = 0.1;
+      fireEvent.wheel(screen.getByTestId('react-flow'), { deltaY: 120 });
+
+      await waitForSceneToSettle();
+      fireEvent.wheel(screen.getByTestId('react-flow'), { deltaY: -120 });
+      mockZoom = 0.4;
+      fireEvent.wheel(screen.getByTestId('react-flow'), { deltaY: 120 });
+
+      await waitFor(() => expect(mockNavigate).not.toHaveBeenCalled());
+    });
   });
 });

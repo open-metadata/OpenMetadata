@@ -35,11 +35,14 @@ const LineageControlButtons: FC<{
   miniMapVisible?: boolean;
   reactFlowInstance?: ReactFlowInstance;
   onFitView?: () => void;
+  // Called with each zoom-out press, read before the zoom changes.
+  onZoomOut?: () => void;
 }> = ({
   onToggleMiniMap,
   miniMapVisible = false,
   reactFlowInstance: controlledReactFlowInstance,
   onFitView,
+  onZoomOut,
 }) => {
   const { t } = useTranslation();
   const providerReactFlowInstance = useLineageStore((s) => s.reactFlowInstance);
@@ -51,8 +54,9 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleZoomOut = useCallback(() => {
+    onZoomOut?.();
     reactFlowInstance?.zoomOut();
-  }, [reactFlowInstance]);
+  }, [onZoomOut, reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
     if (onFitView) {

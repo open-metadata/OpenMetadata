@@ -1743,6 +1743,20 @@ const LineageMapCanvas = ({
     [pickZoomTargetNode]
   );
 
+  const zoomOutOneLevel = useCallback(
+    (currentScene: LineageScene) => {
+      lastSemanticZoomAtRef.current = Date.now();
+      const parentRequest = getParentSceneRequest(currentScene);
+      if (parentRequest) {
+        updateRequest(parentRequest);
+
+        return;
+      }
+      handleBandChange(getPreviousZoomBand(currentScene.band));
+    },
+    [handleBandChange, updateRequest]
+  );
+
   const handleMove = useCallback(
     (event: ZoomGestureEvent | null, viewport: { zoom: number }) => {
       // Any further move, a pan included, restarts the settle window.
@@ -1757,14 +1771,7 @@ const LineageMapCanvas = ({
       }
       const nextBand = getRequestedBand(scene, event, viewport.zoom);
       if (nextBand !== scene.band && !isDeeperBand(scene.band, nextBand)) {
-        lastSemanticZoomAtRef.current = now;
-        const parentRequest = getParentSceneRequest(scene);
-        if (parentRequest) {
-          updateRequest(parentRequest);
-
-          return;
-        }
-        handleBandChange(nextBand);
+        zoomOutOneLevel(scene);
 
         return;
       }
@@ -1784,12 +1791,40 @@ const LineageMapCanvas = ({
     },
     [
       getRequestedBand,
-      handleBandChange,
       handleSemanticZoomIn,
       isPlatformLineage,
       scene,
-      updateRequest,
+      zoomOutOneLevel,
     ]
+  );
+
+  // Once the zoom sits at its minimum, d3-zoom ignores a wheel gesture that
+  // cannot change it and the zoom-out button moves nothing, so no move reaches
+  // handleMove. Zooming out there still asks to go up a level, which a zoom
+  // that reached the minimum during the post-load cooldown otherwise never can.
+  // ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
+  const handleZoomOutAtMinimum = useCallback(() => {
+    if (!isPlatformLineage || !scene || !reactFlowInstance) {
+      return;
+    }
+    const isSemanticZoomPaused =
+      semanticZoomSuppressedRef.current ||
+      Date.now() - lastSemanticZoomAtRef.current < SEMANTIC_ZOOM_COOLDOWN;
+    if (
+      !isSemanticZoomPaused &&
+      reactFlowInstance.getZoom() <= MIN_ZOOM_VALUE
+    ) {
+      zoomOutOneLevel(scene);
+    }
+  }, [isPlatformLineage, reactFlowInstance, scene, zoomOutOneLevel]);
+
+  const handleCanvasWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (event.deltaY > 0) {
+        handleZoomOutAtMinimum();
+      }
+    },
+    [handleZoomOutAtMinimum]
   );
 
   useEffect(
@@ -2060,7 +2095,8 @@ const LineageMapCanvas = ({
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onNodesChange={flow.onNodesChange}
-        onPaneClick={handlePaneClick}>
+        onPaneClick={handlePaneClick}
+        onWheel={handleCanvasWheel}>
         {loading && (
           <div
             className="lineage-map-loading tw:absolute tw:inset-0 tw:z-30 tw:grid tw:place-items-center tw:bg-primary/80"
@@ -2113,6 +2149,7 @@ const LineageMapCanvas = ({
             reactFlowInstance={reactFlowInstance}
             onFitView={handleFitView}
             onToggleMiniMap={() => setMiniMapVisible((visible) => !visible)}
+            onZoomOut={handleZoomOutAtMinimum}
           />
         </Panel>
         <Panel className="lineage-layers-panel" position="bottom-left">
