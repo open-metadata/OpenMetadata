@@ -76,7 +76,7 @@ export const getLanguageDirection = (i18n: Pick<I18n, 'dir' | 'language'>) =>
 export const applyDocumentLanguage = (language: string) => {
   const root = document.documentElement;
   root.lang = getBcp47Locale(language);
-  root.dir = i18next.dir(getBcp47Locale(language));
+  root.dir = i18next.dir(root.lang);
 };
 
 // Returns the current locale to use in cronstrue

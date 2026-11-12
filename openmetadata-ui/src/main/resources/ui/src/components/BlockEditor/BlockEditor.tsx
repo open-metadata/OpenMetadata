@@ -283,9 +283,9 @@ const BlockEditor = forwardRef<BlockEditorRef, BlockEditorProps>(
       if (!editorWrapper) {
         return;
       }
-      editorWrapper.setAttribute('dir', getLanguageDirection(i18n));
-      editorWrapper.style.textAlign =
-        getLanguageDirection(i18n) === 'rtl' ? 'right' : 'left';
+      const direction = getLanguageDirection(i18n);
+      editorWrapper.setAttribute('dir', direction);
+      editorWrapper.style.textAlign = direction === 'rtl' ? 'right' : 'left';
     }, [i18n]);
 
     return (
