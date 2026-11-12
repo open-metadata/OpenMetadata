@@ -36,6 +36,7 @@ import {
   Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
+import { uniqBy } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -152,6 +153,14 @@ interface OntologyConceptInspectorProps {
   readonly confirmDialog?: ReactNode;
 }
 
+interface RelationDraft {
+  /** Unset until the user picks one, so the default can follow the offered types. */
+  readonly relationType?: string;
+  readonly targetId: string;
+}
+
+const EMPTY_RELATION_DRAFT: RelationDraft = { targetId: '' };
+
 interface RelationAuthoringProps {
   readonly canCreateRelationType: boolean;
   readonly concept: OntologyConcept;
@@ -161,6 +170,12 @@ interface RelationAuthoringProps {
   readonly model: OntologyStudioModel;
   /** A relation type to start from, e.g. one a synonym named. */
   readonly initialType?: string;
+  /**
+   * The choices so far. The panel keeps them: in Edit mode the working copy can
+   * arrive after the form opens and re-mount the body, which must not empty it.
+   */
+  readonly draft: RelationDraft;
+  readonly onDraftChange: (draft: RelationDraft) => void;
   readonly onClose: () => void;
   readonly onSave: (targetId: string, relationType: string) => Promise<boolean>;
   /** The reason the relation cannot be written, or undefined; shown before any write. */
@@ -233,6 +248,123 @@ const TargetConceptSelect = ({
   );
 };
 
+const BROWSE_RELATION_TYPES = '__browse-relation-types__';
+const DEFAULT_RELATION_TYPE = 'broader';
+
+/**
+ * Every type once, in group order, with its inverse as the chooser shows it; a
+ * "doesn't fit" type says why but stays selectable.
+ */
+const relationTypeItems = (
+  groups: RelationTypeOptionGroup[],
+  current: string,
+  inverseLabel: string
+) => {
+  const options = uniqBy(
+    groups.flatMap((group) => group.options),
+    'id'
+  );
+  const items = options.map((option) => ({
+    id: option.id,
+    label: option.label,
+    supportingText:
+      [
+        option.inverseLabel ? `${inverseLabel}: ${option.inverseLabel}` : '',
+        option.isUnfit ? option.scopeLabel : '',
+      ]
+        .filter(Boolean)
+        .join(' · ') || undefined,
+  }));
+  if (current && !options.some(({ id }) => id === current)) {
+    items.push({
+      id: current,
+      label: humanizeName(current.replace(/^new:/, '')),
+      supportingText: undefined,
+    });
+  }
+
+  return items;
+};
+
+/** The handoff's default when the type is still open and the ontology offers it. */
+const defaultRelationType = (
+  groups: RelationTypeOptionGroup[],
+  initialType: string
+) =>
+  initialType ||
+  (groups.some((group) =>
+    group.options.some(({ id }) => id === DEFAULT_RELATION_TYPE)
+  )
+    ? DEFAULT_RELATION_TYPE
+    : '');
+
+const RelationTypeSelect = ({
+  canCreateType,
+  groups,
+  isDisabled,
+  value,
+  onChange,
+  onCreateType,
+}: {
+  readonly canCreateType: boolean;
+  readonly groups: RelationTypeOptionGroup[];
+  readonly isDisabled: boolean;
+  readonly value: string;
+  readonly onChange: (id: string) => void;
+  readonly onCreateType: () => void;
+}) => {
+  const { t } = useTranslation();
+  // The full chooser keeps search, glosses and (with permission) a new type.
+  const items = [
+    ...relationTypeItems(groups, value, t('label.inverse')),
+    {
+      id: BROWSE_RELATION_TYPES,
+      label: t(
+        canCreateType
+          ? 'label.ontology-browse-or-create-relationship-types'
+          : 'label.ontology-browse-relationship-types'
+      ),
+      supportingText: undefined,
+    },
+  ];
+
+  return (
+    <Select
+      className="tw:w-full"
+      data-testid="ontology-relationship-type"
+      isDisabled={isDisabled}
+      items={items}
+      label={t('label.relationship')}
+      placeholder={t('label.choose-relationship')}
+      size="sm"
+      value={value || null}
+      onChange={(key) => {
+        // Choosing a target rebuilds the options (fit depends on it), and the
+        // select then reports no key; the user's type must survive that.
+        if (key === null) {
+          return;
+        }
+        const id = String(key);
+        if (id === BROWSE_RELATION_TYPES) {
+          onCreateType();
+
+          return;
+        }
+        onChange(id);
+      }}>
+      {(item) => (
+        <Select.Item
+          data-testid={`relation-type-${item.id}`}
+          id={item.id}
+          key={item.id}
+          label={item.label}
+          supportingText={item.supportingText}
+        />
+      )}
+    </Select>
+  );
+};
+
 const RelationAuthoring = ({
   canCreateRelationType,
   concept,
@@ -241,13 +373,22 @@ const RelationAuthoring = ({
   isAvailable,
   isOpen,
   model,
+  draft,
+  onDraftChange,
   onClose,
   onSave,
   check,
 }: RelationAuthoringProps) => {
   const { t } = useTranslation();
-  const [targetId, setTargetId] = useState('');
-  const [relationType, setRelationType] = useState(initialType);
+  const { targetId } = draft;
+  const relationType =
+    draft.relationType ?? defaultRelationType(groups, initialType);
+  const setTargetId = (id: string) =>
+    onDraftChange({ relationType, targetId: id });
+  const setRelationType = (type: string) =>
+    onDraftChange({ relationType: type, targetId });
+  // Browsing or creating a type goes through the full chooser.
+  const [isCreatingType, setIsCreatingType] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const targetConcepts = useMemo(
     () => model.concepts.filter((candidate) => candidate.id !== concept.id),
@@ -259,8 +400,6 @@ const RelationAuthoring = ({
     const saved = await onSave(targetId, relationType);
     setIsSaving(false);
     if (saved) {
-      setTargetId('');
-      setRelationType('');
       onClose();
     }
   };
@@ -275,7 +414,7 @@ const RelationAuthoring = ({
     return null;
   }
 
-  if (!relationType) {
+  if (isCreatingType) {
     return (
       <ConceptFormCard testId="ontology-relationship-form">
         <RelationshipTypePicker
@@ -284,8 +423,11 @@ const RelationAuthoring = ({
           sourceId={concept.id}
           sourceLabel={getEntityName(concept)}
           targetLabel={t('label.target')}
-          onCancel={onClose}
-          onSelect={setRelationType}
+          onCancel={() => setIsCreatingType(false)}
+          onSelect={(type) => {
+            setRelationType(type);
+            setIsCreatingType(false);
+          }}
         />
       </ConceptFormCard>
     );
@@ -294,24 +436,14 @@ const RelationAuthoring = ({
   return (
     <ConceptFormCard testId="ontology-relationship-form">
       <div className="tw:grid tw:grid-cols-2 tw:gap-3">
-        <Box direction="col" gap={2}>
-          <Typography
-            className="tw:text-secondary"
-            size="text-sm"
-            weight="medium">
-            {t('label.relationship')}
-          </Typography>
-          <Button
-            className="tw:justify-between"
-            color="secondary"
-            data-testid="ontology-relationship-type"
-            iconTrailing={ChevronDown}
-            isDisabled={isSaving}
-            size="sm"
-            onPress={() => setRelationType('')}>
-            <span className="tw:truncate">{relationLabel}</span>
-          </Button>
-        </Box>
+        <RelationTypeSelect
+          canCreateType={canCreateRelationType}
+          groups={groups}
+          isDisabled={isSaving}
+          value={relationType}
+          onChange={setRelationType}
+          onCreateType={() => setIsCreatingType(true)}
+        />
         <TargetConceptSelect
           concepts={targetConcepts}
           isDisabled={isSaving}
@@ -339,7 +471,7 @@ const RelationAuthoring = ({
         <Button
           color="primary"
           data-testid="ontology-relationship-submit"
-          isDisabled={!targetId || Boolean(issue)}
+          isDisabled={!targetId || !relationType || Boolean(issue)}
           isLoading={isSaving}
           size="sm"
           onPress={() => void save()}>
@@ -490,6 +622,8 @@ const OntologyConceptInspector = ({
   const { t } = useTranslation();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
   const [relationPreset, setRelationPreset] = useState('');
+  const [relationDraft, setRelationDraft] =
+    useState<RelationDraft>(EMPTY_RELATION_DRAFT);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const bindings = useOntologyConceptBindings(concept.id);
   const { hasCopied: hasCopiedIri, onCopyToClipBoard } = useClipboard(
@@ -719,6 +853,7 @@ const OntologyConceptInspector = ({
         canCreateRelationType={canCreateRelationType}
         check={checkAddRelation}
         concept={concept}
+        draft={relationDraft}
         groups={relationTypeGroups}
         initialType={relationPreset}
         isAvailable={canAddRelation}
@@ -728,7 +863,9 @@ const OntologyConceptInspector = ({
         onClose={() => {
           setAuthoring(undefined);
           setRelationPreset('');
+          setRelationDraft(EMPTY_RELATION_DRAFT);
         }}
+        onDraftChange={setRelationDraft}
         onSave={onAddRelation}
       />
     ) : null;
@@ -944,7 +1081,12 @@ const OntologyConceptInspector = ({
     kind: 'property' | 'relation',
     isAvailable: boolean
   ) =>
-    isAvailable && authoring !== kind ? () => setAuthoring(kind) : undefined;
+    isAvailable && authoring !== kind
+      ? () => {
+          setRelationDraft(EMPTY_RELATION_DRAFT);
+          setAuthoring(kind);
+        }
+      : undefined;
 
   const renderDescription = () =>
     editor ? (
@@ -1019,6 +1161,7 @@ const OntologyConceptInspector = ({
         savedSynonyms={concept.synonyms}
         onConvert={(phrase) => {
           setRelationPreset(findRelationType?.(phrase) ?? '');
+          setRelationDraft(EMPTY_RELATION_DRAFT);
           setAuthoring('relation');
         }}
       />

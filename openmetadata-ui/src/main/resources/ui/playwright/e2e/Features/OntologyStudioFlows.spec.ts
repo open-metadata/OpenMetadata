@@ -34,10 +34,10 @@ import {
   findEmptyCanvasPoint,
   openOntologyInStudio,
   openPageAs,
+  openReleaseHistory,
   readNodePositions,
   removeFlowOntologies,
   STUDIO_PATH,
-  openReleaseHistory,
 } from '../../utils/ontologyStudio';
 import { disableAiAppMode, enableAiAppMode } from '../Utils/appMode';
 
@@ -586,9 +586,9 @@ test.describe(
           await page.getByTestId('mode-tab-view').click();
           await page.getByTestId('ontology-version-published').click();
           await expect(page).toHaveURL(/version=published/);
-          await expect(page.getByTestId('ontology-version-published')).toContainText(
-            'v0.1.0'
-          );
+          await expect(
+            page.getByTestId('ontology-version-published')
+          ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId(`ontology-tree-term-${actors.concept.id}`)
@@ -700,9 +700,9 @@ test.describe(
           await closePublicationDialog(author);
           await author.getByTestId('mode-tab-view').click();
           await author.getByTestId('ontology-version-published').click();
-          await expect(author.getByTestId('ontology-version-published')).toContainText(
-            `v${release.semanticVersion}`
-          );
+          await expect(
+            author.getByTestId('ontology-version-published')
+          ).toContainText(`v${release.semanticVersion}`);
           await attachStudioShot(author, testInfo, `p1-reviewed-${mode}`);
         } finally {
           await actors.cleanup();
@@ -1012,9 +1012,9 @@ test.describe(
 
           await page.getByTestId('mode-tab-view').click();
           await page.getByTestId('ontology-version-published').click();
-          await expect(page.getByTestId('ontology-version-published')).toContainText(
-            'v0.1.0'
-          );
+          await expect(
+            page.getByTestId('ontology-version-published')
+          ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId('ontology-tree-term-' + concepts[0].id)

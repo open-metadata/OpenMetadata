@@ -39,8 +39,8 @@ import {
   findOntologyInScopeMenu,
   openExportAdvanced,
   openOntologyTransfer,
-  readNodePositions,
   openReleaseHistory,
+  readNodePositions,
 } from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
@@ -157,8 +157,8 @@ const activateRelease = async (
   expect(state.activeReleaseId).toBe(release.id);
   expect(state.activationRevision).toBe(expectedRevision + 1);
   await expect(page.getByTestId('ontology-version-published')).toContainText(
-            release.semanticVersion ?? String(release.releaseRevision)
-          );
+    release.semanticVersion ?? String(release.releaseRevision)
+  );
   if (action === 'publish') {
     await expect(page.getByTestId('ontology-release-stage')).toContainText(
       'Published'
@@ -1577,17 +1577,17 @@ test.describe(
         await expect(
           author.getByTestId('ontology-publication-modal')
         ).toHaveCount(0);
-        await expect(author.getByTestId('ontology-version-published')).toContainText(
-            'v0.1.0'
-          );
+        await expect(
+          author.getByTestId('ontology-version-published')
+        ).toContainText('v0.1.0');
         await author.getByTestId('ontology-version-published').click();
         await expect(author).toHaveURL(/version=published/);
         await expect(
           author.getByTestId('ontology-version-published')
         ).toHaveAttribute('aria-pressed', 'true');
-        await expect(author.getByTestId('ontology-version-published')).toContainText(
-            'v0.1.0'
-          );
+        await expect(
+          author.getByTestId('ontology-version-published')
+        ).toContainText('v0.1.0');
         expect(loads).toBe(0);
         await g6Shot(author, testInfo, 'published');
       } finally {

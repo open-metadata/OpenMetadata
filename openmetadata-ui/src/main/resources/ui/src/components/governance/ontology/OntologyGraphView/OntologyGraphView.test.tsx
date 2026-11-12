@@ -81,6 +81,45 @@ import { showErrorToast } from '../../../../utils/ToastUtils';
 import { OntologyGraphSearchSlotContext } from './OntologyGraphSearchSlot.context';
 import OntologyGraphView from './OntologyGraphView';
 
+// The type list is virtualized; jsdom has no layout, so without a size it
+// renders only the first rows. Restored after each test.
+const sizeSpies: jest.SpyInstance[] = [];
+const renderEveryOption = () => {
+  if (sizeSpies.length === 0) {
+    sizeSpies.push(
+      jest
+        .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+        .mockReturnValue(2000),
+      jest
+        .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+        .mockReturnValue(1000)
+    );
+  }
+};
+
+afterEach(() => {
+  sizeSpies.splice(0).forEach((spy) => spy.mockRestore());
+});
+
+const openRelationTypes = async () => {
+  renderEveryOption();
+  fireEvent.click(
+    within(await screen.findByTestId('ontology-relationship-type')).getByRole(
+      'button'
+    )
+  );
+};
+
+/** The relationship type is a select in the inline form; this opens it and picks one. */
+const chooseRelationType = async (id: string) => {
+  fireEvent.click(
+    within(await screen.findByTestId('ontology-relationship-type')).getByRole(
+      'button'
+    )
+  );
+  fireEvent.click(screen.getByTestId(`relation-type-${id}`));
+};
+
 const mockGraphProps = jest.fn();
 const mockGraphControls = {
   clearEdgeSelection: jest.fn(),
@@ -517,10 +556,11 @@ describe('OntologyGraphView', () => {
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
-    expect(
-      await screen.findByTestId(`relation-type-${PART_OF}`)
-    ).toHaveTextContent('Has Part');
+    expect(screen.getByTestId(`relation-type-${PART_OF}`)).toHaveTextContent(
+      'Has Part'
+    );
     expect(
       screen.getByTestId(`relation-type-${GOVERNED_BY}`)
     ).toHaveTextContent('Governed By');
@@ -545,11 +585,47 @@ describe('OntologyGraphView', () => {
     );
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
-    expect(screen.getByTestId('relationship-type-picker')).toBeVisible();
     expect(
       screen.queryByTestId(`relation-type-${PART_OF}`)
     ).not.toBeInTheDocument();
+  });
+
+  it('keeps a relationship type picked before the working copy finished loading', async () => {
+    render(
+      <OntologyGraphView
+        isEditing
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+      />
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    // Synchronously, so the pick lands before the working copy arrives.
+    expect(
+      screen.queryByTestId('ontology-concept-editor')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(screen.getByTestId('ontology-relationship-type')).getByRole(
+        'button'
+      )
+    );
+    fireEvent.click(screen.getByTestId(`relation-type-${PART_OF}`));
+
+    await screen.findByTestId('ontology-concept-editor');
+
+    // The trigger shows the chosen value; the field also holds a hidden list of every option.
+    expect(
+      within(screen.getByTestId('ontology-relationship-type')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('Part Of');
   });
 
   it('submits a registry relation through the inspector and resets the form after saving', async () => {
@@ -566,8 +642,10 @@ describe('OntologyGraphView', () => {
     await screen.findByTestId('native-ontology-graph');
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    // Edit mode is ready once the working copy loaded and the editor form is up.
+    await screen.findByTestId('ontology-concept-editor');
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
-    fireEvent.click(screen.getByTestId(`relation-type-${PART_OF}`));
+    await chooseRelationType(PART_OF);
     fireEvent.click(screen.getByRole('button', { name: /label\.target/ }));
     fireEvent.click(await screen.findByRole('option', { name: 'Orphan' }));
     fireEvent.click(screen.getByTestId('ontology-relationship-submit'));
@@ -593,10 +671,9 @@ describe('OntologyGraphView', () => {
 
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
 
-    expect(screen.getByTestId('relationship-type-picker')).toBeVisible();
-    expect(
-      screen.queryByTestId('ontology-relationship-submit')
-    ).not.toBeInTheDocument();
+    // A fresh form: no target is carried over, so Add stays off.
+    expect(screen.getByTestId('ontology-relationship-type')).toBeVisible();
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
   });
 
   it.each([
@@ -818,7 +895,9 @@ describe('OntologyGraphView', () => {
     );
 
     expect(
-      await within(inspector).findByTestId('ontology-relationship-type')
+      within(
+        await within(inspector).findByTestId('ontology-relationship-type')
+      ).getByRole('button')
     ).toHaveTextContent('Part Of');
 
     await waitFor(() =>
@@ -2609,6 +2688,7 @@ describe('OntologyGraphView', () => {
     await waitForRegistry();
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
     expect(
       screen.getByTestId(`relation-type-${SUBCLASS_OF}`)
@@ -2666,6 +2746,7 @@ describe('OntologyGraphView', () => {
     await waitForRegistry(HAS_PART);
     fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    await openRelationTypes();
 
     expect(screen.getByTestId(`relation-type-${HAS_PART}`)).toBeInTheDocument();
     expect(

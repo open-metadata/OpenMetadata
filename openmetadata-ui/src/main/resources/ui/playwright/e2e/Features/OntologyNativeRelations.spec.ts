@@ -35,6 +35,7 @@ import {
   readGraphPoints,
   readNodePositions,
   waitForGraphPoints,
+  openInspectorRelationChooser,
 } from '../../utils/ontologyStudio';
 
 const PART_OF = 'https://open-metadata.org/ontology/partOf';
@@ -172,6 +173,7 @@ const openRelationPicker = async (page: Page, conceptId: string) => {
   await clickGraphNode(page, conceptId);
   const inspector = page.getByTestId('ontology-concept-inspector');
   await inspector.getByTestId('ontology-add-relationship').click();
+  await openInspectorRelationChooser(page, inspector);
 
   return { inspector, picker: page.getByTestId('relationship-type-picker') };
 };

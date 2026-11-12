@@ -640,7 +640,9 @@ test.describe(
         await author.goto(`/governance/ontology?ontology=${ontology.id}`);
         await expect(author.getByTestId('ontology-studio-shell')).toBeVisible();
 
-        await expect(author.getByTestId('ontology-version-draft-count')).toHaveText('1');
+        await expect(
+          author.getByTestId('ontology-version-draft-count')
+        ).toHaveText('1');
         await expect(author.getByTestId('ontology-explorer-stats')).toHaveText(
           '1 concept · 0 relations'
         );

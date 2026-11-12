@@ -35,6 +35,7 @@ import {
   getToken,
   redirectToHomePage,
   scrollIntoViewAndSettle,
+  selectOptionWithRetry,
   uuid,
 } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
@@ -91,6 +92,31 @@ export async function findOntologyInScopeMenu(
   await page.getByTestId('ontology-scope-search').fill(ontology.name);
 
   return page.getByTestId(`ontology-scope-${ontology.id}`);
+}
+
+/** The concept panel's relationship type is a select; picks one by type id. */
+export async function chooseInspectorRelationType(
+  page: Page,
+  inspector: Locator,
+  typeId: string
+) {
+  await selectOptionWithRetry(
+    inspector.getByTestId('ontology-relationship-type').getByRole('button'),
+    page.getByTestId(`relation-type-${typeId}`)
+  );
+}
+
+/** Opens the full relationship chooser (search, glosses, new type) from the panel's select. */
+export async function openInspectorRelationChooser(
+  page: Page,
+  inspector: Locator
+) {
+  await chooseInspectorRelationType(
+    page,
+    inspector,
+    '__browse-relation-types__'
+  );
+  await expect(page.getByTestId('relationship-type-picker')).toBeVisible();
 }
 
 /**

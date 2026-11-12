@@ -24,7 +24,11 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { clickGraphNode, readNodePositions } from '../../utils/ontologyStudio';
+import {
+  chooseInspectorRelationType,
+  clickGraphNode,
+  readNodePositions,
+} from '../../utils/ontologyStudio';
 
 const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
 const XSD = 'http://www.w3.org/2001/XMLSchema#';
@@ -1061,7 +1065,7 @@ test.describe(
         await clickGraphNode(page, tonic.id);
         const inspector = page.getByTestId('ontology-concept-inspector');
         await inspector.getByTestId('ontology-add-relationship').click();
-        await page.getByTestId(`relation-type-${SUBCLASS_OF}`).click();
+        await chooseInspectorRelationType(page, inspector, SUBCLASS_OF);
         const target = inspector.getByLabel('Target');
         await selectOptionWithRetry(
           target,

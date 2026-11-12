@@ -30,8 +30,8 @@ import {
   findOntologyInQueryPicker,
   openExportAdvanced,
   openOntologyTransfer,
-  selectOntologyOption,
   openReleaseHistory,
+  selectOntologyOption,
 } from '../../utils/ontologyStudio';
 
 const armQueryLibraryResponses = (page: Page) => [

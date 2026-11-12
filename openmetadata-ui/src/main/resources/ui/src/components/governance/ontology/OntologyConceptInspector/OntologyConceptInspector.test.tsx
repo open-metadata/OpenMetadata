@@ -69,6 +69,16 @@ import {
 import { useOntologyConceptEditor } from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from './OntologyConceptInspector';
 
+/** The relationship type is a select in the inline form; this opens it and picks one. */
+const chooseRelationType = async (id: string) => {
+  fireEvent.click(
+    within(await screen.findByTestId('ontology-relationship-type')).getByRole(
+      'button'
+    )
+  );
+  fireEvent.click(screen.getByTestId(`relation-type-${id}`));
+};
+
 jest.mock('../../../../rest/ontologyAPI');
 jest.mock('../../../../rest/permissionAPI');
 jest.mock('../../../../utils/governance/ontology/OntologyUndoToast', () => ({
@@ -757,13 +767,11 @@ it('adds a relationship from the rail, changes its type and retries a refused sa
     </MemoryRouter>
   );
   fireEvent.click(screen.getByTestId('ontology-add-relationship'));
-  fireEvent.click(screen.getByTestId('relation-type-isA'));
-  fireEvent.click(screen.getByTestId('ontology-relationship-type'));
-  fireEvent.click(screen.getByTestId('relation-type-isA'));
+  await chooseRelationType('isA');
 
-  expect(screen.getByTestId('ontology-relationship-type')).toHaveTextContent(
-    'Is a'
-  );
+  expect(
+    within(screen.getByTestId('ontology-relationship-type')).getByRole('button')
+  ).toHaveTextContent('Is a');
   expect(screen.getByTestId('ontology-relationship-form')).toHaveTextContent(
     'message.pick-concept-to-complete-sentence'
   );
@@ -1021,7 +1029,7 @@ describe('OntologyConceptInspector in AI mode', () => {
     );
 
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
-    fireEvent.click(screen.getByTestId('relation-type-isA'));
+    await chooseRelationType('isA');
 
     expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
     expect(screen.getByTestId('ontology-relationship-form')).toBeVisible();
@@ -1352,7 +1360,7 @@ describe('OntologyConceptInspector relationship authoring', () => {
     );
 
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
-    fireEvent.click(screen.getByTestId('relation-type-isA'));
+    await chooseRelationType('isA');
     fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
     fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
 
@@ -1371,7 +1379,7 @@ describe('OntologyConceptInspector relationship authoring', () => {
     });
 
     fireEvent.click(screen.getByTestId('ontology-add-relationship'));
-    fireEvent.click(screen.getByTestId('relation-type-isA'));
+    await chooseRelationType('isA');
     fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
     fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
 
@@ -1581,7 +1589,9 @@ describe('OntologyConceptInspector relationship authoring', () => {
 
       expect(findRelationType).toHaveBeenCalledWith('part of');
       expect(
-        await screen.findByTestId('ontology-relationship-type')
+        within(
+          await screen.findByTestId('ontology-relationship-type')
+        ).getByRole('button')
       ).toHaveTextContent('Is a');
       expect(
         screen.queryByTestId('ontology-synonym-relation-warning')
