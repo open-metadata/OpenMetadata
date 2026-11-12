@@ -29,6 +29,7 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { ingestionProps, mockAgent } from '../../../../mocks/Ingestion.mock';
+import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
@@ -372,6 +373,10 @@ describe('Ingestion', () => {
   });
 
   describe('service-level permission', () => {
+    const NO_PERMISSION = Object.fromEntries(
+      Object.keys(ENTITY_PERMISSIONS).map((key) => [key, false])
+    ) as unknown as OperationPermission;
+
     const noGlobalCreate = () =>
       (usePermissionProvider as jest.Mock).mockImplementation(() => ({
         permissions: {
@@ -382,13 +387,15 @@ describe('Ingestion', () => {
           .mockResolvedValue(ENTITY_PERMISSIONS),
       }));
 
-    const renderWith = async (servicePermission: Record<string, boolean>) => {
+    const renderWith = async (
+      servicePermission: Partial<OperationPermission>
+    ) => {
       noGlobalCreate();
       await act(async () => {
         render(
           <Ingestion
             {...ingestionProps}
-            servicePermission={servicePermission as never}
+            servicePermission={{ ...NO_PERMISSION, ...servicePermission }}
           />,
           { wrapper: TestWrapper }
         );

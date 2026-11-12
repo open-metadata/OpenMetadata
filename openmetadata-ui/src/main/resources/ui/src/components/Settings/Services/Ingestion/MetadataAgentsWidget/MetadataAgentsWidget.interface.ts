@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
 import {
   IngestionPipeline,
@@ -36,5 +37,7 @@ export interface MetadataAgentsWidgetProps {
   handleIngestionListUpdate: (
     ingestionList: React.SetStateAction<IngestionPipeline[]>
   ) => void;
+  /** The service's own permissions; agent creation is authorized against it. */
+  servicePermission?: OperationPermission;
   onPageChange: ({ cursorType, currentPage }: PagingHandlerParams) => void;
 }
