@@ -15,6 +15,7 @@ import {
   Alert,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -148,13 +149,12 @@ const OntologyConflictsPanel = ({
           onPress={onValidateAll}>
           {t('label.validate-all')}
         </Button>
-        <Button
+        <ButtonUtility
           aria-expanded={isExpanded}
           aria-label={toggleLabel}
-          color="tertiary"
           data-testid="ontology-conflicts-toggle"
-          iconLeading={isExpanded ? ChevronUp : ChevronDown}
-          size="sm"
+          icon={isExpanded ? ChevronUp : ChevronDown}
+          size="lg"
           tooltip={toggleLabel}
           onPress={() => setIsOpen(!isExpanded)}
         />
