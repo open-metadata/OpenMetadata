@@ -29,6 +29,7 @@ import { OntologyNode } from './OntologyExplorer.interface';
 import {
   getNativeTreePage,
   isNativeTreeExpanded,
+  NativeTreeCursor,
   nativeTreeCursorForPath,
   NativeTreeIndex,
   NativeTreePlacement,
@@ -118,6 +119,26 @@ const NativeTreeRowContent = ({
       />
     </>
   );
+};
+
+/**
+ * Expanding or collapsing a row keeps the current window, so the rows above it
+ * stay in view. Only collapsing the parent of the window's first row hides
+ * that row, and then the window starts at the collapsed row instead.
+ */
+const anchorAfterToggle = (
+  index: NativeTreeIndex,
+  anchor: NativeTreeCursor | undefined,
+  path: readonly string[],
+  isExpanded: boolean
+) => {
+  const hidesAnchor =
+    !isExpanded &&
+    anchor !== undefined &&
+    anchor.frames.length > path.length &&
+    path.every((conceptId, depth) => anchor.frames[depth]?.conceptId === conceptId);
+
+  return hidesAnchor ? nativeTreeCursorForPath(index, path) : anchor;
 };
 
 const NativeOntologyTreeView = ({
@@ -291,7 +312,7 @@ const NativeOntologyTreeView = ({
                 reveal: undefined,
               })
             }>
-            {t('label.expand-all')}
+            {t('label.expand-all-lowercase')}
           </Button>
           <Button
             color="link-gray"
@@ -306,7 +327,7 @@ const NativeOntologyTreeView = ({
                 reveal: undefined,
               })
             }>
-            {t('label.collapse-all')}
+            {t('label.collapse-all-lowercase')}
           </Button>
         </Box>
       </Box>
@@ -362,9 +383,11 @@ const NativeOntologyTreeView = ({
           </Button>
         </Box>
       ) : null}
-      <Card className="tw:overflow-hidden">
+      {/* The card keeps its full height so the list scrolls instead of clipping rows. */}
+      <Card className="tw:shrink-0 tw:overflow-hidden">
         <Tree
           aria-label={t('label.concept-plural')}
+          className="tw:gap-0 tw:divide-y tw:divide-secondary"
           expandedKeys={expandedKeys}
           selectedKeys={
             state.selectedKey && byKey.has(state.selectedKey)
@@ -387,8 +410,12 @@ const NativeOntologyTreeView = ({
               setState({
                 ...state,
                 disclosure: { ...state.disclosure, overrides },
-                anchor: nativeTreeCursorForPath(index, changed.path),
-                direction: 'forward',
+                anchor: anchorAfterToggle(
+                  index,
+                  state.anchor,
+                  changed.path,
+                  keys.has(changed.key)
+                ),
                 reveal: undefined,
               });
             }

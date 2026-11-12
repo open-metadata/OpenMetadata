@@ -3234,8 +3234,10 @@ describe('OntologyGraphView', () => {
       await screen.findByTestId('ontology-conflicts-panel')
     ).toBeInTheDocument();
     expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
-    // The tree keeps its rows clear of the floating cards.
-    expect(screen.getByTestId('ontology-tree-surface')).toHaveClass('tw:pr-92');
+    // As in the design, the tree takes the full width and the cards float on top.
+    expect(screen.getByTestId('ontology-tree-surface')).not.toHaveClass(
+      'tw:pr-92'
+    );
   });
 
   it('goes from loading to loaded and opens Data without a hook-order error', async () => {

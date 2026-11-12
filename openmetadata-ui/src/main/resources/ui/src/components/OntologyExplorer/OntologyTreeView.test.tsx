@@ -249,6 +249,21 @@ describe('native OntologyTreeView', () => {
     expect(screen.getAllByTestId('ontology-tree-term-leaf')).toHaveLength(1);
   });
 
+  it('keeps the rows above in view when a lower root is expanded', () => {
+    const index = buildNativeTreeIndex(graph, filters, []);
+    renderTree({ source: { kind: 'native', index }, metrics: [] });
+    fireEvent.click(screen.getByTestId('ontology-tree-collapse-all'));
+    const rootB = screen.getByTestId('ontology-tree-term-b');
+    fireEvent.click(within(rootB).getByTestId('tree-expand-btn'));
+
+    expect(screen.getByTestId('ontology-tree-term-a')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-tree-term-b')).toBeInTheDocument();
+    expect(screen.getAllByTestId('ontology-tree-term-c')).toHaveLength(1);
+    expect(
+      screen.queryByTestId('ontology-tree-previous')
+    ).not.toBeInTheDocument();
+  });
+
   it('reveals an external concept selection after collapse and selects only one placement', async () => {
     const index = buildNativeTreeIndex(graph, filters, []);
     const { rerender } = render(

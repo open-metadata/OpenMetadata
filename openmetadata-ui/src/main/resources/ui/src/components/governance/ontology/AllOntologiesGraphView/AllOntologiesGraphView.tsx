@@ -253,9 +253,9 @@ const AllOntologiesGraphView = ({
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        // Leaves room on the right for the floating health card.
+        // The tree takes the full width; the health card sits on top, as in the design.
         <div
-          className={showsHealth ? 'tw:h-full tw:pr-92' : 'tw:h-full'}
+          className="tw:h-full"
           data-testid="ontology-tree-surface">
           <OntologyTreeView
             density="compact"
