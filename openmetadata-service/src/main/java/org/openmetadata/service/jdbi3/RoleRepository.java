@@ -204,6 +204,20 @@ public class RoleRepository extends EntityRepository<Role> {
     return List.of("policies");
   }
 
+  /**
+   * "Admin" is the {@code isAdmin} flag, not a role: SSO role sync reads an "Admin" claim as that
+   * flag and never maps it to a role, and the role editors list the flag as "Admin". Checked here
+   * because POST and PUT both create through this method, and roles cannot be renamed. Existing
+   * roles with the name stay editable.
+   */
+  @Override
+  protected Role createNewEntity(Role role) {
+    if (Entity.ADMIN_ROLE.equalsIgnoreCase(role.getName())) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.reservedRoleName(role.getName()));
+    }
+    return super.createNewEntity(role);
+  }
+
   @Override
   public void storeEntity(Role role, boolean update) {
     store(role, update);

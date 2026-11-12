@@ -72,14 +72,17 @@ const RolesCard = ({
   if (!userData.isAdmin) {
     userRolesOption.push({
       id: toLower(TERM_ADMIN),
-      label: TERM_ADMIN,
+      label: t('label.admin-superuser'),
     });
   }
 
   const selectedRoleItems = selectedRoles.map((roleId) => {
     const role = roles.find((r) => r.id === roleId);
 
-    return { id: roleId, label: role ? getEntityName(role) : TERM_ADMIN };
+    return {
+      id: roleId,
+      label: role ? getEntityName(role) : t('label.admin-superuser'),
+    };
   });
 
   const handleRoleInserted = (key: Key) =>
