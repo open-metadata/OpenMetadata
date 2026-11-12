@@ -108,7 +108,16 @@ class CopiedColumns:
         target, source = to_col.lower(), from_col.lower()
         if target in self.columns or target in self.fields:
             return source in (self.fields if struct_field else self.columns).get(target, frozenset())
-        return not struct_field and self.star and target not in self.computed and target == source
+        return not struct_field and target == source and self.star_copies(target)
+
+    def star_copies(self, name: str) -> bool:
+        """
+        Whether a star (`*`, `t.*` or `struct.*`) copies `name` unchanged: every star is plain
+        and no other item produces that name.
+        """
+        target = name.lower()
+        owned = target in self.columns or target in self.fields or target in self.computed
+        return self.star and not owned
 
 
 NOTHING_COPIED = CopiedColumns()

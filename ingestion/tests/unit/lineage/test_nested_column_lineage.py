@@ -637,3 +637,30 @@ def test_star_pair_does_not_match_a_same_named_struct_field_copy():
 
     assert ("users.customer.address.zip", "v.address.zip") in edges
     assert ("users.address.zip", "v.address.zip") not in edges
+
+
+@pytest.mark.parametrize(
+    ("select", "address_copied"),
+    [
+        ("customer.*", True),
+        ("customer.* EXCEPT (address), STRUCT('x' AS zip, 'y' AS city) AS address", False),
+        ("customer.* REPLACE (STRUCT('x' AS zip, 'y' AS city) AS address)", False),
+        ("customer.* EXCEPT (address), IF(id > 0, address, NULL) AS address", False),
+    ],
+    ids=["plain", "except", "replace", "except-computed"],
+)
+def test_struct_star_copies_only_the_fields_it_copies_unchanged(select, address_copied):
+    view = _table(
+        "v",
+        [
+            _column("v", "email"),
+            _column("v", "address", "STRUCT", [_column("v", "address.zip"), _column("v", "address.city")]),
+        ],
+    )
+
+    edges = _column_edges(f"CREATE VIEW ds.v AS SELECT {select} FROM ds.users", [USERS, view])
+
+    from_customer_address = {edge for edge in edges if edge[0].startswith("users.customer.address")}
+    assert bool(from_customer_address) is address_copied
+    if address_copied:
+        assert ("users.customer.email", "v.email") in edges

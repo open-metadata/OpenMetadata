@@ -509,8 +509,12 @@ def _struct_field_lineage(
     edges = []
     for to_col, from_col in pairs:
         if from_col == "*":
-            # `struct.*` copies each field under its own name.
-            fields = [(field, field.name.root, True) for field in struct.children or []]
+            # A plain `struct.*` copies each field under its own name, except one another item produces.
+            fields = [
+                (field, field.name.root, True)
+                for field in struct.children or []
+                if copied_columns.star_copies(field.name.root)
+            ]
         else:
             field = _find_column(struct.children, from_col)
             fields = [(field, to_col, copied_columns.copies(to_col, from_col, struct_field=True))] if field else []
