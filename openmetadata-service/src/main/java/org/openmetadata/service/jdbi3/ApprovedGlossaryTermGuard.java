@@ -52,7 +52,7 @@ public final class ApprovedGlossaryTermGuard {
    * them, as {@link EntityRepository#taggedFieldContainers} reports them.
    */
   public static Map<String, List<TagLabel>> tagsByTarget(
-      EntityInterface<?> entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {
+      EntityInterface entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {
     Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
     taggedTargets(entity, fieldsByContainer)
         .forEach(target -> addTags(tagsByTarget, target.fqn(), target.tags()));
@@ -207,14 +207,14 @@ public final class ApprovedGlossaryTermGuard {
 
   /** An entity with its tagged inline fields, by the container path that holds them. */
   public record TaggedEntity(
-      EntityInterface<?> entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {}
+      EntityInterface entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {}
 
   // A target is the entity (empty name path) or a field, named by its container path and the
   // field names leading to it. Field names are matched the way columns are, ignoring case.
   private record TaggedTarget(List<String> namePath, String fqn, List<TagLabel> tags) {}
 
   private static List<TaggedTarget> taggedTargets(
-      EntityInterface<?> entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {
+      EntityInterface entity, Map<String, List<? extends FieldInterface>> fieldsByContainer) {
     List<TaggedTarget> targets = new ArrayList<>();
     targets.add(
         new TaggedTarget(List.of(), entity.getFullyQualifiedName(), listOrEmpty(entity.getTags())));

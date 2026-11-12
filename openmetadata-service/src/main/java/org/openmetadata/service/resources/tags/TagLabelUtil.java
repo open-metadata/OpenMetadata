@@ -516,7 +516,7 @@ public class TagLabelUtil {
   public static Set<String> appliedGlossaryTermFqns(List<TagLabel> tagLabels) {
     return listOrEmpty(tagLabels).stream()
         .filter(tag -> TagSource.GLOSSARY.equals(tag.getSource()))
-        .filter(tag -> !isSystemGenerated(tag))
+        .filter(tag -> !TagLabel.LabelType.DERIVED.equals(tag.getLabelType()))
         .map(TagLabel::getTagFQN)
         .collect(Collectors.toCollection(HashSet::new));
   }

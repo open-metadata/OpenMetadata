@@ -25,7 +25,6 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
-import org.openmetadata.schema.FieldInterface;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -41,6 +40,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.SearchIndex;
 import org.openmetadata.schema.entity.services.SearchService;
@@ -680,7 +680,8 @@ public class SearchIndexRepository extends EntityRepository<SearchIndex> {
 
   // The approved-glossary-term guard reads the tags of these inline fields.
   @Override
-  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(SearchIndex searchIndex) {
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(
+      SearchIndex searchIndex) {
     return Map.of("fields", listOrEmpty(searchIndex.getFields()));
   }
 }

@@ -20,7 +20,6 @@ import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
-import org.openmetadata.schema.FieldInterface;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -31,6 +30,7 @@ import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.DashboardDataModel;
 import org.openmetadata.schema.entity.services.DashboardService;
@@ -507,7 +507,8 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
 
   // The approved-glossary-term guard reads the tags of these inline fields.
   @Override
-  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(DashboardDataModel dataModel) {
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(
+      DashboardDataModel dataModel) {
     return Map.of("columns", listOrEmpty(dataModel.getColumns()));
   }
 }
