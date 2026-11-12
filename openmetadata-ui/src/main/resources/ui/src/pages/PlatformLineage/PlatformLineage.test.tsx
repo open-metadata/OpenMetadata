@@ -283,6 +283,26 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => ({
   ),
 }));
 
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () => ({
+  __esModule: true,
+  default: ({
+    title,
+    actions,
+  }: {
+    title: string;
+    actions?: { key: string; label: string; onPress: () => void }[];
+  }) => (
+    <div>
+      {title}
+      {actions?.map((action) => (
+        <button key={action.key} onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  ),
+}));
+
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="loader">Loading</div>),
@@ -571,6 +591,10 @@ describe('PlatformLineage Component Logic', () => {
 
       expect(getProps().placeholder).toBe('label.search-entity-for-lineage');
       expect(getProps().value).toBeUndefined();
+      // The word inside the prompt is translated too, not left in English.
+      expect(mockT).toHaveBeenCalledWith('label.search-entity-for-lineage', {
+        entity: 'label.entity-lowercase',
+      });
     });
   });
 
@@ -897,6 +921,54 @@ describe('PlatformLineage Component Logic', () => {
       await selectFromSearch(undefined);
 
       expect(mockNavigate).not.toHaveBeenCalled();
+    });
+
+    it('opens a picked domain in the Domain lens', async () => {
+      await selectFromSearch({
+        displayName: 'Finance',
+        value: 'Finance',
+        reference: {
+          id: 'finance-id',
+          type: EntityType.DOMAIN,
+          fullyQualifiedName: 'Finance',
+        },
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith(
+        '/lineage/domain/Finance?lineageLens=domain'
+      );
+    });
+  });
+
+  describe('Unknown entity', () => {
+    it('does not keep the previous entity when the next one is not found', async () => {
+      const { rerender } = render(<PlatformLineage />, {
+        wrapper: QueryClientProviderWrapper,
+      });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenLastCalledWith(
+          expect.objectContaining({ entity: MOCK_TABLE_ENTITY }),
+          expect.anything()
+        );
+      });
+
+      mockFqn = 'sample_data.db.schema.missing';
+      mockGetEntityAPIfromSource.mockRejectedValue({
+        response: { status: 404 },
+      });
+      mockGetEntityPermissionByFqn.mockRejectedValue({
+        response: { status: 404 },
+      });
+      rerender(<PlatformLineage />);
+
+      expect(
+        await screen.findByTestId('lineage-entity-not-found')
+      ).toBeInTheDocument();
+      expect(mockPageLayoutV1.mock.calls.at(-1)[0].pageTitle).toBe(
+        'label.lineage'
+      );
+      expect(mockShowErrorToast).not.toHaveBeenCalled();
     });
   });
 

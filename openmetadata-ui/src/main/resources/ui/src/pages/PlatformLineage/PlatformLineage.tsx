@@ -18,6 +18,7 @@ import {
   PageLayout,
 } from '@openmetadata/ui-core-components';
 import {
+  Home02,
   PlatformLineage as PlatformLineageIcon,
   Settings01,
 } from '@openmetadata/ui-core-components/icons';
@@ -26,6 +27,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
@@ -42,11 +44,13 @@ import {
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
+import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import { EntityType } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
+import { LineageLens } from '../../generated/api/lineage/lineageScene';
 import { EntityReference } from '../../generated/entity/type';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import useCustomLocation from '../../hooks/useCustomLocation/useCustomLocation';
@@ -76,6 +80,7 @@ const PlatformLineage = () => {
 
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
+  const [isEntityNotFound, setIsEntityNotFound] = useState(false);
   const [isEntityLoading, setIsEntityLoading] = useState(false);
   // Config lives in the Zustand store — Lineage's fetch effect depends on
   // it, so writing here triggers a refetch. Local useState here would leave
@@ -98,7 +103,12 @@ const PlatformLineage = () => {
   );
 
   useEffect(() => {
-    if (permissionsError) {
+    // An entity that does not exist gets its own empty state below, so its
+    // permission lookup's "not found" is not toasted on top of it.
+    if (
+      permissionsError &&
+      (permissionsError as AxiosError).response?.status !== 404
+    ) {
       showErrorToast(permissionsError as AxiosError);
     }
   }, [permissionsError]);
@@ -118,10 +128,17 @@ const PlatformLineage = () => {
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
+      const { entityType: selectedType } = value as SourceType;
+      // A domain is drawn by the Domain lens; the Service lens has no scene
+      // for it and would focus one of its assets instead.
+      const search =
+        selectedType === EntityType.DOMAIN
+          ? `?lineageLens=${LineageLens.Domain}`
+          : '';
       void navigate(
-        `/lineage/${(value as SourceType).entityType}/${getEncodedFqn(
+        `/lineage/${selectedType}/${getEncodedFqn(
           value.fullyQualifiedName ?? ''
-        )}`
+        )}${search}`
       );
     },
     [navigate]
@@ -140,6 +157,7 @@ const PlatformLineage = () => {
   );
 
   const init = useCallback(async () => {
+    setIsEntityNotFound(false);
     if (!decodedFqn || !entityType) {
       setSelectedEntity(undefined);
 
@@ -152,12 +170,14 @@ const PlatformLineage = () => {
         entityType as AssetsUnion
       )(decodedFqn);
       setSelectedEntity(entityResponse);
-    } catch {
+    } catch (error) {
       // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
       // rejection (or a synchronous throw from an unsupported entityType) never reached a
-      // showErrorToast call — a settled 'rejected' result just left selectedEntity
-      // unset. Preserve that silently; permission-fetch errors now surface
-      // separately via the hook's own effect above.
+      // showErrorToast call. Preserve that silently; permission-fetch errors surface
+      // separately via the hook's own effect above. The previous entity is dropped
+      // so its map and title do not stay on screen for the new URL.
+      setSelectedEntity(undefined);
+      setIsEntityNotFound((error as AxiosError)?.response?.status === 404);
     } finally {
       setIsEntityLoading(false);
     }
@@ -194,7 +214,9 @@ const PlatformLineage = () => {
           placeholder={
             selectedEntity
               ? getEntityName(selectedEntity)
-              : t('label.search-entity-for-lineage', { entity: 'entity' })
+              : t('label.search-entity-for-lineage', {
+                  entity: t('label.entity-lowercase'),
+                })
           }
           queryFilter={getLineageEntityExclusionFilter()}
           searchIndex={LINEAGE_SEARCH_INDEXES}
@@ -270,6 +292,40 @@ const PlatformLineage = () => {
       return <Loader />;
     }
 
+    if (isEntityNotFound) {
+      return (
+        <Card className="lineage-card tw:flex tw:flex-col">
+          {isAiMode ? null : (
+            <div className="tw:shrink-0 tw:border-b tw:border-tertiary tw:px-6 tw:py-4">
+              {header}
+            </div>
+          )}
+          <div
+            className="tw:relative tw:min-h-80 tw:flex-1"
+            data-testid="lineage-entity-not-found">
+            <NoDataPlaceholder
+              actions={[
+                {
+                  key: 'back-to-root',
+                  label: t('label.back-to-entity', {
+                    entity: t('label.all-service-plural'),
+                  }),
+                  color: 'secondary',
+                  iconLeading: Home02,
+                  onPress: () => navigate(ROUTES.PLATFORM_LINEAGE),
+                },
+              ]}
+              icon={<PlatformLineageIcon />}
+              title={t('message.no-entity-found-for-name', {
+                entity: t('label.asset-lowercase'),
+                name: decodedFqn,
+              })}
+            />
+          </div>
+        </Card>
+      );
+    }
+
     return (
       <Lineage
         isPlatformLineage
@@ -289,20 +345,24 @@ const PlatformLineage = () => {
   }, [
     selectedEntity,
     loading,
+    isEntityNotFound,
     canEditLineage,
     entityType,
     header,
     decodedFqn,
     isAiMode,
+    navigate,
+    t,
   ]);
 
   // `/lineage` with no entity is the platform-wide view; the focused variant
   // names the entity it is centred on.
-  const pageTitle = decodedFqn
-    ? t('label.platform-type-lineage', {
-        platformType: getEntityName(selectedEntity) || decodedFqn,
-      })
-    : t('label.lineage');
+  const pageTitle =
+    decodedFqn && !isEntityNotFound
+      ? t('label.platform-type-lineage', {
+          platformType: getEntityName(selectedEntity) || decodedFqn,
+        })
+      : t('label.lineage');
 
   const configModal = (
     <LineageConfigModal
