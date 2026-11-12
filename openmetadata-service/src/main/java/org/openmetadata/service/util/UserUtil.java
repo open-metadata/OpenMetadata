@@ -660,10 +660,7 @@ public final class UserUtil {
     // the bot's stored team relationships, bumps the version, and triggers an Elasticsearch
     // reindex of the bot user (and any team membership change ripples into the team_search
     // index too). With many bots this is a reindex storm on every restart.
-    if (originalUser != null
-        && Objects.equals(listOrEmpty(originalUser.getRoles()), listOrEmpty(user.getRoles()))
-        && Objects.equals(originalUser.getDescription(), user.getDescription())
-        && Objects.equals(originalUser.getDisplayName(), user.getDisplayName())) {
+    if (isUnchangedBot(originalUser, user)) {
       return originalUser;
     }
     AuthenticationMechanism authMechanism =
@@ -676,6 +673,29 @@ public final class UserUtil {
     user.setDescription(user.getDescription());
     user.setDisplayName(user.getDisplayName());
     return addOrUpdateUser(user);
+  }
+
+  /**
+   * Whether the stored bot already matches everything the seeded {@code incoming} bot would
+   * write, so the upsert can be skipped. It must not be skipped when the stored bot has no
+   * authentication mechanism (the upsert is what generates its JWT), when {@code isAdmin}
+   * differs (seeding passes an explicit {@code false}), or when the roles differ. Roles are
+   * compared by id: the seeded references and the stored ones name the same roles but can
+   * differ in other fields.
+   */
+  static boolean isUnchangedBot(User original, User incoming) {
+    return original != null
+        && original.getAuthenticationMechanism() != null
+        && Boolean.TRUE.equals(original.getIsAdmin()) == Boolean.TRUE.equals(incoming.getIsAdmin())
+        && roleIds(original).equals(roleIds(incoming))
+        && Objects.equals(original.getDescription(), incoming.getDescription())
+        && Objects.equals(original.getDisplayName(), incoming.getDisplayName());
+  }
+
+  private static Set<UUID> roleIds(User user) {
+    return listOrEmpty(user.getRoles()).stream()
+        .map(EntityReference::getId)
+        .collect(Collectors.toSet());
   }
 
   private static JWTAuthMechanism buildJWTAuthMechanism(
