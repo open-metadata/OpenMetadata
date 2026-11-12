@@ -1219,3 +1219,23 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 -- Flowable schema upgrades run after this migration and inherit the database default. Existing
 -- ACT_* tables are aligned to the same collation by FlowableCharsetMigration.
 ALTER DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci;
+
+-- The last time a server started with RDF off. Changes made while it was off never reach the graph,
+-- so a run that started before this time cannot vouch for it, and the first start with RDF on
+-- queues an index run when none has started since.
+SET @rdf_projection_health_disabled_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'rdf_projection_health'
+        AND column_name = 'rdfDisabledAt'
+    ),
+    'SELECT 1',
+    'ALTER TABLE rdf_projection_health ADD COLUMN rdfDisabledAt bigint NOT NULL DEFAULT 0'
+  )
+);
+PREPARE rdf_projection_health_disabled_stmt FROM @rdf_projection_health_disabled_ddl;
+EXECUTE rdf_projection_health_disabled_stmt;
+DEALLOCATE PREPARE rdf_projection_health_disabled_stmt;

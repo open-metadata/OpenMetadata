@@ -181,7 +181,7 @@ Inspect outstanding work without reading entity payloads:
 SELECT id, createdAt, attempts, nextAttemptAt, lastError
 FROM rdf_live_write_queue ORDER BY id LIMIT 50;
 
-SELECT failureVersion, repairedVersion, updatedAt, lastError
+SELECT failureVersion, repairedVersion, updatedAt, lastError, rdfDisabledAt
 FROM rdf_projection_health WHERE id = 'active';
 
 SELECT id, createdAt, attempts, failedAt, lastError, failureVersion
@@ -399,6 +399,15 @@ thrashes the database. Two mechanisms keep them apart:
 
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
+
+**Turning RDF on.** Every server that starts with RDF off records the time in
+`rdf_projection_health.rdfDisabledAt` (the 2.1.0 migration adds the column), because changes made
+in that time never reach the graph. A server that starts with RDF on queues one `RdfIndexApp`
+rebuild unless a run has started since that time, and `/v1/rdf/status` does not report `READY`
+until a run that started after it completes. A run on a server with RDF off indexes nothing and
+does not count. This is the one case where a start queues a full reindex, apart from the first
+install. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
+
 
 ## Blue/green rebuilds
 

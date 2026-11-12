@@ -930,3 +930,9 @@ CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_conc
 ALTER TABLE mcp_pending_auth_requests
     ADD COLUMN IF NOT EXISTS consent_token_hash VARCHAR(64),
     ADD COLUMN IF NOT EXISTS consent_user_name VARCHAR(256);
+
+-- The last time a server started with RDF off. Changes made while it was off never reach the graph,
+-- so a run that started before this time cannot vouch for it, and the first start with RDF on
+-- queues an index run when none has started since.
+ALTER TABLE rdf_projection_health
+  ADD COLUMN IF NOT EXISTS rdfDisabledAt BIGINT NOT NULL DEFAULT 0;

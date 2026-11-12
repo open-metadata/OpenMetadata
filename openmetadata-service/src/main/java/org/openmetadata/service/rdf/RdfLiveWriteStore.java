@@ -46,6 +46,11 @@ public final class RdfLiveWriteStore {
   private static final String START_COMPACTION_CLOCK =
       "UPDATE rdf_projection_health SET lastCompactedAt = ? WHERE id = 'active' "
           + "AND lastCompactedAt = 0";
+  private static final String RECORD_RDF_DISABLED =
+      "UPDATE rdf_projection_health SET rdfDisabledAt = GREATEST(rdfDisabledAt, ?) "
+          + "WHERE id = 'active'";
+  private static final String RDF_DISABLED_AT =
+      "SELECT rdfDisabledAt FROM rdf_projection_health WHERE id = 'active'";
   private static final String LAST_COMPACTION =
       "SELECT lastCompactedAt FROM rdf_projection_health WHERE id = 'active'";
 
@@ -359,6 +364,24 @@ public final class RdfLiveWriteStore {
                   && !RdfLiveWritePause.isPaused(handle, clock.millis());
           return unrepaired || lagging || compactionOverdue(handle);
         });
+  }
+
+  /**
+   * Records that a server started with RDF off. Changes made from now on never reach the graph, so
+   * no index run that started earlier can vouch for it. The highest value wins, so servers that
+   * start at different times, or with different clocks, never move it back.
+   */
+  public void recordRdfDisabled() {
+    final int updated =
+        jdbi.withHandle(handle -> handle.execute(RECORD_RDF_DISABLED, clock.millis()));
+    if (updated != 1) {
+      throw new IllegalStateException("RDF projection health row is missing");
+    }
+  }
+
+  /** The last time a server started with RDF off, or 0 when none has since this was recorded. */
+  public long rdfDisabledAt() {
+    return jdbi.withHandle(handle -> handle.createQuery(RDF_DISABLED_AT).mapTo(Long.class).one());
   }
 
   /** Records that storage maintenance compacted the serving dataset, whichever server ran it. */

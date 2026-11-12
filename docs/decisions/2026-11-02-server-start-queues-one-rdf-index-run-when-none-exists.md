@@ -1,10 +1,10 @@
 # Server start queues one `RdfIndexApp` run when none exists
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-02 (initial)
+- **Revisions:** v1 2026-11-02 (initial) · v2 2026-11-12 (the key becomes a run started after the last RDF-off start)
 - **Deciders:** Ontology Studio program
-- **Guard:** `RdfInitialIndexRunTest`, `RdfFirstIndexRunIT`, `RdfProjectionStateResolverTest`
-- **Related:** ADR:2026-09-16-agent-sparql-execution, `AppResource.loadDefaultApplications`, `OmAppJobListener`, `RdfProjectionStateResolver`
+- **Guard:** `RdfInitialIndexRunTest`, `RdfDisabledMarkTest`, `RdfFirstIndexRunIT`, `RdfProjectionStateResolverTest`, `RdfLiveWriteRecoveryIT`
+- **Related:** ADR:2026-09-16-agent-sparql-execution, `AppResource.loadDefaultApplications`, `OmAppJobListener`, `RdfProjectionStateResolver`, ADR:2026-11-06-an-rdf-index-run-that-ends-before-indexing-leaves-the-projection-state-alone, #36440
 
 ## Context
 `RdfProjectionStateResolver` reads the latest `RdfIndexApp` run record. With no record it reports
@@ -48,3 +48,43 @@ without waiting for the weekly schedule. An install whose first run fails stays 
 a later run succeeds. Waiting for the weekly run was the alternative, and it left agent SPARQL
 unavailable for up to a week on every new install. Revisit this record if the resolver stops
 reading the run store, or if another job starts building the projection.
+
+## Amendment — 2026-11-12: nothing indexed since RDF was last off (#36440)
+
+The key above, any run record, left two cases wrong. A server with RDF off still ran the weekly
+`RdfIndexApp`, which completed with nothing indexed and wrote a `SUCCESS` record. Turning RDF on
+later found a record, queued no run, and reported `READY` over a graph that was never built, or
+that missed every change made while RDF was off. The same happened to an old `SUCCESS` record
+after any off period.
+
+- **The key is a run that touched the projection and started at or after `rdfDisabledAt`.** The
+  column `rdf_projection_health.rdfDisabledAt` holds the last time a server started with RDF off,
+  written with `GREATEST` so several servers cannot move it back. `RdfInitialIndexRun` queues one
+  run when RDF is on and `RdfProjectionStateResolver.hasProjectedSinceRdfWasOff` is false. "No
+  such run at all" is false, so the first-install case is unchanged. `triggeredBy` stays
+  `system:rdf-initial-index`.
+- **A run record that started after the mark stops further triggers, whatever its status.** A failed
+  run is still not retried at every restart; the paragraph above on a failed first run holds.
+- **A run that finds RDF off does not count.** It is recorded as a `SUCCESS` and flagged on its
+  success context (ADR:2026-11-06-an-rdf-index-run-that-ends-before-indexing-leaves-the-projection-state-alone).
+- **The state is not `READY` until such a run completes.** The resolver reports `DEGRADED` while
+  the newest projecting run started before `rdfDisabledAt`, and `DEGRADED` when the mark cannot be
+  read. `REBUILDING` while a run is in flight is unchanged.
+- **Only a running server writes the mark, from `OpenMetadataApplication.run`, decided from
+  `rdfConfiguration.enabled`.** `OpenMetadataOperations` (the ops CLI) loads app seed data through
+  `CollectionRegistry.loadSeedData` and never initializes `RdfRepository`; a mark written from
+  there, or from `AppResource` or `RdfInitialIndexRun`, would claim RDF was off on a stack where
+  it is on. `CollateApplication.run` calls `super.run`, so Collate records it too. The call does
+  not live in `initializeCoreSearchInfrastructure`, which Collate overrides. A failure to write it
+  only logs a warning that names the consequence.
+
+**Exception to "no full reindex at deploy time".** A start with RDF on now queues a full rebuild
+(`recreateIndex: true`) after any start with RDF off, not only on a new install. That is the one
+case where the graph is known to be out of date, and the alternative is to serve it as current.
+
+**Known gaps, not closed here:**
+- An install that is upgraded and has RDF enabled in the same deploy never starts the new build
+  with RDF off, so it records no mark and behaves as before: no run is queued, and the state is
+  `DEGRADED` only when its newest record is an old failed one, until the weekly run.
+- During a rolling restart an old server with RDF off can take writes after the new server has
+  queued the rebuild. Those writes are missed until the next rebuild.

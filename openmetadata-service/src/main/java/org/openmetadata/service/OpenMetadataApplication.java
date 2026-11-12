@@ -162,6 +162,7 @@ import org.openmetadata.service.ontology.OntologyBulkJobManager;
 import org.openmetadata.service.ontology.OntologyPackInstallJobHandler;
 import org.openmetadata.service.ontology.OntologyPackInstallJobManager;
 import org.openmetadata.service.rdf.RdfBackgroundScheduler;
+import org.openmetadata.service.rdf.RdfDisabledMark;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.ai.AuditPackGenerator;
@@ -364,6 +365,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Phase 1: Core search infrastructure (needed by repositories)
     startupTimer.time(
         "core search infrastructure", () -> initializeCoreSearchInfrastructure(catalogConfig));
+
+    // Here, not in a helper subclasses override or in app registration, which the ops CLI also
+    // reaches without starting a server.
+    RdfDisabledMark.recordIfDisabled(catalogConfig.getRdfConfiguration(), jdbi);
 
     // as first step register all the repositories (now they can access SearchRepository)
     startupTimer.time(

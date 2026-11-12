@@ -14,6 +14,9 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -25,6 +28,7 @@ import static org.mockito.Mockito.when;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.LongSupplier;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -33,7 +37,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.system.IndexingError;
+import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -43,8 +49,19 @@ class RdfProjectionStateResolverTest {
   private static final int PAGE = RdfProjectionStateResolver.RUN_PAGE_SIZE;
   private final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
   private final AtomicBoolean degraded = new AtomicBoolean();
+  private static final long MARK = 1_000;
   private final RdfProjectionStateResolver resolver =
       new RdfProjectionStateResolver(runStore, degraded::get);
+  private final RdfProjectionStateResolver markedResolver = resolverWithMark(() -> MARK);
+
+  private RdfProjectionStateResolver resolverWithMark(final LongSupplier rdfDisabledAt) {
+    return new RdfProjectionStateResolver(runStore, degraded::get, rdfDisabledAt);
+  }
+
+  private void givenRuns(final String... runs) {
+    when(runStore.listAppExtensionByName("RdfIndexApp", PAGE, 0, "status"))
+        .thenReturn(List.of(runs));
+  }
 
   @Test
   void reportsRebuildingUntilTheFirstPostMigrationRun() {
@@ -158,6 +175,159 @@ class RdfProjectionStateResolverTest {
     assertEquals(RdfProjectionState.REBUILDING, resolver.resolve());
     verify(runStore, times(RdfProjectionStateResolver.MAX_RUN_PAGES))
         .listAppExtensionByName(eq("RdfIndexApp"), eq(PAGE), anyInt(), eq("status"));
+  }
+
+  @Test
+  void aSuccessfulRunThatFoundRdfOffIsSkippedLikeAFlaggedFailure() {
+    givenRuns(unchangedRun(MARK + 1), run(AppRunRecord.Status.COMPLETED, MARK + 1));
+
+    assertEquals(RdfProjectionState.READY, markedResolver.resolve());
+  }
+
+  @Test
+  void onlyRunsThatFoundRdfOffReportRebuilding() {
+    givenRuns(unchangedRun(MARK + 1), unchangedRun(MARK + 2));
+
+    assertEquals(RdfProjectionState.REBUILDING, markedResolver.resolve());
+  }
+
+  @Test
+  void aSuccessContextWithoutTheFlagIsNotSkipped() {
+    final AppRunRecord indexed =
+        new AppRunRecord()
+            .withStatus(AppRunRecord.Status.SUCCESS)
+            .withStartTime(MARK + 1)
+            .withSuccessContext(new SuccessContext().withStats(new Stats()));
+    givenRuns(JsonUtils.pojoToJson(indexed));
+
+    assertEquals(RdfProjectionState.READY, markedResolver.resolve());
+  }
+
+  @Test
+  void readyWhenTheNewestProjectingRunStartedAfterRdfWasLastOff() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK + 1));
+
+    assertEquals(RdfProjectionState.READY, markedResolver.resolve());
+  }
+
+  @Test
+  void degradedWhenTheNewestProjectingRunStartedBeforeRdfWasLastOff() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK - 1));
+
+    assertEquals(RdfProjectionState.DEGRADED, markedResolver.resolve());
+  }
+
+  @Test
+  void aRunThatStartedBeforeTheMarkStaysDegradedBehindFlaggedRunsAfterIt() {
+    givenRuns(unchangedRun(MARK + 5), run(AppRunRecord.Status.SUCCESS, MARK - 1));
+
+    assertEquals(RdfProjectionState.DEGRADED, markedResolver.resolve());
+  }
+
+  @Test
+  void aRunInFlightStillReportsRebuildingBeforeTheMark() {
+    givenRuns(run(AppRunRecord.Status.RUNNING, MARK - 1));
+
+    assertEquals(RdfProjectionState.REBUILDING, markedResolver.resolve());
+  }
+
+  @Test
+  void aRunWithoutAStartTimeFallsBackToItsTimestamp() {
+    final AppRunRecord run =
+        new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS).withTimestamp(MARK + 1);
+    givenRuns(JsonUtils.pojoToJson(run));
+
+    assertEquals(RdfProjectionState.READY, markedResolver.resolve());
+  }
+
+  @Test
+  void degradedWhenTheMarkCannotBeRead() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK + 1));
+
+    assertEquals(RdfProjectionState.DEGRADED, resolverWithMark(failingMark()).resolve());
+  }
+
+  @Test
+  void theMarkIsNotReadWhenTheStateIsNotReady() {
+    givenRuns(run(AppRunRecord.Status.FAILED, MARK - 1));
+
+    assertEquals(RdfProjectionState.DEGRADED, resolverWithMark(failingMark()).resolve());
+  }
+
+  @Test
+  void noProjectingRunHasNotProjectedSinceRdfWasOff() {
+    givenRuns();
+
+    assertFalse(markedResolver.hasProjectedSinceRdfWasOff());
+  }
+
+  @Test
+  void aRunOlderThanTheMarkHasNotProjectedSinceRdfWasOff() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK - 1));
+
+    assertFalse(markedResolver.hasProjectedSinceRdfWasOff());
+  }
+
+  @Test
+  void aRunStartedAtOrAfterTheMarkHasProjectedSinceRdfWasOff() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK));
+
+    assertTrue(markedResolver.hasProjectedSinceRdfWasOff());
+  }
+
+  @Test
+  void aFailedRunAfterTheMarkCountsSoARestartDoesNotRetryIt() {
+    givenRuns(run(AppRunRecord.Status.FAILED, MARK + 1));
+
+    assertTrue(markedResolver.hasProjectedSinceRdfWasOff());
+  }
+
+  @Test
+  void onlyFlaggedRunsHaveNotProjectedSinceRdfWasOff() {
+    givenRuns(unchangedRun(MARK + 1), skippedRun());
+
+    assertFalse(markedResolver.hasProjectedSinceRdfWasOff());
+  }
+
+  @Test
+  void anUnflaggedFailedRunOlderThanTheMarkHasNotProjectedSinceRdfWasOff() {
+    givenRuns(run(AppRunRecord.Status.FAILED, MARK - 1));
+
+    assertFalse(markedResolver.hasProjectedSinceRdfWasOff());
+  }
+
+  @Test
+  void aMalformedRunNeverTriggersAnotherRun() {
+    givenRuns("not-json");
+
+    assertTrue(markedResolver.hasProjectedSinceRdfWasOff());
+  }
+
+  @Test
+  void aMarkReadFailureReachesTheCaller() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK + 1));
+
+    assertThrows(
+        IllegalStateException.class,
+        () -> resolverWithMark(failingMark()).hasProjectedSinceRdfWasOff());
+  }
+
+  private static LongSupplier failingMark() {
+    return () -> {
+      throw new IllegalStateException("health row unreadable");
+    };
+  }
+
+  private static String run(final AppRunRecord.Status status, final long startTime) {
+    return JsonUtils.pojoToJson(new AppRunRecord().withStatus(status).withStartTime(startTime));
+  }
+
+  private static String unchangedRun(final long startTime) {
+    return JsonUtils.pojoToJson(
+        new AppRunRecord()
+            .withStatus(AppRunRecord.Status.SUCCESS)
+            .withStartTime(startTime)
+            .withSuccessContext(RdfProjectionStateResolver.successContextOfUnchangedProjection()));
   }
 
   private static String run(final AppRunRecord.Status status) {

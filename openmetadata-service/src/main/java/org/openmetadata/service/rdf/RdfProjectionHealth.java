@@ -39,6 +39,12 @@ public final class RdfProjectionHealth {
     }
   }
 
+  /** When a server last started with RDF off, or 0 when none did or no store is initialized. */
+  public static long rdfDisabledAt() {
+    final RdfLiveWriteStore current = store;
+    return current != null ? current.rdfDisabledAt() : 0;
+  }
+
   public static void markDegraded() {
     markDegraded(new IllegalStateException("RDF operation failed without durable recovery"));
   }

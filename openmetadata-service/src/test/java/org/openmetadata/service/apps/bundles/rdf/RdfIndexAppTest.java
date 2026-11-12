@@ -130,6 +130,28 @@ class RdfIndexAppTest {
     return new RdfProjectionStateResolver(runStore, () -> false).resolve();
   }
 
+  private static final long RDF_DISABLED_AT = 1_000L;
+
+  private static String completedRunBeforeTheMark() {
+    return JsonUtils.pojoToJson(
+        new AppRunRecord()
+            .withStatus(AppRunRecord.Status.COMPLETED)
+            .withStartTime(RDF_DISABLED_AT - 1));
+  }
+
+  /** What /rdf/status reports once RDF is on again, with the pushed run and optionally an older one. */
+  private static RdfProjectionState projectionStateAfterRdfWasOff(
+      final AppRunRecord pushed, final String olderRun) {
+    final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
+    final List<String> history =
+        olderRun == null
+            ? List.of(JsonUtils.pojoToJson(pushed))
+            : List.of(JsonUtils.pojoToJson(pushed), olderRun);
+    when(runStore.listAppExtensionByName(eq("RdfIndexApp"), anyInt(), eq(0), eq("status")))
+        .thenReturn(history);
+    return new RdfProjectionStateResolver(runStore, () -> false, () -> RDF_DISABLED_AT).resolve();
+  }
+
   @AfterEach
   void resetProjectionHealth() {
     RdfProjectionHealth.markReady();
@@ -195,6 +217,19 @@ class RdfIndexAppTest {
         assertTrue(testApp.pushedUpdate, "skipped run must push a final status update");
         assertEquals(AppRunRecord.Status.COMPLETED, testApp.pushedRecord.getStatus());
         assertNull(testApp.pushedRecord.getFailureContext());
+        assertEquals(
+            Boolean.TRUE,
+            testApp
+                .pushedRecord
+                .getSuccessContext()
+                .getAdditionalProperties()
+                .get("projectionUnchanged"));
+        assertEquals(
+            RdfProjectionState.REBUILDING,
+            projectionStateAfterRdfWasOff(testApp.pushedRecord, null));
+        assertEquals(
+            RdfProjectionState.DEGRADED,
+            projectionStateAfterRdfWasOff(testApp.pushedRecord, completedRunBeforeTheMark()));
       } finally {
         rdfRepositoryMockedStatic
             .when(RdfRepository::getInstanceOrNull)
@@ -731,11 +766,16 @@ class RdfIndexAppTest {
       startedJob(testApp);
       testApp.execute(jobContext());
 
-      when(mockRdfRepository.isEnabled()).thenReturn(false);
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(true);
+      doThrow(new IllegalStateException("Fuseki is unreachable"))
+          .when(mockRdfRepository)
+          .ensureStorageReady();
       try {
         testApp.execute(jobContext());
       } finally {
-        when(mockRdfRepository.isEnabled()).thenReturn(true);
+        doNothing().when(mockRdfRepository).ensureStorageReady();
       }
 
       assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());

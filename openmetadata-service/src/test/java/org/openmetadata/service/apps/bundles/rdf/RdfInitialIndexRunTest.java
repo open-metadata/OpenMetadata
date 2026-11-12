@@ -21,42 +21,88 @@ import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.LongSupplier;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 
 class RdfInitialIndexRunTest {
+  private static final long MARK = 1_000;
   private final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
   private final AtomicInteger queuedRuns = new AtomicInteger();
 
+  private RdfInitialIndexRun initialRun(final boolean rdfEnabled, final LongSupplier mark) {
+    final RdfProjectionStateResolver resolver =
+        new RdfProjectionStateResolver(runStore, () -> false, mark);
+    return new RdfInitialIndexRun(
+        resolver::hasProjectedSinceRdfWasOff, () -> rdfEnabled, queuedRuns::incrementAndGet);
+  }
+
   private RdfInitialIndexRun initialRun(final boolean rdfEnabled) {
-    return new RdfInitialIndexRun(runStore, () -> rdfEnabled, queuedRuns::incrementAndGet);
+    return initialRun(rdfEnabled, () -> MARK);
+  }
+
+  private void givenRuns(final String... runs) {
+    when(runStore.listAppExtensionByName("RdfIndexApp", 10, 0, "status")).thenReturn(List.of(runs));
+  }
+
+  private static String run(final AppRunRecord.Status status, final long startTime) {
+    return JsonUtils.pojoToJson(new AppRunRecord().withStatus(status).withStartTime(startTime));
+  }
+
+  private static String runThatFoundRdfOff(final long startTime) {
+    return JsonUtils.pojoToJson(
+        new AppRunRecord()
+            .withStatus(AppRunRecord.Status.SUCCESS)
+            .withStartTime(startTime)
+            .withSuccessContext(RdfProjectionStateResolver.successContextOfUnchangedProjection()));
   }
 
   @Test
   void queuesOneRunWhenNoRunRecordExists() {
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status")).thenReturn(List.of());
+    givenRuns();
 
     assertTrue(initialRun(true).run());
     assertEquals(1, queuedRuns.get());
   }
 
   @Test
-  void queuesNothingOnRestartWhenARunRecordExists() {
-    final AppRunRecord finished = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
-        .thenReturn(List.of(JsonUtils.pojoToJson(finished)));
+  void queuesWhenOnlyRunsThatFoundRdfOffExist() {
+    givenRuns(runThatFoundRdfOff(MARK + 1), runThatFoundRdfOff(MARK + 2));
+
+    assertTrue(initialRun(true).run());
+    assertEquals(1, queuedRuns.get());
+  }
+
+  @Test
+  void queuesWhenTheProjectingRunStartedBeforeRdfWasLastOff() {
+    givenRuns(runThatFoundRdfOff(MARK + 1), run(AppRunRecord.Status.SUCCESS, MARK - 1));
+
+    assertTrue(initialRun(true).run());
+    assertEquals(1, queuedRuns.get());
+  }
+
+  @Test
+  void queuesNothingOnRestartWhenARunStartedAfterRdfWasLastOff() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK + 1));
 
     assertFalse(initialRun(true).run());
     assertEquals(0, queuedRuns.get());
   }
 
   @Test
-  void queuesNothingWhenTheFirstRunIsStillInFlight() {
-    final AppRunRecord running = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
-        .thenReturn(List.of(JsonUtils.pojoToJson(running)));
+  void aFailedRunAfterTheMarkIsNotRetriedAtEveryRestart() {
+    givenRuns(run(AppRunRecord.Status.FAILED, MARK + 1));
+
+    assertFalse(initialRun(true).run());
+    assertEquals(0, queuedRuns.get());
+  }
+
+  @Test
+  void queuesNothingWhenTheRunIsStillInFlight() {
+    givenRuns(run(AppRunRecord.Status.RUNNING, MARK + 1));
 
     assertFalse(initialRun(true).run());
     assertEquals(0, queuedRuns.get());
@@ -64,7 +110,7 @@ class RdfInitialIndexRunTest {
 
   @Test
   void queuesNothingWhenRdfIsOff() {
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status")).thenReturn(List.of());
+    givenRuns();
 
     assertFalse(initialRun(false).run());
     assertEquals(0, queuedRuns.get());
@@ -72,15 +118,31 @@ class RdfInitialIndexRunTest {
 
   @Test
   void aRejectedEnqueueDoesNotFailStartup() {
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status")).thenReturn(List.of());
+    givenRuns();
+    final RdfProjectionStateResolver resolver =
+        new RdfProjectionStateResolver(runStore, () -> false, () -> MARK);
     final RdfInitialIndexRun rejected =
         new RdfInitialIndexRun(
-            runStore,
+            resolver::hasProjectedSinceRdfWasOff,
             () -> true,
             () -> {
               throw new IllegalStateException("scheduler not started");
             });
 
     assertFalse(rejected.run());
+  }
+
+  @Test
+  void aMarkReadFailureDoesNotFailStartupOrQueueARun() {
+    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK + 1));
+
+    assertFalse(
+        initialRun(
+                true,
+                () -> {
+                  throw new IllegalStateException("health row unreadable");
+                })
+            .run());
+    assertEquals(0, queuedRuns.get());
   }
 }
