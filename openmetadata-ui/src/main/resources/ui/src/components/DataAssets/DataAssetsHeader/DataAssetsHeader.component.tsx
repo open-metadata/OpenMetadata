@@ -288,24 +288,26 @@ export const DataAssetsHeader = ({
 
     return (
       <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger
-          aria-label={t('label.check-upstream-failure')}
-          onPress={() =>
-            navigate({
-              pathname: getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.LINEAGE
-              ),
-              search: QueryString.stringify({
-                layers: [LineageLayer.DataObservability],
-              }),
-            })
-          }>
-          <RedAlertIcon
-            className="tw:text-fg-error-primary"
-            height={24}
-            width={24}
+        <TooltipTrigger className="tw:flex tw:items-center">
+          <Button
+            aria-label={t('label.check-upstream-failure')}
+            color="tertiary-destructive"
+            data-testid="dq-failure-alert-button"
+            iconLeading={RedAlertIcon}
+            size="xs"
+            type="button"
+            onClick={() =>
+              navigate({
+                pathname: getEntityDetailsPath(
+                  entityType,
+                  dataAsset?.fullyQualifiedName ?? '',
+                  EntityTabs.LINEAGE
+                ),
+                search: QueryString.stringify({
+                  layers: [LineageLayer.DataObservability],
+                }),
+              })
+            }
           />
         </TooltipTrigger>
       </Tooltip>
