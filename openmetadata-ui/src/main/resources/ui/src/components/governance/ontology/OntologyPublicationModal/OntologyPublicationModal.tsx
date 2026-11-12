@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   ButtonUtility,
   Dialog,
   FeaturedIcon,
@@ -26,7 +27,9 @@ import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import OntologyReleasePanel from '../OntologyReleasePanel/OntologyReleasePanel';
+import OntologyReleasePanel, {
+  PublicationSummary,
+} from '../OntologyReleasePanel/OntologyReleasePanel';
 
 type PublicationTab = 'changes' | 'releases';
 
@@ -42,6 +45,7 @@ const AI_LAYOUT = {
 
 interface PublicationHeaderProps {
   readonly owner: Ontology;
+  readonly summary: PublicationSummary;
   readonly onClose: () => void;
 }
 
@@ -90,29 +94,59 @@ const PublicationClassicHeader = ({
   );
 };
 
-const PublicationAiHeader = ({ owner, onClose }: PublicationHeaderProps) => {
+const releasesLabel = (label: string, summary: PublicationSummary) => {
+  if (!summary.releaseCount) {
+    return label;
+  }
+  const more = summary.hasMoreReleases ? '+' : '';
+
+  return `${label} (${summary.releaseCount}${more})`;
+};
+
+const PublicationAiHeader = ({
+  owner,
+  summary,
+  onClose,
+}: PublicationHeaderProps) => {
   const { t } = useTranslation();
   const ownerName = getEntityName(owner);
 
   return (
     <div className="tw:flex tw:items-center tw:gap-4 tw:border-b tw:border-secondary tw:px-6 tw:py-4">
       <FeaturedIcon color="gray" icon={ArrowUp} size="md" theme="modern" />
-      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:items-baseline tw:gap-1.5">
-        <Typography
-          className="tw:shrink-0"
-          id="ontology-publication-title"
-          role="heading"
-          size="text-md"
-          weight="semibold">
-          {t('label.review-publish')}
-        </Typography>
-        <Typography
-          as="span"
-          className="tw:truncate"
-          color="secondary"
-          size="text-md">
-          {`· ${ownerName}`}
-        </Typography>
+      <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:gap-1">
+        <div className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-1.5">
+          <Typography
+            className="tw:shrink-0"
+            id="ontology-publication-title"
+            role="heading"
+            size="text-md"
+            weight="semibold">
+            {t('label.review-publish')}
+          </Typography>
+          <Typography
+            as="span"
+            className="tw:truncate"
+            color="secondary"
+            size="text-md">
+            {`· ${ownerName}`}
+          </Typography>
+        </div>
+        {summary.toVersion ? (
+          <div
+            className="tw:flex tw:items-center tw:gap-1.5"
+            data-testid="ontology-publication-version-step">
+            <Badge color="gray" size="sm" type="pill-color">
+              {summary.fromVersion ?? t('label.draft')}
+            </Badge>
+            <Typography aria-hidden as="span" color="quaternary" size="text-xs">
+              →
+            </Typography>
+            <Badge color="brand" size="sm" type="pill-color">
+              {summary.toVersion}
+            </Badge>
+          </div>
+        ) : null}
       </div>
       <Tabs.List
         aria-label={t('label.review-publish')}
@@ -126,7 +160,7 @@ const PublicationAiHeader = ({ owner, onClose }: PublicationHeaderProps) => {
         <Tabs.Item
           data-testid="ontology-publication-tab-releases"
           id="releases"
-          label={t('label.release-plural')}
+          label={releasesLabel(t('label.release-plural'), summary)}
         />
       </Tabs.List>
       <ButtonUtility
@@ -156,6 +190,7 @@ const OntologyPublicationModal = ({
 }: OntologyPublicationModalProps) => {
   const isAiMode = useIsAiMode();
   const [activeTab, setActiveTab] = useState<PublicationTab>(initialTab);
+  const [summary, setSummary] = useState<PublicationSummary>({});
 
   const layout = isAiMode ? AI_LAYOUT : CLASSIC_LAYOUT;
   const PublicationHeader = isAiMode
@@ -187,7 +222,11 @@ const OntologyPublicationModal = ({
             <div
               className="tw:flex tw:max-h-[88vh] tw:flex-col tw:overflow-hidden tw:font-body"
               data-testid="ontology-publication-modal">
-              <PublicationHeader owner={ontology} onClose={onClose} />
+              <PublicationHeader
+                owner={ontology}
+                summary={summary}
+                onClose={onClose}
+              />
               <div className={layout.body}>
                 <Tabs.Panel id={activeTab}>
                   <OntologyReleasePanel
@@ -196,6 +235,7 @@ const OntologyPublicationModal = ({
                     ontology={ontology}
                     view={activeTab}
                     onOpenTask={onOpenTask}
+                    onSummaryChange={setSummary}
                   />
                 </Tabs.Panel>
               </div>

@@ -20,6 +20,7 @@ import {
 import { ArrowRight, Plus } from '@openmetadata/ui-core-components/icons';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 interface ConceptSectionProps {
   readonly addLabel?: string;
@@ -74,6 +75,7 @@ export const ConceptSection = ({
   );
 };
 
+/** The design's small grey "nothing here yet" box, drawn by the shared no-data placeholder. */
 export const ConceptEmptyState = ({
   hint,
   title,
@@ -81,18 +83,18 @@ export const ConceptEmptyState = ({
   readonly hint?: string;
   readonly title: string;
 }) => (
-  <Box className="tw:rounded-lg tw:bg-secondary_alt tw:p-4" direction="col">
-    <Typography as="p" className="tw:m-0" size="text-sm">
-      {title}
-    </Typography>
-    {hint ? (
-      <Typography as="p" className="tw:m-0 tw:text-tertiary" size="text-xs">
-        {hint}
-      </Typography>
-    ) : null}
-  </Box>
+  <div className="tw:relative tw:h-20 tw:rounded-lg tw:bg-secondary_alt">
+    <NoDataPlaceholder
+      data-testid="ontology-concept-empty"
+      description={hint}
+      gap={1}
+      icon={false}
+      title={title}
+    />
+  </div>
 );
 
+/** An inline add form: a brand-bordered card with a soft focus halo, so it reads as the active input. */
 export const ConceptFormCard = ({
   children,
   testId,
@@ -100,11 +102,33 @@ export const ConceptFormCard = ({
   readonly children: ReactNode;
   readonly testId?: string;
 }) => (
-  <Card data-testid={testId} size="sm">
-    <Card.Content className="tw:flex tw:flex-col tw:gap-3">
+  <Card
+    className="tw:border-brand tw:outline-4 tw:outline-utility-brand-100"
+    data-testid={testId}
+    size="sm">
+    <Card.Content className="tw:flex tw:flex-col tw:gap-4 tw:p-4">
       {children}
     </Card.Content>
   </Card>
+);
+
+export const ConceptFormHeading = ({
+  hint,
+  title,
+}: {
+  readonly hint?: string;
+  readonly title: string;
+}) => (
+  <Box direction="col">
+    <Typography size="text-sm" weight="semibold">
+      {title}
+    </Typography>
+    {hint ? (
+      <Typography color="secondary" size="text-sm">
+        {hint}
+      </Typography>
+    ) : null}
+  </Box>
 );
 
 export const ConceptFormPreview = ({
@@ -114,14 +138,10 @@ export const ConceptFormPreview = ({
 }) => (
   <Box
     align="center"
-    className="tw:rounded-lg tw:bg-secondary_alt tw:px-3 tw:py-2.5 tw:text-tertiary"
+    className="tw:rounded-lg tw:border tw:border-utility-brand-200 tw:bg-brand-primary tw:px-3 tw:py-2.5 tw:text-fg-brand-primary"
     gap={2}>
     <ArrowRight aria-hidden className="tw:size-4 tw:shrink-0" />
-    <Typography
-      as="span"
-      className="tw:min-w-0"
-      color="secondary"
-      size="text-sm">
+    <Typography as="span" className="tw:min-w-0" color="brand" size="text-sm">
       {children}
     </Typography>
   </Box>

@@ -26,7 +26,6 @@ import { AssetType } from '../../../../generated/api/data/updateOntologyConceptB
 import { Include } from '../../../../generated/type/include';
 import { useDebouncedValue } from '../../../../hooks/common/useDebouncedValue';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { searchTableColumnsById } from '../../../../rest/tableAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { suggestColumnForProperty } from '../../../../utils/governance/ontology/OntologyBindingSuggestion.utils';
@@ -53,7 +52,6 @@ const OntologyColumnBindingEditor = ({
   onClose,
 }: OntologyColumnBindingEditorProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
   const tables =
     bindings.data?.assets.filter(
@@ -281,7 +279,12 @@ const OntologyColumnBindingEditor = ({
           <Button
             color="primary"
             data-testid="ontology-binding-save"
-            isDisabled={!selected || !table || columns.isFetching}
+            isDisabled={
+              !selected ||
+              !table ||
+              columns.isFetching ||
+              !bindings.editableSnapshot
+            }
             isLoading={bindings.isWriting}
             size="sm"
             onPress={save}>
@@ -292,40 +295,7 @@ const OntologyColumnBindingEditor = ({
     </ConceptFormCard>
   );
 
-  if (isAiMode) {
-    return renderAiEditor();
-  }
-
-  return (
-    <Box data-testid="ontology-column-binding-editor" direction="col" gap={3}>
-      {tables.length === 0 ? (
-        <Typography size="text-xs">
-          {t('message.ontology-link-table-before-binding')}
-        </Typography>
-      ) : (
-        <>
-          {renderTableFields()}
-          {renderColumns()}
-          <Button
-            data-testid="ontology-binding-save"
-            isDisabled={
-              !selected ||
-              !table ||
-              columns.isFetching ||
-              !bindings.editableSnapshot
-            }
-            isLoading={bindings.isWriting}
-            size="xs"
-            onPress={save}>
-            {t('label.save')}
-          </Button>
-        </>
-      )}
-      <Button color="secondary" size="xs" onPress={onClose}>
-        {t('label.cancel')}
-      </Button>
-    </Box>
-  );
+  return renderAiEditor();
 };
 
 export default OntologyColumnBindingEditor;
