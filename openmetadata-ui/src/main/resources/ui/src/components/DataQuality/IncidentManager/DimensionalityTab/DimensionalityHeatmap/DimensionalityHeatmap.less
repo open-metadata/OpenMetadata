@@ -31,11 +31,31 @@
     flex: 1;
     position: relative;
     overflow: hidden;
+
+    &:has(.dimensionality-heatmap__scroll-indicator--left) {
+      --heatmap-fade-left: calc(var(--tw-spacing) * 15);
+    }
+
+    &:has(.dimensionality-heatmap__scroll-indicator--right) {
+      --heatmap-fade-right: calc(var(--tw-spacing) * 15);
+    }
   }
 
+  // Fade the cells out under the scroll indicators with a mask rather than a
+  // gradient overlay, so the edge blends into whatever surface hosts the
+  // heatmap (white shell in light, canvas in dark) without naming a colour.
   &__scroll-container {
     overflow-x: auto;
     overflow-y: hidden;
+    mask-image: linear-gradient(
+      to right,
+      transparent 0,
+      transparent calc(var(--heatmap-fade-left, 0px) * 0.6),
+      black var(--heatmap-fade-left, 0px),
+      black calc(100% - var(--heatmap-fade-right, 0px)),
+      transparent calc(100% - var(--heatmap-fade-right, 0px) * 0.6),
+      transparent 100%
+    );
 
     &.is-scrolling {
       .dimensionality-heatmap__cell,
@@ -146,15 +166,6 @@
 
     &--left {
       left: 0;
-      background: linear-gradient(
-        to left,
-        transparent 0%,
-        color-mix(in srgb, var(--tw-background-color-surface) 80%, transparent)
-          20%,
-        color-mix(in srgb, var(--tw-background-color-surface) 95%, transparent)
-          40%,
-        var(--tw-background-color-surface) 60%
-      );
 
       &::after {
         content: '';
@@ -189,15 +200,6 @@
 
     &--right {
       right: 0;
-      background: linear-gradient(
-        to right,
-        transparent 0%,
-        color-mix(in srgb, var(--tw-background-color-surface) 80%, transparent)
-          20%,
-        color-mix(in srgb, var(--tw-background-color-surface) 95%, transparent)
-          40%,
-        var(--tw-background-color-surface) 60%
-      );
 
       &::after {
         content: '';
