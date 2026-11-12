@@ -17,6 +17,7 @@ import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyPublicationStatus } from '../../../../generated/type/ontologyPublicationStatus';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
@@ -45,6 +46,7 @@ interface OntologyStudioWorkspaceProps {
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
   onRequestEdit?: (conceptId?: string) => void;
+  onOpenPublication?: () => void;
   editConceptRequest?: string;
   onEditConceptRequestHandled?: () => void;
   onRequestGraphSurface: () => void;
@@ -61,8 +63,9 @@ const getWorkspaceClassName = (
     return 'tw:min-h-0 tw:flex-1 tw:overflow-hidden';
   }
 
+  // The canvas toolbar floats over the bottom edge, so the last row scrolls clear of it.
   return isAiMode
-    ? 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-10'
+    ? 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-24'
     : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
 };
 
@@ -81,6 +84,7 @@ const OntologyStudioWorkspace = ({
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
+  onOpenPublication,
   editConceptRequest,
   onEditConceptRequestHandled,
   onRequestGraphSurface,
@@ -92,13 +96,41 @@ const OntologyStudioWorkspace = ({
   const isAiMode = useIsAiMode();
   const guard = useOntologyDraftGuard();
   const [definitionTab, setDefinitionTab] = useState<string | number>(
-    'concept'
+    'overview'
   );
   const [revision, setRevision] = useState(0);
+  const { model } = useOntologyStudioModel(
+    mode === 'definitions' ? ontology : undefined
+  );
+  // Leaving for the graph drops an open definition editor, so it asks first.
+  const openConcept = onRequestEdit
+    ? (conceptId: string) => guard(() => onRequestEdit(conceptId))
+    : undefined;
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ontology.id },
     { deleted: ontology.deleted }
+  );
+
+  const header = (
+    <Box direction="col" gap={1}>
+      <Typography
+        as="h2"
+        className="not-prose tw:m-0"
+        size="text-lg"
+        weight="semibold">
+        {getEntityName(ontology)}
+      </Typography>
+      {ontology.description ? (
+        <Typography
+          color="secondary"
+          data-testid="ontology-studio-description"
+          ellipsis={{ rows: 2 }}
+          size="text-sm">
+          {ontology.description}
+        </Typography>
+      ) : null}
+    </Box>
   );
 
   const renderContent = () => {
@@ -106,45 +138,44 @@ const OntologyStudioWorkspace = ({
       case 'definitions':
         return (
           <Tabs
-            className={isAiMode ? 'tw:gap-5' : undefined}
+            className="tw:gap-5"
             selectedKey={definitionTab}
             onSelectionChange={(key) => guard(() => setDefinitionTab(key))}>
-            {isAiMode ? (
-              <Box direction="col" gap={1}>
-                <Typography
-                  as="h2"
-                  className="not-prose tw:m-0"
-                  size="text-lg"
-                  weight="semibold">
-                  {getEntityName(ontology)}
-                </Typography>
-                {ontology.description ? (
-                  <Typography
-                    color="secondary"
-                    ellipsis={{ rows: 2 }}
-                    size="text-sm">
-                    {ontology.description}
-                  </Typography>
-                ) : null}
-              </Box>
-            ) : null}
+            {header}
             <Tabs.List aria-label={t('label.definition')} type="underline">
               <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
-              <Tabs.Item id="concept">{t('label.concept-plural')}</Tabs.Item>
-              <Tabs.Item id="property">{t('label.property-plural')}</Tabs.Item>
-              <Tabs.Item id="axiom">{t('label.constraint-plural')}</Tabs.Item>
+              <Tabs.Item
+                aria-label={t('label.concept-plural')}
+                badge={model?.concepts.length}
+                id="concept">
+                {t('label.concept-plural')}
+              </Tabs.Item>
+              <Tabs.Item
+                aria-label={t('label.property-plural')}
+                badge={model?.properties.length}
+                id="property">
+                {t('label.property-plural')}
+              </Tabs.Item>
+              <Tabs.Item
+                aria-label={t('label.constraint-plural')}
+                badge={model?.axioms.length}
+                id="axiom">
+                {t('label.constraint-plural')}
+              </Tabs.Item>
               <Tabs.Item id="settings">{t('label.setting-plural')}</Tabs.Item>
             </Tabs.List>
             <Tabs.Panel id="overview">
               <OntologyOverview
                 ontology={ontology}
                 status={publicationStatus}
+                onOpenPublication={onOpenPublication}
                 onOpenTab={(tab) => guard(() => setDefinitionTab(tab))}
               />
             </Tabs.Panel>
             <Tabs.Panel id="concept">
               <OntologyAuthoringWorkspace
                 ontology={ontology}
+                onOpenConcept={openConcept}
                 onWorkingChange={onWorkingChange}
               />
             </Tabs.Panel>
@@ -158,6 +189,7 @@ const OntologyStudioWorkspace = ({
             <Tabs.Panel id="axiom">
               <OntologyAxiomWorkspace
                 ontology={ontology}
+                onOpenConcept={openConcept}
                 onWorkingChange={onWorkingChange}
               />
             </Tabs.Panel>
@@ -177,11 +209,21 @@ const OntologyStudioWorkspace = ({
       case 'edit':
         if (viewSurface === 'ontology') {
           return (
-            <OntologyOverview
-              ontology={ontology}
-              releaseId={releaseId}
-              status={publicationStatus}
-            />
+            <Box
+              className={
+                isAiMode
+                  ? 'tw:h-full tw:overflow-auto tw:px-8 tw:pt-6'
+                  : 'tw:h-full tw:overflow-auto tw:p-6'
+              }
+              direction="col"
+              gap={5}>
+              {header}
+              <OntologyOverview
+                ontology={ontology}
+                releaseId={releaseId}
+                status={publicationStatus}
+              />
+            </Box>
           );
         }
 

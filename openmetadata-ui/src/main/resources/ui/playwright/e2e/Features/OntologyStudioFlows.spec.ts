@@ -332,6 +332,9 @@ test.describe(
           await addConceptFromDrawer(page, 'From Canvas');
 
           await page.getByTestId('submode-tab-definitions').click();
+          await page
+            .getByRole('tab', { name: 'Concepts', exact: true })
+            .click();
           await page.getByTestId('ontology-add-concept').click();
           await addConceptFromDrawer(page, 'From Term Tab');
 

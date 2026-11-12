@@ -23,22 +23,30 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  AlertCircle,
+  ArrowRight,
   BookClosed,
+  Check,
   ChevronDown,
   ChevronRight,
+  Copy01,
   Edit01,
   Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getInverseRelationLabel } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
-  DataPropertyInput,
+  ConceptPropertyInput,
+  getInverseRelationLabel,
+  getRelationPhrase,
+} from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
+import {
   getBindableConceptProperties,
   getConceptAncestors,
   getConceptPropertyRows,
@@ -70,6 +78,7 @@ import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
 import OntologyConceptLiveData, {
   LiveDataBindingState,
 } from './OntologyConceptLiveData';
+import OntologyConceptRules from './OntologyConceptRules';
 import {
   ConceptEmptyState,
   ConceptFormCard,
@@ -87,7 +96,13 @@ interface OntologyConceptInspectorProps {
   readonly canAddRelation?: boolean;
   readonly canCreateRelationType?: boolean;
   readonly relationTypeGroups?: RelationTypeOptionGroup[];
-  readonly onAddProperty?: (input: DataPropertyInput) => Promise<boolean>;
+  readonly onAddProperty?: (input: ConceptPropertyInput) => Promise<boolean>;
+  /** Opens the relationship's own panel; rows open the other concept without it. */
+  readonly onOpenRelation?: (relation: OntologyModelRelation) => void;
+  /** The relation type id a phrase such as "part of" names, if any. */
+  readonly findRelationType?: (phrase: string) => string | undefined;
+  readonly canAddRule?: boolean;
+  readonly onRuleCreated?: () => void;
   readonly onAddRelation?: (
     targetId: string,
     relationType: string
@@ -121,6 +136,8 @@ interface OntologyConceptInspectorProps {
   readonly editor?: OntologyConceptEditorState;
   /** Edit mode could not load the concept's working copy, so it stays read-only. */
   readonly isEditorUnavailable?: boolean;
+  /** A confirm (e.g. delete concept) shown over this panel only. */
+  readonly confirmDialog?: ReactNode;
 }
 
 interface RelationAuthoringProps {
@@ -130,6 +147,8 @@ interface RelationAuthoringProps {
   readonly isAvailable: boolean;
   readonly isOpen: boolean;
   readonly model: OntologyStudioModel;
+  /** A relation type to start from, e.g. one a synonym named. */
+  readonly initialType?: string;
   readonly onClose: () => void;
   readonly onSave: (targetId: string, relationType: string) => Promise<boolean>;
   /** The reason the relation cannot be written, or undefined; shown before any write. */
@@ -161,10 +180,52 @@ const RelationClash = ({ message }: { message?: string }) =>
     </Typography>
   ) : null;
 
+/** The chosen type's label; a new type reads as the name it was typed with. */
+const relationTypeLabel = (
+  groups: RelationTypeOptionGroup[],
+  relationType: string
+) =>
+  groups
+    .flatMap((group) => group.options)
+    .find((option) => option.id === relationType)?.label ||
+  humanizeName(relationType.replace(/^new:/, ''));
+
+const TargetConceptSelect = ({
+  concepts,
+  isDisabled,
+  value,
+  onChange,
+}: {
+  readonly concepts: readonly OntologyConcept[];
+  readonly isDisabled: boolean;
+  readonly value: string;
+  readonly onChange: (id: string) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Select
+      className="tw:w-full"
+      isDisabled={isDisabled}
+      items={concepts.map((candidate) => ({
+        id: candidate.id,
+        label: getEntityName(candidate),
+      }))}
+      label={t('label.target-concept')}
+      placeholder={t('label.choose-concept')}
+      size="sm"
+      value={value || null}
+      onChange={(key) => onChange(String(key ?? ''))}>
+      {(item) => <Select.Item id={item.id} key={item.id} label={item.label} />}
+    </Select>
+  );
+};
+
 const RelationAuthoring = ({
   canCreateRelationType,
   concept,
   groups,
+  initialType = '',
   isAvailable,
   isOpen,
   model,
@@ -174,7 +235,7 @@ const RelationAuthoring = ({
 }: RelationAuthoringProps) => {
   const { t } = useTranslation();
   const [targetId, setTargetId] = useState('');
-  const [relationType, setRelationType] = useState('');
+  const [relationType, setRelationType] = useState(initialType);
   const [isSaving, setIsSaving] = useState(false);
   const targetConcepts = useMemo(
     () => model.concepts.filter((candidate) => candidate.id !== concept.id),
@@ -195,104 +256,150 @@ const RelationAuthoring = ({
   const target = targetConcepts.find(({ id }) => id === targetId);
   const issue = check?.(targetId, relationType);
   const clash = useRelationClash(concept.id, targetId, relationType);
-  const issueMessage = (
-    <>
-      <RelationIssue message={issue} />
-      <RelationClash message={clash} />
-    </>
-  );
   const relationLabel =
-    groups
-      .flatMap((group) => group.options)
-      .find((option) => option.id === relationType)?.label ??
-    humanizeName(relationType.replace(/^new:/, ''));
-  const targetSelect = (
-    <Select
-      className="tw:w-full"
-      isDisabled={isSaving}
-      items={targetConcepts.map((candidate) => ({
-        id: candidate.id,
-        label: candidate.displayName ?? candidate.name,
-      }))}
-      label={t('label.target')}
-      size="sm"
-      value={targetId}
-      onChange={(key) => setTargetId(String(key))}>
-      {(item) => <Select.Item id={item.id} key={item.id} label={item.label} />}
-    </Select>
-  );
-  const typePicker = (
-    <RelationshipTypePicker
-      canCreateType={canCreateRelationType}
-      groups={groups}
-      sourceLabel={concept.displayName ?? concept.name}
-      targetLabel={t('label.target')}
-      onCancel={onClose}
-      onSelect={setRelationType}
-    />
-  );
-  const changeTypeButton = (
-    <Button color="link-gray" size="xs" onPress={() => setRelationType('')}>
-      {t('label.change')}
-    </Button>
-  );
+    relationTypeLabel(groups, relationType) || t('label.new-link');
 
-  const renderAiForm = () => (
-    <ConceptFormCard testId="ontology-relationship-form">
-      {relationType ? (
-        <>
-          <div className="tw:grid tw:grid-cols-2 tw:gap-3">
-            <Box direction="col" gap={2}>
-              <Typography
-                className="tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.relationship')}
-              </Typography>
-              <Box align="center" gap={2} wrap="wrap">
-                <Badge color="brand" size="sm" type="pill-color">
-                  {relationLabel}
-                </Badge>
-                {changeTypeButton}
-              </Box>
-            </Box>
-            {targetSelect}
-          </div>
-          <ConceptFormPreview>
-            {concept.displayName ?? concept.name} {relationLabel}{' '}
-            {target ? target.displayName ?? target.name : '…'}
-          </ConceptFormPreview>
-          {issueMessage}
-          <Box gap={2} justify="end">
-            <Button
-              color="secondary"
-              isDisabled={isSaving}
-              size="sm"
-              onPress={onClose}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="primary"
-              data-testid="ontology-relationship-submit"
-              isDisabled={!targetId || Boolean(issue)}
-              isLoading={isSaving}
-              size="sm"
-              onPress={() => void save()}>
-              {t('label.add-entity', { entity: t('label.relationship') })}
-            </Button>
-          </Box>
-        </>
-      ) : (
-        typePicker
-      )}
-    </ConceptFormCard>
-  );
-
-  if (!isAvailable) {
+  if (!isAvailable || !isOpen) {
     return null;
   }
 
-  return isOpen ? renderAiForm() : null;
+  if (!relationType) {
+    return (
+      <ConceptFormCard testId="ontology-relationship-form">
+        <RelationshipTypePicker
+          canCreateType={canCreateRelationType}
+          groups={groups}
+          sourceId={concept.id}
+          sourceLabel={getEntityName(concept)}
+          targetLabel={t('label.target')}
+          onCancel={onClose}
+          onSelect={setRelationType}
+        />
+      </ConceptFormCard>
+    );
+  }
+
+  return (
+    <ConceptFormCard testId="ontology-relationship-form">
+      <div className="tw:grid tw:grid-cols-2 tw:gap-3">
+        <Box direction="col" gap={2}>
+          <Typography
+            className="tw:text-secondary"
+            size="text-sm"
+            weight="medium">
+            {t('label.relationship')}
+          </Typography>
+          <Button
+            className="tw:justify-between"
+            color="secondary"
+            data-testid="ontology-relationship-type"
+            iconTrailing={ChevronDown}
+            isDisabled={isSaving}
+            size="sm"
+            onPress={() => setRelationType('')}>
+            <span className="tw:truncate">{relationLabel}</span>
+          </Button>
+        </Box>
+        <TargetConceptSelect
+          concepts={targetConcepts}
+          isDisabled={isSaving}
+          value={targetId}
+          onChange={setTargetId}
+        />
+      </div>
+      <ConceptFormPreview>
+        {target
+          ? `${getEntityName(concept)} ${relationLabel} ${getEntityName(
+              target
+            )}`
+          : t('message.pick-concept-to-complete-sentence')}
+      </ConceptFormPreview>
+      <RelationIssue message={issue} />
+      <RelationClash message={clash} />
+      <Box gap={2} justify="end">
+        <Button
+          color="secondary"
+          isDisabled={isSaving}
+          size="sm"
+          onPress={onClose}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="ontology-relationship-submit"
+          isDisabled={!targetId || Boolean(issue)}
+          isLoading={isSaving}
+          size="sm"
+          onPress={() => void save()}>
+          {t('label.add-entity', { entity: t('label.relationship') })}
+        </Button>
+      </Box>
+    </ConceptFormCard>
+  );
+};
+
+/** A synonym that reads like a relation phrase, offered as a relationship instead. */
+const RelationSynonymWarning = ({
+  editor,
+  savedSynonyms = [],
+  canConvert,
+  onConvert,
+}: {
+  readonly editor?: OntologyConceptEditorState;
+  readonly savedSynonyms?: readonly string[];
+  readonly canConvert: boolean;
+  /** Receives the relation phrase the synonym starts with. */
+  readonly onConvert: (phrase: string) => void;
+}) => {
+  const { t } = useTranslation();
+  // Edit reads the unsaved chips, so a synonym just typed is flagged too.
+  const synonyms =
+    editor?.form.watch('synonyms').map((item) => String(item.id)) ??
+    savedSynonyms;
+  const synonym = synonyms.find((candidate) => getRelationPhrase(candidate));
+  if (!synonym) {
+    return null;
+  }
+  // The synonym leaves the unsaved form; the relationship is written by its own form.
+  const convert = () => {
+    editor?.form.setValue(
+      'synonyms',
+      editor.form
+        .getValues('synonyms')
+        .filter((item) => String(item.id) !== synonym),
+      { shouldDirty: true }
+    );
+    onConvert(getRelationPhrase(synonym) ?? '');
+  };
+
+  return (
+    <Box
+      align="center"
+      className="tw:rounded-lg tw:border tw:border-warning_subtle tw:bg-warning-primary tw:px-3 tw:py-2"
+      data-testid="ontology-synonym-relation-warning"
+      gap={2}
+      role="status">
+      <AlertCircle
+        aria-hidden
+        className="tw:size-4 tw:shrink-0 tw:text-fg-warning-primary"
+      />
+      <Typography
+        className="tw:min-w-0 tw:flex-1"
+        color="warning"
+        size="text-sm">
+        {t('message.synonym-looks-like-relationship', { synonym })}
+      </Typography>
+      {canConvert && editor ? (
+        <Button
+          color="secondary"
+          data-testid="ontology-synonym-add-as-relationship"
+          size="xs"
+          onPress={convert}>
+          {t('label.add-as-relationship')}
+        </Button>
+      ) : null}
+    </Box>
+  );
 };
 
 const OntologyConceptInspector = ({
@@ -304,6 +411,10 @@ const OntologyConceptInspector = ({
   canCreateRelationType = false,
   relationTypeGroups = [],
   onAddProperty,
+  onOpenRelation,
+  findRelationType,
+  canAddRule,
+  onRuleCreated,
   onAddRelation,
   canEditRelations = false,
   checkAddRelation,
@@ -320,11 +431,16 @@ const OntologyConceptInspector = ({
   onSelectConcept,
   editor,
   isEditorUnavailable,
+  confirmDialog,
 }: OntologyConceptInspectorProps) => {
   const { t } = useTranslation();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
+  const [relationPreset, setRelationPreset] = useState('');
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const bindings = useOntologyConceptBindings(concept.id);
+  const { hasCopied: hasCopiedIri, onCopyToClipBoard } = useClipboard(
+    concept.iri
+  );
   let liveDataBindingState: LiveDataBindingState = 'loading';
   if (bindings.data) {
     liveDataBindingState = bindings.data.assets.length ? 'bound' : 'unbound';
@@ -474,6 +590,10 @@ const OntologyConceptInspector = ({
   const renderPropertyAuthoring = () =>
     onAddProperty ? (
       <OntologyPropertyAuthoring
+        concepts={model.concepts.map((candidate) => ({
+          iri: candidate.iri,
+          label: getEntityName(candidate),
+        }))}
         isAvailable={canAddProperty}
         isOpen={authoring === 'property'}
         key={concept.id}
@@ -502,14 +622,27 @@ const OntologyConceptInspector = ({
     );
 
     return (
-      <InspectorRow key={`${direction}:${relation.key}`}>
-        {readsForward ? badge : null}
+      <li
+        className="tw:flex tw:min-h-11 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5"
+        data-testid="ontology-concept-relation-row"
+        key={`${direction}:${relation.key}`}>
+        {readsForward ? (
+          <>
+            {badge}
+            <ArrowRight
+              aria-hidden
+              className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
+            />
+          </>
+        ) : null}
         <Button
           noTextPadding
           className="tw:min-w-0 tw:flex-1 tw:justify-start"
           color="tertiary"
           data-testid={`ontology-concept-relation-${other.id}`}
-          onPress={() => onSelectConcept(other)}>
+          onPress={() =>
+            onOpenRelation ? onOpenRelation(relation) : onSelectConcept(other)
+          }>
           <span className="tw:truncate">{other.displayName ?? other.name}</span>
         </Button>
         {readsForward ? null : badge}
@@ -523,7 +656,7 @@ const OntologyConceptInspector = ({
             onEdit={(typeId) => onEditRelation(relation, typeId)}
           />
         ) : null}
-      </InspectorRow>
+      </li>
     );
   };
 
@@ -534,11 +667,15 @@ const OntologyConceptInspector = ({
         check={checkAddRelation}
         concept={concept}
         groups={relationTypeGroups}
+        initialType={relationPreset}
         isAvailable={canAddRelation}
         isOpen={authoring === 'relation'}
-        key={concept.id}
+        key={`${concept.id}:${relationPreset}`}
         model={model}
-        onClose={() => setAuthoring(undefined)}
+        onClose={() => {
+          setAuthoring(undefined);
+          setRelationPreset('');
+        }}
         onSave={onAddRelation}
       />
     ) : null;
@@ -578,13 +715,6 @@ const OntologyConceptInspector = ({
     </InspectorRow>
   );
 
-  const renderAiEmpty = (
-    entity: string,
-    hint = t('message.no-data-available')
-  ) => (
-    <ConceptEmptyState hint={hint} title={t('label.no-entity', { entity })} />
-  );
-
   const renderAiBreadcrumb = () => (
     <Box
       align="center"
@@ -599,18 +729,27 @@ const OntologyConceptInspector = ({
         weight="medium">
         {ontologyName}
       </Typography>
+      <ChevronRight aria-hidden className="tw:size-3 tw:shrink-0" />
       {ancestors[0] ? (
-        <>
-          <ChevronRight aria-hidden className="tw:size-3 tw:shrink-0" />
-          <Typography
-            ellipsis
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
+        <Button
+          noTextPadding
+          className="tw:min-w-0"
+          color="link-gray"
+          data-testid="ontology-concept-parent"
+          size="sm"
+          onPress={() => onSelectConcept(ancestors[0])}>
+          <span className="tw:truncate">
             {ancestors[0].displayName ?? ancestors[0].name}
-          </Typography>
-        </>
-      ) : null}
+          </span>
+        </Button>
+      ) : (
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="ontology-concept-parent"
+          size="text-sm">
+          {t('label.top-level-concept')}
+        </Typography>
+      )}
     </Box>
   );
 
@@ -708,11 +847,27 @@ const OntologyConceptInspector = ({
             )}
           </Badge>
         </Box>
-        <Typography
-          ellipsis
-          className="tw:font-mono tw:text-xs tw:text-tertiary">
-          {concept.iri}
-        </Typography>
+        <Box align="center" className="tw:min-w-0" gap={1}>
+          <Typography
+            ellipsis
+            className="tw:min-w-0 tw:text-tertiary"
+            data-testid="ontology-concept-iri"
+            size="text-sm">
+            {concept.iri}
+          </Typography>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="ontology-concept-copy-iri"
+            icon={hasCopiedIri ? Check : Copy01}
+            size="xs"
+            tooltip={t(
+              hasCopiedIri
+                ? 'message.copied-to-clipboard'
+                : 'message.copy-to-clipboard'
+            )}
+            onClick={() => void onCopyToClipBoard(concept.iri)}
+          />
+        </Box>
       </Box>
       <Box align="center" data-testid="ontology-concept-completeness" gap={3}>
         <Typography className="tw:shrink-0 tw:text-tertiary" size="text-sm">
@@ -792,6 +947,15 @@ const OntologyConceptInspector = ({
           )}
         </Box>
       )}
+      <RelationSynonymWarning
+        canConvert={Boolean(onAddRelation) && canAddRelation}
+        editor={editor}
+        savedSynonyms={concept.synonyms}
+        onConvert={(phrase) => {
+          setRelationPreset(findRelationType?.(phrase) ?? '');
+          setAuthoring('relation');
+        }}
+      />
     </ConceptSection>
   );
 
@@ -810,7 +974,10 @@ const OntologyConceptInspector = ({
         {mappings.length > 0 ? (
           <InspectorList>{mappings.map(renderMappingRow)}</InspectorList>
         ) : (
-          renderAiEmpty(t('label.mapping-plural'))
+          <ConceptEmptyState
+            hint={t('message.ontology-mappings-empty-hint')}
+            title={t('message.ontology-no-mappings-yet')}
+          />
         )}
       </ConceptSection>
     );
@@ -861,14 +1028,14 @@ const OntologyConceptInspector = ({
         )}>
         {renderRelationAuthoring()}
         {conceptRelations.length > 0 ? (
-          <InspectorList>
+          <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
             {conceptRelations.map(renderRelationRow)}
-          </InspectorList>
+          </ul>
         ) : (
-          renderAiEmpty(
-            t('label.relationship-plural'),
-            t('message.ontology-relationships-feature-description')
-          )
+          <ConceptEmptyState
+            hint={t('message.ontology-relationships-feature-description')}
+            title={t('message.ontology-no-relationships-yet')}
+          />
         )}
       </ConceptSection>
       <ConceptSection
@@ -886,9 +1053,18 @@ const OntologyConceptInspector = ({
         {properties.length > 0 ? (
           <InspectorList>{properties.map(renderPropertyRow)}</InspectorList>
         ) : (
-          renderAiEmpty(t('label.property-plural'))
+          <ConceptEmptyState title={t('message.ontology-no-properties-yet')} />
         )}
       </ConceptSection>
+      <OntologyConceptRules
+        canAdd={canAddRule}
+        concept={concept}
+        isEditing={Boolean(editor)}
+        key={`rules:${concept.id}`}
+        model={model}
+        relations={relations}
+        onCreated={onRuleCreated}
+      />
       {unavailableProperties.length > 0 ? (
         <ConceptSection
           count={unavailableProperties.length}
@@ -925,7 +1101,9 @@ const OntologyConceptInspector = ({
   );
 
   return (
-    <OntologyStudioDrawer testId="ontology-concept-inspector">
+    <OntologyStudioDrawer
+      confirm={confirmDialog}
+      testId="ontology-concept-inspector">
       {renderHeader()}
       {isEditorUnavailable ? (
         <Typography

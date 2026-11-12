@@ -173,9 +173,8 @@ test.describe(
               const text = 'Saved ' + tab + ' description';
               await description.fill(text);
               if (tab === 'Concepts') {
-                await page
-                  .getByRole('button', { name: 'Person', exact: true })
-                  .click();
+                // A Concepts row opens the concept's panel on the graph; leaving for the Ontology tab is guarded.
+                await page.getByTestId('submode-tab-definitions').click();
               } else {
                 await page
                   .getByRole('tab', { name: 'Constraints', exact: true })
@@ -209,6 +208,9 @@ test.describe(
                   'true'
                 );
                 await page.getByTestId('mode-tab-edit').click();
+                await page.getByTestId('submode-tab-definitions').click();
+              }
+              if (tab === 'Concepts') {
                 await page.getByTestId('submode-tab-definitions').click();
               }
               await page

@@ -104,3 +104,30 @@ export const resolveScopeOptions = (
         : labels.releaseName(release),
   })),
 ];
+
+/**
+ * The published release downloads as `<ontology>.<ext>`, as the handoff names it; the draft and older
+ * releases carry a suffix so one scope never overwrites another's file.
+ */
+export const resolveExportFileName = (
+  ontologyName: string,
+  extension: string,
+  release?: Pick<OntologyRelease, 'id' | 'releaseRevision' | 'semanticVersion'>,
+  activeReleaseId?: string
+) => {
+  const slug =
+    ontologyName
+      .toLowerCase()
+      .replaceAll(/[^a-z0-9]+/g, '-')
+      .replaceAll(/^-+|-+$/g, '') || 'ontology';
+  if (!release) {
+    return `${slug}-draft.${extension}`;
+  }
+  if (release.id === activeReleaseId) {
+    return `${slug}.${extension}`;
+  }
+
+  return release.semanticVersion
+    ? `${slug}-v${release.semanticVersion}.${extension}`
+    : `${slug}-release-${release.releaseRevision}.${extension}`;
+};

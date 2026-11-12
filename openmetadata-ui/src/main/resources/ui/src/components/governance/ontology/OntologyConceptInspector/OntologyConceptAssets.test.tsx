@@ -89,7 +89,7 @@ const selectAll = async () => {
   const picker = await screen.findByTestId('ontology-data-asset-picker');
   await within(picker).findByRole('checkbox', { name: 'new-one' });
   fireEvent.click(
-    within(picker).getByRole('checkbox', { name: 'label.select-all' })
+    within(picker).getByRole('checkbox', { name: 'label.select-all-lowercase' })
   );
   fireEvent.click(within(picker).getByTestId('ontology-data-asset-save'));
 

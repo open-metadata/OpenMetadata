@@ -39,6 +39,7 @@ import {
 
 interface NativeOntologyTreeViewProps {
   readonly index: NativeTreeIndex;
+  /** Unused: every row is the handoff's 56px. Kept until the graph views stop passing it. */
   readonly density?: 'default' | 'compact';
   readonly emptyMessage?: string;
   readonly selectedNodeId?: string;
@@ -54,13 +55,11 @@ const getTreeHeading = (title: string | undefined, t: TFunction) =>
 const NativeTreeRowContent = ({
   row,
   childCount,
-  density,
   showGroup,
   onConnect,
 }: {
   row: NativeTreePlacement;
   childCount: number;
-  density: NativeOntologyTreeViewProps['density'];
   /** All ontologies names each root's ontology; one ontology names it once in the heading. */
   showGroup: boolean;
   onConnect?: (node: OntologyNode) => void;
@@ -78,8 +77,8 @@ const NativeTreeRowContent = ({
         <Box align="center" className="tw:min-w-0" gap={2}>
           <Typography
             ellipsis
-            size={density === 'compact' ? 'text-sm' : 'text-md'}
-            weight={isRoot ? 'semibold' : 'medium'}>
+            size="text-sm"
+            weight={isRoot ? 'semibold' : 'regular'}>
             {row.node.label}
           </Typography>
           {row.hasChildren ? (
@@ -123,7 +122,6 @@ const NativeTreeRowContent = ({
 
 const NativeOntologyTreeView = ({
   index,
-  density,
   emptyMessage,
   selectedNodeId,
   onConnect,
@@ -203,10 +201,12 @@ const NativeOntologyTreeView = ({
           id={row.key}
           key={row.key}
           textValue={row.node.label}>
-          <Tree.ItemContent hasChildItems={row.hasChildren} maxIndentLevel={16}>
+          <Tree.ItemContent
+            className="tw:min-h-14"
+            hasChildItems={row.hasChildren}
+            maxIndentLevel={16}>
             <NativeTreeRowContent
               childCount={index.children.get(row.node.id)?.length ?? 0}
-              density={density}
               row={row}
               showGroup={!title}
               onConnect={onConnect}
@@ -226,7 +226,7 @@ const NativeOntologyTreeView = ({
     }
 
     return roots;
-  }, [rows, index, density, onConnect, title]);
+  }, [rows, index, onConnect, title]);
   // With a row selected, React Aria drops Enter and clicks on other rows in the
   // default toggle behaviour; replace behaviour reports clicks as selection changes.
   const openRow = (key: Key) => {

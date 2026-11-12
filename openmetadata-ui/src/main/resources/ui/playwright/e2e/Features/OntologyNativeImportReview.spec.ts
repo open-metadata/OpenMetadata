@@ -20,6 +20,8 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
 import {
+  openExportAdvanced,
+  openNewOntologyImport,
   openOntologyTransfer,
   selectOntologyOption,
   waitForPackInstallJob,
@@ -170,9 +172,9 @@ const chooseFile = (page: Page, name: string, content: string | Buffer) =>
       buffer: Buffer.from(content),
     });
 
+/** The dry run starts as soon as the file's format is known. */
 const parseFile = async (page: Page, name: string, content: string) => {
   await chooseFile(page, name, content);
-  await page.getByTestId('ontology-native-import-parse').click();
   await expect(page.getByTestId('ontology-native-import-items')).toBeVisible();
 };
 
@@ -254,7 +256,7 @@ test.describe(
           .click();
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toHaveText('Import 1 selected');
+        ).toHaveText('Import 1 change');
         await applyImport(page);
 
         expect(await conceptNames(api, ontology)).toEqual(['Invoice']);
@@ -278,7 +280,7 @@ test.describe(
         await parseFile(page, 'billing.ttl', TURTLE(NS(ontology.name)));
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toHaveText('Import 4 selected');
+        ).toHaveText('Import 4 changes');
 
         await itemRow(page, 'Payment')
           .locator('[data-testid^="ontology-native-import-item-check-"]')
@@ -292,7 +294,7 @@ test.describe(
         await expect(link).toContainText('Needs Payment, which is not ticked');
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toHaveText('Import 2 selected');
+        ).toHaveText('Import 2 changes');
 
         await itemRow(page, 'Payment')
           .locator('[data-testid^="ontology-native-import-item-check-"]')
@@ -305,7 +307,7 @@ test.describe(
         await expect(linkCheck).toBeEnabled();
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toHaveText('Import 3 selected');
+        ).toHaveText('Import 3 changes');
         await applyImport(page);
 
         expect(await conceptNames(api, ontology)).toEqual([
@@ -349,7 +351,7 @@ test.describe(
         ).toHaveText('Also unticked 1 rule that uses Invoice');
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toHaveText('Import 2 selected');
+        ).toHaveText('Import 2 changes');
       } finally {
         await remove(api, ontology.id);
       }
@@ -377,7 +379,7 @@ test.describe(
 
         await expect(
           page.getByTestId('ontology-native-import-apply')
-        ).toHaveText('Import 2 selected');
+        ).toHaveText('Import 2 changes');
         await applyImport(page);
 
         expect(await conceptNames(api, ontology)).toEqual(['Invoice']);
@@ -396,14 +398,11 @@ test.describe(
         const file = FORMAT_FILES(NS('src'))[format];
 
         try {
-          await openImport(page, ontology);
+          await openNewOntologyImport(page, ontology);
           await chooseFile(page, file.name, file.content);
           await expect(
             page.getByTestId('ontology-native-import-format')
           ).toHaveText(file.label);
-          await page.getByTestId('ontology-native-import-target').click();
-          await page.getByRole('option', { name: /new ontology/i }).click();
-          await page.getByTestId('ontology-native-import-parse').click();
           await expect(itemRow(page, 'Invoice')).toContainText('New');
 
           const create = page.waitForResponse(
@@ -465,14 +464,11 @@ test.describe(
           `${NS(source.ontology.name)}c7f3a,Settlement,`
         );
 
-        await openImport(page, ontology);
+        await openNewOntologyImport(page, ontology);
         await chooseFile(page, 'billing.csv', await csv.text());
         await expect(
           page.getByTestId('ontology-native-import-format')
         ).toHaveText('CSV');
-        await page.getByTestId('ontology-native-import-target').click();
-        await page.getByRole('option', { name: /new ontology/i }).click();
-        await page.getByTestId('ontology-native-import-parse').click();
         await expect(itemRow(page, 'Invoice')).toContainText('New');
         await expect(itemRow(page, 'Receipt')).toContainText('New');
         await expect(itemRow(page, 'Settlement')).toContainText('New');
@@ -513,7 +509,7 @@ test.describe(
         await parseFile(page, 'rules.ttl', RULES_TURTLE(NS(ontology.name)));
 
         const group = page.getByTestId('ontology-native-import-group-RULE');
-        await expect(group).toContainText('Rules (1)');
+        await expect(group).toContainText('Rules');
         await expect(
           group.locator('[data-testid^="ontology-native-import-item-status-"]')
         ).toHaveText(['New']);
@@ -521,16 +517,24 @@ test.describe(
           page.getByTestId('ontology-native-import-items-found')
         ).toContainText('4 items found');
         await expect(
-          page.getByTestId('ontology-native-import-selection-summary')
-        ).toContainText('4 of 4 items selected');
+          page.getByTestId('ontology-native-import-summary')
+        ).toContainText('1 rule');
+        await expect(
+          page.getByTestId('ontology-native-import-apply')
+        ).toHaveText('Import 4 changes');
 
         const check = group.getByTestId(
           'ontology-native-import-group-check-RULE'
         );
+        await expect(check).toHaveText('Deselect all');
         await check.click();
+        await expect(check).toHaveText('Select all');
         await expect(
-          page.getByTestId('ontology-native-import-selection-summary')
-        ).toContainText('3 of 4 items selected');
+          page.getByTestId('ontology-native-import-summary')
+        ).not.toContainText('rule');
+        await expect(
+          page.getByTestId('ontology-native-import-apply')
+        ).toHaveText('Import 3 changes');
         await check.click();
         await applyImport(page);
 
@@ -556,19 +560,23 @@ test.describe(
       try {
         await openImport(page, ontology);
         await chooseFile(page, 'notes.ttl', 'this is not rdf at all');
-        await page.getByTestId('ontology-native-import-parse').click();
         await expect(page.getByRole('alert')).toBeVisible();
         await expect(
           page.getByTestId('ontology-native-import-apply')
         ).toBeDisabled();
 
+        await page.getByTestId('ontology-native-import-clear').click();
         await chooseFile(
           page,
           'huge.ttl',
           Buffer.alloc(10 * 1024 * 1024 + 1, 'a')
         );
+        await expect(page.getByRole('alert')).toContainText('10 MB');
         await expect(
-          page.getByTestId('ontology-native-import-parse')
+          page.getByTestId('ontology-native-import-file-card')
+        ).toHaveCount(0);
+        await expect(
+          page.getByTestId('ontology-native-import-apply')
         ).toBeDisabled();
       } finally {
         await remove(api, ontology.id);
@@ -617,6 +625,10 @@ test.describe(
         await applyImport(page);
 
         await openOntologyTransfer(page);
+        await expect(
+          page.getByTestId('ontology-export-contents-draft').getByRole('radio')
+        ).toBeChecked();
+        await openExportAdvanced(page);
         await expect(page.getByTestId('ontology-export-scope')).toContainText(
           'Current draft'
         );
@@ -664,6 +676,7 @@ test.describe(
 
           await openOntologyTransfer(page);
           await page.getByTestId(`ontology-release-format-${card}`).click();
+          await openExportAdvanced(page);
           await expect(
             page.getByTestId('ontology-release-export-preview')
           ).toContainText(ROUND_TRIP[card].marker);
@@ -678,7 +691,6 @@ test.describe(
             `round.${ROUND_TRIP[card].extension}`,
             exported
           );
-          await page.getByTestId('ontology-native-import-parse').click();
           await expect(itemRow(page, 'Invoice')).toContainText('New');
           await expect(itemRow(page, 'Receipt')).toContainText('New');
           await applyImport(page);
@@ -724,6 +736,7 @@ test.describe(
 
         await page.goto(`/governance/ontology?ontology=${ontology.id}`);
         await openOntologyTransfer(page);
+        await openExportAdvanced(page);
         await page
           .getByTestId('ontology-export-scope')
           .getByRole('button')

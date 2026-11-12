@@ -124,7 +124,7 @@ describe('OntologyConceptEditor', () => {
     ).toBeDisabled();
 
     fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.display-name' }),
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' }),
       { target: { value: 'Customers' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
@@ -426,7 +426,7 @@ describe('OntologyConceptEditor', () => {
       />
     );
     fireEvent.change(
-      screen.getByRole('textbox', { name: 'label.display-name' }),
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' }),
       { target: { value: 'Customers' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
@@ -434,7 +434,7 @@ describe('OntologyConceptEditor', () => {
 
     expect(saved).not.toHaveBeenCalled();
     expect(
-      screen.getByRole('textbox', { name: 'label.display-name' })
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' })
     ).toHaveValue('Customers');
     expect(screen.getByRole('button', { name: 'label.save' })).toBeEnabled();
   });
@@ -459,7 +459,7 @@ describe('OntologyConceptEditor', () => {
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
     expect(
-      screen.getByRole('textbox', { name: 'label.display-name' })
+      screen.getByRole('textbox', { name: 'label.ontology-display-name' })
     ).toBeDisabled();
     expect(patch).not.toHaveBeenCalled();
     expect(
@@ -525,7 +525,7 @@ describe('OntologyConceptEditor', () => {
       ).toHaveFocus();
 
       fireEvent.change(
-        screen.getByRole('textbox', { name: 'label.display-name' }),
+        screen.getByRole('textbox', { name: 'label.ontology-display-name' }),
         { target: { value: 'Customers' } }
       );
 
@@ -556,7 +556,7 @@ describe('OntologyConceptEditor', () => {
         screen.getByRole('button', { name: 'label.add-mapping' })
       ).toBeDisabled();
       expect(
-        screen.getByRole('textbox', { name: 'label.display-name' })
+        screen.getByRole('textbox', { name: 'label.ontology-display-name' })
       ).toBeDisabled();
     });
   });

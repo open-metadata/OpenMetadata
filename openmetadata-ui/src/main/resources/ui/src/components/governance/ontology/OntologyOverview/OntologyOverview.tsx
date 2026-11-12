@@ -13,6 +13,7 @@
 import {
   Alert,
   Badge,
+  BadgeColors,
   Box,
   Button,
   Card,
@@ -28,16 +29,29 @@ import { useQuery } from '@tanstack/react-query';
 import { TFunction } from 'i18next';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ChangeType,
+  MemberChange,
+  MemberKind,
+} from '../../../../generated/api/data/ontologyWorkingDiff';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { EntityReference } from '../../../../generated/entity/type';
 import { OntologyPublicationStatus } from '../../../../generated/type/ontologyPublicationStatus';
+import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
-import { getOntologyWorkingValidation } from '../../../../rest/ontologyAPI';
+import {
+  getOntologyWorkingDiff,
+  getOntologyWorkingValidation,
+} from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import Loader from '../../../common/Loader/Loader';
 import { buildNativeTreeIndex } from '../../../OntologyExplorer/OntologyStudio.utils';
 import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
+import {
+  overviewValidationQueryKey,
+  RECENT_CHANGES_SHOWN,
+} from './OntologyOverview.constants';
 
 export type OntologyOverviewTab = 'concept' | 'property' | 'axiom';
 
@@ -48,7 +62,120 @@ interface OntologyOverviewProps {
   readonly status?: OntologyPublicationStatus;
   /** Given inside the Ontology tabs: a card opens the tab it summarises. */
   readonly onOpenTab?: (tab: OntologyOverviewTab) => void;
+  /** Opens Review & publish; the Recent changes card shows only when given. */
+  readonly onOpenPublication?: () => void;
 }
+
+const MEMBER_KINDS: Partial<
+  Record<MemberKind, { label: string; color: BadgeColors }>
+> = {
+  [MemberKind.Concept]: { label: 'label.concept', color: 'brand' },
+  [MemberKind.Axiom]: { label: 'label.rule', color: 'orange' },
+  [MemberKind.Property]: { label: 'label.property', color: 'purple' },
+  [MemberKind.Association]: { label: 'label.relationship', color: 'success' },
+};
+const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
+  [ChangeType.Added]: 'label.added',
+  [ChangeType.Changed]: 'label.changed',
+  [ChangeType.Removed]: 'label.removed',
+  [ChangeType.Deprecated]: 'label.deprecated',
+};
+
+const ChangeRow = ({ change }: { change: MemberChange }) => {
+  const { t } = useTranslation();
+  const kind = MEMBER_KINDS[change.memberKind];
+
+  return (
+    <Box
+      align="center"
+      className="tw:border-t tw:border-secondary tw:px-6 tw:py-3 tw:first:border-t-0"
+      data-testid="ontology-overview-change"
+      gap={3}>
+      <div className="tw:w-28 tw:shrink-0">
+        {kind ? (
+          <Badge color={kind.color} size="sm" type="pill-color">
+            {t(kind.label)}
+          </Badge>
+        ) : null}
+      </div>
+      <Box className="tw:min-w-0 tw:flex-1">
+        <Typography ellipsis size="text-sm">
+          {getEntityName(change.entity)}
+        </Typography>
+      </Box>
+      <Typography color="secondary" size="text-xs">
+        {t(CHANGE_TYPE_LABELS[change.changeType])}
+      </Typography>
+    </Box>
+  );
+};
+
+/** The newest unpublished changes; hidden for a reader who may not see the draft. */
+const RecentChangesCard = ({
+  ontologyId,
+  onOpenPublication,
+}: {
+  ontologyId: string;
+  onOpenPublication: () => void;
+}) => {
+  const { t } = useTranslation();
+  const diff = useQuery({
+    // Under the working-diff key, so a publish or any draft edit that refreshes the diff refreshes this too.
+    queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontologyId, 'overview-recent'],
+    queryFn: ({ signal }) =>
+      getOntologyWorkingDiff(
+        ontologyId,
+        { limit: RECENT_CHANGES_SHOWN },
+        signal
+      ),
+    retry: false,
+  });
+
+  if (!diff.data) {
+    return null;
+  }
+  const total = diff.data.paging.total ?? diff.data.data.length;
+
+  return (
+    <Card data-testid="ontology-overview-recent-changes">
+      <Card.Header
+        extra={
+          <Box align="center" gap={3}>
+            <Typography color="secondary" size="text-sm">
+              {t('message.ontology-n-unpublished', { count: total })}
+            </Typography>
+            {total > 0 ? (
+              <Button
+                color="secondary"
+                data-testid="ontology-overview-review-publish"
+                size="sm"
+                onPress={onOpenPublication}>
+                {t('label.review-publish')}
+              </Button>
+            ) : null}
+          </Box>
+        }
+        title={t('label.recent-change-plural')}
+      />
+      {total === 0 ? (
+        <Card.Content>
+          <Typography color="secondary" size="text-sm">
+            {t('message.ontology-no-unpublished-changes')}
+          </Typography>
+        </Card.Content>
+      ) : (
+        <Box direction="col">
+          {diff.data.data.map((change) => (
+            <ChangeRow
+              change={change}
+              key={`${change.memberKind}-${change.entity.id}`}
+            />
+          ))}
+        </Box>
+      )}
+    </Card>
+  );
+};
 
 const formatPeople = (people: EntityReference[] | undefined, none: string) =>
   people?.length ? people.map(getEntityName).join(', ') : none;
@@ -96,7 +223,7 @@ const StatCard = ({
           {onOpen ? (
             <Button
               aria-label={label}
-              color="tertiary"
+              color="secondary"
               iconLeading={ArrowUpRight}
               size="xs"
               onPress={onOpen}
@@ -182,7 +309,7 @@ const getValidationMessage = (
     return 'server.unexpected-error';
   }
   if (!hasResult) {
-    return 'message.validating-ellipsis';
+    return 'label.validating-ellipsis';
   }
 
   return hasConflicts
@@ -317,11 +444,27 @@ const HealthCard = ({
   );
 };
 
+type ValidationRead = { data?: { violations: readonly unknown[] } };
+
+const countConflicts = (validation: ValidationRead) =>
+  validation.data?.violations.length ?? 0;
+
+/** "1 in conflict" once validation has run; nothing before. */
+const conflictDetail = (
+  validation: ValidationRead,
+  count: number,
+  t: TFunction
+) =>
+  validation.data
+    ? t('message.ontology-overview-in-conflict', { count })
+    : undefined;
+
 const OntologyOverview = ({
   ontology,
   releaseId,
   status,
   onOpenTab,
+  onOpenPublication,
 }: OntologyOverviewProps) => {
   const { t } = useTranslation();
   const { graph, isError, isLoading, model, relations } =
@@ -329,7 +472,7 @@ const OntologyOverview = ({
   const validation = useQuery({
     enabled: !releaseId,
     queryFn: () => getOntologyWorkingValidation(ontology.id),
-    queryKey: ['ontology-working-validation', ontology.id, 'overview'],
+    queryKey: overviewValidationQueryKey(ontology.id),
     retry: false,
   });
   const treeIndex = useMemo(
@@ -350,11 +493,7 @@ const OntologyOverview = ({
     return <Loader />;
   }
 
-  const facts = getOverviewFacts(
-    model,
-    treeIndex,
-    validation.data?.violations.length ?? 0
-  );
+  const facts = getOverviewFacts(model, treeIndex, countConflicts(validation));
   const openTab = (tab: OntologyOverviewTab) =>
     onOpenTab ? () => onOpenTab(tab) : undefined;
   const details = [
@@ -372,15 +511,20 @@ const OntologyOverview = ({
     ],
   ] as const;
 
+  // Inside the Ontology tabs the header names the ontology and Settings holds its details.
+  const isStandalone = !onOpenTab;
+
   return (
     <Box
-      className="tw:h-full tw:overflow-auto tw:pb-20"
+      className="tw:pb-20"
       data-testid="ontology-overview"
       direction="col"
       gap={5}>
-      <Typography color="secondary" size="text-sm">
-        {t('message.ontology-overview-read-only', { version: versionLabel })}
-      </Typography>
+      {isStandalone ? (
+        <Typography color="secondary" size="text-sm">
+          {t('message.ontology-overview-read-only', { version: versionLabel })}
+        </Typography>
+      ) : null}
       <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2 tw:xl:grid-cols-4">
         <StatCard
           count={model.concepts.length}
@@ -412,13 +556,7 @@ const OntologyOverview = ({
         />
         <StatCard
           count={model.axioms.length}
-          detail={
-            validation.data
-              ? t('message.ontology-overview-in-conflict', {
-                  count: facts.conflictCount,
-                })
-              : undefined
-          }
+          detail={conflictDetail(validation, facts.conflictCount, t)}
           isAlert={facts.conflictCount > 0}
           label={t('label.constraint-plural')}
           testId="ontology-overview-count-constraints"
@@ -442,21 +580,29 @@ const OntologyOverview = ({
           onReview={openTab('concept')}
         />
       </div>
-      <Box direction="col" gap={3}>
-        {details.map(([key, label, value]) => (
-          <Box data-testid={`ontology-overview-${key}`} gap={4} key={key}>
-            <Typography
-              className="tw:w-28 tw:shrink-0"
-              color="secondary"
-              size="text-sm">
-              {label}
-            </Typography>
-            <Typography className="tw:break-all" size="text-sm">
-              {value}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+      {releaseId || !onOpenPublication ? null : (
+        <RecentChangesCard
+          ontologyId={ontology.id}
+          onOpenPublication={onOpenPublication}
+        />
+      )}
+      {isStandalone ? (
+        <Box direction="col" gap={3}>
+          {details.map(([key, label, value]) => (
+            <Box data-testid={`ontology-overview-${key}`} gap={4} key={key}>
+              <Typography
+                className="tw:w-28 tw:shrink-0"
+                color="secondary"
+                size="text-sm">
+                {label}
+              </Typography>
+              <Typography className="tw:break-all" size="text-sm">
+                {value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      ) : null}
     </Box>
   );
 };

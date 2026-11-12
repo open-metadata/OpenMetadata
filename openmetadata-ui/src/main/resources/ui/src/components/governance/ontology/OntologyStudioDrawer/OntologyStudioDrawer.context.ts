@@ -12,7 +12,7 @@
  */
 import { createContext, useContext } from 'react';
 
-/** The Studio's canvas area; slide-overs render into it so the header stays usable. */
+/** The Studio shell; slide-overs render into it as a full-height right drawer over the header, as the design does. */
 export const OntologyStudioDrawerHostContext =
   createContext<HTMLElement | null>(null);
 

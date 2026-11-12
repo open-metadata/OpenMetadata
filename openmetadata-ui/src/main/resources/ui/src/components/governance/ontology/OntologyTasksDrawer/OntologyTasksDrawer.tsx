@@ -13,20 +13,24 @@
 
 import {
   Alert,
+  Avatar,
   Badge,
   Box,
   Button,
   ButtonUtility,
   Dialog,
   FeaturedIcon,
+  Input,
   Modal,
   ModalOverlay,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  CheckCircle,
   ClipboardCheck,
   Inbox01,
+  Search,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -65,7 +69,9 @@ import {
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { getOperationPermissions } from '../../../../utils/PermissionsUtils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   buildResolveBody,
   getTaskResolveActions,
@@ -73,7 +79,11 @@ import {
 import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
-import { getOpenReviews } from './OntologyTasksDrawer.utils';
+import {
+  filterReviews,
+  getOpenReviews,
+  hasMorePages,
+} from './OntologyTasksDrawer.utils';
 import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
@@ -149,6 +159,21 @@ const useDecidedReview = ({
   return query.data ?? undefined;
 };
 
+/** A tab's open-review count; a missing total stays unknown rather than zero. */
+const useQueueTotal = (
+  queueKey: string[],
+  view: 'assigned' | 'created',
+  enabled: boolean
+) =>
+  useQuery({
+    queryKey: [...queueKey, view + '-total'],
+    gcTime: 0,
+    retry: false,
+    enabled,
+    queryFn: ({ signal }) =>
+      getOntologyReleaseReviews({ view, limit: 1 }, signal),
+  }).data?.paging?.total;
+
 /** Which review the banner shows: one ontology's, or the open set on All ontologies. */
 const getBannerKey = (
   ontologyId: string | undefined,
@@ -174,6 +199,7 @@ const OntologyTasksDrawer = ({
   const [listOpen, setListOpen] = useState(false);
   const isOpen = Boolean(taskId) || listOpen;
   const [view, setView] = useState<'assigned' | 'created'>('assigned');
+  const [search, setSearch] = useState('');
   // The review the user hid; a different review shows the banner again.
   const [dismissedBanner, setDismissedBanner] = useState<string>();
   const [queueHistory, setQueueHistory] = useState<{
@@ -268,6 +294,16 @@ const OntologyTasksDrawer = ({
         signal
       ),
   });
+  const assignedTotal = useQueueTotal(
+    [...queuesKey, account],
+    'assigned',
+    isOpen
+  );
+  const createdTotal = useQueueTotal(
+    [...queuesKey, account],
+    'created',
+    isOpen
+  );
   const openReviews = getOpenReviews(pending.data?.data, created.data?.data);
   const openBannerReview = openReviews[0];
   const decided = useDecidedReview({
@@ -455,6 +491,23 @@ const OntologyTasksDrawer = ({
         ].every(Boolean);
     }
   };
+  const announce = (kind: ReviewWrite['kind'], current: Detail) => {
+    const version = 'v' + (current.release.semanticVersion ?? '');
+    const messages: Partial<Record<ReviewWrite['kind'], string>> = {
+      // Under an all-reviewers rule one approval may leave others pending.
+      approve: current.review.callerCompletesRule
+        ? t('message.ontology-task-approved', { version })
+        : t('message.vote-recorded-waiting-for-other-approvers'),
+      [combinedApproval]: t('message.ontology-task-approved-published', {
+        version,
+        ontology: getEntityName(current.review.ontology),
+      }),
+    };
+    const message = messages[kind];
+    if (message) {
+      showSuccessToast(message);
+    }
+  };
   const submit = async (write: ReviewWrite): Promise<boolean> => {
     if (
       !selected ||
@@ -564,6 +617,7 @@ const OntologyTasksDrawer = ({
           await resolveVote();
       }
       succeeded = true;
+      announce(write.kind, captured);
       setWriteError((previous) =>
         previous?.selection === capturedSelection ? undefined : previous
       );
@@ -702,17 +756,68 @@ const OntologyTasksDrawer = ({
       setQueueHistory({ key: '', cursors: [undefined] });
     }
   };
-  const renderQueue = () => (
-    <Box direction="col" gap={2}>
-      {queue.isError && (
-        <Alert variant="error">
-          {t('message.ontology-review-unavailable')}
-        </Alert>
-      )}
-      {queue.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
-      {!queue.isPending && !queue.isError && !queue.data?.data.length ? (
+  const renderTaskCard = (entry: OntologyReleaseReview) => {
+    const isSelected = entry.task.id === taskId;
+    const requester = getEntityName(entry.requester);
+
+    return (
+      <Button
+        noTextPadding
+        aria-current={isSelected || undefined}
+        aria-label={`${entry.taskId ?? entry.task.id} · ${
+          entry.task.displayName ?? getEntityName(entry.ontology)
+        }`}
+        className={classNames(
+          'tw:w-full tw:justify-start tw:rounded-xl tw:border tw:p-3 tw:text-left',
+          isSelected
+            ? 'tw:border-brand tw:bg-brand-primary_alt'
+            : 'tw:border-transparent'
+        )}
+        color="tertiary"
+        key={entry.task.id}
+        onPress={() => onTaskChange(entry.task.id)}>
+        <Box align="start" className="tw:min-w-0" gap={3}>
+          <span className="tw:flex tw:size-6 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary tw:bg-surface">
+            <CheckCircle className="tw:size-3.5 tw:text-fg-brand-primary" />
+          </span>
+          <Box className="tw:min-w-0" direction="col" gap={1}>
+            <Typography size="text-sm" weight="medium">
+              {entry.task.displayName ?? getEntityName(entry.ontology)}
+            </Typography>
+            <Box align="center" gap={2} wrap="wrap">
+              <Typography
+                className="tw:font-mono"
+                color="secondary"
+                size="text-xs">
+                {entry.taskId ?? entry.task.id}
+              </Typography>
+              {requester && (
+                <Box align="center" gap={1}>
+                  <Avatar
+                    initials={requester.slice(0, 2).toUpperCase()}
+                    size="xxs"
+                  />
+                  <Typography color="secondary" size="text-xs">
+                    {requester}
+                  </Typography>
+                </Box>
+              )}
+              <Badge color="gray" size="sm">
+                {getEntityName(entry.ontology)}
+              </Badge>
+            </Box>
+          </Box>
+        </Box>
+      </Button>
+    );
+  };
+  const renderQueueList = () => {
+    const entries = queue.data?.data ?? [];
+    if (queue.isPending || queue.isError) {
+      return null;
+    }
+    if (!entries.length) {
+      return (
         <div
           className="tw:relative tw:min-h-60"
           data-testid="ontology-tasks-empty">
@@ -725,56 +830,76 @@ const OntologyTasksDrawer = ({
             title={t('message.ontology-no-tasks-yet')}
           />
         </div>
-      ) : null}
-      {queue.isPending
-        ? null
-        : queue.data?.data.map((entry) => {
-            const isSelected = entry.task.id === taskId;
+      );
+    }
+    const visible = filterReviews(entries, search);
+    if (!visible.length) {
+      return (
+        <div className="tw:relative tw:min-h-60">
+          <NoSearchResultsPlaceholder />
+        </div>
+      );
+    }
 
-            return (
-              <Button
-                noTextPadding
-                aria-current={isSelected || undefined}
-                aria-label={`${entry.taskId ?? entry.task.id} · ${
-                  entry.task.displayName ?? getEntityName(entry.ontology)
-                }`}
-                className={classNames(
-                  'tw:w-full tw:justify-start tw:rounded-xl tw:border tw:p-3 tw:text-left',
-                  isSelected
-                    ? 'tw:border-brand tw:bg-brand-primary_alt'
-                    : 'tw:border-secondary'
-                )}
-                color="tertiary"
-                key={entry.task.id}
-                onPress={() => onTaskChange(entry.task.id)}>
-                <Box className="tw:min-w-0" direction="col" gap={1}>
-                  <Typography ellipsis size="text-sm" weight="semibold">
-                    {entry.task.displayName ?? getEntityName(entry.ontology)}
-                  </Typography>
-                  <Box align="center" gap={2} wrap="wrap">
-                    <Typography
-                      className="tw:font-mono"
-                      color="secondary"
-                      size="text-xs">
-                      {entry.taskId ?? entry.task.id}
-                    </Typography>
-                    <Badge color="gray" size="sm" type="pill-color">
-                      {getEntityName(entry.ontology)}
-                    </Badge>
-                  </Box>
-                </Box>
-              </Button>
-            );
-          })}
-      {/* An empty first page has nothing to page through. */}
-      {queue.data?.data.length || queueCursors.length > 1
+    return (
+      <>
+        <Box
+          align="center"
+          className="tw:px-1"
+          data-testid="ontology-tasks-group"
+          gap={2}>
+          <span
+            aria-hidden
+            className="tw:size-1.5 tw:rounded-full tw:bg-brand-solid"
+          />
+          <Typography
+            className="tw:uppercase tw:tracking-wide"
+            color="secondary"
+            size="text-xs"
+            weight="semibold">
+            {t('label.pending-approval')}
+          </Typography>
+          <Typography color="secondary" size="text-xs">
+            {search.trim()
+              ? visible.length
+              : queue.data?.paging?.total ?? visible.length}
+          </Typography>
+        </Box>
+        {visible.map(renderTaskCard)}
+      </>
+    );
+  };
+  const renderQueue = () => (
+    <Box direction="col" gap={3}>
+      <Input
+        aria-label={t('label.search-tasks')}
+        autoComplete="off"
+        data-testid="ontology-tasks-search"
+        icon={Search}
+        placeholder={t('label.search-tasks')}
+        size="sm"
+        value={search}
+        onChange={setSearch}
+      />
+      {queue.isError && (
+        <Alert variant="error">
+          {t('message.ontology-review-unavailable')}
+        </Alert>
+      )}
+      {queue.isPending ? (
+        <Typography role="status">{t('label.loading')}</Typography>
+      ) : null}
+      {renderQueueList()}
+      {hasMorePages(queue.data?.paging?.after, queueCursors.length)
         ? pageControls('queue')
         : null}
     </Box>
   );
   const renderSelected = () =>
     detail.isPending ? (
-      <Typography role="status">{t('label.loading')}</Typography>
+      <div className="tw:p-6">
+        <Typography role="status">{t('label.loading')}</Typography>
+      </div>
     ) : (
       selected && (
         <OntologyTaskDetail
@@ -815,10 +940,14 @@ const OntologyTasksDrawer = ({
             review={selected.review}
             task={selected.task}
           />
-          <Typography color="secondary" size="text-sm">
-            {t('message.ontology-review-event-window')}
-          </Typography>
-          {pageControls('events')}
+          {hasMorePages(events.data?.paging?.after, eventCursors.length) && (
+            <>
+              <Typography color="secondary" size="text-sm">
+                {t('message.ontology-review-event-window')}
+              </Typography>
+              {pageControls('events')}
+            </>
+          )}
         </OntologyTaskDetail>
       )
     );
@@ -829,28 +958,29 @@ const OntologyTasksDrawer = ({
 
     return (
       <>
-        {' '}
-        {(detail.isError || state.isError || events.isError) && (
-          <Alert variant="error">
-            <Box direction="col" gap={2}>
-              {t('message.ontology-review-unavailable')}
-              <Button
-                color="secondary"
-                isDisabled={writing}
-                onPress={() => {
-                  void refresh();
-                }}>
-                {t('label.retry')}
-              </Button>
-            </Box>
-          </Alert>
-        )}
-        {writeError?.selection === selection &&
-          writeError.kind === 'uncertain' && (
-            <Alert variant="warning">
-              {t('message.ontology-review-write-uncertain')}
+        <div className="tw:flex tw:flex-col tw:gap-2 tw:px-6 tw:pt-4 tw:empty:hidden">
+          {(detail.isError || state.isError || events.isError) && (
+            <Alert variant="error">
+              <Box direction="col" gap={2}>
+                {t('message.ontology-review-unavailable')}
+                <Button
+                  color="secondary"
+                  isDisabled={writing}
+                  onPress={() => {
+                    void refresh();
+                  }}>
+                  {t('label.retry')}
+                </Button>
+              </Box>
             </Alert>
           )}
+          {writeError?.selection === selection &&
+            writeError.kind === 'uncertain' && (
+              <Alert variant="warning">
+                {t('message.ontology-review-write-uncertain')}
+              </Alert>
+            )}
+        </div>
         {renderSelected()}
       </>
     );
@@ -913,8 +1043,16 @@ const OntologyTasksDrawer = ({
                   />
                 </Box>
                 <Tabs.List aria-label={t('label.task-plural')} type="underline">
-                  <Tabs.Item id="assigned" label={t('label.assigned-to-me')} />
-                  <Tabs.Item id="created" label={t('label.created-by-me')} />
+                  <Tabs.Item
+                    badge={assignedTotal}
+                    id="assigned"
+                    label={t('label.assigned-to-me')}
+                  />
+                  <Tabs.Item
+                    badge={createdTotal}
+                    id="created"
+                    label={t('label.created-by-me')}
+                  />
                 </Tabs.List>
               </Box>
               <Box className="tw:min-h-0 tw:flex-1">
@@ -923,7 +1061,7 @@ const OntologyTasksDrawer = ({
                   id={view}>
                   {renderQueue()}
                 </Tabs.Panel>
-                <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto tw:p-6">
+                <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto">
                   {taskId ? (
                     renderDetail()
                   ) : (

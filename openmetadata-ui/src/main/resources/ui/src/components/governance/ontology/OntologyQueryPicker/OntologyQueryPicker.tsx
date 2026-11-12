@@ -18,7 +18,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Globe01, Search } from '@openmetadata/ui-core-components/icons';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
@@ -32,6 +32,9 @@ interface OntologyQueryPickerProps {
   /** `ontology` is the Ontology view on All ontologies; the query surfaces pick what to query. */
   readonly surface: 'console' | 'builder' | 'ontology';
   readonly onSelect: (ontology: Ontology) => void;
+  /** Opens the ontology list, e.g. from the header "+ New query" on All ontologies. */
+  readonly isOpen?: boolean;
+  readonly onOpenChange?: (isOpen: boolean) => void;
 }
 
 const COUNT_SEPARATOR = ' · ';
@@ -43,8 +46,18 @@ const OntologyQueryPicker = ({
   ontologies,
   surface,
   onSelect,
+  isOpen,
+  onOpenChange,
 }: OntologyQueryPickerProps) => {
   const { t } = useTranslation();
+  const comboBoxRef = useRef<HTMLDivElement>(null);
+
+  // The combobox opens its list on focus, so focusing its input is how the list is opened from outside.
+  useEffect(() => {
+    if (isOpen) {
+      comboBoxRef.current?.querySelector('input')?.focus();
+    }
+  }, [isOpen]);
   const isOntologyView = surface === 'ontology';
   const [query, setQuery] = useState('');
   // The combobox shows only the items it is given, so the typed query filters them here.
@@ -91,10 +104,11 @@ const OntologyQueryPicker = ({
   return (
     <Box
       align="center"
-      className="tw:w-full tw:px-6 tw:py-16"
+      className="tw:min-h-0 tw:w-full tw:flex-1 tw:px-6 tw:py-16"
       data-testid="ontology-query-picker"
       direction="col"
-      gap={4}>
+      gap={4}
+      justify="center">
       <FeaturedIcon
         color="brand"
         icon={isOntologyView ? Globe01 : Search}
@@ -129,40 +143,43 @@ const OntologyQueryPicker = ({
           )}
         </Typography>
       </Box>
-      <Select.ComboBox
-        aria-label={t('label.ontology')}
-        className="tw:w-105 tw:max-w-full"
-        data-testid="ontology-query-picker-select"
-        items={items}
-        label={isOntologyView ? undefined : t('label.ontology')}
-        placeholder={
-          isOntologyView
-            ? t('label.search-entity', {
-                entity: t('label.ontology-plural').toLocaleLowerCase(),
-              })
-            : t('label.select-entity', {
-                entity: t('label.ontology').toLocaleLowerCase(),
-              })
-        }
-        shortcut={false}
-        size="md"
-        onInputChange={setQuery}
-        onSelectionChange={(key) => {
-          const ontology = ontologies.find((item) => item.id === key);
-          if (ontology) {
-            onSelect(ontology);
+      <Box className="tw:w-105 tw:max-w-full" direction="col" ref={comboBoxRef}>
+        <Select.ComboBox
+          aria-label={t('label.ontology')}
+          className="tw:w-full"
+          data-testid="ontology-query-picker-select"
+          items={items}
+          label={isOntologyView ? undefined : t('label.ontology')}
+          placeholder={
+            isOntologyView
+              ? t('label.search-entity', {
+                  entity: t('label.ontology-plural').toLocaleLowerCase(),
+                })
+              : t('label.select-entity', {
+                  entity: t('label.ontology').toLocaleLowerCase(),
+                })
           }
-        }}>
-        {(item) => (
-          <Select.Item
-            data-testid={`ontology-query-picker-option-${item.id}`}
-            id={item.id}
-            key={item.id}
-            label={item.label}
-            supportingText={item.supportingText}
-          />
-        )}
-      </Select.ComboBox>
+          shortcut={false}
+          size="md"
+          onInputChange={setQuery}
+          onOpenChange={onOpenChange}
+          onSelectionChange={(key) => {
+            const ontology = ontologies.find((item) => item.id === key);
+            if (ontology) {
+              onSelect(ontology);
+            }
+          }}>
+          {(item) => (
+            <Select.Item
+              data-testid={`ontology-query-picker-option-${item.id}`}
+              id={item.id}
+              key={item.id}
+              label={item.label}
+              supportingText={item.supportingText}
+            />
+          )}
+        </Select.ComboBox>
+      </Box>
     </Box>
   );
 };

@@ -28,7 +28,13 @@ import {
   renderWithQueryClient,
   runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
+import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyTasksDrawer from './OntologyTasksDrawer';
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  ...jest.requireActual('../../../../utils/ToastUtils'),
+  showSuccessToast: jest.fn(),
+}));
 
 jest.mock('../../../../rest/axiosClient', () => ({
   get: jest.fn(),
@@ -313,7 +319,11 @@ it('keeps committed approval when activation conflicts and retries activation wi
   expect(
     await screen.findByText('message.ontology-review-activation-failed')
   ).toBeInTheDocument();
-  expect(screen.getByText('label.approved')).toBeInTheDocument();
+  expect(
+    within(screen.getByTestId('ontology-task-release-card')).getByText(
+      'label.approved'
+    )
+  ).toBeInTheDocument();
 
   await waitFor(() =>
     expect(screen.getByRole('button', { name: 'label.publish' })).toBeEnabled()
@@ -361,6 +371,31 @@ it('requires a rejection reason and preserves its original text in the native pa
   );
 });
 
+it('says the approval was recorded, not that the release is approved, when other approvals are still required', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) =>
+    url.endsWith('/review')
+      ? Promise.resolve({ data: { ...review, callerCompletesRule: false } })
+      : read?.(url, config)
+  );
+  post.mockResolvedValue({ data: { ...task, availableTransitions: [] } });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'label.approve' })).toBeEnabled()
+  );
+  fireEvent.click(screen.getByRole('button', { name: 'label.approve' }));
+
+  await waitFor(() =>
+    expect(showSuccessToast).toHaveBeenCalledWith(
+      'message.vote-recorded-waiting-for-other-approvers'
+    )
+  );
+
+  expect(showSuccessToast).not.toHaveBeenCalledWith(
+    'message.ontology-task-approved'
+  );
+});
+
 it('keeps a successful final vote approved when its reconciliation read fails', async () => {
   const read = get.getMockImplementation();
   let committed = false;
@@ -387,7 +422,11 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   );
   fireEvent.click(screen.getByRole('button', { name: 'label.approve' }));
 
-  expect(await screen.findByText('label.approved')).toBeInTheDocument();
+  expect(
+    await within(
+      await screen.findByTestId('ontology-task-release-card')
+    ).findByText('label.approved')
+  ).toBeInTheDocument();
   expect(
     await screen.findByText('message.ontology-review-unavailable')
   ).toBeInTheDocument();
@@ -400,6 +439,9 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   expect(
     screen.getByTestId('ontology-only-author-publishes')
   ).toHaveTextContent('message.ontology-publication-only-author-publishes');
+  expect(showSuccessToast).toHaveBeenCalledWith(
+    'message.ontology-task-approved'
+  );
 });
 
 it('keeps writes disabled after an ambiguous outcome until an authoritative read succeeds', async () => {
@@ -521,7 +563,7 @@ it('replaces after-only queue pages and resets the cursor when changing tabs', a
 
   expect(await screen.findByText(/TASK-NEXT/)).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: 'label.created-by-me' }));
+  fireEvent.click(screen.getByRole('tab', { name: /label.created-by-me/ }));
 
   expect(await screen.findByText(/TASK-FIRST/)).toBeInTheDocument();
   expect(
@@ -733,11 +775,9 @@ it('posts two deliberate equal-text comments as two conversation entries', async
     const input = screen.getByRole('textbox', { name: /label.comment/ });
     fireEvent.change(input, { target: { value: 'Same words' } });
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'label.add-comment' })
-      ).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'label.send' })).toBeEnabled()
     );
-    fireEvent.click(screen.getByRole('button', { name: 'label.add-comment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.send' }));
     await waitFor(() =>
       expect(screen.getAllByText('Same words')).toHaveLength(count)
     );
@@ -936,4 +976,91 @@ it('titles each queue row with the task title that names the ontology and versio
   expect(
     screen.getByRole('button', { name: 'TASK-00043 · Review Finance v1.2.0' })
   ).toBeInTheDocument();
+});
+
+it('shows tab counts, a pending group and requester cards that the search narrows, without paging a single page', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) => {
+    if (url !== '/ontologies/reviews' || config.params.view === 'pending') {
+      return read?.(url, config);
+    }
+    if (config.params.limit === 1) {
+      return Promise.resolve({
+        data: {
+          data: [],
+          paging: { total: config.params.view === 'assigned' ? 3 : 5 },
+        },
+      });
+    }
+
+    return Promise.resolve({
+      data: {
+        data: [
+          {
+            ...review,
+            task: { ...review.task, displayName: 'Review Sales v0.1.0' },
+            requester: { id: 'priya', name: 'Priya Raman', type: 'user' },
+          },
+          {
+            ...review,
+            taskId: 'TASK-00043',
+            task: {
+              id: 'task-c',
+              type: 'task',
+              displayName: 'Review Finance v1.2.0',
+            },
+          },
+        ],
+        paging: { total: 2 },
+      },
+    });
+  });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+
+  const assignedTab = await screen.findByRole('tab', {
+    name: /label.assigned-to-me/,
+  });
+  await waitFor(() => expect(assignedTab).toHaveTextContent('3'));
+
+  expect(
+    screen.getByRole('tab', { name: /label.created-by-me/ })
+  ).toHaveTextContent('5');
+
+  const panel = screen.getByRole('tabpanel');
+
+  expect(
+    await within(panel).findByTestId('ontology-tasks-group')
+  ).toHaveTextContent('label.pending-approval2');
+  expect(within(panel).getByText('Priya Raman')).toBeInTheDocument();
+
+  expect(
+    within(panel).queryByRole('button', { name: 'label.next' })
+  ).not.toBeInTheDocument();
+
+  await screen.findByText('Review Commerce');
+
+  expect(
+    screen.queryByRole('button', { name: 'label.first' })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('message.ontology-review-event-window')
+  ).not.toBeInTheDocument();
+
+  fireEvent.change(within(panel).getByRole('textbox'), {
+    target: { value: 'finance' },
+  });
+
+  expect(
+    within(panel).getByRole('button', {
+      name: 'TASK-00043 · Review Finance v1.2.0',
+    })
+  ).toBeInTheDocument();
+  expect(
+    within(panel).queryByRole('button', {
+      name: 'TASK-00042 · Review Sales v0.1.0',
+    })
+  ).not.toBeInTheDocument();
+  expect(within(panel).getByTestId('ontology-tasks-group')).toHaveTextContent(
+    'label.pending-approval1'
+  );
 });

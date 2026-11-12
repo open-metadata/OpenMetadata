@@ -747,7 +747,7 @@ describe('with the shipped English translations', () => {
 
     expect(screen.getByRole('textbox', { name: /^Name/ })).toBeVisible();
     expect(
-      screen.getByRole('textbox', { name: /^Display Name/ })
+      screen.getByRole('textbox', { name: /^Display name/ })
     ).toBeVisible();
     expect(screen.getByText('Advanced')).toBeVisible();
     expect(
@@ -836,6 +836,24 @@ describe('focus', () => {
     fireEvent.click(screen.getByTestId('ontology-new-class-close'));
 
     expect(screen.getByTestId('trigger')).toHaveFocus();
+  });
+});
+
+describe('footer and description', () => {
+  it('closes from the footer Cancel', () => {
+    const onClose = jest.fn();
+    setup({ onClose });
+    fireEvent.click(screen.getByTestId('new-class-cancel'));
+
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
+  it('takes the description in a multi-line field', () => {
+    setup();
+
+    expect(screen.getByTestId('new-class-description').tagName).toBe(
+      'TEXTAREA'
+    );
   });
 });
 
@@ -1151,13 +1169,13 @@ describe('Ontology field for All ontologies', () => {
     onChange,
   });
 
-  it('is absent when one ontology is open', () => {
+  it('is absent when one ontology is open, while the header still names it', () => {
     setup();
 
     expect(screen.queryByTestId('new-class-ontology')).not.toBeInTheDocument();
-    expect(
-      screen.queryByTestId('new-class-in-ontology')
-    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('new-class-in-ontology')).toHaveTextContent(
+      'label.in-entity'
+    );
   });
 
   it('is the first field, preselected, and names the target in the header', () => {

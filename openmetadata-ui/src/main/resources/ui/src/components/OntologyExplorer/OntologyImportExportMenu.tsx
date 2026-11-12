@@ -67,11 +67,25 @@ type OntologyImportExportMenuProps =
       readonly onApplied: () => void;
     };
 
+type TransferKind = 'export' | 'import';
+
+const MenuItemText = ({
+  description,
+  title,
+}: {
+  readonly description: string;
+  readonly title: string;
+}) => (
+  <span className="tw:flex tw:flex-col">
+    <span className="tw:font-semibold tw:text-primary">{title}</span>
+    <span className="tw:text-xs tw:text-tertiary">{description}</span>
+  </span>
+);
+
 const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
-  const [isOpen, setIsOpen] = useState(false);
-  const [initialTab, setInitialTab] = useState<'export' | 'import'>('export');
+  const [openKind, setOpenKind] = useState<TransferKind>();
   const guard = useOntologyDraftGuard();
   const [selectedOwner, setSelectedOwner] = useState<Ontology>();
   const { canEditAll } = useEntityPermissions(
@@ -93,75 +107,81 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         : [],
     [props]
   );
+  const close = () => {
+    setSelectedOwner(undefined);
+    setOpenKind(undefined);
+  };
+
+  const renderTransfer = (
+    ontology: Ontology,
+    canImport: boolean,
+    onApplied: () => void
+  ) =>
+    openKind === 'import' ? (
+      <OntologyNativeImportDialog
+        canImport={canImport}
+        ontology={ontology}
+        onApplied={onApplied}
+        onClose={close}
+      />
+    ) : (
+      <OntologyReleaseExportModal ontology={ontology} onClose={close} />
+    );
+
+  const renderOwnerPicker = (ontologies: Ontology[]) => (
+    <ModalOverlay
+      isDismissable
+      isOpen
+      onOpenChange={(open) => !open && close()}>
+      <Modal>
+        <Dialog
+          dividers="scroll"
+          title={
+            openKind === 'import'
+              ? t('label.import-into-ontology')
+              : t('label.export-ontology-title')
+          }
+          onClose={close}>
+          <Dialog.Content>
+            <Select
+              data-testid="ontology-import-target-picker"
+              items={options}
+              label={t('label.select-entity', {
+                entity: t('label.ontology'),
+              })}
+              selectedKey={null}
+              onSelectionChange={(key) =>
+                setSelectedOwner(ontologies.find((owner) => owner.id === key))
+              }>
+              {(item) => (
+                <Select.Item
+                  id={item.id}
+                  isDisabled={item.isDisabled}
+                  label={item.label}
+                />
+              )}
+            </Select>
+          </Dialog.Content>
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+
   const renderModal = (): ReactNode => {
-    if (!isOpen) {
+    if (!openKind) {
       return null;
     }
     if (props.kind === 'allOntologies') {
       if (props.isCatalogEmpty) {
-        return <OntologyNativeImportDialog onClose={() => setIsOpen(false)} />;
-      }
-      if (selectedOwner) {
-        return (
-          <OntologyReleaseExportModal
-            canImport={canEditAll}
-            ontology={selectedOwner}
-            onApplied={props.onApplied}
-            onClose={() => {
-              setSelectedOwner(undefined);
-              setIsOpen(false);
-            }}
-          />
-        );
+        return <OntologyNativeImportDialog onClose={close} />;
       }
 
-      return (
-        <ModalOverlay
-          isDismissable
-          isOpen
-          onOpenChange={(open) => setIsOpen(open)}>
-          <Modal>
-            <Dialog
-              dividers="scroll"
-              title={t('label.import-export')}
-              onClose={() => setIsOpen(false)}>
-              <Dialog.Content>
-                <Select
-                  data-testid="ontology-import-target-picker"
-                  items={options}
-                  label={t('label.select-entity', {
-                    entity: t('label.ontology'),
-                  })}
-                  selectedKey={null}
-                  onSelectionChange={(key) =>
-                    setSelectedOwner(
-                      props.ontologies.find((owner) => owner.id === key)
-                    )
-                  }>
-                  {(item) => (
-                    <Select.Item
-                      id={item.id}
-                      isDisabled={item.isDisabled}
-                      label={item.label}
-                    />
-                  )}
-                </Select>
-              </Dialog.Content>
-            </Dialog>
-          </Modal>
-        </ModalOverlay>
-      );
+      return selectedOwner
+        ? renderTransfer(selectedOwner, canEditAll, props.onApplied)
+        : renderOwnerPicker(props.ontologies);
     }
     if (props.kind === 'ontology') {
-      return (
-        <OntologyReleaseExportModal
-          canImport={props.canImport}
-          initialTab={initialTab}
-          ontology={props.ontology}
-          onApplied={props.onApplied}
-          onClose={() => setIsOpen(false)}
-        />
-      );
+      return renderTransfer(props.ontology, props.canImport, props.onApplied);
     }
 
     return (
@@ -171,22 +191,26 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         isAdminUser={props.isAdminUser}
         relationCount={props.relationCount}
         termCount={props.termCount}
-        onClose={() => setIsOpen(false)}
+        onClose={close}
       />
     );
   };
 
-  const open = (tab: 'export' | 'import') =>
+  const open = (kind: TransferKind) =>
     guard(() => {
       if (props.kind === 'ontology') {
         props.onOpen?.();
       }
-      setInitialTab(tab);
-      setIsOpen(true);
+      setOpenKind(kind);
     });
 
-  // One ontology offers Import and Export as two actions, each opening its tab.
-  if (props.kind === 'ontology') {
+  // Ontologies offer Import and Export as two actions, each opening its own dialog.
+  const hasMenu =
+    props.kind === 'ontology' ||
+    (props.kind === 'allOntologies' && !props.isCatalogEmpty);
+  if (hasMenu) {
+    const canImport = props.kind !== 'ontology' || props.canImport;
+
     return (
       <>
         <Dropdown.Root>
@@ -198,24 +222,32 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
             size="sm"
             tooltip={t('label.import-export')}
           />
-          <Dropdown.Popover placement="bottom end">
+          <Dropdown.Popover className="tw:w-60" placement="bottom end">
             <Dropdown.Menu
               aria-label={t('label.import-export')}
               onAction={(key) => open(key === 'import' ? 'import' : 'export')}>
-              {props.canImport ? (
+              {canImport ? (
                 <Dropdown.Item
                   data-testid="ontology-import-menu-item"
                   icon={Upload01}
                   id="import"
-                  label={t('label.import')}
-                />
+                  textValue={t('label.import')}>
+                  <MenuItemText
+                    description={t('message.ontology-import-menu-description')}
+                    title={t('label.import')}
+                  />
+                </Dropdown.Item>
               ) : null}
               <Dropdown.Item
                 data-testid="ontology-export-menu-item"
                 icon={Download01}
                 id="export"
-                label={t('label.export')}
-              />
+                textValue={t('label.export')}>
+                <MenuItemText
+                  description={t('message.ontology-export-menu-description')}
+                  title={t('label.export')}
+                />
+              </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown.Root>
@@ -233,7 +265,11 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         iconLeading={isAiMode ? Download01 : SwitchVertical01}
         size="sm"
         tooltip={t('label.import-export')}
-        onPress={() => guard(() => setIsOpen(true))}
+        onPress={() =>
+          guard(() =>
+            setOpenKind(props.kind === 'glossary' ? 'export' : 'import')
+          )
+        }
       />
       {renderModal()}
     </>

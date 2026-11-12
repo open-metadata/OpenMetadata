@@ -179,7 +179,7 @@ function RdfDisabledNotice() {
       </span>
       <Typography
         as="h3"
-        className="tw:font-body tw:text-base tw:font-semibold tw:text-primary">
+        className="not-prose tw:m-0 tw:font-body tw:text-base tw:font-semibold tw:text-primary">
         {t('message.knowledge-graph-disabled-heading')}
       </Typography>
       <Typography
@@ -537,7 +537,7 @@ function isNativeGraphCanvas(
 
 function getShellClassName(isFullScreen: boolean) {
   return classNames(
-    'tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased',
+    'tw:group/studio tw:flex tw:h-full tw:min-h-0 tw:flex-col tw:overflow-hidden tw:bg-primary tw:font-body tw:antialiased',
     // Full screen covers the app shell; dialogs (z-50) still open above it.
     isFullScreen ? 'tw:fixed tw:inset-0 tw:z-40' : 'tw:relative'
   );
@@ -1064,6 +1064,7 @@ const OntologyExplorerContent: React.FC = () => {
   }>();
   const [queryConsoleKey, setQueryConsoleKey] = useState(0);
   const [isNewQueryRequested, setIsNewQueryRequested] = useState(false);
+  const [isQueryPickerOpen, setIsQueryPickerOpen] = useState(false);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [nativeStats, setNativeStats] = useState<OntologyModelStats>();
   const [nativeRefresh, setNativeRefresh] = useState(0);
@@ -1261,7 +1262,7 @@ const OntologyExplorerContent: React.FC = () => {
   const querySurface = resolveQuerySurface(urlState.view);
   const aggregateSurface = getAggregateSurface(mode, viewSurface, editSurface);
   const isFullScreen = searchParams.get(FULLSCREEN_QUERY_PARAM_KEY) === 'true';
-  const [drawerHost, setDrawerHost] = useState<HTMLDivElement | null>(null);
+  const [drawerHost, setDrawerHost] = useState<HTMLElement | null>(null);
   const [lastQuerySurface, setLastQuerySurface] =
     useState<QuerySurface>('console');
   useEffect(() => {
@@ -1725,15 +1726,41 @@ const OntologyExplorerContent: React.FC = () => {
     ) : null;
   }
 
+  function renderNewQueryAction() {
+    // All ontologies only lists native ontologies, which are queried without the RDF store.
+    if (!isNativeOntology && !isAllOntologies && !isRdfEnabled) {
+      return null;
+    }
+
+    return (
+      <Button
+        color="primary"
+        data-testid="ontology-new-query"
+        iconLeading={Plus}
+        size={headerActionSize}
+        onPress={() => {
+          // A query needs one ontology, so on All ontologies this only offers the choice.
+          if (isAllOntologies) {
+            setIsQueryPickerOpen(true);
+
+            return;
+          }
+          setGeneratedQuery(undefined);
+          setIsNewQueryRequested(true);
+          setQuerySurface('console');
+          setQueryConsoleKey((key) => key + 1);
+        }}>
+        {t('label.new-entity', {
+          entity: t('label.query').toLocaleLowerCase(),
+        })}
+      </Button>
+    );
+  }
+
   function renderPrimaryAction() {
     const canAddConcept = (() => {
       if (isAllOntologies) {
-        // The Ontology surface only asks which ontology to open; it has no concept drawer.
-        return [
-          canCreateNativeClass,
-          availableOntologies.length > 0,
-          aggregateSurface !== 'ontology',
-        ].every(Boolean);
+        return canCreateNativeClass && availableOntologies.length > 0;
       }
 
       return isNativeOntology
@@ -1756,7 +1783,9 @@ const OntologyExplorerContent: React.FC = () => {
             isDisabled={isDraftOpen}
             size={headerActionSize}
             onPress={() => guard(handleAddConcept)}>
-            {t('label.add-entity', { entity: t('label.concept') })}
+            {t('label.add-entity', {
+              entity: t('label.concept').toLocaleLowerCase(),
+            })}
           </Button>
           {isDraftOpen && (
             <Typography
@@ -1775,25 +1804,7 @@ const OntologyExplorerContent: React.FC = () => {
       return renderEditOntologyAction();
     }
 
-    if (mode === 'query' && (isNativeOntology || isRdfEnabled)) {
-      return (
-        <Button
-          color="primary"
-          data-testid="ontology-new-query"
-          iconLeading={Plus}
-          size={headerActionSize}
-          onPress={() => {
-            setGeneratedQuery(undefined);
-            setIsNewQueryRequested(true);
-            setQuerySurface('console');
-            setQueryConsoleKey((key) => key + 1);
-          }}>
-          {t('label.new-entity', { entity: t('label.query') })}
-        </Button>
-      );
-    }
-
-    return null;
+    return mode === 'query' ? renderNewQueryAction() : null;
   }
 
   function publicationPendingCount() {
@@ -2092,9 +2103,9 @@ const OntologyExplorerContent: React.FC = () => {
     return (
       <div
         className={classNames(
-          'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-3 tw:z-20 tw:flex tw:justify-center tw:pl-4',
-          // The concept panel takes the right of the canvas area; centre in what is left.
-          selectedConceptId ? 'tw:pr-112 tw:2xl:pr-154' : 'tw:pr-4'
+          'tw:pointer-events-none tw:absolute tw:inset-x-0 tw:bottom-3 tw:z-20 tw:flex tw:justify-center tw:pl-4 tw:pr-4',
+          // An open Studio drawer covers the canvas's right; centre in what is left so full screen stays reachable.
+          'tw:group-has-[[data-studio-drawer]]/studio:pr-[calc(max(40vw,26.25rem)+1rem)]'
         )}
         data-testid="ontology-canvas-toolbar">
         <Box
@@ -2333,6 +2344,10 @@ const OntologyExplorerContent: React.FC = () => {
           )
         }
         onEditConceptRequestHandled={() => setEditConceptRequest(undefined)}
+        onOpenPublication={() => {
+          setPublicationTab('changes');
+          setIsPublicationOpen(true);
+        }}
         onRequestCreateConcept={() => guard(handleAddConcept)}
         onRequestEdit={(conceptId) => {
           setEditConceptRequest(conceptId);
@@ -2515,9 +2530,7 @@ const OntologyExplorerContent: React.FC = () => {
     banner: React.ReactNode,
     isGraphCanvas: boolean
   ) => (
-    <div
-      className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
-      ref={setDrawerHost}>
+    <div className="tw:relative tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
       {banner ? (
         <div
           className={
@@ -2533,6 +2546,22 @@ const OntologyExplorerContent: React.FC = () => {
     </div>
   );
 
+  const renderAggregateCreateDrawer = () =>
+    mode === 'edit' && isAggregateCreateOpen ? (
+      <OntologyAllOntologiesConceptDrawer
+        ontologies={availableOntologies}
+        onClose={() => guard(() => setIsAggregateCreateOpen(false))}
+        onCreated={(_ontology, done) => {
+          void studioScopes.refetchOntologies();
+          refreshNativeWorkingDiff();
+          void allModels.refetch();
+          if (done) {
+            setIsAggregateCreateOpen(false);
+          }
+        }}
+      />
+    ) : null;
+
   const renderAggregateWorkspace = (
     tasksAction: React.ReactNode,
     banner: React.ReactNode
@@ -2541,20 +2570,27 @@ const OntologyExplorerContent: React.FC = () => {
       {renderSubModeNav(tasksAction)}
       {mode === 'query' ? (
         <OntologyQueryPicker
+          isOpen={isQueryPickerOpen}
           ontologies={availableOntologies}
           surface={querySurface}
+          onOpenChange={setIsQueryPickerOpen}
           onSelect={(ontology) => selectOntology(ontology, undefined, mode)}
         />
       ) : null}
       {mode !== 'query' && aggregateSurface === 'ontology'
         ? renderCanvasArea(
-            <OntologyQueryPicker
-              ontologies={availableOntologies}
-              surface="ontology"
-              onSelect={(ontology) =>
-                selectOntology(ontology, undefined, mode, 'ontology')
-              }
-            />,
+            <div className="tw:flex tw:min-h-0 tw:flex-1">
+              <div className="tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
+                <OntologyQueryPicker
+                  ontologies={availableOntologies}
+                  surface="ontology"
+                  onSelect={(ontology) =>
+                    selectOntology(ontology, undefined, mode, 'ontology')
+                  }
+                />
+              </div>
+              {renderAggregateCreateDrawer()}
+            </div>,
             banner,
             false
           )
@@ -2566,20 +2602,7 @@ const OntologyExplorerContent: React.FC = () => {
               <div className="tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col">
                 {renderAllOntologies()}
               </div>
-              {mode === 'edit' && isAggregateCreateOpen ? (
-                <OntologyAllOntologiesConceptDrawer
-                  ontologies={availableOntologies}
-                  onClose={() => guard(() => setIsAggregateCreateOpen(false))}
-                  onCreated={(_ontology, done) => {
-                    void studioScopes.refetchOntologies();
-                    refreshNativeWorkingDiff();
-                    void allModels.refetch();
-                    if (done) {
-                      setIsAggregateCreateOpen(false);
-                    }
-                  }}
-                />
-              ) : null}
+              {renderAggregateCreateDrawer()}
             </div>,
             banner,
             aggregateSurface === 'graph'
@@ -2775,6 +2798,7 @@ const OntologyExplorerContent: React.FC = () => {
       <main
         className={getShellClassName(isFullScreen)}
         data-testid="ontology-studio-shell"
+        ref={setDrawerHost}
         style={ONTOLOGY_STUDIO_STYLE}>
         <OntologyTasksDrawer
           ontologyId={selectedOntology?.id}

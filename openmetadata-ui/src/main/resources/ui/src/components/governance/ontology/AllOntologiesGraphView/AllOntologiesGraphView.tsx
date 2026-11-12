@@ -106,7 +106,11 @@ const ConceptPickerEmptyState = ({
         direction="col"
         gap={2}>
         <FeaturedIcon color="gray" icon={Database01} size="lg" theme="modern" />
-        <Typography as="h3" size="text-lg" weight="semibold">
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0"
+          size="text-lg"
+          weight="semibold">
           {t('label.select-entity', { entity: t('label.concept') })}
         </Typography>
         <Typography color="secondary" size="text-sm">
@@ -160,14 +164,18 @@ const AllOntologiesGraphView = ({
   const model = models.find((candidate) =>
     candidate.concepts.some((concept) => concept.id === selectedConceptId)
   );
-  const dataConcepts = useMemo(
-    () =>
-      (model?.concepts ?? []).map((concept) => ({
-        id: concept.id,
-        name: getEntityName(concept),
-      })),
-    [model?.concepts]
-  );
+  const dataConcepts = useMemo(() => {
+    const concepts = model?.concepts ?? [];
+    const nameByIri = new Map(
+      concepts.map((concept) => [concept.iri, getEntityName(concept)])
+    );
+
+    return concepts.map((concept) => ({
+      id: concept.id,
+      name: getEntityName(concept),
+      parentName: nameByIri.get(concept.superClasses?.[0] ?? ''),
+    }));
+  }, [model?.concepts]);
   const selected = model?.concepts.find(
     (concept) => concept.id === selectedConceptId
   );

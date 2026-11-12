@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
+import { UNSAFE_PortalProvider as PortalProvider } from 'react-aria';
 import { createPortal } from 'react-dom';
 import { useOntologyStudioDrawerHost } from './OntologyStudioDrawer.context';
 
@@ -19,57 +20,78 @@ interface OntologyStudioDrawerProps {
   readonly ariaLabel?: string;
   readonly children: ReactNode;
   readonly className?: string;
+  /** A confirm dialog scoped to this drawer: its scrim and card cover only the panel, per the design. */
+  readonly confirm?: ReactNode;
   readonly placement?: 'beside' | 'overlay';
   readonly testId?: string;
 }
 
-// 600px is the design width; narrower screens keep the 420px the canvas could always spare.
-const PANEL_CLASS =
-  'tw:flex tw:w-105 tw:2xl:w-150 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl';
+// 40% of the screen, as the design's drawer; never narrower than the 420px its forms need.
+// ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor
+const PANEL_WIDTH = 'tw:w-[40vw] tw:min-w-105';
+// transform-gpu makes the panel the containing block of a fixed modal portalled into it.
+const PANEL_CLASS = `${PANEL_WIDTH} tw:transform-gpu tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
+// Full height of the Studio, over the right of the header too; nothing behind it is dimmed.
+const HOSTED_CLASS =
+  'tw:absolute tw:top-2 tw:right-2 tw:bottom-2 tw:z-40 tw:max-w-[calc(100%-1rem)]';
 
 /**
- * The Studio's right slide-over. `beside` (the default) sits next to the canvas, which
- * narrows, so every node and row stays clickable while a panel is open. `overlay` floats
- * over the canvas area below the header, for lists with nothing to click underneath.
+ * The Studio's right drawer, per the design: full height, over the header, no backdrop.
+ * `beside` (the default) also leaves a same-width gap in the canvas row, so the canvas
+ * narrows and no node ends up under the drawer. `overlay` covers the area below it, for
+ * lists where nothing underneath needs clicking.
  */
 const OntologyStudioDrawer = ({
   ariaLabel,
   children,
   className,
+  confirm,
   placement = 'beside',
   testId,
 }: OntologyStudioDrawerProps) => {
   const host = useOntologyStudioDrawerHost();
+  // State, not a ref: the confirm needs the panel mounted before it can portal into it.
+  const [panelElement, setPanelElement] = useState<HTMLElement | null>(null);
+  // data-studio-drawer: the Studio's canvas toolbar reads it to stay clear of an open drawer.
+  const panel = (positionClass: string) => (
+    <aside
+      data-studio-drawer
+      aria-label={ariaLabel}
+      className={classNames(PANEL_CLASS, positionClass, className)}
+      data-testid={testId}
+      ref={setPanelElement}>
+      {children}
+      {confirm && panelElement ? (
+        <PortalProvider getContainer={() => panelElement}>
+          {confirm}
+        </PortalProvider>
+      ) : null}
+    </aside>
+  );
 
-  if (placement === 'beside') {
-    return (
-      <aside
-        aria-label={ariaLabel}
-        className={classNames(
-          PANEL_CLASS,
-          'tw:relative tw:z-30 tw:my-2 tw:mr-2 tw:max-w-[55%] tw:shrink-0',
-          className
-        )}
-        data-testid={testId}>
-        {children}
-      </aside>
-    );
+  // Outside the Studio shell (e.g. a component test) the panel simply sits in the flow.
+  if (!host) {
+    return placement === 'beside'
+      ? panel('tw:relative tw:z-30 tw:my-2 tw:mr-2 tw:max-w-[55%] tw:shrink-0')
+      : createPortal(
+          panel(
+            'tw:fixed tw:top-1.5 tw:right-1.5 tw:bottom-1.5 tw:z-40 tw:max-w-[calc(100vw-0.75rem)]'
+          ),
+          document.body
+        );
   }
 
-  return createPortal(
-    <aside
-      aria-label={ariaLabel}
-      className={classNames(
-        PANEL_CLASS,
-        host
-          ? 'tw:absolute tw:top-2 tw:right-2 tw:bottom-2 tw:z-30 tw:max-w-[calc(100%-1rem)]'
-          : 'tw:fixed tw:top-1.5 tw:right-1.5 tw:bottom-1.5 tw:z-40 tw:max-w-[calc(100vw-0.75rem)]',
-        className
-      )}
-      data-testid={testId}>
-      {children}
-    </aside>,
-    host ?? document.body
+  return (
+    <>
+      {placement === 'beside' ? (
+        <div
+          aria-hidden
+          className={classNames(PANEL_WIDTH, 'tw:my-2 tw:mr-2 tw:shrink-0')}
+          data-testid="ontology-studio-drawer-gap"
+        />
+      ) : null}
+      {createPortal(panel(HOSTED_CLASS), host)}
+    </>
   );
 };
 

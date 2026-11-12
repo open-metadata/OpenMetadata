@@ -16,9 +16,22 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Dialog,
+  Modal,
+  ModalOverlay,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  AlertCircle,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Edit01,
+  Trash01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
+import { ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
@@ -26,9 +39,12 @@ import {
   humanizeName,
   OntologyModelRelation,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
+import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
-import OntologyRelationControls from './OntologyRelationControls';
+
+export type OntologyRelationStatus = 'conflict' | 'clear' | 'unchecked';
 
 interface OntologyRelationDetailProps {
   readonly relation: OntologyModelRelation;
@@ -40,6 +56,11 @@ interface OntologyRelationDetailProps {
   readonly onDelete: () => Promise<boolean>;
   readonly onClose: () => void;
   readonly onOpenConcept: (conceptId: string) => void;
+  /** The concept the panel was opened from, which the back link returns to; the source otherwise. */
+  readonly backConcept?: OntologyModelRelation['from'];
+  readonly status?: OntologyRelationStatus;
+  /** Saves the axiom's description; the description is read-only when absent. */
+  readonly onSaveDescription?: (description: string) => Promise<boolean>;
 }
 
 const KIND_LABELS: Record<OntologyModelRelation['kind'], string> = {
@@ -50,6 +71,178 @@ const KIND_LABELS: Record<OntologyModelRelation['kind'], string> = {
   restriction: 'label.relationship',
   subClassOf: 'label.hierarchy',
 };
+
+const STATUS_BADGES: Record<
+  OntologyRelationStatus,
+  { color: 'error' | 'success' | 'gray'; label: string }
+> = {
+  clear: { color: 'success', label: 'label.no-issues' },
+  conflict: { color: 'error', label: 'label.conflict' },
+  unchecked: { color: 'gray', label: 'label.not-checked' },
+};
+
+const DetailRow = ({
+  label,
+  children,
+}: {
+  readonly label: string;
+  readonly children: ReactNode;
+}) => (
+  <div className="tw:grid tw:grid-cols-[7rem_1fr] tw:items-center tw:gap-3 tw:px-3 tw:py-2.5">
+    <dt className="tw:text-sm tw:text-tertiary">{label}</dt>
+    <dd className="tw:m-0 tw:min-w-0 tw:text-sm tw:text-primary">{children}</dd>
+  </div>
+);
+
+const ConflictBar = () => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      align="center"
+      className="tw:rounded-lg tw:border tw:border-error_subtle tw:bg-error-primary tw:px-3 tw:py-2"
+      data-testid="ontology-relation-detail-conflict"
+      gap={2}
+      role="alert">
+      <AlertCircle
+        aria-hidden
+        className="tw:size-4 tw:shrink-0 tw:text-fg-error-primary"
+      />
+      <Typography color="danger" size="text-sm" weight="medium">
+        {t('message.relationship-has-conflict')}
+      </Typography>
+    </Box>
+  );
+};
+
+/** Link type, where the relationship came from, and whether it is in conflict. */
+const RelationFacts = ({
+  canChange,
+  isBusy,
+  relation,
+  status,
+  typeLabel,
+  onChangeType,
+}: {
+  readonly canChange: boolean;
+  readonly isBusy: boolean;
+  readonly relation: OntologyModelRelation;
+  readonly status: OntologyRelationStatus;
+  readonly typeLabel: string;
+  readonly onChangeType: () => void;
+}) => {
+  const { t } = useTranslation();
+  const statusBadge = STATUS_BADGES[status];
+
+  return (
+    <dl className="tw:m-0 tw:divide-y tw:divide-secondary tw:rounded-lg tw:border tw:border-secondary">
+      <DetailRow label={t('label.link-type')}>
+        <Box align="center" gap={2}>
+          <span className="tw:min-w-0 tw:flex-1">
+            {t(KIND_LABELS[relation.kind])}: {typeLabel}
+          </span>
+          {canChange ? (
+            <ButtonUtility
+              data-testid="ontology-relation-edit"
+              icon={Edit01}
+              isDisabled={isBusy}
+              size="xs"
+              tooltip={t('label.edit-entity', {
+                entity: t('label.relationship'),
+              })}
+              onClick={onChangeType}
+            />
+          ) : null}
+        </Box>
+      </DetailRow>
+      <DetailRow label={t('label.source')}>
+        {relation.axiom?.provenance
+          ? humanizeName(relation.axiom.provenance)
+          : t('label.unavailable')}
+      </DetailRow>
+      <DetailRow label={t('label.status')}>
+        <Badge
+          color={statusBadge.color}
+          data-testid="ontology-relation-detail-status"
+          size="sm"
+          type="pill-color">
+          {t(statusBadge.label)}
+        </Badge>
+      </DetailRow>
+    </dl>
+  );
+};
+
+const RelationDescription = ({
+  description,
+  onSave,
+}: {
+  readonly description: string;
+  readonly onSave?: (description: string) => Promise<boolean>;
+}) => {
+  const { t } = useTranslation();
+  const [value, setValue] = useState(description);
+  const [isSaving, setIsSaving] = useState(false);
+
+  if (!onSave) {
+    return (
+      <Box direction="col" gap={2}>
+        <Typography size="text-sm" weight="medium">
+          {t('label.description')}
+        </Typography>
+        <Typography
+          color="secondary"
+          data-testid="ontology-relation-detail-description"
+          size="text-sm">
+          {description || t('label.no-description')}
+        </Typography>
+      </Box>
+    );
+  }
+
+  const save = async () => {
+    setIsSaving(true);
+    await onSave(value.trim());
+    setIsSaving(false);
+  };
+
+  return (
+    <Box direction="col" gap={2}>
+      <TextArea
+        hideRequiredIndicator
+        data-testid="ontology-relation-detail-description"
+        isDisabled={isSaving}
+        label={t('label.description')}
+        rows={3}
+        value={value}
+        onChange={setValue}
+      />
+      {value.trim() === description.trim() ? null : (
+        <Box gap={2} justify="end">
+          <Button
+            color="secondary"
+            isDisabled={isSaving}
+            size="sm"
+            onPress={() => setValue(description)}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            data-testid="ontology-relation-detail-description-save"
+            isLoading={isSaving}
+            size="sm"
+            onPress={() => void save()}>
+            {t('label.save')}
+          </Button>
+        </Box>
+      )}
+    </Box>
+  );
+};
+
+const END_LINK_CLASS = [
+  'tw:cursor-pointer tw:rounded-sm tw:border-0 tw:bg-transparent tw:p-0 tw:text-left tw:text-primary',
+  'tw:[font:inherit] tw:outline-focus-ring tw:hover:underline tw:focus-visible:outline-2',
+].join(' ');
 
 /** What the canvas edge says: who is related to whom, by which type, with the actions that change it. */
 const OntologyRelationDetail = ({
@@ -62,96 +255,203 @@ const OntologyRelationDetail = ({
   onDelete,
   onClose,
   onOpenConcept,
+  backConcept = relation.from,
+  status = 'unchecked',
+  onSaveDescription,
 }: OntologyRelationDetailProps) => {
   const { t } = useTranslation();
-  const canChange =
-    canEdit && relation.axiom && relation.kind !== 'objectProperty';
+  const warnRelation = useRelationWarning();
+  const [isPicking, setIsPicking] = useState(false);
+  const [isBusy, setIsBusy] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const canChange = Boolean(
+    canEdit && relation.axiom && relation.kind !== 'objectProperty'
+  );
+  const typeLabel = humanizeName(getModelRelationLabel(relation));
+  const run = async (action: () => Promise<boolean>) => {
+    setIsBusy(true);
+    const isDone = await action();
+    setIsBusy(false);
+
+    return isDone;
+  };
 
   const renderEnd = (
-    label: string,
     concept: OntologyModelRelation['from'],
     testId: string
   ) => (
-    <Box direction="col" gap={1}>
-      <Typography color="secondary" size="text-xs" weight="semibold">
-        {label}
-      </Typography>
+    // A core link Button sets its own small grey text; the design's title is one heading-sized line.
+    <button
+      className={END_LINK_CLASS}
+      data-testid={testId}
+      type="button"
+      onClick={() => onOpenConcept(concept.id)}>
+      {getEntityName(concept)}
+    </button>
+  );
+
+  const renderPicker = () => (
+    <ModalOverlay
+      isDismissable
+      isOpen={isPicking}
+      onOpenChange={(isOpen) => {
+        if (!isOpen) {
+          setIsPicking(false);
+        }
+      }}>
+      <Modal>
+        <Dialog
+          aria-label={t('label.edit-entity', {
+            entity: t('label.relationship'),
+          })}
+          dividers="scroll"
+          width={320}
+          onClose={() => setIsPicking(false)}>
+          <RelationshipTypePicker
+            canCreateType={canCreateRelationType}
+            checkRelation={checkType}
+            groups={groups}
+            sourceId={relation.from.id}
+            sourceLabel={getEntityName(relation.from)}
+            targetId={relation.to.id}
+            targetLabel={getEntityName(relation.to)}
+            warnRelation={(typeId) =>
+              warnRelation?.(relation.from.id, relation.to.id, typeId) ??
+              Promise.resolve(undefined)
+            }
+            onCancel={() => setIsPicking(false)}
+            onSelect={(typeId) =>
+              void run(() => onEdit(typeId)).then(
+                (isChanged) => isChanged && setIsPicking(false)
+              )
+            }
+          />
+        </Dialog>
+      </Modal>
+    </ModalOverlay>
+  );
+
+  const renderAdvanced = () => (
+    <section data-testid="ontology-relation-detail-advanced">
       <Button
-        noTextPadding
-        className="tw:justify-start"
-        color="link-color"
-        data-testid={testId}
-        onPress={() => onOpenConcept(concept.id)}>
-        {getEntityName(concept)}
+        aria-expanded={isAdvancedOpen}
+        color="link-gray"
+        data-testid="ontology-relation-detail-advanced-toggle"
+        iconLeading={isAdvancedOpen ? ChevronDown : ChevronRight}
+        size="sm"
+        onPress={() => setIsAdvancedOpen((open) => !open)}>
+        {t('label.advanced')}
+        <span className="tw:ml-1 tw:font-normal tw:text-tertiary">
+          {t('label.ids-and-iris')}
+        </span>
       </Button>
-    </Box>
+      {isAdvancedOpen ? (
+        <dl className="tw:mt-3 tw:mb-0 tw:grid tw:grid-cols-[auto_1fr] tw:gap-x-4 tw:gap-y-2 tw:text-sm">
+          {[
+            [t('label.id'), relation.axiom?.id],
+            [t('label.name'), relation.axiom?.name],
+            [t('label.property-iri'), relation.propertyIri],
+            [t('label.source'), relation.from.iri],
+            [t('label.target'), relation.to.iri],
+          ]
+            .filter(([, value]) => value)
+            .map(([label, value]) => (
+              <div className="tw:contents" key={label}>
+                <dt className="tw:text-tertiary">{label}</dt>
+                <dd className="tw:m-0 tw:break-all tw:font-mono tw:text-xs">
+                  {value}
+                </dd>
+              </div>
+            ))}
+        </dl>
+      ) : null}
+    </section>
   );
 
   return (
     <OntologyStudioDrawer testId="ontology-relation-detail">
       <Box
-        align="center"
-        className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-        gap={2}>
-        <Typography className="tw:flex-1" size="text-sm" weight="semibold">
-          {t('label.relationship')}
-        </Typography>
-        <ButtonUtility
-          color="tertiary"
-          data-testid="ontology-relation-detail-close"
-          icon={XClose}
-          size="sm"
-          tooltip={t('label.close')}
-          onClick={onClose}
-        />
-      </Box>
-      <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-4"
+        className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:pt-4 tw:pb-5"
         direction="col"
-        gap={4}>
-        {renderEnd(
-          t('label.source'),
-          relation.from,
-          'ontology-relation-detail-source'
-        )}
+        gap={3}>
+        <Box align="center" gap={2}>
+          <Button
+            className="tw:min-w-0"
+            color="link-gray"
+            data-testid="ontology-relation-detail-back"
+            iconLeading={ChevronLeft}
+            size="sm"
+            onPress={() => onOpenConcept(backConcept.id)}>
+            <span className="tw:truncate">{getEntityName(backConcept)}</span>
+          </Button>
+          <span className="tw:flex-1" />
+          <ButtonUtility
+            color="tertiary"
+            data-testid="ontology-relation-detail-close"
+            icon={XClose}
+            size="sm"
+            tooltip={t('label.close')}
+            onClick={onClose}
+          />
+        </Box>
         <Box direction="col" gap={1}>
-          <Typography color="secondary" size="text-xs" weight="semibold">
-            {t('label.type')}
-          </Typography>
-          <Box align="center" gap={2}>
+          <Typography
+            as="h2"
+            className="not-prose tw:m-0 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
+            size="text-lg"
+            weight="semibold">
+            {renderEnd(relation.from, 'ontology-relation-detail-source')}
             <Badge
-              color="brand"
+              color={relation.kind === 'subClassOf' ? 'gray' : 'brand'}
               data-testid="ontology-relation-detail-type"
               size="sm"
               type="pill-color">
-              {humanizeName(getModelRelationLabel(relation))}
+              {typeLabel}
             </Badge>
-            <Typography color="secondary" size="text-xs">
-              {t(KIND_LABELS[relation.kind])}
-            </Typography>
-          </Box>
+            {renderEnd(relation.to, 'ontology-relation-detail-target')}
+          </Typography>
+          <Typography color="secondary" size="text-sm">
+            {t('label.relationship')}
+          </Typography>
         </Box>
-        {renderEnd(
-          t('label.target'),
-          relation.to,
-          'ontology-relation-detail-target'
-        )}
+        {status === 'conflict' ? <ConflictBar /> : null}
+      </Box>
+      <Box
+        className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-6 tw:py-5"
+        direction="col"
+        gap={5}>
+        <RelationFacts
+          canChange={canChange}
+          isBusy={isBusy}
+          relation={relation}
+          status={status}
+          typeLabel={typeLabel}
+          onChangeType={() => setIsPicking(true)}
+        />
+        {relation.axiom ? (
+          <RelationDescription
+            description={relation.axiom.description ?? ''}
+            key={relation.axiom.id}
+            onSave={canChange ? onSaveDescription : undefined}
+          />
+        ) : null}
+        {renderAdvanced()}
         {canChange ? (
-          <Box
-            align="center"
-            data-testid="ontology-relation-detail-actions"
-            gap={2}>
-            <OntologyRelationControls
-              canCreateRelationType={canCreateRelationType}
-              checkType={checkType}
-              groups={groups}
-              relation={relation}
-              onDelete={onDelete}
-              onEdit={onEdit}
-            />
+          <Box data-testid="ontology-relation-detail-actions">
+            <Button
+              noTextPadding
+              color="link-destructive"
+              data-testid="ontology-relation-delete"
+              iconLeading={Trash01}
+              isDisabled={isBusy}
+              size="sm"
+              onPress={() => void run(onDelete)}>
+              {t('label.delete-entity', { entity: t('label.relationship') })}
+            </Button>
           </Box>
         ) : null}
       </Box>
+      {renderPicker()}
     </OntologyStudioDrawer>
   );
 };

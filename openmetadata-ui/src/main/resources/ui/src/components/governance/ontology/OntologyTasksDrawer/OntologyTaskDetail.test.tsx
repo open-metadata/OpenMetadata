@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, screen, waitFor } from '@testing-library/react';
+import { fireEvent, screen, waitFor, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { EntityStatus } from '../../../../generated/api/data/ontologyReleaseReview';
 import APIClient from '../../../../rest/axiosClient';
 import {
@@ -124,6 +125,21 @@ it('shows final publication only with permission and supports approved activatio
   expect(props.onPublish).toHaveBeenCalledTimes(1);
 });
 
+it('keeps the comment multi-line: Enter adds a new line and only the send button posts', async () => {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  renderWithQueryClient(<OntologyTaskDetail {...props} />);
+  const input = screen.getByRole('textbox', { name: /label.comment/ });
+
+  await user.type(input, 'First line{Enter}Second line');
+
+  expect(input).toHaveValue('First line\nSecond line');
+  expect(props.onComment).not.toHaveBeenCalled();
+
+  await user.click(screen.getByRole('button', { name: 'label.send' }));
+
+  expect(props.onComment).toHaveBeenCalledWith('First line\nSecond line');
+});
+
 it('shows the requester explanation without actions and posts repeated comments deliberately', async () => {
   renderWithQueryClient(
     <OntologyTaskDetail
@@ -143,7 +159,7 @@ it('shows the requester explanation without actions and posts repeated comments 
   const input = screen.getByRole('textbox', { name: /label.comment/ });
   for (let count = 1; count <= 2; count++) {
     fireEvent.change(input, { target: { value: 'Same comment' } });
-    fireEvent.click(screen.getByRole('button', { name: 'label.add-comment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.send' }));
     await waitFor(() => expect(input).toHaveValue(''));
 
     expect(props.onComment).toHaveBeenCalledTimes(count);
@@ -168,4 +184,40 @@ it('tells a caller who cannot publish that only an author or owner can, instead 
   ).not.toBeInTheDocument();
 
   useKeyEchoTranslations();
+});
+
+it('summarises the release against its base version', async () => {
+  (APIClient.get as jest.Mock).mockImplementation(async (url: string) => {
+    if (url.endsWith('/diff')) {
+      return { data: { data: [], paging: { total: 0 } } };
+    }
+
+    return {
+      data: url.includes('base-release')
+        ? { ...release, id: 'base-release', semanticVersion: '1.3.2' }
+        : release,
+    };
+  });
+  renderWithQueryClient(
+    <OntologyTaskDetail
+      {...props}
+      release={{
+        ...release,
+        baseReleaseId: 'base-release',
+        releaseNotes: 'Adds orders',
+        changeSummary: { added: 3, changed: 1, removed: 0, deprecated: 1 },
+      }}
+    />
+  );
+  const card = screen.getByTestId('ontology-task-release-card');
+
+  expect(await within(card).findByText('label.minor')).toBeInTheDocument();
+  expect(card).toHaveTextContent('v1.3.2 → v1.4.0');
+  expect(card).toHaveTextContent('+3~2−0');
+  expect(screen.getByTestId('ontology-task-release-notes')).toHaveTextContent(
+    'Adds orders'
+  );
+  expect(screen.getByTestId('ontology-task-requested')).toHaveTextContent(
+    'message.ontology-task-requested-review'
+  );
 });

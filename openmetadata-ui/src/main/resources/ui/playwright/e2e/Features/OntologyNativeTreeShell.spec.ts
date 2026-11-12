@@ -28,6 +28,8 @@ import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
 import {
   findOntologyInQueryPicker,
+  openExportAdvanced,
+  openOntologyTransfer,
   selectOntologyOption,
 } from '../../utils/ontologyStudio';
 
@@ -50,8 +52,11 @@ const expectLoadedNativeLibrary = async (page: Page, responses: Response[]) => {
   await expect(rail).toHaveAttribute('data-library-state', 'ready');
   await expect(rail).toHaveAttribute('aria-busy', 'false');
   await expect(rail).toContainText('Queries');
-  await expect(rail.getByTestId('ontology-query-new')).toHaveText('New Query');
-  await expect(rail).toContainText('Shared queries');
+  await expect(rail.getByTestId('ontology-query-new')).toHaveAttribute(
+    'aria-label',
+    'New Query'
+  );
+  await expect(rail).toContainText('Shared');
   await expect(rail).toContainText('My queries');
   const settings: SparqlQuerySettings = await responses[1].json();
   for (const seed of BUNDLED_GLOSSARY_QUERY_TEMPLATES) {
@@ -348,9 +353,7 @@ test.describe(
             await page.getByTestId('ontology-library-close').click();
 
             await shell.getByTestId('ontology-import-export-trigger').click();
-            if (scope !== 'aggregate') {
-              await page.getByTestId('ontology-export-menu-item').click();
-            }
+            await page.getByTestId('ontology-export-menu-item').click();
             if (scope === 'aggregate') {
               const target = page.getByTestId('ontology-import-target-picker');
               await expect(target).toContainText('Select Ontology');
@@ -364,13 +367,13 @@ test.describe(
             }
             const transfer = page.getByRole('dialog');
             await expect(transfer).toHaveCount(1);
-            await expect(transfer).toContainText('Import / export ontology');
+            await expect(transfer).toContainText('Export ontology');
             await expect(
-              transfer.getByTestId('ontology-native-export-tab')
-            ).toHaveText('Export');
-            await expect(
-              transfer.getByTestId('ontology-native-import-tab')
-            ).toHaveText('Import');
+              transfer
+                .getByTestId('ontology-export-contents-draft')
+                .getByRole('radio')
+            ).toBeChecked();
+            await openExportAdvanced(page);
             await expect(
               transfer.getByTestId('ontology-export-scope')
             ).toContainText('Current draft');
@@ -379,28 +382,37 @@ test.describe(
             ).toContainText('owl:Ontology');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
-            ).toHaveText('Export');
+            ).toHaveText('Download');
             await expect(
               transfer.getByTestId('ontology-run-release-export')
             ).toBeEnabled();
             await expectNativeStudioCopy(transfer);
-            await transfer.getByTestId('ontology-native-import-tab').click();
-            await expect(
-              transfer.getByTestId('ontology-native-import-file')
-            ).toHaveText('Choose file');
-            await expect(transfer).toContainText(
-              'Preview a local RDF file, then apply its changes to the selected ontology. The active release stays unchanged until you publish.'
-            );
-            await expect(
-              transfer.getByTestId('ontology-native-import-apply')
-            ).toHaveText('Import');
-            await expect(
-              transfer.getByTestId('ontology-native-import-apply')
-            ).toBeDisabled();
-            await expectNativeStudioCopy(transfer);
             await transfer
               .getByRole('button', { name: 'Close', exact: true })
               .click();
+            await expect(transfer).toHaveCount(0);
+            if (scope !== 'aggregate') {
+              await openOntologyTransfer(page, 'import');
+              const importDialog = page.getByRole('dialog');
+              await expect(importDialog).toContainText('Import into ontology');
+              await expect(
+                importDialog.getByTestId('ontology-native-import-file')
+              ).toContainText('Click to upload');
+              await expect(importDialog).toContainText(
+                "Add concepts and properties from a file. They land in this ontology as a draft. The active release doesn't change until you publish."
+              );
+              await expect(
+                importDialog.getByTestId('ontology-native-import-apply')
+              ).toHaveText('Import');
+              await expect(
+                importDialog.getByTestId('ontology-native-import-apply')
+              ).toBeDisabled();
+              await expectNativeStudioCopy(importDialog);
+              await importDialog
+                .getByTestId('ontology-native-import-cancel')
+                .click();
+              await expect(importDialog).toHaveCount(0);
+            }
             if (scope === 'aggregate') {
               const libraryResponses = armQueryLibraryResponses(page);
               await (await findOntologyInQueryPicker(page, owner)).click();
@@ -470,6 +482,7 @@ test.describe(
             page.getByTestId('ontology-publication-trigger')
           ).toBeDisabled();
           await page.getByTestId('ontology-import-export-trigger').click();
+          await page.getByTestId('ontology-import-menu-item').click();
           await expect(
             page.getByTestId('ontology-import-target-picker')
           ).toBeVisible();

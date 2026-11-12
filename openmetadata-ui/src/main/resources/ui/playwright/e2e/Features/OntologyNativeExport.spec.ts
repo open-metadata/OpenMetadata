@@ -35,11 +35,15 @@ import {
   getWorkerAdminAPIContext,
   uuid,
 } from '../../utils/common';
-import { openOntologyTransfer } from '../../utils/ontologyStudio';
+import {
+  openExportAdvanced,
+  openOntologyTransfer,
+} from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
 const EXPORT_CARDS = [
+  { card: 'turtle', extension: 'ttl', marker: 'owl:Class' },
   { card: 'rdfxml', extension: 'rdf', marker: 'rdf:RDF' },
   { card: 'skos', extension: 'ttl', marker: 'skos:broader' },
   { card: 'jsonld', extension: 'jsonld', marker: '@id' },
@@ -107,6 +111,7 @@ const openExport = async (page: Page, ontology: Ontology) => {
   await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
   await openOntologyTransfer(page);
+  await openExportAdvanced(page);
   await expect(
     page.getByTestId('ontology-release-export-preview')
   ).toBeVisible();
@@ -195,9 +200,7 @@ test.describe(
 
         for (const { card, extension, marker } of EXPORT_CARDS) {
           await test.step(`Download ${card}`, async () => {
-            if (card !== 'rdfxml') {
-              await page.getByTestId(`ontology-release-format-${card}`).click();
-            }
+            await page.getByTestId(`ontology-release-format-${card}`).click();
             const fetched = page.waitForResponse(
               (response) =>
                 new URL(response.url()).pathname === exportPath(release) &&
@@ -226,6 +229,7 @@ test.describe(
         }
 
         await test.step('A gated download of the valid release completes', async () => {
+          await openExportAdvanced(page);
           await page.getByTestId('ontology-export-shacl-gate').click();
           const fetched = page.waitForResponse(
             (response) =>
@@ -240,11 +244,12 @@ test.describe(
           expect((await downloaded).suggestedFilename()).toBe(
             `${name}-release-${release.releaseRevision}.rdf`
           );
-          await page.getByTestId('ontology-import-export-trigger').click();
+          await openOntologyTransfer(page);
         });
 
         await test.step('SKOS-XL gives every label its own node', async () => {
           await page.getByTestId('ontology-release-format-skos').click();
+          await openExportAdvanced(page);
           await page.getByTestId('ontology-export-skos-xl').click();
           const preview = page.getByTestId('ontology-release-export-preview');
           await expect(preview).toContainText('skosxl:Label');
@@ -347,6 +352,9 @@ test.describe(
         await openExport(page, ontology);
 
         expect((await draftExport).status()).toBe(200);
+        await expect(
+          page.getByTestId('ontology-export-contents-draft').getByRole('radio')
+        ).toBeChecked();
         await expect(page.getByTestId('ontology-export-scope')).toContainText(
           'Current draft'
         );
