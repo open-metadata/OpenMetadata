@@ -1368,36 +1368,82 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   @Test
   void csvImport_keepsRowSuppliedTestSuite(TestNamespace ns) {
     Table table = createTable(ns);
-    Table suiteTable = createTable(ns);
-    createEntity(rowCountRequest(suiteTable, ns.prefix("csv_suite_seed")));
-    EntityReference suppliedSuite = tableTestSuite(suiteTable);
-    String csv =
-        CSV_HEADER
-            + String.join(
-                ",",
-                ns.prefix("csv_supplied_suite_case"),
-                "",
-                "",
-                "tableRowCountToEqual",
-                table.getFullyQualifiedName(),
-                suppliedSuite.getFullyQualifiedName(),
-                ROW_COUNT_100,
-                "",
-                "",
-                "",
-                "",
-                "")
-            + "\n";
+    createEntity(rowCountRequest(table, ns.prefix("csv_suite_seed")));
+    EntityReference suppliedSuite = tableTestSuite(table);
+    String csv = rowCountCsv(table, ns.prefix("csv_supplied_suite_case"), suppliedSuite);
 
+    assertAllRowsPassed(performImportCsv(ns, csv, true));
     assertAllRowsPassed(performImportCsv(ns, csv, false));
     TestCase imported =
         SdkClients.adminClient()
             .testCases()
             .getByName(
                 table.getFullyQualifiedName() + "." + ns.prefix("csv_supplied_suite_case"),
-                "testSuite");
+                "testSuite,testSuites");
 
     assertEquals(suppliedSuite.getId(), imported.getTestSuite().getId());
+    assertTrue(
+        imported.getTestSuites().stream()
+            .anyMatch(suite -> suite.getId().equals(lastCreatedTestSuite.getId())));
+  }
+
+  @Test
+  void csvImport_rejectsLogicalSuite(TestNamespace ns) {
+    Table table = createTable(ns);
+    TestSuite logicalSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .create(new CreateTestSuite().withName(ns.prefix("csv_logical_suite")));
+    String name = ns.prefix("csv_logical_case");
+    String csv = rowCountCsv(table, name, logicalSuite.getEntityReference());
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), "must be the basic test suite");
+    assertAllRowsFailed(performImportCsv(ns, csv, false), "must be the basic test suite");
+    assertNull(tableTestSuite(table));
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .testCases()
+                .getByName(table.getFullyQualifiedName() + "." + name));
+  }
+
+  @Test
+  void csvImport_rejectsBasicSuiteForAnotherTable(TestNamespace ns) {
+    Table table = createTable(ns);
+    Table suiteTable = createTable(ns);
+    createEntity(rowCountRequest(suiteTable, ns.prefix("csv_other_suite_seed")));
+    String name = ns.prefix("csv_other_suite_case");
+    String csv = rowCountCsv(table, name, tableTestSuite(suiteTable));
+
+    assertAllRowsFailed(performImportCsv(ns, csv, true), "must be the basic test suite");
+    assertAllRowsFailed(performImportCsv(ns, csv, false), "must be the basic test suite");
+    assertNull(tableTestSuite(table));
+    assertThrows(
+        OpenMetadataException.class,
+        () ->
+            SdkClients.adminClient()
+                .testCases()
+                .getByName(table.getFullyQualifiedName() + "." + name));
+  }
+
+  private static String rowCountCsv(Table table, String name, EntityReference suite) {
+    return CSV_HEADER
+        + String.join(
+            ",",
+            name,
+            "",
+            "",
+            "tableRowCountToEqual",
+            table.getFullyQualifiedName(),
+            suite.getFullyQualifiedName(),
+            ROW_COUNT_100,
+            "",
+            "",
+            "",
+            "",
+            "")
+        + "\n";
   }
 
   private static final String CSV_HEADER =
@@ -1798,6 +1844,12 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     EntityReference originalSuite = tableTestSuite(originalTable);
     createEntity(rowCountRequest(newTable, ns.prefix("patch_suite_target_seed")));
     EntityReference newTableSuite = tableTestSuite(newTable);
+    TestSuite logicalSuite =
+        SdkClients.adminClient()
+            .testSuites()
+            .create(new CreateTestSuite().withName(ns.prefix("patch_move_logical_suite")));
+    addTestCasesToLogicalTestSuite(
+        SdkClients.adminClient(), logicalSuite.getId(), List.of(testCase.getId()));
 
     String entityLink = "<#E::table::" + newTable.getFullyQualifiedName() + ">";
     var patch = JsonUtils.getObjectMapper().createArrayNode();
@@ -1811,11 +1863,26 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 patch,
                 TestCase.class);
     TestCase updated =
-        SdkClients.adminClient().testCases().get(testCase.getId().toString(), "testSuite");
+        SdkClients.adminClient()
+            .testCases()
+            .get(testCase.getId().toString(), "testSuite,testSuites");
 
     assertEquals(entityLink, patched.getEntityLink());
     assertEquals(newTableSuite.getId(), updated.getTestSuite().getId());
     assertNotEquals(originalSuite.getId(), updated.getTestSuite().getId());
+    assertTrue(
+        updated.getTestSuites().stream()
+            .anyMatch(suite -> suite.getId().equals(logicalSuite.getId())));
+    assertFalse(
+        updated.getTestSuites().stream()
+            .anyMatch(suite -> suite.getId().equals(originalSuite.getId())));
+    assertTrue(
+        SdkClients.adminClient()
+            .testSuites()
+            .get(logicalSuite.getId().toString(), "tests")
+            .getTests()
+            .stream()
+            .anyMatch(test -> test.getId().equals(testCase.getId())));
   }
 
   @Test

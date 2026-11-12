@@ -27,6 +27,7 @@ import static org.openmetadata.service.Entity.getEntityTimeSeriesRepository;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.exception.CatalogExceptionMessage.entityNotFound;
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
+import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Lists;
@@ -877,15 +878,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     // Create/resolve the basic test suite only after all validations pass.
     // This avoids creating side entities when request validation fails early.
     // PATCH carries the stored suite, so a null check would not re-resolve it after an entityLink
-    // move. Only CSV import restores a row-supplied suite after this shared preparation.
+    // move.
     test.setTestSuite(getOrCreateTestSuite(test, table));
-  }
-
-  void prepareForImport(TestCase test, boolean isUpdate, EntityReference rowSuite) {
-    prepareInternal(test, isUpdate);
-    if (rowSuite != null) {
-      test.setTestSuite(rowSuite);
-    }
   }
 
   /**
@@ -2007,6 +2001,24 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       super(original, updated, operation);
     }
 
+    private void updateBasicTestSuite() {
+      EntityReference originalSuite = original.getTestSuite();
+      EntityReference updatedSuite = updated.getTestSuite();
+      if (!recordChange(
+          TEST_SUITE_FIELD, originalSuite, updatedSuite, true, entityReferenceMatch)) {
+        return;
+      }
+      // Logical suites use CONTAINS too; replace only the previous basic-suite relationship.
+      if (originalSuite != null) {
+        deleteRelationship(
+            originalSuite.getId(), TEST_SUITE, updated.getId(), TEST_CASE, Relationship.CONTAINS);
+      }
+      if (updatedSuite != null) {
+        addRelationship(
+            updatedSuite.getId(), updated.getId(), TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+      }
+    }
+
     /**
      * Rewrites the dimension relationship by hand rather than through updateFromRelationship: the
      * generic helper cannot carry the inherited marker, and losing it would make a dimension the
@@ -2081,17 +2093,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                 TEST_CASE,
                 updated.getId());
           });
-      compareAndUpdate(
-          TEST_SUITE_FIELD,
-          () ->
-              updateFromRelationship(
-                  TEST_SUITE_FIELD,
-                  TEST_SUITE,
-                  original.getTestSuite(),
-                  updated.getTestSuite(),
-                  Relationship.CONTAINS,
-                  TEST_CASE,
-                  updated.getId()));
+      compareAndUpdate(TEST_SUITE_FIELD, this::updateBasicTestSuite);
       compareAndUpdate(
           TEST_DEFINITION,
           () ->
@@ -2641,21 +2643,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                       ? TestCaseWriteAuthRequests.forUpdate(testCase)
                       : TestCaseWriteAuthRequests.forCreate(testCase));
 
-          EntityReference rowSuite = null;
           if (testSuiteFqn != null && !testSuiteFqn.trim().isEmpty()) {
             TestSuite testSuite = resolveAccessibleTestSuite(printer, csvRecord, testSuiteFqn);
             if (testSuite == null) {
               continue;
             }
-            rowSuite = testSuite.getEntityReference();
-            testCase.withTestSuite(rowSuite);
+            validateRowTestSuite(testSuite, entityLink);
           }
 
           if (importResult.getDryRun()) {
             repository.checkForImport(testCase, isUpdate);
             importSuccess(printer, csvRecord, isUpdate ? ENTITY_UPDATED : ENTITY_CREATED);
           } else {
-            repository.prepareForImport(testCase, isUpdate, rowSuite);
+            repository.prepareInternal(testCase, isUpdate);
             importedTestSuiteIds.putIfAbsent(
                 testCase.getTestSuite().getFullyQualifiedName(), testCase.getTestSuite().getId());
             if (testCase.getId() == null) {
@@ -2785,6 +2785,18 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         LOG.debug("Target '{}' named in the imported CSV is unavailable", entityFQN);
       }
       return entityLink;
+    }
+
+    private void validateRowTestSuite(TestSuite testSuite, String entityLink) {
+      Table table = Entity.getEntity(EntityLink.parse(entityLink), TEST_SUITE_FIELD, NON_DELETED);
+      if (!Boolean.TRUE.equals(testSuite.getBasic())
+          || table.getTestSuite() == null
+          || !table.getTestSuite().getId().equals(testSuite.getId())) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Test suite '%s' must be the basic test suite for table '%s'",
+                testSuite.getFullyQualifiedName(), table.getFullyQualifiedName()));
+      }
     }
 
     /**
