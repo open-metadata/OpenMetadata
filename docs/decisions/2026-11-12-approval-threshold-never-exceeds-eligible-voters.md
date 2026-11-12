@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Harshit Shah
-- **Guard:** `CreateTaskTest#approvalThresholdNeverExceedsTheUsersAbleToVote`
+- **Guard:** `CreateTaskTest#approvalThresholdNeverExceedsTheUsersAbleToVote`, `CreateTaskTest#rejectionThresholdNeverExceedsTheUsersAbleToVote`
 - **Related:** LHV support ticket 22036
 
 ## Context
@@ -14,14 +14,17 @@ assignee remained against a threshold of two. After the owner approved, the task
 no one left to vote, and the contract could never move forward.
 
 ## Decision
-`CreateTask.capApprovalThreshold` (on 2.1 and later, `CreateTask.resolveApprovalThreshold`)
+`CreateTask.capAtUsersAbleToVote` (on 2.1 and later, inside `CreateTask.resolveApprovalThreshold`)
 lowers the threshold to the number of assignees when every assignee is a user. A list that holds a
 team is not capped, because any number of its members can vote. An empty list is not capped
 either. The requester's change is not counted as an approval: that would be self-approval under
-another name.
+another name. The rejection threshold gets the same cap, or the one remaining voter could never
+reject either.
 
 ## Consequences
-A task can always complete. The cost is that a two-approval rule becomes one independent approval
+Both thresholds stay within reach of the users who can vote. A split vote can still leave a task
+open, for example two voters with both thresholds at 2 where one approves and one rejects; that
+predates this rule and is not changed by it. The cost is that a two-approval rule becomes one independent approval
 when the requester is one of the two eligible approvers. A workflow that needs two independent
 approvals in that case must name enough approvers, for example a team or a third reviewer, or use
 the admin fallback. The cap applies when the task is created; tasks already open keep the
