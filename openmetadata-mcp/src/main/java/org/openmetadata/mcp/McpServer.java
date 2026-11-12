@@ -9,6 +9,8 @@ import io.modelcontextprotocol.server.McpSyncListFilter;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
 import io.modelcontextprotocol.spec.McpStatelessServerTransport;
+import jakarta.servlet.DispatcherType;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -312,6 +314,8 @@ public class McpServer implements McpServerProvider {
       statelessOauthTransport.setBasicAuthLoginServlet(basicAuthLoginServlet);
       LOG.info("Registered Basic Auth login handler in transport provider");
 
+      registerAvailabilityFilter(environment);
+
       // Register well-known filter via Dropwizard's environment.servlets() API.
       // This must use addFilter (not servlet registration) because the OpenMetadataAssetServlet
       // at "/*" treats all extension-less paths as SPA routes and serves index.html,
@@ -385,6 +389,15 @@ public class McpServer implements McpServerProvider {
               + "and restart.",
           ex);
     }
+  }
+
+  /** FORWARD covers the SSO callback, which /callback forwards to /mcp/callback. */
+  private static void registerAvailabilityFilter(Environment environment) {
+    environment
+        .servlets()
+        .addFilter("mcp-availability", new McpAvailabilityFilter())
+        .addMappingForUrlPatterns(
+            EnumSet.of(DispatcherType.REQUEST, DispatcherType.FORWARD), false, "/mcp/*");
   }
 
   public void addToolsToServer(McpStatelessSyncServer server, List<McpSchema.Tool> tools) {
