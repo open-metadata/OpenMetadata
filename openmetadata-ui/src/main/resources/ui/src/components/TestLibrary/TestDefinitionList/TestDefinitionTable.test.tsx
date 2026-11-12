@@ -10,7 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import {
+  fireEvent,
+  render as rtlRender,
+  screen,
+  within,
+} from '@testing-library/react';
+import { ReactElement } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import TestDefinitionTable from './TestDefinitionTable.component';
@@ -27,6 +34,8 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => ({
     .fn()
     .mockImplementation(({ markdown }) => <span>{markdown}</span>),
 }));
+
+const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
 
 const mockOnSortChange = jest.fn();
 
@@ -294,5 +303,15 @@ describe('TestDefinitionTable sorting', () => {
     fireEvent.click(headerFor(/label.name/));
 
     expect(mockOnSortChange).toHaveBeenCalledWith('name', 'desc');
+  });
+});
+
+describe('TestDefinitionTable name cell', () => {
+  it('should link the name to the test definition details page', () => {
+    render(<TestDefinitionTable {...makeProps()} />);
+
+    expect(
+      screen.getByRole('link', { name: 'Column Values To Be Not Null' })
+    ).toHaveAttribute('href', '/test-library/columnValuesToBeNotNull');
   });
 });

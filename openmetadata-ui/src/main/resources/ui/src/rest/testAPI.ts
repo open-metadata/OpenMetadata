@@ -91,6 +91,7 @@ export type ListTestCaseParamsBySearch = Omit<
   dataQualityDimension?: string;
   followedBy?: string;
   dataProductFqn?: string;
+  testDefinition?: string;
   includePermissions?: boolean;
   testCaseStatus?: TestCaseStatus | TestCaseStatus[];
 };
@@ -389,6 +390,20 @@ export const getTestDefinitionById = async (
 ) => {
   const response = await APIClient.get<TestDefinition>(
     `${testDefinitionUrl}/${id}`,
+    {
+      params,
+    }
+  );
+
+  return response.data;
+};
+
+export const getTestDefinitionByName = async (
+  fqn: string,
+  params?: Pick<ListParams, 'fields' | 'include'>
+) => {
+  const response = await APIClient.get<TestDefinition>(
+    `${testDefinitionUrl}/name/${getEncodedFqn(fqn)}`,
     {
       params,
     }

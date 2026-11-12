@@ -495,6 +495,12 @@ export const getDataQualityPagePath = (
   return path;
 };
 
+export const getTestDefinitionDetailsPath = (fqn: string) =>
+  ROUTES.TEST_DEFINITION_DETAILS.replace(
+    PLACEHOLDER_ROUTE_FQN,
+    getEncodedFqn(fqn)
+  );
+
 export const getTestCaseDetailPagePath = (
   fqn: string,
   tab = TestCasePageTabs.TEST_CASE_RESULTS

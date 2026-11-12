@@ -31,6 +31,7 @@ export const OBSERVABILITY_ROUTES = {
   OBSERVABILITY_ALERT_DETAILS: '/observability/alert/:fqn',
   OBSERVABILITY_ALERT_DETAILS_WITH_TAB: '/observability/alert/:fqn/:tab',
   OBSERVABILITY_TEST_LIBRARY: '/observability/test-library',
+  OBSERVABILITY_TEST_DEFINITION_DETAILS: '/observability/test-library/:fqn',
   OBSERVABILITY_TEST_SUITE_DETAILS: '/observability/test-suites/:fqn',
   OBSERVABILITY_TEST_CASE_DETAILS: '/observability/test-case/:fqn',
   OBSERVABILITY_TEST_CASE_DETAILS_WITH_TAB:

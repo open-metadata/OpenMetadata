@@ -29,10 +29,12 @@ import {
 import { useCallback, useMemo } from 'react';
 import { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { ProviderType } from '../../../generated/entity/bot';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from '../../common/EmptyPlaceholder/NoFilteredResultsPlaceholder';
@@ -230,9 +232,14 @@ const TestDefinitionTable = ({
   const renderRow = (record: TestDefinition) => (
     <Table.Row id={record.id ?? record.name} key={record.id ?? record.name}>
       <Table.Cell>
-        <Typography className="tw:text-primary" data-testid={record.name}>
+        <Link
+          className="tw:block tw:min-w-0 tw:truncate"
+          data-testid={record.name}
+          to={observabilityRouterClassBase.getTestDefinitionDetailsPath(
+            record.fullyQualifiedName ?? record.name
+          )}>
           {getEntityName(record)}
-        </Typography>
+        </Link>
       </Table.Cell>
       <Table.Cell>
         <RichTextEditorPreviewerNew markdown={record.description ?? ''} />

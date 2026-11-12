@@ -3863,6 +3863,52 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             });
   }
 
+  @Test
+  void test_searchListFiltersByTestDefinition(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+    String rowCountCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("by_definition_row_count"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create()
+            .getName();
+    String columnCountCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("by_definition_column_count"))
+            .forTable(table)
+            .testDefinition("tableColumnCountToEqual")
+            .parameter("columnCount", "5")
+            .create()
+            .getName();
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("entityLink", tableEntityLink(table))
+            .queryParam("testDefinition", "tableRowCountToEqual")
+            .queryParam("limit", "50")
+            .build();
+
+    Awaitility.await("search/list filters test cases by test definition")
+        .atMost(Duration.ofSeconds(60))
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .getHttpClient()
+                      .executeForString(
+                          HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+              List<String> names = namesUnder(JsonUtils.readTree(response).path("data"));
+              assertTrue(names.contains(rowCountCase), "Expected the row count test case");
+              assertFalse(
+                  names.contains(columnCountCase),
+                  "A test case of another definition must be filtered out");
+            });
+  }
+
   /**
    * Regression: Lucene reserved characters in {@code q} produced a query_shard_exception. The
    * display name deliberately carries reserved characters so the test proves the term still

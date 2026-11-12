@@ -26,6 +26,7 @@ import {
   toastNotification,
   uuid,
 } from './common';
+import { okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
 import { expectBreadcrumbToContainAncestor } from './headerBreadcrumbUtils';
 import {
@@ -1037,4 +1038,84 @@ export const expectRunTestCaseDisabledWithReason = async (
   await reasonTrigger.focus();
 
   await expect(page.getByRole('tooltip')).toHaveText(reason);
+};
+
+/**
+ * Creates a table-level test definition plus one test case that uses it, and
+ * waits until the test case search index lists it under that definition — the
+ * test definition details page reads its linked test cases from that index.
+ */
+export const createTestDefinitionWithTestCase = async (
+  apiContext: APIRequestContext,
+  table: TableClass
+) => {
+  const definition = await okJson<{ id: string; fullyQualifiedName: string }>(
+    await apiContext.post('/api/v1/dataQuality/testDefinitions', {
+      data: {
+        name: `pwTestDefinitionDetails${uuid()}`,
+        description: 'Playwright test definition details',
+        entityType: 'TABLE',
+        testPlatforms: ['OpenMetadata'],
+      },
+    }),
+    'createTestDefinitionWithTestCase'
+  );
+  const testCase = await table.createTestCase(apiContext, {
+    testDefinition: definition.fullyQualifiedName,
+    parameterValues: [],
+  });
+
+  await expect
+    .poll(
+      async () => {
+        const response = await apiContext.get(
+          '/api/v1/dataQuality/testCases/search/list',
+          { params: { testDefinition: definition.fullyQualifiedName } }
+        );
+
+        return (await response.json()).paging?.total;
+      },
+      { timeout: 60_000 }
+    )
+    .toBe(1);
+
+  return { definition, testCase };
+};
+
+/**
+ * Opens the Test Library at `libraryPath`, searches for the definition and
+ * clicks its name, then checks the details page lists `testCaseName`.
+ */
+export const openTestDefinitionDetailsFromLibrary = async (
+  page: Page,
+  libraryPath: string,
+  definitionFqn: string,
+  testCaseName: string
+) => {
+  await page.goto(libraryPath, { waitUntil: 'domcontentloaded' });
+  await waitForAllLoadersToDisappear(page);
+
+  const searchResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testDefinitions') &&
+      response.url().includes(`q=${definitionFqn}`)
+  );
+  await page.getByTestId('test-definition-search').fill(definitionFqn);
+  await searchResponse;
+
+  const testCasesResponse = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+      response.url().includes(`testDefinition=${definitionFqn}`)
+  );
+  await page.getByRole('link', { name: definitionFqn, exact: true }).click();
+  await testCasesResponse;
+
+  await expect(page).toHaveURL(new RegExp(`${libraryPath}/${definitionFqn}$`));
+  await expect(page.getByTestId('test-definition-overview')).toContainText(
+    'Playwright test definition details'
+  );
+  await expect(
+    page.getByRole('link', { name: testCaseName, exact: true })
+  ).toBeVisible();
 };

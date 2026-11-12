@@ -13,6 +13,7 @@
 import test, { expect, Locator, Page } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../../../constant/common';
 import { DOMAIN_TAGS } from '../../../constant/config';
+import { TableClass } from '../../../support/entity/TableClass';
 import {
   getApiContext,
   redirectToHomePage,
@@ -21,7 +22,11 @@ import {
 } from '../../../utils/common';
 import { expectFormHint } from '../../../utils/dataQuality';
 import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
-import { findSystemTestDefinition } from '../../../utils/testCases';
+import {
+  createTestDefinitionWithTestCase,
+  findSystemTestDefinition,
+  openTestDefinitionDetailsFromLibrary,
+} from '../../../utils/testCases';
 import { waitForAriaOverlayToSettle } from '../../../utils/waitHelpers';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -89,6 +94,32 @@ test.describe(
 
       // Verify URL
       await expect(page).toHaveURL(/.*\/test-library/);
+    });
+
+    test('should open a test definition from its name and list its test cases', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const table = new TableClass();
+      const { definition, testCase } = await createTestDefinitionWithTestCase(
+        apiContext,
+        table
+      );
+
+      try {
+        await openTestDefinitionDetailsFromLibrary(
+          page,
+          '/test-library',
+          definition.fullyQualifiedName,
+          testCase.name
+        );
+      } finally {
+        await table.delete(apiContext);
+        await apiContext.delete(
+          `/api/v1/dataQuality/testDefinitions/${definition.id}?hardDelete=true&recursive=true`
+        );
+        await afterAction();
+      }
     });
 
     test('should display test definitions table with columns', async ({

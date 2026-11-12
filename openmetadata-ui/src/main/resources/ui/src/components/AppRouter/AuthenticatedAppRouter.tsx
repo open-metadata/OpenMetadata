@@ -292,6 +292,15 @@ const TestLibraryPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TestLibrary/TestLibraryPage'))
 );
 
+const TestDefinitionDetailsPage = withPageSuspenseFallback(
+  React.lazy(
+    () =>
+      import(
+        '../observability/TestLibrary/TestDefinitionDetails/TestDefinitionDetailsPage'
+      )
+  )
+);
+
 const IncidentManagerDetailPage = withPageSuspenseFallback(
   React.lazy(
     () =>
@@ -637,11 +646,24 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         }
         path={ROUTES.TEST_LIBRARY}
       />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_DEFINITION,
+              permissions
+            )}>
+            <TestDefinitionDetailsPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TEST_DEFINITION_DETAILS}
+      />
       {[
         ROUTES.OBSERVABILITY,
         `${ROUTES.OBSERVABILITY}${ROUTES.DATA_QUALITY}/*`,
         `${ROUTES.OBSERVABILITY}${ROUTES.INCIDENT_MANAGER}`,
         `${ROUTES.OBSERVABILITY}${ROUTES.TEST_LIBRARY}`,
+        `${ROUTES.OBSERVABILITY}${ROUTES.TEST_LIBRARY}/*`,
         `${ROUTES.OBSERVABILITY}/test-suites/*`,
         `${ROUTES.OBSERVABILITY}/test-case/*`,
       ].map((path) => (

@@ -49,6 +49,12 @@ const IncidentManagerPage = withSuspenseFallback(
 const TestLibraryPage = withSuspenseFallback(
   React.lazy(() => import('../TestLibrary/TestLibraryPage'))
 );
+const TestDefinitionDetailsPage = withSuspenseFallback(
+  React.lazy(
+    () =>
+      import('../TestLibrary/TestDefinitionDetails/TestDefinitionDetailsPage')
+  )
+);
 
 const TestSuiteDetail = withSuspenseFallback(
   React.lazy(() => import('../TestSuiteDetail/TestSuiteDetail'))
@@ -237,6 +243,15 @@ export const observabilityModule: AppModule = {
       element: (
         <ObservabilityLayout>
           <TestLibraryPage />
+        </ObservabilityLayout>
+      ),
+      position: RoutePosition.APP,
+    },
+    {
+      path: OBSERVABILITY_ROUTES.OBSERVABILITY_TEST_DEFINITION_DETAILS,
+      element: (
+        <ObservabilityLayout>
+          <TestDefinitionDetailsPage />
         </ObservabilityLayout>
       ),
       position: RoutePosition.APP,
