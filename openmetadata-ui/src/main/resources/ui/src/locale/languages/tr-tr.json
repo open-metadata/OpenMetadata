@@ -6739,7 +6739,6 @@
     "workflow-empty-description": "Bir şey değiştiği anda yanıt veren olay tabanlı veya zamanlanmış iş akışları oluşturun. Bir kez ayarlayın, gerisini OpenMetadata halletsin.",
     "workflow-fqn-required": "İş akışı FQN'i gereklidir",
     "workflow-id-required": "İş akışı kimliği gereklidir",
-    "workflow-name-cannot-change-after-create": "Ad, iş akışının benzersiz tanımlayıcısıdır ve iş akışı oluşturulduktan sonra değiştirilemez.",
     "workflow-name-invalid-characters": "İş akışı adı yalnızca alfasayısal karakterler, tireler ve alt çizgiler içerebilir",
     "workflow-name-max-length": "İş akışı adı en fazla {{count}} karakter olmalıdır",
     "workflow-name-min-length": "İş akışı adı en az {{count}} karakter olmalıdır",

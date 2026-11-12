@@ -6739,7 +6739,6 @@
     "workflow-empty-description": "काहीतरी बदलताच प्रतिसाद देणारे इव्हेंट-आधारित किंवा नियोजित वर्कफ्लो तयार करा. एकदा सेट करा, आणि बाकीचे OpenMetadata हाताळेल.",
     "workflow-fqn-required": "वर्कफ्लो FQN आवश्यक आहे",
     "workflow-id-required": "वर्कफ्लो आयडी आवश्यक आहे",
-    "workflow-name-cannot-change-after-create": "नाव हे वर्कफ्लोचे अद्वितीय ओळखचिन्ह आहे आणि वर्कफ्लो तयार केल्यानंतर ते बदलता येत नाही.",
     "workflow-name-invalid-characters": "वर्कफ्लो नावात फक्त अक्षरांकीय वर्ण, हायफन आणि अंडरस्कोर असू शकतात",
     "workflow-name-max-length": "वर्कफ्लो नाव जास्तीत जास्त {{count}} वर्णांचे असणे आवश्यक आहे",
     "workflow-name-min-length": "वर्कफ्लो नाव किमान {{count}} वर्णांचे असणे आवश्यक आहे",

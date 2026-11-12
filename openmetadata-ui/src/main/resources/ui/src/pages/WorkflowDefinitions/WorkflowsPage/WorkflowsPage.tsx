@@ -461,10 +461,7 @@ const WorkflowsPage = () => {
                   isRequired
                   autoComplete="off"
                   data-testid="workflow-name"
-                  hint={
-                    nameError ||
-                    t('message.workflow-name-cannot-change-after-create')
-                  }
+                  hint={nameError || undefined}
                   isDisabled={isSubmitting}
                   isInvalid={!!nameError}
                   label={t('label.workflow-name')}

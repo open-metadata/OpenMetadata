@@ -6739,7 +6739,6 @@
     "workflow-empty-description": "Crea flujos de trabajo basados en eventos o programados que respondan en el momento en que algo cambia. Configúralo una vez y OpenMetadata se encarga del resto.",
     "workflow-fqn-required": "Se requiere el FQN del flujo de trabajo",
     "workflow-id-required": "Se requiere el ID del flujo de trabajo",
-    "workflow-name-cannot-change-after-create": "El nombre es el identificador único del flujo de trabajo y no se puede cambiar después de crearlo.",
     "workflow-name-invalid-characters": "El nombre del flujo de trabajo solo puede contener caracteres alfanuméricos, guiones y guiones bajos",
     "workflow-name-max-length": "El nombre del flujo de trabajo debe tener como máximo {{count}} caracteres",
     "workflow-name-min-length": "El nombre del flujo de trabajo debe tener al menos {{count}} caracteres",

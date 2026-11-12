@@ -6739,7 +6739,6 @@
     "workflow-empty-description": "Crea workflow basati su eventi o pianificati che reagiscono nel momento stesso in cui qualcosa cambia. Configuralo una volta e OpenMetadata si occupa del resto.",
     "workflow-fqn-required": "L'FQN del workflow è obbligatorio",
     "workflow-id-required": "L'ID del workflow è obbligatorio",
-    "workflow-name-cannot-change-after-create": "Il nome è l'identificatore univoco del workflow e non può essere modificato dopo la creazione.",
     "workflow-name-invalid-characters": "Il nome del workflow può contenere solo caratteri alfanumerici, trattini e underscore",
     "workflow-name-max-length": "Il nome del workflow deve avere al massimo {{count}} caratteri",
     "workflow-name-min-length": "Il nome del workflow deve avere almeno {{count}} caratteri",
