@@ -20,13 +20,13 @@ import {
   MetricObservability,
   ReasonCode,
 } from '../../src/generated/api/data/metricObservability';
+import { OntologyProfileReport } from '../../src/generated/api/data/ontologyProfileReport';
 import { DomainStyles } from '../../src/generated/api/domains/domainStyles';
 import { Operation } from '../../src/generated/entity/policies/policy';
 import {
   AuthenticationMechanism,
   User,
 } from '../../src/generated/entity/teams/user';
-import { OntologyProfileReport } from '../../src/generated/api/data/ontologyProfileReport';
 import { ValidationResponse } from '../../src/generated/system/validationResponse';
 import activity from '../fixtures/visual/activity.json';
 import customProperties from '../fixtures/visual/custom-properties.json';
