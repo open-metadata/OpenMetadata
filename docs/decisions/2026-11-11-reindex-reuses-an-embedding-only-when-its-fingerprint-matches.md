@@ -57,6 +57,8 @@ old embedding forever:
   (chunk 0 only). OpenSearch makes none beyond what it already made, because the chunks were
   re-embedded anyway and chunk 0 now also reaches the entity doc. Entities with unchanged text keep
   their embedding. Upgrade notes for such a release must say which entity types will re-embed.
+  #37522 is such a change: the first reindex that has both re-embeds every topic with schema
+  fields, on both engines, and no other entity type because of it.
 - **The first reindex with this rule also refreshes embeddings left stale by earlier releases**:
   any entity whose stored fingerprint no longer matches its text. Their number is unknown. On
   OpenSearch an entity whose chunks an earlier reindex already refreshed re-embeds every chunk
