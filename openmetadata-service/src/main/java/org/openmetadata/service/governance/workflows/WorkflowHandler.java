@@ -78,6 +78,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
+import org.openmetadata.service.exception.CatalogExceptionMessage;
+import org.openmetadata.service.exception.TaskStateConflictException;
 import org.openmetadata.service.exception.UnhandledServerException;
 import org.openmetadata.service.governance.workflows.elements.triggers.PeriodicBatchEntityTrigger;
 import org.openmetadata.service.governance.workflows.flowable.MainWorkflow;
@@ -1164,6 +1166,11 @@ public class WorkflowHandler {
         List.copyOf(voters));
   }
 
+  public boolean hasVoted(UUID customTaskId, String userName) {
+    return hasMultiApprovalSupport(customTaskId)
+        && approvalTaskContext(customTaskId).voters().contains(userName);
+  }
+
   public TaskResolutionOutcome resolveTaskOutcome(
       UUID customTaskId, Map<String, Object> variables) {
     return resolveTaskOutcome(customTaskId, variables, true);
@@ -1539,9 +1546,12 @@ public class WorkflowHandler {
       return false;
     }
 
+    // TaskRepository refuses a repeat vote before anything is written; this catches the same voter
+    // racing two requests past that check, so the vote is neither counted twice nor dropped
+    // silently.
     if (approversList.contains(currentUser) || rejectersList.contains(currentUser)) {
-      LOG.warn("[MultiApproval] User '{}' has already voted on this task", currentUser);
-      return false;
+      throw TaskStateConflictException.of(
+          CatalogExceptionMessage.alreadyVoted(currentUser, customTaskId));
     }
 
     if (approved) {
