@@ -369,6 +369,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
               FIELD_DATA_PRODUCTS_FQN, escapeJsonString(dataProductFqn)));
     }
 
+    // ADR:2026-11-12-test-cases-filter-by-test-definition-through-search-list
     if (!nullOrEmpty(testDefinition) && !testDefinition.isBlank()) {
       conditions.add(
           String.format(
