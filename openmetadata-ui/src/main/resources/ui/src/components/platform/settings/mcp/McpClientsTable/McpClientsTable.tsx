@@ -39,9 +39,9 @@ import Loader from '../../../../common/Loader/Loader';
 const McpClientsTable = () => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const [cursors, setCursors] = useState<string[]>([]);
+  const [cursors, setCursors] = useState<string[]>(['']);
   const [pendingClient, setPendingClient] = useState<OauthClient>();
-  const after = cursors.at(-1) ?? '';
+  const after = cursors[cursors.length - 1];
   const {
     data: clients = [],
     isLoading,
@@ -57,7 +57,7 @@ const McpClientsTable = () => {
     mutationFn: revokeMcpClient,
     onSuccess: async () => {
       setPendingClient(undefined);
-      setCursors([]);
+      setCursors(['']);
       await queryClient.invalidateQueries({ queryKey: ['mcp-clients'] });
       showSuccessToast(t('message.mcp-client-revoked'));
     },
@@ -153,7 +153,7 @@ const McpClientsTable = () => {
         <Box gap={3}>
           <Button
             color="secondary"
-            isDisabled={cursors.length === 0 || isFetching}
+            isDisabled={cursors.length === 1 || isFetching}
             onClick={() => setCursors((previous) => previous.slice(0, -1))}>
             {t('label.previous')}
           </Button>

@@ -72,6 +72,17 @@ test(
       const row = table
         .getByRole('row')
         .filter({ hasText: client.client_name });
+      const nextPage = page.getByRole('button', { name: 'Next', exact: true });
+      while ((await row.count()) === 0 && (await nextPage.isEnabled())) {
+        const loaded = page.waitForResponse(
+          (result) =>
+            result.url().includes('/api/v1/mcp/clients?') &&
+            result.request().method() === 'GET'
+        );
+        await nextPage.click();
+        expect((await loaded).ok()).toBe(true);
+        await expect(table).toBeVisible();
+      }
       await expect(row).toContainText(client.client_id);
       await row.getByRole('button', { name: 'Revoke', exact: true }).click();
       const dialog = page.getByRole('dialog');
