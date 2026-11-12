@@ -1,7 +1,7 @@
 # Ontology releases use the existing approval workflow
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures); v13 2026-10-22 (approval rule, recorded votes, reviewer lock and the review read model)
+- **Revisions:** v1 2026-10-14 (initial); v12 2026-10-16 (sealed-content identity and recoverable review failures); v13 2026-10-22 (approval rule, recorded votes, reviewer lock and the review read model); v14 2026-11-12 (`allAssignees` threshold capped at the user entry count)
 - **Deciders:** Harsha
 - **Guard:** `OntologyReviewTest`, `OntologyApprovalWorkflowTest`, `OntologyEntityDAOTest`, `CreateTaskTest`, `TaskWorkflowHandlerTest`, `TaskReviewVotesTest`, `IndependentOntologyApprovalIT`, `IndependentOntologyReviewRecoveryIT`, `IndependentOntologyReviewRuleIT`, `IndependentOntologyReleaseIT`, `OntologyReviewPanel.test.tsx`, `OntologyReview.spec.ts`
 - **Related:** ADR:2026-10-14-ontology-definitions-have-independent-entity-storage, ADR:2026-10-14-ontology-releases-seal-canonical-sql-members
@@ -130,3 +130,10 @@ reviewers exist the call returns 409 and the Draft goes through review as before
 withdrawing a review append `REVIEW_REQUESTED` and `REVIEW_WITHDRAWN` events, and the server refuses
 a rejection without a reason. Releases approved before `approvalBasis` existed carry none and count
 as reviewed.
+
+## Amendment (v14, 2026-11-12)
+
+Under `allAssignees`, the task's `approvalThreshold` is still the larger of the node's threshold
+and the number of assignee entries, then capped at the entry count when every entry is a user, so a
+node threshold above the users able to vote no longer leaves the review open forever. A list
+holding a team is not capped. See ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters.
