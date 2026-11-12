@@ -11,31 +11,31 @@
  *  limitations under the License.
  */
 import {
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    FormField,
-    getField,
-    HookForm,
-    Typography
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  FormField,
+  getField,
+  HookForm,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01, Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
 import {
-    Fragment,
-    ReactNode,
-    useCallback,
-    useEffect,
-    useRef,
-    useState
+  Fragment,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
 } from 'react';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-    ConceptMappingType,
-    OntologyConcept
+  ConceptMappingType,
+  OntologyConcept,
 } from '../../../../generated/entity/data/ontologyConcept';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
@@ -44,19 +44,19 @@ import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/Ont
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
-    ConceptFormCard,
-    ConceptFormHeading
+  ConceptFormCard,
+  ConceptFormHeading,
 } from '../OntologyConceptInspector/OntologyConceptSection';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
 import {
-    conceptFormFields,
-    conceptFormValues,
-    conceptPatch,
-    conceptRequest,
-    CONCEPT_TYPE_HINTS,
-    mappingFormFields,
-    OntologyConceptFormValues
+  conceptFormFields,
+  conceptFormValues,
+  conceptPatch,
+  conceptRequest,
+  CONCEPT_TYPE_HINTS,
+  mappingFormFields,
+  OntologyConceptFormValues,
 } from './OntologyConceptEditor.utils';
 import { useMappingTargetOptions } from './useReadableConceptOptions';
 

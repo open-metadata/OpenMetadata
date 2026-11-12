@@ -12,9 +12,9 @@
  */
 
 import {
-    EmptyPlaceholderAction,
-    EmptyPlaceholderFeature,
-    EmptyPlaceholderProps
+  EmptyPlaceholderAction,
+  EmptyPlaceholderFeature,
+  EmptyPlaceholderProps,
 } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 
@@ -69,12 +69,4 @@ export interface PanelEmptyPlaceholderProps {
   'data-testid'?: string;
   /** Test id for the search state when callers address it separately. */
   searchResultsTestId?: string;
-}
-
-export interface InlineEmptyPlaceholderProps {
-  title: string;
-  /** Guidance under the title; shown only in the `box` variant. */
-  description?: string;
-  variant?: 'box' | 'text';
-  'data-testid'?: string;
 }

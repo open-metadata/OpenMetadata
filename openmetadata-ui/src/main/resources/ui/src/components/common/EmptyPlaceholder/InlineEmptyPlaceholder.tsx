@@ -12,7 +12,14 @@
  */
 
 import { Typography } from '@openmetadata/ui-core-components';
-import { InlineEmptyPlaceholderProps } from './EmptyPlaceholder.interface';
+
+export interface InlineEmptyPlaceholderProps {
+  title: string;
+  /** Guidance under the title; shown only in the `box` variant. */
+  description?: string;
+  variant?: 'box' | 'text';
+  'data-testid'?: string;
+}
 
 /**
  * A short "nothing here yet" note inside a section of a panel, left-aligned

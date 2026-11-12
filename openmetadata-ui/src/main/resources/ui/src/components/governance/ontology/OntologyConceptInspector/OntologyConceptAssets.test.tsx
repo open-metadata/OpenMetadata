@@ -11,23 +11,23 @@
  *  limitations under the License.
  */
 import {
-    act,
-    fireEvent,
-    screen,
-    waitFor,
-    within
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import {
-    Access,
-    Operation
+  Access,
+  Operation,
 } from '../../../../generated/entity/policies/accessControl/resourcePermission';
 import {
-    AssetBinding,
-    AssetType,
-    OntologyConceptBindingsResponse,
-    State
+  AssetBinding,
+  AssetType,
+  OntologyConceptBindingsResponse,
+  State,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import APIClient from '../../../../rest/axiosClient';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';

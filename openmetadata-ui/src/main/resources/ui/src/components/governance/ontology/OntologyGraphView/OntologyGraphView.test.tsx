@@ -12,68 +12,68 @@
  */
 
 import {
-    act,
-    fireEvent,
-    screen,
-    waitFor,
-    within
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { applyPatch } from 'fast-json-patch';
 import { useState } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import OntologyDraftProvider from '../../../../context/OntologyDraft/OntologyDraftProvider';
 import {
-    Code,
-    Severity
+  Code,
+  Severity,
 } from '../../../../generated/api/data/ontologyProfileReport';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-    AxiomType,
-    ExpressionKind,
-    OntologyAxiom,
-    Provenance
+  AxiomType,
+  ExpressionKind,
+  OntologyAxiom,
+  Provenance,
 } from '../../../../generated/entity/data/ontologyAxiom';
 import {
-    ConceptMappingType,
-    OntologyConcept,
-    OntologyConceptType
+  ConceptMappingType,
+  OntologyConcept,
+  OntologyConceptType,
 } from '../../../../generated/entity/data/ontologyConcept';
 import {
-    Kind,
-    OntologyProperty
+  Kind,
+  OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
 import {
-    Category,
-    PaletteKey,
-    RelationshipType
+  Category,
+  PaletteKey,
+  RelationshipType,
 } from '../../../../generated/entity/data/relationshipType';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
-    acquireOntologyEditLock,
-    applyOntologyChangeSet,
-    createOntologyAxiom,
-    createOntologyChangeSet,
-    createOntologyProperty,
-    createRelationshipType,
-    getNativeOntologyDataGraphPage,
-    getOntologyChangeSet,
-    getOntologyConcept,
-    getOntologyState,
-    getOntologyWorkingValidation,
-    getRelationshipTypeByName,
-    listRelationshipTypes,
-    patchOntologyAxiom,
-    patchOntologyConcept,
-    patchOntologyProperty,
-    patchRelationshipType,
-    releaseOntologyEditLock
+  acquireOntologyEditLock,
+  applyOntologyChangeSet,
+  createOntologyAxiom,
+  createOntologyChangeSet,
+  createOntologyProperty,
+  createRelationshipType,
+  getNativeOntologyDataGraphPage,
+  getOntologyChangeSet,
+  getOntologyConcept,
+  getOntologyState,
+  getOntologyWorkingValidation,
+  getRelationshipTypeByName,
+  listRelationshipTypes,
+  patchOntologyAxiom,
+  patchOntologyConcept,
+  patchOntologyProperty,
+  patchRelationshipType,
+  releaseOntologyEditLock,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient as render } from '../../../../test/unit/test-utils';
 import { pageFixture } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.mock';
 import {
-    buildOntologyStudioGraph,
-    getModelRelations,
-    OntologyStudioModel
+  buildOntologyStudioGraph,
+  getModelRelations,
+  OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';

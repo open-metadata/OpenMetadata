@@ -11,27 +11,27 @@
  *  limitations under the License.
  */
 import {
-    act,
-    fireEvent,
-    screen,
-    waitFor,
-    within
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { Ontology } from '../../generated/entity/data/ontology';
 import {
-    EncodingVersion,
-    EntityStatus,
-    LogicalCheck,
-    OntologyRelease
+  EncodingVersion,
+  EntityStatus,
+  LogicalCheck,
+  OntologyRelease,
 } from '../../generated/entity/data/ontologyRelease';
 import { Stage } from '../../generated/type/ontologyPublicationStatus';
 import { OntologyState } from '../../generated/type/ontologyState';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import APIClient from '../../rest/axiosClient';
 import {
-    renderWithQueryClient,
-    runQueryNotificationsSynchronously
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
 } from '../../test/unit/test-utils';
 import OntologyExplorerPage from './OntologyExplorerPage';
 

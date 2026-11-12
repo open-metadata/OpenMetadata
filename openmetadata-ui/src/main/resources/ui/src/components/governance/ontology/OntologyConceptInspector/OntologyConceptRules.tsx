@@ -12,12 +12,12 @@
  */
 
 import {
-    Box,
-    Button,
-    Card,
-    Input,
-    Select,
-    Typography
+  Box,
+  Button,
+  Card,
+  Input,
+  Select,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useMemo, useRef, useState } from 'react';
@@ -26,44 +26,44 @@ import { OntologyConcept } from '../../../../generated/entity/data/ontologyConce
 import { createOntologyAxiom } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
-    getPropertyLabel,
-    OntologyModelRelation,
-    OntologyStudioModel
+  getPropertyLabel,
+  OntologyModelRelation,
+  OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
-    InspectorList,
-    InspectorRow
+  InspectorList,
+  InspectorRow,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import {
-    axiomFormValues,
-    AxiomOutcome,
-    collectAxiomProblems,
-    previewSentence
+  axiomFormValues,
+  AxiomOutcome,
+  collectAxiomProblems,
+  previewSentence,
 } from '../OntologyAxiomEditor/OntologyAxiomEditor.parts';
 import { buildOntologyAxiomRequest } from '../OntologyAxiomEditor/OntologyAxiomEditor.utils';
 import {
-    EMPTY_QUICK_RULE,
-    isQuickRuleReady,
-    QuickQuantifier,
-    QuickRule,
-    QuickRuleKind,
-    quickRuleToForm,
-    QUICK_QUANTIFIERS,
-    QUICK_QUANTIFIER_LABELS,
-    QUICK_RULE_LABELS,
-    RoutedAxiomProblems,
-    ruleNameFromSentence
+  EMPTY_QUICK_RULE,
+  isQuickRuleReady,
+  QuickQuantifier,
+  QuickRule,
+  QuickRuleKind,
+  quickRuleToForm,
+  QUICK_QUANTIFIERS,
+  QUICK_QUANTIFIER_LABELS,
+  QUICK_RULE_LABELS,
+  RoutedAxiomProblems,
+  ruleNameFromSentence,
 } from '../OntologyAxiomEditor/OntologyAxiomQuickRule.utils';
 import { useOntologyAxiomValidation } from '../OntologyAxiomEditor/useOntologyAxiomValidation';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
-    ConceptFormCard,
-    ConceptFormHeading,
-    ConceptSection
+  ConceptFormCard,
+  ConceptFormHeading,
+  ConceptSection,
 } from './OntologyConceptSection';
 
 interface OntologyConceptRulesProps {

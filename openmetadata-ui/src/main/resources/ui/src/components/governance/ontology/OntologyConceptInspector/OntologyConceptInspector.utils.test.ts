@@ -12,9 +12,9 @@
  */
 import { ConceptMappingType } from '../../../../generated/entity/data/ontologyConcept';
 import {
-    countFilledSections,
-    getCompletenessCounts,
-    shortenIri
+  countFilledSections,
+  getCompletenessCounts,
+  shortenIri,
 } from './OntologyConceptInspector.utils';
 
 describe('shortenIri', () => {

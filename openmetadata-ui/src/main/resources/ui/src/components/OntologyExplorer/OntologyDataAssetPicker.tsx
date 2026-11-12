@@ -12,27 +12,27 @@
  */
 
 import {
-    Alert,
-    Badge,
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    Checkbox,
-    Dialog,
-    Input,
-    Select,
-    Tabs,
-    Typography
+  Alert,
+  Badge,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  Checkbox,
+  Dialog,
+  Input,
+  Select,
+  Tabs,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import {
-    Activity,
-    Database01,
-    InfoCircle,
-    Link01,
-    Search,
-    Table,
-    XClose
+  Activity,
+  Database01,
+  InfoCircle,
+  Link01,
+  Search,
+  Table,
+  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -51,9 +51,9 @@ import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import Fqn from '../../utils/Fqn';
 import { getQueryFilterToExcludeTerm } from '../../utils/GlossaryPureUtils';
 import {
-    getSuggestionReason,
-    getSuggestionTerms,
-    SuggestionReason
+  getSuggestionReason,
+  getSuggestionTerms,
+  SuggestionReason,
 } from '../../utils/governance/ontology/OntologyAssetSuggestion.utils';
 import { getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

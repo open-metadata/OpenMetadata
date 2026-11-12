@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-    Alert,
-    Box,
-    Button,
-    ButtonUtility,
-    Card,
-    ConfirmPopover,
-    Typography
+  Alert,
+  Box,
+  Button,
+  ButtonUtility,
+  Card,
+  ConfirmPopover,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@openmetadata/ui-core-components/icons';
 import { MouseEvent, useState } from 'react';
@@ -27,8 +27,8 @@ import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
 import {
-    AssetBinding,
-    AssetType
+  AssetBinding,
+  AssetType,
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { useOntologyAssetLinking } from '../../../../hooks/governance/ontology/useOntologyAssetLinking';
 import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/useOntologyAssetUnlink';
@@ -37,15 +37,15 @@ import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
-    getOntologyAssetPath,
-    getUnlinkDescription,
-    NATIVE_BINDING_ASSET_TYPES
+  getOntologyAssetPath,
+  getUnlinkDescription,
+  NATIVE_BINDING_ASSET_TYPES,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
 import OntologyColumnMappingStep, {
-    ColumnMappingProperty
+  ColumnMappingProperty,
 } from './OntologyColumnMappingStep';
 import { ConceptSection } from './OntologyConceptSection';
 
