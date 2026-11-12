@@ -100,14 +100,17 @@ identity protection. The HTTP matrix validates all six export targets after each
 
 ## Amendment — accepted legacy rules export as their embedded declaration
 
-Import accepts legacy root quality rules that v3.1.0 cannot express, such as a custom rule without
-`engine`/`implementation` or an unpublished metric, by embedding them in a `custom` rule with
-engine `odcs`. Export restored their source form instead, so the v3.1.0 export of a contract the
-import had just accepted failed the published schema (HTTP 400).
+In a document without `schema`, import accepts legacy root quality rules that name a `column` but
+that v3.1.0 cannot express, such as a custom rule without `engine`/`implementation` or an
+unpublished metric, by embedding them in a `custom` rule with engine `odcs`. Export restored their
+source form, so the v3.1.0 export of a contract the import had just accepted failed the published
+schema (HTTP 400).
 
 For a contract carrying import metadata (`odcsPreservedFields`), v3.1.0 materialization now embeds
-any rule that the published `DataQuality` schema rejects but the legacy reader schema accepts. It
-uses the same declaration the import validated, so re-import restores the stored rule unchanged.
-Contracts without import metadata are unchanged: an unrepresentable natively stored rule is still
-reported and the export rejected (`ODCSExportServiceTest`). Earlier profiles already exported these
-rules validly and are unaffected.
+every rule that the published `DataQuality` schema rejects but the legacy reader schema accepts, in
+the same declaration shape the import uses, so re-import restores the stored rule unchanged. The
+signal is the contract's import metadata, not each rule's origin: a rule added natively to an
+imported contract is embedded the same way. Contracts without import metadata are unchanged: an
+unrepresentable natively stored rule is still reported and the export rejected
+(`ODCSExportServiceTest`). Earlier profiles already exported these rules validly and are
+unaffected.

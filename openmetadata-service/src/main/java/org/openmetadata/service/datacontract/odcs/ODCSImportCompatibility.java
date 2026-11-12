@@ -16,7 +16,8 @@ package org.openmetadata.service.datacontract.odcs;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.networknt.schema.Schema;
+import com.networknt.schema.path.NodePath;
+import com.networknt.schema.path.PathType;
 import java.time.Instant;
 import java.util.HashSet;
 import java.util.List;
@@ -70,8 +71,8 @@ final class ODCSImportCompatibility {
           "mustBeLessOrEqualTo",
           "mustBeBetween",
           "mustNotBeBetween");
-  private static final Schema PUBLISHED_QUALITY =
-      ODCSPublishedSchemaValidator.load("classpath:odcs/v3.1.0/schema.json#/$defs/DataQuality");
+  private static final NodePath DATA_QUALITY =
+      new NodePath(PathType.JSON_POINTER).append("$defs").append("DataQuality");
   private static final Set<String> QUALITY_METADATA =
       ODCSExportModelWriter.fields(
           ODCSExportModelWriter.schema(ODCSExportService.DEFAULT_VERSION).at("/$defs/DataQuality"));
@@ -113,7 +114,7 @@ final class ODCSImportCompatibility {
   static boolean isPublishedRule(JsonNode rule) {
     ObjectNode declaration = rule.deepCopy();
     declaration.remove("column");
-    return PUBLISHED_QUALITY.validate(declaration).isEmpty();
+    return ODCSProfiles.validFragment(ODCSExportService.DEFAULT_VERSION, DATA_QUALITY, declaration);
   }
 
   /** A declaration the published format cannot express travels whole inside a custom rule. */
@@ -131,9 +132,10 @@ final class ODCSImportCompatibility {
   }
 
   /**
-   * An imported contract can hold legacy rules the import accepted as embedded declarations, such
-   * as a custom rule without an engine or an unpublished metric. Restoring their source form would
-   * fail the published schema, so they leave as the embedded declaration the import validated.
+   * Applied to every rule of a contract carrying import metadata. Import accepts legacy rules the
+   * published format cannot express, such as a custom rule without an engine or an unpublished
+   * metric, as embedded declarations; restoring their source form would fail the published schema,
+   * so any such rule the legacy reader accepts leaves in that same embedded form.
    */
   static void embedImportedRules(ObjectNode element) {
     replaceQualityRules(element, ODCSImportCompatibility::embedUnpublished);
