@@ -20,6 +20,9 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.it.util.SdkClients;
@@ -40,6 +43,8 @@ import org.openmetadata.service.search.SearchRepository;
  * cluster, or one whose alias a past reindex dropped — gets it back. This exercises that startup
  * reconciliation against the live cluster.
  */
+@Isolated("Temporarily removes shared Data Insights aliases")
+@Execution(ExecutionMode.SAME_THREAD)
 public class DataInsightAliasReconciliationIT {
 
   @BeforeAll
