@@ -123,6 +123,17 @@ export const patchKnowledgePage = async (id: string, data: Operation[]) => {
   return response.data;
 };
 
+/** Extracts or retries an article's memories; the article it returns reads Queued. */
+export const extractPageMemories = async (
+  id: string
+): Promise<KnowledgePage> => {
+  const response = await APIClient.post<KnowledgePage>(
+    `${CONTEXT_CENTER_PAGES_PATH}/${id}/extract`
+  );
+
+  return response.data;
+};
+
 export const updateKnowledgePageVote = async (
   id: string,
   data: VotingDataProps

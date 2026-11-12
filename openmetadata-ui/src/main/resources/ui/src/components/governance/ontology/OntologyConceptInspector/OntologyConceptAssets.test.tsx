@@ -533,7 +533,7 @@ it('retries failed binding reads before offering editing', async () => {
   ).toBeEnabled();
 
   expect(
-    screen.getByText('message.ontology-current-catalog-links')
+    screen.getByText('message.ontology-data-assets-empty-hint')
   ).toBeVisible();
 });
 
