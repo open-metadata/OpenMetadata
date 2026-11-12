@@ -98,6 +98,40 @@ class MetadataCollectionServiceTest {
   }
 
   @Test
+  void aDeletedAssetCancelsTheOpenTasksOfEveryStageAsDeleted() {
+    final TaskRepository repository = mock(TaskRepository.class);
+    final EntityReference bot = new EntityReference().withName("governance-bot").withType("user");
+    final Domain domain =
+        new Domain()
+            .withId(UUID.randomUUID())
+            .withName("finance")
+            .withFullyQualifiedName("finance");
+    final List<Task> open =
+        List.of(
+            completionTask(EntityStatus.DRAFT, false),
+            completionTask(EntityStatus.IN_REVIEW, false),
+            completionTask(EntityStatus.IN_REVIEW, true));
+    when(repository.listOpenTasksByEntityAndType(
+            eq("finance"), eq(MetadataCollectionService.TASK_TYPE), anyInt()))
+        .thenReturn(open);
+
+    new MetadataCollectionService(repository, bot).closeTasksOfDeletedAsset(domain);
+
+    final ArgumentCaptor<TaskResolution> resolutions =
+        ArgumentCaptor.forClass(TaskResolution.class);
+    open.forEach(
+        task ->
+            verify(repository).resolveTask(eq(task), resolutions.capture(), eq("governance-bot")));
+    resolutions
+        .getAllValues()
+        .forEach(
+            resolution -> {
+              assertEquals(TaskResolutionType.Cancelled, resolution.getType());
+              assertEquals(MetadataCollectionService.ASSET_DELETED, resolution.getComment());
+            });
+  }
+
+  @Test
   void aRevisionTaskIsNotResolvedThroughTheApi() {
     final Task revision = completionTask(EntityStatus.IN_REVIEW, true);
 

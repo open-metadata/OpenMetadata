@@ -7,17 +7,23 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.StreamSupport;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.tasks.ResolveTask;
+import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.domains.Domain;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance.WorkflowStatus;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.MetadataCollectionConfiguration;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.MetadataCollectionConfiguration.TaskAssignees;
 import org.openmetadata.schema.governance.workflows.elements.nodes.automatedTask.RequiredMetadataField;
@@ -29,14 +35,22 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
+import org.openmetadata.service.governance.workflows.WorkflowHandler;
+import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
+import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.metadata.MetadataCollectionService;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
+import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.util.PerRequestContextCleaner;
 
 /** ADR:2026-10-15-a-lifecycle-stage-asks-for-its-missing-metadata-in-one-task */
 @ExtendWith(TestNamespaceExtension.class)
 class LifecycleMetadataTasksIT {
   private static final String DRAFT_NODE = "CollectDraft";
   private static final String WORKFLOWS = "/v1/governance/workflowDefinitions";
+  private static final String CLASSIFICATIONS = "/v1/classifications";
   private static final String READY = "{\"==\":[{\"var\":\"description\"},\"Ready\"]}";
 
   @Test
@@ -200,6 +214,127 @@ class LifecycleMetadataTasksIT {
   }
 
   @Test
+  void deletingTheAssetCancelsItsTasksAndRestoringItReopensThem(TestNamespace namespace) {
+    final Classification asset = createClassification(namespace);
+    final String workflow = createWorkflow(namespace, descriptionOnly());
+    try {
+      service().reconcile(asset, descriptionOnly(), workflow, DRAFT_NODE);
+      final JsonNode opened = onlyTask(asset);
+      final long deletedAt = System.currentTimeMillis();
+      softDelete(asset);
+
+      assertEquals(WorkflowStatus.FINISHED, run(workflow, asset));
+      final JsonNode cancelled = onlyTask(asset);
+      assertEquals("Cancelled", cancelled.get("status").asText());
+      assertEquals("The asset was deleted", cancelled.at("/resolution/comment").asText());
+      assertTrue(hasUpdateEvent(opened.get("id").asText(), deletedAt));
+
+      assertEquals(WorkflowStatus.FINISHED, run(workflow, asset));
+      assertEquals(cancelled.get("version"), onlyTask(asset).get("version"));
+
+      restore(asset);
+      assertEquals(WorkflowStatus.FINISHED, run(workflow, asset));
+      final JsonNode reopened = onlyTask(asset);
+      assertEquals(opened.get("id"), reopened.get("id"));
+      assertEquals("Open", reopened.get("status").asText());
+      assertEquals(List.of("description"), missingFields(reopened));
+    } finally {
+      cleanup(CLASSIFICATIONS + "/" + asset.getId(), asset, workflow);
+    }
+  }
+
+  @Test
+  void aRecheckCompletesTheTaskOfADeletedAsset(TestNamespace namespace) {
+    final Classification asset = createClassification(namespace);
+    final String workflow = createWorkflow(namespace, descriptionOnly());
+    try {
+      service().reconcile(asset, descriptionOnly(), workflow, DRAFT_NODE);
+      final String taskId = onlyTask(asset).get("id").asText();
+      softDelete(asset);
+
+      recheck(taskId);
+
+      assertEquals("Completed", onlyTask(asset).get("status").asText());
+    } finally {
+      cleanup(CLASSIFICATIONS + "/" + asset.getId(), asset, workflow);
+    }
+  }
+
+  /** Runs the workflow for the asset as its trigger starts it, and says how the run ended. */
+  private static WorkflowStatus run(final String workflow, final EntityInterface<?> asset) {
+    awaitDeployed(workflow);
+    final UUID instance = UUID.randomUUID();
+    // The run executes on this thread. Server threads clear their request-scoped entity cache
+    // between units of work; this one must too, or the previous run's copy of the asset is reused.
+    PerRequestContextCleaner.clear();
+    WorkflowHandler.getInstance()
+        .triggerByKey(
+            TriggerFactory.getTriggerWorkflowId(workflow),
+            instance.toString(),
+            Map.of(
+                WorkflowVariableHandler.getNamespacedVariableName(
+                    Workflow.GLOBAL_NAMESPACE, Workflow.RELATED_ENTITY_VARIABLE),
+                new EntityLink(asset.getEntityReference().getType(), asset.getFullyQualifiedName())
+                    .getLinkString()));
+    final WorkflowInstanceRepository instances =
+        (WorkflowInstanceRepository) Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
+    return Awaitility.await("the run of " + workflow + " to end")
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofMillis(500))
+        .ignoreExceptions()
+        .until(
+            () -> instances.getById(instance).getStatus(),
+            status -> status != WorkflowStatus.RUNNING);
+  }
+
+  private static void awaitDeployed(final String workflow) {
+    Awaitility.await("workflow " + workflow + " to be deployed")
+        .atMost(Duration.ofMinutes(1))
+        .pollInterval(Duration.ofMillis(500))
+        .ignoreExceptions()
+        .until(
+            () ->
+                execute(HttpMethod.GET, WORKFLOWS + "/name/" + workflow + "?fields=deployed", null)
+                    .path("deployed")
+                    .asBoolean());
+  }
+
+  /** Whether the task's change was recorded as an event, which subscriptions and alerts read. */
+  private static boolean hasUpdateEvent(final String taskId, final long since) {
+    final JsonNode events =
+        execute(
+                HttpMethod.GET,
+                "/v1/events?entityUpdated=" + Entity.TASK + "&limit=1000&timestamp=" + since,
+                null)
+            .path("data");
+    return StreamSupport.stream(events.spliterator(), false)
+        .anyMatch(event -> taskId.equals(event.path("entityId").asText()));
+  }
+
+  private static Classification createClassification(TestNamespace namespace) {
+    final JsonNode created =
+        execute(
+            HttpMethod.POST,
+            CLASSIFICATIONS,
+            Map.of("name", namespace.prefix("deletedAsset"), "description", ""));
+    return JsonUtils.convertValue(
+        execute(
+            HttpMethod.PATCH,
+            CLASSIFICATIONS + "/" + created.get("id").asText(),
+            List.of(
+                Map.of("op", "add", "path", "/entityStatus", "value", EntityStatus.DRAFT.value()))),
+        Classification.class);
+  }
+
+  private static void softDelete(final Classification asset) {
+    execute(HttpMethod.DELETE, CLASSIFICATIONS + "/" + asset.getId(), null);
+  }
+
+  private static void restore(final Classification asset) {
+    execute(HttpMethod.PUT, CLASSIFICATIONS + "/restore", Map.of("id", asset.getId().toString()));
+  }
+
+  @Test
   void keepsTheTaskOpenWhileTheStageConditionsFailAndSaysSoGenerically(TestNamespace namespace) {
     final Domain domain = createDomain(namespace);
     final MetadataCollectionConfiguration conditionsOnly =
@@ -241,7 +376,9 @@ class LifecycleMetadataTasksIT {
   /** A re-check reads what the stored workflow's collect node asks for now. */
   private static String createWorkflow(
       TestNamespace namespace, MetadataCollectionConfiguration configuration) {
-    final String name = namespace.prefix("metadataTasksWorkflow");
+    // Flowable ids embed the workflow name: it must start with a letter and stay short, or the
+    // activity ids of a run overflow their column.
+    final String name = "metadataTasks_" + namespace.shortPrefix();
     final Map<String, Object> collect =
         Map.of(
             "type",
@@ -288,6 +425,10 @@ class LifecycleMetadataTasksIT {
                     .withField("experts")
                     .withRules(
                         "{\"some\":[{\"var\":\"experts\"},{\"!=\":[{\"var\":\"fullyQualifiedName\"},null]}]}")));
+  }
+
+  private static MetadataCollectionConfiguration descriptionOnly() {
+    return draftFields().withFields(List.of(draftFields().getFields().getFirst()));
   }
 
   private static MetadataCollectionConfiguration inReviewFields() {
@@ -377,34 +518,36 @@ class LifecycleMetadataTasksIT {
         Domain.class);
   }
 
-  private static JsonNode tasks(Domain domain) {
+  private static JsonNode tasks(EntityInterface<?> asset) {
     return execute(
             HttpMethod.GET,
-            "/v1/tasks?category=MetadataUpdate&fields=assignees,about,payload,availableTransitions"
+            "/v1/tasks?category=MetadataUpdate"
+                + "&fields=assignees,about,payload,availableTransitions,resolution"
                 + "&aboutEntity="
-                + domain.getFullyQualifiedName(),
+                + asset.getFullyQualifiedName(),
             null)
         .get("data");
   }
 
-  private static JsonNode onlyTask(Domain domain) {
-    final JsonNode tasks = tasks(domain);
+  private static JsonNode onlyTask(EntityInterface<?> asset) {
+    final JsonNode tasks = tasks(asset);
     assertEquals(1, tasks.size());
     return tasks.get(0);
   }
 
   private static void cleanup(Domain domain, String workflow) {
-    tasks(domain)
+    cleanup("/v1/domains/" + domain.getId(), domain, workflow);
+  }
+
+  private static void cleanup(String assetPath, EntityInterface<?> asset, String workflow) {
+    tasks(asset)
         .forEach(
             task ->
                 execute(
                     HttpMethod.DELETE,
                     "/v1/tasks/" + task.get("id").asText() + "?hardDelete=true&recursive=true",
                     null));
-    execute(
-        HttpMethod.DELETE,
-        "/v1/domains/" + domain.getId() + "?hardDelete=true&recursive=true",
-        null);
+    execute(HttpMethod.DELETE, assetPath + "?hardDelete=true&recursive=true", null);
     execute(
         HttpMethod.DELETE,
         WORKFLOWS + "/name/" + workflow + "?hardDelete=true&recursive=true",
