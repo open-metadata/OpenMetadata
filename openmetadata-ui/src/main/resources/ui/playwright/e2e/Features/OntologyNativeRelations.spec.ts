@@ -32,10 +32,10 @@ import {
 import {
   clickGraphNode,
   findEmptyCanvasPoint,
+  openInspectorRelationChooser,
   readGraphPoints,
   readNodePositions,
   waitForGraphPoints,
-  openInspectorRelationChooser,
 } from '../../utils/ontologyStudio';
 
 const PART_OF = 'https://open-metadata.org/ontology/partOf';

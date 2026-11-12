@@ -83,44 +83,6 @@ export const ConceptSection = ({
 };
 
 /**
- * The design's small grey "nothing here yet" box: a left-aligned line and hint inside a section,
- * not a page-level empty state, so it does not use the centred placeholder.
- */
-export const ConceptEmptyState = ({
-  hint,
-  title,
-}: {
-  readonly hint?: string;
-  readonly title: string;
-}) => (
-  <div
-    className="tw:flex tw:flex-col tw:rounded-lg tw:bg-secondary_alt tw:px-4 tw:py-3.5"
-    data-testid="ontology-concept-empty">
-    <Typography size="text-sm">{title}</Typography>
-    {hint ? (
-      <Typography color="secondary" size="text-xs">
-        {hint}
-      </Typography>
-    ) : null}
-  </div>
-);
-
-/** A section with nothing in it yet, as one plain line of text. */
-export const ConceptEmptyText = ({
-  children,
-}: {
-  readonly children: string;
-}) => (
-  <Typography
-    as="p"
-    className="tw:m-0 tw:text-tertiary"
-    data-testid="ontology-concept-empty"
-    size="text-sm">
-    {children}
-  </Typography>
-);
-
-/**
  * An inline add form: a brand-bordered card with a soft focus halo, so it reads as the active
  * input. The plain tone is the design's grey card, used where the form has its own title and close.
  */

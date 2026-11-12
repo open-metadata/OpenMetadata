@@ -42,8 +42,8 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { patchOntologyConcept } from '../../../../rest/ontologyAPI';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
-  ConceptEmptyState,
   ConceptFormCard,
   ConceptFormHeading,
 } from '../OntologyConceptInspector/OntologyConceptSection';
@@ -475,8 +475,9 @@ export const ConceptEditorMappings = ({
         </ul>
       ) : null}
       {mappings.fields.length === 0 ? (
-        <ConceptEmptyState
-          hint={t('message.ontology-mappings-empty-hint')}
+        <InlineEmptyPlaceholder
+          data-testid="ontology-concept-empty"
+          description={t('message.ontology-mappings-empty-hint')}
           title={t('message.ontology-no-mappings-yet')}
         />
       ) : null}

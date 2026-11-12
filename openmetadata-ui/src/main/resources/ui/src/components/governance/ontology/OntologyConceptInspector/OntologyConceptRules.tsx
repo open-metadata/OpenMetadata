@@ -32,6 +32,7 @@ import {
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
   InspectorList,
   InspectorRow,
@@ -60,7 +61,6 @@ import { useOntologyAxiomValidation } from '../OntologyAxiomEditor/useOntologyAx
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
-  ConceptEmptyText,
   ConceptFormCard,
   ConceptFormHeading,
   ConceptSection,
@@ -340,9 +340,11 @@ const OntologyConceptRules = ({
           ))}
         </InspectorList>
       ) : (
-        <ConceptEmptyText>
-          {t('message.ontology-no-rules-yet-hint')}
-        </ConceptEmptyText>
+        <InlineEmptyPlaceholder
+          data-testid="ontology-concept-empty"
+          title={t('message.ontology-no-rules-yet-hint')}
+          variant="text"
+        />
       )}
     </ConceptSection>
   );

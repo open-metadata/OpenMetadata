@@ -42,11 +42,12 @@ import {
   NATIVE_BINDING_ASSET_TYPES,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
+import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
 import OntologyColumnMappingStep, {
   ColumnMappingProperty,
 } from './OntologyColumnMappingStep';
-import { ConceptEmptyState, ConceptSection } from './OntologyConceptSection';
+import { ConceptSection } from './OntologyConceptSection';
 
 interface OntologyConceptAssetsProps {
   conceptId: string;
@@ -320,8 +321,9 @@ const OntologyConceptAssets = ({
       {renderPicker()}
       {renderStatus()}
       {assets.length === 0 && bindings.isSuccess ? (
-        <ConceptEmptyState
-          hint={t('message.ontology-data-assets-empty-hint')}
+        <InlineEmptyPlaceholder
+          data-testid="ontology-concept-empty"
+          description={t('message.ontology-data-assets-empty-hint')}
           title={t('message.ontology-no-data-assets-yet')}
         />
       ) : (

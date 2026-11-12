@@ -63,6 +63,7 @@ import {
   OntologyModelRelation,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
+import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
   InspectorList,
   InspectorRow,
@@ -92,8 +93,6 @@ import OntologyConceptLiveData, {
 } from './OntologyConceptLiveData';
 import OntologyConceptRules from './OntologyConceptRules';
 import {
-  ConceptEmptyState,
-  ConceptEmptyText,
   ConceptFormCard,
   ConceptFormPreview,
   ConceptSection,
@@ -249,7 +248,8 @@ const TargetConceptSelect = ({
 };
 
 const BROWSE_RELATION_TYPES = '__browse-relation-types__';
-const DEFAULT_RELATION_TYPE = 'broader';
+// Options are keyed by predicate IRI (registry rdfPredicate or property IRI), not by name.
+const DEFAULT_RELATION_TYPE = 'http://www.w3.org/2004/02/skos/core#broader';
 
 /**
  * Every type once, in group order, with its inverse as the chooser shows it; a
@@ -1183,8 +1183,9 @@ const OntologyConceptInspector = ({
         {mappings.length > 0 ? (
           <InspectorList>{mappings.map(renderMappingRow)}</InspectorList>
         ) : (
-          <ConceptEmptyState
-            hint={t('message.ontology-mappings-empty-hint')}
+          <InlineEmptyPlaceholder
+            data-testid="ontology-concept-empty"
+            description={t('message.ontology-mappings-empty-hint')}
             title={t('message.ontology-no-mappings-yet')}
           />
         )}
@@ -1273,9 +1274,11 @@ const OntologyConceptInspector = ({
             {conceptRelations.map(renderRelationRow)}
           </ul>
         ) : (
-          <ConceptEmptyText>
-            {t('message.ontology-no-relationships-yet')}
-          </ConceptEmptyText>
+          <InlineEmptyPlaceholder
+            data-testid="ontology-concept-empty"
+            title={t('message.ontology-no-relationships-yet')}
+            variant="text"
+          />
         )}
       </ConceptSection>
       <ConceptSection
@@ -1293,8 +1296,9 @@ const OntologyConceptInspector = ({
         {properties.length > 0 ? (
           <InspectorList>{properties.map(renderPropertyRow)}</InspectorList>
         ) : (
-          <ConceptEmptyState
-            hint={t('message.ontology-properties-empty-hint')}
+          <InlineEmptyPlaceholder
+            data-testid="ontology-concept-empty"
+            description={t('message.ontology-properties-empty-hint')}
             title={t('message.ontology-no-properties-yet')}
           />
         )}

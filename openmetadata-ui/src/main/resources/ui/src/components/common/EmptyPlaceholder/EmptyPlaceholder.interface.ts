@@ -70,3 +70,11 @@ export interface PanelEmptyPlaceholderProps {
   /** Test id for the search state when callers address it separately. */
   searchResultsTestId?: string;
 }
+
+export interface InlineEmptyPlaceholderProps {
+  title: string;
+  /** Guidance under the title; shown only in the `box` variant. */
+  description?: string;
+  variant?: 'box' | 'text';
+  'data-testid'?: string;
+}

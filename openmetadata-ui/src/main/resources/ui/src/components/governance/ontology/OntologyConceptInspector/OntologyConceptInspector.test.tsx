@@ -1291,6 +1291,45 @@ describe('OntologyConceptInspector relationship authoring', () => {
     mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
   });
 
+  it('starts the inline form on broader when the ontology offers it, matched by its SKOS IRI', () => {
+    const broader = 'http://www.w3.org/2004/02/skos/core#broader';
+    renderAuthoring({
+      relationTypeGroups: [
+        {
+          id: 'hierarchy',
+          title: 'Hierarchy',
+          options: [{ id: 'isA', label: 'Is a', paletteKey: PaletteKey.Blue }],
+        },
+        {
+          id: 'relationships',
+          title: 'Relationships',
+          options: [
+            { id: broader, label: 'Broader', paletteKey: PaletteKey.Green },
+          ],
+        },
+      ],
+    });
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    expect(
+      within(screen.getByTestId('ontology-relationship-type')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('Broader');
+  });
+
+  it('leaves the type empty when the ontology has no broader type', () => {
+    renderAuthoring();
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+
+    expect(
+      within(screen.getByTestId('ontology-relationship-type')).getByRole(
+        'button'
+      )
+    ).toHaveTextContent('label.choose-relationship');
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
+  });
+
   it('deletes the relationship on its row', () => {
     const onDeleteRelation = jest.fn().mockResolvedValue(true);
     renderAuthoring({ onDeleteRelation });
