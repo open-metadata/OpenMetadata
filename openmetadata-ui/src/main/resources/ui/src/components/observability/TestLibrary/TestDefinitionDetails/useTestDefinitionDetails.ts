@@ -17,13 +17,13 @@ import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { TEST_SUITE_TEST_CASE_FIELDS } from '../../../../rest/queries/testSuiteQuery';
 import {
-    getListTestCaseBySearch,
-    getTestDefinitionByName
+  getListTestCaseBySearch,
+  getTestDefinitionByName,
 } from '../../../../rest/testAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
-    NextPreviousProps,
-    PagingHandlerParams
+  NextPreviousProps,
+  PagingHandlerParams,
 } from '../../../common/NextPrevious/NextPrevious.interface';
 
 export const testDefinitionDetailsQueryKey = (fqn: string) => [

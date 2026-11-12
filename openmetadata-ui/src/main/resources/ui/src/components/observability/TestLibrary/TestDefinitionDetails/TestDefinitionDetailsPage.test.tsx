@@ -15,8 +15,8 @@ import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import {
-    getListTestCaseBySearch,
-    getTestDefinitionByName
+  getListTestCaseBySearch,
+  getTestDefinitionByName,
 } from '../../../../rest/testAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import TestDefinitionDetailsPage from './TestDefinitionDetailsPage';

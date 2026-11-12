@@ -19,6 +19,7 @@ import {
   type TestCaseLastRunBannerStatus,
 } from '../constant/dataQuality';
 import { TableClass } from '../support/entity/TableClass';
+import { okJson } from './apiResponse';
 import {
   fetchCompletedCsvAsyncJobResult,
   getApiContext,
@@ -26,7 +27,6 @@ import {
   toastNotification,
   uuid,
 } from './common';
-import { okJson } from './apiResponse';
 import { waitForAllLoadersToDisappear } from './entity';
 import { expectBreadcrumbToContainAncestor } from './headerBreadcrumbUtils';
 import {
