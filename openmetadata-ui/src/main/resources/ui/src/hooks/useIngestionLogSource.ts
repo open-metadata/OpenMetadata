@@ -29,6 +29,8 @@ export interface UseIngestionLogSourceParams {
   runId?: string;
   // The run's own state says it is still producing output.
   runActive: boolean;
+  // Read this specific finished run's log instead of the latest one.
+  pinnedRunId?: string;
 }
 
 export interface UseIngestionLogSourceResult {
@@ -96,6 +98,7 @@ export const useIngestionLogSource = ({
   ingestionType,
   runId,
   runActive,
+  pinnedRunId,
 }: UseIngestionLogSourceParams): UseIngestionLogSourceResult => {
   const { hasLog, canStream } = computeAvailability(
     enabled,
@@ -130,20 +133,22 @@ export const useIngestionLogSource = ({
 
   const fetchPage = useCallback(
     (cursor?: string) =>
-      getIngestionPipelineLogById(ingestionFqn, cursor).then((res) => ({
-        content: ingestionType
-          ? getLogTaskFieldForType(res.data, ingestionType)
-          : '',
-        after: res.data.after,
-        total: res.data.total,
-      })),
-    [ingestionFqn, ingestionType]
+      getIngestionPipelineLogById(ingestionFqn, cursor, pinnedRunId).then(
+        (res) => ({
+          content: ingestionType
+            ? getLogTaskFieldForType(res.data, ingestionType)
+            : '',
+          after: res.data.after,
+          total: res.data.total,
+        })
+      ),
+    [ingestionFqn, ingestionType, pinnedRunId]
   );
 
   const paginatedEnabled = hasLog && !isStreaming;
   const paginated = usePaginatedLiveLog({
     fetchPage,
-    resetKey: ingestionFqn,
+    resetKey: `${ingestionFqn}/${pinnedRunId ?? ''}`,
     enabled: paginatedEnabled,
     isLive: paginatedEnabled && isLive,
   });

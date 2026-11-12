@@ -219,6 +219,39 @@ describe('RunHistoryDrawer', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('should open the logs of the selected run when it is not the latest', () => {
+    const onOpenLogs = jest.fn();
+    render(
+      <RunHistoryDrawer
+        open
+        agent={agent}
+        initialRunId="run-middle"
+        onClose={jest.fn()}
+        onOpenLogs={onOpenLogs}
+        onRun={mockOnRun}
+      />
+    );
+    fireEvent.click(screen.getByTestId('raw-logs-button'));
+
+    expect(onOpenLogs).toHaveBeenCalledWith(agent, 'run-middle');
+  });
+
+  it('should open the agent logs without a run id when the latest run is selected', () => {
+    const onOpenLogs = jest.fn();
+    render(
+      <RunHistoryDrawer
+        open
+        agent={agent}
+        onClose={jest.fn()}
+        onOpenLogs={onOpenLogs}
+        onRun={mockOnRun}
+      />
+    );
+    fireEvent.click(screen.getByTestId('raw-logs-button'));
+
+    expect(onOpenLogs).toHaveBeenCalledWith(agent, undefined);
+  });
+
   it('should hide the Run now button while permissions are unresolved', () => {
     render(
       <RunHistoryDrawer

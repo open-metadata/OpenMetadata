@@ -91,6 +91,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     runId?: string;
   } | null>(null);
   const [logsFor, setLogsFor] = useState<Agent | null>(null);
+  const [logsRunId, setLogsRunId] = useState<string | undefined>();
   const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
@@ -101,8 +102,10 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     () => agents.find((agent) => agent.id === logsFor?.id) ?? logsFor,
     [agents, logsFor]
   );
+  // A pinned (older, finished) run is never live, whatever the agent is doing now.
   const isLogsAgentActive =
-    liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued';
+    !logsRunId &&
+    (liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued');
 
   // Same reason for the run history drawer — its "Run now" guard has to see the
   // status the agent has now, not the one it had when the drawer was opened.
@@ -124,10 +127,14 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     logsFor?.pipelineType ?? PipelineType.Metadata,
     Boolean(logsFor),
     isLogsAgentActive,
-    liveLogsAgent?.currentRunId
+    liveLogsAgent?.currentRunId,
+    logsRunId
   );
 
-  const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
+  const onLogs = useCallback((agent: Agent) => {
+    setLogsRunId(undefined);
+    setLogsFor(agent);
+  }, []);
   const onRun = useCallback(
     (agent: Agent) => {
       void runAgent(agent);
@@ -285,7 +292,8 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           permissions={agentPermissions?.[liveRunsAgent.fqn]}
           renderRunAction={renderRunAction}
           onClose={() => setRunsFor(null)}
-          onOpenLogs={(agent) => {
+          onOpenLogs={(agent, runId) => {
+            setLogsRunId(runId);
             setLogsFor(agent);
           }}
           onRun={onRun}
