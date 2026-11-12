@@ -80,9 +80,6 @@ RELKIND_MAP = {
 # DUPLICATE KEY table ("DUP") is only a sort key and can repeat; other tables report "".
 PRIMARY_KEY_TABLE_MODELS = {"UNI", "AGG", "PRI"}
 
-# Schemas whose primary keys are kept; with `threads`, each worker processes its own schema
-PRIMARY_KEY_CACHE_SIZE = 32
-
 DorisDialect.get_table_names_and_type = get_table_names_and_type
 DorisDialect.get_table_comment = get_table_comment
 
@@ -181,7 +178,10 @@ class DorisSource(CommonDbSourceService):
         if self.ssl_manager:
             service_connection = self.ssl_manager.setup_ssl(service_connection)
         super().__init__(config, metadata)
-        self.primary_key_columns_cache: LRUCache[dict[str, list[str]]] = LRUCache(capacity=PRIMARY_KEY_CACHE_SIZE)
+        # One entry per schema in progress: each of the `threads` workers ingests its own schema
+        self.primary_key_columns_cache: LRUCache[dict[str, list[str]]] = LRUCache(
+            capacity=self.source_config.threads or 1
+        )
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: str | None = None):
@@ -258,7 +258,7 @@ class DorisSource(CommonDbSourceService):
             except Exception as exc:
                 # Ingest the schema's tables without primary keys rather than fail each of them
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Could not read the table models of schema [{schema_name}]: {exc}")
+                logger.warning("Could not read the table models of schema [%s]: %s", schema_name, exc)
                 primary_keys = {}
             self.primary_key_columns_cache.put(schema_name, primary_keys)
         return primary_keys.get(table_name, [])
