@@ -14,10 +14,11 @@ assignee remained against a threshold of two. After the owner approved, the task
 no one left to vote, and the contract could never move forward.
 
 ## Decision
-`CreateTask.resolveApprovalThreshold` lowers the threshold to the number of assignees when every
-assignee is a user. A list that holds a team is not capped, because any number of its members can
-vote. An empty list is not capped either. The requester's change is not counted as an approval:
-that would be self-approval under another name.
+`CreateTask.capApprovalThreshold` (on 2.1 and later, `CreateTask.resolveApprovalThreshold`)
+lowers the threshold to the number of assignees when every assignee is a user. A list that holds a
+team is not capped, because any number of its members can vote. An empty list is not capped
+either. The requester's change is not counted as an approval: that would be self-approval under
+another name.
 
 ## Consequences
 A task can always complete. The cost is that a two-approval rule becomes one independent approval
