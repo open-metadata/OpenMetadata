@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
   useOntologyConceptCounts,
@@ -33,6 +34,13 @@ const ontology = (id: string, name: string): Ontology =>
 const CLINICAL = ontology('o-1', 'Clinical');
 const RETAIL = ontology('o-2', 'Retail');
 
+const openPicker = async (text: string) => {
+  const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+  await user.type(screen.getByRole('combobox'), text);
+
+  return user;
+};
+
 describe('OntologyQueryPicker', () => {
   beforeEach(() => {
     (useOntologyConceptCounts as jest.Mock).mockReturnValue({
@@ -42,7 +50,7 @@ describe('OntologyQueryPicker', () => {
     (useOntologyPropertyCounts as jest.Mock).mockReturnValue({ 'o-1': 3 });
   });
 
-  it('explains that a query runs against one ontology and lists each with its counts', () => {
+  it('explains that a query runs against one ontology and lists each with its counts', async () => {
     render(
       <OntologyQueryPicker
         ontologies={[CLINICAL, RETAIL]}
@@ -57,16 +65,15 @@ describe('OntologyQueryPicker', () => {
     expect(
       screen.getByTestId('ontology-query-picker-description')
     ).toHaveTextContent('message.query-choose-ontology-console');
+
+    await openPicker('Clin');
+
     expect(
-      within(
-        screen.getByTestId('ontology-query-picker-option-o-1')
-      ).getByTestId('ontology-query-picker-counts')
-    ).toHaveTextContent(
-      /^12 label\.concept-plural · 3 label\.property-plural$/
-    );
+      await screen.findByTestId('ontology-query-picker-option-o-1')
+    ).toHaveTextContent(/12 label\.concept-plural · 3 label\.property-plural/);
   });
 
-  it('uses the singular for one concept and leaves out a count that has not loaded', () => {
+  it('uses the singular for one concept and leaves out a count that has not loaded', async () => {
     render(
       <OntologyQueryPicker
         ontologies={[CLINICAL, RETAIL]}
@@ -75,11 +82,13 @@ describe('OntologyQueryPicker', () => {
       />
     );
 
-    expect(
-      within(
-        screen.getByTestId('ontology-query-picker-option-o-2')
-      ).getByTestId('ontology-query-picker-counts')
-    ).toHaveTextContent(/^1 label\.concept$/);
+    await openPicker('Ret');
+    const option = await screen.findByTestId(
+      'ontology-query-picker-option-o-2'
+    );
+
+    expect(option).toHaveTextContent(/1 label\.concept$/);
+    expect(option).not.toHaveTextContent('label.property');
   });
 
   it('describes the builder when the builder is the surface', () => {
@@ -96,7 +105,24 @@ describe('OntologyQueryPicker', () => {
     ).toHaveTextContent('message.query-choose-ontology-builder');
   });
 
-  it('hands the chosen ontology to the page', () => {
+  it('asks which ontology to review on the Ontology view', () => {
+    render(
+      <OntologyQueryPicker
+        ontologies={[CLINICAL]}
+        surface="ontology"
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('ontology-query-picker-title')).toHaveTextContent(
+      'message.ontology-choose-ontology-to-review'
+    );
+    expect(
+      screen.getByTestId('ontology-query-picker-description')
+    ).toHaveTextContent('message.ontology-view-works-on-one-ontology');
+  });
+
+  it('hands the chosen ontology to the page', async () => {
     const onSelect = jest.fn();
     render(
       <OntologyQueryPicker
@@ -106,8 +132,59 @@ describe('OntologyQueryPicker', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('ontology-query-picker-option-o-2'));
+    const user = await openPicker('Ret');
+    await user.click(
+      await screen.findByTestId('ontology-query-picker-option-o-2')
+    );
 
     expect(onSelect).toHaveBeenCalledWith(RETAIL);
+  });
+
+  it('lists only the ontologies whose name matches what the user typed', async () => {
+    render(
+      <OntologyQueryPicker
+        ontologies={[CLINICAL, RETAIL]}
+        surface="ontology"
+        onSelect={jest.fn()}
+      />
+    );
+
+    await openPicker('Ret');
+
+    expect(
+      await screen.findByTestId('ontology-query-picker-option-o-2')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-query-picker-option-o-1')
+    ).not.toBeInTheDocument();
+  });
+
+  it('opens the ontology list when asked to and reports when it closes', async () => {
+    const onOpenChange = jest.fn();
+    const { rerender } = render(
+      <OntologyQueryPicker
+        isOpen={false}
+        ontologies={[CLINICAL, RETAIL]}
+        surface="console"
+        onOpenChange={onOpenChange}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+
+    rerender(
+      <OntologyQueryPicker
+        isOpen
+        ontologies={[CLINICAL, RETAIL]}
+        surface="console"
+        onOpenChange={onOpenChange}
+        onSelect={jest.fn()}
+      />
+    );
+
+    expect(await screen.findByRole('listbox')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toHaveFocus();
+    expect(onOpenChange).toHaveBeenLastCalledWith(true, expect.anything());
   });
 });

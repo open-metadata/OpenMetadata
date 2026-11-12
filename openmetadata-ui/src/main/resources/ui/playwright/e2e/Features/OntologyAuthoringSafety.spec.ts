@@ -173,9 +173,8 @@ test.describe(
               const text = 'Saved ' + tab + ' description';
               await description.fill(text);
               if (tab === 'Concepts') {
-                await page
-                  .getByRole('button', { name: 'Person', exact: true })
-                  .click();
+                // A Concepts row opens the concept's panel on the graph; leaving for the Ontology tab is guarded.
+                await page.getByTestId('submode-tab-definitions').click();
               } else {
                 await page
                   .getByRole('tab', { name: 'Constraints', exact: true })
@@ -211,6 +210,9 @@ test.describe(
                 await page.getByTestId('mode-tab-edit').click();
                 await page.getByTestId('submode-tab-definitions').click();
               }
+              if (tab === 'Concepts') {
+                await page.getByTestId('submode-tab-definitions').click();
+              }
               await page
                 .getByRole('tab', { name: 'Constraints', exact: true })
                 .click();
@@ -236,6 +238,10 @@ test.describe(
               'ontology-import-export-trigger',
             ]) {
               await page.getByTestId(trigger).click();
+              // One ontology's Import / export opens a menu first; the guard runs on its action.
+              if (trigger === 'ontology-import-export-trigger') {
+                await page.getByTestId('ontology-export-menu-item').click();
+              }
               await expect(confirmation).toBeVisible();
               await confirmation
                 .getByRole('button', { name: 'Cancel', exact: true })
@@ -327,8 +333,9 @@ test.describe(
               body: await page.screenshot(),
               contentType: 'image/png',
             });
+            // The constraint drawer overlays the right of the tab row; Overview stays clear of it.
             await page
-              .getByRole('tab', { name: 'Settings', exact: true })
+              .getByRole('tab', { name: 'Overview', exact: true })
               .click();
             await page
               .getByRole('dialog')

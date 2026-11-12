@@ -25,7 +25,7 @@ import org.openmetadata.sdk.models.ListParams;
 @ExtendWith(TestNamespaceExtension.class)
 public class NativeOntologyCsvInverseReimportIT extends BaseOntologyApprovalIT {
   private static final String HEADER =
-      "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
+      "kind,iri,label,description,conceptType,parents,synonyms,mappings,propertyKind,domain,range,enumValues,unit,identifier,inverse,characteristics,propertyChain,disjointWith,superProperties,axiomType,property,target,literal,expressions,abstract,definitionSource,deprecated,replacedBy";
 
   @Test
   void importingACsvThatNamesAnInverseOnOneSideTwiceKeepsThePair(TestNamespace ns) {
@@ -83,7 +83,7 @@ public class NativeOntologyCsvInverseReimportIT extends BaseOntologyApprovalIT {
   }
 
   private static String objectProperty(String iri, String inverse) {
-    final var cells = new ArrayList<>(Collections.nCopies(27, ""));
+    final var cells = new ArrayList<>(Collections.nCopies(28, ""));
     cells.set(0, "PROPERTY");
     cells.set(1, iri);
     cells.set(8, "OBJECT");

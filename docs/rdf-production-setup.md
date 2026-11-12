@@ -250,7 +250,15 @@ Throughput therefore depends on the number and size of write transactions:
 
 The image includes a Graph Store extension (`OPENMETADATA_EXTENSION_ENABLED=true`). Its defaults
 are 50 seconds per upload, 64 MiB decompressed per request, and 16 simultaneous receivers. Override
-the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`.
+the first two with `OPENMETADATA_WRITE_TIMEOUT_MS` and `OPENMETADATA_MAX_UPLOAD_BYTES`. An
+activated native ontology release reaches Fuseki in RDF-Thrift chunks of at most
+`RDF_GRAPH_REPLACE_CHUNK_BYTES` (default 16 MiB). A graph larger than one chunk is staged in
+`https://open-metadata.org/graph/staging/...` graphs and copied into place by one SPARQL update, so
+keep the upload limit at or above the chunk size and the update deadline above the time that
+update takes (about 5 s for a 62 MB graph). The copy holds every triple of the graph in Fuseki's
+heap: a 512 MiB heap failed on 1.78 million triples, and a graph near the 256 MiB activation limit
+needs at least 1,500 MiB. The server refuses to activate a release whose graph exceeds
+256 MiB; see ADR:2026-10-15-fuseki-holds-only-the-active-ontology-release.
 Indexing preflights the dataset before clearing data, and fails only when the dataset cannot be
 used: it does not exist, the credentials are rejected, the user is not authorized, the dataset is
 read-only, or `tdb2:unionDefaultGraph` is off. Union is checked by behaviour, so it holds on any
@@ -277,6 +285,7 @@ Start with the defaults and tune one setting at a time:
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | `50` | Detailed lineage edges per update. |
 | `RDF_MAX_UPDATE_PAYLOAD_BYTES` | `4194304` | Approximate serialized-size cap per reconciling bulk write; oversized chunks split automatically. |
 | `RDF_MAX_APPEND_PAYLOAD_BYTES` | `16777216` | Serialized-size cap per insert-only append. |
+| `RDF_GRAPH_REPLACE_CHUNK_BYTES` | `16777216` | Estimated RDF-Thrift size per request when an ontology graph is replaced; at most 64 MiB. |
 | `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` | Entity models per insert-only append. |
 | `RDF_STREAMING_APPEND_ENABLED` | `true` | Stream appends as RDF Thrift instead of materializing a combined model. |
 | `RDF_GZIP_REQUESTS` | `false` | Gzip streamed append bodies (never deflate). |
@@ -541,6 +550,7 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | `50` |
 | `RDF_MAX_UPDATE_PAYLOAD_BYTES` | `4194304` |
 | `RDF_MAX_APPEND_PAYLOAD_BYTES` | `16777216` |
+| `RDF_GRAPH_REPLACE_CHUNK_BYTES` | `16777216` |
 | `RDF_BULK_APPEND_ENTITY_BATCH_SIZE` | `1000` |
 | `RDF_STREAMING_APPEND_ENABLED` | `true` |
 | `RDF_GZIP_REQUESTS` | `false` |

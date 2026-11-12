@@ -17,9 +17,12 @@ import {
   FieldProp,
   FieldTypes,
   FormField,
+  FormItemLabel,
   getField,
   HookForm,
   Input,
+  RadioButton,
+  RadioGroup,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
@@ -33,14 +36,13 @@ import {
   OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyProperty,
   patchOntologyProperty,
 } from '../../../../rest/ontologyAPI';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import OntologyFormFooter from '../OntologyFormFooter/OntologyFormFooter';
 import { ONTOLOGY_DATATYPE_OPTIONS } from '../OntologyIriInput/OntologyIriInput.constants';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
 import OntologyIriListInput from '../OntologyIriInput/OntologyIriListInput';
@@ -60,6 +62,18 @@ const ADVANCED_FIELDS = [
   'iri',
 ];
 
+const KIND_HINTS: Record<Kind, string> = {
+  [Kind.Object]: 'message.ontology-property-kind-object-hint',
+  [Kind.Data]: 'message.ontology-property-kind-data-hint',
+  [Kind.Annotation]: 'message.ontology-property-kind-annotation-hint',
+};
+const KIND_ORDER = [Kind.Object, Kind.Data, Kind.Annotation];
+const BASIC_FIELD_HELP: Record<string, string> = {
+  name: 'message.ontology-property-name-help',
+  displayName: 'message.ontology-property-display-name-help',
+  description: 'message.ontology-property-description-help',
+};
+
 const isSelectedItem = (value: { id: string }[], item: { id: string }) =>
   value.some((selected) => selected.id === item.id);
 
@@ -77,18 +91,30 @@ interface OntologyPropertyEditorProps {
   property?: OntologyProperty;
   canEdit: boolean;
   concepts?: ReadonlyArray<OntologyIriOption>;
+  properties?: ReadonlyArray<OntologyIriOption & { kind: Kind }>;
   onSaved: (property: OntologyProperty) => void;
+  /** Closes the drawer; without one, Cancel puts the saved values back. */
+  onCancel?: () => void;
 }
+
+type IriListField = 'domain' | 'range' | 'superProperties';
+
+const IRI_LIST_LABEL_KEYS: Record<IriListField, string> = {
+  domain: 'label.property-domain',
+  range: 'label.range',
+  superProperties: 'label.super-property-plural',
+};
 
 const OntologyPropertyEditor = ({
   ontology,
   property,
   canEdit,
   concepts,
+  properties,
   onSaved,
+  onCancel,
 }: OntologyPropertyEditorProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const form = useForm<OntologyPropertyFormValues>({
     defaultValues: propertyFormValues(property),
   });
@@ -130,17 +156,26 @@ const OntologyPropertyEditor = ({
     }
   };
 
-  const renderIriList = (name: 'domain' | 'range') => (
+  // A superproperty must share the property's kind, and a property cannot specialize itself.
+  const iriListOptions = (name: IriListField) => {
+    if (name === 'superProperties') {
+      return properties?.filter(
+        (option) => option.kind === kind && option.iri !== property?.iri
+      );
+    }
+
+    return name === 'range' && kind === Kind.Data
+      ? ONTOLOGY_DATATYPE_OPTIONS
+      : concepts;
+  };
+
+  const renderIriList = (name: IriListField) => (
     <FormField control={form.control} name={name}>
       {({ field }) => (
         <OntologyIriListInput
           isDisabled={disabled}
-          label={t(name === 'domain' ? 'label.property-domain' : 'label.range')}
-          options={
-            name === 'range' && kind === Kind.Data
-              ? ONTOLOGY_DATATYPE_OPTIONS
-              : concepts
-          }
+          label={t(IRI_LIST_LABEL_KEYS[name])}
+          options={iriListOptions(name)}
           testId={`ontology-property-${name}`}
           value={field.value.split('\n').filter(Boolean)}
           onChange={(iris) => field.onChange(iris.join('\n'))}
@@ -201,6 +236,36 @@ const OntologyPropertyEditor = ({
       </Box>
     );
 
+  const renderKind = (field: FieldProp) => (
+    <FormField control={form.control} name="kind">
+      {({ field: { value, onChange } }) => (
+        <Box direction="col" gap={1}>
+          <FormItemLabel label={field.label} required={field.required} />
+          <Typography color="secondary" size="text-sm">
+            {t('message.ontology-property-kind-help')}
+          </Typography>
+          <RadioGroup
+            aria-label={t('label.type')}
+            className="tw:mt-1.5"
+            data-testid="ontology-property-kind"
+            isDisabled={field.props?.isDisabled}
+            value={value.id}
+            onChange={(id) => onChange({ id: id as Kind, label: id })}>
+            {KIND_ORDER.map((option) => (
+              <RadioButton
+                hint={t(KIND_HINTS[option])}
+                key={option}
+                label={t(`label.${option.toLocaleLowerCase()}`)}
+                value={option}
+                variant="card"
+              />
+            ))}
+          </RadioGroup>
+        </Box>
+      )}
+    </FormField>
+  );
+
   const renderCharacteristics = (field?: FieldProp) =>
     field ? (
       <FormField control={form.control} name="characteristics">
@@ -229,97 +294,88 @@ const OntologyPropertyEditor = ({
       </FormField>
     ) : null;
 
-  const renderAiForm = () => {
-    const fields = keyBy(
-      propertyFormFields(t, kind, Boolean(property), disabled),
-      'name'
+  const fields = keyBy(
+    propertyFormFields(t, kind, Boolean(property), disabled),
+    'name'
+  );
+  // Label, then a plain helper line, then the input: the field keeps its label as its name.
+  const renderWithHelp = (field: FieldProp) => (
+    <Box direction="col" gap={1} key={field.name}>
+      <FormItemLabel label={field.label} required={field.required} />
+      <Typography color="secondary" size="text-sm">
+        {t(BASIC_FIELD_HELP[field.name])}
+      </Typography>
+      <div className="tw:mt-1">
+        {getField({
+          ...field,
+          label: undefined,
+          required: false,
+          rules: field.rules,
+          props: { ...field.props, 'aria-label': String(field.label) },
+        })}
+      </div>
+    </Box>
+  );
+  const renderFields = (names: string[]) =>
+    names.map((name) =>
+      fields[name] ? (
+        <Fragment key={name}>{getField(fields[name])}</Fragment>
+      ) : null
     );
-    const renderFields = (names: string[]) =>
-      names.map((name) =>
-        fields[name] ? (
-          <Fragment key={name}>{getField(fields[name])}</Fragment>
-        ) : null
-      );
-
-    return (
-      <HookForm
-        data-testid="ontology-property-editor"
-        form={form}
-        onSubmit={form.handleSubmit(save)}>
-        <Box direction="col" gap={5}>
-          <Box direction="col" gap={1}>
-            <Typography color="secondary" size="text-sm">
-              {t('label.in-lowercase')} {getEntityName(ontology)}
-            </Typography>
-            <Typography
-              as="h3"
-              className="not-prose tw:m-0"
-              size="text-lg"
-              weight="semibold">
-              {property
-                ? getEntityName(property)
-                : t('label.new-entity', { entity: t('label.property') })}
-            </Typography>
-          </Box>
-          {renderFields(['name', 'displayName', 'kind'])}
-          {renderIriList('domain')}
-          {renderIriList('range')}
-          {renderEnumValues()}
-          {renderFields(['unit', 'isIdentifier', 'description'])}
-          <details
-            className="tw:border-t tw:border-secondary tw:pt-4"
-            open={isAdvancedOpen}
-            onToggle={(event) => setIsAdvancedOpen(event.currentTarget.open)}>
-            <summary className="tw:cursor-pointer">
-              <Typography as="span" size="text-sm" weight="semibold">
-                {t('label.advanced')}
-              </Typography>
-            </summary>
-            <Box className="tw:mt-4" direction="col" gap={4}>
-              {renderCharacteristics(fields.characteristics)}
-              {renderFields(ADVANCED_FIELDS.slice(1))}
-            </Box>
-          </details>
-          <Box
-            className="tw:border-t tw:border-secondary tw:pt-4"
-            justify="end">
-            <Button
-              color="primary"
-              isDisabled={!canEdit}
-              isLoading={isSaving}
-              size="sm"
-              type="submit">
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
-      </HookForm>
-    );
-  };
-
-  if (isAiMode) {
-    return renderAiForm();
-  }
 
   return (
     <HookForm
       data-testid="ontology-property-editor"
       form={form}
       onSubmit={form.handleSubmit(save)}>
-      <Box direction="col" gap={4}>
-        {propertyFormFields(t, kind, Boolean(property), disabled).map(
-          (field) => (
-            <Fragment key={field.name}>
-              {getField(field)}
-              {field.name === 'kind' && renderIriList('domain')}
-              {field.name === 'kind' && renderIriList('range')}
-            </Fragment>
-          )
+      <Box direction="col" gap={5}>
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0"
+          size="text-sm"
+          weight="semibold">
+          {t('label.basics')}
+        </Typography>
+        {['name', 'displayName', 'description'].map((name) =>
+          renderWithHelp(fields[name])
         )}
+        {renderKind(fields.kind)}
+        {renderIriList('domain')}
+        {renderIriList('range')}
+        {renderIriList('superProperties')}
         {renderEnumValues()}
-        <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
-          {t('label.save')}
-        </Button>
+        {renderFields(['unit', 'isIdentifier'])}
+        <details
+          className="tw:border-t tw:border-secondary tw:pt-4"
+          open={isAdvancedOpen}
+          onToggle={(event) => setIsAdvancedOpen(event.currentTarget.open)}>
+          <summary className="tw:cursor-pointer">
+            <Typography as="span" size="text-sm" weight="semibold">
+              {t('label.advanced')}
+            </Typography>
+          </summary>
+          <Box className="tw:mt-4" direction="col" gap={4}>
+            {renderCharacteristics(fields.characteristics)}
+            {renderFields(ADVANCED_FIELDS.slice(1))}
+          </Box>
+        </details>
+        <OntologyFormFooter
+          canSubmit={
+            canEdit &&
+            (property
+              ? form.formState.isDirty
+              : Boolean(form.watch('name').trim()))
+          }
+          isDirty={form.formState.isDirty}
+          isSaving={isSaving}
+          submitLabel={
+            property
+              ? t('label.save')
+              : t('label.create-entity', { entity: t('label.property') })
+          }
+          testId="ontology-property-footer"
+          onCancel={onCancel ?? (() => form.reset())}
+        />
       </Box>
     </HookForm>
   );

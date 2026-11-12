@@ -102,6 +102,12 @@ export const conceptPatch = (
     : [{ op: 'test', path: '/version', value: concept.version }, ...changes];
 };
 
+export const CONCEPT_TYPE_LABELS: Record<OntologyConceptType, string> = {
+  [OntologyConceptType.OwlClass]: 'label.class-owl',
+  [OntologyConceptType.SkosConcept]: 'label.concept-skos',
+  [OntologyConceptType.Both]: 'label.both-owl-skos',
+};
+
 export const mappingFormFields = (
   t: ReturnType<typeof useTranslation>['t'],
   index: number,
@@ -174,13 +180,14 @@ export const conceptFormFields = (
     },
     {
       name: 'displayName',
-      label: t('label.display-name'),
+      label: t('label.ontology-display-name'),
       type: FieldTypes.TEXT,
     },
     {
       name: 'description',
       label: t('label.description'),
       type: FieldTypes.TEXTAREA,
+      placeholder: t('message.concept-description-placeholder'),
     },
     {
       name: 'conceptType',
@@ -190,7 +197,7 @@ export const conceptFormFields = (
       props: {
         options: Object.values(OntologyConceptType).map((id) => ({
           id,
-          label: id,
+          label: t(CONCEPT_TYPE_LABELS[id]),
         })),
       },
     },
@@ -210,7 +217,7 @@ export const conceptFormFields = (
       name: 'synonyms',
       label: t('label.synonym-plural'),
       type: FieldTypes.MULTI_SELECT,
-      placeholder: t('message.synonym-placeholder'),
+      placeholder: t('message.ontology-synonym-placeholder'),
       props: { allowsCreation: true, hideDropdown: true, items: [] },
     },
   ];

@@ -27,6 +27,7 @@ import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.data.MetricFilter;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.data.Dashboard;
@@ -42,6 +43,8 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.FieldDataType;
 import org.openmetadata.schema.type.MessageSchema;
+import org.openmetadata.schema.type.MetricGranularity;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
@@ -264,6 +267,43 @@ class ConceptContextBuilderTest {
             .filter(binding -> binding.getColumn() != null)
             .map(binding -> binding.getColumn())
             .toList());
+  }
+
+  @Test
+  void metricCarriesWhatDefinesItsNumber() {
+    // A filter changes the number, the grain how it is grouped, the unit how it is read: the
+    // expression alone computes none of them.
+    Metric metric =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("SUM(fee_revenue)"))
+            .withFilters(
+                List.of(
+                    new MetricFilter().withWhere("fee_category = 'ATM Fee'"),
+                    new MetricFilter().withWhere(" ")))
+            .withGranularity(MetricGranularity.MONTH)
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.DOLLARS);
+
+    ConceptContext context = build(new Catalog(), metric);
+
+    assertEquals(List.of("fee_category = 'ATM Fee'"), context.getFilters());
+    assertEquals("MONTH", context.getGranularity());
+    assertEquals("DOLLARS", context.getUnit());
+  }
+
+  @Test
+  void metricNamesItsCustomUnitAndOmitsWhatItDoesNotDeclare() {
+    Metric custom =
+        new Metric()
+            .withMetricExpression(new MetricExpression().withCode("AVG(spread)"))
+            .withUnitOfMeasurement(MetricUnitOfMeasurement.OTHER)
+            .withCustomUnitOfMeasurement("basis points");
+    Metric bare = new Metric().withMetricExpression(new MetricExpression().withCode("COUNT(*)"));
+
+    assertEquals("basis points", build(new Catalog(), custom).getUnit());
+    ConceptContext context = build(new Catalog(), bare);
+    assertNull(context.getUnit());
+    assertNull(context.getGranularity());
+    assertTrue(context.getFilters() == null || context.getFilters().isEmpty());
   }
 
   @Test

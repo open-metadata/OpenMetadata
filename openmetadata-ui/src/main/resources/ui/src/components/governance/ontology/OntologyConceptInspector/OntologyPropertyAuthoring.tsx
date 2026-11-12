@@ -16,12 +16,15 @@ import {
   Button,
   Checkbox,
   Input,
+  Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
+import {
+  ConceptPropertyInput,
+  ObjectPropertyInput,
+} from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
   DataPropertyInput,
   humanizeName,
@@ -32,7 +35,7 @@ import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
 import { ConceptFormCard, ConceptFormPreview } from './OntologyConceptSection';
 
-type PropertyKind = NonNullable<DataPropertyInput['kind']>;
+type PropertyKind = NonNullable<DataPropertyInput['kind']> | 'object';
 
 interface PropertyDraft {
   datatype: StudioDatatype;
@@ -40,6 +43,8 @@ interface PropertyDraft {
   isIdentifier: boolean;
   kind: PropertyKind;
   name: string;
+  /** The target concept an object property links to. */
+  rangeIri: string;
   /** Empty string means "reuse" is chosen but nothing is picked yet. */
   reuseIri?: string;
 }
@@ -50,6 +55,7 @@ const EMPTY_DRAFT: PropertyDraft = {
   isIdentifier: false,
   kind: 'data',
   name: '',
+  rangeIri: '',
 };
 
 const parseEnumValues = (value: string) =>
@@ -63,20 +69,36 @@ const needsEnumValues = (draft: PropertyDraft) =>
   draft.datatype === 'enum' &&
   parseEnumValues(draft.enumValues).length === 0;
 
+const needsRange = (draft: PropertyDraft) =>
+  draft.kind === 'object' && !draft.rangeIri;
+
 const canSubmitDraft = (draft: PropertyDraft) =>
   draft.reuseIri === undefined
-    ? Boolean(draft.name.trim()) && !needsEnumValues(draft)
+    ? Boolean(draft.name.trim()) &&
+      !needsEnumValues(draft) &&
+      !needsRange(draft)
     : Boolean(draft.reuseIri);
 
-const draftToInput = (draft: PropertyDraft): DataPropertyInput => ({
+const objectInput = (draft: PropertyDraft): ObjectPropertyInput => ({
+  kind: 'object',
+  name: draft.name,
+  rangeIri: draft.rangeIri,
+});
+
+const dataInput = (draft: PropertyDraft): DataPropertyInput => ({
   datatype: draft.datatype,
   enumValues:
     draft.datatype === 'enum' ? parseEnumValues(draft.enumValues) : undefined,
   isIdentifier: draft.isIdentifier,
-  kind: draft.kind,
+  kind: draft.kind === 'annotation' ? 'annotation' : 'data',
   name: draft.name,
   reusePropertyIri: draft.reuseIri || undefined,
 });
+
+const draftToInput = (draft: PropertyDraft): ConceptPropertyInput =>
+  draft.kind === 'object' && draft.reuseIri === undefined
+    ? objectInput(draft)
+    : dataInput(draft);
 
 const ToggleGroup = <T extends string>({
   ariaLabel,
@@ -113,10 +135,12 @@ const ToggleGroup = <T extends string>({
 );
 
 const NewPropertyFields = ({
+  concepts,
   draft,
   isSaving,
   onChange,
 }: {
+  concepts: ReadonlyArray<OntologyIriOption>;
   draft: PropertyDraft;
   isSaving: boolean;
   onChange: (patch: Partial<PropertyDraft>) => void;
@@ -130,6 +154,7 @@ const NewPropertyFields = ({
         ariaLabel={t('label.type')}
         isDisabled={isSaving}
         items={[
+          { id: 'object', label: t('label.object') },
           { id: 'data', label: t('label.data') },
           { id: 'annotation', label: t('label.annotation') },
         ]}
@@ -145,6 +170,20 @@ const NewPropertyFields = ({
         value={draft.name}
         onChange={(name) => onChange({ name })}
       />
+      {draft.kind === 'object' ? (
+        <Select
+          isDisabled={isSaving}
+          items={concepts.map(({ iri, label }) => ({ id: iri, label }))}
+          label={t('label.range')}
+          placeholder={t('label.choose-concept')}
+          size="sm"
+          value={draft.rangeIri || null}
+          onChange={(key) => onChange({ rangeIri: String(key ?? '') })}>
+          {(item) => (
+            <Select.Item id={item.id} key={item.id} label={item.label} />
+          )}
+        </Select>
+      ) : null}
       {isData ? (
         <>
           <Typography color="secondary" size="text-xs" weight="semibold">
@@ -182,11 +221,13 @@ const NewPropertyFields = ({
 };
 
 const PropertyFields = ({
+  concepts,
   draft,
   isSaving,
   reusable,
   onChange,
 }: {
+  concepts: ReadonlyArray<OntologyIriOption>;
   draft: PropertyDraft;
   isSaving: boolean;
   reusable: ReadonlyArray<OntologyIriOption>;
@@ -220,6 +261,7 @@ const PropertyFields = ({
         />
       ) : (
         <NewPropertyFields
+          concepts={concepts}
           draft={draft}
           isSaving={isSaving}
           onChange={onChange}
@@ -231,44 +273,35 @@ const PropertyFields = ({
 
 const PropertyActions = ({
   canSubmit,
-  isAiMode,
   isSaving,
   onCancel,
   onSubmit,
 }: {
   canSubmit: boolean;
-  isAiMode: boolean;
   isSaving: boolean;
   onCancel: () => void;
   onSubmit: () => void;
 }) => {
   const { t } = useTranslation();
-  const size = isAiMode ? 'sm' : 'xs';
-  const cancel = (
-    <Button
-      color="secondary"
-      isDisabled={isSaving}
-      size={size}
-      onPress={onCancel}>
-      {t('label.cancel')}
-    </Button>
-  );
 
   return (
-    <Box gap={2} justify={isAiMode ? 'end' : 'start'}>
-      {isAiMode ? cancel : null}
+    <Box gap={2} justify="end">
+      <Button
+        color="secondary"
+        isDisabled={isSaving}
+        size="sm"
+        onPress={onCancel}>
+        {t('label.cancel')}
+      </Button>
       <Button
         color="primary"
         data-testid="ontology-property-submit"
         isDisabled={!canSubmit}
         isLoading={isSaving}
-        size={size}
+        size="sm"
         onPress={onSubmit}>
-        {isAiMode
-          ? t('label.add-entity', { entity: t('label.property') })
-          : t('label.add')}
+        {t('label.add-entity', { entity: t('label.property') })}
       </Button>
-      {isAiMode ? null : cancel}
     </Box>
   );
 };
@@ -282,7 +315,7 @@ const PropertyPreview = ({ draft }: { draft: PropertyDraft }) => {
   return (
     <ConceptFormPreview>
       {humanizeName(draft.name)} ·{' '}
-      {draft.kind === 'data' ? draft.datatype : t('label.annotation')}
+      {draft.kind === 'data' ? draft.datatype : t(`label.${draft.kind}`)}
     </ConceptFormPreview>
   );
 };
@@ -291,21 +324,20 @@ interface OntologyPropertyAuthoringProps {
   readonly isAvailable: boolean;
   readonly isOpen: boolean;
   readonly reusable: ReadonlyArray<OntologyIriOption>;
+  /** Concepts an object property can link to. */
+  readonly concepts?: ReadonlyArray<OntologyIriOption>;
   readonly onClose: () => void;
-  readonly onOpen: () => void;
-  readonly onSave: (input: DataPropertyInput) => Promise<boolean>;
+  readonly onSave: (input: ConceptPropertyInput) => Promise<boolean>;
 }
 
 const OntologyPropertyAuthoring = ({
   isAvailable,
   isOpen,
   reusable,
+  concepts = [],
   onClose,
-  onOpen,
   onSave,
 }: OntologyPropertyAuthoringProps) => {
-  const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const [draft, setDraft] = useState<PropertyDraft>(EMPTY_DRAFT);
   const [isSaving, setIsSaving] = useState(false);
   const change = (patch: Partial<PropertyDraft>) =>
@@ -321,23 +353,12 @@ const OntologyPropertyAuthoring = ({
     }
   };
 
-  if (!isAvailable || (isAiMode && !isOpen)) {
+  if (!isAvailable || !isOpen) {
     return null;
-  }
-  if (!isOpen) {
-    return (
-      <Button
-        color="secondary"
-        data-testid="ontology-add-property"
-        iconLeading={Plus}
-        size="xs"
-        onPress={onOpen}>
-        {t('label.add-entity', { entity: t('label.property') })}
-      </Button>
-    );
   }
   const fields = (
     <PropertyFields
+      concepts={concepts}
       draft={draft}
       isSaving={isSaving}
       reusable={reusable}
@@ -347,27 +368,18 @@ const OntologyPropertyAuthoring = ({
   const actions = (
     <PropertyActions
       canSubmit={canSubmitDraft(draft)}
-      isAiMode={isAiMode}
       isSaving={isSaving}
       onCancel={onClose}
       onSubmit={() => void save()}
     />
   );
 
-  return isAiMode ? (
+  return (
     <ConceptFormCard testId="ontology-property-form">
       {fields}
       <PropertyPreview draft={draft} />
       {actions}
     </ConceptFormCard>
-  ) : (
-    <Box
-      className="tw:rounded-lg tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:p-3"
-      direction="col"
-      gap={3}>
-      {fields}
-      {actions}
-    </Box>
   );
 };
 
