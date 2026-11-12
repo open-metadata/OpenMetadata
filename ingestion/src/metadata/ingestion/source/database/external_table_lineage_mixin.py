@@ -55,9 +55,9 @@ def container_lookup_paths(location: str | None) -> list[str]:
     The search matches a container's fullPath exactly, and the storage connectors record it with
     a lower case scheme and no trailing separator (s3://bucket/events), while catalogs report
     locations such as s3a://bucket/events/. Only the scheme and one trailing separator are
-    rewritten, since object keys are case sensitive and a//b is not a/b. Both forms of the
-    original scheme are also searched. GCS aliases are tried in both directions because
-    existing containers may store either scheme.
+    rewritten, since object keys are case sensitive and a//b is not a/b. The location as reported,
+    with and without one trailing separator, follows the canonical form, and a gs:// location
+    also tries gcs://, so a container recorded with either scheme still matches.
     """
     if not location or not location.strip():
         return []

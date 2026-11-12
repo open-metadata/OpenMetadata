@@ -977,7 +977,7 @@ def test_resolve_container_by_path_returns_none_when_no_candidate_matches():
 
 def test_resolve_container_by_path_finds_container_via_raw_form():
     """A container indexed verbatim as gcs:// (edge case) should still be found via the
-    raw candidate that comes last in the lookup list."""
+    raw candidate searched after the de-aliased gs:// ones."""
     container_entity = _make_container_entity("44444444-4444-4444-4444-444444444444", "gcs://my-bucket/path/")
     metadata = MagicMock()
 
