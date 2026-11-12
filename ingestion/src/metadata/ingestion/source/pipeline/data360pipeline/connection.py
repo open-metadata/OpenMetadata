@@ -47,7 +47,8 @@ PROBE_LIMIT = 1
 
 # The OAuth client credentials flow only works on the org's My Domain. simple_salesforce
 # does not even try it on `login` or `test` and falls back to a password login, whose
-# error says nothing about the domain; any other wrong host gets this answer.
+# error says nothing about the domain; any other wrong host gets this answer. See
+# ADR:2026-11-12-data360-pipeline-authenticates-on-the-org-my-domain.
 GENERIC_LOGIN_DOMAINS = ("login", "test")
 UNSUPPORTED_DOMAIN_ERROR = "request not supported on this domain"
 
