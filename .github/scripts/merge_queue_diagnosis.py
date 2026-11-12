@@ -290,7 +290,7 @@ class Evidence:
             data = download(
                 path, limit, self.token, min(MAX_REQUEST_SECONDS, self.remaining())
             )
-        except TimeoutError:
+        except Exception:
             self.remaining()
             raise
         self.remaining()
@@ -538,6 +538,7 @@ class Evidence:
                         continue
                     if snapshot:
                         snapshots.append(snapshot)
+        self.remaining()
         return tuple(snapshots)
 
     def introduction(
