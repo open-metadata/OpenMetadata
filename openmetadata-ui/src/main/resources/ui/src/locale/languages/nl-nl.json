@@ -5298,6 +5298,7 @@
     "intake-form-created-successfully": "Aanmeldformulier succesvol aangemaakt",
     "intake-form-custom-properties-help": "Kies welke aangepaste eigenschappen in het formulier worden opgenomen en markeer vervolgens de velden die moeten worden ingevuld. Beheer de catalogus van aangepaste eigenschappen in Instellingen → Aangepaste eigenschappen.",
     "intake-form-deleted-successfully": "Aanmeldformulier succesvol verwijderd",
+    "intake-form-deprecated": "Intakeformulieren zijn verouderd en worden in de volgende release verwijderd. Gebruik in plaats daarvan Playbooks en lifecycle-workflows om verplichte velden af te dwingen.",
     "intake-form-description-placeholder": "Optioneel — leg uit welk governancebeleid dit aanmeldformulier afdwingt",
     "intake-form-enabled-help": "Indien uitgeschakeld wordt het aanmeldformulier opgeslagen, maar niet afgedwongen op de API-laag.",
     "intake-form-native-fields-help": "Schemaverplichte velden (naam, beschrijving, enz.) worden altijd afgedwongen en worden hier niet getoond. Alleen velden die op schemaniveau optioneel zijn, kunnen door dit aanmeldformulier verplicht worden gesteld.",

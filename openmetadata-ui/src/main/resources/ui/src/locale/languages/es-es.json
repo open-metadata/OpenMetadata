@@ -5298,6 +5298,7 @@
     "intake-form-created-successfully": "Formulario de admisión creado correctamente",
     "intake-form-custom-properties-help": "Elige qué propiedades personalizadas se incluirán en el formulario y, después, marca los campos que deben completarse. Gestiona el catálogo de propiedades personalizadas en Configuración → Propiedades personalizadas.",
     "intake-form-deleted-successfully": "Formulario de admisión eliminado correctamente",
+    "intake-form-deprecated": "Los formularios de entrada están obsoletos y se eliminarán en la próxima versión. Utilice Playbooks y flujos de trabajo de ciclo de vida para exigir los campos obligatorios.",
     "intake-form-description-placeholder": "Opcional: explica la política de gobernanza que aplica este formulario de admisión",
     "intake-form-enabled-help": "Cuando está desactivado, el formulario de admisión se guarda pero no se aplica en la capa de la API.",
     "intake-form-native-fields-help": "Los campos obligatorios por esquema (nombre, descripción, etc.) siempre se aplican y no se muestran aquí. Este formulario de admisión solo puede promover campos que son opcionales a nivel de esquema.",

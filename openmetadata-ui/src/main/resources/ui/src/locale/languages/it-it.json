@@ -5298,6 +5298,7 @@
     "intake-form-created-successfully": "Modulo di intake creato con successo",
     "intake-form-custom-properties-help": "Scegli quali proprietà personalizzate includere nel modulo, poi contrassegna i campi da compilare obbligatoriamente. Gestisci il catalogo delle proprietà personalizzate in Impostazioni → Proprietà Personalizzate.",
     "intake-form-deleted-successfully": "Modulo di intake eliminato con successo",
+    "intake-form-deprecated": "I moduli di acquisizione sono deprecati e verranno rimossi nella prossima versione. Usa invece Playbook e flussi di lavoro del ciclo di vita per imporre i campi obbligatori.",
     "intake-form-description-placeholder": "Facoltativo: spiega la policy di governance applicata da questo modulo di intake",
     "intake-form-enabled-help": "Se disabilitato, il modulo di intake viene salvato ma non applicato a livello di API.",
     "intake-form-native-fields-help": "I campi obbligatori dello schema (nome, descrizione, ecc.) sono sempre applicati e non vengono mostrati qui. Questo modulo di intake può rendere obbligatori solo i campi facoltativi a livello di schema.",

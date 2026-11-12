@@ -5298,6 +5298,7 @@
     "intake-form-created-successfully": "接收表单创建成功",
     "intake-form-custom-properties-help": "选择要包含在表单中的自定义属性，然后标记必须填写的字段。请在“设置 → 自定义属性”中管理自定义属性目录。",
     "intake-form-deleted-successfully": "接收表单删除成功",
+    "intake-form-deprecated": "接收表单已弃用，将在下一个版本中移除。请改用 Playbooks 和生命周期工作流来强制必填字段。",
     "intake-form-description-placeholder": "可选 — 说明此接收表单所强制执行的治理策略",
     "intake-form-enabled-help": "禁用时，接收表单会被保存，但不会在 API 层强制执行。",
     "intake-form-native-fields-help": "架构必填字段（名称、描述等）始终强制执行，此处不予显示。此接收表单只能提升在架构层为可选的字段。",

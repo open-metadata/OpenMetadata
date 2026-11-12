@@ -5298,6 +5298,7 @@
     "intake-form-created-successfully": "Formulaire d'admission créé avec succès",
     "intake-form-custom-properties-help": "Choisissez les propriétés personnalisées à inclure dans le formulaire, puis marquez les champs qui doivent être renseignés. Gérez le catalogue des propriétés personnalisées dans Paramètres → Propriétés personnalisées.",
     "intake-form-deleted-successfully": "Formulaire d'admission supprimé avec succès",
+    "intake-form-deprecated": "Les formulaires d'admission sont obsolètes et seront supprimés dans la prochaine version. Utilisez plutôt les Playbooks et les workflows de cycle de vie pour imposer les champs obligatoires.",
     "intake-form-description-placeholder": "Facultatif — expliquez la politique de gouvernance appliquée par ce formulaire d'admission",
     "intake-form-enabled-help": "Lorsqu'il est désactivé, le formulaire d'admission est enregistré mais non appliqué au niveau de l'API.",
     "intake-form-native-fields-help": "Les champs obligatoires du schéma (nom, description, etc.) sont toujours appliqués et ne sont pas affichés ici. Seuls les champs optionnels au niveau du schéma peuvent être promus par ce formulaire d'admission.",

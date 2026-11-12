@@ -5298,6 +5298,7 @@
     "intake-form-created-successfully": "接收表單建立成功",
     "intake-form-custom-properties-help": "選擇要包含在表單中的自訂屬性，然後標記必須填寫的欄位。請在「設定 → 自訂屬性」中管理自訂屬性目錄。",
     "intake-form-deleted-successfully": "接收表單刪除成功",
+    "intake-form-deprecated": "接收表單已棄用，將在下一個版本中移除。請改用 Playbooks 和生命週期工作流程來強制必填欄位。",
     "intake-form-description-placeholder": "選填 — 說明此接收表單所強制執行的治理政策",
     "intake-form-enabled-help": "停用時，接收表單會被儲存，但不會在 API 層強制執行。",
     "intake-form-native-fields-help": "結構描述必填欄位（名稱、描述等）一律強制執行，此處不予顯示。此接收表單只能提升在結構描述層為選填的欄位。",

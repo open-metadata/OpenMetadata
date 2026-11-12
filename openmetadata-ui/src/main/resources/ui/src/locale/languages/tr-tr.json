@@ -5298,6 +5298,7 @@
     "intake-form-created-successfully": "Giriş formu başarıyla oluşturuldu",
     "intake-form-custom-properties-help": "Forma eklenecek özel özellikleri seçin, ardından doldurulması gereken alanları işaretleyin. Özel özellikler kataloğunu Ayarlar → Özel Özellikler bölümünden yönetin.",
     "intake-form-deleted-successfully": "Giriş formu başarıyla silindi",
+    "intake-form-deprecated": "Giriş formları kullanımdan kaldırılmıştır ve bir sonraki sürümde kaldırılacaktır. Zorunlu alanları uygulamak için bunun yerine Playbook'ları ve yaşam döngüsü iş akışlarını kullanın.",
     "intake-form-description-placeholder": "İsteğe bağlı — bu giriş formunun uyguladığı yönetişim politikasını açıklayın",
     "intake-form-enabled-help": "Devre dışı bırakıldığında giriş formu kaydedilir ancak API katmanında uygulanmaz.",
     "intake-form-native-fields-help": "Şema tarafından zorunlu kılınan alanlar (ad, açıklama vb.) her zaman uygulanır ve burada gösterilmez. Bu giriş formu yalnızca şema düzeyinde isteğe bağlı olan alanları zorunlu hale getirebilir.",
