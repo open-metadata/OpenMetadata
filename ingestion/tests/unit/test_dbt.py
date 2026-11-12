@@ -5935,6 +5935,7 @@ class TestDbtSourceIdentifiers:
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         )
         objects = self._objects(source)
+        source.context.get().exposures = {}
         exposure = SimpleNamespace(
             name="orders_dashboard",
             type=SimpleNamespace(value="dashboard"),
