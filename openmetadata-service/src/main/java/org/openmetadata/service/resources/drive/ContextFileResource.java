@@ -73,6 +73,7 @@ import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.attachments.AzureAssetService;
 import org.openmetadata.service.attachments.S3AssetService;
 import org.openmetadata.service.context.center.ContextFileProcessingService;
+import org.openmetadata.service.context.center.MemoryExtractionState;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -82,6 +83,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.resources.context.ContextMemoryResource;
+import org.openmetadata.service.resources.context.MemoryExtractionAccess;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.ImpersonationContext;
@@ -103,6 +105,15 @@ import org.openmetadata.service.util.RestUtil;
 public class ContextFileResource extends EntityResource<ContextFile, ContextFileRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/files/";
   public static final String FIELDS = "owners,tags,folder,domains,followers,votes";
+
+  /**
+   * What the Documents list reads of a file, so an Extract response can replace its row; the UI's
+   * CONTEXT_FILE_FIELDS changes with it
+   * (ADR:2026-11-09-a-documents-owner-or-an-admin-starts-or-retries-its-extraction).
+   */
+  private static final String EXTRACTION_RESPONSE_FIELDS =
+      "owners,folder,memoryCount," + MemoryExtractionState.NEVER_EXTRACTED;
+
   private final ContextFileMapper mapper = new ContextFileMapper();
   private final ContextFileProcessingService extractionService;
   private long maxFileSize = 5 * 1024 * 1024L;
@@ -834,6 +845,52 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     ContextFile moved =
         repository.moveContextFile(id, newFolder, securityContext.getUserPrincipal().getName());
     return Response.ok(addHref(uriInfo, moved)).build();
+  }
+
+  @POST
+  @Path("/{id}/extract")
+  @Operation(
+      operationId = "extractDriveFileMemories",
+      summary = "Extract or retry a file's memories",
+      description =
+          "Queue memory extraction for a file whose extraction failed or never ran, from the stage"
+              + " it lacks: text extraction when its content has no text, memory extraction"
+              + " otherwise. The file's owners, an owning team's members and admins only. Returns"
+              + " the file in its new state; the extraction itself runs in the background.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "The file, now queued",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = ContextFile.class))),
+        @ApiResponse(responseCode = "403", description = "Not an owner of the file or an admin"),
+        @ApiResponse(responseCode = "404", description = "File not found"),
+        @ApiResponse(
+            responseCode = "409",
+            description =
+                "Already queued or being extracted, nothing to extract, or extraction unavailable"),
+        @ApiResponse(
+            responseCode = "503",
+            description =
+                "Memory extraction could not be queued, or the text extraction queue is full."
+                    + " The file is left Failed to retry, unless concurrent writes keep that from"
+                    + " being recorded: it then stays in progress, and a retry gets 409 until a"
+                    + " restart resubmits it")
+      })
+  public ContextFile requestExtraction(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Id of the file", schema = @Schema(type = "UUID")) @PathParam("id")
+          UUID id) {
+    MemoryExtractionAccess.requireOwnerOrAdmin(
+        visibleFile(uriInfo, securityContext, id, Include.NON_DELETED), securityContext);
+    extractionService.requestExtraction(id);
+    return addHref(
+        uriInfo,
+        repository.get(
+            uriInfo, id, getFields(EXTRACTION_RESPONSE_FIELDS), Include.NON_DELETED, false));
   }
 
   private Asset resolveAsset(ContextFile file) {

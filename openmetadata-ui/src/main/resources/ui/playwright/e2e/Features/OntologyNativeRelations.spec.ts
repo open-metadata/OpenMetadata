@@ -30,8 +30,10 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  chooseInspectorRelationType,
   clickGraphNode,
   findEmptyCanvasPoint,
+  openInspectorRelationChooser,
   readGraphPoints,
   readNodePositions,
   waitForGraphPoints,
@@ -172,6 +174,7 @@ const openRelationPicker = async (page: Page, conceptId: string) => {
   await clickGraphNode(page, conceptId);
   const inspector = page.getByTestId('ontology-concept-inspector');
   await inspector.getByTestId('ontology-add-relationship').click();
+  await openInspectorRelationChooser(page, inspector);
 
   return { inspector, picker: page.getByTestId('relationship-type-picker') };
 };
@@ -259,7 +262,7 @@ test.describe(
             'true'
           );
           const { picker } = await openRelationPicker(page, account.id);
-          await expect(picker.getByTestId('group-core')).toContainText(
+          await expect(picker.getByTestId('group-hierarchy')).toContainText(
             'Subclass Of'
           );
           await expect(
@@ -267,10 +270,14 @@ test.describe(
           ).toBeVisible();
           const partOf = picker.getByTestId(`relation-type-${PART_OF}`);
           await expect(partOf).toContainText('Part Of');
-          await expect(partOf).toContainText('Has Part');
+          // A registry type is glossed by its description rather than its inverse.
+          await expect(partOf).toContainText('part or component');
           await expect(
             picker.getByTestId(`relation-type-${HAS_PART}`)
-          ).toContainText('Part Of');
+          ).toContainText('Has Part');
+          await expect(picker.getByTestId('group-relationships')).toContainText(
+            'Part Of'
+          );
           await picker.getByTestId('relation-type-search').fill('part');
           await scrollIntoViewAndSettle(partOf);
           await expect(partOf).toBeVisible();
@@ -445,7 +452,7 @@ test.describe(
           await page.reload();
           await page.getByTestId('mode-tab-edit').click();
           const { picker } = await openRelationPicker(page, account.id);
-          const custom = picker.getByTestId('group-custom');
+          const custom = picker.getByTestId('group-relationships');
           await expect(custom).toContainText(`governed by ${suffix}`);
           const local = custom.getByTestId(`relation-type-${localIri}`);
           await expect(local).toContainText('Related locally');
@@ -497,19 +504,21 @@ test.describe(
           const { picker } = await openRelationPicker(authorPage, account.id);
           await expect(
             picker.getByTestId(`relation-type-${PART_OF}`)
-          ).toContainText('Has Part');
-          await expect(picker.getByTestId('group-custom')).toContainText(
+          ).toContainText('Part Of');
+          await expect(picker.getByTestId('group-relationships')).toContainText(
             `governed by ${suffix}`
           );
           await picker.getByTestId('relation-type-search').fill('governed by');
-          await expect(picker.getByTestId('group-custom')).toContainText(
+          await expect(picker.getByTestId('group-relationships')).toContainText(
             `governed by ${suffix}`
           );
           await expect(picker.getByTestId('relation-type-create')).toHaveCount(
             0
           );
-          await scrollIntoViewAndSettle(picker.getByTestId('group-custom'));
-          await expect(picker.getByTestId('group-custom')).toBeVisible();
+          await scrollIntoViewAndSettle(
+            picker.getByTestId('group-relationships')
+          );
+          await expect(picker.getByTestId('group-relationships')).toBeVisible();
           await testInfo.attach('native-relation-steward', {
             body: await authorPage.screenshot(),
             contentType: 'image/png',
@@ -772,10 +781,11 @@ test.describe(
         await test.step('Change Subclass Of to Part Of', async () => {
           await expect(rows).toContainText('Alpha');
           await rows.getByTestId('ontology-relation-edit').click();
+          const editForm = rows.getByTestId('ontology-relationship-edit-form');
+          await expect(editForm).toBeVisible();
+          await chooseInspectorRelationType(page, editForm, PART_OF);
           await clickIgnoringToasts(
-            page
-              .getByTestId('relationship-type-picker')
-              .getByTestId(`relation-type-${PART_OF}`)
+            editForm.getByTestId('ontology-relationship-edit-save')
           );
           await expect
             .poll(async () =>
@@ -880,6 +890,7 @@ test.describe(
 
         await openStudio(page, fixture.ontology, true);
         await clickGraphNode(page, parent.id);
+        await page.getByTestId('ontology-concept-more').click();
         await page.getByTestId('ontology-concept-delete').click();
 
         const dialog = page.getByTestId('ontology-concept-delete-dialog');
@@ -948,6 +959,7 @@ test.describe(
 
         await openStudio(page, fixture.ontology, true);
         await clickGraphNode(page, customer.id);
+        await page.getByTestId('ontology-concept-more').click();
         await page.getByTestId('ontology-concept-delete').click();
         await page.getByTestId('ontology-concept-delete-confirm').click();
         await expect(
@@ -992,7 +1004,7 @@ test.describe(
       }
     });
 
-    test('lists Broader and Narrower under Relationships, not Properties', async ({
+    test('filters Broader and Narrower under the Object kind, apart from data properties', async ({
       isolatedUserPage: page,
     }) => {
       test.slow();
@@ -1027,17 +1039,22 @@ test.describe(
           .getByRole('tab', { name: 'Properties', exact: true })
           .click();
 
+        // One table lists every kind; the Kind filter separates relationships from values.
         const properties = page.getByTestId(
           'ontology-definition-group-property'
         );
-        const relationships = page.getByTestId(
-          'ontology-definition-group-relationship'
-        );
+        const kinds = page.getByTestId('ontology-definition-kind-filter');
+        await expect(properties).toContainText('legalName');
+        await expect(properties).toContainText('broader');
+
+        await kinds.getByRole('tab', { name: 'Object', exact: true }).click();
+        await expect(properties).toContainText('broader');
+        await expect(properties).toContainText('narrower');
+        await expect(properties).not.toContainText('legalName');
+
+        await kinds.getByRole('tab', { name: 'Data', exact: true }).click();
         await expect(properties).toContainText('legalName');
         await expect(properties).not.toContainText('broader');
-        await expect(properties).not.toContainText('narrower');
-        await expect(relationships).toContainText('broader');
-        await expect(relationships).toContainText('narrower');
       } finally {
         await fixture.cleanup();
       }

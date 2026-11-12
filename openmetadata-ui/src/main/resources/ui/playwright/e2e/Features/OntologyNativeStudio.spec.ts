@@ -27,8 +27,11 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  chooseInspectorRelationType,
   clickGraphNode,
   findOntologyInScopeMenu,
+  openExportAdvanced,
+  openOntologyTransfer,
   readGraphEdges,
   readNodePositions,
 } from '../../utils/ontologyStudio';
@@ -238,6 +241,11 @@ test.describe(
               await expect(
                 page.getByTestId('ontology-new-class-panel')
               ).toHaveCount(0);
+              // Create selects the new concept; its drawer covers the header's Add concept.
+              const inspector = page.getByTestId('ontology-concept-inspector');
+              await expect(inspector).toContainText(conceptName);
+              await inspector.getByTestId('ontology-concept-close').click();
+              await expect(inspector).toHaveCount(0);
               const concepts = await okJson<{ data: OntologyConcept[] }>(
                 await api.get('/api/v1/ontologyConcepts', {
                   params: { ontology: fullyQualifiedName },
@@ -297,7 +305,8 @@ test.describe(
           await inspector
             .getByTestId('ontology-property-name')
             .fill('customerNumber');
-          await inspector.getByTestId('ontology-property-type-integer').click();
+          await inspector.getByRole('button', { name: /Range/ }).click();
+          await page.getByTestId('ontology-property-type-integer').click();
           await inspector.getByTestId('ontology-property-identifier').click();
           const propertyCreated = page.waitForResponse(
             (response) =>
@@ -328,10 +337,10 @@ test.describe(
           ).toContainText('customer number');
 
           await inspector.getByTestId('ontology-add-relationship').click();
-          await clickIgnoringToasts(
-            page.getByTestId(
-              'relation-type-http://www.w3.org/2000/01/rdf-schema#subClassOf'
-            )
+          await chooseInspectorRelationType(
+            page,
+            inspector,
+            'http://www.w3.org/2000/01/rdf-schema#subClassOf'
           );
           const target = inspector.getByLabel('Target');
           await scrollIntoViewAndSettle(target);
@@ -375,7 +384,7 @@ test.describe(
         });
 
         await test.step('Save, reload, and remove a concept mapping', async () => {
-          await page.getByTestId('ontology-concept-edit').click();
+          // Edit mode opens the selected concept already editable.
           const editor = page.getByTestId('ontology-concept-editor');
           await editor
             .getByRole('button', { name: 'Add mapping', exact: true })
@@ -413,7 +422,12 @@ test.describe(
           await page.reload();
           await page.getByTestId('mode-tab-edit').click();
           await clickGraphNode(page, customer.id);
-          await page.getByTestId('ontology-concept-edit').click();
+          // A saved mapping reads as a row; its fields open again through Edit.
+          const mappingRow = editor.getByTestId('ontology-concept-mapping-row');
+          await expect(mappingRow).toContainText(mapping.conceptIri);
+          await expect(mappingRow).toContainText(mapping.schemeIri);
+          await expect(mappingRow).toContainText(mapping.source);
+          await mappingRow.getByRole('button', { name: 'Edit' }).click();
           await expect(
             mappingEditor.getByRole('combobox', { name: /^Concept IRI/ })
           ).toHaveValue(mapping.conceptIri);
@@ -427,6 +441,9 @@ test.describe(
             mappingEditor.getByRole('textbox', { name: 'Source', exact: true })
           ).toHaveValue(mapping.source);
           await mappingEditor
+            .getByRole('button', { name: 'Cancel', exact: true })
+            .click();
+          await mappingRow
             .getByRole('button', { name: 'Remove', exact: true })
             .click();
           const removed = page.waitForResponse(
@@ -519,6 +536,11 @@ test.describe(
             contentType: 'image/png',
           });
           await page.getByTestId('mode-tab-view').click();
+          // Customer stays selected across modes; its drawer covers the header's Publish.
+          await page.getByTestId('ontology-concept-close').click();
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toHaveCount(0);
 
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
@@ -539,7 +561,8 @@ test.describe(
             page.getByTestId('ontology-publication-modal')
           ).not.toBeVisible();
 
-          await page.getByTestId('ontology-import-export-trigger').click();
+          await openOntologyTransfer(page);
+          await openExportAdvanced(page);
           await expect(
             page.getByRole('dialog').getByTestId('ontology-export-scope')
           ).toContainText('Current draft');
@@ -548,7 +571,12 @@ test.describe(
               .getByRole('dialog')
               .getByTestId('ontology-release-export-preview')
           ).toContainText('owl:Ontology');
-          await page.getByTestId('ontology-native-import-tab').click();
+          await page
+            .getByRole('dialog')
+            .getByRole('button', { name: 'Close', exact: true })
+            .click();
+          await expect(page.getByRole('dialog')).not.toBeVisible();
+          await openOntologyTransfer(page, 'import');
           await expect(
             page.getByTestId('ontology-native-import-file')
           ).toBeVisible();
@@ -811,6 +839,7 @@ test.describe(
             await page
               .getByTestId(`ontology-scope-settings-${created.id}`)
               .click();
+            await page.getByTestId('ontology-settings-advanced-toggle').click();
             await expect(
               page.getByRole('textbox', { name: 'Namespace' })
             ).toBeDisabled();

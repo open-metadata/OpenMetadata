@@ -710,6 +710,48 @@ public class UserResourceIT extends BaseEntityIT<User, CreateUser> {
     assertTrue(storedTeamIds(user).contains(open.getId()), "joining an open team stays allowed");
   }
 
+  /** A patch that leaves the user in a team twice is refused, through any operation. */
+  @Test
+  void test_patchUser_cannotListATeamTwiceThroughAnyOperation(TestNamespace ns) {
+    Team team = ns.trackRoot(Entity.TEAM, createGroupTeam(ns.prefix("dupteam"), true));
+    User user =
+        ns.trackRoot(
+            Entity.USER, createEntity(selfLoginUserRequest().withTeams(List.of(team.getId()))));
+
+    for (String op : List.of("add", "ADD")) {
+      ArrayNode add = PATCH_MAPPER.createArrayNode();
+      add.addObject().put("op", op).put("path", "/teams/-").set("value", teamReference(team));
+      assertTeamListedTwiceIsRefused(user, add);
+    }
+    ArrayNode copy = PATCH_MAPPER.createArrayNode();
+    copy.addObject().put("op", "copy").put("from", "/teams/0").put("path", "/teams/-");
+    assertTeamListedTwiceIsRefused(user, copy);
+    assertTeamListedTwiceIsRefused(
+        user,
+        teamsPatch(
+            "/teams",
+            PATCH_MAPPER.createArrayNode().add(teamReference(team)).add(teamReference(team))));
+
+    ArrayNode reorder = PATCH_MAPPER.createArrayNode();
+    reorder.addObject().put("op", "move").put("from", "/teams/0").put("path", "/teams/-");
+    SdkClients.adminClient()
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), reorder);
+    assertEquals(List.of(team.getId()), storedTeamIds(user), "moving a team is not a repeat");
+  }
+
+  private static void assertTeamListedTwiceIsRefused(User user, ArrayNode patch) {
+    OpenMetadataException refused =
+        assertThrows(
+            OpenMetadataException.class,
+            () ->
+                SdkClients.adminClient()
+                    .getHttpClient()
+                    .executeForString(HttpMethod.PATCH, "/v1/users/" + user.getId(), patch));
+    assertEquals(400, refused.getStatusCode(), patch + " -> " + refused.getMessage());
+    assertTrue(refused.getMessage().contains("is already part of the team"), patch.toString());
+  }
+
   /** Leaving a closed team sheds its roles and policies, so it needs an admin too. */
   @Test
   void test_nonAdmin_cannotLeaveClosedTeam(TestNamespace ns) {

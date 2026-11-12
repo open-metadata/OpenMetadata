@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import type { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 
 /**
@@ -30,4 +31,45 @@ export const getOpenReviews = (
 
       return !duplicate;
     });
+};
+
+/** The bump between two semantic versions; a first release counts from 0.0.0. */
+export const releaseBump = (
+  base: string | undefined,
+  version: string | undefined
+) => {
+  if (!version) {
+    return undefined;
+  }
+  const [major, minor] = (base ?? '0.0.0').split('.');
+  const [nextMajor, nextMinor] = version.split('.');
+  if (major !== nextMajor) {
+    return VersionBump.Major;
+  }
+
+  return minor === nextMinor ? VersionBump.Patch : VersionBump.Minor;
+};
+
+/** Paging controls only help once there is a page to move to or back from. */
+export const hasMorePages = (after: string | undefined, pagesSeen: number) =>
+  Boolean(after) || pagesSeen > 1;
+
+/** The loaded reviews whose title, task id, ontology or requester matches the search. */
+export const filterReviews = (
+  reviews: OntologyReleaseReview[],
+  search: string
+) => {
+  const needle = search.trim().toLowerCase();
+  if (!needle) {
+    return reviews;
+  }
+
+  return reviews.filter((review) =>
+    [
+      review.task.displayName,
+      review.taskId,
+      review.ontology.displayName ?? review.ontology.name,
+      review.requester?.displayName ?? review.requester?.name,
+    ].some((value) => value?.toLowerCase().includes(needle))
+  );
 };

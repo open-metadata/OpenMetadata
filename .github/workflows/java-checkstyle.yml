@@ -44,21 +44,21 @@ jobs:
         You can install the pre-commit hooks with `make install_test precommit_install`.
 
     steps:
-      - name: Free Disk Space (Ubuntu)
-        uses: jlumbroso/free-disk-space@main
-        with:
-            tool-cache: false
-            android: true
-            dotnet: true
-            haskell: true
-            large-packages: false
-            swap-storage: true
-            docker-images: false
       - name: Checkout
         uses: actions/checkout@v7
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           persist-credentials: false
+      # Restore-only: spotless and google-java-format come from the ~/.m2 the
+      # unit-test jobs save on main. This job never saves, so PR runs add no
+      # PR-scoped copy to the shared cache budget.
+      - name: Restore Maven dependencies
+        uses: actions/cache/restore@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:

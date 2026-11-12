@@ -476,12 +476,23 @@ const OntologyTreeView = ({
   ...props
 }: Omit<OntologyTreeViewProps, 'groups' | 'metrics'> & {
   readonly source:
-    | { kind: 'native'; index: NativeTreeIndex }
+    | {
+        kind: 'native';
+        index: NativeTreeIndex;
+        title?: string;
+        /** Shown inside the tree's card, above its rows, e.g. the draft's conflicts. */
+        notice?: ReactNode;
+      }
     | { kind: 'glossary'; groups: OntologyTreeGroup[] };
   readonly metrics?: OntologyTreeMetric[];
 }) =>
   source.kind === 'native' ? (
-    <NativeOntologyTreeView {...props} index={source.index} />
+    <NativeOntologyTreeView
+      {...props}
+      index={source.index}
+      notice={source.notice}
+      title={source.title}
+    />
   ) : (
     <GlossaryTreeView {...props} groups={source.groups} metrics={metrics} />
   );

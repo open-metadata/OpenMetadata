@@ -3988,8 +3988,12 @@
         "value": "VisualOntology"
       },
       {
+        "action": "click",
+        "testId": "ontology-create-advanced-toggle"
+      },
+      {
         "action": "fill",
-        "testId": "ontology-create-prefix",
+        "testId": "ontology-create-namespace",
         "value": "invalid prefix"
       }
     ],
@@ -4003,9 +4007,7 @@
         "testId": "ontology-create-submit"
       }
     ],
-    "containsText": [
-      "Start with a letter, digit, or underscore. Then use letters, digits, dots, hyphens, or underscores."
-    ]
+    "containsText": ["Enter a valid concept IRI."]
   },
   {
     "id": "ontology-native-graph",
@@ -4050,23 +4052,6 @@
       {
         "action": "click",
         "testId": "ontology-library-trigger"
-      }
-    ]
-  },
-  {
-    "id": "ontology-publication-picker",
-    "group": "Governance states",
-    "path": "/governance/ontology",
-    "initialReady": {
-      "testId": "ontology-studio-shell"
-    },
-    "ready": {
-      "testId": "ontology-publication-picker"
-    },
-    "actions": [
-      {
-        "action": "click",
-        "testId": "ontology-publication-trigger"
       }
     ]
   },
@@ -4116,13 +4101,16 @@
       "testId": "ontology-studio-shell"
     },
     "ready": {
-      "role": "dialog",
-      "name": "Import / export ontology"
+      "testId": "ontology-release-export-dialog"
     },
     "actions": [
       {
         "action": "click",
         "testId": "ontology-import-export-trigger"
+      },
+      {
+        "action": "click",
+        "testId": "ontology-export-menu-item"
       }
     ]
   },

@@ -922,6 +922,15 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
 
+-- MCP SSO sign-in waits for the user to approve the client on a consent page, and the pending
+-- approval lives on the pending request row. The consent feature ships in 2.1.0, so its columns are
+-- added here, where every database upgrading to 2.1 runs them. 2.0.7 shipped without them, and a
+-- database that has run a later 2.0.x never reads the 2.0.7 folder again.
+-- ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
+ALTER TABLE mcp_pending_auth_requests
+    ADD COLUMN IF NOT EXISTS consent_token_hash VARCHAR(64),
+    ADD COLUMN IF NOT EXISTS consent_user_name VARCHAR(256);
+
 -- A Context Center file's sharing as a column, so a listing counts the files everyone may see
 -- without reading each file
 -- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
@@ -929,4 +938,3 @@ CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_conc
 ALTER TABLE context_file ADD COLUMN IF NOT EXISTS visibility VARCHAR(16)
     GENERATED ALWAYS AS (json -> 'shareConfig' ->> 'visibility') STORED;
 CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibility);
-

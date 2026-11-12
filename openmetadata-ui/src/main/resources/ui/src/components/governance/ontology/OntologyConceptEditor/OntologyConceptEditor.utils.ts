@@ -14,6 +14,7 @@ import {
   FieldProp,
   FieldTypes,
   FormSelectItem,
+  HelperTextType,
 } from '@openmetadata/ui-core-components';
 import { compare, Operation } from 'fast-json-patch';
 import { pick } from 'lodash';
@@ -102,6 +103,12 @@ export const conceptPatch = (
     : [{ op: 'test', path: '/version', value: concept.version }, ...changes];
 };
 
+export const CONCEPT_TYPE_LABELS: Record<OntologyConceptType, string> = {
+  [OntologyConceptType.OwlClass]: 'label.class-owl',
+  [OntologyConceptType.SkosConcept]: 'label.concept-skos',
+  [OntologyConceptType.Both]: 'label.both-owl-skos',
+};
+
 export const mappingFormFields = (
   t: ReturnType<typeof useTranslation>['t'],
   index: number,
@@ -135,6 +142,7 @@ export const mappingFormFields = (
     name: `conceptMappings.${index}.schemeIri`,
     label: t('label.scheme-iri'),
     type: FieldTypes.TEXT,
+    placeholder: t('message.ontology-mapping-scheme-placeholder'),
     props: { isDisabled: disabled },
     rules: {
       validate: (value: string) =>
@@ -147,9 +155,16 @@ export const mappingFormFields = (
     name: `conceptMappings.${index}.source`,
     label: t('label.source'),
     type: FieldTypes.TEXT,
+    placeholder: t('message.ontology-mapping-source-placeholder'),
     props: { isDisabled: disabled },
   },
 ];
+
+export const CONCEPT_TYPE_HINTS: Record<OntologyConceptType, string> = {
+  [OntologyConceptType.OwlClass]: 'message.ontology-concept-type-owl-hint',
+  [OntologyConceptType.SkosConcept]: 'message.ontology-concept-type-skos-hint',
+  [OntologyConceptType.Both]: 'message.ontology-concept-type-both-hint',
+};
 
 export const conceptFormFields = (
   t: ReturnType<typeof useTranslation>['t'],
@@ -174,23 +189,27 @@ export const conceptFormFields = (
     },
     {
       name: 'displayName',
-      label: t('label.display-name'),
+      label: t('label.ontology-display-name'),
       type: FieldTypes.TEXT,
     },
     {
       name: 'description',
       label: t('label.description'),
       type: FieldTypes.TEXTAREA,
+      placeholder: t('message.concept-meaning-placeholder'),
     },
     {
       name: 'conceptType',
       label: t('label.type'),
       type: FieldTypes.SELECT,
-      required: true,
+      // Always set, so the design shows no asterisk; the rule still guards a cleared value.
+      rules: { required: true },
+      helperText: t('message.ontology-concept-type-help'),
+      helperTextType: HelperTextType.TOOLTIP,
       props: {
         options: Object.values(OntologyConceptType).map((id) => ({
           id,
-          label: id,
+          label: t(CONCEPT_TYPE_LABELS[id]),
         })),
       },
     },
@@ -210,7 +229,7 @@ export const conceptFormFields = (
       name: 'synonyms',
       label: t('label.synonym-plural'),
       type: FieldTypes.MULTI_SELECT,
-      placeholder: t('message.synonym-placeholder'),
+      placeholder: t('message.ontology-synonym-enter-placeholder'),
       props: { allowsCreation: true, hideDropdown: true, items: [] },
     },
   ];

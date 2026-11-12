@@ -2727,14 +2727,14 @@ vertica = [
 
 [[package]]
 name = "collate-dbt-artifacts-parser"
-version = "0.1.4"
+version = "0.1.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "pydantic" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/09/5b/6b66f352213dabdd572277f73cc7f8d86943fe4e7e4d3170562d1b513e47/collate_dbt_artifacts_parser-0.1.4.tar.gz", hash = "sha256:8bd1e832f5a3d351e8a30d02b33d073552e09526daa4e535095581a64a9b9165", size = 265459, upload-time = "2025-11-24T06:14:54.421Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/2c/2c/83881e426be0c7d209ef6367273123703e56e5c45861f308ccffc10290ac/collate_dbt_artifacts_parser-0.1.5.tar.gz", hash = "sha256:85bcbf1a454983b6daba5bbe29833e1fd51dfe6df69407de1e665ffc85bcc92e", size = 265639, upload-time = "2026-11-12T05:46:02.763Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bc/df/4533a0092853dba8bb7c6dc2e991e3fa9951e2fc3bed049348861a82d830/collate_dbt_artifacts_parser-0.1.4-py3-none-any.whl", hash = "sha256:a2f7597248c9ee72832333e96f35afe400eba6a5facabaac4ffcc72786b8d6e5", size = 344426, upload-time = "2025-11-24T06:14:53.128Z" },
+    { url = "https://files.pythonhosted.org/packages/f1/45/5787777ed36799bf0ec959491844ef08d3507240030aaa480b001d2a66f0/collate_dbt_artifacts_parser-0.1.5-py3-none-any.whl", hash = "sha256:20a5f73e2b608334dbc1cb81677f5b7ad4c9b6d7eefc0ee6f547edbda62267f1", size = 344619, upload-time = "2026-11-12T05:46:01.334Z" },
 ]
 
 [[package]]
@@ -10288,12 +10288,12 @@ requires-dist = [
     { name = "collate-data-diff", extras = ["vertica"], marker = "extra == 'slim'" },
     { name = "collate-data-diff", extras = ["vertica"], marker = "extra == 'test'" },
     { name = "collate-data-diff", extras = ["vertica"], marker = "extra == 'vertica'" },
-    { name = "collate-dbt-artifacts-parser", marker = "extra == 'all'" },
-    { name = "collate-dbt-artifacts-parser", marker = "extra == 'all-dev-env'" },
-    { name = "collate-dbt-artifacts-parser", marker = "extra == 'dbt'" },
-    { name = "collate-dbt-artifacts-parser", marker = "extra == 'playwright'" },
-    { name = "collate-dbt-artifacts-parser", marker = "extra == 'slim'" },
-    { name = "collate-dbt-artifacts-parser", marker = "extra == 'test'" },
+    { name = "collate-dbt-artifacts-parser", marker = "extra == 'all'", specifier = ">=0.1.5" },
+    { name = "collate-dbt-artifacts-parser", marker = "extra == 'all-dev-env'", specifier = ">=0.1.5" },
+    { name = "collate-dbt-artifacts-parser", marker = "extra == 'dbt'", specifier = ">=0.1.5" },
+    { name = "collate-dbt-artifacts-parser", marker = "extra == 'playwright'", specifier = ">=0.1.5" },
+    { name = "collate-dbt-artifacts-parser", marker = "extra == 'slim'", specifier = ">=0.1.5" },
+    { name = "collate-dbt-artifacts-parser", marker = "extra == 'test'", specifier = ">=0.1.5" },
     { name = "collate-sqllineage", specifier = "==2.1.9" },
     { name = "collate-sqllineage", marker = "extra == 'all'", specifier = "==2.1.9" },
     { name = "collate-sqllineage", marker = "extra == 'all-dev-env'", specifier = "==2.1.9" },

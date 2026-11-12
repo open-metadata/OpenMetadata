@@ -24,7 +24,11 @@ import {
   selectOptionWithRetry,
   uuid,
 } from '../../utils/common';
-import { clickGraphNode, readNodePositions } from '../../utils/ontologyStudio';
+import {
+  chooseInspectorRelationType,
+  clickGraphNode,
+  readNodePositions,
+} from '../../utils/ontologyStudio';
 
 const SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
 const XSD = 'http://www.w3.org/2001/XMLSchema#';
@@ -191,8 +195,17 @@ const saveRule = async (page: Page) => {
       response.request().method() === 'POST'
   );
   await clickIgnoringToasts(page.getByTestId('ontology-axiom-submit'));
+  const axiom = await okJson<OntologyAxiom>(await created, 'Create the rule');
+  // Save keeps the overlay drawer open on the saved rule, over the list's Add button.
+  // Close it only once it shows the saved rule, so the unsaved-changes guard has nothing to ask.
+  const drawer = page.getByTestId('ontology-definition-drawer');
+  await expect(drawer.getByRole('heading', { level: 2 })).toHaveText(
+    axiom.displayName || axiom.name
+  );
+  await drawer.getByTestId('ontology-definition-drawer-close').click();
+  await expect(drawer).toHaveCount(0);
 
-  return okJson<OntologyAxiom>(await created, 'Create the rule');
+  return axiom;
 };
 
 const fillQuickMustHave = async (
@@ -777,7 +790,8 @@ test.describe(
         await test.step('Data property with a data type', async () => {
           const form = await openForm();
           await form.getByTestId('ontology-property-name').fill('email');
-          await form.getByTestId('ontology-property-type-string').click();
+          await form.getByRole('button', { name: /Range/ }).click();
+          await page.getByTestId('ontology-property-type-string').click();
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
@@ -786,6 +800,7 @@ test.describe(
 
         await test.step('Annotation property', async () => {
           const form = await openForm();
+          await form.getByTestId('ontology-property-kind-more').click();
           await form.getByTestId('ontology-property-kind-annotation').click();
           await form.getByTestId('ontology-property-name').fill('internalNote');
           await clickIgnoringToasts(
@@ -878,7 +893,9 @@ test.describe(
             new URL(response.url()).pathname === '/api/v1/ontologyProperties' &&
             response.request().method() === 'POST'
         );
-        await clickIgnoringToasts(editor.getByRole('button', { name: 'Save' }));
+        await clickIgnoringToasts(
+          editor.getByRole('button', { name: 'Create Property', exact: true })
+        );
         const property = await okJson<OntologyProperty>(
           await created,
           'Create the property'
@@ -1057,7 +1074,7 @@ test.describe(
         await clickGraphNode(page, tonic.id);
         const inspector = page.getByTestId('ontology-concept-inspector');
         await inspector.getByTestId('ontology-add-relationship').click();
-        await page.getByTestId(`relation-type-${SUBCLASS_OF}`).click();
+        await chooseInspectorRelationType(page, inspector, SUBCLASS_OF);
         const target = inspector.getByLabel('Target');
         await selectOptionWithRetry(
           target,
