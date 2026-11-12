@@ -1021,6 +1021,171 @@ class PIIMaskerTest {
     }
   }
 
+  @Test
+  void getTestCasesFailsClosedForColumnOrphansWhoseTableStillExists() {
+    String tableFqn = "service.db.schema.customers";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The table still resolves, but the column its test case points at has been
+    // renamed/dropped, so the stored entityLink no longer resolves against the table's
+    // current columns. The deciding column tags died with the column, so the case must
+    // fail closed — exactly like the missing-table path above — rather than be served
+    // unmasked to a PII-restricted caller.
+    Table drifted =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", false), column(tableFqn, "phone", false)),
+            false,
+            List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    // authorizePII(securityContext, null) sets `unrestricted` on construction; the per-table
+    // call is consulted afterwards. A PII-restricted caller denies both the unrestricted probe
+    // and the per-table authorization, so the column-orphan must fail closed.
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false);
+
+    TestCase columnOrphan =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withIncidentStatus(
+                new TestCaseResolutionStatus().withFailureSummary("Incident details"))
+            .withEntityLink(
+                new MessageParser.EntityLink(Entity.TABLE, tableFqn, "columns", "ssn", null)
+                    .getLinkString())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("regex").withValue("^078-")))
+            .withTestCaseResult(new TestCaseResult().withResult("Sensitive failure"));
+    TestCase tableCase =
+        new TestCase()
+            .withName("row_count")
+            .withEntityLink(new MessageParser.EntityLink(Entity.TABLE, tableFqn).getLinkString());
+    ResultList<TestCase> testCases =
+        new ResultList<>(new ArrayList<>(List.of(columnOrphan, tableCase)));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(drifted);
+
+      // Restrictive read: the column-orphan is masked even though its table resolves,
+      // because the dangling column path must fail closed; a table-level case stays open.
+      ResultList<TestCase> masked = PIIMasker.getTestCases(testCases, authorizer, securityContext);
+      TestCase maskedOrphan = masked.getData().get(0);
+      assertEquals("ssn_format [MASKED]", maskedOrphan.getName());
+      assertNull(maskedOrphan.getDescription());
+      assertNull(maskedOrphan.getParameterValues());
+      assertNull(maskedOrphan.getTestCaseResult());
+      assertNull(maskedOrphan.getIncidentStatus());
+      assertEquals(columnOrphan.getEntityLink(), maskedOrphan.getEntityLink());
+      assertEquals("row_count", masked.getData().get(1).getName());
+
+      // The single GET path uses the same decision: a stale column link masks the case.
+      TestCase maskedSingle = PIIMasker.getTestCase(columnOrphan, authorizer, securityContext);
+      assertEquals("ssn_format [MASKED]", maskedSingle.getName());
+      assertNull(maskedSingle.getDescription());
+      assertNull(maskedSingle.getIncidentStatus());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false", "true"})
+  void getTestCaseFailsClosedForColumnOrphansAndRespectsPiiAuthorization(boolean authorized) {
+    String tableFqn = "service.db.schema.customers";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The table resolves but the test case's `ssn` column link no longer does: the column-
+    // orphan fail-closed rule must mask the case for restricted callers, while a PII-authorized
+    // caller (the table owner, here) still sees the full case — the stricter default is scoped
+    // to PII-restricted users only.
+    Table drifted =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", false), column(tableFqn, "phone", false)),
+            false,
+            List.of(owner));
+    TestCase columnOrphan =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::ssn>");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(authorized);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(drifted);
+
+      TestCase visible = PIIMasker.getTestCase(columnOrphan, authorizer, securityContext);
+      assertEquals(authorized ? "ssn_format" : "ssn_format [MASKED]", visible.getName());
+      assertEquals(authorized ? "Sensitive description" : null, visible.getDescription());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false", "true"})
+  void getTestCaseResultsFailClosedForColumnOrphansWhoseTableStillExists(boolean authorized) {
+    String tableFqn = "service.db.schema.customers";
+    String testFqn = tableFqn + ".ssn.ssn_format";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // Table resolves; the result's test case still references the table via a dangling
+    // column link (`ssn` was dropped/renamed, leaving `email` and `phone` behind).
+    Table drifted =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", false), column(tableFqn, "phone", false)),
+            false,
+            List.of(owner));
+    TestCase columnOrphan =
+        new TestCase().withEntityLink("<#E::table::" + tableFqn + "::columns::ssn>");
+    TestCaseResult result =
+        new TestCaseResult()
+            .withId(UUID.randomUUID())
+            .withTestCaseFQN(testFqn)
+            .withTimestamp(123L)
+            .withResult("Sensitive failure")
+            .withSampleData("Sensitive sample");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(authorized);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(drifted);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TEST_CASE, testFqn, "", Include.ALL))
+          .thenReturn(columnOrphan);
+
+      // Result read paths' decision delegates to the same `shouldMask`; an unresolved column
+      // link must mask the result (only id, testCaseFQN, timestamp survive) for restricted
+      // callers and leave authorized callers untouched.
+      TestCaseResult visible =
+          PIIMasker.getTestCaseResults(
+                  new ResultList<>(List.of(result)), authorizer, securityContext)
+              .getData()
+              .getFirst();
+      assertEquals(result.getId(), visible.getId());
+      assertEquals(testFqn, visible.getTestCaseFQN());
+      assertEquals(123L, visible.getTimestamp());
+      assertEquals(authorized ? "Sensitive failure" : null, visible.getResult());
+      assertEquals(authorized ? "Sensitive sample" : null, visible.getSampleData());
+      assertEquals(visible, PIIMasker.getTestCaseResult(result, authorizer, securityContext));
+    }
+  }
+
   @ParameterizedTest
   @CsvSource({"ssn, false, true", "SSN, false, false", "ssn, true, false"})
   void getTestCasesPrefersExactColumnNamesAndRespectsPiiAuthorization(

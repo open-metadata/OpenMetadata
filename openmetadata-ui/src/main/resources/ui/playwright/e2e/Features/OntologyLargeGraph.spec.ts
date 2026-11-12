@@ -461,7 +461,7 @@ test.describe(
 
         await page.getByTestId('mode-tab-edit').click();
         await expectNodesDrawn(page, 8);
-        const addConcept = page.getByTestId('ontology-canvas-add-concept');
+        const addConcept = page.getByTestId('ontology-add-concept');
         await expect(addConcept).toBeEnabled();
         await addConcept.click();
         await expect(

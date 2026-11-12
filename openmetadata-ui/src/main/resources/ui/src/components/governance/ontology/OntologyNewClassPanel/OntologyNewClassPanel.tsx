@@ -17,14 +17,14 @@ import {
   Button,
   ButtonUtility,
   Checkbox,
+  Divider,
   FieldTypes,
   FormSelectItem,
   getField,
   HookForm,
   Input,
-  RadioButton,
-  RadioGroup,
   Select,
+  TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -86,6 +86,7 @@ import {
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import { useMappingTargetOptions } from '../OntologyConceptEditor/useReadableConceptOptions';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
+import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import {
   ClassIdentityIssue,
   classIdentityIssues,
@@ -215,6 +216,26 @@ const CONCEPT_TYPES: [OntologyConceptType, string][] = [
   [OntologyConceptType.SkosConcept, 'label.concept-skos'],
   [OntologyConceptType.Both, 'label.both-owl-skos'],
 ];
+
+const CONCEPT_TYPE_HINTS: Record<OntologyConceptType, string> = {
+  [OntologyConceptType.OwlClass]: 'message.ontology-concept-type-owl-hint',
+  [OntologyConceptType.SkosConcept]: 'message.ontology-concept-type-skos-hint',
+  [OntologyConceptType.Both]: 'message.ontology-concept-type-both-hint',
+};
+
+const SectionCaption = ({ children }: { children: string }) => (
+  <Typography
+    className="tw:uppercase tw:tracking-wide"
+    color="secondary"
+    size="text-xs"
+    weight="semibold">
+    {children}
+  </Typography>
+);
+
+// The core TextArea forwards no test id to its <textarea>; tests and E2E specs address the field itself.
+const tagDescriptionField = (element: HTMLTextAreaElement | null) =>
+  element?.setAttribute('data-testid', 'new-class-description');
 
 const OntologyNewClassPanel = ({
   ontology,
@@ -754,7 +775,7 @@ const OntologyNewClassPanel = ({
           isDisabled={disabled}
           isLoading={busy && pressed === 'create'}
           onPress={() => void create(false)}>
-          {t('label.create-class')}
+          {t('label.create')}
         </Button>
       </Box>
     );
@@ -976,8 +997,16 @@ const OntologyNewClassPanel = ({
           {blockedReason}
         </Typography>
       ) : null}
-      <Box align="center" gap={2} justify="between">
+      <Box align="center" gap={3}>
+        <Button
+          color="tertiary"
+          data-testid="new-class-cancel"
+          isDisabled={leaveLocked}
+          onPress={onClose}>
+          {t('label.cancel')}
+        </Button>
         <Typography
+          className="tw:min-w-0 tw:flex-1 tw:text-right"
           color="secondary"
           data-testid="new-class-save-status"
           role="status"
@@ -1076,26 +1105,31 @@ const OntologyNewClassPanel = ({
     </>
   );
   const renderPanel = () => (
-    <aside
-      aria-label={t('label.new-class')}
-      className="tw:flex tw:h-full tw:w-90 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
-      data-testid="ontology-new-class-panel">
+    <OntologyStudioDrawer
+      ariaLabel={t('label.new-entity', {
+        entity: t('label.concept').toLocaleLowerCase(),
+      })}
+      testId="ontology-new-class-panel">
       <Box
         align="center"
-        className="tw:sticky tw:top-0 tw:shrink-0 tw:border-b tw:border-secondary tw:p-4"
+        className="tw:sticky tw:top-0 tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-4"
         justify="between">
         <Box direction="col">
-          <Typography size="text-md" weight="semibold">
-            {t('label.new-class')}
+          <Typography
+            color="secondary"
+            data-testid="new-class-in-ontology"
+            size="text-sm">
+            {t('label.in-entity', { entity: getEntityName(ontology) })}
           </Typography>
-          {ontologyField ? (
-            <Typography
-              color="secondary"
-              data-testid="new-class-in-ontology"
-              size="text-xs">
-              {t('label.in-entity', { entity: getEntityName(ontology) })}
-            </Typography>
-          ) : null}
+          <Typography
+            as="h2"
+            className="not-prose tw:m-0"
+            size="text-lg"
+            weight="semibold">
+            {t('label.new-entity', {
+              entity: t('label.concept').toLocaleLowerCase(),
+            })}
+          </Typography>
         </Box>
         <ButtonUtility
           data-testid="ontology-new-class-close"
@@ -1106,9 +1140,10 @@ const OntologyNewClassPanel = ({
           onClick={onClose}
         />
       </Box>
-      <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-4">
+      <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-6 tw:py-5">
         <HookForm form={form} onSubmit={(event) => event.preventDefault()}>
           <Box direction="col" gap={4}>
+            <SectionCaption>{t('label.identity')}</SectionCaption>
             {ontologyField ? (
               <div data-testid="new-class-ontology">
                 <Select
@@ -1145,68 +1180,16 @@ const OntologyNewClassPanel = ({
               inputDataTestId="new-class-label"
               isDisabled={locked}
               isInvalid={has('label-taken')}
-              label={t('label.display-name')}
+              label={t('label.ontology-display-name')}
+              placeholder={localName}
               value={label}
               onChange={setLabel}
             />
             <Input
-              inputDataTestId="new-class-description"
-              isDisabled={locked}
-              label={t('label.description')}
-              value={description}
-              onChange={setDescription}
-            />
-            <RadioGroup
-              aria-label={t('label.type')}
-              data-testid="new-class-type"
-              isDisabled={locked}
-              label={t('label.type')}
-              orientation="vertical"
-              value={conceptType}
-              onChange={(value) =>
-                setConceptType(value as OntologyConceptType)
-              }>
-              {CONCEPT_TYPES.map(([type, key]) => (
-                <RadioButton
-                  data-testid={'new-class-type-' + type}
-                  key={type}
-                  label={t(key)}
-                  value={type}
-                />
-              ))}
-            </RadioGroup>
-            {skosWithOwlOnly ? (
-              <Typography
-                color="danger"
-                data-testid="new-class-skos-owl-only"
-                role="alert"
-                size="text-xs">
-                {t('message.ontology-concept-skos-owl-only')}
-              </Typography>
-            ) : null}
-            <Input
-              hint={fieldHint(
-                t('message.ontology-concept-iri-hint'),
-                'iri-invalid',
-                'iri-taken'
-              )}
-              inputDataTestId="new-class-iri-input"
-              isDisabled={locked}
-              isInvalid={has('iri-invalid', 'iri-taken')}
-              label={t('label.concept-iri')}
-              value={customIri}
-              onChange={setCustomIri}
-            />
-            <Typography
-              className="tw:break-all"
-              data-testid="new-class-iri"
-              size="text-xs">
-              {effectiveIri}
-            </Typography>
-            <Input
               inputDataTestId="new-class-synonyms"
               isDisabled={locked}
               label={t('label.synonym-plural')}
+              placeholder={t('message.ontology-synonym-placeholder')}
               value={synonym}
               onChange={(value) => {
                 if (value.includes(',')) {
@@ -1234,6 +1217,68 @@ const OntologyNewClassPanel = ({
                 setSynonyms((previous) => previous.filter((v) => v !== value))
               )}
             </Box>
+            <div data-testid="new-class-type">
+              <Select
+                hint={t(CONCEPT_TYPE_HINTS[conceptType])}
+                isDisabled={locked}
+                items={CONCEPT_TYPES.map(([id, key]) => ({
+                  id,
+                  label: t(key),
+                }))}
+                label={t('label.type')}
+                value={conceptType}
+                onChange={(value) =>
+                  setConceptType(value as OntologyConceptType)
+                }>
+                {(item) => (
+                  <Select.Item
+                    data-testid={'new-class-type-' + item.id}
+                    id={item.id}
+                    label={item.label}
+                  />
+                )}
+              </Select>
+            </div>
+            {skosWithOwlOnly ? (
+              <Typography
+                color="danger"
+                data-testid="new-class-skos-owl-only"
+                role="alert"
+                size="text-xs">
+                {t('message.ontology-concept-skos-owl-only')}
+              </Typography>
+            ) : null}
+            <Input
+              hint={fieldHint(
+                t('message.ontology-concept-iri-hint'),
+                'iri-invalid',
+                'iri-taken'
+              )}
+              inputDataTestId="new-class-iri-input"
+              isDisabled={locked}
+              isInvalid={has('iri-invalid', 'iri-taken')}
+              label={t('label.concept-iri')}
+              placeholder={effectiveIri}
+              value={customIri}
+              onChange={setCustomIri}
+            />
+            <Typography
+              className="tw:break-all"
+              data-testid="new-class-iri"
+              size="text-xs">
+              {effectiveIri}
+            </Typography>
+            <Divider />
+            <SectionCaption>{t('label.definition')}</SectionCaption>
+            <TextArea
+              isDisabled={locked}
+              label={t('label.description')}
+              placeholder={t('message.concept-description-placeholder')}
+              rows={3}
+              textAreaRef={tagDescriptionField}
+              value={description}
+              onChange={setDescription}
+            />
             {renderMappings()}
             {renderAdvanced()}
             <Alert variant="gray">
@@ -1243,7 +1288,7 @@ const OntologyNewClassPanel = ({
         </HookForm>
       </div>
       {renderFooter()}
-    </aside>
+    </OntologyStudioDrawer>
   );
 
   return renderPanel();

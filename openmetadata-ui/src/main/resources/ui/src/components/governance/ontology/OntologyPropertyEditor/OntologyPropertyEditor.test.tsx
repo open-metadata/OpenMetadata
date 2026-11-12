@@ -41,6 +41,8 @@ jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
+/** A new property submits with Create, an existing one with Save. */
+const SUBMIT = /^label\.(save|create-entity)$/;
 const post = APIClient.post as jest.MockedFunction<typeof APIClient.post>;
 const patch = APIClient.patch as jest.MockedFunction<typeof APIClient.patch>;
 const ontology: Ontology = {
@@ -69,6 +71,79 @@ const property: OntologyProperty = {
 describe('OntologyPropertyEditor', () => {
   beforeEach(() => jest.clearAllMocks());
 
+  it('marks edits unsaved and Cancel puts the saved values back', async () => {
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        property={property}
+        onSaved={jest.fn()}
+      />
+    );
+    const displayName = screen.getByRole('textbox', {
+      name: 'label.display-name',
+    });
+    const cancel = screen.getByRole('button', { name: 'label.cancel' });
+
+    expect(cancel).toBeEnabled();
+    expect(screen.getByRole('button', { name: SUBMIT })).toBeDisabled();
+
+    fireEvent.change(displayName, { target: { value: 'Changed' } });
+
+    expect(screen.getByRole('button', { name: SUBMIT })).toBeEnabled();
+
+    expect(
+      await screen.findByTestId('ontology-property-footer-status')
+    ).toHaveTextContent('label.unsaved-changes');
+
+    fireEvent.click(cancel);
+
+    await waitFor(() => expect(displayName).not.toHaveValue('Changed'));
+
+    expect(
+      screen.getByTestId('ontology-property-footer-status')
+    ).toHaveTextContent('label.no-unsaved-changes');
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it('closes the drawer on Cancel, clean or edited, without saving', () => {
+    const onCancel = jest.fn();
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        property={property}
+        onCancel={onCancel}
+        onSaved={jest.fn()}
+      />
+    );
+    const cancel = screen.getByRole('button', { name: 'label.cancel' });
+    fireEvent.click(cancel);
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'label.display-name' }),
+      { target: { value: 'Changed' } }
+    );
+    fireEvent.click(cancel);
+
+    expect(onCancel).toHaveBeenCalledTimes(2);
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it('keeps Create disabled until the property has a name', () => {
+    render(
+      <OntologyPropertyEditor canEdit ontology={ontology} onSaved={jest.fn()} />
+    );
+    const create = screen.getByRole('button', { name: SUBMIT });
+
+    expect(create).toBeDisabled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
+      target: { value: 'status' },
+    });
+
+    expect(create).toBeEnabled();
+  });
+
   it('creates an object property in its native ontology with a server-minted IRI', async () => {
     post.mockResolvedValue({ data: { ...property, kind: Kind.Object } });
     const saved = jest.fn();
@@ -78,7 +153,7 @@ describe('OntologyPropertyEditor', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
       target: { value: 'purchasedBy' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() => expect(saved).toHaveBeenCalled());
 
@@ -127,7 +202,7 @@ describe('OntologyPropertyEditor', () => {
       target: { value: 'urn:other:Thing' },
     });
     fireEvent.click(range.getByRole('button', { name: 'label.add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() => expect(saved).toHaveBeenCalled());
 
@@ -223,7 +298,7 @@ describe('OntologyPropertyEditor', () => {
       target: { value: ' pending ' },
     });
     fireEvent.blur(screen.getByRole('textbox', { name: /^label\.value/ }));
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() =>
       expect(saved).toHaveBeenCalledWith(
@@ -260,7 +335,7 @@ describe('OntologyPropertyEditor', () => {
       screen.getByRole('textbox', { name: 'label.property-chain' }),
       { target: { value: 'urn:step\nurn:turn\nurn:step' } }
     );
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
@@ -277,8 +352,7 @@ describe('OntologyPropertyEditor', () => {
     render(
       <OntologyPropertyEditor canEdit ontology={ontology} onSaved={jest.fn()} />
     );
-    fireEvent.click(screen.getByRole('button', { name: /label\.type$/ }));
-    fireEvent.click(await screen.findByRole('option', { name: 'ANNOTATION' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^label\.annotation/ }));
 
     expect(
       screen.queryByRole('textbox', { name: 'label.property-chain' })
@@ -290,7 +364,7 @@ describe('OntologyPropertyEditor', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
       target: { value: 'note' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() =>
       expect(post).toHaveBeenCalledWith(
@@ -311,9 +385,8 @@ describe('OntologyPropertyEditor', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'label.inverse' }), {
       target: { value: 'urn:inverse' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /label\.type$/ }));
-    fireEvent.click(await screen.findByRole('option', { name: 'DATA' }));
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('radio', { name: /^label\.data/ }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
     await waitFor(() => expect(post).toHaveBeenCalled());
 
     expect(post.mock.calls[0][1]).not.toHaveProperty('inverse');
@@ -332,7 +405,7 @@ describe('OntologyPropertyEditor', () => {
     fireEvent.change(screen.getByRole('textbox', { name: 'label.data-type' }), {
       target: { value: 'relative/type' },
     });
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     expect(
       await screen.findByText('message.invalid-concept-iri')
@@ -354,14 +427,14 @@ describe('OntologyPropertyEditor', () => {
       screen.getByRole('textbox', { name: 'label.display-name' }),
       { target: { value: 'Customer status' } }
     );
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
 
     expect(
       screen.getByRole('textbox', { name: 'label.display-name' })
     ).toHaveValue('Customer status');
-    expect(screen.getByRole('button', { name: 'label.save' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: SUBMIT })).toBeEnabled();
   });
 
   it('gates writes and literal controls on edit permission', () => {
@@ -374,7 +447,7 @@ describe('OntologyPropertyEditor', () => {
       />
     );
 
-    expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: SUBMIT })).toBeDisabled();
     expect(
       screen.getByRole('textbox', { name: /^label\.value/ })
     ).toBeDisabled();
@@ -422,7 +495,7 @@ describe('OntologyPropertyEditor', () => {
 
     fireEvent.click(screen.getByRole('option', { name: /Has relative/ }));
     fireEvent.click(supers.getByRole('button', { name: 'label.add' }));
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() => expect(saved).toHaveBeenCalled());
 
@@ -484,7 +557,7 @@ describe('OntologyPropertyEditor', () => {
     ).not.toBeInTheDocument();
 
     fireEvent.keyDown(input, { key: 'Escape' });
-    fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+    fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
     await waitFor(() =>
       expect(saved).toHaveBeenCalledWith(
@@ -505,7 +578,7 @@ describe('OntologyPropertyEditor', () => {
         <OntologyPropertyEditor canEdit ontology={ontology} onSaved={saved} />
       );
 
-      expect(screen.getByText('label.new-entity')).toBeInTheDocument();
+      expect(screen.getByText('label.basics')).toBeInTheDocument();
       expect(
         screen.getByRole('textbox', { name: 'label.display-name' })
       ).toBeInTheDocument();
@@ -538,7 +611,7 @@ describe('OntologyPropertyEditor', () => {
         screen.getByRole('textbox', { name: 'label.property-chain' }),
         { target: { value: 'urn:sales:a\nurn:sales:b' } }
       );
-      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+      fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
       await waitFor(() => expect(saved).toHaveBeenCalled());
 
@@ -572,7 +645,7 @@ describe('OntologyPropertyEditor', () => {
         target: { value: 'not an iri' },
       });
 
-      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+      fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
       await waitFor(() => expect(advanced.open).toBe(true));
 
@@ -581,7 +654,7 @@ describe('OntologyPropertyEditor', () => {
 
       expect(advanced.open).toBe(false);
 
-      fireEvent.click(screen.getByRole('button', { name: 'label.save' }));
+      fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
       await waitFor(() => expect(advanced.open).toBe(true));
 
@@ -598,7 +671,9 @@ describe('OntologyPropertyEditor', () => {
         />
       );
 
-      expect(screen.getByText('status')).toBeInTheDocument();
+      expect(screen.getByRole('textbox', { name: /^label\.name/ })).toHaveValue(
+        'status'
+      );
       expect(
         screen.getByRole('textbox', { name: /^label\.value/ })
       ).toBeDisabled();
@@ -608,7 +683,7 @@ describe('OntologyPropertyEditor', () => {
       expect(
         screen.getByRole('checkbox', { name: Characteristic.Functional })
       ).toBeDisabled();
-      expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+      expect(screen.getByRole('button', { name: SUBMIT })).toBeDisabled();
     });
   });
 });

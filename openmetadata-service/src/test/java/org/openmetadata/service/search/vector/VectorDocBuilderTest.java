@@ -8,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -21,7 +24,9 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 class VectorDocBuilderTest {
 
@@ -224,6 +229,34 @@ class VectorDocBuilderTest {
   }
 
   @Test
+  void liveAndReindexReadsOfTheSameCustomPropertiesShareOneFingerprint() {
+    Map<String, Object> asWritten = new LinkedHashMap<>();
+    asWritten.put("region", "emea");
+    asWritten.put("costCenter", "finance");
+    asWritten.put("retentionDays", 30);
+    ObjectNode asReindexed =
+        JsonUtils.getObjectNode().put("costCenter", "finance").put("region", "emea");
+    asReindexed.put("retentionDays", 30);
+
+    Table table = createTestTable("cp_table", null, "Orders");
+    String liveFingerprint =
+        VectorDocBuilder.computeFingerprintForEntity(table.withExtension(asWritten));
+    String reindexFingerprint =
+        VectorDocBuilder.computeFingerprintForEntity(table.withExtension(asReindexed));
+
+    assertEquals(liveFingerprint, reindexFingerprint);
+  }
+
+  @Test
+  void customPropertiesWithSortedKeysRenderAsBeforeSoStoredFingerprintsStillMatch() {
+    ObjectNode sorted =
+        JsonUtils.getObjectNode().put("costCenter", "finance").put("region", "emea");
+
+    assertEquals(String.valueOf(sorted), VectorDocBuilder.customPropertiesText(sorted));
+    assertEquals("[]", VectorDocBuilder.customPropertiesText(null));
+  }
+
+  @Test
   void testFingerprintChangesWithContent() {
     Table table = createTestTable("fp_table", null, "Original description");
     String fp1 = VectorDocBuilder.computeFingerprintForEntity(table);
@@ -344,6 +377,106 @@ class VectorDocBuilderTest {
     String result = VectorDocBuilder.columnsToString(List.of(c1, c2));
     assertTrue(result.contains("col1"));
     assertTrue(result.contains("col2"));
+  }
+
+  @Test
+  void columnsToString_keepsItsExactFormatForEveryDescriptionShape() {
+    assertEquals(
+        "order_id (Order key), blank, none, literal",
+        VectorDocBuilder.columnsToString(describedBlankNullAndLiteralNullColumns()));
+  }
+
+  // Expected values were produced by origin/main's VectorDocBuilder before topics shared the
+  // column formatting and chunk-overflow code. Any drift changes the fingerprint or chunk text of
+  // every table and re-embeds them all.
+  @Test
+  void tableChunkText_isByteIdenticalToTheFormatBeforeTopicFields() {
+    Table table =
+        createTestTable("orders", null, "Customer orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withColumns(describedBlankNullAndLiteralNullColumns());
+
+    Map<String, Object> chunk = VectorDocBuilder.fromEntity(table, MOCK_CLIENT).getFirst();
+
+    assertEquals(
+        "table orders. Customer orders. Columns include order_id (Order key), blank, none, literal",
+        chunk.get("textToEmbed"));
+    assertEquals(
+        "name: orders; displayName: []; entityType: table; serviceType: []; fullyQualifiedName:"
+            + " svc.db.sch.orders; tier: []; certification: []; domains: []; tags: []; Associated"
+            + " glossary terms: []; owners: []; customProperties: [] | description: Customer"
+            + " orders; columns: order_id (Order key), blank, none, literal | chunk 1/1",
+        chunk.get("textToLLMContext"));
+  }
+
+  @Test
+  void wideTableChunks_areByteIdenticalToTheFormatBeforeTopicFields() {
+    List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < 300; i++) {
+      columns.add(column("column_" + i, "Description of column number " + i));
+    }
+    Table table =
+        createTestTable("wide", null, "Wide table")
+            .withFullyQualifiedName("svc.db.sch.wide")
+            .withColumns(columns);
+
+    List<Map<String, Object>> chunks = VectorDocBuilder.fromEntity(table, MOCK_CLIENT);
+
+    StringBuilder allText = new StringBuilder();
+    for (Map<String, Object> chunk : chunks) {
+      allText.append(chunk.get("textToEmbed")).append('\n');
+      allText.append(chunk.get("textToLLMContext")).append('\n');
+    }
+    assertEquals(5, chunks.size());
+    assertEquals("9ea24f4c98b8a02850263d6e1db25b67", chunks.getFirst().get("fingerprint"));
+    assertEquals(
+        "a03ea0d79efb05b3bcf5fdcd53811526",
+        TextChunkManager.computeFingerprint(allText.toString()));
+  }
+
+  @Test
+  void semanticChunkFor_givesTheLastDocEveryOverflowChunk() {
+    List<String> contextChunks = List.of("c0", "c1");
+
+    assertEquals("s0", VectorDocBuilder.semanticChunkFor(contextChunks, List.of("s0", "s1"), 0));
+    assertEquals("s1", VectorDocBuilder.semanticChunkFor(contextChunks, List.of("s0", "s1"), 1));
+    assertEquals(
+        "s1 s2", VectorDocBuilder.semanticChunkFor(contextChunks, List.of("s0", "s1", "s2"), 1));
+    assertEquals("", VectorDocBuilder.semanticChunkFor(contextChunks, List.of("s0"), 1));
+  }
+
+  @Test
+  void containerChildNames_reachTheEmbeddingWhenTheSemanticBodyOverflows() {
+    // A 379-word description fills the single context chunk ("description: " + 379 words), so the
+    // semantic body's "Contains schemas ..." phrase lands in a second semantic chunk.
+    StringBuilder description = new StringBuilder("word0");
+    for (int i = 1; i < 379; i++) {
+      description.append(" word").append(i);
+    }
+    Database database = new Database();
+    database.setId(UUID.randomUUID());
+    database.setName("sales");
+    database.setFullyQualifiedName("svc.sales");
+    database.setDescription(description.toString());
+    database.setDatabaseSchemas(
+        List.of(
+            new EntityReference()
+                .withId(UUID.randomUUID())
+                .withType("databaseSchema")
+                .withName("schema_a"),
+            new EntityReference()
+                .withId(UUID.randomUUID())
+                .withType("databaseSchema")
+                .withName("schema_b")));
+
+    List<Map<String, Object>> chunks = VectorDocBuilder.fromEntity(database, MOCK_CLIENT);
+
+    assertEquals(1, chunks.size());
+    String embedded = (String) chunks.getFirst().get("textToEmbed");
+    assertTrue(embedded.endsWith("word378. Contains schemas schema_a, schema_b"), embedded);
+    assertTrue(
+        ((String) VectorDocBuilder.buildEmbeddingFields(database, MOCK_CLIENT).get("textToEmbed"))
+            .endsWith("Contains schemas schema_a, schema_b"));
   }
 
   @Test
@@ -545,6 +678,21 @@ class VectorDocBuilderTest {
     String body = VectorDocBuilder.buildBodyText(table, null);
 
     assertTrue(body.contains("some desc"));
+  }
+
+  private static List<Column> describedBlankNullAndLiteralNullColumns() {
+    return List.of(
+        column("order_id", "Order key"),
+        column("blank", "  "),
+        column("none", null),
+        column("literal", "null"));
+  }
+
+  private static Column column(String name, String description) {
+    return new Column()
+        .withName(name)
+        .withDataType(ColumnDataType.STRING)
+        .withDescription(description);
   }
 
   private Table createTestTable(String name, String displayName, String description) {

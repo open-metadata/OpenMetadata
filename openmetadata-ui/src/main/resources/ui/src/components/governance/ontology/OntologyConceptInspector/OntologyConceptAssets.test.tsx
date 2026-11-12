@@ -89,7 +89,7 @@ const selectAll = async () => {
   const picker = await screen.findByTestId('ontology-data-asset-picker');
   await within(picker).findByRole('checkbox', { name: 'new-one' });
   fireEvent.click(
-    within(picker).getByRole('checkbox', { name: 'label.select-all' })
+    within(picker).getByRole('checkbox', { name: 'label.select-all-lowercase' })
   );
   fireEvent.click(within(picker).getByTestId('ontology-data-asset-save'));
 
@@ -521,15 +521,20 @@ it('retries failed binding reads before offering editing', async () => {
   renderAssets();
   const retry = await screen.findByRole('button', { name: 'label.retry' });
 
-  expect(screen.getByTestId('ontology-native-link-assets')).toBeDisabled();
+  expect(
+    screen.queryByTestId('ontology-native-link-assets')
+  ).not.toBeInTheDocument();
 
   failRead = false;
   fireEvent.click(retry);
-  await waitFor(() =>
-    expect(screen.getByTestId('ontology-native-link-assets')).toBeEnabled()
-  );
 
-  expect(screen.getByText('message.no-data-available')).toBeVisible();
+  expect(
+    await screen.findByTestId('ontology-native-link-assets')
+  ).toBeEnabled();
+
+  expect(
+    screen.getByText('message.ontology-current-catalog-links')
+  ).toBeVisible();
 });
 
 it('does not repeat a link that the re-read reports as already present', async () => {
