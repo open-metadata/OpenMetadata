@@ -203,9 +203,12 @@ public class FolderRepository extends EntityRepository<Folder> {
         .toList();
   }
 
-  /** The live files directly in each folder, read in one batch with {@code fields}. */
+  /**
+   * The live files directly in each folder, at most {@code maxFiles} of them, read in one batch with
+   * {@code fields} and without their extracted text. Files past the bound are left out.
+   */
   public Map<UUID, List<ContextFile>> childFilesByFolder(
-      List<Folder> folders, EntityUtil.Fields fields) {
+      List<Folder> folders, EntityUtil.Fields fields, int maxFiles) {
     List<CollectionDAO.EntityRelationshipObject> edges =
         daoCollection
             .relationshipDAO()
@@ -217,12 +220,17 @@ public class FolderRepository extends EntityRepository<Folder> {
     if (edges.isEmpty()) {
       return Map.of();
     }
-    List<UUID> fileIds = edges.stream().map(edge -> UUID.fromString(edge.getToId())).toList();
+    List<UUID> fileIds =
+        edges.stream()
+            .map(edge -> UUID.fromString(edge.getToId()))
+            .distinct()
+            .limit(maxFiles)
+            .toList();
+    ContextFileRepository fileRepo =
+        (ContextFileRepository)
+            Entity.getEntityRepository(ContextFileRepository.CONTEXT_FILE_ENTITY);
     Map<UUID, ContextFile> files =
-        Entity.getEntityRepository(ContextFileRepository.CONTEXT_FILE_ENTITY)
-            .get(null, fileIds.stream().distinct().toList(), fields, Include.NON_DELETED)
-            .stream()
-            .map(ContextFile.class::cast)
+        fileRepo.getWithoutExtractedText(fileIds, fields, Include.NON_DELETED).stream()
             .collect(Collectors.toMap(ContextFile::getId, file -> file));
     Map<UUID, List<ContextFile>> byFolder = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject edge : edges) {

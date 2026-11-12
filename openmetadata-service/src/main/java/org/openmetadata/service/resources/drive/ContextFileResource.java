@@ -206,7 +206,6 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
     }
     if (orderBy == null || orderBy.isBlank()) {
       return visibleOnly(
-          uriInfo,
           securityContext,
           filter,
           super.listInternal(
@@ -235,7 +234,6 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
             ListCursors.unseal(after),
             resolveOrderBy(orderBy));
     return visibleOnly(
-        uriInfo,
         securityContext,
         filter,
         addHref(uriInfo, readableOnly(securityContext, fields, resultList)));
@@ -264,10 +262,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
    * Center memories do (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
    */
   private ResultList<ContextFile> visibleOnly(
-      UriInfo uriInfo,
-      SecurityContext securityContext,
-      ListFilter filter,
-      ResultList<ContextFile> files) {
+      SecurityContext securityContext, ListFilter filter, ResultList<ContextFile> files) {
     ResultList<ContextFile> visible =
         ContextFileVisibility.filterByVisibility(files, securityContext);
     Paging paging = visible.getPaging();
@@ -278,7 +273,7 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           ContextMemoryResource.listedTotal(
               paging.getTotal(),
               visible.getData().size(),
-              () -> visibleCount(uriInfo, securityContext, filter)));
+              () -> visibleCount(securityContext, filter)));
     }
     return visible;
   }
@@ -286,14 +281,20 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   /**
    * How many files under {@code filter} the caller may see, counted over at most {@link
    * ContextMemoryResource#MAX_VISIBLE_COUNT_SCAN} rows: past that it is a lower bound. Rows are
-   * read straight from the repository and pass the same row and sharing checks as a listed page.
+   * read by key without their extracted text and pass the same row and sharing checks as a listed
+   * page.
    */
-  private int visibleCount(UriInfo uriInfo, SecurityContext securityContext, ListFilter filter) {
+  private int visibleCount(SecurityContext securityContext, ListFilter filter) {
     Fields fields = getFields(ContextFileVisibility.guardFields(null));
-    List<ContextFile> scanned =
+    List<UUID> ids =
         repository
-            .listAfter(uriInfo, fields, filter, ContextMemoryResource.MAX_VISIBLE_COUNT_SCAN, null)
-            .getData();
+            .getDao()
+            .listKeys(filter, ContextMemoryResource.MAX_VISIBLE_COUNT_SCAN, true)
+            .stream()
+            .map(key -> UUID.fromString(key.id()))
+            .toList();
+    // The keys already follow the filter's include, so the read by id adds no condition of its own.
+    List<ContextFile> scanned = repository.getWithoutExtractedText(ids, fields, Include.ALL);
     List<ContextFile> readable =
         rowsMayDiffer(securityContext, fields)
             ? rowAuthorization(fields).readable().apply(securityContext, scanned)

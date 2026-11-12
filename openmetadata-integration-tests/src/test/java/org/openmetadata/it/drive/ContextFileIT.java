@@ -562,7 +562,10 @@ class ContextFileIT {
     ContextFile privateFile = createFile(admin, ownedFileIn(folder, ns.prefix("b-private"), owner));
     String original = JsonUtils.pojoToJson(privateFile);
     privateFile.setShareConfig(new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE));
+    privateFile.setExtractedText("Extracted text the counts never read");
     admin.patch(FILE_PATH, privateFile.getId(), original, privateFile, ContextFile.class);
+    assertEquals(
+        privateFile.getExtractedText(), getFile(admin, privateFile.getId(), "").getExtractedText());
     RestClient readerRest = RestClient.forUser(reader.getEmail(), new String[] {});
 
     // One file per page: every page reports the same total, including the page that hides nothing

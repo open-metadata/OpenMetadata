@@ -24,11 +24,15 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
+import org.jdbi.v3.sqlobject.customizer.BindList;
 import org.jdbi.v3.sqlobject.customizer.BindMap;
 import org.jdbi.v3.sqlobject.customizer.Define;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -116,6 +120,29 @@ public interface KnowledgeAssetDAOs {
         connectionType = POSTGRES)
     List<String> listByExtractedSourceHash(
         @Bind("sourceHash") String sourceHash, @Bind("excludeId") String excludeId);
+
+    /** Files by id without {@code extractedText}, the largest part of a stored file. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id, JSON_REMOVE(json, '$.extractedText') FROM context_file "
+                + "WHERE id IN (<ids>) <cond>",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value = "SELECT id, json - 'extractedText' FROM context_file WHERE id IN (<ids>) <cond>",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(EntityIdJsonPairMapper.class)
+    List<EntityIdJsonPair> findByIdsWithoutExtractedText(
+        @BindList("ids") List<String> ids, @Define("cond") String cond);
+
+    default List<org.openmetadata.schema.entity.data.ContextFile> findEntitiesWithoutExtractedText(
+        List<UUID> ids, Include include) {
+      List<String> distinctIds = ids.stream().map(UUID::toString).distinct().toList();
+      return distinctIds.isEmpty()
+          ? List.of()
+          : findByIdsWithoutExtractedText(distinctIds, getCondition(include)).stream()
+              .map(pair -> jsonToEntity(pair.json(), pair.id()))
+              .toList();
+    }
 
     @ConnectionAwareSqlQuery(
         value =

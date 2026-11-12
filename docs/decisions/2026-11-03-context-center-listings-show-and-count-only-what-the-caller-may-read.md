@@ -55,11 +55,13 @@ count-only call (`limit=0`) and on any page that hid none itself.
 The plain file listing (`/v1/contextCenter/drive/files`) reports its `paging.total` by the same
 rule as the plain memory list: it stands only when the page shows every counted row, and otherwise
 the files the caller may see are recounted over at most `MAX_VISIBLE_COUNT_SCAN` rows, never less
-than the page. The recount reads the rows straight from the repository and applies the listing's
-row check and the file sharing rules; the caller's teams and domains are resolved once per list.
+than the page. The recount reads the rows by key, without their extracted text, and applies the
+listing's row check and the file sharing rules; the caller's teams and domains are resolved once
+per list.
 The listing ordered by update time (`orderBy`) applies the same row check to its page, so the page
 and its total agree; it does not refill, and its cursors are sealed when rows are checked.
 
 A folder's `childrenCount`, which the Documents page shows as the folder's badge, counts the same
-files: for anyone but an admin, the files of every folder in the response are read in one batch and
-counted after the same row check and sharing rules.
+files: for anyone but an admin, the files of every folder in the response are read in one batch,
+without their extracted text and at most `MAX_VISIBLE_COUNT_SCAN` of them, and counted after the
+same row check and sharing rules. Past that bound a folder's count is a lower bound.

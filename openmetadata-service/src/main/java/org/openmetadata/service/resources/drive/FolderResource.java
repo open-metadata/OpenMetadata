@@ -46,6 +46,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
+import org.openmetadata.service.resources.context.ContextMemoryResource;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ViewPermissionFilter;
@@ -168,7 +169,10 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       return;
     }
     Map<UUID, List<ContextFile>> byFolder =
-        repository.childFilesByFolder(counted, visibilityFields(securityContext));
+        repository.childFilesByFolder(
+            counted,
+            visibilityFields(securityContext),
+            ContextMemoryResource.MAX_VISIBLE_COUNT_SCAN);
     Set<UUID> visible =
         visibleFileIds(securityContext, byFolder.values().stream().flatMap(List::stream).toList());
     counted.forEach(

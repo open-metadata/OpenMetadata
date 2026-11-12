@@ -123,6 +123,17 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     entities.forEach(entity -> clearFieldsInternal(entity, fields));
   }
 
+  /**
+   * Files by id with {@code fields}, read without their extracted text: for checks over many files
+   * that never show it (e.g. counting the files a caller may see).
+   */
+  public List<ContextFile> getWithoutExtractedText(
+      List<UUID> ids, EntityUtil.Fields fields, Include include) {
+    List<ContextFile> files = contextFileDAO.findEntitiesWithoutExtractedText(ids, include);
+    setFieldsInBulk(fields, files);
+    return files;
+  }
+
   @Override
   public void setFullyQualifiedName(ContextFile file) {
     if (file.getFolder() == null) {
