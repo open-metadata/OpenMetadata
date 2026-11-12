@@ -15,11 +15,14 @@ package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.json.Json;
 import jakarta.json.JsonArray;
 import jakarta.json.JsonArrayBuilder;
@@ -36,6 +39,9 @@ import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
+import java.text.DateFormat;
+import java.time.Instant;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -57,6 +63,7 @@ import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.services.connections.dashboard.TableauConnection;
 import org.openmetadata.schema.services.connections.database.AthenaConnection;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
@@ -64,6 +71,7 @@ import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.JsonPatchProvider;
 
 /** This test provides examples of how to use applyPatch */
 @Slf4j
@@ -700,6 +708,154 @@ class JsonUtilsTest {
           () -> JsonUtils.readValue(json, TagLabel.class),
           json);
     }
+  }
+
+  private static Stream<Arguments> validIsoDateTimeCases() {
+    return Stream.of(
+        // Issue #33028 6-case matrix (Spark Z + Airflow +00:00 across µs, ms, bare second)
+        Arguments.of("2026-09-08T08:29:49.711594Z", 1788856189711L),
+        Arguments.of("2026-09-08T08:29:49.711594+00:00", 1788856189711L),
+        Arguments.of("2026-09-08T08:29:49.711Z", 1788856189711L),
+        Arguments.of("2026-09-08T08:29:49.711+00:00", 1788856189711L),
+        Arguments.of("2026-09-08T08:29:49Z", 1788856189000L),
+        Arguments.of("2026-09-08T08:29:49+00:00", 1788856189000L),
+        // Non-zero, compact, second-bearing, negative-zero, and lowercase offsets
+        Arguments.of(
+            "2026-09-08T08:29:49+05:30", Instant.parse("2026-09-08T02:59:49Z").toEpochMilli()),
+        Arguments.of(
+            "2026-09-08T08:29:49-07:00", Instant.parse("2026-09-08T15:29:49Z").toEpochMilli()),
+        Arguments.of(
+            "2026-09-08T08:29:49+0530", Instant.parse("2026-09-08T02:59:49Z").toEpochMilli()),
+        Arguments.of(
+            "2026-09-08T08:29:49-07", Instant.parse("2026-09-08T15:29:49Z").toEpochMilli()),
+        Arguments.of("2026-09-08T08:29:49-00:00", 1788856189000L),
+        Arguments.of("2026-09-08T08:29:49+00:00:00", 1788856189000L),
+        Arguments.of("2026-09-08t08:29:49.711594z", 1788856189711L),
+        Arguments.of("2026-09-08T08:29Z", Instant.parse("2026-09-08T08:29:00Z").toEpochMilli()),
+        Arguments.of(
+            "2026-09-08T08:29+00:00", Instant.parse("2026-09-08T08:29:00Z").toEpochMilli()),
+        // Fractional precision 1..9 digits & end-of-day truncation boundary
+        Arguments.of("2026-09-08T08:29:49.7Z", 1788856189700L),
+        Arguments.of("2026-09-08T08:29:49.71Z", 1788856189710L),
+        Arguments.of("2026-09-08T08:29:49.7115Z", 1788856189711L),
+        Arguments.of("2026-09-08T08:29:49.711594123Z", 1788856189711L),
+        Arguments.of(
+            "2026-09-08T23:59:59.999999Z",
+            Instant.parse("2026-09-08T23:59:59.999Z").toEpochMilli()),
+        // Pre-1970 negative epoch with sub-millisecond fraction (floor truncation)
+        Arguments.of(
+            "1969-12-31T23:59:59.711594Z",
+            Instant.parse("1969-12-31T23:59:59.711Z").toEpochMilli()),
+        // Valid leap day & surrounding whitespace
+        Arguments.of("2024-02-29T12:00:00Z", Instant.parse("2024-02-29T12:00:00Z").toEpochMilli()),
+        Arguments.of("  2026-09-08T08:29:49.711594+00:00  ", 1788856189711L));
+  }
+
+  @ParameterizedTest(name = "[{index}] {0} -> {1}")
+  @MethodSource("validIsoDateTimeCases")
+  void isoDateDeserializerParsesOffsetsAndFractionalPrecisions(
+      String input, long expectedEpochMillis) {
+    String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"" + input + "\"}";
+    TagLabel parsed = JsonUtils.readValue(json, TagLabel.class);
+    assertEquals(expectedEpochMillis, parsed.getAppliedAt().getTime(), input);
+  }
+
+  @Test
+  void dateSerializationEmitsStandardMillisecondRfc3339Utc() {
+    Date sample = new Date(1714000000918L);
+    TagLabel label = new TagLabel().withTagFQN("x.y").withAppliedAt(sample);
+    String serialized = JsonUtils.pojoToJson(label);
+
+    assertTrue(
+        serialized.contains("\"appliedAt\":\"2024-04-24T23:06:40.918Z\""),
+        "Expected standard 3-digit millisecond RFC-3339 UTC timestamp, got: " + serialized);
+    assertFalse(
+        serialized.contains(".000918Z"),
+        "Must not left-pad milliseconds into 6-digit microseconds: " + serialized);
+    assertEquals(
+        "2024-04-24T23:06:40.918Z",
+        ((DateFormat) RestUtil.DATE_TIME_FORMAT.clone()).format(sample));
+  }
+
+  @Test
+  void jsonPatchProviderMapperDeserializesOffsetsAndMicroseconds() throws IOException {
+    ObjectMapper patchMapper = new JsonPatchProvider().getContext(Object.class);
+
+    TagLabel fromAirflowOffset =
+        patchMapper.readValue(
+            "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-09-08T08:29:49.711594+00:00\"}",
+            TagLabel.class);
+    TagLabel fromSparkMicros =
+        patchMapper.readValue(
+            "{\"tagFQN\":\"x.y\",\"appliedAt\":\"2026-09-08T08:29:49.711594Z\"}", TagLabel.class);
+
+    assertEquals(1788856189711L, fromAirflowOffset.getAppliedAt().getTime());
+    assertEquals(1788856189711L, fromSparkMicros.getAppliedAt().getTime());
+    assertEquals(
+        "\"2024-04-24T23:06:40.918Z\"", patchMapper.writeValueAsString(new Date(1714000000918L)));
+  }
+
+  @Test
+  void dateDeserializerPreservesEpochBlankAndNullContracts() {
+    assertEquals(
+        1000000000L,
+        JsonUtils.readValue("{\"tagFQN\":\"x.y\",\"appliedAt\":\"1000000000\"}", TagLabel.class)
+            .getAppliedAt()
+            .getTime());
+    assertEquals(
+        Long.MAX_VALUE,
+        JsonUtils.readValue(
+                "{\"tagFQN\":\"x.y\",\"appliedAt\":\"9223372036854775807\"}", TagLabel.class)
+            .getAppliedAt()
+            .getTime());
+    assertEquals(
+        -10000000000L,
+        JsonUtils.readValue("{\"tagFQN\":\"x.y\",\"appliedAt\":\"-10000000000\"}", TagLabel.class)
+            .getAppliedAt()
+            .getTime());
+    assertNull(
+        JsonUtils.readValue("{\"tagFQN\":\"x.y\",\"appliedAt\":null}", TagLabel.class)
+            .getAppliedAt());
+    assertNull(
+        JsonUtils.readValue("{\"tagFQN\":\"x.y\",\"appliedAt\":\"\"}", TagLabel.class)
+            .getAppliedAt());
+    assertNull(
+        JsonUtils.readValue("{\"tagFQN\":\"x.y\",\"appliedAt\":\"   \"}", TagLabel.class)
+            .getAppliedAt());
+  }
+
+  private static Stream<String> invalidIsoDateTimeCases() {
+    return Stream.of(
+        "2026-02-30T00:00:00Z",
+        "2026-02-29T00:00:00Z",
+        "2026-13-01T00:00:00Z",
+        "2026-09-08T25:00:00Z",
+        "2026-09-08T24:00:00Z",
+        "2026-09-08T08:29:49+25:00",
+        "2026-09-08T08:29:49+05:60",
+        "2026-09-08T08:29:49+00:00Z",
+        "2026-09-08T08:29:49",
+        "2026-09-08",
+        "20260908",
+        "2026-09-08T08:29:49.Z",
+        "2026-09-08T08:29:49.1234567891Z",
+        "2026-09-08T08:29:49Zfoo",
+        "9999999999999999999",
+        "2026-09-08T08:29:49." + "0".repeat(100) + "Z");
+  }
+
+  @ParameterizedTest(name = "[{index}] rejects {0}")
+  @MethodSource("invalidIsoDateTimeCases")
+  void isoDateDeserializerRejectsInvalidDatesAndOffsets(String invalidValue) {
+    String json = "{\"tagFQN\":\"x.y\",\"appliedAt\":\"" + invalidValue + "\"}";
+    JsonParsingException ex =
+        assertThrows(
+            JsonParsingException.class,
+            () -> JsonUtils.readValue(json, TagLabel.class),
+            invalidValue);
+    assertTrue(
+        ex.getCause() instanceof JsonMappingException,
+        "Expected JsonMappingException cause for '" + invalidValue + "', got: " + ex.getCause());
   }
 
   @Test

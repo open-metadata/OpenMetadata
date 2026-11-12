@@ -58,6 +58,13 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.time.DateTimeException;
+import java.time.Instant;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeFormatterBuilder;
+import java.time.format.ResolverStyle;
+import java.time.format.SignStyle;
+import java.time.temporal.ChronoField;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -115,9 +122,10 @@ public final class JsonUtils {
           "/summary");
 
   static {
-    // Quoted "Z" to indicate UTC, no timezone offset
-    DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
+    // Quoted "Z" to indicate UTC, millisecond precision matching java.util.Date
+    DATE_TIME_FORMAT = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
     DATE_TIME_FORMAT.setTimeZone(TimeZone.getTimeZone("UTC"));
+    DATE_TIME_FORMAT.setLenient(false);
   }
 
   static {
@@ -135,11 +143,9 @@ public final class JsonUtils {
     // Java 21 optimized introspection/accessors for faster convertValue/read/write paths.
     OBJECT_MAPPER.registerModule(new BlackbirdModule());
 
-    // Accept any Date field with or without fractional seconds. Python clients serialize
-    // datetimes with microsecond=0 as "…ssZ" (no fractional), which the strict global
-    // SimpleDateFormat("…SSSSSS'Z'") rejects. Registering the lenient deserializer for all
-    // java.util.Date fields keeps deserialization tolerant while serialization stays on the
-    // microsecond format above.
+    // Accept any RFC-3339 / ISO-8601 Date field with UTC ("Z") or numeric offsets ("+00:00",
+    // "+05:30", etc.) and 0..9 fractional second digits, as well as epoch milliseconds, while
+    // keeping serialization on the millisecond UTC format above.
     OBJECT_MAPPER.registerModule(lenientDateModule());
 
     JSONP_MAPPER = OBJECT_MAPPER.copy().registerModule(new JSONPModule());
@@ -1090,10 +1096,10 @@ public final class JsonUtils {
   }
 
   /**
-   * Jackson module that deserializes every {@link Date} field leniently, accepting ISO-8601 with
-   * or without fractional seconds as well as epoch milliseconds. Register it on any ObjectMapper
-   * that parses OpenMetadata request bodies so the strict {@link #DATE_TIME_FORMAT} (used for
-   * serialization) does not reject inputs lacking microseconds.
+   * Jackson module that deserializes every {@link Date} field strictly as an RFC-3339 / ISO-8601
+   * timestamp (supporting {@code Z} and numeric UTC offsets plus 0..9 fractional second digits,
+   * truncated toward floor epoch milliseconds) or as epoch milliseconds. Register it on any
+   * ObjectMapper that parses OpenMetadata request bodies.
    */
   public static SimpleModule lenientDateModule() {
     SimpleModule module = new SimpleModule("OpenMetadataLenientDateModule");
@@ -1102,18 +1108,60 @@ public final class JsonUtils {
   }
 
   /**
-   * Tolerant Date deserializer. The global ObjectMapper serializes with {@code
-   * SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a 6-digit
-   * fractional. Python's {@code datetime.isoformat()} drops the fractional entirely when {@code
-   * microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the strict format rejects.
+   * RFC-3339 / ISO-8601 and epoch-millisecond {@link Date} deserializer.
    *
-   * <p>This deserializer delegates everything to Jackson's normal path ({@link
-   * DeserializationContext#parseDate}, which uses the same global format) so all forms that
-   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working. The
-   * only addition is: if the value is the bare-second form, pad the fractional with {@code
-   * .000000} so the global format accepts it.
+   * <p>External producers emit valid ISO-8601 timestamps in multiple forms: Python's {@code
+   * datetime.isoformat()} emits numeric offsets and microsecond fractions ({@code
+   * "2026-09-08T08:29:49.711594+00:00"}) or drops the fraction when {@code microsecond == 0}, while
+   * JVM/Spark producers emit {@code "Z"} with millisecond, microsecond, or nanosecond precision.
+   * {@link SimpleDateFormat} treats {@code S} as milliseconds rather than fractional seconds, which
+   * both rejects numeric offsets and mis-parses 6-digit microseconds by adding hundreds of seconds.
+   *
+   * <p>This deserializer preserves JSON numbers, stringified epoch milliseconds, null/blank
+   * handling, and object/array rejection, while parsing ISO-8601 strings via immutable strict
+   * {@link DateTimeFormatter} instances and truncating sub-millisecond nanoseconds via {@link
+   * Instant#toEpochMilli()}.
    */
   public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
+    private static final int MAX_ISO_DATE_TIME_LENGTH = 64;
+
+    private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_PREFIX =
+        new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .appendValue(ChronoField.YEAR, 4, 4, SignStyle.NOT_NEGATIVE)
+            .appendLiteral('-')
+            .appendValue(ChronoField.MONTH_OF_YEAR, 2, 2, SignStyle.NOT_NEGATIVE)
+            .appendLiteral('-')
+            .appendValue(ChronoField.DAY_OF_MONTH, 2, 2, SignStyle.NOT_NEGATIVE)
+            .appendLiteral('T')
+            .appendValue(ChronoField.HOUR_OF_DAY, 2, 2, SignStyle.NOT_NEGATIVE)
+            .appendLiteral(':')
+            .appendValue(ChronoField.MINUTE_OF_HOUR, 2, 2, SignStyle.NOT_NEGATIVE)
+            .optionalStart()
+            .appendLiteral(':')
+            .appendValue(ChronoField.SECOND_OF_MINUTE, 2, 2, SignStyle.NOT_NEGATIVE)
+            .optionalStart()
+            .appendFraction(ChronoField.NANO_OF_SECOND, 1, 9, true)
+            .optionalEnd()
+            .optionalEnd()
+            .toFormatter(Locale.ROOT);
+
+    private static final DateTimeFormatter ISO_DATE_TIME_COLON_OFFSET =
+        new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(ISO_LOCAL_DATE_TIME_PREFIX)
+            .appendOffset("+HH:mm:ss", "Z")
+            .toFormatter(Locale.ROOT)
+            .withResolverStyle(ResolverStyle.STRICT);
+
+    private static final DateTimeFormatter ISO_DATE_TIME_COMPACT_OFFSET =
+        new DateTimeFormatterBuilder()
+            .parseCaseInsensitive()
+            .append(ISO_LOCAL_DATE_TIME_PREFIX)
+            .appendOffset("+HHmmss", "Z")
+            .toFormatter(Locale.ROOT)
+            .withResolverStyle(ResolverStyle.STRICT);
+
     @Override
     public Date deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
       com.fasterxml.jackson.core.JsonToken t = p.currentToken();
@@ -1138,21 +1186,43 @@ public final class JsonUtils {
       if (trimmed.isEmpty()) {
         return null;
       }
+      if (trimmed.length() > MAX_ISO_DATE_TIME_LENGTH) {
+        return (Date)
+            ctxt.handleWeirdStringValue(
+                Date.class,
+                value,
+                "Expected ISO-8601 date-time (exceeds %d characters)",
+                MAX_ISO_DATE_TIME_LENGTH);
+      }
       if (looksLikeEpochMillis(trimmed)) {
         try {
           return new Date(Long.parseLong(trimmed));
         } catch (NumberFormatException ignored) {
-          // fall through to date parsing
+          // fall through to date parsing so out-of-range 19-digit numbers fail cleanly
         }
       }
-      String normalized = padBareSecondIso(trimmed);
       try {
-        return ctxt.parseDate(normalized);
-      } catch (IllegalArgumentException e) {
+        Instant instant = parseIsoInstant(trimmed);
+        return new Date(instant.toEpochMilli());
+      } catch (DateTimeException | ArithmeticException e) {
         return (Date)
             ctxt.handleWeirdStringValue(
                 Date.class, value, "Expected ISO-8601 date-time: %s", e.getMessage());
       }
+    }
+
+    private static Instant parseIsoInstant(String s) {
+      int tIndex = Math.max(s.indexOf('T'), s.indexOf('t'));
+      int signIndex = -1;
+      if (tIndex >= 0) {
+        int plus = s.indexOf('+', tIndex + 1);
+        int minus = s.indexOf('-', tIndex + 1);
+        signIndex = (plus >= 0 && minus >= 0) ? Math.min(plus, minus) : Math.max(plus, minus);
+      }
+      boolean compactOffset = signIndex >= 0 && s.indexOf(':', signIndex + 1) < 0;
+      DateTimeFormatter formatter =
+          compactOffset ? ISO_DATE_TIME_COMPACT_OFFSET : ISO_DATE_TIME_COLON_OFFSET;
+      return formatter.parse(s, Instant::from);
     }
 
     private static boolean looksLikeEpochMillis(String s) {
@@ -1170,21 +1240,6 @@ public final class JsonUtils {
         }
       }
       return true;
-    }
-
-    /**
-     * If {@code value} matches the bare-second ISO form {@code "yyyy-MM-ddTHH:mm:ssZ"}, pad
-     * the fractional with six zeros so the global SimpleDateFormat ({@code "…SSSSSS'Z'"})
-     * accepts it. Otherwise return the input unchanged.
-     */
-    private static String padBareSecondIso(String value) {
-      if (value.length() != 20 || !value.endsWith("Z")) {
-        return value;
-      }
-      if (value.charAt(10) != 'T' || value.charAt(13) != ':' || value.charAt(16) != ':') {
-        return value;
-      }
-      return value.substring(0, 19) + ".000000Z";
     }
   }
 }

@@ -50,6 +50,7 @@ import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.LineageDetails;
+import org.openmetadata.schema.utils.JsonUtils;
 
 @ExtendWith(MockitoExtension.class)
 class OpenLineageMapperTest {
@@ -774,6 +775,48 @@ class OpenLineageMapperTest {
 
     assertEquals(1, result.size());
     assertNull(result.get(0).getEdge().getLineageDetails().getColumnsLineage());
+  }
+
+  @Test
+  void mapRunEvent_airflowUtcOffsetAndSparkMicrosecondEventTimes_resolveExactEpochMillis() {
+    EntityReference inputRef = createEntityReference("i1", "svc.db.schema.input_table");
+    EntityReference outputRef = createEntityReference("o1", "svc.db.schema.output_table");
+    when(entityResolver.resolveDataset(any(OpenLineageOutputDataset.class), eq(UPDATED_BY)))
+        .thenReturn(dataset(outputRef));
+    when(entityResolver.resolveDataset(any(OpenLineageInputDataset.class), eq(UPDATED_BY)))
+        .thenReturn(dataset(inputRef));
+    when(entityResolver.resolvePipeline(anyString(), anyString())).thenReturn(pipeline(null));
+
+    long expectedEpochMillis = 1788856189711L; // 2026-09-08T08:29:49.711Z
+    for (String eventTime :
+        List.of(
+            "2026-09-08T08:29:49.711594+00:00",
+            "2026-09-08T08:29:49.711594Z",
+            "2026-09-08T13:59:49.711594+05:30")) {
+      String payload =
+          """
+          {
+            "eventType": "COMPLETE",
+            "eventTime": "%s",
+            "run": { "runId": "%s" },
+            "job": { "namespace": "airflow-ns", "name": "daily_orders" },
+            "inputs": [{ "namespace": "ns", "name": "input_table" }],
+            "outputs": [{ "namespace": "ns", "name": "output_table" }],
+            "producer": "https://github.com/apache/airflow",
+            "schemaURL": "https://openlineage.io/spec/2-0-2/OpenLineage.json"
+          }
+          """
+              .formatted(eventTime, UUID.randomUUID());
+
+      OpenLineageRunEvent decoded = JsonUtils.readValue(payload, OpenLineageRunEvent.class);
+      assertEquals(expectedEpochMillis, decoded.getEventTime().getTime(), eventTime);
+
+      List<AddLineage> edges = mapper.mapRunEvent(decoded, UPDATED_BY).lineageRequests();
+      assertEquals(1, edges.size(), eventTime);
+      LineageDetails details = edges.get(0).getEdge().getLineageDetails();
+      assertEquals(expectedEpochMillis, details.getCreatedAt(), eventTime);
+      assertEquals(expectedEpochMillis, details.getUpdatedAt(), eventTime);
+    }
   }
 
   // Helper methods
