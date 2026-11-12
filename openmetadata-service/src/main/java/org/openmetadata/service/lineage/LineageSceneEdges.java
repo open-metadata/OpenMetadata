@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.lineage;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrDefault;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.lineage.LineageSceneLoader.upstreamEdgeMap;
 import static org.openmetadata.service.lineage.LineageSceneMapper.firstNonBlank;
@@ -376,6 +377,7 @@ final class LineageSceneEdges {
     private final boolean rollup;
     private final List<String> underlyingEdgeIds = new ArrayList<>();
     private final Set<String> seenEdgeIdentities = new LinkedHashSet<>();
+    private int assetEdgeCount;
     private String source;
     private String sqlQuery;
     private String description;
@@ -392,6 +394,7 @@ final class LineageSceneEdges {
       if (seenEdgeIdentities.add(concreteEdgeIdentity(edge))) {
         String identity = firstNonBlank(edge.getDocUniqueId(), edge.getDocId());
         underlyingEdgeIds.add(nullOrEmpty(identity) ? concreteEdgeIdentity(edge) : identity);
+        assetEdgeCount += assetEdgesOf(edge);
         source = firstNonBlank(source, edge.getSource());
         sqlQuery = firstNonBlank(sqlQuery, edge.getSqlQuery());
         description = firstNonBlank(description, edge.getDescription());
@@ -399,6 +402,12 @@ final class LineageSceneEdges {
           pipeline = entityReferenceValue(edge.getPipeline());
         }
       }
+    }
+
+    // A stored container edge carries the number of asset edges it stands for, so an admin
+    // root and a non-admin rollup of the same asset edges report the same weight.
+    private static int assetEdgesOf(EsLineageData edge) {
+      return Math.max(1, nullOrDefault(edge.getAssetEdges(), 1));
     }
 
     private static String concreteEdgeIdentity(EsLineageData edge) {
@@ -417,7 +426,8 @@ final class LineageSceneEdges {
     }
 
     LineageSceneEdge toSceneEdge() {
-      int weight = Math.max(1, underlyingEdgeIds.size());
+      int weight = Math.max(1, assetEdgeCount);
+      boolean isSingleEdge = weight == 1;
       return new LineageSceneEdge()
           .withId("scene-edge:" + from + "->" + to + ":" + band.value())
           .withFrom(from)
@@ -426,10 +436,10 @@ final class LineageSceneEdges {
           .withIsRollup(rollup || weight > 1)
           .withWeight(weight)
           .withLabel(weight > 1 ? String.valueOf(weight) : null)
-          .withSource(source)
-          .withSqlQuery(sqlQuery)
-          .withDescription(weight == 1 ? description : null)
-          .withPipeline(weight == 1 ? pipeline : null)
+          .withSource(isSingleEdge ? source : null)
+          .withSqlQuery(isSingleEdge ? sqlQuery : null)
+          .withDescription(isSingleEdge ? description : null)
+          .withPipeline(isSingleEdge ? pipeline : null)
           .withUnderlyingEdgeIds(underlyingEdgeIds);
     }
   }

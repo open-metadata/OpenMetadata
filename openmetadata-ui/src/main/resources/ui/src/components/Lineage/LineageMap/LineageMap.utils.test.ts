@@ -38,6 +38,7 @@ import {
   getRailDrillFallbackNode,
   getRailStop,
   getRailStopLabelKey,
+  getSceneCountLabel,
   getSceneFocus,
   getSceneLandingViewport,
   getSceneLevelLabelKey,
@@ -48,6 +49,7 @@ import {
   getSceneSearch,
   getScreenFill,
   getSemanticZoomDirection,
+  isSceneEmpty,
   isSceneNodeDrillableWithChildren,
   type SceneLayoutBox,
 } from './LineageMap.utils';
@@ -594,6 +596,19 @@ describe('LineageMap utils', () => {
     );
   });
 
+  it('leaves a sibling input of a downstream node off the hovered path', () => {
+    const index = buildLineagePathHighlightIndex([
+      { id: 'product-to-orders', source: 'product', target: 'orders' },
+      { id: 'enriched-to-orders', source: 'enriched', target: 'orders' },
+      { id: 'raw-to-enriched', source: 'raw', target: 'enriched' },
+    ]);
+
+    const highlight = getConnectedLineagePathHighlight('product', index);
+
+    expect(highlight?.edgeIds).toEqual(new Set(['product-to-orders']));
+    expect(highlight?.nodeIds).toEqual(new Set(['product', 'orders']));
+  });
+
   it('does not build a path highlight without a hovered node', () => {
     const index = buildLineagePathHighlightIndex([
       { id: 'asset-a-to-asset-b', source: 'asset-a', target: 'asset-b' },
@@ -1065,6 +1080,23 @@ describe('scene landing viewport', () => {
     expect(12 * viewport.zoom + viewport.y).toBeCloseTo(canvas.height * inset);
   });
 
+  it('keeps the top of a focus taller than the canvas below the fit inset', () => {
+    const fields = Array.from({ length: 30 }, (_, index) =>
+      box(1452, 1200 + index * 131, { isFocus: true })
+    );
+
+    const viewport = getSceneLandingViewport(
+      [...schemaScene, ...fields],
+      canvas,
+      minZoom,
+      padding
+    ) as Viewport;
+
+    expect(1200 * viewport.zoom + viewport.y).toBeCloseTo(
+      canvas.height * inset
+    );
+  });
+
   it('centres the origin node of a scene too big to fit, and the focus node over it', () => {
     const origin = box(2412, 2600, { isOrigin: true });
     const focus = box(1452, 1200, { isFocus: true });
@@ -1155,5 +1187,46 @@ describe('getLineageMapEmptyState', () => {
     expect(getLineageMapEmptyState({ loading: false, hasError: false })).toBe(
       'empty'
     );
+  });
+});
+
+describe('scene status helpers', () => {
+  it('treats a scene holding only its focus card as empty', () => {
+    const focusOnly = createScene(LineageBand.Asset, [LineageLevelKind.Table]);
+    focusOnly.nodes[0].isFocus = true;
+
+    expect(isSceneEmpty(createScene(LineageBand.Asset, []))).toBe(true);
+    expect(isSceneEmpty(focusOnly)).toBe(true);
+    expect(
+      isSceneEmpty(
+        createScene(LineageBand.Asset, [
+          LineageLevelKind.Table,
+          LineageLevelKind.Table,
+        ])
+      )
+    ).toBe(false);
+  });
+
+  it('counts a scene of one kind by that kind, and a mixed scene as assets', () => {
+    expect(
+      getSceneCountLabel(
+        t,
+        createScene(LineageBand.Layer, [
+          LineageLevelKind.Service,
+          LineageLevelKind.Service,
+        ]),
+        2
+      )
+    ).toBe('label.service-plural');
+    expect(
+      getSceneCountLabel(
+        t,
+        createScene(LineageBand.Asset, [
+          LineageLevelKind.Table,
+          LineageLevelKind.Topic,
+        ]),
+        2
+      )
+    ).toBe('assets');
   });
 });

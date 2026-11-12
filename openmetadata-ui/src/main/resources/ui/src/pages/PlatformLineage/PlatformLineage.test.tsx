@@ -283,6 +283,29 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => ({
   ),
 }));
 
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => <div>{title}</div>,
+}));
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () => ({
+    __esModule: true,
+    default: ({ onReload }: { onReload: () => void }) => (
+      <button onClick={onReload}>label.reload</button>
+    ),
+  })
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () => ({
+    __esModule: true,
+    default: () => <div>permission-placeholder</div>,
+  })
+);
+
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="loader">Loading</div>),
@@ -795,6 +818,58 @@ describe('PlatformLineage Component Logic', () => {
   });
 
   describe('Conditional Rendering Logic', () => {
+    it('says the entity was not found only when its fetch returns 404', async () => {
+      mockGetEntityAPIfromSource.mockRejectedValue({
+        response: { status: 404 },
+      });
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      expect(
+        await screen.findByText('message.no-entity-found-for-name')
+      ).toBeInTheDocument();
+      expect(mockLineage).not.toHaveBeenCalled();
+    });
+
+    it('shows the permission placeholder, with no reload, when viewing the entity is denied', async () => {
+      mockGetEntityAPIfromSource.mockRejectedValue({
+        response: { status: 403 },
+      });
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      expect(
+        await screen.findByText('permission-placeholder')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'label.reload' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers a reload, not "not found", when the entity fetch fails otherwise', async () => {
+      mockGetEntityAPIfromSource.mockRejectedValueOnce({
+        response: { status: 500 },
+      });
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      const reload = await screen.findByRole('button', {
+        name: 'label.reload',
+      });
+
+      expect(
+        screen.queryByText('message.no-entity-found-for-name')
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        reload.click();
+      });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenCalled();
+      });
+    });
+
     it('should render loader while loading=true', async () => {
       mockGetEntityAPIfromSource.mockImplementation(
         () =>
@@ -888,9 +963,29 @@ describe('PlatformLineage Component Logic', () => {
         },
       });
 
-      expect(mockNavigate).toHaveBeenCalledWith(
-        `/lineage/table/${encodeURIComponent('svc.db."orders & returns"')}`
-      );
+      expect(mockNavigate).toHaveBeenCalledWith({
+        pathname: `/lineage/table/${encodeURIComponent(
+          'svc.db."orders & returns"'
+        )}`,
+        search: '',
+      });
+    });
+
+    it('opens a picked domain on the domain lens', async () => {
+      await selectFromSearch({
+        displayName: 'Sales',
+        value: 'Sales',
+        reference: {
+          id: 'sales-id',
+          type: EntityType.DOMAIN,
+          fullyQualifiedName: 'Sales',
+        },
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith({
+        pathname: '/lineage/domain/Sales',
+        search: '?lineageLens=domain',
+      });
     });
 
     it('stays on the current lineage when the selection is cleared', async () => {

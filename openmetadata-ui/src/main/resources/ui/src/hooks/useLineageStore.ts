@@ -32,6 +32,7 @@ import type {
 import type { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 import type { SourceType } from '../interface/source.interface';
 import { LineagePlatformView, LineageTimeRange } from './lineage/types';
+import { useApplicationStore } from './useApplicationStore';
 
 interface LineageState {
   // state properties
@@ -154,6 +155,22 @@ const defaultLineageSettings = {
   downstreamDepth: 3,
   nodesPerLayer: 50,
   pipelineViewMode: PipelineViewMode.Node,
+};
+
+// Reset reseeds from the saved Lineage settings, not the hard-coded defaults:
+// the next lineage view would otherwise fetch once at 3/3 and again once its
+// own effect applies the saved depths.
+const getSavedLineageConfig = (): LineageConfig => {
+  const saved = useApplicationStore.getState().appPreferences?.lineageConfig;
+
+  return saved
+    ? {
+        upstreamDepth: saved.upstreamDepth,
+        downstreamDepth: saved.downstreamDepth,
+        pipelineViewMode: saved.pipelineViewMode,
+        nodesPerLayer: defaultLineageSettings.nodesPerLayer,
+      }
+    : defaultLineageSettings;
 };
 
 export const useLineageStore = create<LineageState>((set, get) => ({
@@ -323,7 +340,7 @@ export const useLineageStore = create<LineageState>((set, get) => ({
   reset: () =>
     set({
       canEditLineage: false,
-      lineageConfig: defaultLineageSettings,
+      lineageConfig: getSavedLineageConfig(),
       tracedColumns: new Set(),
       tracedNodes: new Set(),
       zoomValue: ZOOM_VALUE,

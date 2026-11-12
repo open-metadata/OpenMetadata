@@ -286,9 +286,14 @@ interface LineageFieldPathConnection {
   nodeId: string;
 }
 
+interface LineageNodePathConnection {
+  edgeId: string;
+  nodeId: string;
+}
+
 export interface LineagePathHighlightIndex {
-  edgeIdsByNodeId: Map<string, Set<string>>;
-  adjacentNodeIdsByNodeId: Map<string, Set<string>>;
+  incomingConnectionsByNodeId: Map<string, LineageNodePathConnection[]>;
+  outgoingConnectionsByNodeId: Map<string, LineageNodePathConnection[]>;
   incomingFieldConnectionsByFieldId: Map<string, LineageFieldPathConnection[]>;
   outgoingFieldConnectionsByFieldId: Map<string, LineageFieldPathConnection[]>;
   nodeIdsByFieldId: Map<string, Set<string>>;
@@ -336,8 +341,14 @@ export const getDrilledRootBreadcrumb = (
 export const buildLineagePathHighlightIndex = (
   edges: LineagePathEdge[]
 ): LineagePathHighlightIndex => {
-  const edgeIdsByNodeId = new Map<string, Set<string>>();
-  const adjacentNodeIdsByNodeId = new Map<string, Set<string>>();
+  const incomingConnectionsByNodeId = new Map<
+    string,
+    LineageNodePathConnection[]
+  >();
+  const outgoingConnectionsByNodeId = new Map<
+    string,
+    LineageNodePathConnection[]
+  >();
   const incomingFieldConnectionsByFieldId = new Map<
     string,
     LineageFieldPathConnection[]
@@ -349,19 +360,13 @@ export const buildLineagePathHighlightIndex = (
   const nodeIdsByFieldId = new Map<string, Set<string>>();
 
   edges.forEach((edge) => {
-    [
-      [edge.source, edge.target],
-      [edge.target, edge.source],
-    ].forEach(([nodeId, adjacentNodeId]) => {
-      const edgeIds = edgeIdsByNodeId.get(nodeId) ?? new Set<string>();
-      const adjacentNodeIds =
-        adjacentNodeIdsByNodeId.get(nodeId) ?? new Set<string>();
+    const outgoing = outgoingConnectionsByNodeId.get(edge.source) ?? [];
+    const incoming = incomingConnectionsByNodeId.get(edge.target) ?? [];
 
-      edgeIds.add(edge.id);
-      adjacentNodeIds.add(adjacentNodeId);
-      edgeIdsByNodeId.set(nodeId, edgeIds);
-      adjacentNodeIdsByNodeId.set(nodeId, adjacentNodeIds);
-    });
+    outgoing.push({ edgeId: edge.id, nodeId: edge.target });
+    incoming.push({ edgeId: edge.id, nodeId: edge.source });
+    outgoingConnectionsByNodeId.set(edge.source, outgoing);
+    incomingConnectionsByNodeId.set(edge.target, incoming);
 
     if (edge.sourceHandle && edge.targetHandle) {
       const sourceNodeIds =
@@ -399,8 +404,8 @@ export const buildLineagePathHighlightIndex = (
   });
 
   return {
-    edgeIdsByNodeId,
-    adjacentNodeIdsByNodeId,
+    incomingConnectionsByNodeId,
+    outgoingConnectionsByNodeId,
     incomingFieldConnectionsByFieldId,
     outgoingFieldConnectionsByFieldId,
     nodeIdsByFieldId,
@@ -417,25 +422,34 @@ export const getConnectedLineagePathHighlight = (
 
   const edgeIds = new Set<string>();
   const nodeIds = new Set<string>([nodeId]);
-  const queue = [nodeId];
-  let queueIndex = 0;
 
-  while (queueIndex < queue.length) {
-    const currentNodeId = queue[queueIndex];
-    queueIndex += 1;
+  // Upstream and downstream are walked separately: an undirected walk would
+  // also reach a sibling input of a downstream node, which is not on this
+  // node's path.
+  const traceNodes = (
+    connectionsByNodeId: Map<string, LineageNodePathConnection[]>
+  ) => {
+    const visitedNodeIds = new Set<string>([nodeId]);
+    const queue = [nodeId];
+    let queueIndex = 0;
 
-    index.edgeIdsByNodeId
-      .get(currentNodeId)
-      ?.forEach((edgeId) => edgeIds.add(edgeId));
-    index.adjacentNodeIdsByNodeId
-      .get(currentNodeId)
-      ?.forEach((adjacentNodeId) => {
-        if (!nodeIds.has(adjacentNodeId)) {
-          nodeIds.add(adjacentNodeId);
-          queue.push(adjacentNodeId);
+    while (queueIndex < queue.length) {
+      const currentNodeId = queue[queueIndex];
+      queueIndex += 1;
+
+      connectionsByNodeId.get(currentNodeId)?.forEach((connection) => {
+        edgeIds.add(connection.edgeId);
+        nodeIds.add(connection.nodeId);
+        if (!visitedNodeIds.has(connection.nodeId)) {
+          visitedNodeIds.add(connection.nodeId);
+          queue.push(connection.nodeId);
         }
       });
-  }
+    }
+  };
+
+  traceNodes(index.outgoingConnectionsByNodeId);
+  traceNodes(index.incomingConnectionsByNodeId);
 
   return {
     edgeIds,
@@ -494,6 +508,10 @@ export const getConnectedFieldLineagePathHighlight = (
   };
 };
 
+/**
+ * What the truncation notice counts: the one kind of card the scene shows
+ * (services at the root, tables in a schema), else assets.
+ */
 const getLowercaseLabel = (
   t: TFunction,
   levelKind: LineageLevelKind,
@@ -504,6 +522,21 @@ const getLowercaseLabel = (
   return t(
     count === 1 ? labelKeys.singular : labelKeys.plural
   ).toLocaleLowerCase();
+};
+
+export const getSceneCountLabel = (
+  t: TFunction,
+  scene: LineageScene,
+  count: number
+): string => {
+  const kinds = new Set(
+    scene.nodes.filter((node) => !node.isGhost).map((node) => node.levelKind)
+  );
+  const [onlyKind] = kinds;
+
+  return kinds.size === 1 && onlyKind
+    ? getLowercaseLabel(t, onlyKind, count)
+    : t('label.asset-plural').toLocaleLowerCase();
 };
 
 export const isContainerSceneNode = (node: LineageSceneNode) =>
@@ -602,6 +635,15 @@ export const LINEAGE_MAP_RAIL_STOPS = [
 ];
 
 export type LineageMapEmptyState = 'loading' | 'error' | 'empty';
+
+/**
+ * A scene holding only the focused entity, with no edges, has no lineage to
+ * show; the focus is always returned, so the node count alone cannot tell.
+ */
+export const isSceneEmpty = (scene: LineageScene): boolean =>
+  scene.nodes.length === 0 ||
+  (scene.edges.length === 0 &&
+    scene.nodes.every((node) => node.isFocus || node.isOrigin));
 
 /** Which placeholder the map shows while it has no nodes to draw. */
 export const getLineageMapEmptyState = ({
@@ -943,16 +985,25 @@ export const getSceneLandingViewport = (
     return undefined;
   }
 
+  const inset = padding / (2 * (1 + padding));
   const focusBoxes = boxes.filter((box) => box.isFocus);
   const rootBoxes =
     focusBoxes.length > 0 ? focusBoxes : boxes.filter((box) => box.isOrigin);
   if (rootBoxes.length > 0) {
     const rootBounds = getBoxesBounds(rootBoxes);
 
+    // A root taller or wider than the canvas (a field-level focus asset with
+    // many columns) would centre with its top under the breadcrumb, so its
+    // top-left corner never goes past the fit inset.
     return {
-      x: canvas.width / 2 - ((rootBounds.minX + rootBounds.maxX) / 2) * minZoom,
-      y:
+      x: Math.max(
+        canvas.width / 2 - ((rootBounds.minX + rootBounds.maxX) / 2) * minZoom,
+        canvas.width * inset - rootBounds.minX * minZoom
+      ),
+      y: Math.max(
         canvas.height / 2 - ((rootBounds.minY + rootBounds.maxY) / 2) * minZoom,
+        canvas.height * inset - rootBounds.minY * minZoom
+      ),
       zoom: minZoom,
     };
   }
@@ -964,7 +1015,6 @@ export const getSceneLandingViewport = (
       box.x < first.x || (box.x === first.x && box.y < first.y) ? box : first,
     candidates[0]
   );
-  const inset = padding / (2 * (1 + padding));
 
   return {
     x: canvas.width * inset - firstBox.x * minZoom,

@@ -37,6 +37,7 @@ import { CSMode } from '../../../enums/codemirror.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { AddLineage } from '../../../generated/api/lineage/addLineage';
 import {
+  ColumnLineage,
   EntityReference as LineagePipelineReference,
   LineageDetails,
   Source,
@@ -131,6 +132,35 @@ const getHandleOverviewItem = (
 ): OverviewDataItem | undefined =>
   handle ? { name: t(labelKey), value: getNameFromFQN(handle) } : undefined;
 
+const getColumnMappingsOverviewItem = (
+  columns: ColumnLineage[] | undefined,
+  isColumnLineage: boolean,
+  t: TFunction
+): OverviewDataItem | undefined => {
+  const mappings = (columns ?? [])
+    .filter((column) => column.toColumn && column.fromColumns?.length)
+    .map(
+      (column) =>
+        `${(column.fromColumns ?? [])
+          .map(getNameFromFQN)
+          .join(', ')} → ${getNameFromFQN(column.toColumn ?? '')}`
+    );
+
+  return isColumnLineage || mappings.length === 0
+    ? undefined
+    : { name: t('label.column-plural'), value: mappings.join('; ') };
+};
+
+// A rollup edge stands for several lineage edges, so its drawer says how many
+// rather than reading as one of them.
+const getRollupOverviewItem = (
+  weight: number | undefined,
+  t: TFunction
+): OverviewDataItem | undefined =>
+  weight && weight > 1
+    ? { name: t('label.edge-plural'), value: String(weight) }
+    : undefined;
+
 const getPipelineOverviewItem = (
   pipeline: LineagePipelineReference | undefined,
   pipelineEntityType: string | undefined,
@@ -188,6 +218,12 @@ const buildEdgeOverviewData = (
     getHandleOverviewItem(sourceHandle, 'label.source-column', t),
     getTargetOverviewItem(targetData, t),
     getHandleOverviewItem(targetHandle, 'label.target-column', t),
+    getRollupOverviewItem(data?.weight, t),
+    getColumnMappingsOverviewItem(
+      data?.edge?.columns,
+      Boolean(data?.isColumnLineage),
+      t
+    ),
     getPipelineOverviewItem(pipeline, pipelineEntityType, t),
     getCreatedByOverviewItem(edgeInfo, t),
     getUpdatedByOverviewItem(edgeInfo, t),

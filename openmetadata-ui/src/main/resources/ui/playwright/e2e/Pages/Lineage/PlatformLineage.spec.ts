@@ -22,13 +22,16 @@ import {
   redirectToHomePage,
   uuid,
 } from '../../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
+  connectEdgeBetweenNodesViaAPI,
   dismissLineageMapOnboarding,
   expectLineageNodeVisible,
   performZoomOut,
   verifyExportLineagePNG,
   visitLineageTab,
 } from '../../../utils/lineage';
+import { waitForAggregation } from '../../../utils/searchAggregation';
 import { sidebarClick } from '../../../utils/sidebar';
 import { waitForResponseWithStatus } from '../../../utils/waitHelpers';
 import { test } from '../../fixtures/pages';
@@ -47,15 +50,25 @@ const waitForPlatformViewLineage = (page: Page, fqn: string) =>
 // lineage scene draws every table and edge other specs put under the shared
 // database, and there the scene request failed or this table's schema node
 // never rendered.
+const WIDE_SERVICE_FQN = 'pw_wide_svc';
 const tableNameWithSlash = `pw-table-with/slash-${uuid()}`;
 const table = new TableClass({
   name: tableNameWithSlash,
   database: new DatabaseClass(),
 });
+// A focused table with no lineage is an empty scene, so the zoom tests need a
+// real edge to land on a card.
+const upstreamTable = new TableClass();
 
 test.beforeAll(async ({ browser }) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
   await table.create(apiContext);
+  await upstreamTable.create(apiContext);
+  await connectEdgeBetweenNodesViaAPI(
+    apiContext,
+    { id: upstreamTable.entityResponseData.id, type: 'table' },
+    { id: table.entityResponseData.id, type: 'table' }
+  );
 
   await table.patch({
     apiContext,
@@ -78,6 +91,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async ({ browser }) => {
   const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
+  await upstreamTable.delete(apiContext);
   await table.delete(apiContext);
   await afterAction();
 });
@@ -87,6 +101,43 @@ test.describe('Entity Lineage tab', () => {
     await table.visitEntityPage(page);
     await visitLineageTab(page);
     await performZoomOut(page);
+  });
+
+  test('A quick filter set on the Lineage tab does not reach the map', async ({
+    page,
+  }) => {
+    // Regression: the tab resets its quick filters only after the map's first
+    // render, and the map's first request still carried the tab's filter.
+    const serviceName = get(table, 'entityResponseData.service.name', '');
+    await page.locator('[aria-label="Filters"]').click();
+    await page.getByTestId('search-dropdown-Service').click();
+    const menu = page.getByTestId('drop-down-menu');
+    await waitForAllLoadersToDisappear(menu);
+    const searchResponse = waitForAggregation(page, {
+      field: 'service.displayName.keyword',
+      value: serviceName,
+    });
+    await menu.getByTestId('search-input').fill(serviceName);
+    await searchResponse;
+    await menu.getByText(serviceName).click();
+    await page.getByTestId('update-btn').click();
+    await expect(page.getByTestId('update-btn')).toBeHidden();
+
+    const sceneFilters: Array<string | null> = [];
+    page.on('request', (request) => {
+      const url = new URL(request.url());
+      if (url.pathname.endsWith('/api/v1/lineage/scene')) {
+        sceneFilters.push(url.searchParams.get('query_filter'));
+      }
+    });
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    await dismissLineageMapOnboarding(page);
+    await expect(page.getByTestId('lineage-map-canvas')).toBeVisible();
+
+    // The map's own request and its adjacent-band prefetch.
+    await expect.poll(() => sceneFilters.length).toBeGreaterThanOrEqual(2);
+
+    expect(sceneFilters.filter(Boolean)).toEqual([]);
   });
 
   test(
@@ -388,6 +439,9 @@ test.describe('Platform Lineage page (/lineage)', () => {
     const placeholder = page.getByTestId('empty-placeholder');
     await expect(placeholder).toBeVisible();
     await expect(placeholder).toContainText('No lineage data available');
+    // A first visit can land on an empty scene; the map's introduction still
+    // opens there.
+    await dismissLineageMapOnboarding(page);
 
     const canvas = await page.getByTestId('lineage-container').boundingBox();
     const box = await placeholder.boundingBox();
@@ -421,6 +475,38 @@ test.describe('Platform Lineage page (/lineage)', () => {
     );
     await retry.click();
     await refetch;
+  });
+
+  test('A failed request after a scene is shown replaces it with a reload', async ({
+    page,
+  }) => {
+    // Regression: the previous scene stayed on screen under the new lens, with
+    // only a small error pill and no way to retry.
+    await redirectToHomePage(page);
+    const serviceScene = page.waitForResponse(
+      (response) =>
+        new URL(response.url()).pathname.endsWith('/api/v1/lineage/scene') &&
+        new URL(response.url()).searchParams.get('lens') === 'service'
+    );
+    await sidebarClick(page, SidebarItem.LINEAGE);
+    expect((await serviceScene).ok()).toBeTruthy();
+    await dismissLineageMapOnboarding(page);
+    await expect(page.getByTestId('lineage-map-canvas')).toBeVisible();
+
+    await page.route('**/api/v1/lineage/scene?*', (route) =>
+      new URL(route.request().url()).searchParams.get('lens') === 'domain'
+        ? route.fulfill({ status: 500, json: { message: 'Scene unavailable' } })
+        : route.fallback()
+    );
+    await page.getByTestId('lineage-layer-btn').click();
+    await page.getByTestId('lineage-layer-lens-domain').click();
+
+    const placeholder = page.getByTestId('empty-placeholder');
+    await expect(placeholder).toContainText('Something went wrong');
+    await expect(
+      placeholder.getByRole('button', { name: 'Reload' })
+    ).toBeVisible();
+    await expect(page.getByTestId('lineage-map-canvas')).toHaveCount(0);
   });
 
   test('Zooming in quickly past the maximum zoom still drills into the card', async ({
@@ -457,5 +543,104 @@ test.describe('Platform Lineage page (/lineage)', () => {
     }
 
     await expect(page).toHaveURL(/lineageBand=FIELD/);
+  });
+
+  // A service whose databases form a chain far too wide to fit: a Layer scene
+  // that big lands at the minimum zoom, and the only way out by zooming out is
+  // the min-zoom gesture, never the "graph fills under a third" rule.
+  const routeWideServiceScene = (page: Page) =>
+    page.route('**/api/v1/lineage/scene?*', (route) => {
+      const params = new URL(route.request().url()).searchParams;
+      const isService = params.get('focusFqn') === WIDE_SERVICE_FQN;
+      const crumb = (
+        label: string,
+        fullyQualifiedName?: string,
+        entityType?: string
+      ) => ({
+        id: `service-${label}`,
+        label,
+        levelKind: 'service',
+        band: 'LAYER',
+        fullyQualifiedName,
+        entityType,
+      });
+
+      return route.fulfill({
+        json: {
+          lens: 'service',
+          band: 'LAYER',
+          focusFqn: params.get('focusFqn') ?? undefined,
+          focusEntityType: params.get('entityType') ?? undefined,
+          nodes: isService
+            ? Array.from({ length: 150 }, (_, index) => ({
+                id: `pw-wide-${index}`,
+                label: `pw_wide_${index}`,
+                levelKind: 'database',
+                band: 'LAYER',
+                fullyQualifiedName: `${WIDE_SERVICE_FQN}.pw_wide_${index}`,
+                entityType: 'database',
+              }))
+            : [],
+          edges: isService
+            ? Array.from({ length: 149 }, (_, index) => ({
+                id: `pw-wide-edge-${index}`,
+                from: `pw-wide-${index}`,
+                to: `pw-wide-${index + 1}`,
+                weight: 1,
+              }))
+            : [],
+          breadcrumb: isService
+            ? [
+                crumb('service'),
+                crumb(WIDE_SERVICE_FQN, WIDE_SERVICE_FQN, 'databaseService'),
+              ]
+            : [crumb('service')],
+          hiddenNodeCount: 0,
+          sampled: false,
+        },
+      });
+    });
+
+  const openWideServiceAtMinimumZoom = async (page: Page) => {
+    await routeWideServiceScene(page);
+    await redirectToHomePage(page);
+    await page.goto(
+      `/lineage?lineageLens=service&lineageBand=LAYER&lineageFocus=${WIDE_SERVICE_FQN}&lineageEntityType=databaseService`
+    );
+    await dismissLineageMapOnboarding(page);
+    await expect(page.getByTestId('lineage-map-canvas')).toBeVisible();
+    await expect(page.getByTestId('zoom-level')).toHaveText('10%');
+    await expect(page).toHaveURL(/lineageFocus=/);
+  };
+
+  test('The zoom-out button at the minimum zoom goes up to the parent level', async ({
+    page,
+  }) => {
+    await openWideServiceAtMinimumZoom(page);
+
+    // The retry also outlasts the map ignoring semantic zoom right after a fit.
+    await expect(async () => {
+      await page.getByTestId('zoom-out').click();
+
+      await expect(page).not.toHaveURL(/lineageFocus=/, { timeout: 1000 });
+    }).toPass({ timeout: 30_000 });
+  });
+
+  test('A wheel step down over the canvas at the minimum zoom goes up to the parent level', async ({
+    page,
+  }) => {
+    await openWideServiceAtMinimumZoom(page);
+    const pane = await page.locator('.react-flow__pane').boundingBox();
+    expect(pane).not.toBeNull();
+    await page.mouse.move(
+      (pane?.x ?? 0) + (pane?.width ?? 0) / 2,
+      (pane?.y ?? 0) + (pane?.height ?? 0) / 2
+    );
+
+    await expect(async () => {
+      await page.mouse.wheel(0, 100);
+
+      await expect(page).not.toHaveURL(/lineageFocus=/, { timeout: 1000 });
+    }).toPass({ timeout: 30_000 });
   });
 });

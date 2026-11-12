@@ -26,6 +26,9 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
+import NoDataPlaceholder from '../../components/common/EmptyPlaceholder/NoDataPlaceholder';
+import PermissionPlaceholder from '../../components/common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import Loader from '../../components/common/Loader/Loader';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
 import DataAssetAsyncSelectList from '../../components/DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList';
@@ -57,10 +60,15 @@ import { LineageConfig } from '../../interface/lineage.interface';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import { getNameFromFQN } from '../../utils/FqnUtils';
 import { getEncodedFqn } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './platform-lineage.less';
+import {
+  ENTITY_LOAD_ERRORS,
+  LENS_BY_ENTITY_TYPE,
+} from './PlatformLineage.constants';
 
 const LINEAGE_SEARCH_INDEXES = [
   SearchIndex.DATA_ASSET,
@@ -77,6 +85,9 @@ const PlatformLineage = () => {
   const { fqn: decodedFqn } = useFqn();
   const [selectedEntity, setSelectedEntity] = useState<SourceType>();
   const [isEntityLoading, setIsEntityLoading] = useState(false);
+  const [entityLoadError, setEntityLoadError] = useState<
+    'missing' | 'denied' | 'failed'
+  >();
   // Config lives in the Zustand store — Lineage's fetch effect depends on
   // it, so writing here triggers a refetch. Local useState here would leave
   // the store untouched and the depth change would never reach the network.
@@ -114,15 +125,22 @@ const PlatformLineage = () => {
 
   // The header names the lens the map is drawn through, read the same way
   // the map reads it.
-  const { lens } = getSceneRequestFromSearch(location.search, {}, true);
+  const { lens, focusFqn } = getSceneRequestFromSearch(
+    location.search,
+    {},
+    true
+  );
 
   const handleEntitySelect = useCallback(
     (value: EntityReference) => {
-      void navigate(
-        `/lineage/${(value as SourceType).entityType}/${getEncodedFqn(
+      const selectedType = (value as SourceType).entityType as EntityType;
+      const lineageLens = LENS_BY_ENTITY_TYPE[selectedType];
+      void navigate({
+        pathname: `/lineage/${selectedType}/${getEncodedFqn(
           value.fullyQualifiedName ?? ''
-        )}`
-      );
+        )}`,
+        search: lineageLens ? `?lineageLens=${lineageLens}` : '',
+      });
     },
     [navigate]
   );
@@ -140,9 +158,10 @@ const PlatformLineage = () => {
   );
 
   const init = useCallback(async () => {
+    // A stale entity would keep the previous map and title on screen.
+    setSelectedEntity(undefined);
+    setEntityLoadError(undefined);
     if (!decodedFqn || !entityType) {
-      setSelectedEntity(undefined);
-
       return;
     }
 
@@ -152,12 +171,12 @@ const PlatformLineage = () => {
         entityType as AssetsUnion
       )(decodedFqn);
       setSelectedEntity(entityResponse);
-    } catch {
-      // Old code awaited this via Promise.allSettled alongside the permission fetch, so a
-      // rejection (or a synchronous throw from an unsupported entityType) never reached a
-      // showErrorToast call — a settled 'rejected' result just left selectedEntity
-      // unset. Preserve that silently; permission-fetch errors now surface
-      // separately via the hook's own effect above.
+    } catch (error) {
+      // Permission-fetch errors surface through the hook's own effect above.
+      setEntityLoadError(
+        ENTITY_LOAD_ERRORS[(error as AxiosError).response?.status ?? 0] ??
+          'failed'
+      );
     } finally {
       setIsEntityLoading(false);
     }
@@ -181,6 +200,20 @@ const PlatformLineage = () => {
 
   const isAiMode = useIsAiMode();
 
+  // The header names what the map is focused on, which moves with breadcrumb
+  // and lens changes while the URL path keeps the entity the page opened on.
+  const searchPlaceholder = useMemo(() => {
+    if (focusFqn && focusFqn !== decodedFqn) {
+      return getNameFromFQN(focusFqn);
+    }
+
+    return selectedEntity
+      ? getEntityName(selectedEntity)
+      : t('label.search-entity-for-lineage', {
+          entity: t('label.entity-lowercase'),
+        });
+  }, [focusFqn, decodedFqn, selectedEntity, t]);
+
   const searchSelect = useMemo(
     () => (
       <div
@@ -191,18 +224,14 @@ const PlatformLineage = () => {
           autoFocus={false}
           // The current entity is the placeholder, not a chip: a single-select
           // chip hides the input, so the list could not open on first click.
-          placeholder={
-            selectedEntity
-              ? getEntityName(selectedEntity)
-              : t('label.search-entity-for-lineage', { entity: 'entity' })
-          }
+          placeholder={searchPlaceholder}
           queryFilter={getLineageEntityExclusionFilter()}
           searchIndex={LINEAGE_SEARCH_INDEXES}
           onChange={handleSearchSelect}
         />
       </div>
     ),
-    [isAiMode, selectedEntity, handleSearchSelect, t]
+    [isAiMode, searchPlaceholder, handleSearchSelect]
   );
 
   // Matches the height of the search box beside them in the AI header.
@@ -270,6 +299,39 @@ const PlatformLineage = () => {
       return <Loader />;
     }
 
+    if (entityLoadError === 'denied') {
+      return (
+        <div className="tw:relative tw:min-h-80">
+          <PermissionPlaceholder
+            permissionValue={t('label.view-entity', {
+              entity: t('label.lineage'),
+            })}
+          />
+        </div>
+      );
+    }
+
+    if (entityLoadError === 'failed') {
+      return (
+        <div className="tw:relative tw:min-h-80">
+          <SomethingWentWrongPlaceholder onReload={init} />
+        </div>
+      );
+    }
+
+    if (entityLoadError === 'missing') {
+      return (
+        <div className="tw:relative tw:min-h-80">
+          <NoDataPlaceholder
+            title={t('message.no-entity-found-for-name', {
+              entity: t('label.entity-lowercase'),
+              name: decodedFqn,
+            })}
+          />
+        </div>
+      );
+    }
+
     return (
       <Lineage
         isPlatformLineage
@@ -289,6 +351,9 @@ const PlatformLineage = () => {
   }, [
     selectedEntity,
     loading,
+    entityLoadError,
+    init,
+    t,
     canEditLineage,
     entityType,
     header,
