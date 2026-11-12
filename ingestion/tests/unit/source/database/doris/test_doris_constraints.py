@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Doris primary keys follow the table model, not the Key flag of SHOW FULL COLUMNS"""
 
+from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -97,13 +98,14 @@ def _execute(statement, *_):
     return SHOW_FULL_COLUMNS_ROWS[query.rsplit(".", 1)[-1].strip("`")]
 
 
-@pytest.fixture
-def doris_source():
+def _doris_source(threads=1):
+    config = deepcopy(DORIS_WORKFLOW_CONFIG["source"])
+    config["sourceConfig"]["config"]["threads"] = threads
     with (
         patch("metadata.ingestion.source.database.common_db_source.create_connection"),
         patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection"),
     ):
-        source = DorisSource.create(DORIS_WORKFLOW_CONFIG["source"], MagicMock())
+        source = DorisSource.create(config, MagicMock())
     source.engine.dialect = MySQLDialect()
     source.engine.connect.return_value.execute.side_effect = _execute
     context = source.context.get()
@@ -111,6 +113,11 @@ def doris_source():
     context.upsert("database", "default")
     context.upsert("database_schema", "om_verify")
     return source
+
+
+@pytest.fixture
+def doris_source():
+    return _doris_source()
 
 
 class TestPrimaryKeyConstraints:
@@ -171,6 +178,15 @@ class TestPrimaryKeyConstraints:
 
         queries = [str(call.args[0]) for call in doris_source.engine.connect.return_value.execute.call_args_list]
         assert sum("information_schema.table_options" in query for query in queries) == 1
+
+    def test_table_options_kept_for_each_thread(self):
+        """With `threads`, each worker ingests its own schema at the same time"""
+        doris_source = _doris_source(threads=2)
+        for schema_name in ("om_verify", "om_probe", "om_verify", "om_probe"):
+            doris_source.get_columns_and_constraints(schema_name, "t_uniq", "default", inspector=None)
+
+        queries = [str(call.args[0]) for call in doris_source.engine.connect.return_value.execute.call_args_list]
+        assert sum("information_schema.table_options" in query for query in queries) == 2
 
     def test_table_options_failure_keeps_tables_without_primary_keys(self, doris_source):
         """A Doris without information_schema.table_options, or a failing query, must not drop the tables"""
