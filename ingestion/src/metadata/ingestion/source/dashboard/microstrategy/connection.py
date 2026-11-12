@@ -61,9 +61,9 @@ MICROSTRATEGY_ERRORS = ErrorPack(
     ),
     when(http_status(404)).diagnose(
         "MicroStrategy Library API not found",
-        fix="Host Port must be the server root, such as https://host:port, and Library Path the name the Library "
+        fix="Host and Port must be the server root, such as https://host:port, and Library Path the name the Library "
         "app is deployed under (MicroStrategyLibrary unless it was renamed). The connector calls "
-        "<Host Port>/<Library Path>/api.",
+        "<Host and Port>/<Library Path>/api.",
     ),
     when(http_status(500, 502, 503, 504)).diagnose(
         "MicroStrategy server error",

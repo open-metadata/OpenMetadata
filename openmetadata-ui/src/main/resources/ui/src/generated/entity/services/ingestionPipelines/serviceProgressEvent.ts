@@ -5123,9 +5123,9 @@ export interface AirflowConnectionObject {
     libraryPath?: string;
     /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
-     * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
-     * `Standard (1)`. If you're using demo account for Microstrategy, it will be needed to
-     * authenticate through loginMode `8`.
+     * following authentication modes: `Standard (1)`, `Anonymous (8)`, `LDAP (16)`. Default
+     * will be `Standard (1)`. If you're using demo account for Microstrategy, it will be needed
+     * to authenticate through loginMode `8`.
      */
     loginMode?: string;
     /**

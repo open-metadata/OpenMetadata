@@ -401,7 +401,7 @@ class TestClient:
     def test_a_login_404_points_at_the_library_path(self, server):
         with (
             patch(f"{CLIENT_MODULE}.requests.post", return_value=_response(404, {"code": "ERR404"})),
-            pytest.raises(MicroStrategyApiError, match=r"HTTP 404.*check Host Port and Library Path"),
+            pytest.raises(MicroStrategyApiError, match=r"HTTP 404.*check the Host and Port and the Library Path"),
         ):
             MicroStrategyClient(_connection())
 

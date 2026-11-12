@@ -19,7 +19,7 @@ Password of the user account to connect with MicroStrategy. Not needed with the 
 $$
 
 $$section
-### Host Port $(id="hostPort")
+### Host and Port $(id="hostPort")
 
 This parameter specifies the host of the MicroStrategy instance. This should be specified as a URI string in the format http://hostname or https://hostname.
 
@@ -29,7 +29,7 @@ $$
 $$section
 ### Library Path $(id="libraryPath")
 
-Name of the MicroStrategy Library web app on the server. It defaults to `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2` for a second Library deployment. The connector calls `<Host Port>/<Library Path>/api` and builds dashboard links from `<Host Port>/<Library Path>/app`.
+Name of the MicroStrategy Library web app on the server. It defaults to `MicroStrategyLibrary`. Change it only when the Library app is deployed under another name, for example `MicroStrategyLibrary2` for a second Library deployment. The connector calls `<Host and Port>/<Library Path>/api` and builds dashboard links from `<Host and Port>/<Library Path>/app`.
 $$
 
 $$section

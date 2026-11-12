@@ -123,7 +123,7 @@ class MicroStrategyClient:
             response.raise_for_status()
         except requests.HTTPError as exc:
             hint = (
-                f"No MicroStrategy Library API at {self.library_url}/api; check Host Port and Library Path."
+                f"No MicroStrategy Library API at {self.library_url}/api; check the Host and Port and the Library Path."
                 if response.status_code == 404
                 else "Check the username, password and Login Mode (1 Standard, 8 Anonymous, 16 LDAP)."
             )
@@ -134,7 +134,7 @@ class MicroStrategyClient:
         if not token:
             raise MicroStrategyApiError(
                 f"Login answered HTTP {response.status_code} without an {AUTH_TOKEN_HEADER} header; "
-                f"check that Host Port is the server root and Library Path is the app at {self.library_url}."
+                f"check that Host and Port is the server root and Library Path is the app at {self.library_url}."
             )
         return TrackedREST(
             ClientConfig(

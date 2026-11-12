@@ -68,7 +68,7 @@ putting its path in `hostPort` produced `<path>/MicroStrategyLibrary/api` and a 
   (`DEFAULT_LIBRARY_PATH`).
 - The connector calls `<hostPort>/<libraryPath>/api` for login and every REST call, and builds
   dashboard source URLs as `<hostPort>/<libraryPath>/app/<projectId>/<dossierId>`.
-- A login that answers 404 says to check Host Port and Library Path, not the credentials.
+- A login that answers 404 says to check the Host and Port and the Library Path, not the credentials.
 
 A saved connection without `libraryPath` resolves to the URLs it used before, so no migration is
 needed. A `hostPort` that still carries a Library path is not rewritten: guessing whether a trailing
