@@ -12,6 +12,7 @@
  */
 import { createServer, Server } from 'http';
 import { AddressInfo } from 'net';
+import ontologyPacks from '../fixtures/visual/ontology-packs.json';
 import { expect, test } from '../support/fixtures/base';
 import {
   installVisualBootstrap,
@@ -268,7 +269,7 @@ test('ontology library and publication APIs use their non-entity response shapes
       await fetch('/api/v1/ontologies/visual-ontology/state')
     ).json(),
   }));
-  expect(result.library.packs).toHaveLength(6);
+  expect(result.library.packs).toHaveLength(ontologyPacks.length);
   expect(result.library.packs.map((pack: { id: string }) => pack.id)).toContain(
     'fibo'
   );
