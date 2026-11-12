@@ -180,7 +180,8 @@ export interface Connection {
      *
      * Address for your running Lightdash instance
      *
-     * Host and Port of the MicroStrategy instance.
+     * Host and Port of the MicroStrategy instance, without the Library path, such as
+     * `https://host:port`.
      *
      * Host and Port of the Qlik Cloud instance.
      *
@@ -418,6 +419,12 @@ export interface Connection {
      * The Space UUID for your Lightdash instance
      */
     spaceUUID?: string;
+    /**
+     * Path of the MicroStrategy Library web app on the server, such as `MicroStrategyLibrary`.
+     * Change it only when the Library app is deployed under another name, for example
+     * `MicroStrategyLibrary2`.
+     */
+    libraryPath?: string;
     /**
      * Login Mode for Microstrategy's REST API connection. You can authenticate with one of the
      * following authentication modes: `Standard (1)`, `Anonymous (8)`. Default will be
