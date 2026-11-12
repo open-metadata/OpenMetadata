@@ -119,6 +119,8 @@ prose and code blocks.
 | `frontend-react.md` | UI `*.{ts,tsx}` — components, hooks, state, types, and the CI lint code-rules |
 | `frontend-styling.md` | UI `*.{ts,tsx,less,css}` — `tw:` prefix, design tokens, ring→border, token-audit |
 | `component-library.md` | UI `*.{ts,tsx}` — prefer `ui-core-components`, do not add Ant Design for new work |
+| `single-source.md` | UI `*.{ts,tsx}` — search core + this repo before creating any component; one component per concept; no `FooV2`/variant forks; grep Collate before deleting exports |
+| `page-structure.md` | UI `src/pages/**` — sanctioned layouts (core `PageLayout` default; `ObservabilityPageShell`; `PageLayoutV1` legacy-only; `ResizablePanels` for splits) + `HeaderShell` + ui-core `Tabs` |
 | `frontend-performance.md` | UI `*.{ts,tsx}` — waterfalls, barrel imports, re-renders, bundle discipline |
 | `frontend-permissions.md` | UI `*.{ts,tsx}` — `useEntityPermissions` and derived flags; never read a permission key directly |
 | `frontend-a11y.md` | UI `*.{ts,tsx}` — semantics over `div`+`role`, keyboard, focus, contrast, targets |

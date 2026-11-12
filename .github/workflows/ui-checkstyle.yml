@@ -568,6 +568,13 @@ jobs:
           fi
           cat /tmp/bundle-runtime.out
 
+      # Zero-backlog gate: unused files reachable from no entry point. The
+      # backlog was cleared in #37253; this keeps it at zero. Deliberate keeps
+      # (Collate compat forwards/consumers) are documented in knip.jsonc.
+      - name: Unused files (knip)
+        working-directory: ${{ env.UI_WORKING_DIRECTORY }}
+        run: yarn knip:files
+
       - name: Antd + Less Deprecation Guard (no new debt)
         id: tw_guard
         if: steps.changed-ui-files.outputs.any_changed == 'true'

@@ -320,6 +320,17 @@ row than on many: an `EXISTS` over `JSON_TABLE` in a MySQL `UPDATE` matched zero
 
 ### UI
 
+- **No duplicate component or variant.** A new UI component implementing a concept the tree already
+  has (empty state, status badge, confirm dialog, skeleton, search input, date range, pagination —
+  the canon table is `.claude/rules/single-source.md`) is a 🔴 unless the PR says why the canonical
+  one cannot serve. The same for a copied component with a tweaked body (`FooV2`, `FooNew`): the fix
+  is a prop/variant on the original, or a core-component extension. Name the existing component in
+  the finding. A sanctioned migration's successor is done only when the old variant's importer count
+  is zero and the file is deleted.
+- **No new page scaffold.** New pages use the ui-core `PageLayout` (`ObservabilityPageShell` for
+  observability; `PageLayoutV1` only when editing an existing legacy page) with `PageLayout.Header` +
+  `HeaderBreadcrumb` + ui-core `Tabs` (`.claude/rules/page-structure.md`). A new shell/header/tab
+  mechanism is a finding.
 - **antd → core migrations keep behavior.** List each implicit antd behavior or default the call
   site relied on, and carry it over:
   - z-index: the core overlay is `z-50`, an antd drawer is 1000, so a dialog can open under a drawer;
