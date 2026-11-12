@@ -1270,6 +1270,14 @@
       "specs": []
     },
     {
+      "_comment": "This RDF JUnit fixture is not packaged into the server or browser bundle.",
+      "sources": [
+        "openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/RdfIndexAppTest.java"
+      ],
+      "projects": [],
+      "specs": []
+    },
+    {
       "_comment": "The Data Contract tab: its add/edit forms, contract cards and their utils. Every contract spec drives these forms, and the ODCS specs edit imported contracts through them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/DataContract/**",
