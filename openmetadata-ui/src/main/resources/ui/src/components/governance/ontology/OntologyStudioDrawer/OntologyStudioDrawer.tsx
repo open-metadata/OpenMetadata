@@ -27,6 +27,7 @@ interface OntologyStudioDrawerProps {
 }
 
 // 40% of the screen, as the design's drawer; never narrower than the 420px its forms need.
+// ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor
 const PANEL_WIDTH = 'tw:w-[40vw] tw:min-w-105';
 // transform-gpu makes the panel the containing block of a fixed modal portalled into it.
 const PANEL_CLASS = `${PANEL_WIDTH} tw:transform-gpu tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
