@@ -12,8 +12,9 @@
 
 ## Context
 
-A conversation listing that spans entities (`filterType` mentions, follows or owner, with no
-`entityLink`) keeps only conversations about entities the caller may view. Clients read its
+A conversation listing that spans entities (any listing with no `entityLink`: `filterType`
+mentions, follows or owner, and the unfiltered listing the inbox's All tab reads) keeps only
+conversations about entities the caller may view. Clients read its
 `paging.total` as a count: the inbox badge asks for one row and shows the total. A total over every
 stored row disagrees with what the list shows. A total reduced by the rows hidden on the returned
 page changes from page to page, and a page that hides nothing itself still counts rows hidden on
@@ -40,7 +41,8 @@ The badge, the list and every page report the same count. For a caller no rule r
 that shows fewer rows than the stored total costs one aggregate query and loads no entity. For a
 caller under a deny rule or a conditional grant, it also costs a second aggregate query and one
 batched authorization load per hideable type, of up to 10,000 entities, so the cost follows the
-distinct entities of those types, not the conversations. Entity listings keep counting
+distinct entities of those types, not the conversations. The unfiltered listing is the widest: its
+recount spans every conversation in the requested time window. Entity listings keep counting
 every row (ADR:2026-11-03-a-listing-returns-only-rows-the-caller-may-read); conversations differ
 because their clients display the total as a count. Revisit if listings move their view conditions
 into SQL.
