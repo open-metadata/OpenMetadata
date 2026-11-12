@@ -36,6 +36,7 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.reasoner.ReasonerRegistry;
 import org.apache.jena.sparql.exec.http.Service;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
 import org.openmetadata.service.rdf.SparqlQueryLimits.BoundedOutputStream;
 import org.openmetadata.service.rdf.SparqlQueryLimits.QueryLimitExceededException;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
@@ -77,9 +78,11 @@ public final class OntologySparqlQueryService {
 
   /**
    * Answers over a named graph the triplestore serves, for an ontology too large for the worker.
-   * The query's dataset is that graph alone; inference stays local, so it is refused here.
+   * The query's dataset is that graph alone; inference stays local, so it is refused here. The
+   * read gets what is left of the request's timeout, counted from {@code startedNanos}.
    */
-  public QueryResult queryServedGraph(final SparqlQuery request, final ServedGraph served) {
+  public QueryResult queryServedGraph(
+      final SparqlQuery request, final ServedGraph served, final long startedNanos) {
     final ValidatedQuery validated = validate(request);
     if (validated.inference() != Inference.NONE) {
       throw new QueryLimitExceededException(SERVED_GRAPH_INFERENCE_MESSAGE);
@@ -88,12 +91,22 @@ public final class OntologySparqlQueryService {
     final ByteArrayOutputStream body = new ByteArrayOutputStream();
     served.read(
         scoped,
-        validated.timeoutMillis(),
+        remainingMillis(request, startedNanos),
         execution -> writeBounded(execution, scoped, validated.format(), body));
     return new QueryResult(
         body.toString(StandardCharsets.UTF_8),
         validated.format().externalName(),
         validated.format().mediaType());
+  }
+
+  /** What a request that started at {@code startedNanos} has left of its timeout. */
+  public static long remainingMillis(final SparqlQuery request, final long startedNanos) {
+    final int timeout = timeoutMillis(request.getTimeout());
+    final long elapsed = TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - startedNanos);
+    if (elapsed >= timeout) {
+      throw new QueryTimeoutException(timeout, null);
+    }
+    return timeout - elapsed;
   }
 
   /**

@@ -99,7 +99,13 @@ The fallback runs only after the parent has materialized and authorized every me
 caller is already cleared to view the whole release. It needs RDF enabled and the ontology's
 served graph (`OntologyActiveGraph.graph`) to hold this release, checked by asking for the
 ontology IRI's `owl:versionIRI`; a graph that is still loading returns HTTP 429 with
-`Retry-After: 1`. The query keeps the endpoint's validation (read-only, no `FROM`, no `SERVICE`,
+`Retry-After: 1`. The version check and the query share the caller's one timeout, counted from
+when the request arrived: each gets only what the steps before it left, and a spent budget is a
+timeout (HTTP 503) before the store is read, so the fallback never stretches a request past the
+time it asked for. A refusal for size holds for the release's lifetime, because releases are
+immutable, so each server remembers the refused release IDs (at most 1,000) and sends later
+queries over them straight to the served graph after authorizing every member, without taking
+the worker's permit or building the projection. The query keeps the endpoint's validation (read-only, no `FROM`, no `SERVICE`,
 result limit, timeout) and names the served graph as both `FROM` and `FROM NAMED`, because the
 store's default graph is the union of the dataset's named graphs
 (ADR:2026-10-11-asserted-only-rdf-reads-name-every-non-inferred-graph). Results stream through the

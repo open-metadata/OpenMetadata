@@ -5,6 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Consumer;
@@ -35,6 +37,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.openmetadata.schema.api.rdf.SparqlQuery;
 import org.openmetadata.service.rdf.OntologySparqlQueryService.QueryResult;
 import org.openmetadata.service.rdf.OntologySparqlQueryService.ServedGraph;
+import org.openmetadata.service.rdf.SparqlQueryExecutionGuard.QueryTimeoutException;
 import org.openmetadata.service.rdf.SparqlQueryLimits.QueryLimitExceededException;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard.FederationDisallowedException;
@@ -70,7 +73,7 @@ class OntologySparqlServedGraphTest {
           dataset.addNamedModel(ONTOLOGY_GRAPH, ontology);
           dataset.addNamedModel(OTHER_GRAPH, other);
         });
-    served = new TdbGraph(ONTOLOGY_GRAPH, dataset, new AtomicInteger());
+    served = new TdbGraph(ONTOLOGY_GRAPH, dataset, new AtomicInteger(), new ArrayList<>());
   }
 
   @Test
@@ -86,7 +89,9 @@ class OntologySparqlServedGraphTest {
   @Test
   void answersFromItsOwnGraphAndNoOther() {
     final QueryResult result =
-        service().queryServedGraph(request("SELECT ?s WHERE { ?s ?p ?o } ORDER BY ?s"), served);
+        service()
+            .queryServedGraph(
+                request("SELECT ?s WHERE { ?s ?p ?o } ORDER BY ?s"), served, System.nanoTime());
 
     assertTrue(result.body().contains("urn:concept:a"), result.body());
     assertFalse(result.body().contains("urn:secret"), result.body());
@@ -99,7 +104,8 @@ class OntologySparqlServedGraphTest {
             .queryServedGraph(
                 request("SELECT DISTINCT ?g WHERE { GRAPH ?g { ?s ?p ?o } }")
                     .withFormat(SparqlQuery.Format.CSV),
-                served);
+                served,
+                System.nanoTime());
 
     assertEquals("g\r\n" + ONTOLOGY_GRAPH + "\r\n", result.body());
   }
@@ -111,7 +117,7 @@ class OntologySparqlServedGraphTest {
     final SparqlQuery request = request(query).withFormat(format);
 
     final QueryResult local = localService().query(null, request);
-    final QueryResult remote = service().queryServedGraph(request, served);
+    final QueryResult remote = service().queryServedGraph(request, served, System.nanoTime());
 
     assertEquals(local, remote);
   }
@@ -138,7 +144,7 @@ class OntologySparqlServedGraphTest {
             .withFormat(format);
 
     final QueryResult local = localService().query(null, request);
-    final QueryResult remote = service().queryServedGraph(request, served);
+    final QueryResult remote = service().queryServedGraph(request, served, System.nanoTime());
 
     assertEquals(local.mediaType(), remote.mediaType());
     assertTrue(parse(local).isIsomorphicWith(parse(remote)), remote.body());
@@ -152,7 +158,9 @@ class OntologySparqlServedGraphTest {
             () ->
                 service()
                     .queryServedGraph(
-                        request("ASK {}").withInference(SparqlQuery.Inference.RDFS), served));
+                        request("ASK {}").withInference(SparqlQuery.Inference.RDFS),
+                        served,
+                        System.nanoTime()));
 
     assertEquals(OntologySparqlQueryService.SERVED_GRAPH_INFERENCE_MESSAGE, failure.getMessage());
     assertEquals(0, served.reads().get());
@@ -166,7 +174,8 @@ class OntologySparqlServedGraphTest {
             service()
                 .queryServedGraph(
                     request("SELECT * WHERE { SERVICE <http://127.0.0.1:1/sparql> { ?s ?p ?o } }"),
-                    served));
+                    served,
+                    System.nanoTime()));
 
     assertEquals(0, served.reads().get());
   }
@@ -187,9 +196,33 @@ class OntologySparqlServedGraphTest {
                 service()
                     .queryServedGraph(
                         request("SELECT ?s ?c WHERE { ?s <" + RDFS.comment + "> ?c } LIMIT 2000"),
-                        served));
+                        served,
+                        System.nanoTime()));
 
     assertTrue(failure.getMessage().contains("maximum response size"), failure.getMessage());
+  }
+
+  @Test
+  void readsWithWhatIsLeftOfTheCallersTimeout() {
+    final long startedTwoSecondsAgo = System.nanoTime() - TimeUnit.SECONDS.toNanos(2);
+
+    service().queryServedGraph(request("ASK {}").withTimeout(5_000), served, startedTwoSecondsAgo);
+
+    assertTrue(served.timeouts().getLast() <= 3_000, served.timeouts().toString());
+  }
+
+  @Test
+  void refusesARequestWhoseTimeoutIsSpentBeforeReadingTheStore() {
+    final long startedTenSecondsAgo = System.nanoTime() - TimeUnit.SECONDS.toNanos(10);
+
+    assertThrows(
+        QueryTimeoutException.class,
+        () ->
+            service()
+                .queryServedGraph(
+                    request("ASK {}").withTimeout(5_000), served, startedTenSecondsAgo));
+
+    assertEquals(0, served.reads().get());
   }
 
   private static Model parse(final QueryResult result) {
@@ -217,11 +250,13 @@ class OntologySparqlServedGraphTest {
   }
 
   /** Reads the way Fuseki answers: the store evaluates the query, including its FROM clause. */
-  record TdbGraph(String graphUri, Dataset dataset, AtomicInteger reads) implements ServedGraph {
+  record TdbGraph(String graphUri, Dataset dataset, AtomicInteger reads, List<Long> timeouts)
+      implements ServedGraph {
     @Override
     public void read(
         final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
       reads.incrementAndGet();
+      timeouts.add(timeoutMillis);
       Txn.executeRead(
           dataset,
           () -> {

@@ -1,9 +1,12 @@
 package org.openmetadata.service.ontology;
 
+import com.github.benmanes.caffeine.cache.Cache;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.apache.jena.query.Query;
@@ -35,7 +38,10 @@ public final class OntologyReleaseQuery {
   public static final String GRAPH_LOADING_MESSAGE =
       "This ontology release is too large to query in memory, and the knowledge graph is still"
           + " loading it; retry shortly";
-  private static final long SERVED_RELEASE_CHECK_MILLIS = 5_000;
+
+  /** Releases are immutable, so a size refusal holds for the release's lifetime. */
+  private static final Cache<UUID, String> OVERSIZED_RELEASES =
+      Caffeine.newBuilder().maximumSize(1_000).build();
 
   private final OntologyRepository ontologies;
   private final OntologyReleaseRepository releases;
@@ -54,40 +60,70 @@ public final class OntologyReleaseQuery {
       final UUID id,
       final SparqlQuery request,
       final Consumer<List<? extends OntologyDefinition>> authorize) {
+    final long startedNanos = System.nanoTime();
     final OntologyRelease release = activeRelease(id);
     final OntologySparqlQueryService service =
         new OntologySparqlQueryService(
             (ontologyId, ignored) -> model(release, authorize), new SparqlFederationGuard(null));
-    try {
-      return service.query(id, request);
-    } catch (OntologyTooLargeException tooLarge) {
-      return service.queryServedGraph(request, servedGraph(id, release, tooLarge));
-    }
+    return answer(
+        release.getId(),
+        () -> service.query(id, request),
+        () -> reader().read(release, authorize),
+        tooLarge ->
+            service.queryServedGraph(
+                request, servedGraph(id, release, request, startedNanos, tooLarge), startedNanos));
   }
 
   /**
-   * Reached only after the local attempt materialized every member through {@code authorize}, so
-   * the served graph answers a caller already cleared to view the whole release.
+   * A release the worker already refused for its size skips the worker, and with it the
+   * process-wide worker permit and the in-memory projection; its members are still authorized
+   * first, so the served graph answers only a caller cleared to view the whole release.
    */
+  static OntologySparqlQueryService.QueryResult answer(
+      final UUID releaseId,
+      final Supplier<OntologySparqlQueryService.QueryResult> inWorker,
+      final Runnable authorizeMembers,
+      final Function<OntologyTooLargeException, OntologySparqlQueryService.QueryResult>
+          fromServedGraph) {
+    final String refusal = OVERSIZED_RELEASES.getIfPresent(releaseId);
+    if (refusal != null) {
+      authorizeMembers.run();
+      return fromServedGraph.apply(new OntologyTooLargeException(refusal));
+    }
+    try {
+      return inWorker.get();
+    } catch (OntologyTooLargeException tooLarge) {
+      OVERSIZED_RELEASES.put(releaseId, tooLarge.getMessage());
+      return fromServedGraph.apply(tooLarge);
+    }
+  }
+
   private ServedGraph servedGraph(
-      final UUID id, final OntologyRelease release, final OntologyTooLargeException tooLarge) {
+      final UUID id,
+      final OntologyRelease release,
+      final SparqlQuery request,
+      final long startedNanos,
+      final OntologyTooLargeException tooLarge) {
     final RdfRepository repository = rdf.get();
     if (repository == null || !repository.isEnabled()) {
       throw tooLarge;
     }
     final ServedGraph served = new ActiveGraph(OntologyActiveGraph.graph(id), repository);
-    requireServes(served, release);
+    requireServes(
+        served, release, OntologySparqlQueryService.remainingMillis(request, startedNanos));
     return served;
   }
 
-  private static void requireServes(final ServedGraph served, final OntologyRelease release) {
-    if (!servesRelease(served, release)) {
+  private static void requireServes(
+      final ServedGraph served, final OntologyRelease release, final long timeoutMillis) {
+    if (!servesRelease(served, release, timeoutMillis)) {
       throw new QueryCapacityException(GRAPH_LOADING_MESSAGE);
     }
   }
 
   /** The served graph names its release through the ontology's owl:versionIRI. */
-  static boolean servesRelease(final ServedGraph served, final OntologyRelease release) {
+  static boolean servesRelease(
+      final ServedGraph served, final OntologyRelease release, final long timeoutMillis) {
     final ParameterizedSparqlString ask =
         new ParameterizedSparqlString("ASK { ?ontology ?versionIri ?version }");
     ask.setIri("ontology", release.getOntologyIri().toString());
@@ -95,7 +131,7 @@ public final class OntologyReleaseQuery {
     ask.setIri("version", release.getVersionIri().toString());
     final Query query = OntologySparqlQueryService.scopedTo(ask.asQuery(), served.graphUri());
     final AtomicBoolean serves = new AtomicBoolean();
-    served.read(query, SERVED_RELEASE_CHECK_MILLIS, execution -> serves.set(execution.execAsk()));
+    served.read(query, timeoutMillis, execution -> serves.set(execution.execAsk()));
     return serves.get();
   }
 
@@ -110,9 +146,11 @@ public final class OntologyReleaseQuery {
 
   private Model model(
       final OntologyRelease release, final Consumer<List<? extends OntologyDefinition>> authorize) {
-    final var members =
-        new OntologyReleaseReader(releases.getDaoCollection()).read(release, authorize);
-    return new OntologyReleaseProjection().build(release, members);
+    return new OntologyReleaseProjection().build(release, reader().read(release, authorize));
+  }
+
+  private OntologyReleaseReader reader() {
+    return new OntologyReleaseReader(releases.getDaoCollection());
   }
 
   private record ActiveGraph(String graphUri, RdfRepository repository) implements ServedGraph {
