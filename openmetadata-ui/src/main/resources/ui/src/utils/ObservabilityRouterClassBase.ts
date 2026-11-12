@@ -27,7 +27,6 @@ import {
   getTestCaseDetailPagePath,
   getTestCaseDimensionsDetailPagePath,
   getTestCaseVersionPath,
-  getTestDefinitionDetailsPath,
   getTestSuitePath,
 } from './RouterUtils';
 import {
@@ -40,8 +39,6 @@ type AppModePrefixedPathMethod =
   | 'getDataQualityPagePath'
   | 'getIncidentManagerPath'
   | 'getTestSuitePath'
-  | 'getTestLibraryPath'
-  | 'getTestDefinitionDetailsPath'
   | 'getTestCaseDetailPagePath'
   | 'getTestCaseVersionPath'
   | 'getTestCaseDimensionsDetailPagePath';
@@ -99,17 +96,6 @@ class ObservabilityRouterClassBase {
     return this.withAppModePrefix(
       getTestSuitePath(testSuiteFqn),
       'getTestSuitePath'
-    );
-  }
-
-  public getTestLibraryPath(): string {
-    return this.withAppModePrefix(ROUTES.TEST_LIBRARY, 'getTestLibraryPath');
-  }
-
-  public getTestDefinitionDetailsPath(fqn: string): string {
-    return this.withAppModePrefix(
-      getTestDefinitionDetailsPath(fqn),
-      'getTestDefinitionDetailsPath'
     );
   }
 

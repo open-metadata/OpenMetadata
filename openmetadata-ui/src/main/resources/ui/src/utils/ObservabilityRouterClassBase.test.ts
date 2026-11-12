@@ -47,7 +47,6 @@ jest.mock('./RouterUtils', () => ({
   getObservabilityAlertDetailsPath: (fqn: string, tab?: string) =>
     `/observability/alert/${fqn}/${tab ?? 'configuration'}`,
   getTestSuitePath: (fqn: string) => `/test-suites/${fqn}`,
-  getTestDefinitionDetailsPath: (fqn: string) => `/test-library/${fqn}`,
   getTestCaseDetailPagePath: (fqn: string, tab?: string) =>
     `/test-case/${fqn}/${tab ?? 'test-case-results'}`,
   getTestCaseVersionPath: (fqn: string, version: string, tab?: string) =>
@@ -69,7 +68,6 @@ jest.mock('../constants/constants', () => ({
     ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
     INCIDENT_MANAGER: '/incident-manager',
     OBSERVABILITY_ALERTS: '/observability/alerts',
-    TEST_LIBRARY: '/test-library',
   },
 }));
 
@@ -156,12 +154,6 @@ describe('ObservabilityRouterClassBase', () => {
         'test case dimension',
         () => router.getTestCaseDimensionsDetailPagePath('table.col', 'region'),
         '/test-case/table.col/dimensions/region/test-case-results',
-      ],
-      ['test library', () => router.getTestLibraryPath(), '/test-library'],
-      [
-        'test definition',
-        () => router.getTestDefinitionDetailsPath('columnValuesToBeNotNull'),
-        '/test-library/columnValuesToBeNotNull',
       ],
     ])(
       'should prefix the %s path with /observability',

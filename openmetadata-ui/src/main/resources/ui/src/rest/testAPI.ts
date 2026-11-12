@@ -398,20 +398,6 @@ export const getTestDefinitionById = async (
   return response.data;
 };
 
-export const getTestDefinitionByName = async (
-  fqn: string,
-  params?: Pick<ListParams, 'fields' | 'include'>
-) => {
-  const response = await APIClient.get<TestDefinition>(
-    `${testDefinitionUrl}/name/${getEncodedFqn(fqn)}`,
-    {
-      params,
-    }
-  );
-
-  return response.data;
-};
-
 export const createTestDefinition = async (data: CreateTestDefinition) => {
   const response = await APIClient.post<TestDefinition>(
     testDefinitionUrl,

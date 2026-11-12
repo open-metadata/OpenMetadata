@@ -330,7 +330,6 @@ export const ROUTES = {
   ADD_OBSERVABILITY_ALERTS: '/observability/alerts/add',
   EDIT_OBSERVABILITY_ALERTS: `/observability/alerts/edit/${PLACEHOLDER_ROUTE_FQN}`,
   TEST_LIBRARY: '/test-library',
-  TEST_DEFINITION_DETAILS: `/test-library/${PLACEHOLDER_ROUTE_FQN}`,
 
   // Notification Alerts
   NOTIFICATIONS: `/settings/${GlobalSettingsMenuCategory.NOTIFICATIONS}`,

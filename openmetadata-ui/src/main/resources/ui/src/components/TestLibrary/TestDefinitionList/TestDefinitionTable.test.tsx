@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  fireEvent,
-  render as rtlRender,
-  screen,
-  within,
-} from '@testing-library/react';
-import { ReactElement } from 'react';
-import { MemoryRouter } from 'react-router-dom';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import TestDefinitionTable from './TestDefinitionTable.component';
@@ -34,8 +27,6 @@ jest.mock('../../common/RichTextEditor/RichTextEditorPreviewNew', () => ({
     .fn()
     .mockImplementation(({ markdown }) => <span>{markdown}</span>),
 }));
-
-const render = (ui: ReactElement) => rtlRender(ui, { wrapper: MemoryRouter });
 
 const mockOnSortChange = jest.fn();
 
@@ -73,6 +64,7 @@ const makeProps = (
   onSortChange: mockOnSortChange,
   onEnableToggle: jest.fn(),
   onEdit: jest.fn(),
+  onView: jest.fn(),
   onDelete: jest.fn(),
   ...overrides,
 });
@@ -307,11 +299,14 @@ describe('TestDefinitionTable sorting', () => {
 });
 
 describe('TestDefinitionTable name cell', () => {
-  it('should link the name to the test definition details page', () => {
-    render(<TestDefinitionTable {...makeProps()} />);
+  it('should open the details panel from the name', () => {
+    const onView = jest.fn();
+    render(<TestDefinitionTable {...makeProps({ onView })} />);
 
-    expect(
-      screen.getByRole('link', { name: 'Column Values To Be Not Null' })
-    ).toHaveAttribute('href', '/test-library/columnValuesToBeNotNull');
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Column Values To Be Not Null' })
+    );
+
+    expect(onView).toHaveBeenCalledWith(TEST_DEFINITIONS[0]);
   });
 });

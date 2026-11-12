@@ -30,6 +30,8 @@ export interface TestDefinitionTableProps {
   onSortChange: (column: string, direction: 'asc' | 'desc') => void;
   onEnableToggle: (record: TestDefinition, checked: boolean) => void;
   onEdit: (record: TestDefinition) => void;
+  /** Opens the test definition details panel. */
+  onView: (record: TestDefinition) => void;
   onDelete: (record: TestDefinition) => void;
   hasActiveFilters?: boolean;
   onClearFilters?: () => void;

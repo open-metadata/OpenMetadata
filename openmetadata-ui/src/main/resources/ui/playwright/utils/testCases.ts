@@ -1043,7 +1043,7 @@ export const expectRunTestCaseDisabledWithReason = async (
 /**
  * Creates a table-level test definition plus one test case that uses it, and
  * waits until the test case search index lists it under that definition — the
- * test definition details page reads its linked test cases from that index.
+ * test definition details panel reads its linked test cases from that index.
  */
 export const createTestDefinitionWithTestCase = async (
   apiContext: APIRequestContext,
@@ -1084,7 +1084,8 @@ export const createTestDefinitionWithTestCase = async (
 
 /**
  * Opens the Test Library at `libraryPath`, searches for the definition and
- * clicks its name, then checks the details page lists `testCaseName`.
+ * clicks its name, then checks the details panel lists `testCaseName` and
+ * closes it.
  */
 export const openTestDefinitionDetailsFromLibrary = async (
   page: Page,
@@ -1108,17 +1109,19 @@ export const openTestDefinitionDetailsFromLibrary = async (
       response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
       response.url().includes(`testDefinition=${definitionFqn}`)
   );
-  await page.getByRole('link', { name: definitionFqn, exact: true }).click();
+  await page.getByRole('button', { name: definitionFqn, exact: true }).click();
   await testCasesResponse;
 
-  // The page records its pagination in the query string (`?currentPage=1`).
-  await expect(page).toHaveURL(
-    new RegExp(`${libraryPath}/${definitionFqn}(\\?|$)`)
-  );
-  await expect(page.getByTestId('test-definition-overview')).toContainText(
+  const panel = page.getByRole('dialog', { name: 'Test Definition' });
+  await expect(panel.getByTestId('test-definition-overview')).toContainText(
     'Playwright test definition details'
   );
   await expect(
-    page.getByRole('link', { name: testCaseName, exact: true })
+    panel.getByRole('link', { name: testCaseName, exact: true })
   ).toBeVisible();
+  // The panel opens over the list, so the URL stays on the Test Library.
+  await expect(page).toHaveURL(new RegExp(`${libraryPath}(\\?|$)`));
+
+  await panel.getByRole('button', { name: 'Close' }).click();
+  await expect(panel).not.toBeVisible();
 };
