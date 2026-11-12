@@ -37,6 +37,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -411,14 +412,19 @@ class OAuthHttpStatelessServerTransportProviderTest {
     when(registration.handle(any()))
         .thenReturn(CompletableFuture.completedFuture(new OAuthClientInformation()));
     putField(transport, "registrationHandler", registration);
-    putField(transport, "registrationAttempts", new ConcurrentHashMap<>());
+    var attempts = new ConcurrentHashMap<String, AtomicInteger>();
+    putField(transport, "registrationAttempts", attempts);
     putField(transport, "objectMapper", new ObjectMapper());
     for (int attempt = 1; attempt <= 11; attempt++) {
       var request = mock(HttpServletRequest.class);
       when(request.getContextPath()).thenReturn("");
       when(request.getRequestURI()).thenReturn("/mcp/register");
       when(request.getRemoteAddr()).thenReturn("127.0.0.1");
-      when(request.getHeader("X-Forwarded-For")).thenReturn("192.0.2." + attempt + ", 203.0.113.7");
+      var headers =
+          separateHeaders
+              ? List.of("192.0.2." + attempt, "203.0.113.7")
+              : List.of("192.0.2." + attempt + ", 203.0.113.7");
+      when(request.getHeaders("X-Forwarded-For")).thenReturn(Collections.enumeration(headers));
       when(request.getInputStream())
           .thenReturn(
               HttpServletStatelessServerTransportTest.bodyOf(
@@ -428,6 +434,7 @@ class OAuthHttpStatelessServerTransportProviderTest {
       transport.doPost(request, response);
       verify(response).setStatus(attempt <= 10 ? 201 : 429);
     }
+    assertThat(attempts).containsOnlyKeys("203.0.113.7");
   }
 
   @ParameterizedTest
