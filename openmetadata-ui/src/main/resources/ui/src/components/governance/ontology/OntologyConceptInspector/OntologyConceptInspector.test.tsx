@@ -1398,6 +1398,48 @@ describe('OntologyConceptInspector relationship authoring', () => {
     expect(onEditRelation).not.toHaveBeenCalled();
   });
 
+  it('drops an open edit form when relation edit rights go away', async () => {
+    const onEditRelation = jest.fn().mockResolvedValue(true);
+    const { rerender } = renderAuthoring({ onEditRelation });
+    fireEvent.click(screen.getByTestId('ontology-relation-edit'));
+
+    expect(screen.getByTestId('ontology-relationship-edit-form')).toBeVisible();
+
+    const rerenderWith = (canEditRelations: boolean) =>
+      rerender(
+        <RelationWarningContext.Provider value={undefined}>
+          <MemoryRouter>
+            <OntologyConceptInspector
+              canAddRelation
+              canEditRelations={canEditRelations}
+              concept={concept}
+              model={authoringModel}
+              relationTypeGroups={relationTypeGroups}
+              relations={getModelRelations(authoringModel)}
+              onAddRelation={jest.fn().mockResolvedValue(true)}
+              onClose={jest.fn()}
+              onDeleteRelation={jest.fn().mockResolvedValue(true)}
+              onEditRelation={onEditRelation}
+              onOpenData={jest.fn()}
+              onSelectConcept={jest.fn()}
+            />
+          </MemoryRouter>
+        </RelationWarningContext.Provider>
+      );
+    rerenderWith(false);
+
+    expect(
+      screen.queryByTestId('ontology-relationship-edit-form')
+    ).not.toBeInTheDocument();
+
+    rerenderWith(true);
+
+    expect(
+      screen.queryByTestId('ontology-relationship-edit-form')
+    ).not.toBeInTheDocument();
+    expect(onEditRelation).not.toHaveBeenCalled();
+  });
+
   it('closes the inline edit form on Cancel without saving', async () => {
     const onEditRelation = jest.fn().mockResolvedValue(true);
     renderAuthoring({ onEditRelation });

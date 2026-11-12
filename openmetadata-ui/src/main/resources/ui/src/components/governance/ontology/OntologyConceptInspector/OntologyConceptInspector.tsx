@@ -37,7 +37,7 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { uniqBy } from 'lodash';
-import { ReactNode, useMemo, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   OntologyConcept,
@@ -758,6 +758,12 @@ const OntologyConceptInspector = ({
   const [relationDraft, setRelationDraft] =
     useState<RelationDraft>(EMPTY_RELATION_DRAFT);
   const [editingRelationKey, setEditingRelationKey] = useState<string>();
+  // Leaving Edit drops an open edit, so it does not come back on the next switch.
+  useEffect(() => {
+    if (!canEditRelations) {
+      setEditingRelationKey(undefined);
+    }
+  }, [canEditRelations]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const bindings = useOntologyConceptBindings(concept.id);
   const { hasCopied: hasCopiedIri, onCopyToClipBoard } = useClipboard(
@@ -1422,7 +1428,7 @@ const OntologyConceptInspector = ({
         {conceptRelations.length > 0 ? (
           <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
             {conceptRelations.map((row) =>
-              row.relation.key === editingRelationKey
+              canEditRelations && row.relation.key === editingRelationKey
                 ? renderRelationEdit(row)
                 : renderRelationRow(row)
             )}
