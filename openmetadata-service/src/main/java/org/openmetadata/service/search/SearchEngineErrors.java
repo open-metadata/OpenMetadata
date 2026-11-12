@@ -1,10 +1,12 @@
 package org.openmetadata.service.search;
 
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
 import org.openmetadata.service.Entity;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 /**
  * Translates a search engine's own HTTP failure into the status OpenMetadata reports to its caller.
@@ -63,6 +65,33 @@ public final class SearchEngineErrors {
             : String.format("%s | Root cause: [%s]", message, String.join("; ", rootCauses));
     return SearchException.withStatus(
         statusFor(upstreamStatus), String.format("Search failed due to %s", detail));
+  }
+
+  /**
+   * Whether the search engine answered {@code 400} somewhere along {@code error}'s cause chain, for
+   * callers that reach the engine without going through a search manager's own translation.
+   */
+  public static boolean isRejectedRequest(Throwable error) {
+    for (Throwable cause = error; cause != null; cause = nextCause(cause)) {
+      if (upstreamStatus(cause) == BAD_REQUEST) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static Throwable nextCause(Throwable error) {
+    return error.getCause() == error ? null : error.getCause();
+  }
+
+  private static int upstreamStatus(Throwable error) {
+    if (error instanceof ElasticsearchException elasticsearch) {
+      return elasticsearch.status();
+    }
+    if (error instanceof OpenSearchException openSearch) {
+      return openSearch.status();
+    }
+    return 0;
   }
 
   private static Response.Status statusFor(int upstreamStatus) {

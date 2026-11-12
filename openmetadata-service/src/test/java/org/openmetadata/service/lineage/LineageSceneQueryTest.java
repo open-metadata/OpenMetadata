@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -62,11 +63,41 @@ class LineageSceneQueryTest {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"{\"query\":", "{\"term\":{}}", "[\"not\",\"a\",\"query\"]"})
+  @ValueSource(
+      strings = {
+        "{\"query\":",
+        "{\"term\":{}}",
+        "[\"not\",\"a\",\"query\"]",
+        "[1]",
+        "\"tables\"",
+        "{\"terms\":{}}",
+        "{\"bool\":{\"must\":5}}",
+        "{\"range\":{\"x\":{\"boost\":\"high\"}}}"
+      })
   void malformedFiltersAreRejectedAsBadRequests(String filter) {
     BadRequestException error =
         assertThrows(BadRequestException.class, () -> LineageSceneQuery.parseQueryFilter(filter));
 
-    assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
+    assertTrue(error.getMessage().startsWith("Invalid query_filter: "), error.getMessage());
+    assertFalse(error.getMessage().contains("co.elastic"), error.getMessage());
+    assertFalse(error.getMessage().contains("Exception"), error.getMessage());
+  }
+
+  @ParameterizedTest
+  @CsvSource(
+      delimiter = '|',
+      value = {
+        "{\"query\":|it is not valid JSON",
+        "[1]|a query must be a JSON object",
+        "{\"query\":[1]}|a query must be a JSON object",
+        "{\"term\":{}}|unexpected value at 'term'",
+        "{\"bool\":{\"must\":5}}|unexpected value at 'bool.must'",
+        "{\"terms\":{}}|missing required property 'field' at 'terms'"
+      })
+  void malformedFiltersSayWhatIsWrongInTheCallersTerms(String filter, String reason) {
+    BadRequestException error =
+        assertThrows(BadRequestException.class, () -> LineageSceneQuery.parseQueryFilter(filter));
+
+    assertEquals("Invalid query_filter: " + reason, error.getMessage());
   }
 }

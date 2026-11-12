@@ -779,7 +779,15 @@ public class LineageResourceIT {
   }
 
   @ParameterizedTest
-  @ValueSource(strings = {"{\"query\":", "{\"term\":{}}", "[\"not\",\"a\",\"query\"]"})
+  @ValueSource(
+      strings = {
+        "{\"query\":",
+        "{\"term\":{}}",
+        "[\"not\",\"a\",\"query\"]",
+        "[1]",
+        "{\"term\":{\"name\":{}}}",
+        "{\"terms\":{}}"
+      })
   void testLineageSceneRejectsMalformedQueryFilter(String queryFilter) {
     OpenMetadataClient client = SdkClients.adminClient();
     RequestOptions options =
@@ -799,6 +807,9 @@ public class LineageResourceIT {
 
     assertEquals(400, error.getStatusCode());
     assertTrue(error.getMessage().startsWith("Invalid query_filter"), error.getMessage());
+    assertFalse(error.getMessage().contains("co.elastic"), error.getMessage());
+    assertFalse(error.getMessage().contains("org.opensearch"), error.getMessage());
+    assertFalse(error.getMessage().contains("Exception"), error.getMessage());
   }
 
   @Test

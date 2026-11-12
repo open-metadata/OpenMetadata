@@ -31,6 +31,7 @@ import org.openmetadata.service.lineage.LineageSceneGraph.SceneSelection;
 import org.openmetadata.service.lineage.LineageSceneLoader.LoadedScene;
 import org.openmetadata.service.lineage.LineageSceneMapper.Ref;
 import org.openmetadata.service.lineage.LineageSceneMapper.SceneAsset;
+import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -78,7 +79,16 @@ public class LineageSceneResolver {
             includeDeleted,
             securityContext,
             subjectContext);
-    return getScene(request);
+    try {
+      return getScene(request);
+    } catch (IOException | RuntimeException e) {
+      // A filter can be a well-formed query that the engine still refuses, e.g. a term
+      // query whose value is an object; that is the caller's mistake, not a server fault.
+      if (request.queryFilter() != null && SearchEngineErrors.isRejectedRequest(e)) {
+        throw LineageSceneQuery.invalidQueryFilter("the search engine rejected it as a query", e);
+      }
+      throw e;
+    }
   }
 
   private LineageScene getScene(LineageSceneRequest request) throws IOException {

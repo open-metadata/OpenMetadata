@@ -17,9 +17,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorResponse;
+import jakarta.ws.rs.BadRequestException;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.LinkedHashMap;
@@ -39,6 +47,7 @@ import org.openmetadata.schema.api.lineage.LineageSceneEdge;
 import org.openmetadata.schema.api.lineage.LineageSceneField;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.RelationshipRef;
+import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
@@ -50,6 +59,7 @@ import org.openmetadata.schema.type.TempLineageTable;
 import org.openmetadata.schema.type.lineage.NodeInformation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.lineage.LineageGraphConfiguration;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -92,6 +102,61 @@ class LineageSceneResolverTest {
     assertTrue(Boolean.TRUE.equals(rollup.getIsRollup()));
     assertEquals(2, rollup.getWeight());
     assertEquals("2", rollup.getLabel());
+  }
+
+  @Test
+  void filterTheSearchEngineRejectsIsTheCallersBadRequest() throws IOException {
+    LineageSceneResolver resolver = resolverWhoseSearchIsRejected();
+
+    BadRequestException error =
+        assertThrows(
+            BadRequestException.class,
+            () -> focusedOrdersScene(resolver, "{\"term\":{\"name\":{}}}"));
+
+    assertEquals(
+        "Invalid query_filter: the search engine rejected it as a query", error.getMessage());
+  }
+
+  @Test
+  void engineRejectionWithoutAFilterStaysAServerFault() throws IOException {
+    LineageSceneResolver resolver = resolverWhoseSearchIsRejected();
+
+    assertThrows(ElasticsearchException.class, () -> focusedOrdersScene(resolver, null));
+  }
+
+  private static LineageSceneResolver resolverWhoseSearchIsRejected() throws IOException {
+    SearchRepository repository = mock(SearchRepository.class);
+    when(repository.searchLineage(any(SearchLineageRequest.class), isNull()))
+        .thenThrow(
+            new ElasticsearchException(
+                "search",
+                ErrorResponse.of(
+                    response ->
+                        response
+                            .status(400)
+                            .error(
+                                error ->
+                                    error
+                                        .type("parsing_exception")
+                                        .reason(
+                                            "Unexpected token [FIELD_NAME] found after the main object.")))));
+    return new LineageSceneResolver(null, repository);
+  }
+
+  private static LineageScene focusedOrdersScene(LineageSceneResolver resolver, String queryFilter)
+      throws IOException {
+    return resolver.getScene(
+        ORDERS,
+        Entity.TABLE,
+        LineageLens.SERVICE,
+        LineageBand.ASSET,
+        1,
+        1,
+        50,
+        queryFilter,
+        false,
+        null,
+        null);
   }
 
   @Test
