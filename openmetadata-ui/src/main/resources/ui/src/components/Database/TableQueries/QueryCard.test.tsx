@@ -158,7 +158,7 @@ describe('Test QueryCard Component', () => {
     ).toBeInTheDocument();
   });
 
-  it('should keep sub-minute query durations in seconds', async () => {
+  it('should show sub-minute query durations in seconds', async () => {
     render(
       <QueryCard
         {...mockProps}
@@ -167,8 +167,6 @@ describe('Test QueryCard Component', () => {
       { wrapper: MemoryRouter }
     );
 
-    expect(
-      await screen.findByText('label.runs-for 4.050 sec')
-    ).toBeInTheDocument();
+    expect(await screen.findByText('label.runs-for 4.1s')).toBeInTheDocument();
   });
 });

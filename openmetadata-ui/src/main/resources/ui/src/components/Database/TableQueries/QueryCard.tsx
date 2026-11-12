@@ -26,15 +26,11 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
-import { Duration } from 'luxon';
 import Qs from 'qs';
 import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  ONE_MINUTE_IN_MILLISECOND,
-  PIPE_SYMBOL,
-} from '../../../constants/constants';
+import { PIPE_SYMBOL } from '../../../constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
@@ -109,20 +105,10 @@ const QueryCard: FC<QueryCardProp> = ({
       return undefined;
     }
 
-    if (durationInMilliSeconds < 1) {
-      return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
-    }
-
-    if (durationInMilliSeconds >= ONE_MINUTE_IN_MILLISECOND) {
-      return `${t('label.runs-for')} ${formatDuration(
-        durationInMilliSeconds,
-        2
-      )}`;
-    }
-
-    return Duration.fromObject({
-      milliseconds: durationInMilliSeconds,
-    }).toFormat(`'${t('label.runs-for')}' s.SSS 'sec'`);
+    return `${t('label.runs-for')} ${formatDuration(
+      durationInMilliSeconds,
+      2
+    )}`;
   }, [query]);
 
   const updateSqlQuery = async () => {

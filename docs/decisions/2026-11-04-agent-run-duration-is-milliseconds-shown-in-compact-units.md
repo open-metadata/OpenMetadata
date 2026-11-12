@@ -29,11 +29,11 @@ that already showed hours, days or years keeps its format, including application
 
 Converted displays roll a long value into compact units:
 
-- OpenMetadata displays use `formatDuration(ms, length?)` in `DateTimeUtils`. It keeps sub-minute
-  precision (`<1ms`, `950ms`, `42.3s`) and rolls up from one minute (`2m 5s`, `2h 45m 36s`).
-  The agent run drawer and the query card pass `length` 2 (`2h 45m`); pipeline task executions,
-  connection test steps, ontology and SPARQL timings, and the data quality run card leave it unset.
-- Collate run-time displays use `convertMillisecondsToHumanReadableFormat(ms, 2)`: at most two units.
+- Every converted display, in OpenMetadata and Collate, uses one helper: `formatDuration(ms, length?)`
+  in `DateTimeUtils`. It keeps sub-minute precision (`<1ms`, `950ms`, `42.3s`) and rolls up from one
+  minute (`2m 5s`, `2h 45m 36s`). The agent run drawer, the query card and the Collate displays
+  pass `length` 2 (`2h 45m`); pipeline task executions, connection test steps, ontology and SPARQL
+  timings, and the data quality run card leave it unset.
 - Displays whose text comes from a translated string (the Collate AI chat timer and the scoring-job
   run) gain an hours-and-minutes key in every locale instead.
 
