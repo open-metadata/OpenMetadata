@@ -167,7 +167,7 @@ def get_tag_label(
         # Only Approved glossary terms may be applied to assets, matching the server's CSV import rule.
         if tag_type == GlossaryTerm and tag and tag.entityStatus != EntityStatus.Approved:
             status = tag.entityStatus.value if tag.entityStatus else "missing a status"
-            logger.warning(f"Glossary term '{tag_fqn}' is {status}, not Approved. Skipping it.")
+            logger.warning("Glossary term '%s' is %s, not Approved. Skipping it.", tag_fqn, status)
             return None
         if tag:
             return TagLabel(
