@@ -65,6 +65,18 @@ describe('TaskAssetCard', () => {
     ).toBeInTheDocument();
   });
 
+  it('shows the PII badge for an asset tagged PII.Sensitive', () => {
+    renderCard({ about: { isPii: true } });
+
+    expect(screen.getByText('label.pii-uppercase')).toBeInTheDocument();
+  });
+
+  it('hides the PII badge for an asset without PII', () => {
+    renderCard({ about: { isPii: false } });
+
+    expect(screen.queryByText('label.pii-uppercase')).not.toBeInTheDocument();
+  });
+
   it('renders nothing for a task about no entity', () => {
     const { container } = renderCard({
       task: { id: 't2' } as unknown as Task,

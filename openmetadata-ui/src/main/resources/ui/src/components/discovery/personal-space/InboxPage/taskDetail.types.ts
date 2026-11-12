@@ -128,6 +128,8 @@ export interface TaskAboutEntity {
   tier?: TagLabel;
   columnCount?: number;
   piiColumnCount?: number;
+  /** PII.Sensitive on the entity itself or on any of its columns. */
+  isPii?: boolean;
   downstreamCount?: number;
   /** Rolling seven-day usage count as of the last usage ingestion. */
   weeklyQueryCount?: number;

@@ -810,14 +810,19 @@ export const deriveTaskAboutEntity = (
   const typed = (entity ?? {}) as EntityWithContext;
   const columns = typed.columns;
   const tags = typed.tags ?? [];
+  const isPiiSensitive = (tagList: TagLabel[] = []) =>
+    tagList.some((tag) => tag.tagFQN === PII_SENSITIVE_TAG);
+  const isEntityPii = isPiiSensitive(tags);
+  const piiColumnCount = isEntityPii
+    ? columns?.length
+    : columns?.filter((column) => isPiiSensitive(column.tags)).length;
 
   return {
     entity,
     tier: tags.find((tag) => tag.tagFQN?.startsWith(TIER_TAG_PREFIX)),
     columnCount: columns?.length,
-    piiColumnCount: columns?.filter((column) =>
-      (column.tags ?? []).some((tag) => tag.tagFQN === PII_SENSITIVE_TAG)
-    ).length,
+    piiColumnCount,
+    isPii: isEntityPii || Boolean(piiColumnCount),
     downstreamCount,
     weeklyQueryCount: typed.usageSummary?.weeklyStats?.count,
     ownerCount: typed.owners?.length,
