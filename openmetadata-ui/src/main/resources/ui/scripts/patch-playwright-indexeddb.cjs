@@ -66,9 +66,11 @@ function patchStorageSource(source) {
 }
 
 // Since 1.60 the storage script is an esbuild string literal inside
-// lib/coreBundle.js instead of its own lib/generated module.
+// lib/coreBundle.js instead of its own lib/generated module. esbuild emits it
+// single-quoted; patchPlaywright writes it back through JSON.stringify, which
+// double-quotes it, so both quote styles must match for a second run to find it.
 const STORAGE_LITERAL =
-  /("packages\/playwright-core\/src\/generated\/storageScriptSource\.ts"\(\) \{\n\s*"use strict";\n\s*source\d* = )('(?:[^'\\\n]|\\.)*')(;)/;
+  /("packages\/playwright-core\/src\/generated\/storageScriptSource\.ts"\(\) \{\n\s*"use strict";\n\s*source\d* = )('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")(;)/;
 
 function readStorageScript(
   packageRoot = dirname(require.resolve('playwright-core/package.json'))
