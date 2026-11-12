@@ -1,0 +1,15 @@
+# PR auto-assign settings for .github/workflows/pr-auto-assign.yml
+# (ADR:2026-11-04-a-new-pr-is-assigned-to-one-owner). Team rosters live on GitHub (org → Teams);
+# list here only what the rosters can't express. Team slugs and logins, no `@`.
+assign:
+  # CODEOWNERS teams that own work and receive external PRs. A CODEOWNERS team missing here
+  # (e.g. `mergers`, which only gates approval of CI changes) contributes no candidates.
+  teams:
+    - ui
+    - backend
+    - ingestion
+    - devops
+  # Never auto-assigned an external PR through a team they belong to.
+  exclude:
+    - shahsank3t
+    - sureshms
