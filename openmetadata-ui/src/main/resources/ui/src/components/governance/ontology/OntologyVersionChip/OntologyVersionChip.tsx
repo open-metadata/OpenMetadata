@@ -14,10 +14,8 @@ import {
   Badge,
   Box,
   Button,
-  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
@@ -164,25 +162,15 @@ const OntologyVersionChip = ({
     return releases;
   }
 
+  // Editors read the version from the switch itself, as in the design; release
+  // history stays one step away under Review & publish → Releases.
   return (
-    <>
-      <VersionSwitch
-        isDisabled={isDisabled}
-        status={status}
-        version={version}
-        onVersionChange={onVersionChange}
-      />
-      <ButtonUtility
-        aria-label={`${t('label.release-history')}: ${parts.join(' · ')}`}
-        color="secondary"
-        data-testid="ontology-release-history-trigger"
-        icon={ClockRewind}
-        isDisabled={isDisabled}
-        size="lg"
-        tooltip={`${t('label.release-history')} · ${parts.join(' · ')}`}
-        onPress={onPress}
-      />
-    </>
+    <VersionSwitch
+      isDisabled={isDisabled}
+      status={status}
+      version={version}
+      onVersionChange={onVersionChange}
+    />
   );
 };
 

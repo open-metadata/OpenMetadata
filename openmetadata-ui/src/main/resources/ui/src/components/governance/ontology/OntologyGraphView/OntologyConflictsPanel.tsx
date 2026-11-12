@@ -25,8 +25,6 @@ import { useTranslation } from 'react-i18next';
 import { OntologyProfileViolation } from '../../../../generated/api/data/ontologyProfileReport';
 
 interface OntologyConflictsPanelProps {
-  /** False until a validation run answered, so a pending run never reads as clean. */
-  hasResult: boolean;
   isChecking: boolean;
   isFailed: boolean;
   violations: OntologyProfileViolation[];
@@ -65,28 +63,6 @@ const ConflictRow = ({
   </li>
 );
 
-/** Says the draft is clean, only once validation answered with no conflicts. */
-const CleanNote = ({
-  hasConflicts,
-  hasResult,
-  isFailed,
-}: {
-  hasConflicts: boolean;
-  hasResult: boolean;
-  isFailed: boolean;
-}) => {
-  const { t } = useTranslation();
-
-  return hasResult && !hasConflicts && !isFailed ? (
-    <Typography
-      className="tw:border-t tw:border-secondary tw:px-4 tw:py-3"
-      color="secondary"
-      size="text-xs">
-      {t('message.ontology-validate-all-clean')}
-    </Typography>
-  ) : null;
-};
-
 /** A failed run has no count; "0 conflicts" would read as a clean draft. */
 const ConflictsTitle = ({
   count,
@@ -112,7 +88,6 @@ const ConflictsTitle = ({
 
 /** Lists what the server finds wrong with the working draft, with a link to each concept a clash names. */
 const OntologyConflictsPanel = ({
-  hasResult,
   isChecking,
   isFailed,
   violations,
@@ -122,10 +97,14 @@ const OntologyConflictsPanel = ({
 }: OntologyConflictsPanelProps) => {
   const { t } = useTranslation();
   const hasConflicts = violations.length > 0;
-  // A clean draft keeps only the header row, so the canvas stays clear.
-  const [isOpen, setIsOpen] = useState<boolean>();
-  const isExpanded = isOpen ?? (hasConflicts || isFailed);
+  const [isExpanded, setIsExpanded] = useState(true);
   const toggleLabel = t(isExpanded ? 'label.collapse' : 'label.expand');
+
+  // As in the design, the card exists only while there is something to resolve;
+  // a clean draft or a run still pending leaves the canvas clear.
+  if (!hasConflicts && !isFailed) {
+    return null;
+  }
 
   return (
     <Card
@@ -156,7 +135,7 @@ const OntologyConflictsPanel = ({
           icon={isExpanded ? ChevronUp : ChevronDown}
           size="lg"
           tooltip={toggleLabel}
-          onPress={() => setIsOpen(!isExpanded)}
+          onPress={() => setIsExpanded(!isExpanded)}
         />
       </Box>
       {isExpanded ? (
@@ -178,11 +157,6 @@ const OntologyConflictsPanel = ({
               ))}
             </ul>
           ) : null}
-          <CleanNote
-            hasConflicts={hasConflicts}
-            hasResult={hasResult}
-            isFailed={isFailed}
-          />
         </Box>
       ) : null}
     </Card>

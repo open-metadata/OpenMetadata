@@ -1581,6 +1581,14 @@ export const installVisualData = async (
 
       return;
     }
+    if (path === 'contextCenter/memories/extractedApproval') {
+      // The fixture articles have no Unprocessed extracted memories, so approval offers nothing.
+      await route.fulfill({
+        json: { approved: 0, approvable: [], needsDecision: [] },
+      });
+
+      return;
+    }
     if (path === 'ontologyPacks') {
       await route.fulfill({ json: { packs: ontologyPacks } });
 
