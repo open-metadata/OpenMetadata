@@ -1016,7 +1016,7 @@ test.describe(
           );
           const download = await downloaded;
           expect(download.suggestedFilename()).toBe(
-            `${name}-release-${firstRelease.releaseRevision}.${extension}`
+            `${name.replaceAll('_', '-')}.${extension}`
           );
           const path = testInfo.outputPath(download.suggestedFilename());
           await download.saveAs(path);
@@ -1363,6 +1363,8 @@ test(
       await expect(
         page.getByTestId('ontology-concept-inspector')
       ).toContainText('A customer buys products.');
+      // The concept drawer covers the header's right, publication trigger included.
+      await page.getByTestId('ontology-concept-close').click();
       await page.getByTestId('ontology-publication-trigger').click();
       const captured = page.waitForResponse(
         (response) =>

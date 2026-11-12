@@ -980,6 +980,10 @@ test.describe(
           await page.getByTestId('ontology-release-history-trigger').click();
           await expect(page.getByTestId('ontology-release-row')).toHaveCount(2);
 
+          // AI mode keeps Compare on its own screen behind the history toolbar.
+          if (mode === 'ai') {
+            await page.getByTestId('ontology-release-compare-open').click();
+          }
           await page
             .getByRole('button', { name: 'From version', exact: true })
             .click();
@@ -999,6 +1003,9 @@ test.describe(
           );
           await attachStudioShot(page, testInfo, `p1-history-compare-${mode}`);
 
+          if (mode === 'ai') {
+            await page.getByTestId('ontology-release-compare-back').click();
+          }
           await page.getByTestId(`ontology-release-select-${first.id}`).click();
           const activation = page.waitForResponse(isActivation(ontology.id));
           await page.getByTestId('ontology-rollback-release').click();

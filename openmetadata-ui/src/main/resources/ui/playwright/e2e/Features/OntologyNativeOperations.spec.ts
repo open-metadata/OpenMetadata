@@ -177,11 +177,15 @@ test.describe(
           await expect(
             dataGraph.getByTestId(`ontology-data-cluster-${concept.id}`)
           ).toContainText('Customer');
-          const row = dataGraph.getByTestId(
-            `ontology-data-asset-asset:${concept.id}:${table.entityResponseData.id}`
-          );
-          await expect(row).toContainText(table.entity.displayName);
-          await expect(row).toContainText('1 col');
+          const assetId = `asset:${concept.id}:${table.entityResponseData.id}`;
+          await expect(
+            dataGraph.getByTestId(`ontology-data-asset-${assetId}`)
+          ).toContainText(table.entity.displayName);
+          await expect(
+            dataGraph.getByTestId(
+              `ontology-data-asset-columns-toggle-${assetId}`
+            )
+          ).toHaveText('1 column');
         });
         await test.step('Remove the column binding and table link', async () => {
           await page.getByTestId('ontology-graph-mode-model').click();

@@ -54,7 +54,7 @@ const expectLoadedNativeLibrary = async (page: Page, responses: Response[]) => {
   await expect(rail).toContainText('Queries');
   await expect(rail.getByTestId('ontology-query-new')).toHaveAttribute(
     'aria-label',
-    'New Query'
+    'New query'
   );
   await expect(rail).toContainText('Shared');
   await expect(rail).toContainText('My queries');
@@ -357,7 +357,10 @@ test.describe(
             if (scope === 'aggregate') {
               const target = page.getByTestId('ontology-import-target-picker');
               await expect(target).toContainText('Select Ontology');
-              await expectNativeStudioCopy(page.getByRole('dialog'));
+              // evaluate() does not retry, and the Import / Export menu popover is still a dialog while it animates out.
+              await expectNativeStudioCopy(
+                page.getByRole('dialog', { name: 'Export ontology' })
+              );
               await selectOntologyOption(
                 page,
                 target.getByRole('button'),
@@ -393,7 +396,9 @@ test.describe(
             await expect(transfer).toHaveCount(0);
             if (scope !== 'aggregate') {
               await openOntologyTransfer(page, 'import');
-              const importDialog = page.getByRole('dialog');
+              const importDialog = page.getByRole('dialog', {
+                name: 'Import into ontology',
+              });
               await expect(importDialog).toContainText('Import into ontology');
               await expect(
                 importDialog.getByTestId('ontology-native-import-file')
@@ -481,6 +486,8 @@ test.describe(
           await expect(
             page.getByTestId('ontology-publication-trigger')
           ).toBeDisabled();
+          // The concept drawer covers the header's right, Import / Export included.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-import-export-trigger').click();
           await page.getByTestId('ontology-import-menu-item').click();
           await expect(

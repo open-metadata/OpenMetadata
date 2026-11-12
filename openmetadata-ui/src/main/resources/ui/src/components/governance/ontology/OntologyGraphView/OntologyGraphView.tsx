@@ -1136,6 +1136,33 @@ const OntologyGraphView = ({
       model?.concepts.some((concept) => concept.id === editConceptRequest)
     ),
   ].every(Boolean);
+  // Leaving Edit discards a New concept form (the guard already asked), so it must not
+  // come back when Edit is reopened.
+  useEffect(() => {
+    if (!isEditing) {
+      setConceptEditor(undefined);
+    }
+  }, [isEditing]);
+  const requestedConceptId = model?.concepts.some(
+    (concept) => concept.id === editConceptRequest
+  )
+    ? editConceptRequest
+    : undefined;
+  // A request from outside the graph (a Concepts row) arrives with nothing selected; select it.
+  // The requester already ran the draft guard, so this selection does not ask again.
+  useEffect(() => {
+    if (isEditing && requestedConceptId && selectedId !== requestedConceptId) {
+      runConfirmed(() =>
+        (onSelectedConceptChange ?? setLocalSelectedId)(requestedConceptId)
+      );
+    }
+  }, [
+    isEditing,
+    onSelectedConceptChange,
+    requestedConceptId,
+    runConfirmed,
+    selectedId,
+  ]);
   useEffect(() => {
     if (canOpenRequestedEditor) {
       onEditConceptRequestHandled?.();
