@@ -29,7 +29,7 @@ test('filters, previews, and keeps a native pack installed across reload', async
     await page.getByTestId('ontology-library-trigger').click();
     await page.getByTestId('ontology-library-filter-cross-industry').click();
     await expect(page.getByTestId('ontology-pack-sosa-ssn')).toBeVisible();
-    await expect(page.getByTestId('ontology-pack-sosa-ssn')).toHaveCount(0);
+    await expect(page.getByTestId('ontology-pack-fhir')).toHaveCount(0);
 
     const firstSample = page.waitForResponse(
       (response) =>
@@ -44,7 +44,7 @@ test('filters, previews, and keeps a native pack installed across reload', async
     await expect(page.getByTestId('ontology-pack-sample-node-0')).toBeVisible();
     await expect(page.getByTestId('ontology-pack-sample-edge-0')).toBeVisible();
     await expect(page.getByTestId('ontology-pack-detail')).toContainText(
-      'Aligned to Semantic Sensor Network Ontology'
+      'Aligned to SOSA/SSN'
     );
 
     const smallerSample = page.waitForResponse(
