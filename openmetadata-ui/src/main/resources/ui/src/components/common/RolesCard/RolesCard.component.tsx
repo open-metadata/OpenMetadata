@@ -77,12 +77,13 @@ const RolesCard = ({
   }
 
   const selectedRoleItems = selectedRoles.map((roleId) => {
-    const role = roles.find((r) => r.id === roleId);
+    const role =
+      roles.find((r) => r.id === roleId) ??
+      userData.roles?.find((r) => r.id === roleId);
+    const fallbackLabel =
+      roleId === toLower(TERM_ADMIN) ? t('label.admin-superuser') : roleId;
 
-    return {
-      id: roleId,
-      label: role ? getEntityName(role) : t('label.admin-superuser'),
-    };
+    return { id: roleId, label: role ? getEntityName(role) : fallbackLabel };
   });
 
   const handleRoleInserted = (key: Key) =>

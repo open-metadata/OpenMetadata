@@ -135,6 +135,35 @@ describe('RolesCard', () => {
     );
   });
 
+  it('names a held role missing from the loaded list by its own name, not as the admin flag', () => {
+    render(
+      <RolesCard
+        roles={[CUSTOM_ADMIN_ROLE]}
+        searchRolesOptions={jest.fn()}
+        selectedRoles={['data-steward-role-id', 'unknown-role-id']}
+        setSelectedRoles={jest.fn()}
+        updateUserDetails={jest.fn()}
+        userData={
+          {
+            id: 'bot-user-id',
+            isAdmin: false,
+            roles: [
+              { id: 'data-steward-role-id', name: 'DataSteward', type: 'role' },
+            ],
+          } as User
+        }
+      />
+    );
+    fireEvent.click(screen.getByTestId('edit-roles'));
+
+    expect(
+      screen.getByTestId('selected-data-steward-role-id')
+    ).toHaveTextContent('DataSteward');
+    expect(screen.getByTestId('selected-unknown-role-id')).toHaveTextContent(
+      'unknown-role-id'
+    );
+  });
+
   it('saves the admin flag as isAdmin and the custom Admin role as a role', () => {
     const updateUserDetails = renderEditingRolesCard([
       CUSTOM_ADMIN_ROLE.id,

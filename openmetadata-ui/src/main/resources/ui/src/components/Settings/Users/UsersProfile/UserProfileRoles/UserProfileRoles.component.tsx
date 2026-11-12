@@ -75,14 +75,18 @@ const UserProfileRoles = ({
   const selectedRoleItems = useMemo(
     () =>
       selectedRoles.map((roleId) => {
-        const role = roles.find((r) => r.id === roleId);
+        const role =
+          roles.find((r) => r.id === roleId) ??
+          userRoles?.find((r) => r.id === roleId);
+        const fallbackLabel =
+          roleId === toLower(TERM_ADMIN) ? t('label.admin-superuser') : roleId;
 
         return {
           id: roleId,
-          label: role ? getEntityName(role) : t('label.admin-superuser'),
+          label: role ? getEntityName(role) : fallbackLabel,
         };
       }),
-    [selectedRoles, roles, t]
+    [selectedRoles, roles, userRoles, t]
   );
 
   const handleRoleInserted = useCallback(
