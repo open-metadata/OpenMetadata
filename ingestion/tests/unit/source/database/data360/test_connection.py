@@ -12,6 +12,7 @@
 Unit tests for the Salesforce Data 360 BaseConnection owners
 """
 
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -114,3 +115,38 @@ class TestConnectionOwner:
             owner = create_connection(config)
         assert isinstance(owner, owner_class)
         assert isinstance(owner, BaseConnection)
+
+
+@pytest.mark.parametrize(
+    "owner_class,config,module",
+    [
+        (Data360Connection, DB_CONFIG, "metadata.ingestion.source.database.data360.connection"),
+        (
+            Data360PipelineConnection,
+            PIPELINE_CONFIG,
+            "metadata.ingestion.source.pipeline.data360pipeline.connection",
+        ),
+    ],
+)
+def test_a_failed_login_fails_the_check_access_step(owner_class, config, module):
+    # Salesforce logs in while the client is built. That must happen inside a
+    # step, or a bad secret raises before any step result is written and the
+    # UI's Test Connection never returns.
+    metadata = MagicMock()
+    metadata.get_by_name.return_value = SimpleNamespace(
+        steps=[
+            SimpleNamespace(
+                name="CheckAccess",
+                description="Authenticate",
+                mandatory=True,
+                errorMessage="Failed to connect to Salesforce Data 360",
+                shortCircuit=True,
+            )
+        ]
+    )
+    with patch(f"{module}.Salesforce", side_effect=RuntimeError("invalid_client: invalid client credentials")):
+        owner = owner_class(config)
+        result = owner.test_connection(metadata=metadata, timeout_seconds=None)
+    check_access = next(step for step in result.steps if step.name == "CheckAccess")
+    assert check_access.passed is False
+    assert "invalid_client" in check_access.errorLog
