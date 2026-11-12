@@ -25,6 +25,7 @@ import {
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
+  completenessColor,
   countPropertiesByKind,
   filterConcepts,
   formatParents,
@@ -96,9 +97,41 @@ describe('getConceptRowFacts', () => {
       completeness: 20,
     });
   });
+
+  it('names a SKOS concept parent by its broader concept', () => {
+    const animal = concept('Animal', {
+      conceptType: OntologyConceptType.SkosConcept,
+    });
+    const dog = concept('Dog', {
+      conceptType: OntologyConceptType.SkosConcept,
+    });
+    const facts = getConceptRowFacts(
+      { ...model, concepts: [animal, dog], properties: [], axioms: [] },
+      [
+        {
+          key: 'broader',
+          kind: 'objectAssertion',
+          from: dog,
+          to: animal,
+          propertyIri: 'http://www.w3.org/2004/02/skos/core#broader',
+        },
+      ]
+    );
+
+    expect(facts.get('Dog')?.parents).toEqual(['Animal']);
+    expect(facts.get('Animal')?.parents).toEqual([]);
+  });
 });
 
 describe('table helpers', () => {
+  it('colours completeness amber, then blue, then green', () => {
+    expect(completenessColor(0)).toContain('warning');
+    expect(completenessColor(20)).toContain('warning');
+    expect(completenessColor(40)).toContain('brand');
+    expect(completenessColor(60)).toContain('success');
+    expect(completenessColor(100)).toContain('success');
+  });
+
   it('shows the first parent and how many more', () => {
     expect(formatParents([])).toBe('');
     expect(formatParents(['Person'])).toBe('Person');

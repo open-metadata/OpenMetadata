@@ -86,6 +86,29 @@ const CleanNote = ({
   ) : null;
 };
 
+/** A failed run has no count; "0 conflicts" would read as a clean draft. */
+const ConflictsTitle = ({
+  count,
+  isFailed,
+}: {
+  count: number;
+  isFailed: boolean;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Typography
+      color={isFailed ? 'danger' : undefined}
+      data-testid="ontology-conflicts-title"
+      size="text-sm"
+      weight="semibold">
+      {isFailed
+        ? t('message.ontology-conflicts-check-failed')
+        : t('label.n-conflicts-to-resolve', { count })}
+    </Typography>
+  );
+};
+
 /** Lists what the server finds wrong with the working draft, with a link to each concept a clash names. */
 const OntologyConflictsPanel = ({
   hasResult,
@@ -110,12 +133,7 @@ const OntologyConflictsPanel = ({
       variant="elevated">
       <Box align="center" className="tw:px-4 tw:py-3" gap={2}>
         <Box className="tw:min-w-0 tw:flex-1" direction="col">
-          <Typography
-            data-testid="ontology-conflicts-title"
-            size="text-sm"
-            weight="semibold">
-            {t('label.n-conflicts-to-resolve', { count: violations.length })}
-          </Typography>
+          <ConflictsTitle count={violations.length} isFailed={isFailed} />
           {hasConflicts ? (
             <Typography color="secondary" size="text-xs">
               {t('message.ontology-conflicts-block-publishing')}

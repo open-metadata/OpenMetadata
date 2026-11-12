@@ -106,7 +106,11 @@ const ConceptPickerEmptyState = ({
         direction="col"
         gap={2}>
         <FeaturedIcon color="gray" icon={Database01} size="lg" theme="modern" />
-        <Typography as="h3" size="text-lg" weight="semibold">
+        <Typography
+          as="h3"
+          className="not-prose tw:m-0"
+          size="text-lg"
+          weight="semibold">
           {t('label.select-entity', { entity: t('label.concept') })}
         </Typography>
         <Typography color="secondary" size="text-sm">

@@ -1335,6 +1335,34 @@ const OntologyGraphView = ({
     );
   };
 
+  const renderDeleteConceptDialog = () =>
+    isDeletingConcept && selected ? (
+      <OntologyConceptDeleteDialog
+        concept={selected}
+        onCancel={() => setIsDeletingConcept(false)}
+        onDeleted={({ restore }) => {
+          setIsDeletingConcept(false);
+          (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
+          noteWorkingChange();
+          void refetch();
+          showUndoToast(
+            t('message.ontology-definition-deleted', {
+              name: selected.displayName ?? selected.name,
+            }),
+            async () => {
+              try {
+                await restore();
+                noteWorkingChange();
+                await refetch();
+              } catch (error) {
+                showWriteError(error);
+              }
+            }
+          );
+        }}
+      />
+    ) : null;
+
   const renderRelationDetail = (selectedRelation: OntologyModelRelation) => {
     return (
       <OntologyRelationDetail
@@ -1430,6 +1458,7 @@ const OntologyGraphView = ({
           )
         }
         concept={selected}
+        confirmDialog={renderDeleteConceptDialog()}
         editable={getEditable(selected, workingConcept)}
         findRelationType={(phrase) =>
           findNativeRelationTypeByPhrase(catalog, phrase)?.id
@@ -1842,32 +1871,6 @@ const OntologyGraphView = ({
         </div>
         {renderSidebar()}
         {renderTypeDialog()}
-        {isDeletingConcept && selected ? (
-          <OntologyConceptDeleteDialog
-            concept={selected}
-            onCancel={() => setIsDeletingConcept(false)}
-            onDeleted={({ restore }) => {
-              setIsDeletingConcept(false);
-              (onSelectedConceptChange ?? setLocalSelectedId)(undefined);
-              noteWorkingChange();
-              void refetch();
-              showUndoToast(
-                t('message.ontology-definition-deleted', {
-                  name: selected.displayName ?? selected.name,
-                }),
-                async () => {
-                  try {
-                    await restore();
-                    noteWorkingChange();
-                    await refetch();
-                  } catch (error) {
-                    showWriteError(error);
-                  }
-                }
-              );
-            }}
-          />
-        ) : null}
       </div>
     </RelationWarningContext.Provider>
   );

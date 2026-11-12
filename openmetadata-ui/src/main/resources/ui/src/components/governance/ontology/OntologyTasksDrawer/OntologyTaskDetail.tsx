@@ -38,7 +38,7 @@ import {
   OntologyReleaseReview,
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
-import { Task, TaskStatus } from '../../../../generated/entity/tasks/task';
+import { Task } from '../../../../generated/entity/tasks/task';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getOntologyRelease } from '../../../../rest/ontologyAPI';
 import {
@@ -69,7 +69,6 @@ type Props = {
   onReject: (reason: string) => void;
   onApproveAndPublish: () => void;
   onPublish: () => void;
-  onWithdraw?: () => void;
   onComment: (message: string) => Promise<boolean>;
   children: ReactNode;
 };
@@ -170,7 +169,7 @@ const ReleaseMeta = ({
             );
           })}
         </MetaRow>
-        <MetaRow icon={Users01} label={t('label.created-by')}>
+        <MetaRow icon={Users01} label={t('label.task-created-by')}>
           <Avatar initials={initialsOf(requester)} size="xs" />
           <Typography size="text-sm" weight="medium">
             {isRequester ? `${requester} (${t('label.you')})` : requester}
@@ -181,7 +180,7 @@ const ReleaseMeta = ({
             {formatDateTime(task.createdAt) || '—'}
           </Typography>
         </MetaRow>
-        <MetaRow icon={Clock} label={t('label.last-activity')}>
+        <MetaRow icon={Clock} label={t('label.task-last-activity')}>
           <Typography size="text-sm" weight="medium">
             {formatDateTime(task.updatedAt ?? task.createdAt) || '—'}
           </Typography>
@@ -336,7 +335,7 @@ const CommentBar = ({
         onChange={setComment}
       />
       <Button
-        aria-label={t('label.add-comment')}
+        aria-label={t('label.send')}
         color="secondary"
         data-testid="ontology-task-comment-send"
         iconLeading={Send01}
@@ -364,14 +363,12 @@ const OntologyTaskDetail = ({
   onReject,
   onApproveAndPublish,
   onPublish,
-  onWithdraw,
   onComment,
   children,
 }: Props) => {
   const { t } = useTranslation();
   const [reason, setReason] = useState('');
   const [rejecting, setRejecting] = useState(false);
-  const [withdrawing, setWithdrawing] = useState(false);
   const actions = getTaskResolveActions(task, {
     approve: t('label.approve'),
     reject: t('label.reject'),
@@ -380,12 +377,6 @@ const OntologyTaskDetail = ({
     review.callerCanVote && actions.some((action) => action.kind === 'approve');
   const canReject =
     review.callerCanVote && actions.some((action) => action.kind === 'reject');
-  const canWithdraw = [
-    isRequester,
-    Boolean(onWithdraw),
-    task.status === TaskStatus.Open,
-    review.status === EntityStatus.InReview,
-  ].every(Boolean);
 
   const blocked = [!contentReady, isWriting].some(Boolean);
   const requester = isRequester
@@ -418,16 +409,6 @@ const OntologyTaskDetail = ({
   };
   const renderActions = () => (
     <Box gap={2} wrap="wrap">
-      {canWithdraw && (
-        <Button
-          color="secondary-destructive"
-          data-testid="ontology-task-withdraw"
-          isDisabled={isWriting}
-          size="sm"
-          onPress={() => setWithdrawing(true)}>
-          {t('label.withdraw')}
-        </Button>
-      )}
       {canReject && (
         <Button
           color="secondary"
@@ -461,34 +442,6 @@ const OntologyTaskDetail = ({
       {renderPublish()}
     </Box>
   );
-  const renderWithdrawConfirm = () =>
-    withdrawing &&
-    canWithdraw && (
-      <Alert
-        data-testid="ontology-task-withdraw-confirm"
-        title={t('message.ontology-task-withdraw-confirm')}
-        variant="error">
-        <Box gap={2} justify="end">
-          <Button
-            color="secondary"
-            size="sm"
-            onPress={() => setWithdrawing(false)}>
-            {t('label.cancel')}
-          </Button>
-          <Button
-            color="primary-destructive"
-            data-testid="ontology-task-withdraw-submit"
-            isDisabled={isWriting}
-            size="sm"
-            onPress={() => {
-              setWithdrawing(false);
-              onWithdraw?.();
-            }}>
-            {t('label.withdraw-request')}
-          </Button>
-        </Box>
-      </Alert>
-    );
   const renderRejection = () => {
     if (!rejecting || !canReject) {
       return null;
@@ -563,7 +516,6 @@ const OntologyTaskDetail = ({
             })}
           </Typography>
         </Box>
-        {renderWithdrawConfirm()}
       </div>
       <Box className="tw:px-6 tw:py-5" direction="col" gap={5}>
         {renderRejection()}

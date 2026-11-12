@@ -214,6 +214,28 @@ describe('OntologyImportExportMenu', () => {
     ).not.toBeInTheDocument();
   });
 
+  it('describes each action under its title', async () => {
+    render(
+      <OntologyImportExportMenu
+        canImport
+        kind="ontology"
+        ontology={ontology}
+        onApplied={jest.fn()}
+      />
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: 'label.import-export' })
+    );
+
+    expect(
+      await screen.findByTestId('ontology-import-menu-item')
+    ).toHaveTextContent('label.importmessage.ontology-import-menu-description');
+    expect(screen.getByTestId('ontology-export-menu-item')).toHaveTextContent(
+      'label.exportmessage.ontology-export-menu-description'
+    );
+  });
+
   it('offers no Import without import rights on the ontology', async () => {
     render(
       <OntologyImportExportMenu

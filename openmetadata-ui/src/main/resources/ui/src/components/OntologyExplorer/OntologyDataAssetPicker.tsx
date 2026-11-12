@@ -751,7 +751,7 @@ const OntologyDataAssetPicker = ({
             isLoading={isLoading}
             size="sm"
             onPress={loadMore}>
-            {hasFailed ? t('label.retry') : t('label.load-more')}
+            {hasFailed ? t('label.retry') : t('label.load-more-lowercase')}
           </Button>
         </Box>
       );
@@ -775,7 +775,7 @@ const OntologyDataAssetPicker = ({
         className="tw:mr-auto tw:text-tertiary"
         data-testid="ontology-data-asset-selected-count"
         size="text-xs">
-        {t('label.n-selected', { count: selected.size })}
+        {t('label.n-selected-lowercase', { count: selected.size })}
       </Typography>
     ) : null;
 
@@ -791,7 +791,12 @@ const OntologyDataAssetPicker = ({
     ) : null;
 
   const renderList = () => (
-    <ul className="tw:m-0 tw:flex tw:max-h-80 tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-y-auto tw:p-0">
+    <ul
+      className={classNames(
+        'tw:m-0 tw:flex tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:p-0',
+        // In the dialog the content pane scrolls, so its footer divider marks the overflow.
+        !isDialog && 'tw:max-h-80 tw:overflow-y-auto'
+      )}>
       {suggestions.length > 0 ? (
         <li
           className="tw:bg-secondary tw:px-3 tw:py-1.5"
@@ -822,7 +827,9 @@ const OntologyDataAssetPicker = ({
   );
 
   const searchLabel = native
-    ? t('label.search-entity', { entity: t('label.data-asset-plural') })
+    ? t('label.search-entity', {
+        entity: t('label.data-asset-lowercase-plural'),
+      })
     : t('message.search-tables-and-columns');
   const renderSearch = () => (
     <Input
@@ -839,17 +846,19 @@ const OntologyDataAssetPicker = ({
   );
 
   const renderOptionFilter = (
-    key: string,
-    label: string,
+    key: 'service' | 'type' | 'domain' | 'owner',
     options: FilterOptions,
     value: string,
     onChange: (value: string) => void
   ) => (
     <Select
-      aria-label={label}
+      aria-label={t(`label.${key}`)}
       data-testid={`ontology-data-asset-${key}-filter`}
       items={[
-        { id: ANY, label: t('label.any-entity', { entity: label }) },
+        {
+          id: ANY,
+          label: t('label.any-entity', { entity: t(`label.${key}-lowercase`) }),
+        },
         ...[...options]
           .map(([id, name]) => ({ id, label: name }))
           .sort((left, right) => left.label.localeCompare(right.label)),
@@ -864,59 +873,32 @@ const OntologyDataAssetPicker = ({
   const renderFilters = () =>
     native ? (
       <Box align="center" gap={2} wrap="wrap">
-        <Select
-          aria-label={t('label.type')}
-          data-testid="ontology-data-asset-type-filter"
-          items={[
-            {
-              id: ANY,
-              label: t('label.any-entity', { entity: t('label.type') }),
-            },
-            ...native.assetTypes.map((type) => ({
-              id: type,
-              label: entityUtilClassBase.getFormattedEntityType(type),
-            })),
-          ]}
-          size="sm"
-          value={typeFilter}
-          onChange={(id) => setTypeFilter(String(id))}>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id} label={item.label} />
-          )}
-        </Select>
-        <Select
-          aria-label={t('label.service')}
-          data-testid="ontology-data-asset-service-filter"
-          items={[
-            {
-              id: ANY,
-              label: t('label.any-entity', { entity: t('label.service') }),
-            },
-            ...[...services].sort().map((name) => ({ id: name, label: name })),
-          ]}
-          size="sm"
-          value={serviceFilter}
-          onChange={(id) => setServiceFilter(String(id))}>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id} label={item.label} />
-          )}
-        </Select>
+        {renderOptionFilter(
+          'service',
+          new Map([...services].map((name) => [name, name])),
+          serviceFilter,
+          setServiceFilter
+        )}
+        {renderOptionFilter(
+          'type',
+          new Map(
+            native.assetTypes.map((type) => [
+              type,
+              entityUtilClassBase.getFormattedEntityType(type),
+            ])
+          ),
+          typeFilter,
+          setTypeFilter
+        )}
         {isDialog ? (
           <>
             {renderOptionFilter(
               'domain',
-              t('label.domain'),
               domains,
               domainFilter,
               setDomainFilter
             )}
-            {renderOptionFilter(
-              'owner',
-              t('label.owner'),
-              owners,
-              ownerFilter,
-              setOwnerFilter
-            )}
+            {renderOptionFilter('owner', owners, ownerFilter, setOwnerFilter)}
             <Typography
               className="tw:ml-auto tw:shrink-0"
               color="secondary"
@@ -940,7 +922,7 @@ const OntologyDataAssetPicker = ({
       data-testid="ontology-data-asset-select-all"
       isDisabled={selectable.length === 0}
       isSelected={isAllSelected}
-      label={t('label.select-all')}
+      label={t('label.select-all-lowercase')}
       onChange={toggleAll}
     />
   );
@@ -948,13 +930,17 @@ const OntologyDataAssetPicker = ({
   if (isDialog) {
     return (
       <div className="tw:contents" data-testid="ontology-data-asset-picker">
-        <Dialog.Header className="tw:pr-12">
-          <Box align="center" gap={3}>
+        <Dialog.Header className="tw:flex tw:flex-col tw:gap-4">
+          <Box align="center" className="tw:pr-10" gap={3}>
             <span className="tw:flex tw:size-11 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:bg-utility-blue-50 tw:text-utility-blue-600">
               <Link01 aria-hidden="true" className="tw:size-5" />
             </span>
             <Box direction="col">
-              <Typography as="h2" size="text-md" weight="semibold">
+              <Typography
+                as="h2"
+                className="not-prose tw:m-0"
+                size="text-lg"
+                weight="semibold">
                 {t('label.link-data-to-entity', { entity: conceptName })}
               </Typography>
               <Typography color="secondary" size="text-sm">
@@ -970,10 +956,10 @@ const OntologyDataAssetPicker = ({
             tooltip={t('label.close')}
             onClick={onCancel}
           />
-        </Dialog.Header>
-        <Dialog.Content>
           {renderSearch()}
           {renderFilters()}
+        </Dialog.Header>
+        <Dialog.Content>
           <Box align="center" justify="between">
             <Typography size="text-sm" weight="semibold">
               {t('label.asset-plural')}
@@ -1020,7 +1006,9 @@ const OntologyDataAssetPicker = ({
       data-testid="ontology-data-asset-picker">
       <Box align="center" justify="between">
         <Typography as="span" size="text-sm" weight="semibold">
-          {t('label.add-entity', { entity: t('label.data-asset-plural') })}
+          {t('label.add-entity', {
+            entity: t('label.data-asset-lowercase-plural'),
+          })}
         </Typography>
         <ButtonUtility
           data-testid="ontology-data-asset-picker-close"

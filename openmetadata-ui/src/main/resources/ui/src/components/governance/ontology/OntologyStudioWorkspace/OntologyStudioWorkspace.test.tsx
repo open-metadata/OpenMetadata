@@ -67,6 +67,9 @@ jest.mock(
 jest.mock('../OntologyCreateForm/OntologyCreateForm', () => () => (
   <div data-testid="settings-form" />
 ));
+jest.mock('../OntologyOverview/OntologyOverview', () => () => (
+  <div data-testid="overview" />
+));
 jest.mock('../OntologyGraphView/OntologyGraphView', () => () => (
   <div data-testid="graph-view" />
 ));
@@ -163,9 +166,18 @@ describe('OntologyStudioWorkspace', () => {
       expect(mockAxioms).toHaveBeenCalledTimes(1);
     });
 
-    it('switches between every definition panel', async () => {
+    it('opens on Overview and switches between every definition panel', async () => {
       renderDefinitions();
       await flushReactQuery();
+
+      expect(screen.getByTestId('overview')).toBeInTheDocument();
+      expect(screen.queryByTestId('authoring-concept')).not.toBeInTheDocument();
+
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('tab', { name: /label\.concept-plural/ })
+        );
+      });
 
       expect(screen.getByTestId('authoring-concept')).toBeInTheDocument();
 

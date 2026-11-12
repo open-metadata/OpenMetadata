@@ -528,7 +528,7 @@ test.describe(
         );
         await expect(check).toHaveText('Deselect all');
         await check.click();
-        await expect(check).toHaveText('Select All');
+        await expect(check).toHaveText('Select all');
         await expect(
           page.getByTestId('ontology-native-import-summary')
         ).not.toContainText('rule');

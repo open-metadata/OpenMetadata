@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
-import { Button, ButtonUtility, Input } from '@openmetadata/ui-core-components';
 import {
+  Button,
+  ButtonUtility,
+  Input,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
   ArrowRight,
   Plus,
   Search,
@@ -69,19 +75,12 @@ const toOption = (
   paletteKey: type.paletteKey,
 });
 
-/** The type's own gloss, unless it only repeats the label; else how its inverse reads. */
-const glossOf = (option: RelationTypeOption, inverseLabel: string) => {
-  if (
-    option.description &&
-    option.description.toLowerCase() !== option.label.toLowerCase()
-  ) {
-    return option.description;
-  }
-
-  return option.inverseLabel
-    ? `${inverseLabel}: ${option.inverseLabel}`
+/** The type's own gloss, unless it only repeats the label. */
+const glossOf = (option: RelationTypeOption) =>
+  option.description &&
+  option.description.toLowerCase() !== option.label.toLowerCase()
+    ? option.description
     : undefined;
-};
 
 const renderOption = (
   option: RelationTypeOption,
@@ -89,45 +88,66 @@ const renderOption = (
   inverseLabel: string,
   isAiMode: boolean
 ) => {
-  const gloss = option.isDisabled
-    ? option.scopeLabel
-    : glossOf(option, inverseLabel);
+  const gloss = glossOf(option);
+  const scopeWarning = option.isUnfit ? option.scopeLabel : undefined;
+  // The gloss and the scope warning truncate in the row; the tooltip carries their full text.
+  const fullText = [gloss, scopeWarning].filter(Boolean).join(' · ');
 
   return (
-    <Button
-      noTextPadding
-      className={classNames(
-        'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-primary tw:p-2 tw:text-left hover:tw:bg-primary_hover',
-        'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
-      )}
-      color="tertiary"
-      data-testid={`relation-type-${option.id}`}
-      isDisabled={option.isDisabled}
+    <Tooltip
+      isDisabled={!fullText}
       key={option.id}
-      title={gloss}
-      onClick={() => onSelect(option.id)}>
-      <span
+      placement="right"
+      title={fullText}>
+      <Button
+        noTextPadding
         className={classNames(
-          'tw:size-2.5 tw:shrink-0 tw:rounded-sm',
-          option.isDisabled
-            ? 'tw:bg-quaternary'
-            : RELATION_PALETTE_SWATCH_CLASSES[option.paletteKey]
+          'tw:flex tw:w-full tw:items-center tw:gap-2 tw:rounded-lg tw:border-0 tw:bg-primary tw:p-2 tw:text-left hover:tw:bg-primary_hover',
+          'tw:*:data-text:flex tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-2'
         )}
-      />
-      <span
-        className={classNames(
-          'tw:min-w-0 tw:flex-1 tw:truncate tw:font-body',
-          option.isDisabled ? 'tw:text-disabled' : 'tw:text-primary',
-          isAiMode ? 'tw:text-sm' : 'tw:text-xs tw:font-medium'
-        )}>
-        {option.label}
-      </span>
-      {gloss ? (
-        <span className="tw:max-w-36 tw:truncate tw:font-body tw:text-xs tw:font-normal tw:text-tertiary">
-          {gloss}
+        color="tertiary"
+        data-testid={`relation-type-${option.id}`}
+        onClick={() => onSelect(option.id)}>
+        <span
+          className={classNames(
+            'tw:size-2.5 tw:shrink-0 tw:rounded-sm',
+            RELATION_PALETTE_SWATCH_CLASSES[option.paletteKey]
+          )}
+        />
+        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:font-body">
+          <span
+            className={classNames(
+              'tw:truncate tw:text-primary',
+              isAiMode ? 'tw:text-sm' : 'tw:text-xs tw:font-medium'
+            )}>
+            {option.label}
+          </span>
+          {option.inverseLabel ? (
+            <span className="tw:truncate tw:text-xs tw:font-normal tw:text-tertiary">
+              {inverseLabel}: {option.inverseLabel}
+            </span>
+          ) : null}
+          {scopeWarning ? (
+            <span
+              className="tw:flex tw:min-w-0 tw:items-center tw:gap-1 tw:text-xs tw:font-normal tw:text-warning-primary"
+              data-testid={`relation-type-unfit-${option.id}`}>
+              <AlertCircle
+                aria-hidden="true"
+                className="tw:size-3 tw:shrink-0"
+              />
+              <span className="tw:truncate">{scopeWarning}</span>
+            </span>
+          ) : null}
         </span>
-      ) : null}
-    </Button>
+        {gloss ? (
+          <span
+            className="tw:max-w-[45%] tw:min-w-0 tw:truncate tw:font-body tw:text-xs tw:font-normal tw:text-tertiary"
+            data-testid={`relation-type-gloss-${option.id}`}>
+            {gloss}
+          </span>
+        ) : null}
+      </Button>
+    </Tooltip>
   );
 };
 

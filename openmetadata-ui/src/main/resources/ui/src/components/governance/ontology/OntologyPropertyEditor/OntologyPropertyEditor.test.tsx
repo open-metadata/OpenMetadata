@@ -85,9 +85,12 @@ describe('OntologyPropertyEditor', () => {
     });
     const cancel = screen.getByRole('button', { name: 'label.cancel' });
 
-    expect(cancel).toBeDisabled();
+    expect(cancel).toBeEnabled();
+    expect(screen.getByRole('button', { name: SUBMIT })).toBeDisabled();
 
     fireEvent.change(displayName, { target: { value: 'Changed' } });
+
+    expect(screen.getByRole('button', { name: SUBMIT })).toBeEnabled();
 
     expect(
       await screen.findByTestId('ontology-property-footer-status')
@@ -101,6 +104,44 @@ describe('OntologyPropertyEditor', () => {
       screen.getByTestId('ontology-property-footer-status')
     ).toHaveTextContent('label.no-unsaved-changes');
     expect(patch).not.toHaveBeenCalled();
+  });
+
+  it('closes the drawer on Cancel, clean or edited, without saving', () => {
+    const onCancel = jest.fn();
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        property={property}
+        onCancel={onCancel}
+        onSaved={jest.fn()}
+      />
+    );
+    const cancel = screen.getByRole('button', { name: 'label.cancel' });
+    fireEvent.click(cancel);
+    fireEvent.change(
+      screen.getByRole('textbox', { name: 'label.display-name' }),
+      { target: { value: 'Changed' } }
+    );
+    fireEvent.click(cancel);
+
+    expect(onCancel).toHaveBeenCalledTimes(2);
+    expect(patch).not.toHaveBeenCalled();
+  });
+
+  it('keeps Create disabled until the property has a name', () => {
+    render(
+      <OntologyPropertyEditor canEdit ontology={ontology} onSaved={jest.fn()} />
+    );
+    const create = screen.getByRole('button', { name: SUBMIT });
+
+    expect(create).toBeDisabled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
+      target: { value: 'status' },
+    });
+
+    expect(create).toBeEnabled();
   });
 
   it('creates an object property in its native ontology with a server-minted IRI', async () => {

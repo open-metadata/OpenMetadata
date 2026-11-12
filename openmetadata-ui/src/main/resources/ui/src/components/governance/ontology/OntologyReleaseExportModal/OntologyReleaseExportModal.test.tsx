@@ -222,7 +222,7 @@ describe('OntologyReleaseExportModal', () => {
       await screen.findByTestId('ontology-release-export-preview')
     ).toHaveTextContent('<rdf>sealed release</rdf>');
     expect(screen.getByTestId('ontology-export-file-name')).toHaveTextContent(
-      'Sales-release-1.rdf'
+      'sales.rdf'
     );
     expect(mockExportOntologyRelease).toHaveBeenLastCalledWith(
       release.id,
@@ -244,7 +244,7 @@ describe('OntologyReleaseExportModal', () => {
     );
     expect(mockDownloadFile).toHaveBeenCalledWith(
       '<rdf>sealed release</rdf>',
-      'Sales-release-1.rdf',
+      'sales.rdf',
       'application/rdf+xml'
     );
     expect(onClose).toHaveBeenCalled();
@@ -272,7 +272,7 @@ describe('OntologyReleaseExportModal', () => {
     );
 
     expect(screen.getByTestId('ontology-export-file-name')).toHaveTextContent(
-      'Sales-draft.ttl'
+      'sales-draft.ttl'
     );
     expect(screen.getByTestId('ontology-export-scope')).toHaveTextContent(
       'label.current-draft'
@@ -284,7 +284,7 @@ describe('OntologyReleaseExportModal', () => {
 
     expect(mockDownloadFile).toHaveBeenCalledWith(
       '<rdf>draft</rdf>',
-      'Sales-draft.ttl',
+      'sales-draft.ttl',
       'text/turtle'
     );
 
@@ -386,7 +386,7 @@ describe('OntologyReleaseExportModal', () => {
 
     expect(mockDownloadFile).toHaveBeenCalledWith(
       '<rdf>draft</rdf>',
-      'Sales-draft.rdf',
+      'sales-draft.rdf',
       'application/rdf+xml'
     );
   });
@@ -437,7 +437,7 @@ describe('OntologyReleaseExportModal', () => {
       screen.getByRole('radio', { name: /label.current-draft/ })
     ).not.toBeChecked();
     expect(screen.getByTestId('ontology-export-file-name')).toHaveTextContent(
-      'Sales-release-0.rdf'
+      'sales-release-0.rdf'
     );
   });
 
@@ -456,12 +456,19 @@ describe('OntologyReleaseExportModal', () => {
     expect(
       screen.queryByText('message.ontology-review-unavailable')
     ).not.toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /label.rdf-xml/ })).toBeChecked();
+    expect(
+      screen.getByRole('radio', { name: /label.current-draft/ })
+    ).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'label.retry' }));
 
-    expect(
-      await screen.findByTestId('ontology-export-scope')
-    ).toHaveTextContent('Release 1 · label.active');
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-export-scope')).toHaveTextContent(
+        'Release 1 · label.active'
+      )
+    );
+
     expect(mockGetOntologyState).toHaveBeenCalledTimes(2);
   });
 

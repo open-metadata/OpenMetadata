@@ -49,6 +49,7 @@ import { useOntologyAxiomValidation } from '../OntologyAxiomEditor/useOntologyAx
 import {
   ConceptEmptyState,
   ConceptFormCard,
+  ConceptFormHeading,
   ConceptSection,
 } from './OntologyConceptSection';
 
@@ -129,6 +130,12 @@ const ConceptRuleForm = ({
 
   return (
     <ConceptFormCard testId="ontology-rule-form">
+      <ConceptFormHeading
+        hint={t('message.rule-applies-to-every-concept', {
+          name: getEntityName(concept),
+        })}
+        title={t('label.new-entity', { entity: t('label.rule') })}
+      />
       <QuickRuleFields
         problems={problems.routed.byField}
         references={references}
@@ -218,9 +225,7 @@ const OntologyConceptRules = ({
           ))}
         </InspectorList>
       ) : (
-        <ConceptEmptyState
-          title={t('label.no-entity', { entity: t('label.rule-plural') })}
-        />
+        <ConceptEmptyState title={t('message.ontology-no-rules-yet')} />
       )}
     </ConceptSection>
   );

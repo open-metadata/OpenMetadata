@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 import {
-    Alert,
-    Box,
-    Button,
-    ButtonUtility,
-    Table,
-    TableCard,
-    Typography
+  Alert,
+  Box,
+  Button,
+  ButtonUtility,
+  Table,
+  TableCard,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
@@ -42,6 +42,10 @@ export interface DefinitionColumn<T> {
   readonly id: string;
   readonly label: string;
   readonly render: (item: T) => ReactNode;
+  /** A fixed width, e.g. `tw:w-24`; columns without one share what is left. */
+  readonly width?: string;
+  /** Numbers read right-aligned. */
+  readonly align?: 'end';
 }
 
 interface OntologyDefinitionListProps<T> {
@@ -60,6 +64,8 @@ interface OntologyDefinitionListProps<T> {
   toolbar?: ReactNode;
   /** "6 concepts" or "3 of 8", right of the filters. */
   summary?: ReactNode;
+  /** Changes whenever the tab's search or filters change, which sends the list back to its first page. */
+  filterKey?: string;
   /** Replaces the side editor for a row, e.g. to open a concept on the graph. */
   onOpen?: (item: T) => void;
   /** Replaces the inline editor for a new definition; `saved` is set once, to keep the new one open. */
@@ -70,7 +76,8 @@ interface OntologyDefinitionListProps<T> {
   children: (
     definition: T | undefined,
     canEdit: boolean,
-    onSaved: (saved: T) => void
+    onSaved: (saved: T) => void,
+    close: () => void
   ) => ReactNode;
 }
 
@@ -83,6 +90,25 @@ const DEFINITION_ENTITIES = {
   concept: EntityType.ONTOLOGY_CONCEPT,
   property: EntityType.ONTOLOGY_PROPERTY,
   axiom: EntityType.ONTOLOGY_AXIOM,
+};
+// Narrower than the table's default padding, so every column fits at 1440 wide.
+const CELL_PADDING = 'tw:px-3 tw:first:pl-5 tw:last:pr-5';
+
+const columnClassName = <T,>(column: DefinitionColumn<T>) =>
+  [CELL_PADDING, column.width, column.align === 'end' ? 'tw:text-right' : '']
+    .filter(Boolean)
+    .join(' ');
+
+/** The page index, back to the first page whenever `resetKey` changes. */
+const usePageResetOn = (resetKey?: string) => {
+  const [page, setPage] = useState(0);
+  const [pagedKey, setPagedKey] = useState(resetKey);
+  if (pagedKey !== resetKey) {
+    setPagedKey(resetKey);
+    setPage(0);
+  }
+
+  return [page, setPage] as const;
 };
 
 const OntologyDefinitionList = <
@@ -101,6 +127,7 @@ const OntologyDefinitionList = <
   columns,
   toolbar,
   summary,
+  filterKey,
   onOpen,
   children,
   renderCreate,
@@ -109,8 +136,10 @@ const OntologyDefinitionList = <
   const guard = useOntologyDraftGuard();
   const label = definitionType === 'axiom' ? 'constraint' : definitionType;
   const entityLabel = t(`label.${label}`);
+  // Sentence case: "Add concept", not "Add Concept".
+  const entityText = entityLabel.toLocaleLowerCase();
   const pluralLabel = t(`label.${label}-plural`);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = usePageResetOn(filterKey);
   const [selected, setSelected] = useState<T | 'new'>();
   const [isDeleting, setIsDeleting] = useState(false);
   const definition = selected === 'new' ? undefined : selected;
@@ -208,6 +237,8 @@ const OntologyDefinitionList = <
       />
     ) : null;
 
+  const closeEditor = () => guard(() => setSelected(undefined));
+
   const renderEditorForm = () => (
     <Fragment
       key={definition ? definition.id + ':' + definition.version : 'new'}>
@@ -217,7 +248,8 @@ const OntologyDefinitionList = <
         (saved) => {
           setSelected(saved);
           onChanged?.();
-        }
+        },
+        closeEditor
       )}
       {renderDeleteDialog()}
     </Fragment>
@@ -225,7 +257,7 @@ const OntologyDefinitionList = <
 
   const renderCreateForm = (create: NonNullable<typeof renderCreate>) =>
     create({
-      close: () => guard(() => setSelected(undefined)),
+      close: closeEditor,
       onCreated: (saved) => {
         if (saved) {
           setSelected(saved);
@@ -277,7 +309,7 @@ const OntologyDefinitionList = <
           icon={XClose}
           size="lg"
           tooltip={t('label.close')}
-          onClick={() => guard(() => setSelected(undefined))}
+          onClick={closeEditor}
         />
       </Box>
       <Box
@@ -295,7 +327,7 @@ const OntologyDefinitionList = <
     }
     if (selected === 'new' && renderCreate) {
       return renderDrawer(
-        t('label.add-entity', { entity: entityLabel }),
+        t('label.add-entity', { entity: entityText }),
         renderCreateForm(renderCreate)
       );
     }
@@ -307,7 +339,7 @@ const OntologyDefinitionList = <
     return renderDrawer(
       definition
         ? getEntityName(definition)
-        : t('label.new-entity', { entity: entityLabel }),
+        : t('label.new-entity', { entity: entityText }),
       renderEditorForm()
     );
   };
@@ -352,11 +384,22 @@ const OntologyDefinitionList = <
     <TableCard.Root
       data-testid={`ontology-definition-group-${definitionType}`}
       size="sm">
-      <Table aria-label={pluralLabel} size="sm">
+      <Table aria-label={pluralLabel} className="tw:table-fixed" size="sm">
         <Table.Header>
-          <Table.Head isRowHeader id="name" label={t('label.name')} />
+          <Table.Head
+            isRowHeader
+            className={`${CELL_PADDING} tw:w-44`}
+            id="name"
+            label={t('label.name')}
+          />
           {columns.map((column) => (
-            <Table.Head id={column.id} key={column.id} label={column.label} />
+            <Table.Head
+              align={column.align}
+              className={columnClassName(column)}
+              id={column.id}
+              key={column.id}
+              label={column.label}
+            />
           ))}
         </Table.Header>
         <Table.Body
@@ -369,24 +412,34 @@ const OntologyDefinitionList = <
             </div>
           )}>
           {(item) => (
-            <Table.Row id={item.id}>
-              <Table.Cell>
-                <Box align="center" className="tw:max-w-80 tw:min-w-0" gap={2}>
-                  <span
-                    aria-hidden
-                    className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
-                  />
+            <Table.Row id={item.id} onAction={() => openRow(item)}>
+              <Table.Cell className={CELL_PADDING}>
+                <Box
+                  align="center"
+                  className="tw:min-w-0 tw:overflow-hidden"
+                  gap={2}>
+                  {definitionType === 'concept' ? (
+                    <span
+                      aria-hidden
+                      className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
+                    />
+                  ) : null}
                   <Button
-                    className="tw:min-w-0"
+                    ellipsis
+                    className="tw:min-w-0 tw:max-w-full tw:overflow-hidden"
                     color="link-gray"
                     size="sm"
                     onPress={() => openRow(item)}>
-                    <span className="tw:truncate">{getEntityName(item)}</span>
+                    <span className="tw:font-semibold tw:text-primary">
+                      {getEntityName(item)}
+                    </span>
                   </Button>
                 </Box>
               </Table.Cell>
               {columns.map((column) => (
-                <Table.Cell key={column.id}>{column.render(item)}</Table.Cell>
+                <Table.Cell className={columnClassName(column)} key={column.id}>
+                  {column.render(item)}
+                </Table.Cell>
               ))}
             </Table.Row>
           )}
@@ -425,7 +478,7 @@ const OntologyDefinitionList = <
             iconLeading={Plus}
             size="sm"
             onPress={() => guard(() => setSelected('new'))}>
-            {t('label.add-entity', { entity: entityLabel })}
+            {t('label.add-entity', { entity: entityText })}
           </Button>
         )}
       </Box>

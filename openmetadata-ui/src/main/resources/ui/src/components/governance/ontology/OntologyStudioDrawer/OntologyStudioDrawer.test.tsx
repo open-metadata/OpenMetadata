@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
 import OntologyStudioDrawer from './OntologyStudioDrawer';
 import { OntologyStudioDrawerHostContext } from './OntologyStudioDrawer.context';
@@ -55,6 +56,36 @@ describe('OntologyStudioDrawer', () => {
     expect(
       screen.queryByTestId('ontology-studio-drawer-gap')
     ).not.toBeInTheDocument();
+  });
+
+  it('marks itself so the canvas toolbar can stay clear of it', () => {
+    renderInShell();
+
+    expect(screen.getByTestId('drawer')).toHaveAttribute('data-studio-drawer');
+  });
+
+  it('opens its confirm modal inside the panel instead of over the page', () => {
+    const shell = document.createElement('main');
+    document.body.appendChild(shell);
+    render(
+      <OntologyStudioDrawerHostContext.Provider value={shell}>
+        <OntologyStudioDrawer
+          confirm={
+            <ModalOverlay isOpen>
+              <Modal>
+                <Dialog data-testid="confirm" title="Delete?" />
+              </Modal>
+            </ModalOverlay>
+          }
+          testId="drawer">
+          content
+        </OntologyStudioDrawer>
+      </OntologyStudioDrawerHostContext.Provider>
+    );
+
+    expect(screen.getByTestId('drawer')).toContainElement(
+      screen.getByTestId('confirm')
+    );
   });
 
   it('sits in the flow outside the Studio shell', () => {

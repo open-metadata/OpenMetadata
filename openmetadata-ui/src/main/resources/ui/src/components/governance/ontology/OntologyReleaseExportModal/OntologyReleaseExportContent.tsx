@@ -253,9 +253,7 @@ const ExportAdvanced = ({
   onRunShacl,
   onScopeChange,
   onSelectionChange,
-}: Omit<OntologyReleaseExportContentProps, 'activeRelease' | 'state'> & {
-  readonly state: Extract<OntologyReleaseExportContentState, { kind: 'ready' }>;
-}) => {
+}: Omit<OntologyReleaseExportContentProps, 'activeRelease'>) => {
   const { t } = useTranslation();
   const { card, options, skosXl } = selection;
   const setOption = (changes: Partial<typeof options>) =>
@@ -313,8 +311,8 @@ const ExportAdvanced = ({
                 {t('label.preview')}
               </Typography>
               <ExportPreview
-                content={state.content}
-                isLoading={state.isPreviewLoading}
+                content={state.kind === 'ready' ? state.content : undefined}
+                isLoading={state.kind === 'ready' && state.isPreviewLoading}
               />
             </Box>
             {isDraft ? null : (
@@ -344,7 +342,8 @@ const OntologyReleaseExportContent = ({
         {t('message.ontology-export-help')}
       </Typography>
       <ExportLoadState state={state} />
-      {state.kind === 'ready' ? (
+      {/* A failed preview or scope read must not hide the choices, which can recover it. */}
+      {state.kind === 'loading' ? null : (
         <>
           <ExportFormatChoice
             selection={props.selection}
@@ -357,7 +356,7 @@ const OntologyReleaseExportContent = ({
           />
           <ExportAdvanced {...props} state={state} />
         </>
-      ) : null}
+      )}
     </Box>
   );
 };

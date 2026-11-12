@@ -23,7 +23,9 @@ import {
   countRowsByFilter,
   filterConceptChanges,
   flattenConceptChanges,
+  groupChangeCards,
   suggestVersion,
+  visibleWorkingChanges,
 } from './OntologyReleaseChanges.utils';
 
 const change = (
@@ -236,5 +238,88 @@ describe('countRowsByFilter', () => {
       changed: 0,
       removed: 0,
     });
+  });
+
+  it('counts every change a class row carries, so All matches the summary total', () => {
+    const groups = [
+      group('Alpha', ChangeType.Added, [
+        change(MemberKind.Concept, ChangeType.Added),
+        change(MemberKind.Axiom, ChangeType.Added),
+        change(MemberKind.Axiom, ChangeType.Added),
+      ]),
+      group('Beta', ChangeType.Changed, [
+        change(MemberKind.Concept, ChangeType.Changed),
+      ]),
+    ];
+    const members = [change(MemberKind.Ontology, ChangeType.Changed)];
+
+    expect(countRowsByFilter(groups, members, '')).toEqual({
+      all: 4,
+      added: 3,
+      changed: 1,
+      removed: 0,
+    });
+    expect(countRowsByFilter(groups, members, '').all).toBe(
+      countChangesByKind([...groups.flatMap((g) => g.changes), ...members])
+        .total
+    );
+  });
+});
+
+describe('groupChangeCards', () => {
+  it('puts a class group under Concepts, a lone shape group under Rules and members by kind, in a fixed order', () => {
+    const cards = groupChangeCards(
+      [
+        group(undefined, ChangeType.Changed, [
+          change(MemberKind.Shape, ChangeType.Changed),
+        ]),
+        group('Alpha', ChangeType.Added, [
+          change(MemberKind.Concept, ChangeType.Added),
+          change(MemberKind.Property, ChangeType.Added),
+        ]),
+      ],
+      [
+        change(MemberKind.Association, ChangeType.Removed),
+        change(MemberKind.Ontology, ChangeType.Changed),
+      ]
+    );
+
+    expect(cards.map(({ kind, rows }) => [kind, rows.length])).toEqual([
+      ['concepts', 1],
+      ['relationships', 1],
+      ['rules', 1],
+      ['ontology', 1],
+    ]);
+  });
+});
+
+describe('visibleWorkingChanges', () => {
+  const page = {
+    groups: [
+      group(undefined, ChangeType.Added, [
+        change(MemberKind.Ontology, ChangeType.Added),
+      ]),
+      group('Alpha', ChangeType.Added, []),
+    ],
+    data: [
+      change(MemberKind.Ontology, ChangeType.Added),
+      change(MemberKind.Concept, ChangeType.Added),
+    ],
+  };
+
+  it('leaves the ontology row out before the first release', () => {
+    const visible = visibleWorkingChanges(page, true);
+
+    expect(visible.groups.map(({ concept }) => concept)).toEqual(['Alpha']);
+    expect(visible.members.map(({ memberKind }) => memberKind)).toEqual([
+      MemberKind.Concept,
+    ]);
+  });
+
+  it('keeps every row once a release exists', () => {
+    const visible = visibleWorkingChanges(page, false);
+
+    expect(visible.groups).toHaveLength(2);
+    expect(visible.members).toHaveLength(2);
   });
 });

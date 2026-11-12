@@ -16,27 +16,27 @@ import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { MemoryRouter, useLocation } from 'react-router-dom';
 import {
-    CreateOntologyChangeSet,
-    OperationState,
-    OperationType
+  CreateOntologyChangeSet,
+  OperationState,
+  OperationType,
 } from '../../../../generated/api/data/createOntologyChangeSet';
 import {
-    Format,
-    Kind,
-    NativeOntologyImportSummary,
-    SkipReason,
-    Status
+  Format,
+  Kind,
+  NativeOntologyImportSummary,
+  SkipReason,
+  Status,
 } from '../../../../generated/api/data/nativeOntologyImportSummary';
 import { OntologyChangeSetState } from '../../../../generated/entity/data/ontologyChangeSet';
 import {
-    applyOntologyChangeSet,
-    createOntology,
-    createOntologyChangeSet,
-    detectNativeOntologyImportFormat,
-    getOntologyByName,
-    getOntologyChangeSet,
-    previewNativeOntologyImport,
-    previewNativeOntologyImportWithoutTarget
+  applyOntologyChangeSet,
+  createOntology,
+  createOntologyChangeSet,
+  detectNativeOntologyImportFormat,
+  getOntologyByName,
+  getOntologyChangeSet,
+  previewNativeOntologyImport,
+  previewNativeOntologyImportWithoutTarget,
 } from '../../../../rest/ontologyAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
@@ -584,6 +584,26 @@ describe('OntologyNativeImportPanel', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
   });
 
+  it('offers Retry when the dry run fails and previews the same file again', async () => {
+    (previewNativeOntologyImport as jest.Mock).mockRejectedValueOnce(
+      new Error('Network down')
+    );
+    renderPanel();
+    dropFile();
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'server.unexpected-error'
+    );
+
+    await user.click(screen.getByTestId('ontology-native-import-retry'));
+
+    expect(await parse()).toBeVisible();
+    expect(previewNativeOntologyImport).toHaveBeenCalledTimes(2);
+    expect(
+      screen.queryByTestId('ontology-native-import-retry')
+    ).not.toBeInTheDocument();
+  });
+
   it('drops the parsed preview when a replacement file is too large', async () => {
     renderPanel();
     dropFile();
@@ -901,6 +921,40 @@ describe('OntologyNativeImportPanel item review', () => {
     ]);
   });
 
+  it('shows a part-ticked group as mixed and ticks the whole group from its checkbox', async () => {
+    renderPanel();
+    dropFile();
+    await parse();
+    const groupCheck = () =>
+      within(
+        screen.getByTestId('ontology-native-import-group-select-CONCEPT')
+      ).getByRole('checkbox');
+
+    expect(groupCheck()).toBeChecked();
+
+    await user.click(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-concept:https://example.org/Payment'
+        )
+      ).getByRole('checkbox')
+    );
+
+    expect(groupCheck()).not.toBeChecked();
+    expect(groupCheck()).toBePartiallyChecked();
+
+    await user.click(groupCheck());
+
+    expect(groupCheck()).toBeChecked();
+    expect(
+      within(
+        screen.getByTestId(
+          'ontology-native-import-item-check-concept:https://example.org/Payment'
+        )
+      ).getByRole('checkbox')
+    ).toBeChecked();
+  });
+
   it('disables Import once every item is unticked', async () => {
     renderPanel();
     dropFile();
@@ -919,7 +973,7 @@ describe('OntologyNativeImportPanel item review', () => {
     expect(screen.getByTestId('ontology-native-import-apply')).toBeDisabled();
     expect(
       screen.getByTestId('ontology-native-import-group-check-CONCEPT')
-    ).toHaveTextContent('label.select-all');
+    ).toHaveTextContent('label.select-all-lowercase');
     expect(
       screen.getByTestId('ontology-native-import-summary')
     ).toHaveTextContent('message.native-import-nothing-selected');

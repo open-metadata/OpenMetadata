@@ -49,7 +49,11 @@ const PanelHeader = ({
 
   return asChanges ? (
     <Box align="center" gap={2}>
-      <Typography as="h3" size="text-md" weight="semibold">
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-md"
+        weight="semibold">
         {t('label.change-plural')}
       </Typography>
       <Badge color="gray" size="sm" type="pill-color">
@@ -58,7 +62,11 @@ const PanelHeader = ({
     </Box>
   ) : (
     <>
-      <Typography as="h3" size="text-md" weight="semibold">
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-md"
+        weight="semibold">
         {t('label.submitted-definition')}
       </Typography>
       <Typography>

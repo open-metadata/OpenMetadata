@@ -741,7 +741,7 @@ const OntologyNativeDataCanvas = ({
           onPress={() => toggleAllColumns(slot.assetId)}>
           {slot.kind === 'more'
             ? t('label.show-count-more', { count: slot.hiddenCount })
-            : t('label.show-less')}
+            : t('label.show-less-lowercase')}
         </Button>
       );
     }
@@ -953,7 +953,7 @@ const OntologyNativeDataCanvas = ({
               iconLeading={ChevronUp}
               size="sm"
               onPress={() => setIsExpanded(false)}>
-              {t('label.show-less')}
+              {t('label.show-less-lowercase')}
             </Button>
           ) : null}
         </Box>

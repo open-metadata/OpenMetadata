@@ -104,10 +104,11 @@ const OntologyQueryPicker = ({
   return (
     <Box
       align="center"
-      className="tw:w-full tw:px-6 tw:py-16"
+      className="tw:min-h-0 tw:w-full tw:flex-1 tw:px-6 tw:py-16"
       data-testid="ontology-query-picker"
       direction="col"
-      gap={4}>
+      gap={4}
+      justify="center">
       <FeaturedIcon
         color="brand"
         icon={isOntologyView ? Globe01 : Search}

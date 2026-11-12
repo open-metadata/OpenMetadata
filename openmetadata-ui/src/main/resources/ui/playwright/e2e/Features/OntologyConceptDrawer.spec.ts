@@ -186,6 +186,9 @@ for (const mode of ['classic', 'ai'] as const) {
 
           await page.getByTestId('ontology-new-class-close').click();
           await page.getByTestId('submode-tab-definitions').click();
+          await page
+            .getByRole('tab', { name: 'Concepts', exact: true })
+            .click();
           await page.getByTestId('ontology-add-concept').click();
           await expect(
             page.getByTestId('ontology-new-class-panel')
@@ -663,6 +666,7 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.goto('/governance/ontology?ontology=' + owner.id);
         await page.getByTestId('mode-tab-edit').click();
         await page.getByTestId('submode-tab-definitions').click();
+        await page.getByRole('tab', { name: 'Concepts', exact: true }).click();
         // A Concepts row opens the concept's panel on the graph, where Delete sits in the ⋯ menu.
         await page.getByRole('button', { name: 'Removable' }).click();
         await page.getByTestId('ontology-concept-more').click();

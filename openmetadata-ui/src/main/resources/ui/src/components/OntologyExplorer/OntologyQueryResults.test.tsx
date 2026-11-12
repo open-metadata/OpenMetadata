@@ -230,15 +230,16 @@ describe('OntologyQueryResults', () => {
     expect(rows[2]).toHaveTextContent(/^2\s*urn:b\s*Beta$/);
   });
 
-  it('uses readable column labels and shows extra notes beside the count', () => {
+  it('uses readable column labels in their own order and shows extra notes beside the count', () => {
     renderResults(THREE_ROWS, {
-      columnLabels: { c: 'IRI', label: 'Concept' },
+      columnLabels: { label: 'Concept', c: 'IRI' },
       meta: '1 condition ignored',
     });
 
-    expect(screen.getAllByRole('row')[0]).toHaveTextContent(
-      /^#\s*IRI\s*Concept$/
-    );
+    const rows = screen.getAllByRole('row');
+
+    expect(rows[0]).toHaveTextContent(/^#\s*Concept\s*IRI$/);
+    expect(rows[2]).toHaveTextContent(/^2\s*Beta, the second\s*urn:b$/);
     expect(screen.getByText('1 condition ignored')).toBeInTheDocument();
   });
 });

@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { ReactNode } from 'react';
+import { ReactNode, useState } from 'react';
+import { UNSAFE_PortalProvider as PortalProvider } from 'react-aria';
 import { createPortal } from 'react-dom';
 import { useOntologyStudioDrawerHost } from './OntologyStudioDrawer.context';
 
@@ -19,13 +20,16 @@ interface OntologyStudioDrawerProps {
   readonly ariaLabel?: string;
   readonly children: ReactNode;
   readonly className?: string;
+  /** A confirm dialog scoped to this drawer: its scrim and card cover only the panel, per the design. */
+  readonly confirm?: ReactNode;
   readonly placement?: 'beside' | 'overlay';
   readonly testId?: string;
 }
 
 // 40% of the screen, as the design's drawer; never narrower than the 420px its forms need.
 const PANEL_WIDTH = 'tw:w-[40vw] tw:min-w-105';
-const PANEL_CLASS = `${PANEL_WIDTH} tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
+// transform-gpu makes the panel the containing block of a fixed modal portalled into it.
+const PANEL_CLASS = `${PANEL_WIDTH} tw:transform-gpu tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
 // Full height of the Studio, over the right of the header too; nothing behind it is dimmed.
 const HOSTED_CLASS =
   'tw:absolute tw:top-2 tw:right-2 tw:bottom-2 tw:z-40 tw:max-w-[calc(100%-1rem)]';
@@ -40,16 +44,27 @@ const OntologyStudioDrawer = ({
   ariaLabel,
   children,
   className,
+  confirm,
   placement = 'beside',
   testId,
 }: OntologyStudioDrawerProps) => {
   const host = useOntologyStudioDrawerHost();
+  // State, not a ref: the confirm needs the panel mounted before it can portal into it.
+  const [panelElement, setPanelElement] = useState<HTMLElement | null>(null);
+  // data-studio-drawer: the Studio's canvas toolbar reads it to stay clear of an open drawer.
   const panel = (positionClass: string) => (
     <aside
+      data-studio-drawer
       aria-label={ariaLabel}
       className={classNames(PANEL_CLASS, positionClass, className)}
-      data-testid={testId}>
+      data-testid={testId}
+      ref={setPanelElement}>
       {children}
+      {confirm && panelElement ? (
+        <PortalProvider getContainer={() => panelElement}>
+          {confirm}
+        </PortalProvider>
+      ) : null}
     </aside>
   );
 

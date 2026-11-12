@@ -13,6 +13,7 @@
 import {
   Alert,
   Badge,
+  BadgeColors,
   Box,
   Button,
   Card,
@@ -37,6 +38,7 @@ import { Ontology } from '../../../../generated/entity/data/ontology';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { EntityReference } from '../../../../generated/entity/type';
 import { OntologyPublicationStatus } from '../../../../generated/type/ontologyPublicationStatus';
+import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import {
   getOntologyWorkingDiff,
@@ -64,11 +66,13 @@ interface OntologyOverviewProps {
   readonly onOpenPublication?: () => void;
 }
 
-const MEMBER_KIND_LABELS: Partial<Record<MemberKind, string>> = {
-  [MemberKind.Concept]: 'label.concept',
-  [MemberKind.Axiom]: 'label.rule',
-  [MemberKind.Property]: 'label.property',
-  [MemberKind.Association]: 'label.relationship',
+const MEMBER_KINDS: Partial<
+  Record<MemberKind, { label: string; color: BadgeColors }>
+> = {
+  [MemberKind.Concept]: { label: 'label.concept', color: 'brand' },
+  [MemberKind.Axiom]: { label: 'label.rule', color: 'orange' },
+  [MemberKind.Property]: { label: 'label.property', color: 'purple' },
+  [MemberKind.Association]: { label: 'label.relationship', color: 'success' },
 };
 const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
   [ChangeType.Added]: 'label.added',
@@ -79,19 +83,21 @@ const CHANGE_TYPE_LABELS: Record<ChangeType, string> = {
 
 const ChangeRow = ({ change }: { change: MemberChange }) => {
   const { t } = useTranslation();
-  const kindLabel = MEMBER_KIND_LABELS[change.memberKind];
+  const kind = MEMBER_KINDS[change.memberKind];
 
   return (
     <Box
       align="center"
-      className="tw:border-t tw:border-secondary tw:py-2.5 tw:first:border-t-0"
+      className="tw:border-t tw:border-secondary tw:px-6 tw:py-3 tw:first:border-t-0"
       data-testid="ontology-overview-change"
       gap={3}>
-      {kindLabel ? (
-        <Badge className="tw:shrink-0" color="gray" size="sm" type="pill-color">
-          {t(kindLabel)}
-        </Badge>
-      ) : null}
+      <div className="tw:w-28 tw:shrink-0">
+        {kind ? (
+          <Badge color={kind.color} size="sm" type="pill-color">
+            {t(kind.label)}
+          </Badge>
+        ) : null}
+      </div>
       <Box className="tw:min-w-0 tw:flex-1">
         <Typography ellipsis size="text-sm">
           {getEntityName(change.entity)}
@@ -114,7 +120,8 @@ const RecentChangesCard = ({
 }) => {
   const { t } = useTranslation();
   const diff = useQuery({
-    queryKey: ['ontology-overview-recent-changes', ontologyId],
+    // Under the working-diff key, so a publish or any draft edit that refreshes the diff refreshes this too.
+    queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontologyId, 'overview-recent'],
     queryFn: ({ signal }) =>
       getOntologyWorkingDiff(
         ontologyId,
@@ -133,41 +140,39 @@ const RecentChangesCard = ({
     <Card data-testid="ontology-overview-recent-changes">
       <Card.Header
         extra={
-          <Typography color="secondary" size="text-sm">
-            {t('message.ontology-n-unpublished', { count: total })}
-          </Typography>
-        }
-        title={t('label.recent-change-plural')}
-      />
-      <Card.Content>
-        <Box direction="col" gap={4}>
-          {total === 0 ? (
+          <Box align="center" gap={3}>
             <Typography color="secondary" size="text-sm">
-              {t('message.ontology-no-unpublished-changes')}
+              {t('message.ontology-n-unpublished', { count: total })}
             </Typography>
-          ) : (
-            <Box direction="col">
-              {diff.data.data.map((change) => (
-                <ChangeRow
-                  change={change}
-                  key={`${change.memberKind}-${change.entity.id}`}
-                />
-              ))}
-            </Box>
-          )}
-          {total > 0 ? (
-            <Box justify="end">
+            {total > 0 ? (
               <Button
-                color="primary"
+                color="secondary"
                 data-testid="ontology-overview-review-publish"
                 size="sm"
                 onPress={onOpenPublication}>
                 {t('label.review-publish')}
               </Button>
-            </Box>
-          ) : null}
+            ) : null}
+          </Box>
+        }
+        title={t('label.recent-change-plural')}
+      />
+      {total === 0 ? (
+        <Card.Content>
+          <Typography color="secondary" size="text-sm">
+            {t('message.ontology-no-unpublished-changes')}
+          </Typography>
+        </Card.Content>
+      ) : (
+        <Box direction="col">
+          {diff.data.data.map((change) => (
+            <ChangeRow
+              change={change}
+              key={`${change.memberKind}-${change.entity.id}`}
+            />
+          ))}
         </Box>
-      </Card.Content>
+      )}
     </Card>
   );
 };
@@ -304,7 +309,7 @@ const getValidationMessage = (
     return 'server.unexpected-error';
   }
   if (!hasResult) {
-    return 'message.validating-ellipsis';
+    return 'label.validating-ellipsis';
   }
 
   return hasConflicts
@@ -439,6 +444,21 @@ const HealthCard = ({
   );
 };
 
+type ValidationRead = { data?: { violations: readonly unknown[] } };
+
+const countConflicts = (validation: ValidationRead) =>
+  validation.data?.violations.length ?? 0;
+
+/** "1 in conflict" once validation has run; nothing before. */
+const conflictDetail = (
+  validation: ValidationRead,
+  count: number,
+  t: TFunction
+) =>
+  validation.data
+    ? t('message.ontology-overview-in-conflict', { count })
+    : undefined;
+
 const OntologyOverview = ({
   ontology,
   releaseId,
@@ -473,11 +493,7 @@ const OntologyOverview = ({
     return <Loader />;
   }
 
-  const facts = getOverviewFacts(
-    model,
-    treeIndex,
-    validation.data?.violations.length ?? 0
-  );
+  const facts = getOverviewFacts(model, treeIndex, countConflicts(validation));
   const openTab = (tab: OntologyOverviewTab) =>
     onOpenTab ? () => onOpenTab(tab) : undefined;
   const details = [
@@ -495,15 +511,20 @@ const OntologyOverview = ({
     ],
   ] as const;
 
+  // Inside the Ontology tabs the header names the ontology and Settings holds its details.
+  const isStandalone = !onOpenTab;
+
   return (
     <Box
-      className="tw:h-full tw:overflow-auto tw:pb-20"
+      className="tw:pb-20"
       data-testid="ontology-overview"
       direction="col"
       gap={5}>
-      <Typography color="secondary" size="text-sm">
-        {t('message.ontology-overview-read-only', { version: versionLabel })}
-      </Typography>
+      {isStandalone ? (
+        <Typography color="secondary" size="text-sm">
+          {t('message.ontology-overview-read-only', { version: versionLabel })}
+        </Typography>
+      ) : null}
       <div className="tw:grid tw:grid-cols-1 tw:gap-4 tw:md:grid-cols-2 tw:xl:grid-cols-4">
         <StatCard
           count={model.concepts.length}
@@ -535,13 +556,7 @@ const OntologyOverview = ({
         />
         <StatCard
           count={model.axioms.length}
-          detail={
-            validation.data
-              ? t('message.ontology-overview-in-conflict', {
-                  count: facts.conflictCount,
-                })
-              : undefined
-          }
+          detail={conflictDetail(validation, facts.conflictCount, t)}
           isAlert={facts.conflictCount > 0}
           label={t('label.constraint-plural')}
           testId="ontology-overview-count-constraints"
@@ -564,28 +579,30 @@ const OntologyOverview = ({
           total={model.concepts.length}
           onReview={openTab('concept')}
         />
-        {releaseId || !onOpenPublication ? null : (
-          <RecentChangesCard
-            ontologyId={ontology.id}
-            onOpenPublication={onOpenPublication}
-          />
-        )}
       </div>
-      <Box direction="col" gap={3}>
-        {details.map(([key, label, value]) => (
-          <Box data-testid={`ontology-overview-${key}`} gap={4} key={key}>
-            <Typography
-              className="tw:w-28 tw:shrink-0"
-              color="secondary"
-              size="text-sm">
-              {label}
-            </Typography>
-            <Typography className="tw:break-all" size="text-sm">
-              {value}
-            </Typography>
-          </Box>
-        ))}
-      </Box>
+      {releaseId || !onOpenPublication ? null : (
+        <RecentChangesCard
+          ontologyId={ontology.id}
+          onOpenPublication={onOpenPublication}
+        />
+      )}
+      {isStandalone ? (
+        <Box direction="col" gap={3}>
+          {details.map(([key, label, value]) => (
+            <Box data-testid={`ontology-overview-${key}`} gap={4} key={key}>
+              <Typography
+                className="tw:w-28 tw:shrink-0"
+                color="secondary"
+                size="text-sm">
+                {label}
+              </Typography>
+              <Typography className="tw:break-all" size="text-sm">
+                {value}
+              </Typography>
+            </Box>
+          ))}
+        </Box>
+      ) : null}
     </Box>
   );
 };

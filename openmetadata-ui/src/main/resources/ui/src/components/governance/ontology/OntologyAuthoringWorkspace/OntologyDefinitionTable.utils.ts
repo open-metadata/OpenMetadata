@@ -22,6 +22,7 @@ import {
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 
 export const DEFINITION_PAGE_SIZE = 25;
+const SKOS_BROADER = 'http://www.w3.org/2004/02/skos/core#broader';
 
 export interface ConceptRowFacts {
   readonly parents: readonly string[];
@@ -60,6 +61,16 @@ export const getConceptRowFacts = (
     (property) => property.domain ?? []
   );
   const ruleCounts = countBy(model.axioms, (axiom) => [axiom.subjectIri]);
+  // A SKOS concept names its parent with skos:broader rather than a superclass.
+  const broaderByConcept = new Map<string, string[]>();
+  relations
+    .filter((relation) => relation.propertyIri === SKOS_BROADER)
+    .forEach((relation) =>
+      broaderByConcept.set(relation.from.id, [
+        ...(broaderByConcept.get(relation.from.id) ?? []),
+        getEntityName(relation.to),
+      ])
+    );
 
   return new Map(
     model.concepts.map((concept) => {
@@ -80,14 +91,28 @@ export const getConceptRowFacts = (
         concept.id,
         {
           ...facts,
-          parents: (concept.superClasses ?? []).map(
-            (iri) => nameByIri.get(iri) ?? iri
-          ),
+          parents: [
+            ...(concept.superClasses ?? []).map(
+              (iri) => nameByIri.get(iri) ?? iri
+            ),
+            ...(broaderByConcept.get(concept.id) ?? []),
+          ],
           completeness: filled * 20,
         },
       ];
     })
   );
+};
+
+/** Amber while a concept is barely described, blue part way, green once most of it is there. */
+export const completenessColor = (completeness: number) => {
+  if (completeness >= 60) {
+    return 'var(--tw-color-utility-success-500)';
+  }
+
+  return completeness >= 40
+    ? 'var(--tw-color-utility-brand-500)'
+    : 'var(--tw-color-utility-warning-500)';
 };
 
 /** "Person", "Person +1", or an empty string for a top-level concept. */

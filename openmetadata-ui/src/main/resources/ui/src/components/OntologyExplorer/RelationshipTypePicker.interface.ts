@@ -24,9 +24,10 @@ export interface RelationTypeOption {
   /** Concept ids the relation may start from and point at; empty or absent allows any. */
   domain?: readonly string[];
   range?: readonly string[];
-  /** "Domain → Range", shown for a relation that does not fit the chosen ends. */
+  /** "Domain → Range", shown as a warning for a relation that does not fit the chosen ends. */
   scopeLabel?: string;
-  isDisabled?: boolean;
+  /** The domain or range leaves out the chosen ends; still selectable. */
+  isUnfit?: boolean;
 }
 
 export interface RelationTypeOptionGroup {
@@ -40,7 +41,7 @@ export interface RelationshipTypePickerProps {
   onSelect: (relationType: string) => void;
   sourceLabel: string;
   targetLabel: string;
-  /** Concept ids of the ends; relations whose domain or range leaves them out are shown disabled. */
+  /** Concept ids of the ends; relations whose domain or range leaves them out are flagged. */
   sourceId?: string;
   targetId?: string;
   onCancel?: () => void;

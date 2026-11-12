@@ -173,19 +173,114 @@ export const filterMemberChanges = (
       matchesSearch([getEntityName(change.entity)], search)
   );
 
-/** How many rows each filter would show for the current search. */
+/**
+ * How many changes each filter would show for the current search. A class row
+ * holds its rules and properties, so it counts every change it carries, and
+ * the All filter agrees with the "N changes" summary.
+ */
 export const countRowsByFilter = (
   groups: readonly ConceptChange[],
   members: readonly MemberChange[],
   search: string
 ): Record<ChangeFilter, number> => {
   const filters = Object.keys(FILTER_TYPES) as ChangeFilter[];
+  const groupChanges = (group: ConceptChange) =>
+    Math.max(countChangesByKind(group.changes).total, 1);
 
   return Object.fromEntries(
     filters.map((filter) => [
       filter,
-      filterConceptChanges(groups, filter, search).length +
-        filterMemberChanges(members, filter, search).length,
+      filterConceptChanges(groups, filter, search).reduce(
+        (sum, group) => sum + groupChanges(group),
+        0
+      ) +
+        countChangesByKind(filterMemberChanges(members, filter, search)).total,
     ])
   ) as Record<ChangeFilter, number>;
+};
+
+export type ChangeCardKind =
+  | Exclude<keyof ChangeKindCounts, 'total'>
+  | 'ontology';
+
+const CHANGE_CARD_ORDER: readonly ChangeCardKind[] = [
+  'concepts',
+  'properties',
+  'relationships',
+  'rules',
+  'ontology',
+];
+
+/** A class row carries its group for the class sentence; any other row is one member. */
+export interface ChangeRow {
+  key: string;
+  kind: ChangeCardKind;
+  changeType: ChangeType;
+  group?: ConceptChange;
+  member?: MemberChange;
+}
+
+export interface ChangeCard {
+  kind: ChangeCardKind;
+  rows: ChangeRow[];
+}
+
+const memberCardKind = (memberKind?: MemberKind): ChangeCardKind =>
+  (memberKind && KIND_FIELD[memberKind]) ?? 'ontology';
+
+const groupCardKind = (group: ConceptChange): ChangeCardKind =>
+  group.concept ||
+  group.changes.some(({ memberKind }) => memberKind === MemberKind.Concept)
+    ? 'concepts'
+    : memberCardKind(group.changes[0]?.memberKind);
+
+const isOntologyMember = ({ memberKind }: MemberChange) =>
+  memberKind === MemberKind.Ontology;
+
+/**
+ * Before the first release the ontology's own row is the container the user
+ * created, not a change, so it is left out as the header count does.
+ */
+export const visibleWorkingChanges = (
+  page: { groups?: ConceptChange[]; data: MemberChange[] } | undefined,
+  isFirstRelease: boolean
+) => {
+  const groups = page?.groups ?? [];
+  const members = page?.data ?? [];
+
+  return isFirstRelease
+    ? {
+        groups: groups.filter(
+          (group) =>
+            !group.changes.length || !group.changes.every(isOntologyMember)
+        ),
+        members: members.filter((member) => !isOntologyMember(member)),
+      }
+    : { groups, members };
+};
+
+/** The review dialog's rows, one card per kind of definition in a fixed order. */
+export const groupChangeCards = (
+  groups: readonly ConceptChange[],
+  members: readonly MemberChange[]
+): ChangeCard[] => {
+  const rows: ChangeRow[] = [
+    ...groups.map((group, index) => ({
+      key: 'group:' + (group.iri ?? index),
+      kind: groupCardKind(group),
+      changeType: group.changeType,
+      group,
+    })),
+    ...members.map((member) => ({
+      key: member.entity.id + ':' + member.memberKind,
+      kind: memberCardKind(member.memberKind),
+      changeType: member.changeType,
+      member,
+    })),
+  ];
+
+  return CHANGE_CARD_ORDER.map((kind) => ({
+    kind,
+    rows: rows.filter((row) => row.kind === kind),
+  })).filter((card) => card.rows.length > 0);
 };

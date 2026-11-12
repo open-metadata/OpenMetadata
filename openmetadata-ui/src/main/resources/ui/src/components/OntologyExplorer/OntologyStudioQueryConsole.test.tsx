@@ -276,6 +276,9 @@ describe('OntologyStudioQueryConsole', () => {
     expect(
       screen.queryByTestId('ontology-query-delete')
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-query-duplicate')).toHaveTextContent(
+      'label.duplicate-to-edit'
+    );
   });
 
   it('loads and runs an ontology-derived query from the rail', async () => {
@@ -493,8 +496,10 @@ describe('OntologyStudioQueryConsole', () => {
       ])
     );
 
-    fireEvent.click(screen.getByTestId('ontology-query-rename'));
     const renameInput = screen.getByTestId('ontology-query-rename-input');
+
+    expect(renameInput).toHaveValue('label.untitled-query');
+
     fireEvent.change(renameInput, { target: { value: 'My ontology query' } });
     fireEvent.keyDown(renameInput, { key: 'Enter' });
 
@@ -504,7 +509,7 @@ describe('OntologyStudioQueryConsole', () => {
       ])
     );
 
-    expect(await screen.findByTestId('ontology-query-title')).toHaveTextContent(
+    expect(screen.getByTestId('ontology-query-rename-input')).toHaveValue(
       'My ontology query'
     );
   });
@@ -1140,8 +1145,14 @@ describe('query scope, errors and saved-query tools', () => {
       ])
     );
 
+    fireEvent.click(screen.getByTestId('ontology-query-delete'));
+
+    await waitFor(() =>
+      expect(mockReplaceSavedQueries).toHaveBeenLastCalledWith([])
+    );
+
     expect(
-      screen.queryByTestId('ontology-query-delete')
+      screen.queryByTestId(`ontology-query-saved-${SAVED.id}`)
     ).not.toBeInTheDocument();
   });
 

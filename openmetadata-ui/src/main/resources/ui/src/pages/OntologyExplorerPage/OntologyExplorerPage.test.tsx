@@ -1532,7 +1532,7 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('ontology-tasks-trigger')).toBeVisible();
   });
 
-  it('offers Add concept on the All ontologies graph but not on its Ontology picker', async () => {
+  it('offers Add concept on the All ontologies graph and on its Ontology picker', async () => {
     renderNativeStudio('?ontology=native-sales&mode=edit');
     await screen.findByTestId('native-canvas');
     fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
@@ -1544,9 +1544,11 @@ describe('OntologyExplorerPage', () => {
     fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
 
     expect(await screen.findByTestId('ontology-query-picker')).toBeVisible();
-    expect(
-      screen.queryByTestId('ontology-add-concept')
-    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-add-concept'));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+    expect(screen.getByTestId('ontology-query-picker')).toBeVisible();
   });
 
   it('offers Add concept on the Tree view as on the Graph view', async () => {
@@ -1571,6 +1573,9 @@ describe('OntologyExplorerPage', () => {
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
     fireEvent.click(screen.getByTestId('submode-tab-definitions'));
+    fireEvent.click(
+      await screen.findByRole('tab', { name: 'label.concept-plural' })
+    );
     fireEvent.click(await screen.findByTestId('ontology-add-concept'));
     (listOntologies as jest.Mock).mockResolvedValue({
       data: [

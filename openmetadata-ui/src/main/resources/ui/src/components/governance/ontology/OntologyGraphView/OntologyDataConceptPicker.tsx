@@ -20,12 +20,14 @@ import {
 import {
   Check,
   ChevronDown,
+  ChevronUp,
   Plus,
   Search,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
+  FocusEvent,
   KeyboardEvent,
   RefObject,
   useEffect,
@@ -49,6 +51,8 @@ interface OntologyDataConceptPickerProps {
   readonly recentIds: string[];
   /** Asset counts are only known once every cluster page has loaded. */
   readonly isCountPending: boolean;
+  /** Drawn as a combobox whose list drops below its own search field, instead of inside a popover. */
+  readonly isInline?: boolean;
   readonly selectedId?: string;
   readonly onPick: (conceptId: string) => void;
   readonly onClose?: () => void;
@@ -63,6 +67,7 @@ const OntologyDataConceptPicker = ({
   concepts,
   recentIds,
   isCountPending,
+  isInline,
   selectedId,
   onPick,
   onClose,
@@ -113,6 +118,13 @@ const OntologyDataConceptPicker = ({
     } else if (event.key === 'Escape' && onClose) {
       event.stopPropagation();
       onClose();
+    }
+  };
+
+  // An inline picker has no popover to dismiss it, so leaving it closes it.
+  const handleBlur = (event: FocusEvent<HTMLDivElement>) => {
+    if (isInline && !event.currentTarget.contains(event.relatedTarget)) {
+      onClose?.();
     }
   };
 
@@ -181,32 +193,31 @@ const OntologyDataConceptPicker = ({
     );
   };
 
-  return (
-    // The wrapper only listens for keys bubbling up from the input.
-    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
-    <div
-      className="tw:flex tw:w-full tw:flex-col"
-      data-testid="ontology-data-concept-picker"
-      onKeyDown={handleKeyDown}>
-      <div className="tw:border-b tw:border-secondary tw:p-2">
-        <Input
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- opened by the user's own click, to type into
-          autoFocus
-          aria-activedescendant={
-            options[active] ? `${listId}-${options[active].id}` : undefined
-          }
-          aria-controls={listId}
-          aria-expanded="true"
-          aria-label={t('label.find-concept')}
-          autoComplete="off"
-          icon={Search}
-          inputDataTestId="ontology-data-concept-search"
-          placeholder={`${t('label.find-concept')}…`}
-          size="sm"
-          value={query}
-          onChange={setQuery}
-        />
-      </div>
+  const searchLabel = isInline
+    ? t('label.search-concepts')
+    : t('label.find-concept');
+  const search = (
+    <Input
+      // eslint-disable-next-line jsx-a11y/no-autofocus -- opened by the user's own click, to type into
+      autoFocus
+      aria-activedescendant={
+        options[active] ? `${listId}-${options[active].id}` : undefined
+      }
+      aria-controls={listId}
+      aria-expanded="true"
+      aria-label={searchLabel}
+      autoComplete="off"
+      icon={Search}
+      inputDataTestId="ontology-data-concept-search"
+      placeholder={`${searchLabel}…`}
+      size={isInline ? 'md' : 'sm'}
+      value={query}
+      wrapperClassName={isInline ? 'tw:h-12 tw:pr-10' : undefined}
+      onChange={setQuery}
+    />
+  );
+  const results = (
+    <>
       <div
         aria-label={t('label.concept-plural')}
         className="tw:max-h-72 tw:overflow-auto tw:p-1"
@@ -266,6 +277,44 @@ const OntologyDataConceptPicker = ({
           {t('label.ontology-key-close')}
         </Typography>
       </Box>
+    </>
+  );
+
+  return (
+    // The wrapper only listens for keys and focus bubbling up from the input.
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
+    <div
+      className={classNames(
+        'tw:flex tw:w-full tw:flex-col',
+        isInline && 'tw:relative tw:text-left'
+      )}
+      data-testid="ontology-data-concept-picker"
+      onBlur={handleBlur}
+      onKeyDown={handleKeyDown}>
+      {isInline ? (
+        <>
+          <div className="tw:relative">
+            {search}
+            <ButtonUtility
+              className="tw:absolute tw:top-1/2 tw:right-2 tw:-translate-y-1/2"
+              color="tertiary"
+              data-testid="ontology-data-concept-picker-collapse"
+              icon={ChevronUp}
+              size="sm"
+              tooltip={t('label.close')}
+              onClick={onClose}
+            />
+          </div>
+          <div className="tw:absolute tw:top-full tw:z-20 tw:mt-1 tw:w-full tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:shadow-lg">
+            {results}
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="tw:border-b tw:border-secondary tw:p-2">{search}</div>
+          {results}
+        </>
+      )}
     </div>
   );
 };

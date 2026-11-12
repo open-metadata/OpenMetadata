@@ -83,7 +83,9 @@ it('retains an outstanding review stage with zero unpublished changes', () => {
     />
   );
 
-  expect(screen.getByRole('button')).toHaveTextContent('label.in-review');
+  expect(screen.getByRole('button')).toHaveTextContent(
+    'label.ontology-in-review'
+  );
   expect(screen.getByRole('button')).not.toHaveTextContent(
     'label.ontology-unpublished-count'
   );

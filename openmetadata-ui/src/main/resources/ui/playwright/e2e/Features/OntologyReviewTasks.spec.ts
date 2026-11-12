@@ -236,9 +236,6 @@ test.describe(
               await expect(
                 detail.getByRole('button', { name: 'Reject', exact: true })
               ).toHaveCount(0);
-              await expect(
-                detail.getByTestId('ontology-task-withdraw')
-              ).toBeVisible();
               await authorPage.getByTestId('ontology-tasks-close').click();
               await expect(authorPage).toHaveURL(/source=review-test/);
               await expect(authorPage).not.toHaveURL(/[?&]task=/);

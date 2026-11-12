@@ -63,8 +63,9 @@ const getWorkspaceClassName = (
     return 'tw:min-h-0 tw:flex-1 tw:overflow-hidden';
   }
 
+  // The canvas toolbar floats over the bottom edge, so the last row scrolls clear of it.
   return isAiMode
-    ? 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-10'
+    ? 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-8 tw:pt-6 tw:pb-24'
     : 'tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-6';
 };
 
@@ -95,7 +96,7 @@ const OntologyStudioWorkspace = ({
   const isAiMode = useIsAiMode();
   const guard = useOntologyDraftGuard();
   const [definitionTab, setDefinitionTab] = useState<string | number>(
-    'concept'
+    'overview'
   );
   const [revision, setRevision] = useState(0);
   const { model } = useOntologyStudioModel(
@@ -111,6 +112,27 @@ const OntologyStudioWorkspace = ({
     { deleted: ontology.deleted }
   );
 
+  const header = (
+    <Box direction="col" gap={1}>
+      <Typography
+        as="h2"
+        className="not-prose tw:m-0"
+        size="text-lg"
+        weight="semibold">
+        {getEntityName(ontology)}
+      </Typography>
+      {ontology.description ? (
+        <Typography
+          color="secondary"
+          data-testid="ontology-studio-description"
+          ellipsis={{ rows: 2 }}
+          size="text-sm">
+          {ontology.description}
+        </Typography>
+      ) : null}
+    </Box>
+  );
+
   const renderContent = () => {
     switch (mode) {
       case 'definitions':
@@ -119,23 +141,7 @@ const OntologyStudioWorkspace = ({
             className="tw:gap-5"
             selectedKey={definitionTab}
             onSelectionChange={(key) => guard(() => setDefinitionTab(key))}>
-            <Box direction="col" gap={1}>
-              <Typography
-                as="h2"
-                className="not-prose tw:m-0"
-                size="text-lg"
-                weight="semibold">
-                {getEntityName(ontology)}
-              </Typography>
-              {ontology.description ? (
-                <Typography
-                  color="secondary"
-                  ellipsis={{ rows: 2 }}
-                  size="text-sm">
-                  {ontology.description}
-                </Typography>
-              ) : null}
-            </Box>
+            {header}
             <Tabs.List aria-label={t('label.definition')} type="underline">
               <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
               <Tabs.Item
@@ -203,11 +209,21 @@ const OntologyStudioWorkspace = ({
       case 'edit':
         if (viewSurface === 'ontology') {
           return (
-            <OntologyOverview
-              ontology={ontology}
-              releaseId={releaseId}
-              status={publicationStatus}
-            />
+            <Box
+              className={
+                isAiMode
+                  ? 'tw:h-full tw:overflow-auto tw:px-8 tw:pt-6'
+                  : 'tw:h-full tw:overflow-auto tw:p-6'
+              }
+              direction="col"
+              gap={5}>
+              {header}
+              <OntologyOverview
+                ontology={ontology}
+                releaseId={releaseId}
+                status={publicationStatus}
+              />
+            </Box>
           );
         }
 

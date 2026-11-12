@@ -161,38 +161,49 @@ function normalizeName(value: string | undefined): string {
   return (value ?? '').replace(/[^a-z0-9]/gi, '').toLocaleLowerCase();
 }
 
-/** Glossary terms of the chosen kind that satisfy every condition (ANDed). */
+/**
+ * Glossary terms of the chosen kind that satisfy every condition (ANDed). One condition at the
+ * default limit must stay byte-identical to the query the builder always wrote
+ * (ADR:2026-11-12-ontology-visual-builder-extends-the-existing-query-shape).
+ */
 export function buildVisualSparqlQuery(
   conditions: VisualQueryCondition[],
   findKind: VisualQueryFindKind = 'concepts',
   limit = DEFAULT_QUERY_LIMIT
 ): string {
   const findClass = FIND_KIND_CLASSES[findKind];
-  const typeFilter = findClass ? [`  ?concept a ${findClass} .`] : [];
-  const patterns = conditions.flatMap(({ relationType, target }, index) => {
-    const variable = index === 0 ? '?target' : `?target${index + 1}`;
-    const predicate =
-      relationType.rdfPredicate ??
-      `${ONTOLOGY_NAMESPACE}${encodeURIComponent(relationType.name)}`;
+  const typeFilter = findClass ? `\n  ?concept a ${findClass} .` : '';
+  const toPredicate = ({ relationType }: VisualQueryCondition) =>
+    relationType.rdfPredicate ??
+    `${ONTOLOGY_NAMESPACE}${encodeURIComponent(relationType.name)}`;
+  const toTargetFilter = ({ target }: VisualQueryCondition, variable: string) =>
+    target.fullyQualifiedName
+      ? `\n  ${variable} om:fullyQualifiedName "${escapeSparqlLiteral(
+          target.fullyQualifiedName
+        )}" .`
+      : '';
+  const [first, ...rest] = conditions;
+  const firstPattern = first
+    ? `\n  ?concept <${toPredicate(
+        first
+      )}> ?target ;\n           om:fullyQualifiedName ?conceptFqn .`
+    : '\n  ?concept om:fullyQualifiedName ?conceptFqn .';
+  const firstTarget = first ? toTargetFilter(first, '?target') : '';
+  const restPatterns = rest
+    .map((condition, index) => {
+      const variable = `?target${index + 2}`;
 
-    return [
-      `  ?concept <${predicate}> ${variable} .`,
-      `  ${variable} om:fullyQualifiedName "${escapeSparqlLiteral(
-        target.fullyQualifiedName ?? ''
-      )}" .`,
-    ];
-  });
+      return `\n  ?concept <${toPredicate(
+        condition
+      )}> ${variable} .${toTargetFilter(condition, variable)}`;
+    })
+    .join('');
 
-  return [
-    `PREFIX om: <${ONTOLOGY_NAMESPACE}>`,
-    '',
-    'SELECT ?concept ?conceptFqn WHERE {',
-    '  ?concept om:fullyQualifiedName ?conceptFqn .',
-    ...typeFilter,
-    ...patterns,
-    '}',
-    `LIMIT ${limit}`,
-  ].join('\n');
+  return `PREFIX om: <${ONTOLOGY_NAMESPACE}>
+
+SELECT ?concept ?conceptFqn WHERE {${firstPattern}${typeFilter}${firstTarget}${restPatterns}
+}
+LIMIT ${limit}`;
 }
 
 function isGlossaryTermNode(node: OntologyNode): boolean {
@@ -512,7 +523,7 @@ const OntologyVisualQueryBuilder = ({
     (relation: RelationshipType) =>
       relation.displayName ||
       (relation.name === DEFAULT_RELATIONSHIP_TYPE.name
-        ? t('label.related-to')
+        ? t('label.ontology-related-to')
         : relation.name),
     [t]
   );
@@ -580,9 +591,7 @@ const OntologyVisualQueryBuilder = ({
         inference: 'none' as const,
       };
       if (!ontology && !selectedGlossaryId && !isAdminUser) {
-        throw new Error(
-          t('label.please-select-entity', { entity: t('label.glossary') })
-        );
+        throw new Error(t('message.ontology-select-glossary-to-query'));
       }
       let data: SparqlPlaygroundResult;
       if (ontology) {
@@ -626,7 +635,15 @@ const OntologyVisualQueryBuilder = ({
     );
   const changeFindKind = (kind: VisualQueryFindKind) => {
     setFindKind(kind);
-    // Properties start from an empty "is on" condition; the relation list differs per kind.
+    const isPropertySwitch =
+      (kind === 'properties') !== (findKind === 'properties');
+    if (!isPropertySwitch) {
+      // Glossary kinds share one relation list, so the user's conditions still apply.
+      resetResult();
+
+      return;
+    }
+    // Concept and property conditions use different relation lists, so none carry over.
     updateConditions([
       toConditionRow(
         kind === 'properties'
@@ -672,13 +689,13 @@ const OntologyVisualQueryBuilder = ({
           {index === 0 ? t('label.where') : t('label.and-lowercase')}
         </Typography>
         <Select
-          aria-label={t('label.relationship-type')}
+          aria-label={t('label.ontology-relationship-type')}
           className="tw:w-56"
           data-testid={`ontology-builder-relation${suffix}`}
           fontSize="sm"
           isDisabled={isLoading}
           items={relationSelectItems}
-          placeholder={t('label.relationship-type')}
+          placeholder={t('label.ontology-relationship-type')}
           value={row.relation || null}
           onChange={(key) =>
             updateCondition(row.id, { relation: String(key ?? '') })
@@ -890,7 +907,7 @@ const OntologyVisualQueryBuilder = ({
                 }),
               ])
             }>
-            {t('label.add-condition')}
+            {t('label.add-condition-button')}
           </Button>
         </Box>
       </Box>

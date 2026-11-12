@@ -19,7 +19,7 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { useLayoutEffect, useRef } from 'react';
-import PortOverlay from './PortOverlay.component';
+import PortOverlay, { getPickerPosition } from './PortOverlay.component';
 import {
   OntologyEditNodeClickDetail,
   ONTOLOGY_EDIT_CANCEL_EVENT,
@@ -158,10 +158,10 @@ describe('PortOverlay', () => {
     expect(
       screen.getByTestId('relationship-type-picker-ends')
     ).toHaveTextContent('source:target');
+    // The 600x400 canvas has no room below the click, so the picker is held inside it.
     expect(screen.getByTestId('ontology-relation-picker-anchor')).toHaveStyle({
-      left: '490px',
-      top: '100px',
-      transform: 'translate(-50%, 16px)',
+      left: '292px',
+      top: '8px',
     });
     expect(screen.getByTestId('ontology-connection-line')).toHaveAttribute(
       'x1',
@@ -398,5 +398,19 @@ describe('PortOverlay', () => {
     expect(
       screen.queryByTestId('ontology-connection-line')
     ).not.toBeInTheDocument();
+  });
+});
+
+describe('getPickerPosition', () => {
+  it('centres the picker below the click when the canvas has room', () => {
+    expect(
+      getPickerPosition({ x: 500, y: 100 }, { width: 1200, height: 900 })
+    ).toEqual({ left: 350, top: 116 });
+  });
+
+  it('keeps the picker off the left edge and above the bottom toolbars', () => {
+    expect(
+      getPickerPosition({ x: 40, y: 600 }, { width: 1200, height: 900 })
+    ).toEqual({ left: 8, top: 396 });
   });
 });

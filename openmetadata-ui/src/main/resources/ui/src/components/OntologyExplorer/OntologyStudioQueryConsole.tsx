@@ -26,7 +26,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Check,
   Copy01,
   Edit01,
   InfoCircle,
@@ -36,12 +35,12 @@ import {
   Search,
   Trash01,
   User01,
-  XClose,
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import {
   FC,
   ReactNode,
+  RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -123,8 +122,6 @@ interface QueryListItem {
 }
 
 interface QueryGroupProps {
-  /** My queries keep rename/delete visible; shared admin actions show on hover. */
-  readonly areActionsAlwaysVisible?: boolean;
   readonly emptyText: string;
   readonly icon: FC<{ className?: string }>;
   readonly isLoading?: boolean;
@@ -135,7 +132,6 @@ interface QueryGroupProps {
 }
 
 const QueryGroup = ({
-  areActionsAlwaysVisible,
   emptyText,
   icon: Icon,
   isLoading,
@@ -214,13 +210,10 @@ const QueryGroup = ({
                   />
                 ) : null}
                 {item.actions ? (
+                  // Row actions stay out of the way until the row is hovered or focused.
                   <Box
                     align="center"
-                    className={classNames(
-                      'tw:gap-0.5',
-                      !areActionsAlwaysVisible &&
-                        'tw:opacity-0 tw:transition-opacity tw:group-hover:opacity-100 tw:group-focus-within:opacity-100'
-                    )}>
+                    className="tw:gap-0.5 tw:opacity-0 tw:transition-opacity tw:group-hover:opacity-100 tw:group-focus-within:opacity-100">
                     {item.actions}
                   </Box>
                 ) : null}
@@ -267,6 +260,7 @@ function describeActiveQuery(
 }
 
 interface QueryRename {
+  readonly inputRef: RefObject<HTMLInputElement>;
   readonly isRenaming: boolean;
   readonly value: string;
   readonly onCancel: () => void;
@@ -280,78 +274,58 @@ interface QueryTitleProps {
   readonly rename: QueryRename;
 }
 
-// Only a query under My queries can be renamed; shared ones are read-only.
+// A query under My queries is renamed in place; shared ones are read-only.
 const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
   const { t } = useTranslation();
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const isRenaming = Boolean(activeQuery.savedQuery) && rename.isRenaming;
+  const { savedQuery } = activeQuery;
 
-  // Starting a rename is a user action, so the name field takes focus with the text selected.
-  useEffect(() => {
-    if (isRenaming) {
-      renameInputRef.current?.focus();
-      renameInputRef.current?.select();
-    }
-  }, [isRenaming]);
+  if (savedQuery) {
+    const commitOrCancel = () =>
+      rename.isRenaming &&
+      rename.value.trim() &&
+      rename.value.trim() !== savedQuery.name
+        ? rename.onCommit()
+        : rename.onCancel();
 
-  if (isRenaming) {
     return (
-      <Box align="center" className="tw:w-80 tw:max-w-full" gap={1}>
-        <Input
-          aria-label={t('label.name')}
-          inputDataTestId="ontology-query-rename-input"
-          ref={renameInputRef}
-          size="sm"
-          value={rename.value}
-          wrapperClassName="tw:min-w-0 tw:flex-1"
-          onChange={rename.onChange}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              rename.onCommit();
-            }
-            if (event.key === 'Escape') {
-              rename.onCancel();
-            }
-          }}
-        />
-        <ButtonUtility
-          data-testid="ontology-query-rename-save"
-          icon={Check}
-          isDisabled={!rename.value.trim()}
-          size="sm"
-          tooltip={t('label.save')}
-          onClick={rename.onCommit}
-        />
-        <ButtonUtility
-          icon={XClose}
-          size="sm"
-          tooltip={t('label.cancel')}
-          onClick={rename.onCancel}
-        />
-      </Box>
+      <Input
+        borderless
+        aria-label={t('label.name')}
+        fontSize="lg"
+        inputClassName="tw:font-semibold"
+        inputDataTestId="ontology-query-rename-input"
+        ref={rename.inputRef}
+        size="sm"
+        value={rename.isRenaming ? rename.value : savedQuery.name}
+        wrapperClassName="tw:w-80 tw:max-w-full"
+        onBlur={commitOrCancel}
+        onChange={(value) => {
+          if (!rename.isRenaming) {
+            rename.onStart();
+          }
+          rename.onChange(value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            commitOrCancel();
+          }
+          if (event.key === 'Escape') {
+            rename.onCancel();
+          }
+        }}
+      />
     );
   }
 
   return (
-    <Box align="center" className="tw:min-w-0" gap={1}>
-      <Typography
-        ellipsis
-        className="tw:min-w-0"
-        data-testid="ontology-query-title"
-        size="text-lg"
-        weight="semibold">
-        {activeQuery.title ?? t('label.untitled-query')}
-      </Typography>
-      {activeQuery.savedQuery ? (
-        <ButtonUtility
-          data-testid="ontology-query-rename"
-          icon={Edit01}
-          size="sm"
-          tooltip={t('label.rename')}
-          onClick={rename.onStart}
-        />
-      ) : null}
-    </Box>
+    <Typography
+      ellipsis
+      className="tw:min-w-0"
+      data-testid="ontology-query-title"
+      size="text-lg"
+      weight="semibold">
+      {activeQuery.title ?? t('label.untitled-query')}
+    </Typography>
   );
 };
 
@@ -362,6 +336,7 @@ interface QueryConsoleHeaderProps {
   readonly isDirty: boolean;
   readonly query: string;
   readonly running: boolean;
+  readonly onDelete: () => void;
   readonly onDiscard: () => void;
   readonly onDuplicate: () => void;
   readonly onRun: () => void;
@@ -394,7 +369,7 @@ const QueryMoreActions = ({
         size="lg"
       />
       <Dropdown.Popover className="tw:w-56">
-        <Dropdown.Menu aria-label={t('label.more-action-plural')}>
+        <Dropdown.Menu aria-label={t('label.more-actions')}>
           <Dropdown.Item
             data-testid="ontology-query-save"
             label={
@@ -429,30 +404,52 @@ const QueryMoreActions = ({
 };
 
 const QueryConsoleActions = (props: QueryConsoleActionsProps) => {
-  const { activeQuery, isDirty, running, onDuplicate, onRun } = props;
+  const { activeQuery, isDirty, running, onDelete, onDuplicate, onRun } = props;
   const { t } = useTranslation();
 
   return (
     <Box align="center" className="tw:ml-auto" gap={2} wrap="wrap">
       <QueryMoreActions {...props} />
-      <Button
-        color="secondary"
-        data-testid="ontology-query-duplicate"
-        iconLeading={Copy01}
-        size="sm"
-        onClick={onDuplicate}>
-        {t('label.duplicate')}
-      </Button>
       {activeQuery.savedQuery ? (
+        <>
+          <ButtonUtility
+            color="tertiary-destructive"
+            data-testid="ontology-query-delete"
+            icon={Trash01}
+            size="sm"
+            tooltip={t('label.delete-entity', {
+              entity: t('label.query').toLocaleLowerCase(),
+            })}
+            onClick={onDelete}
+          />
+          <ButtonUtility
+            data-testid="ontology-query-duplicate"
+            icon={Copy01}
+            size="sm"
+            tooltip={t('label.duplicate')}
+            onClick={onDuplicate}
+          />
+          <Button
+            color="secondary"
+            data-testid="ontology-query-update"
+            isDisabled={!isDirty}
+            size="sm"
+            onClick={props.onUpdateSaved}>
+            {isDirty ? t('label.save') : t('label.saved')}
+          </Button>
+        </>
+      ) : (
         <Button
           color="secondary"
-          data-testid="ontology-query-update"
-          isDisabled={!isDirty}
+          data-testid="ontology-query-duplicate"
+          iconLeading={Copy01}
           size="sm"
-          onClick={props.onUpdateSaved}>
-          {isDirty ? t('label.save') : t('label.saved')}
+          onClick={onDuplicate}>
+          {t(
+            activeQuery.isShared ? 'label.duplicate-to-edit' : 'label.duplicate'
+          )}
         </Button>
-      ) : null}
+      )}
       <Button
         color="primary"
         data-testid="ontology-sparql-run"
@@ -766,6 +763,7 @@ const OntologyStudioQueryConsole = ({
   const [saveName, setSaveName] = useState('');
   const [saveTarget, setSaveTarget] = useState<SaveTarget>('personal');
   const [renameValue, setRenameValue] = useState<string>();
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const hasCreatedOnMountRef = useRef(false);
 
   const openQuery = useCallback((id: string, text: string) => {
@@ -831,9 +829,7 @@ const OntologyStudioQueryConsole = ({
         };
         const glossaryId = selectedGlossaryIds[0];
         if (!glossaryId && !selectedOntologyId && !isAdminUser) {
-          throw new Error(
-            t('label.please-select-entity', { entity: t('label.glossary') })
-          );
+          throw new Error(t('message.ontology-select-glossary-to-query'));
         }
         let nextResult;
         if (selectedOntologyId) {
@@ -945,6 +941,11 @@ const OntologyStudioQueryConsole = ({
         setQueryError(null);
       }
       setRenameValue(savedQuery.name);
+      // The title input mounts once the query opens, so focus it on the next tick.
+      setTimeout(() => {
+        renameInputRef.current?.focus();
+        renameInputRef.current?.select();
+      });
     },
     [activeQueryId, openQuery]
   );
@@ -1260,7 +1261,9 @@ const OntologyStudioQueryConsole = ({
               data-testid="ontology-query-new"
               icon={Plus}
               size="lg"
-              tooltip={t('label.new-entity', { entity: t('label.query') })}
+              tooltip={t('label.new-entity', {
+                entity: t('label.query').toLocaleLowerCase(),
+              })}
               onClick={() => void handleNewQuery()}
             />
           </Box>
@@ -1290,7 +1293,6 @@ const OntologyStudioQueryConsole = ({
             ) : (
               <>
                 <QueryGroup
-                  areActionsAlwaysVisible
                   activeQueryId={activeQueryId}
                   emptyText={
                     isFinding
@@ -1328,6 +1330,7 @@ const OntologyStudioQueryConsole = ({
             isDirty={isDirty}
             query={query}
             rename={{
+              inputRef: renameInputRef,
               isRenaming: renameValue !== undefined,
               value: renameValue ?? '',
               onCancel: () => setRenameValue(undefined),
@@ -1336,6 +1339,10 @@ const OntologyStudioQueryConsole = ({
               onStart: () => setRenameValue(activeSavedQuery?.name ?? ''),
             }}
             running={running}
+            onDelete={() =>
+              activeSavedQuery &&
+              void handleDeleteSavedQuery(activeSavedQuery.id)
+            }
             onDiscard={() => setQuery(openedQuery)}
             onDuplicate={() =>
               void duplicateIntoMyQueries(

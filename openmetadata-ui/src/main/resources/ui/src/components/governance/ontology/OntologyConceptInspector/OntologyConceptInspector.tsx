@@ -24,18 +24,22 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
+  ArrowRight,
   BookClosed,
+  Check,
   ChevronDown,
   ChevronRight,
+  Copy01,
   Edit01,
   Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { useMemo, useState } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   ConceptPropertyInput,
@@ -132,6 +136,8 @@ interface OntologyConceptInspectorProps {
   readonly editor?: OntologyConceptEditorState;
   /** Edit mode could not load the concept's working copy, so it stays read-only. */
   readonly isEditorUnavailable?: boolean;
+  /** A confirm (e.g. delete concept) shown over this panel only. */
+  readonly confirmDialog?: ReactNode;
 }
 
 interface RelationAuthoringProps {
@@ -425,12 +431,16 @@ const OntologyConceptInspector = ({
   onSelectConcept,
   editor,
   isEditorUnavailable,
+  confirmDialog,
 }: OntologyConceptInspectorProps) => {
   const { t } = useTranslation();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
   const [relationPreset, setRelationPreset] = useState('');
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const bindings = useOntologyConceptBindings(concept.id);
+  const { hasCopied: hasCopiedIri, onCopyToClipBoard } = useClipboard(
+    concept.iri
+  );
   let liveDataBindingState: LiveDataBindingState = 'loading';
   if (bindings.data) {
     liveDataBindingState = bindings.data.assets.length ? 'bound' : 'unbound';
@@ -612,8 +622,19 @@ const OntologyConceptInspector = ({
     );
 
     return (
-      <InspectorRow key={`${direction}:${relation.key}`}>
-        {readsForward ? badge : null}
+      <li
+        className="tw:flex tw:min-h-11 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5"
+        data-testid="ontology-concept-relation-row"
+        key={`${direction}:${relation.key}`}>
+        {readsForward ? (
+          <>
+            {badge}
+            <ArrowRight
+              aria-hidden
+              className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
+            />
+          </>
+        ) : null}
         <Button
           noTextPadding
           className="tw:min-w-0 tw:flex-1 tw:justify-start"
@@ -635,7 +656,7 @@ const OntologyConceptInspector = ({
             onEdit={(typeId) => onEditRelation(relation, typeId)}
           />
         ) : null}
-      </InspectorRow>
+      </li>
     );
   };
 
@@ -694,13 +715,6 @@ const OntologyConceptInspector = ({
     </InspectorRow>
   );
 
-  const renderAiEmpty = (
-    entity: string,
-    hint = t('message.no-data-available')
-  ) => (
-    <ConceptEmptyState hint={hint} title={t('label.no-entity', { entity })} />
-  );
-
   const renderAiBreadcrumb = () => (
     <Box
       align="center"
@@ -715,18 +729,27 @@ const OntologyConceptInspector = ({
         weight="medium">
         {ontologyName}
       </Typography>
+      <ChevronRight aria-hidden className="tw:size-3 tw:shrink-0" />
       {ancestors[0] ? (
-        <>
-          <ChevronRight aria-hidden className="tw:size-3 tw:shrink-0" />
-          <Typography
-            ellipsis
-            className="tw:text-tertiary"
-            size="text-xs"
-            weight="medium">
+        <Button
+          noTextPadding
+          className="tw:min-w-0"
+          color="link-gray"
+          data-testid="ontology-concept-parent"
+          size="sm"
+          onPress={() => onSelectConcept(ancestors[0])}>
+          <span className="tw:truncate">
             {ancestors[0].displayName ?? ancestors[0].name}
-          </Typography>
-        </>
-      ) : null}
+          </span>
+        </Button>
+      ) : (
+        <Typography
+          className="tw:text-tertiary"
+          data-testid="ontology-concept-parent"
+          size="text-sm">
+          {t('label.top-level-concept')}
+        </Typography>
+      )}
     </Box>
   );
 
@@ -824,11 +847,27 @@ const OntologyConceptInspector = ({
             )}
           </Badge>
         </Box>
-        <Typography
-          ellipsis
-          className="tw:font-mono tw:text-xs tw:text-tertiary">
-          {concept.iri}
-        </Typography>
+        <Box align="center" className="tw:min-w-0" gap={1}>
+          <Typography
+            ellipsis
+            className="tw:min-w-0 tw:text-tertiary"
+            data-testid="ontology-concept-iri"
+            size="text-sm">
+            {concept.iri}
+          </Typography>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="ontology-concept-copy-iri"
+            icon={hasCopiedIri ? Check : Copy01}
+            size="xs"
+            tooltip={t(
+              hasCopiedIri
+                ? 'message.copied-to-clipboard'
+                : 'message.copy-to-clipboard'
+            )}
+            onClick={() => void onCopyToClipBoard(concept.iri)}
+          />
+        </Box>
       </Box>
       <Box align="center" data-testid="ontology-concept-completeness" gap={3}>
         <Typography className="tw:shrink-0 tw:text-tertiary" size="text-sm">
@@ -935,7 +974,10 @@ const OntologyConceptInspector = ({
         {mappings.length > 0 ? (
           <InspectorList>{mappings.map(renderMappingRow)}</InspectorList>
         ) : (
-          renderAiEmpty(t('label.mapping-plural'))
+          <ConceptEmptyState
+            hint={t('message.ontology-mappings-empty-hint')}
+            title={t('message.ontology-no-mappings-yet')}
+          />
         )}
       </ConceptSection>
     );
@@ -986,14 +1028,14 @@ const OntologyConceptInspector = ({
         )}>
         {renderRelationAuthoring()}
         {conceptRelations.length > 0 ? (
-          <InspectorList>
+          <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
             {conceptRelations.map(renderRelationRow)}
-          </InspectorList>
+          </ul>
         ) : (
-          renderAiEmpty(
-            t('label.relationship-plural'),
-            t('message.ontology-relationships-feature-description')
-          )
+          <ConceptEmptyState
+            hint={t('message.ontology-relationships-feature-description')}
+            title={t('message.ontology-no-relationships-yet')}
+          />
         )}
       </ConceptSection>
       <ConceptSection
@@ -1011,7 +1053,7 @@ const OntologyConceptInspector = ({
         {properties.length > 0 ? (
           <InspectorList>{properties.map(renderPropertyRow)}</InspectorList>
         ) : (
-          renderAiEmpty(t('label.property-plural'))
+          <ConceptEmptyState title={t('message.ontology-no-properties-yet')} />
         )}
       </ConceptSection>
       <OntologyConceptRules
@@ -1059,7 +1101,9 @@ const OntologyConceptInspector = ({
   );
 
   return (
-    <OntologyStudioDrawer testId="ontology-concept-inspector">
+    <OntologyStudioDrawer
+      confirm={confirmDialog}
+      testId="ontology-concept-inspector">
       {renderHeader()}
       {isEditorUnavailable ? (
         <Typography

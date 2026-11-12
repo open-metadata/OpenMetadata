@@ -11,43 +11,8 @@
  *  limitations under the License.
  */
 
-import { QueryClient } from '@tanstack/react-query';
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import type { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
-import {
-  ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY,
-  ONTOLOGY_WORKING_DIFF_QUERY_KEY,
-  PROJECTION_QUERY,
-  RELEASE_QUERY,
-  REVIEW_QUERY,
-} from '../../../../hooks/governance/ontology/useOntologyPublication';
-import { ONTOLOGY_STUDIO_MODEL_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
-import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
-
-/**
- * The reads `useOntologyPublication`'s `refresh` invalidates after its own
- * withdraw, so a withdraw from Tasks updates the publish button, release
- * history and unpublished count the same way.
- */
-const PUBLICATION_QUERY_KEYS = [
-  PROJECTION_QUERY,
-  RELEASE_QUERY,
-  REVIEW_QUERY,
-  'ontology-state',
-  'ontology-release-history',
-  'ontology-release-events',
-  ONTOLOGY_WORKING_DIFF_QUERY_KEY,
-  ONTOLOGY_RELEASE_VALIDATION_QUERY_KEY,
-  ONTOLOGY_STUDIO_MODEL_QUERY_KEY,
-  ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY,
-];
-
-export const invalidatePublicationReads = (queryClient: QueryClient) =>
-  Promise.allSettled(
-    PUBLICATION_QUERY_KEYS.map((key) =>
-      queryClient.invalidateQueries({ queryKey: [key] })
-    )
-  );
 
 /**
  * The open reviews the Studio banner may announce: those the caller votes on,
@@ -83,4 +48,28 @@ export const releaseBump = (
   }
 
   return minor === nextMinor ? VersionBump.Patch : VersionBump.Minor;
+};
+
+/** Paging controls only help once there is a page to move to or back from. */
+export const hasMorePages = (after: string | undefined, pagesSeen: number) =>
+  Boolean(after) || pagesSeen > 1;
+
+/** The loaded reviews whose title, task id, ontology or requester matches the search. */
+export const filterReviews = (
+  reviews: OntologyReleaseReview[],
+  search: string
+) => {
+  const needle = search.trim().toLowerCase();
+  if (!needle) {
+    return reviews;
+  }
+
+  return reviews.filter((review) =>
+    [
+      review.task.displayName,
+      review.taskId,
+      review.ontology.displayName ?? review.ontology.name,
+      review.requester?.displayName ?? review.requester?.name,
+    ].some((value) => value?.toLowerCase().includes(needle))
+  );
 };

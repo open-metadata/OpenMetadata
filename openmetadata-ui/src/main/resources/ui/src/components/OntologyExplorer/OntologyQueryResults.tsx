@@ -56,7 +56,10 @@ interface OntologyQueryResultsProps {
   scopeLabel?: string;
   /** The CSV file is named after this, usually the query's title. */
   exportName?: string;
-  /** Readable column headers by variable; a variable without one is shown as "?name". */
+  /**
+   * Readable column headers by variable; a variable without one is shown as "?name".
+   * Labelled columns come first, in this object's key order.
+   */
   columnLabels?: Record<string, string>;
   /** When the query ran (client clock), shown as "Ran just now". */
   ranAt?: number;
@@ -88,6 +91,23 @@ function toResultView(key: Key): ResultView {
 }
 
 type ResultRow = { [key: string]: RDFTerm };
+
+function orderVariables(
+  variables: string[],
+  columnLabels?: Record<string, string>
+): string[] {
+  if (!columnLabels) {
+    return variables;
+  }
+  const labelled = Object.keys(columnLabels);
+  const rank = (variable: string) => {
+    const index = labelled.indexOf(variable);
+
+    return index === -1 ? labelled.length : index;
+  };
+
+  return [...variables].sort((a, b) => rank(a) - rank(b));
+}
 
 interface ResultTable {
   keyedRows: Array<{ key: string; position: number; row: ResultRow }>;
@@ -261,9 +281,9 @@ const OntologyQueryResults = ({
         row,
       })),
       rows,
-      variables: result.parsed?.head?.vars ?? [],
+      variables: orderVariables(result.parsed?.head?.vars ?? [], columnLabels),
     };
-  }, [result.parsed]);
+  }, [columnLabels, result.parsed]);
   const resultGraph = useMemo(
     () =>
       buildGraphFromSparqlBindings(

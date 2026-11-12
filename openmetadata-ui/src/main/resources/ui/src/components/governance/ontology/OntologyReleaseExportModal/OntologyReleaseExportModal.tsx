@@ -100,9 +100,10 @@ const OntologyReleaseExportModal = ({
         : getEntityName(candidate),
   });
   const fileName = resolveExportFileName(
-    ontology.name,
+    getEntityName(ontology),
     NATIVE_EXPORT_EXTENSIONS[format],
-    isDraft ? undefined : release
+    isDraft ? undefined : release,
+    activeRelease?.id
   );
 
   const handleExport = () => {

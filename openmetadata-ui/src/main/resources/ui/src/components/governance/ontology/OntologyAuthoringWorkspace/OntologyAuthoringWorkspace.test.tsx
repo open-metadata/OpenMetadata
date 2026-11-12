@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
@@ -18,9 +24,9 @@ import { Access } from '../../../../generated/entity/policies/accessControl/reso
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import APIClient from '../../../../rest/axiosClient';
 import {
-    flushReactQuery,
-    renderWithQueryClient,
-    runQueryNotificationsSynchronously
+  flushReactQuery,
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
 } from '../../../../test/unit/test-utils';
 import OntologyAuthoringWorkspace from './OntologyAuthoringWorkspace';
 
@@ -367,6 +373,38 @@ describe('OntologyAuthoringWorkspace', () => {
     expect(screen.getByRole('button', { name: 'label.next' })).toBeDisabled();
   });
 
+  it('goes back to the first page when the search changes', async () => {
+    routeLists({
+      concepts: Array.from({ length: 52 }, (_, index) => ({
+        ...concept,
+        id: `concept-${index}`,
+        name: `Concept${index}`,
+        iri: `urn:sales:c${index}`,
+      })),
+    });
+    renderWithQueryClient(<OntologyAuthoringWorkspace ontology={ontology} />);
+    await flushReactQuery();
+    await screen.findByRole('button', { name: 'Concept0' });
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'label.next' }));
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Concept25' })
+    ).toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('ontology-definition-search'), {
+      target: { value: 'Concept' },
+    });
+
+    expect(
+      screen.getByRole('button', { name: 'Concept0' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'Concept25' })
+    ).not.toBeInTheDocument();
+  });
+
   it('searches across every concept and shows the computed columns', async () => {
     routeLists({
       concepts: [
@@ -422,6 +460,32 @@ describe('OntologyAuthoringWorkspace', () => {
     expect(
       screen.queryByTestId('ontology-definition-drawer')
     ).not.toBeInTheDocument();
+  });
+
+  it('opens a concept from anywhere on its row, by mouse or keyboard', async () => {
+    const onOpenConcept = jest.fn();
+    routeLists({ concepts: [concept] });
+    renderWithQueryClient(
+      <OntologyAuthoringWorkspace
+        ontology={ontology}
+        onOpenConcept={onOpenConcept}
+      />
+    );
+    await flushReactQuery();
+    const row = await screen.findByRole('row', { name: /Customer/ });
+    await act(async () => {
+      fireEvent.click(within(row).getByText('label.class-owl'));
+    });
+
+    expect(onOpenConcept).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      fireEvent.keyDown(row, { key: 'Enter' });
+      fireEvent.keyUp(row, { key: 'Enter' });
+    });
+
+    expect(onOpenConcept).toHaveBeenCalledTimes(2);
+    expect(onOpenConcept).toHaveBeenLastCalledWith(concept.id);
   });
 
   it('keeps create actions hidden for a reader', async () => {

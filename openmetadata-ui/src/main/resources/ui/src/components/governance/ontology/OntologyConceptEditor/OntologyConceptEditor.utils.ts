@@ -180,13 +180,14 @@ export const conceptFormFields = (
     },
     {
       name: 'displayName',
-      label: t('label.display-name'),
+      label: t('label.ontology-display-name'),
       type: FieldTypes.TEXT,
     },
     {
       name: 'description',
       label: t('label.description'),
       type: FieldTypes.TEXTAREA,
+      placeholder: t('message.concept-description-placeholder'),
     },
     {
       name: 'conceptType',
@@ -216,7 +217,7 @@ export const conceptFormFields = (
       name: 'synonyms',
       label: t('label.synonym-plural'),
       type: FieldTypes.MULTI_SELECT,
-      placeholder: t('message.synonym-placeholder'),
+      placeholder: t('message.ontology-synonym-placeholder'),
       props: { allowsCreation: true, hideDropdown: true, items: [] },
     },
   ];

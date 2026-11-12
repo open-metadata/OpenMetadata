@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dialog } from '@openmetadata/ui-core-components';
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Layer } from '../../../../generated/api/data/createOntology';
@@ -119,6 +120,61 @@ describe('OntologyCreateForm', () => {
     );
 
     expect(screen.getByRole('button', { name: 'label.save' })).toBeDisabled();
+  });
+
+  it('in the dialog layout saves through "Save changes", cancels, and keeps identifiers under Advanced', async () => {
+    const user = userEvent.setup();
+    const saved = jest.fn();
+    const cancel = jest.fn();
+    const patch = APIClient.patch as jest.MockedFunction<
+      typeof APIClient.patch
+    >;
+    patch.mockResolvedValue({
+      data: { ...ontology, description: 'Orders' },
+    });
+    renderWithQueryClient(
+      <Dialog>
+        <OntologyCreateForm
+          canEdit
+          layout="dialog"
+          ontology={ontology}
+          onCancel={cancel}
+          onSaved={saved}
+        />
+      </Dialog>
+    );
+
+    expect(
+      screen.queryByRole('textbox', { name: 'label.ontology-iri' })
+    ).not.toBeInTheDocument();
+
+    await user.click(screen.getByTestId('ontology-settings-advanced-toggle'));
+
+    expect(
+      screen.getByRole('textbox', { name: 'label.ontology-iri' })
+    ).toBeDisabled();
+
+    await user.type(
+      screen.getByRole('textbox', { name: 'label.description' }),
+      'Orders'
+    );
+    await user.click(
+      screen.getByRole('button', { name: 'label.save-changes' })
+    );
+
+    await waitFor(() => expect(saved).toHaveBeenCalled());
+
+    expect(patch).toHaveBeenCalledWith(
+      '/ontologies/sales',
+      expect.arrayContaining([
+        { op: 'add', path: '/description', value: 'Orders' },
+      ]),
+      expect.anything()
+    );
+
+    await user.click(screen.getByRole('button', { name: 'label.cancel' }));
+
+    expect(cancel).toHaveBeenCalled();
   });
 
   describe('AI mode', () => {

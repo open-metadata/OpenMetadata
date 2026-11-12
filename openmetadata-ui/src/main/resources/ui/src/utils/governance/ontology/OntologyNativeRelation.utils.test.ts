@@ -280,7 +280,7 @@ describe('OntologyNativeRelation.utils', () => {
     ]);
   });
 
-  it('moves the relations whose domain or range leaves out an end into disabled other links', () => {
+  it('moves the relations whose domain or range leaves out an end into flagged, still selectable other links', () => {
     const groups = buildNativeRelationGroups(
       buildNativeRelationCatalog(model, types, labels),
       { hierarchy: 'Hierarchy', relationships: 'Relationships' }
@@ -288,7 +288,7 @@ describe('OntologyNativeRelation.utils', () => {
     const idsOf = (ends: { sourceId?: string; targetId?: string }) =>
       splitUnfitRelationOptions(groups, ends, 'Other').map((group) => [
         group.id,
-        group.options.map((option) => [option.id, Boolean(option.isDisabled)]),
+        group.options.map((option) => [option.id, Boolean(option.isUnfit)]),
       ]);
 
     expect(
@@ -304,7 +304,7 @@ describe('OntologyNativeRelation.utils', () => {
     expect(idsOf({ sourceId: account.id })).toHaveLength(2);
   });
 
-  it('lets a subclass, owl:Thing and classes outside the model fit, and disables only an unrelated known concept', () => {
+  it('lets a subclass, owl:Thing and classes outside the model fit, and flags only an unrelated known concept', () => {
     const premium = concept('PremiumAccount');
     const premiumIsAccount: OntologyAxiom = {
       axiomType: AxiomType.SubclassOf,
@@ -336,15 +336,15 @@ describe('OntologyNativeRelation.utils', () => {
       buildNativeRelationCatalog(hierarchyModel, [], labels),
       { hierarchy: 'Hierarchy', relationships: 'Relationships' }
     );
-    const disabledFor = (sourceId: string, targetId: string) =>
+    const unfitFor = (sourceId: string, targetId: string) =>
       splitUnfitRelationOptions(groups, { sourceId, targetId }, 'Other')
         .flatMap((group) => group.options)
-        .filter((option) => option.isDisabled)
+        .filter((option) => option.isUnfit)
         .map((option) => option.id);
 
-    expect(disabledFor(premium.id, customer.id)).toEqual([]);
-    expect(disabledFor(customer.id, customer.id)).toEqual([servedBy.iri]);
-    expect(disabledFor(premium.id, account.id)).toEqual([
+    expect(unfitFor(premium.id, customer.id)).toEqual([]);
+    expect(unfitFor(customer.id, customer.id)).toEqual([servedBy.iri]);
+    expect(unfitFor(premium.id, account.id)).toEqual([
       servedBy.iri,
       ofThing.iri,
       ofExternal.iri,

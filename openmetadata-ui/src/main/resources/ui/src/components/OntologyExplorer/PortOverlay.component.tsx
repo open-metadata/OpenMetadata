@@ -31,6 +31,29 @@ import { useRelationWarning } from './RelationWarning.context';
 import { NODE_HEIGHT, NODE_WIDTH } from './utils/graphConfig';
 
 const DRAG_THRESHOLD_PX = 6;
+// The picker's widest and tallest size, and the band the canvas toolbars float in at the bottom.
+const PICKER_WIDTH_PX = 300;
+const PICKER_HEIGHT_PX = 424;
+const TOOLBAR_CLEARANCE_PX = 80;
+const EDGE_GAP_PX = 8;
+
+const clampToCanvas = (value: number, max?: number) =>
+  Math.max(EDGE_GAP_PX, max === undefined ? value : Math.min(value, max));
+
+/** Opens the picker below the clicked point, kept inside the canvas and clear of its bottom toolbars. */
+export const getPickerPosition = (
+  at: Point,
+  canvas?: { width: number; height: number }
+) => ({
+  left: clampToCanvas(
+    at.x - PICKER_WIDTH_PX / 2,
+    canvas && canvas.width - PICKER_WIDTH_PX - EDGE_GAP_PX
+  ),
+  top: clampToCanvas(
+    at.y + 16,
+    canvas && canvas.height - PICKER_HEIGHT_PX - TOOLBAR_CLEARANCE_PX
+  ),
+});
 
 interface ClientPoint {
   x: number;
@@ -303,11 +326,10 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
         <div
           className="tw:pointer-events-auto tw:absolute tw:z-10"
           data-testid="ontology-relation-picker-anchor"
-          style={{
-            left: pendingRelation.at.x,
-            top: pendingRelation.at.y,
-            transform: 'translate(-50%, 16px)',
-          }}>
+          style={getPickerPosition(
+            pendingRelation.at,
+            overlayRef.current?.getBoundingClientRect()
+          )}>
           <RelationshipTypePicker
             canCreateType={canCreateRelationType}
             checkRelation={(relationType) =>

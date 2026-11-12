@@ -135,7 +135,7 @@ it('keeps the comment multi-line: Enter adds a new line and only the send button
   expect(input).toHaveValue('First line\nSecond line');
   expect(props.onComment).not.toHaveBeenCalled();
 
-  await user.click(screen.getByRole('button', { name: 'label.add-comment' }));
+  await user.click(screen.getByRole('button', { name: 'label.send' }));
 
   expect(props.onComment).toHaveBeenCalledWith('First line\nSecond line');
 });
@@ -159,7 +159,7 @@ it('shows the requester explanation without actions and posts repeated comments 
   const input = screen.getByRole('textbox', { name: /label.comment/ });
   for (let count = 1; count <= 2; count++) {
     fireEvent.change(input, { target: { value: 'Same comment' } });
-    fireEvent.click(screen.getByRole('button', { name: 'label.add-comment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.send' }));
     await waitFor(() => expect(input).toHaveValue(''));
 
     expect(props.onComment).toHaveBeenCalledTimes(count);
@@ -184,51 +184,6 @@ it('tells a caller who cannot publish that only an author or owner can, instead 
   ).not.toBeInTheDocument();
 
   useKeyEchoTranslations();
-});
-
-it('confirms before withdrawing and only offers it to the requester of an open review', () => {
-  const onWithdraw = jest.fn();
-  const { rerender } = renderWithQueryClient(
-    <OntologyTaskDetail {...props} onWithdraw={onWithdraw} />
-  );
-
-  expect(
-    screen.queryByTestId('ontology-task-withdraw')
-  ).not.toBeInTheDocument();
-
-  rerender(
-    <OntologyTaskDetail
-      {...props}
-      isRequester
-      review={{ ...review, callerCanVote: false }}
-      onWithdraw={onWithdraw}
-    />
-  );
-  fireEvent.click(screen.getByTestId('ontology-task-withdraw'));
-  fireEvent.click(screen.getByRole('button', { name: 'label.cancel' }));
-
-  expect(onWithdraw).not.toHaveBeenCalled();
-  expect(
-    screen.queryByTestId('ontology-task-withdraw-confirm')
-  ).not.toBeInTheDocument();
-
-  fireEvent.click(screen.getByTestId('ontology-task-withdraw'));
-  fireEvent.click(screen.getByTestId('ontology-task-withdraw-submit'));
-
-  expect(onWithdraw).toHaveBeenCalledTimes(1);
-
-  rerender(
-    <OntologyTaskDetail
-      {...props}
-      isRequester
-      review={{ ...review, status: EntityStatus.Approved }}
-      onWithdraw={onWithdraw}
-    />
-  );
-
-  expect(
-    screen.queryByTestId('ontology-task-withdraw')
-  ).not.toBeInTheDocument();
 });
 
 it('summarises the release against its base version', async () => {

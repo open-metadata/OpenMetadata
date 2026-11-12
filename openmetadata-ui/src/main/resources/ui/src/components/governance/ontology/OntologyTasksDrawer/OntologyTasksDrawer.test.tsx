@@ -444,65 +444,6 @@ it('keeps a successful final vote approved when its reconciliation read fails', 
   );
 });
 
-it('lets the requester withdraw an open review after confirming', async () => {
-  useApplicationStore.setState({
-    currentUser: { id: 'author', name: 'author', email: 'a@example.test' },
-  });
-  const read = get.getMockImplementation();
-  get.mockImplementation((url, config) =>
-    url.endsWith('/review')
-      ? Promise.resolve({ data: { ...review, callerCanVote: false } })
-      : read?.(url, config)
-  );
-  post.mockResolvedValue({ data: { ...task, status: 'Cancelled' } });
-  const { queryClient } = renderWithQueryClient(
-    <Harness initialTask="task-a" />
-  );
-  const invalidate = jest.spyOn(queryClient, 'invalidateQueries');
-
-  fireEvent.click(await screen.findByTestId('ontology-task-withdraw'));
-
-  expect(post).not.toHaveBeenCalled();
-
-  fireEvent.click(screen.getByTestId('ontology-task-withdraw-submit'));
-
-  await waitFor(() =>
-    expect(post).toHaveBeenCalledWith(
-      '/tasks/task-a/close',
-      {},
-      {
-        params: { comment: undefined },
-      }
-    )
-  );
-  await waitFor(() =>
-    expect(showSuccessToast).toHaveBeenCalledWith(
-      'message.ontology-publication-withdrawn'
-    )
-  );
-
-  // The publish button, release history and unpublished count refresh as after a withdraw from the release panel.
-  for (const key of [
-    'ontology-publication',
-    'ontology-release',
-    'ontology-release-review',
-    'ontology-state',
-    'ontology-release-history',
-    'ontology-working-diff',
-  ]) {
-    expect(invalidate).toHaveBeenCalledWith({ queryKey: [key] });
-  }
-});
-
-it('offers no withdraw to a reviewer who did not request the review', async () => {
-  renderWithQueryClient(<Harness initialTask="task-a" />);
-
-  expect(await screen.findByText('Review Commerce')).toBeInTheDocument();
-  expect(
-    screen.queryByTestId('ontology-task-withdraw')
-  ).not.toBeInTheDocument();
-});
-
 it('keeps writes disabled after an ambiguous outcome until an authoritative read succeeds', async () => {
   const read = get.getMockImplementation();
   let uncertain = false;
@@ -622,7 +563,7 @@ it('replaces after-only queue pages and resets the cursor when changing tabs', a
 
   expect(await screen.findByText(/TASK-NEXT/)).toBeInTheDocument();
 
-  fireEvent.click(screen.getByRole('tab', { name: 'label.created-by-me' }));
+  fireEvent.click(screen.getByRole('tab', { name: /label.created-by-me/ }));
 
   expect(await screen.findByText(/TASK-FIRST/)).toBeInTheDocument();
   expect(
@@ -834,11 +775,9 @@ it('posts two deliberate equal-text comments as two conversation entries', async
     const input = screen.getByRole('textbox', { name: /label.comment/ });
     fireEvent.change(input, { target: { value: 'Same words' } });
     await waitFor(() =>
-      expect(
-        screen.getByRole('button', { name: 'label.add-comment' })
-      ).toBeEnabled()
+      expect(screen.getByRole('button', { name: 'label.send' })).toBeEnabled()
     );
-    fireEvent.click(screen.getByRole('button', { name: 'label.add-comment' }));
+    fireEvent.click(screen.getByRole('button', { name: 'label.send' }));
     await waitFor(() =>
       expect(screen.getAllByText('Same words')).toHaveLength(count)
     );
@@ -1037,4 +976,91 @@ it('titles each queue row with the task title that names the ontology and versio
   expect(
     screen.getByRole('button', { name: 'TASK-00043 · Review Finance v1.2.0' })
   ).toBeInTheDocument();
+});
+
+it('shows tab counts, a pending group and requester cards that the search narrows, without paging a single page', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) => {
+    if (url !== '/ontologies/reviews' || config.params.view === 'pending') {
+      return read?.(url, config);
+    }
+    if (config.params.limit === 1) {
+      return Promise.resolve({
+        data: {
+          data: [],
+          paging: { total: config.params.view === 'assigned' ? 3 : 5 },
+        },
+      });
+    }
+
+    return Promise.resolve({
+      data: {
+        data: [
+          {
+            ...review,
+            task: { ...review.task, displayName: 'Review Sales v0.1.0' },
+            requester: { id: 'priya', name: 'Priya Raman', type: 'user' },
+          },
+          {
+            ...review,
+            taskId: 'TASK-00043',
+            task: {
+              id: 'task-c',
+              type: 'task',
+              displayName: 'Review Finance v1.2.0',
+            },
+          },
+        ],
+        paging: { total: 2 },
+      },
+    });
+  });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+
+  const assignedTab = await screen.findByRole('tab', {
+    name: /label.assigned-to-me/,
+  });
+  await waitFor(() => expect(assignedTab).toHaveTextContent('3'));
+
+  expect(
+    screen.getByRole('tab', { name: /label.created-by-me/ })
+  ).toHaveTextContent('5');
+
+  const panel = screen.getByRole('tabpanel');
+
+  expect(
+    await within(panel).findByTestId('ontology-tasks-group')
+  ).toHaveTextContent('label.pending-approval2');
+  expect(within(panel).getByText('Priya Raman')).toBeInTheDocument();
+
+  expect(
+    within(panel).queryByRole('button', { name: 'label.next' })
+  ).not.toBeInTheDocument();
+
+  await screen.findByText('Review Commerce');
+
+  expect(
+    screen.queryByRole('button', { name: 'label.first' })
+  ).not.toBeInTheDocument();
+  expect(
+    screen.queryByText('message.ontology-review-event-window')
+  ).not.toBeInTheDocument();
+
+  fireEvent.change(within(panel).getByRole('textbox'), {
+    target: { value: 'finance' },
+  });
+
+  expect(
+    within(panel).getByRole('button', {
+      name: 'TASK-00043 · Review Finance v1.2.0',
+    })
+  ).toBeInTheDocument();
+  expect(
+    within(panel).queryByRole('button', {
+      name: 'TASK-00042 · Review Sales v0.1.0',
+    })
+  ).not.toBeInTheDocument();
+  expect(within(panel).getByTestId('ontology-tasks-group')).toHaveTextContent(
+    'label.pending-approval1'
+  );
 });

@@ -69,6 +69,19 @@ type OntologyImportExportMenuProps =
 
 type TransferKind = 'export' | 'import';
 
+const MenuItemText = ({
+  description,
+  title,
+}: {
+  readonly description: string;
+  readonly title: string;
+}) => (
+  <span className="tw:flex tw:flex-col">
+    <span className="tw:font-semibold tw:text-primary">{title}</span>
+    <span className="tw:text-xs tw:text-tertiary">{description}</span>
+  </span>
+);
+
 const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -209,7 +222,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
             size="sm"
             tooltip={t('label.import-export')}
           />
-          <Dropdown.Popover placement="bottom end">
+          <Dropdown.Popover className="tw:w-60" placement="bottom end">
             <Dropdown.Menu
               aria-label={t('label.import-export')}
               onAction={(key) => open(key === 'import' ? 'import' : 'export')}>
@@ -218,15 +231,23 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
                   data-testid="ontology-import-menu-item"
                   icon={Upload01}
                   id="import"
-                  label={t('label.import')}
-                />
+                  textValue={t('label.import')}>
+                  <MenuItemText
+                    description={t('message.ontology-import-menu-description')}
+                    title={t('label.import')}
+                  />
+                </Dropdown.Item>
               ) : null}
               <Dropdown.Item
                 data-testid="ontology-export-menu-item"
                 icon={Download01}
                 id="export"
-                label={t('label.export')}
-              />
+                textValue={t('label.export')}>
+                <MenuItemText
+                  description={t('message.ontology-export-menu-description')}
+                  title={t('label.export')}
+                />
+              </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
         </Dropdown.Root>

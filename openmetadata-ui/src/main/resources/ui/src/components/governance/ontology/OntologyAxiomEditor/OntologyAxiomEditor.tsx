@@ -58,6 +58,8 @@ interface OntologyAxiomEditorProps {
   axiom?: OntologyAxiom;
   canEdit: boolean;
   onSaved?: (axiom: OntologyAxiom) => void;
+  /** Closes the drawer; without one, Cancel puts the saved rule back. */
+  onCancel?: () => void;
 }
 
 /** The footer status: not run yet, passed, or failed. */
@@ -69,12 +71,21 @@ const validationStatusKey = (valid?: boolean) => {
   return valid ? 'label.validation-passed' : 'label.validation-failed';
 };
 
+/** A saved rule needs a change, and every rule a passing validation, before Save. */
+const isRuleSavable = (checks: {
+  canEdit: boolean;
+  isChanged: boolean;
+  isValid: boolean;
+  isQuickReady: boolean;
+}) => Object.values(checks).every(Boolean);
+
 const OntologyAxiomEditor = ({
   ontology,
   references,
   axiom,
   canEdit,
   onSaved,
+  onCancel,
 }: OntologyAxiomEditorProps) => {
   const { t } = useTranslation();
   const form = useForm<OntologyAxiomFormState>({
@@ -164,10 +175,12 @@ const OntologyAxiomEditor = ({
 
   const isQuick = rule.mode === 'quick';
   const problems = collectAxiomProblems(validation.current, isQuick);
-  const isSavable =
-    canEdit &&
-    Boolean(validation.current?.report?.valid) &&
-    (!isQuick || isQuickRuleReady(rule.quick));
+  const isSavable = isRuleSavable({
+    canEdit,
+    isChanged: !axiom || form.formState.isDirty,
+    isValid: validation.current?.report?.valid === true,
+    isQuickReady: !isQuick || isQuickRuleReady(rule.quick),
+  });
   const cancel = () => {
     const next = axiomFormValues(axiom);
     form.reset(next);
@@ -220,7 +233,7 @@ const OntologyAxiomEditor = ({
           submitLabel={t('label.save')}
           submitTestId="ontology-axiom-submit"
           testId="ontology-axiom-footer"
-          onCancel={cancel}>
+          onCancel={onCancel ?? cancel}>
           <Button
             color="secondary"
             data-testid="ontology-axiom-validate"

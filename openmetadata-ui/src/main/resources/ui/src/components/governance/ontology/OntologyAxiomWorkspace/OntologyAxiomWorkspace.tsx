@@ -49,6 +49,7 @@ import {
 import { overviewValidationQueryKey } from '../OntologyOverview/OntologyOverview.constants';
 
 const ALL = 'all';
+const EMPTY = '—';
 const PROVENANCE_LABELS: Record<Provenance, string> = {
   [Provenance.Manual]: 'label.manual',
   [Provenance.Imported]: 'label.imported',
@@ -192,10 +193,7 @@ const OntologyAxiomWorkspace = ({
       id: 'sentence',
       label: t('label.sentence'),
       render: (axiom) => (
-        <Typography
-          as="span"
-          className="tw:line-clamp-2 tw:min-w-64"
-          size="text-sm">
+        <Typography as="span" className="tw:line-clamp-2" size="text-sm">
           {sentenceOf(axiom)}
         </Typography>
       ),
@@ -203,8 +201,9 @@ const OntologyAxiomWorkspace = ({
     {
       id: 'type',
       label: t('label.type'),
+      width: 'tw:w-40',
       render: (axiom) => (
-        <Typography as="span" className="tw:whitespace-nowrap" size="text-sm">
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
           {axiomTypeLabel(axiom.axiomType, t)}
         </Typography>
       ),
@@ -212,8 +211,9 @@ const OntologyAxiomWorkspace = ({
     {
       id: 'source',
       label: t('label.source'),
+      width: 'tw:w-32',
       render: (axiom) => (
-        <Typography as="span" color="secondary" size="text-sm">
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
           {t(PROVENANCE_LABELS[axiom.provenance])}
         </Typography>
       ),
@@ -222,14 +222,16 @@ const OntologyAxiomWorkspace = ({
       id: 'description',
       label: t('label.description'),
       render: (axiom) => (
-        <Typography as="span" className="tw:line-clamp-1" size="text-sm">
-          {axiom.description}
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
+          {axiom.description || EMPTY}
         </Typography>
       ),
     },
     {
       id: 'graph',
       label: '',
+      width: 'tw:w-36',
+      align: 'end',
       render: (axiom) => {
         const conceptId = conceptIdByIri.get(axiom.subjectIri);
 
@@ -293,6 +295,7 @@ const OntologyAxiomWorkspace = ({
       canCreate={canCreate}
       columns={columns}
       definitionType="axiom"
+      filterKey={[axiomType, provenance].join('|')}
       isError={isError}
       items={items}
       ontology={ontology}
@@ -314,12 +317,13 @@ const OntologyAxiomWorkspace = ({
         onWorkingChange?.();
       }}
       onRetry={() => void refetch()}>
-      {(axiom, canEdit, onSaved) => (
+      {(axiom, canEdit, onSaved, close) => (
         <OntologyAxiomEditor
           axiom={axiom}
           canEdit={canEdit}
           ontology={ontology}
           references={references}
+          onCancel={close}
           onSaved={onSaved}
         />
       )}

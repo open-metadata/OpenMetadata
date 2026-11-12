@@ -58,6 +58,7 @@ import { getEntityPermissionById } from '../../../../rest/permissionAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
   getModelRelations,
+  OntologyModelRelation,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
@@ -299,7 +300,9 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     await within(picker).findByRole('checkbox', { name: 'customers' });
 
     fireEvent.click(
-      within(picker).getByRole('checkbox', { name: 'label.select-all' })
+      within(picker).getByRole('checkbox', {
+        name: 'label.select-all-lowercase',
+      })
     );
     fireEvent.click(within(picker).getByTestId('ontology-data-asset-save'));
     await waitFor(() =>
@@ -527,6 +530,81 @@ describe('OntologyConceptInspector relationships', () => {
     expect(
       screen.getByTestId('ontology-concept-relationships')
     ).toHaveTextContent(/Account\s*part of/);
+  });
+});
+
+describe('OntologyConceptInspector header and empty sections', () => {
+  const parent = {
+    ...concept,
+    id: 'party',
+    name: 'Party',
+    displayName: 'Party',
+    fullyQualifiedName: 'Sales.Party',
+    iri: 'urn:sales:Party',
+  };
+  const renderHeader = (
+    relations: OntologyModelRelation[],
+    onSelectConcept = jest.fn()
+  ) =>
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          concept={concept}
+          model={{ ...model, concepts: [concept, parent] }}
+          relations={relations}
+          onClose={jest.fn()}
+          onOpenData={jest.fn()}
+          onSelectConcept={onSelectConcept}
+        />
+      </MemoryRouter>
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 0,
+      assets: [],
+    });
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  it('places a concept with no parent at the top level and says each empty section is empty', () => {
+    renderHeader([]);
+
+    expect(screen.getByTestId('ontology-concept-parent')).toHaveTextContent(
+      'label.top-level-concept'
+    );
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent('message.ontology-no-relationships-yet');
+    expect(screen.getByTestId('ontology-concept-mappings')).toHaveTextContent(
+      'message.ontology-no-mappings-yet'
+    );
+  });
+
+  it('names the parent in the breadcrumb and opens it from there', () => {
+    const onSelectConcept = jest.fn();
+    renderHeader(
+      [{ key: 'is-a', kind: 'subClassOf', from: concept, to: parent }],
+      onSelectConcept
+    );
+    fireEvent.click(screen.getByTestId('ontology-concept-parent'));
+
+    expect(onSelectConcept).toHaveBeenCalledWith(parent);
+  });
+
+  it('copies the IRI', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value: true,
+    });
+    renderHeader([]);
+    fireEvent.click(screen.getByTestId('ontology-concept-copy-iri'));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(concept.iri));
   });
 });
 
@@ -1399,6 +1477,9 @@ describe('OntologyConceptInspector relationship authoring', () => {
       fireEvent.click(await screen.findByTestId('ontology-add-rule'));
       const form = screen.getByTestId('ontology-rule-form');
 
+      expect(form).toHaveTextContent(
+        'label.new-entitymessage.rule-applies-to-every-concept'
+      );
       expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
 
       fireEvent.click(

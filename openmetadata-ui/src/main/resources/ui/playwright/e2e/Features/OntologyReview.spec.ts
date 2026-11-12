@@ -2252,6 +2252,11 @@ const openReleases = async (page: Page, ontology: Ontology) => {
 };
 
 const chooseRelease = async (page: Page, picker: string, version: string) => {
+  // AI mode keeps Compare versions behind a toolbar button; classic shows it inline.
+  const openCompare = page.getByTestId('ontology-release-compare-open');
+  if (await openCompare.isVisible()) {
+    await openCompare.click();
+  }
   await page.getByRole('button', { name: picker, exact: true }).click();
   await page.getByText(`${version} (`).click();
 };
@@ -2265,6 +2270,17 @@ const expectedBreakdown = (release: OntologyRelease) => {
   return `${summary.added} added · ${
     summary.changed + (summary.deprecated ?? 0)
   } changed · ${summary.removed} removed`;
+};
+
+const expectedDelta = (release: OntologyRelease) => {
+  const summary = release.changeSummary;
+  if (!summary) {
+    throw new Error('Sealed release has no change summary');
+  }
+
+  return `+${summary.added} ~${summary.changed + (summary.deprecated ?? 0)} −${
+    summary.removed
+  }`;
 };
 
 test.describe(
@@ -2312,7 +2328,11 @@ test.describe(
             ).toHaveText('Published without review');
             await expect(
               page.getByTestId(`ontology-release-count-${release.id}`)
-            ).toHaveText(expectedBreakdown(release));
+            ).toHaveText(
+              mode === 'ai'
+                ? expectedDelta(release)
+                : expectedBreakdown(release)
+            );
           }
           await expect(
             page.getByTestId(`ontology-release-kinds-${first.id}`)

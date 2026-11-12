@@ -33,15 +33,16 @@ describe('buildVisualSparqlQuery', () => {
 
     const query = buildVisualSparqlQuery([{ relationType, target }]);
 
-    expect(query).toContain(
-      '?concept <https://example.com/ontology/governedBy> ?target .'
-    );
-    expect(query).toContain(
-      '?target om:fullyQualifiedName "Compliance.AntiMoneyLaundering"'
-    );
-    expect(query).toContain('SELECT ?concept ?conceptFqn');
-    expect(query).toContain('?concept a om:GlossaryTerm .');
-    expect(query).toMatch(/\nLIMIT 100$/);
+    // One condition must stay byte-identical to the query the builder has always written.
+    expect(query).toBe(`PREFIX om: <https://open-metadata.org/ontology/>
+
+SELECT ?concept ?conceptFqn WHERE {
+  ?concept <https://example.com/ontology/governedBy> ?target ;
+           om:fullyQualifiedName ?conceptFqn .
+  ?concept a om:GlossaryTerm .
+  ?target om:fullyQualifiedName "Compliance.AntiMoneyLaundering" .
+}
+LIMIT 100`);
   });
 
   it('ANDs every condition against its own target and applies the limit', () => {

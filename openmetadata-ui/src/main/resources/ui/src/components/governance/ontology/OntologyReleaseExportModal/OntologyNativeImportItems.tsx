@@ -209,8 +209,8 @@ const ImportGroup = ({
         isSelectableItem(item) && !unmetRequirement(items, selection, item)
     )
     .map(({ id }) => id);
-  const isAllPicked =
-    groupIds.length > 0 && groupIds.every((id) => selection.has(id));
+  const picked = groupIds.filter((id) => selection.has(id)).length;
+  const isAllPicked = groupIds.length > 0 && picked === groupIds.length;
 
   return (
     <Box
@@ -218,6 +218,14 @@ const ImportGroup = ({
       direction="col"
       gap={2}>
       <Box align="center" gap={2}>
+        <Checkbox
+          aria-label={t(labelKey)}
+          data-testid={`ontology-native-import-group-select-${kind}`}
+          isDisabled={isDisabled || groupIds.length === 0}
+          isIndeterminate={picked > 0 && !isAllPicked}
+          isSelected={isAllPicked}
+          onChange={(isSelected) => onChange(groupIds, isSelected)}
+        />
         <Typography weight="medium">{t(labelKey)}</Typography>
         <Badge color="gray" size="sm" type="pill-color">
           {group.length}
@@ -229,7 +237,9 @@ const ImportGroup = ({
           isDisabled={isDisabled || groupIds.length === 0}
           size="sm"
           onPress={() => onChange(groupIds, !isAllPicked)}>
-          {isAllPicked ? t('label.deselect-all') : t('label.select-all')}
+          {isAllPicked
+            ? t('label.deselect-all')
+            : t('label.select-all-lowercase')}
         </Button>
       </Box>
       <Box

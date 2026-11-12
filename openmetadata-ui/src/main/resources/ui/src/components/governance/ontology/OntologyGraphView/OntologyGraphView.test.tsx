@@ -99,6 +99,7 @@ const mockPermissions = {
   relationshipType: { Create: true, EditAll: true },
 };
 let mockCanEditConcept = true;
+let mockCanDeleteConcept = false;
 let mockUneditableProperties: string[] = [];
 
 jest.mock('../../../../context/PermissionProvider/PermissionProvider', () => ({
@@ -110,6 +111,7 @@ jest.mock(
     useEntityPermissions: () =>
       getDerivedPermissionFlags({
         ...DEFAULT_ENTITY_PERMISSION,
+        Delete: mockCanDeleteConcept,
         EditAll: mockCanEditConcept,
       }),
   })
@@ -459,6 +461,7 @@ describe('OntologyGraphView', () => {
     mockPermissions.relationshipType.Create = true;
     mockPermissions.relationshipType.EditAll = true;
     mockCanEditConcept = true;
+    mockCanDeleteConcept = false;
     mockUneditableProperties = [];
     mockUseOntologyStudioModel.mockReturnValue(modelResult);
     (getOntologyConcept as jest.Mock).mockImplementation((id: string) =>
@@ -2147,7 +2150,7 @@ describe('OntologyGraphView', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('textbox', { name: 'label.display-name' })
+        screen.getByRole('textbox', { name: 'label.ontology-display-name' })
       ).toHaveValue('Customer, draft wording')
     );
   });
@@ -2956,6 +2959,48 @@ describe('OntologyGraphView', () => {
     expect(getNativeOntologyDataGraphPage).toHaveBeenCalledTimes(1);
   });
 
+  it('stops offering Link data in Data once the concept drawer is closed', async () => {
+    (getNativeOntologyDataGraphPage as jest.Mock).mockResolvedValue(
+      pageFixture({ clusters: [] })
+    );
+    const StudioSelection = () => {
+      const [conceptId, setConceptId] = useState<string>();
+
+      return (
+        <OntologyGraphView
+          ontology={ontology}
+          selectedConceptId={conceptId}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+          onSelectedConceptChange={setConceptId}
+        />
+      );
+    };
+    render(
+      <MemoryRouter>
+        <StudioSelection />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+
+    expect(await screen.findByTestId('ontology-data-link-asset')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('ontology-concept-close'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(screen.getByTestId('ontology-data-empty')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-link-asset')
+    ).not.toBeInTheDocument();
+  });
+
   it('floats the conflicts and health cards over the canvas so the graph keeps its width', async () => {
     render(
       <MemoryRouter>
@@ -2998,6 +3043,52 @@ describe('OntologyGraphView', () => {
     expect(
       screen.queryByText('message.ontology-validate-all-clean')
     ).not.toBeInTheDocument();
+  });
+
+  it('asks to delete a concept inside its panel rather than over the page', async () => {
+    mockCanDeleteConcept = true;
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          isEditing
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitForRegistry();
+    fireEvent.click(screen.getByTestId('native-graph-node-concept-customer'));
+    const inspector = await screen.findByTestId('ontology-concept-inspector');
+    fireEvent.click(within(inspector).getByTestId('ontology-concept-more'));
+    fireEvent.click(await screen.findByTestId('ontology-concept-delete'));
+
+    expect(inspector).toContainElement(
+      await screen.findByTestId('ontology-concept-delete-dialog')
+    );
+  });
+
+  it('titles a failed validation as an error instead of zero conflicts', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockRejectedValue(
+      new Error('boom')
+    );
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+
+    const title = await screen.findByTestId('ontology-conflicts-title');
+    await waitFor(() =>
+      expect(title).toHaveTextContent('message.ontology-conflicts-check-failed')
+    );
+
+    expect(title).not.toHaveTextContent('label.n-conflicts-to-resolve');
   });
 
   it('keeps the conflicts and health cards on the Tree surface', async () => {
@@ -3249,7 +3340,9 @@ describe('OntologyGraphView', () => {
     await screen.findByTestId(`ontology-data-cluster-${customer.id}`);
     await screen.findByTestId('concept-save');
     fireEvent.change(
-      await screen.findByRole('textbox', { name: 'label.display-name' }),
+      await screen.findByRole('textbox', {
+        name: 'label.ontology-display-name',
+      }),
       { target: { value: 'Client' } }
     );
     fireEvent.click(screen.getByRole('button', { name: 'label.save' }));

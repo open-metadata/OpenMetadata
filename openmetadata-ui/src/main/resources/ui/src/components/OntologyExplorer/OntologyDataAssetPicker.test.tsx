@@ -90,7 +90,9 @@ describe('OntologyDataAssetPicker', () => {
       />
     );
     await screen.findByText('customers');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
     await waitFor(() =>
       expect(saveAssets).toHaveBeenCalledWith([
@@ -188,7 +190,9 @@ describe('OntologyDataAssetPicker', () => {
 
     expect(screen.getByTestId('ontology-data-asset-save')).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
@@ -222,7 +226,9 @@ describe('OntologyDataAssetPicker', () => {
     );
     await screen.findByTestId('ontology-data-asset-option-t-1');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
     expect(
@@ -401,11 +407,13 @@ describe('OntologyDataAssetPicker', () => {
       />
     );
     await screen.findByTestId('ontology-data-asset-option-t-1');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
 
     expect(
       screen.getByTestId('ontology-data-asset-selected-count')
-    ).toHaveTextContent('label.n-selected');
+    ).toHaveTextContent('label.n-selected-lowercase');
 
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
@@ -441,7 +449,9 @@ describe('OntologyDataAssetPicker', () => {
       screen.getByTestId('ontology-data-asset-option-t-1')
     ).toHaveAttribute('data-disabled');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
 
     expect(
       screen.getByTestId('ontology-data-asset-selected-count')
@@ -647,6 +657,21 @@ describe('OntologyDataAssetPicker', () => {
       expect(
         screen.getByText('message.ontology-link-applies-now')
       ).toBeInTheDocument();
+    });
+
+    it('orders the filters Service, Type, Domain, Owner', async () => {
+      await screen.findByText('prescriptions');
+
+      expect(
+        screen
+          .getAllByTestId(/^ontology-data-asset-\w+-filter$/)
+          .map((filter) => filter.dataset.testid)
+      ).toEqual([
+        'ontology-data-asset-service-filter',
+        'ontology-data-asset-type-filter',
+        'ontology-data-asset-domain-filter',
+        'ontology-data-asset-owner-filter',
+      ]);
     });
 
     it('narrows the search to one domain and one owner seen in the results', async () => {

@@ -399,7 +399,7 @@ const fitsPair = (
 
 /**
  * Moves the options whose declared domain or range leaves out the source or target into a
- * trailing group the picker shows disabled, so the user sees why a link is not offered.
+ * trailing group the picker flags with a warning; they stay selectable.
  */
 export const splitUnfitRelationOptions = (
   groups: readonly RelationTypeOptionGroup[],
@@ -422,7 +422,7 @@ export const splitUnfitRelationOptions = (
     })),
     {
       id: 'other',
-      options: unfit.map((option) => ({ ...option, isDisabled: true })),
+      options: unfit.map((option) => ({ ...option, isUnfit: true })),
       title: otherTitle,
     },
   ];

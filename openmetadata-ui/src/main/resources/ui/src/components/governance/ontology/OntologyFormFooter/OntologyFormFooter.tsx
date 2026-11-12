@@ -23,6 +23,7 @@ interface OntologyFormFooterProps {
   readonly status?: ReactNode;
   readonly testId: string;
   readonly submitTestId?: string;
+  /** Closes the drawer; the draft guard asks first when there are unsaved changes. */
   readonly onCancel: () => void;
   /** Actions between Cancel and submit, e.g. Validate. */
   readonly children?: ReactNode;
@@ -63,7 +64,7 @@ const OntologyFormFooter = ({
       </div>
       <Button
         color="secondary"
-        isDisabled={!isDirty || isSaving}
+        data-testid={`${testId}-cancel`}
         size="sm"
         onPress={onCancel}>
         {t('label.cancel')}

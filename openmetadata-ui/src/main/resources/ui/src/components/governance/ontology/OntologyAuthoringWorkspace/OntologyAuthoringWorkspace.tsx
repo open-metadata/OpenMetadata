@@ -18,7 +18,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Search } from '@openmetadata/ui-core-components/icons';
+import { ChevronRight, Search } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -45,6 +45,7 @@ import OntologyDefinitionList, {
   DefinitionColumn,
 } from './OntologyDefinitionList';
 import {
+  completenessColor,
   ConceptLevelFilter,
   countPropertiesByKind,
   filterConcepts,
@@ -156,7 +157,7 @@ const ConceptTab = ({
   const plural = t('label.concept-plural');
 
   const count = (id: string, key: 'relations' | 'properties' | 'rules') => (
-    <Typography as="span" size="text-sm">
+    <Typography as="span" className="tw:tabular-nums" size="text-sm">
       {facts?.get(id)?.[key] ?? 0}
     </Typography>
   );
@@ -165,18 +166,21 @@ const ConceptTab = ({
     {
       id: 'type',
       label: t('label.type'),
-      render: (concept) =>
-        concept.conceptType ? (
-          <Typography as="span" className="tw:whitespace-nowrap" size="text-sm">
-            {t(CONCEPT_TYPE_LABELS[concept.conceptType])}
-          </Typography>
-        ) : null,
+      width: 'tw:w-32',
+      render: (concept) => (
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
+          {concept.conceptType
+            ? t(CONCEPT_TYPE_LABELS[concept.conceptType])
+            : EMPTY}
+        </Typography>
+      ),
     },
     {
       id: 'parent',
       label: t('label.parent'),
+      width: 'tw:w-28',
       render: (concept) => (
-        <Typography as="span" color="secondary" size="text-sm">
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
           {formatParents(facts?.get(concept.id)?.parents ?? []) || EMPTY}
         </Typography>
       ),
@@ -185,48 +189,55 @@ const ConceptTab = ({
       id: 'description',
       label: t('label.description'),
       render: (concept) => (
-        <Typography as="span" className="tw:line-clamp-1" size="text-sm">
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
           {concept.description || EMPTY}
         </Typography>
       ),
     },
     {
       id: 'relations',
-      label: t('label.relationship-plural'),
+      label: t('label.relation-plural'),
+      width: 'tw:w-20',
+      align: 'end',
       render: (concept) => count(concept.id, 'relations'),
     },
     {
       id: 'properties',
       label: t('label.property-plural'),
+      width: 'tw:w-20',
+      align: 'end',
       render: (concept) => count(concept.id, 'properties'),
     },
     {
       id: 'rules',
       label: t('label.rule-plural'),
+      width: 'tw:w-16',
+      align: 'end',
       render: (concept) => count(concept.id, 'rules'),
     },
     {
       id: 'completeness',
       label: t('label.completeness'),
-      render: (concept) => (
-        <div className="tw:w-32">
+      width: 'tw:w-32',
+      render: (concept) => {
+        const completeness = facts?.get(concept.id)?.completeness ?? 0;
+
+        return (
           <ProgressBar
             aria-label={t('label.completeness')}
+            color={completenessColor(completeness)}
             labelPosition="right"
-            value={facts?.get(concept.id)?.completeness ?? 0}
+            value={completeness}
           />
-        </div>
-      ),
+        );
+      },
     },
     {
       id: 'updated',
       label: t('label.last-edited'),
+      width: 'tw:w-30',
       render: (concept) => (
-        <Typography
-          as="span"
-          className="tw:whitespace-nowrap"
-          color="secondary"
-          size="text-sm">
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
           {formatDate(concept.updatedAt) || EMPTY}
         </Typography>
       ),
@@ -235,7 +246,11 @@ const ConceptTab = ({
 
   const toolbar = (
     <>
-      <SearchField entity={plural} value={search} onChange={setSearch} />
+      <SearchField
+        entity={plural.toLocaleLowerCase()}
+        value={search}
+        onChange={setSearch}
+      />
       <Select
         aria-label={t('label.type')}
         className="tw:w-44"
@@ -276,6 +291,7 @@ const ConceptTab = ({
       canCreate={canCreate}
       columns={columns}
       definitionType="concept"
+      filterKey={[search, conceptType, level].join('|')}
       isError={isError}
       items={items}
       key={ontology.id + ':concept'}
@@ -367,6 +383,7 @@ const PropertyTab = ({
     {
       id: 'kind',
       label: t('label.kind'),
+      width: 'tw:w-28',
       render: (property) => (
         <Badge
           color={KIND_BADGE_COLORS[property.kind]}
@@ -380,8 +397,8 @@ const PropertyTab = ({
       id: 'used-by',
       label: t('label.used-by'),
       render: (property) => (
-        <Typography as="span" className="tw:line-clamp-1" size="text-sm">
-          {labels(property.domain)}
+        <Typography ellipsis as="span" size="text-sm">
+          {labels(property.domain) || EMPTY}
         </Typography>
       ),
     },
@@ -389,12 +406,8 @@ const PropertyTab = ({
       id: 'value-type',
       label: t('label.value-type-or-target'),
       render: (property) => (
-        <Typography
-          as="span"
-          className="tw:line-clamp-1"
-          color="secondary"
-          size="text-sm">
-          {labels(property.range)}
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
+          {labels(property.range) || EMPTY}
         </Typography>
       ),
     },
@@ -402,9 +415,18 @@ const PropertyTab = ({
       id: 'description',
       label: t('label.description'),
       render: (property) => (
-        <Typography as="span" className="tw:line-clamp-1" size="text-sm">
-          {property.description}
+        <Typography ellipsis as="span" color="secondary" size="text-sm">
+          {property.description || EMPTY}
         </Typography>
+      ),
+    },
+    {
+      id: 'open',
+      label: '',
+      width: 'tw:w-12',
+      align: 'end',
+      render: () => (
+        <ChevronRight aria-hidden className="tw:size-4 tw:text-fg-quaternary" />
       ),
     },
   ];
@@ -444,7 +466,11 @@ const PropertyTab = ({
           ))}
         </Tabs.List>
       </Tabs>
-      <SearchField entity={plural} value={search} onChange={setSearch} />
+      <SearchField
+        entity={plural.toLocaleLowerCase()}
+        value={search}
+        onChange={setSearch}
+      />
     </>
   );
 
@@ -453,6 +479,7 @@ const PropertyTab = ({
       canCreate={canCreate}
       columns={columns}
       definitionType="property"
+      filterKey={[kind, search].join('|')}
       isError={isError}
       items={items}
       key={ontology.id + ':property'}
@@ -466,13 +493,14 @@ const PropertyTab = ({
         onWorkingChange?.();
       }}
       onRetry={() => void refetch()}>
-      {(property, canEdit, onSaved) => (
+      {(property, canEdit, onSaved, close) => (
         <OntologyPropertyEditor
           canEdit={canEdit}
           concepts={conceptOptions}
           ontology={ontology}
           properties={propertyOptions}
           property={property}
+          onCancel={close}
           onSaved={onSaved}
         />
       )}

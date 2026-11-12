@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import {
-  Box,
+  Button,
   Dialog,
   Modal,
   ModalOverlay,
@@ -66,37 +66,46 @@ const OntologySettingsDialog = ({
         }
       }}>
       <Modal>
-        <Dialog
-          dividers="scroll"
-          title={t('label.ontology-settings')}
-          width={560}
-          onClose={onClose}>
-          <Dialog.Content>
-            <Box data-testid="ontology-settings-dialog" direction="col" gap={4}>
-              <Typography color="secondary" size="text-sm">
-                {t('message.ontology-settings-description', {
-                  name: getEntityName(ontology),
-                })}
-              </Typography>
-              {full.data ? (
-                <OntologyCreateForm
-                  canEdit={canEditAll}
-                  key={`${full.data.id}:${full.data.version}`}
-                  layout="stacked"
-                  ontology={full.data}
-                  onSaved={onSaved}
-                />
-              ) : null}
-              {full.isPending ? <Loader /> : null}
-              {full.isError ? (
-                <Typography color="danger" role="alert" size="text-sm">
-                  {t('server.entity-fetch-error', {
-                    entity: t('label.ontology'),
-                  })}
-                </Typography>
-              ) : null}
-            </Box>
-          </Dialog.Content>
+        <Dialog showCloseButton dividers="scroll" width={520} onClose={onClose}>
+          <Dialog.Header
+            className="tw:pr-12"
+            title={t('label.ontology-settings')}>
+            <Typography color="secondary" size="text-sm">
+              {t('message.ontology-settings-description', {
+                name: getEntityName(ontology),
+              })}
+            </Typography>
+          </Dialog.Header>
+          <div data-testid="ontology-settings-dialog">
+            {full.data ? (
+              <OntologyCreateForm
+                canEdit={canEditAll}
+                key={`${full.data.id}:${full.data.version}`}
+                layout="dialog"
+                ontology={full.data}
+                onCancel={onClose}
+                onSaved={onSaved}
+              />
+            ) : (
+              <>
+                <Dialog.Content>
+                  {full.isPending ? <Loader /> : null}
+                  {full.isError ? (
+                    <Typography color="danger" role="alert" size="text-sm">
+                      {t('server.entity-fetch-error', {
+                        entity: t('label.ontology'),
+                      })}
+                    </Typography>
+                  ) : null}
+                </Dialog.Content>
+                <Dialog.Footer>
+                  <Button color="secondary" onPress={onClose}>
+                    {t('label.cancel')}
+                  </Button>
+                </Dialog.Footer>
+              </>
+            )}
+          </div>
         </Dialog>
       </Modal>
     </ModalOverlay>

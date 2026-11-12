@@ -291,7 +291,10 @@ const OntologyNativeDataMode = ({
     ].join(' · ');
   })();
 
-  const canLink = [canEditBindings, bindings.editableSnapshot].every(Boolean);
+  // Link rights are resolved for the concept the drawer shows, so linking is offered only while it is open.
+  const isDrawerOpen = Boolean(pickedId) && selectedConceptId === pickedId;
+  const canOfferLink = canEditBindings && isDrawerOpen;
+  const canLink = [canOfferLink, bindings.editableSnapshot].every(Boolean);
   const openLinkDialog = useCallback(() => {
     setIsPicking(false);
     setIsLinking(true);
@@ -340,6 +343,19 @@ const OntologyNativeDataMode = ({
     />
   );
 
+  const renderPicker = (isInline?: boolean) => (
+    <OntologyDataConceptPicker
+      concepts={pickerConcepts}
+      isCountPending={isCountPending}
+      isInline={isInline}
+      recentIds={recentIds}
+      selectedId={pickedId}
+      onClose={() => setIsPicking(false)}
+      onLinkData={canLink ? openLinkDialog : undefined}
+      onPick={(id) => choose(id, true)}
+    />
+  );
+
   const renderPickerPopover = () => (
     <Popover
       aria-label={t('label.concept-plural')}
@@ -348,15 +364,7 @@ const OntologyNativeDataMode = ({
       placement="bottom start"
       triggerRef={pickerTriggerRef}
       onOpenChange={setIsPicking}>
-      <OntologyDataConceptPicker
-        concepts={pickerConcepts}
-        isCountPending={isCountPending}
-        recentIds={recentIds}
-        selectedId={pickedId}
-        onClose={() => setIsPicking(false)}
-        onLinkData={canLink ? openLinkDialog : undefined}
-        onPick={(id) => choose(id, true)}
-      />
+      {renderPicker()}
     </Popover>
   );
 
@@ -375,26 +383,29 @@ const OntologyNativeDataMode = ({
           {t('message.ontology-data-pick-hint')}
         </Typography>
       </Box>
-      <button
-        aria-expanded={isPicking}
-        aria-haspopup="dialog"
-        className="tw:flex tw:h-12 tw:w-full tw:cursor-pointer tw:items-center tw:gap-3 tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-4 tw:text-left tw:shadow-xs"
-        data-testid="ontology-data-concept-picker-trigger"
-        ref={pickerTriggerRef}
-        type="button"
-        onClick={() => setIsPicking((current) => !current)}>
-        <Search
-          aria-hidden="true"
-          className="tw:size-5 tw:text-fg-quaternary"
-        />
-        <Typography className="tw:flex-1 tw:text-placeholder" size="text-md">
-          {`${t('label.find-concept')}…`}
-        </Typography>
-        <ChevronDown
-          aria-hidden="true"
-          className="tw:size-5 tw:text-fg-quaternary"
-        />
-      </button>
+      {isPicking ? (
+        renderPicker(true)
+      ) : (
+        <button
+          aria-expanded={false}
+          aria-haspopup="listbox"
+          className="tw:flex tw:h-12 tw:w-full tw:cursor-pointer tw:items-center tw:gap-3 tw:rounded-lg tw:border tw:border-primary tw:bg-surface tw:px-4 tw:text-left tw:shadow-xs"
+          data-testid="ontology-data-concept-picker-trigger"
+          type="button"
+          onClick={() => setIsPicking(true)}>
+          <Search
+            aria-hidden="true"
+            className="tw:size-5 tw:text-fg-quaternary"
+          />
+          <Typography className="tw:flex-1 tw:text-placeholder" size="text-md">
+            {`${t('label.search-concepts')}…`}
+          </Typography>
+          <ChevronDown
+            aria-hidden="true"
+            className="tw:size-5 tw:text-fg-quaternary"
+          />
+        </button>
+      )}
     </div>
   );
 
@@ -484,9 +495,6 @@ const OntologyNativeDataMode = ({
   };
 
   const renderLoading = () => {
-    if (!isLoading) {
-      return null;
-    }
     if (pickedCluster) {
       return (
         <Typography
@@ -550,7 +558,7 @@ const OntologyNativeDataMode = ({
             {t('message.ontology-data-empty-hint')}
           </Typography>
         </Box>
-        {canEditBindings ? (
+        {canOfferLink ? (
           <Button
             color="primary"
             data-testid="ontology-data-link-asset"
@@ -563,6 +571,21 @@ const OntologyNativeDataMode = ({
         ) : null}
       </div>
     ) : null;
+
+  // Exactly one of the no-pick, error, loading, beyond-context and empty states shows at a time.
+  const renderState = () => {
+    if (!picked) {
+      return renderNoPick();
+    }
+    if (failure) {
+      return renderFailure();
+    }
+    if (isLoading || (isUndrawn && isCountPending)) {
+      return renderLoading();
+    }
+
+    return isBeyondContext ? renderBeyondContext() : renderEmpty();
+  };
 
   const conceptProperties = useMemo(
     () => (pickedId ? getConceptProperties?.(pickedId) ?? [] : []),
@@ -705,13 +728,9 @@ const OntologyNativeDataMode = ({
       data-testid="ontology-native-data-graph"
       direction="col">
       {renderBackdrop()}
-      {picked ? null : renderNoPick()}
       {renderChip()}
-      {renderPickerPopover()}
-      {renderFailure()}
-      {renderLoading()}
-      {renderEmpty()}
-      {renderBeyondContext()}
+      {picked ? renderPickerPopover() : null}
+      {renderState()}
       {renderCanvas()}
       {renderPanel()}
       {renderLinkDialog()}

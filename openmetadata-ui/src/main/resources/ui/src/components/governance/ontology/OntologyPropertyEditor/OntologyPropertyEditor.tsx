@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    Checkbox,
-    FieldProp,
-    FieldTypes,
-    FormField,
-    FormItemLabel,
-    getField,
-    HookForm,
-    Input,
-    RadioButton,
-    RadioGroup,
-    Typography
+  Box,
+  Button,
+  Checkbox,
+  FieldProp,
+  FieldTypes,
+  FormField,
+  FormItemLabel,
+  getField,
+  HookForm,
+  Input,
+  RadioButton,
+  RadioGroup,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
 import { keyBy } from 'lodash';
@@ -32,13 +32,13 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-    Kind,
-    OntologyProperty
+  Kind,
+  OntologyProperty,
 } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
-    createOntologyProperty,
-    patchOntologyProperty
+  createOntologyProperty,
+  patchOntologyProperty,
 } from '../../../../rest/ontologyAPI';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -47,11 +47,11 @@ import { ONTOLOGY_DATATYPE_OPTIONS } from '../OntologyIriInput/OntologyIriInput.
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
 import OntologyIriListInput from '../OntologyIriInput/OntologyIriListInput';
 import {
-    OntologyPropertyFormValues,
-    propertyFormFields,
-    propertyFormValues,
-    propertyPatch,
-    propertyRequest
+  OntologyPropertyFormValues,
+  propertyFormFields,
+  propertyFormValues,
+  propertyPatch,
+  propertyRequest,
 } from './OntologyPropertyEditor.utils';
 
 const ADVANCED_FIELDS = [
@@ -93,6 +93,8 @@ interface OntologyPropertyEditorProps {
   concepts?: ReadonlyArray<OntologyIriOption>;
   properties?: ReadonlyArray<OntologyIriOption & { kind: Kind }>;
   onSaved: (property: OntologyProperty) => void;
+  /** Closes the drawer; without one, Cancel puts the saved values back. */
+  onCancel?: () => void;
 }
 
 type IriListField = 'domain' | 'range' | 'superProperties';
@@ -110,6 +112,7 @@ const OntologyPropertyEditor = ({
   concepts,
   properties,
   onSaved,
+  onCancel,
 }: OntologyPropertyEditorProps) => {
   const { t } = useTranslation();
   const form = useForm<OntologyPropertyFormValues>({
@@ -357,7 +360,12 @@ const OntologyPropertyEditor = ({
           </Box>
         </details>
         <OntologyFormFooter
-          canSubmit={canEdit}
+          canSubmit={
+            canEdit &&
+            (property
+              ? form.formState.isDirty
+              : Boolean(form.watch('name').trim()))
+          }
           isDirty={form.formState.isDirty}
           isSaving={isSaving}
           submitLabel={
@@ -366,7 +374,7 @@ const OntologyPropertyEditor = ({
               : t('label.create-entity', { entity: t('label.property') })
           }
           testId="ontology-property-footer"
-          onCancel={() => form.reset()}
+          onCancel={onCancel ?? (() => form.reset())}
         />
       </Box>
     </HookForm>

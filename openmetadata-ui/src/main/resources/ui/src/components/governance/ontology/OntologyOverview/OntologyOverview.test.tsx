@@ -10,12 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen } from '@testing-library/react';
 import {
   ChangeType,
   MemberKind,
 } from '../../../../generated/api/data/ontologyWorkingDiff';
 import { Ontology } from '../../../../generated/entity/data/ontology';
+import { ONTOLOGY_WORKING_DIFF_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import {
   getOntologyWorkingDiff,
   getOntologyWorkingValidation,
@@ -73,7 +74,7 @@ describe('OntologyOverview validation', () => {
 
     expect(
       screen.getByTestId('ontology-overview-validation-message')
-    ).toHaveTextContent('message.validating-ellipsis');
+    ).toHaveTextContent('label.validating-ellipsis');
   });
 
   it('reads clean only once validation found no conflicts', async () => {
@@ -144,5 +145,78 @@ describe('OntologyOverview recent changes', () => {
       screen.queryByTestId('ontology-overview-recent-changes')
     ).not.toBeInTheDocument();
     expect(getOntologyWorkingDiff).not.toHaveBeenCalled();
+  });
+
+  it('refetches the changes when a publish refreshes the working diff', async () => {
+    (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
+      data: [],
+      paging: { total: 0 },
+    });
+    const { queryClient } = renderWithQueryClient(
+      <OntologyOverview ontology={ontology} onOpenPublication={jest.fn()} />
+    );
+    await screen.findByTestId('ontology-overview-recent-changes');
+
+    expect(getOntologyWorkingDiff).toHaveBeenCalledTimes(1);
+
+    await act(() =>
+      queryClient.invalidateQueries({
+        queryKey: [ONTOLOGY_WORKING_DIFF_QUERY_KEY, ontology.id],
+      })
+    );
+
+    expect(getOntologyWorkingDiff).toHaveBeenCalledTimes(2);
+  });
+
+  it('colours each change by its kind', async () => {
+    (getOntologyWorkingDiff as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          changeType: ChangeType.Added,
+          memberKind: MemberKind.Axiom,
+          entity: { id: 'a1', type: 'ontologyAxiom', name: 'Rule one' },
+        },
+      ],
+      paging: { total: 1 },
+    });
+    renderWithQueryClient(
+      <OntologyOverview ontology={ontology} onOpenPublication={jest.fn()} />
+    );
+
+    const badge = await screen.findByText('label.rule');
+
+    expect(badge.parentElement?.className).toContain('orange');
+  });
+});
+
+describe('OntologyOverview details', () => {
+  beforeEach(() => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      violations: [],
+    });
+  });
+
+  it('lists version, namespace and people when shown on its own', async () => {
+    renderWithQueryClient(<OntologyOverview ontology={ontology} />);
+
+    expect(
+      await screen.findByTestId('ontology-overview-namespace')
+    ).toBeInTheDocument();
+  });
+
+  it('leaves the details to Settings inside the Ontology tabs', async () => {
+    renderWithQueryClient(
+      <OntologyOverview ontology={ontology} onOpenTab={jest.fn()} />
+    );
+
+    expect(
+      await screen.findByText('message.ontology-validate-all-clean')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-overview-namespace')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.ontology-overview-read-only')
+    ).not.toBeInTheDocument();
   });
 });

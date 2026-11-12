@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import {
   Category,
   PaletteKey,
@@ -361,7 +362,7 @@ describe('RelationshipTypePicker', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('shows a description as the gloss, else the inverse', () => {
+  it('shows the inverse with every option, and a description as a truncated gloss with its full text on hover', async () => {
     render(
       <RelationshipTypePicker
         groups={[
@@ -392,18 +393,32 @@ describe('RelationshipTypePicker', () => {
       />
     );
 
-    expect(screen.getByTestId('relation-type-partOf')).toHaveTextContent(
+    const gloss = screen.getByTestId('relation-type-gloss-partOf');
+
+    expect(gloss).toHaveTextContent('a part or component');
+    expect(gloss).toHaveClass('tw:truncate');
+
+    // react-aria opens hover tooltips only after it has seen a pointer move.
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    fireEvent.mouseMove(document);
+    await user.hover(screen.getByTestId('relation-type-partOf'));
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
       'a part or component'
     );
-    expect(screen.getByTestId('relation-type-partOf')).not.toHaveTextContent(
-      'has part'
+    expect(screen.getByTestId('relation-type-partOf')).toHaveTextContent(
+      'label.inverse: has part'
     );
+    // A description that only repeats the label is not a gloss.
+    expect(
+      screen.queryByTestId('relation-type-gloss-governs')
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('relation-type-governs')).toHaveTextContent(
       'label.inverse: governed by'
     );
   });
 
-  it('shows relations whose domain or range leaves out the ends as disabled other links', () => {
+  it('flags relations whose domain or range leaves out the ends as other links that can still be chosen', () => {
     const onSelect = jest.fn();
     render(
       <RelationshipTypePicker
@@ -448,13 +463,17 @@ describe('RelationshipTypePicker', () => {
     expect(other).toContainElement(
       screen.getByTestId('relation-type-hasIdentifier')
     );
-    expect(screen.getByTestId('relation-type-hasIdentifier')).toHaveTextContent(
-      'Resource → Identifier'
-    );
+    expect(
+      screen.getByTestId('relation-type-unfit-hasIdentifier')
+    ).toHaveTextContent('Resource → Identifier');
+    expect(
+      screen.queryByTestId('relation-type-unfit-placedBy')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('relation-type-hasIdentifier')).toBeEnabled();
 
     fireEvent.click(screen.getByTestId('relation-type-hasIdentifier'));
 
-    expect(onSelect).not.toHaveBeenCalled();
+    expect(onSelect).toHaveBeenCalledWith('hasIdentifier');
   });
 
   it('invokes onCancel when the cancel button is clicked', async () => {

@@ -433,6 +433,48 @@ it('shows only the error, and no empty graph, when the first load fails', async 
   ).not.toBeInTheDocument();
 });
 
+it('shows only the picker, not the loading skeleton, before a concept is picked', () => {
+  fetchPage.mockReturnValue(new Promise(() => undefined));
+  renderMode(jest.fn(), { initialConceptId: NO_CONCEPT });
+
+  expect(screen.getByTestId('ontology-data-no-pick')).toBeVisible();
+  expect(
+    screen.queryByTestId('ontology-data-skeleton')
+  ).not.toBeInTheDocument();
+});
+
+it('shows only the picker, not the load error, before a concept is picked', async () => {
+  fetchPage.mockRejectedValue(rejection(500));
+  renderMode(jest.fn(), { initialConceptId: NO_CONCEPT });
+
+  await waitFor(() => expect(fetchPage).toHaveBeenCalled());
+  await act(async () => undefined);
+
+  expect(screen.getByTestId('ontology-data-no-pick')).toBeVisible();
+  expect(
+    screen.queryByTestId('ontology-native-data-error')
+  ).not.toBeInTheDocument();
+});
+
+it('offers Link data only while the concept drawer is open', async () => {
+  fetchPage.mockResolvedValue(firstPage());
+  localStorage.setItem(
+    'os-dataBy',
+    JSON.stringify({
+      'ontology-1': { recentIds: ['unused'], selectedId: 'unused' },
+    })
+  );
+  renderMode(jest.fn(), {
+    initialConceptId: NO_CONCEPT,
+    canEditBindings: true,
+  });
+
+  expect(await screen.findByTestId('ontology-data-empty')).toBeVisible();
+  expect(
+    screen.queryByTestId('ontology-data-link-asset')
+  ).not.toBeInTheDocument();
+});
+
 it('keeps loading the remaining clusters, and says nothing is linked only after the last page', async () => {
   const emptyPage = (offset?: number) =>
     pageFixture({ clusters: [], loaded: [], nextClusterOffset: offset });
@@ -627,6 +669,30 @@ describe('the concept picker', () => {
     );
 
     expect(screen.queryByTestId('ontology-data-graph')).not.toBeInTheDocument();
+  });
+
+  it('opens the empty-state picker in place as a search field with the list below it', async () => {
+    fetchPage.mockResolvedValue(firstPage());
+    renderMode(jest.fn(), { initialConceptId: NO_CONCEPT });
+
+    fireEvent.click(
+      await screen.findByTestId('ontology-data-concept-picker-trigger')
+    );
+    const search = await screen.findByTestId('ontology-data-concept-search');
+
+    expect(
+      screen.queryByTestId('ontology-data-concept-picker-trigger')
+    ).not.toBeInTheDocument();
+    expect(search).toHaveAttribute('placeholder', 'label.search-concepts…');
+
+    fireEvent.keyDown(search, { key: 'Escape' });
+
+    expect(
+      screen.getByTestId('ontology-data-concept-picker-trigger')
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-data-concept-picker')
+    ).not.toBeInTheDocument();
   });
 
   it('shows the picked concept with its chip, tells the Studio, and restores it on the next visit', async () => {

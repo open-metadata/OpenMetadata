@@ -221,7 +221,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     );
 
     fireEvent.click(
-      screen.getByRole('button', { name: /label\.relationship-type/ })
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
     );
     fireEvent.click(await screen.findByRole('option', { name: 'Part Of' }));
 
@@ -260,6 +260,36 @@ describe('OntologyVisualQueryBuilder component', () => {
       await screen.findByTestId('ontology-sparql-result-status')
     ).toHaveTextContent('1 label.row');
     expect(screen.getAllByRole('row')[0]).toHaveTextContent('?concept');
+  });
+
+  it('keeps the chosen conditions when the glossary find kind changes', async () => {
+    render(
+      <OntologyVisualQueryBuilder selectedGlossaryIds={['glossary-id']} />
+    );
+
+    await waitFor(() =>
+      expect(screen.getByText('Anti-Money Laundering')).toBeVisible()
+    );
+
+    fireEvent.click(
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Part Of' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
+    fireEvent.click(
+      await screen.findByRole('option', { name: 'Know Your Customer' })
+    );
+    fireEvent.click(screen.getByTestId('ontology-builder-find-metrics'));
+
+    const generated = screen.getByTestId('ontology-generated-sparql');
+
+    expect(generated).toHaveTextContent(
+      '<https://open-metadata.org/ontology/partOf>'
+    );
+    expect(generated).toHaveTextContent(
+      'FinancialRiskCompliance.Compliance.KnowYourCustomer'
+    );
+    expect(generated).toHaveTextContent('?concept a om:Metric');
   });
 
   it('queries native selections through the owner endpoint and reports a missing active release', async () => {
@@ -322,7 +352,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     ).not.toBeInTheDocument();
 
     fireEvent.click(
-      screen.getByRole('button', { name: /label\.relationship-type/ })
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
     );
     fireEvent.click(await screen.findByRole('option', { name: /disjoint/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Show options' }));
@@ -342,7 +372,7 @@ describe('OntologyVisualQueryBuilder component', () => {
 
     expect(await screen.findByText('Customer result')).toBeVisible();
     expect(screen.getAllByRole('row')[0]).toHaveTextContent(
-      /#\s*label\.iri\s*label\.concept/
+      /#\s*label\.concept\s*label\.iri/
     );
     expect(post).toHaveBeenCalledWith(
       '/ontologies/native-owner/sparql',
@@ -397,7 +427,7 @@ describe('OntologyVisualQueryBuilder component', () => {
     const generated = screen.getByTestId('ontology-generated-sparql');
 
     expect(
-      screen.getByRole('button', { name: /label\.relationship-type/ })
+      screen.getByRole('button', { name: /label\.ontology-relationship-type/ })
     ).toHaveTextContent('label.is-on');
     expect(screen.getByTestId('ontology-builder-incomplete')).toBeVisible();
     expect(generated).toHaveTextContent(
@@ -496,7 +526,9 @@ describe('OntologyVisualQueryBuilder component', () => {
 
     await waitFor(() =>
       expect(
-        screen.getByRole('button', { name: /label\.relationship-type/ })
+        screen.getByRole('button', {
+          name: /label\.ontology-relationship-type/,
+        })
       ).toHaveTextContent('Part Of')
     );
 

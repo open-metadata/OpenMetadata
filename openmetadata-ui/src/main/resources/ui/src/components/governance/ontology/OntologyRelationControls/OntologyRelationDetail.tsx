@@ -239,6 +239,11 @@ const RelationDescription = ({
   );
 };
 
+const END_LINK_CLASS = [
+  'tw:cursor-pointer tw:rounded-sm tw:border-0 tw:bg-transparent tw:p-0 tw:text-left tw:text-primary',
+  'tw:[font:inherit] tw:outline-focus-ring tw:hover:underline tw:focus-visible:outline-2',
+].join(' ');
+
 /** What the canvas edge says: who is related to whom, by which type, with the actions that change it. */
 const OntologyRelationDetail = ({
   relation,
@@ -275,14 +280,14 @@ const OntologyRelationDetail = ({
     concept: OntologyModelRelation['from'],
     testId: string
   ) => (
-    <Button
-      noTextPadding
-      color="link-gray"
+    // A core link Button sets its own small grey text; the design's title is one heading-sized line.
+    <button
+      className={END_LINK_CLASS}
       data-testid={testId}
-      size="lg"
-      onPress={() => onOpenConcept(concept.id)}>
+      type="button"
+      onClick={() => onOpenConcept(concept.id)}>
       {getEntityName(concept)}
-    </Button>
+    </button>
   );
 
   const renderPicker = () => (
@@ -390,7 +395,11 @@ const OntologyRelationDetail = ({
           />
         </Box>
         <Box direction="col" gap={1}>
-          <Box align="center" gap={2} wrap="wrap">
+          <Typography
+            as="h2"
+            className="not-prose tw:m-0 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
+            size="text-lg"
+            weight="semibold">
             {renderEnd(relation.from, 'ontology-relation-detail-source')}
             <Badge
               color={relation.kind === 'subClassOf' ? 'gray' : 'brand'}
@@ -400,7 +409,7 @@ const OntologyRelationDetail = ({
               {typeLabel}
             </Badge>
             {renderEnd(relation.to, 'ontology-relation-detail-target')}
-          </Box>
+          </Typography>
           <Typography color="secondary" size="text-sm">
             {t('label.relationship')}
           </Typography>

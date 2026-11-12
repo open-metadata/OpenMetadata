@@ -135,6 +135,7 @@ const OntologyDataAssetPanel = ({
         <Box className="tw:min-w-0" direction="col" gap={1}>
           <Typography
             as="h3"
+            className="not-prose tw:m-0"
             data-testid="ontology-data-asset-panel-name"
             size="text-md"
             weight="semibold">
