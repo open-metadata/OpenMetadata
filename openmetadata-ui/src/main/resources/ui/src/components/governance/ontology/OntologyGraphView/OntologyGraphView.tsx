@@ -156,6 +156,7 @@ import {
   AI_GRAPH_BACKDROP_CLASS,
   AI_GRAPH_CONTROLS_CLASS,
 } from './OntologyGraphView.constants';
+import OntologyTreeConflicts from './OntologyTreeConflicts';
 
 const OntologyGraphG6 = lazy(
   () => import('../../../OntologyExplorer/OntologyGraphG6')
@@ -1518,6 +1519,14 @@ const OntologyGraphView = ({
     return null;
   };
 
+  const conflictConceptLabel = (conceptId: string) => {
+    const concept = model?.concepts.find(
+      (candidate) => candidate.id === conceptId
+    );
+
+    return concept ? getEntityName(concept) : undefined;
+  };
+
   // Conflicts float top-right under Model / Data; health floats bottom-right.
   const hasCanvasCards = showsCanvasCards(graphMode, [
     selected,
@@ -1532,15 +1541,9 @@ const OntologyGraphView = ({
 
     return (
       <>
-        {releaseId ? null : (
+        {releaseId || surface === 'tree' ? null : (
           <OntologyConflictsPanel
-            conceptLabel={(conceptId) => {
-              const concept = model?.concepts.find(
-                (candidate) => candidate.id === conceptId
-              );
-
-              return concept ? getEntityName(concept) : undefined;
-            }}
+            conceptLabel={conflictConceptLabel}
             isChecking={conflictsQuery.isFetching}
             isFailed={conflictsQuery.isError}
             violations={conflictViolations}
@@ -1640,6 +1643,22 @@ const OntologyGraphView = ({
     );
   };
 
+  // On Tree the conflicts sit inside the tree's card instead of a floating card.
+  const renderTreeConflicts = () =>
+    !releaseId && (conflictsQuery.isError || conflictViolations.length > 0) ? (
+      <OntologyTreeConflicts
+        conceptLabel={conflictConceptLabel}
+        isFailed={conflictsQuery.isError}
+        violations={conflictViolations}
+        onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+        onRetry={() => void conflictsQuery.refetch()}
+        onShowOnGraph={(conceptId) => {
+          selectNode({ id: conceptId });
+          onRequestGraphSurface();
+        }}
+      />
+    ) : undefined;
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
@@ -1656,6 +1675,7 @@ const OntologyGraphView = ({
               kind: 'native',
               index: treeIndex,
               title: getEntityName(ontology),
+              notice: renderTreeConflicts(),
             }}
             onConnect={canEditOntology ? connectNode : undefined}
             onSelect={selectNode}

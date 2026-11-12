@@ -3207,7 +3207,7 @@ describe('OntologyGraphView', () => {
     expect(title).not.toHaveTextContent('label.n-conflicts-to-resolve');
   });
 
-  it('keeps the conflicts and health cards on the Tree surface', async () => {
+  it('shows conflicts inside the tree card on the Tree surface, not as a floating card', async () => {
     (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
       valid: false,
       violations: [
@@ -3220,6 +3220,48 @@ describe('OntologyGraphView', () => {
         },
       ],
     });
+    const onRequestGraphSurface = jest.fn();
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="tree"
+          onRequestGraphSurface={onRequestGraphSurface}
+        />
+      </MemoryRouter>
+    );
+
+    const conflict = await screen.findByTestId('ontology-tree-conflict');
+
+    expect(conflict).toHaveTextContent(
+      'Customer is disjoint with its ancestor Party'
+    );
+    expect(conflict).toHaveTextContent('label.conflict');
+    expect(
+      screen.queryByTestId('ontology-conflicts-panel')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
+    // As in the design, the tree takes the full width and the cards float on top.
+    expect(screen.getByTestId('ontology-tree-surface')).not.toHaveClass(
+      'tw:pr-92'
+    );
+
+    fireEvent.click(
+      within(conflict).getByTestId('ontology-tree-conflict-toggle')
+    );
+
+    expect(
+      within(conflict).getAllByTestId('ontology-tree-conflict-open')
+    ).toHaveLength(2);
+
+    fireEvent.click(
+      within(conflict).getByTestId('ontology-tree-conflict-show-on-graph')
+    );
+
+    expect(onRequestGraphSurface).toHaveBeenCalledTimes(1);
+  });
+
+  it('shows no conflict rows in the tree card for a clean draft', async () => {
     render(
       <MemoryRouter>
         <OntologyGraphView
@@ -3229,15 +3271,13 @@ describe('OntologyGraphView', () => {
         />
       </MemoryRouter>
     );
+    await waitFor(() =>
+      expect(getOntologyWorkingValidation).toHaveBeenCalled()
+    );
 
     expect(
-      await screen.findByTestId('ontology-conflicts-panel')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
-    // As in the design, the tree takes the full width and the cards float on top.
-    expect(screen.getByTestId('ontology-tree-surface')).not.toHaveClass(
-      'tw:pr-92'
-    );
+      screen.queryByTestId('ontology-tree-conflicts')
+    ).not.toBeInTheDocument();
   });
 
   it('goes from loading to loaded and opens Data without a hook-order error', async () => {

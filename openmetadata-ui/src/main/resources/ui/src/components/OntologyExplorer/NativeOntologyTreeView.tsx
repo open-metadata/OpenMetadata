@@ -48,6 +48,8 @@ interface NativeOntologyTreeViewProps {
   readonly onSelect: (node: OntologyNode) => void;
   /** Names the tree: the ontology on one ontology, else "Concepts". */
   readonly title?: string;
+  /** Shown inside the card above the rows, divided from them. */
+  readonly notice?: ReactNode;
 }
 
 const getTreeHeading = (title: string | undefined, t: TFunction) =>
@@ -143,8 +145,15 @@ const anchorAfterToggle = (
   return hidesAnchor ? nativeTreeCursorForPath(index, path) : anchor;
 };
 
+/** Content above the rows, inside the card and divided from them. */
+const TreeNotice = ({ children }: { children?: ReactNode }) =>
+  children ? (
+    <div className="tw:border-b tw:border-secondary">{children}</div>
+  ) : null;
+
 const NativeOntologyTreeView = ({
   index,
+  notice,
   emptyMessage,
   selectedNodeId,
   onConnect,
@@ -277,7 +286,7 @@ const NativeOntologyTreeView = ({
 
   return (
     <Box
-      className="tw:mx-auto tw:h-full tw:w-full tw:max-w-250 tw:overflow-auto tw:px-6 tw:pt-5 tw:pb-20"
+      className="tw:h-full tw:w-full tw:overflow-auto tw:px-6 tw:pt-5 tw:pb-20"
       data-testid="ontology-tree-view"
       direction="col"
       gap={3}
@@ -387,6 +396,7 @@ const NativeOntologyTreeView = ({
       ) : null}
       {/* The card keeps its full height so the list scrolls instead of clipping rows. */}
       <Card className="tw:shrink-0 tw:overflow-hidden">
+        <TreeNotice>{notice}</TreeNotice>
         <Tree
           aria-label={t('label.concept-plural')}
           className="tw:gap-0 tw:divide-y tw:divide-secondary"
