@@ -307,7 +307,7 @@ plugins: dict[str, set[str]] = {
         "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
-        "collate-dbt-artifacts-parser",
+        "collate-dbt-artifacts-parser>=0.1.5",
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
@@ -561,7 +561,7 @@ test = {
     "pytest-timeout~=2.4",
     "dirty-equals",
     # install dbt dependency
-    "collate-dbt-artifacts-parser",
+    "collate-dbt-artifacts-parser>=0.1.5",
     "freezegun",
     VERSIONS["databricks-sdk"],
     VERSIONS["databricks-sql-connector"],
