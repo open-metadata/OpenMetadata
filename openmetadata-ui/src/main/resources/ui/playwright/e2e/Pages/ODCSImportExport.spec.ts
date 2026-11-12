@@ -715,11 +715,14 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       // Name is preserved (identity field preserved in replace mode)
       expect(replacedYaml).toContain('Customer Analytics Full Contract');
 
-      // Verify replaced contract does NOT have SLA (content was replaced)
-      expect(replacedYaml).toContain('slaProperties: []');
+      // Replace dropped the SLA and roles; the v3.1.0 export omits empty sections
+      const replaced = load(replacedYaml) as {
+        slaProperties?: unknown[];
+        roles?: unknown[];
+      };
 
-      // Verify replaced contract does NOT have roles (content was replaced)
-      expect(replacedYaml).toContain('roles: []');
+      expect(replaced.slaProperties ?? []).toHaveLength(0);
+      expect(replaced.roles ?? []).toHaveLength(0);
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
