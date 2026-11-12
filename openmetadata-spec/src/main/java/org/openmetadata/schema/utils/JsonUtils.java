@@ -85,6 +85,7 @@ import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
 import java.util.function.Consumer;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
@@ -1108,7 +1109,8 @@ public final class JsonUtils {
   }
 
   /**
-   * RFC-3339 / ISO-8601 and epoch-millisecond {@link Date} deserializer.
+   * RFC-3339 / ISO-8601 and epoch-millisecond {@link Date} deserializer
+   * (ADR:2026-11-12-dates-serialize-as-rfc3339-milliseconds-and-parse-strictly).
    *
    * <p>External producers emit valid ISO-8601 timestamps in multiple forms: Python's {@code
    * datetime.isoformat()} emits numeric offsets and microsecond fractions ({@code
@@ -1120,10 +1122,16 @@ public final class JsonUtils {
    * <p>This deserializer preserves JSON numbers, stringified epoch milliseconds, null/blank
    * handling, and object/array rejection, while parsing ISO-8601 strings via immutable strict
    * {@link DateTimeFormatter} instances and truncating sub-millisecond nanoseconds via {@link
-   * Instant#toEpochMilli()}.
+   * Instant#toEpochMilli()}. To preserve lossless reads of entity JSON persisted by 2.0.0–2.0.7
+   * (where {@code SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")} left-padded milliseconds as
+   * {@code .000dddZ}), exact {@code yyyy-MM-ddTHH:mm:ss.000dddZ} strings normalize to {@code
+   * .dddZ} before strict parsing.
    */
   public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
     private static final int MAX_ISO_DATE_TIME_LENGTH = 64;
+
+    private static final Pattern LEGACY_PADDED_MILLIS =
+        Pattern.compile("^(\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2})\\.000(\\d{3})Z$");
 
     private static final DateTimeFormatter ISO_LOCAL_DATE_TIME_PREFIX =
         new DateTimeFormatterBuilder()
@@ -1211,7 +1219,8 @@ public final class JsonUtils {
       }
     }
 
-    private static Instant parseIsoInstant(String s) {
+    private static Instant parseIsoInstant(String raw) {
+      String s = normalizeLegacyPaddedMillis(raw);
       int tIndex = Math.max(s.indexOf('T'), s.indexOf('t'));
       int signIndex = -1;
       if (tIndex >= 0) {
@@ -1223,6 +1232,14 @@ public final class JsonUtils {
       DateTimeFormatter formatter =
           compactOffset ? ISO_DATE_TIME_COMPACT_OFFSET : ISO_DATE_TIME_COLON_OFFSET;
       return formatter.parse(s, Instant::from);
+    }
+
+    private static String normalizeLegacyPaddedMillis(String s) {
+      if (s.length() != 27 || s.charAt(26) != 'Z' || !s.startsWith(".000", 19)) {
+        return s;
+      }
+      Matcher matcher = LEGACY_PADDED_MILLIS.matcher(s);
+      return matcher.matches() ? matcher.group(1) + "." + matcher.group(2) + "Z" : s;
     }
 
     private static boolean looksLikeEpochMillis(String s) {

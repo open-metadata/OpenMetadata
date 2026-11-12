@@ -40,12 +40,14 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.TimeZone;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Stream;
@@ -778,6 +780,29 @@ class JsonUtilsTest {
   }
 
   @Test
+  void legacySixDigitPaddedMillisFromEarlierSerializerPreservesMillisOnRead() {
+    SimpleDateFormat legacySerializer = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'");
+    legacySerializer.setTimeZone(TimeZone.getTimeZone("UTC"));
+
+    String legacy918 = legacySerializer.format(new Date(1714000000918L));
+    assertEquals("2024-04-24T23:06:40.000918Z", legacy918);
+    assertEquals(
+        1714000000918L,
+        JsonUtils.readValue(
+                "{\"tagFQN\":\"x.y\",\"appliedAt\":\"" + legacy918 + "\"}", TagLabel.class)
+            .getAppliedAt()
+            .getTime());
+
+    for (long epochMillis : new long[] {1714000000005L, 1714000000000L}) {
+      String legacyFormatted = legacySerializer.format(new Date(epochMillis));
+      TagLabel parsed =
+          JsonUtils.readValue(
+              "{\"tagFQN\":\"x.y\",\"appliedAt\":\"" + legacyFormatted + "\"}", TagLabel.class);
+      assertEquals(epochMillis, parsed.getAppliedAt().getTime(), legacyFormatted);
+    }
+  }
+
+  @Test
   void jsonPatchProviderMapperDeserializesOffsetsAndMicroseconds() throws IOException {
     ObjectMapper patchMapper = new JsonPatchProvider().getContext(Object.class);
 
@@ -827,6 +852,7 @@ class JsonUtilsTest {
   private static Stream<String> invalidIsoDateTimeCases() {
     return Stream.of(
         "2026-02-30T00:00:00Z",
+        "2026-02-30T00:00:00.000918Z",
         "2026-02-29T00:00:00Z",
         "2026-13-01T00:00:00Z",
         "2026-09-08T25:00:00Z",
