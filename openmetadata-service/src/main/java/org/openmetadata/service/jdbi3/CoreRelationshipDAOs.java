@@ -1233,6 +1233,19 @@ public interface CoreRelationshipDAOs {
         @BindList("fromIds") List<String> fromIds, @BindList("relations") List<Integer> relations);
 
     @SqlQuery(
+        "SELECT fromId, fromEntity, MIN(relation) AS relation FROM entity_relationship "
+            + "WHERE fromId > :afterId AND relation IN (<relations>) "
+            + "AND toEntity = 'contextMemory' AND deleted = FALSE "
+            + "AND (relation = :anchorRelation OR fromEntity <> 'domain') "
+            + "GROUP BY fromId, fromEntity ORDER BY fromId LIMIT :limit")
+    @UseRowMapper(MemoryAnchorEdgeMapper.class)
+    List<MemoryAnchorEdge> listMemoryAnchorEdges(
+        @Bind("afterId") String afterId,
+        @BindList("relations") List<Integer> relations,
+        @Bind("anchorRelation") int anchorRelation,
+        @Bind("limit") int limit);
+
+    @SqlQuery(
         "SELECT fromId, toId, fromEntity, toEntity, relation, json, jsonSchema "
             + "FROM entity_relationship "
             + "WHERE fromId IN (<fromIds>) "

@@ -459,7 +459,11 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
     }
 
     applyRbacCondition(
-        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+        subjectContext,
+        requestBuilder,
+        statuses,
+        ContextMemoryAnchorPins.ofQueryFilters(filter),
+        ContextMemorySearchVisibility.isMemoryListingIndex(index));
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -683,6 +687,15 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       ElasticSearchRequestBuilder requestBuilder,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds) {
+    applyRbacCondition(subjectContext, requestBuilder, statuses, pinnedAnchorIds, false);
+  }
+
+  private void applyRbacCondition(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> pinnedAnchorIds,
+      boolean memoryListing) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -704,7 +717,12 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         }
       }
     }
-    applyContextMemoryVisibility(subjectContext, requestBuilder, statuses, pinnedAnchorIds);
+    OMQueryBuilder memoryVisibility =
+        memoryListing
+            ? contextMemoryVisibility.buildListingVisibilityFilter(subjectContext, statuses)
+            : contextMemoryVisibility.buildVisibilityFilter(
+                subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
   }
 
   /**
@@ -734,6 +752,13 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, visibilityBuilder);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      ElasticSearchRequestBuilder requestBuilder,
+      OMQueryBuilder visibilityBuilder) {
     if (visibilityBuilder != null) {
       requestBuilder.filter(((ElasticQueryBuilder) visibilityBuilder).buildV2());
     }

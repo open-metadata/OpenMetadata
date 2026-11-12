@@ -439,6 +439,21 @@ public class ContextMemoryRepository extends EntityRepository<ContextMemory> {
     return anchors;
   }
 
+  /** Distinct memory anchors after a UUID, for policy evaluation before listing pagination. */
+  public List<EntityReference> listAnchors(String afterId, int limit) {
+    return daoCollection
+        .relationshipDAO()
+        .listMemoryAnchorEdges(
+            afterId,
+            List.of(Relationship.APPLIED_TO.ordinal(), Relationship.HAS.ordinal()),
+            Relationship.APPLIED_TO.ordinal(),
+            limit)
+        .stream()
+        .map(edge -> new EntityReference().withId(edge.fromId()).withType(edge.fromEntity()))
+        .distinct()
+        .toList();
+  }
+
   /** The edge {@link #getPrimaryEntity} reads: APPLIED_TO, or the older HAS from a non-domain. */
   private static boolean isAnchorEdge(CollectionDAO.MemoryAnchorEdge edge) {
     return edge.relation() == Relationship.APPLIED_TO.ordinal()

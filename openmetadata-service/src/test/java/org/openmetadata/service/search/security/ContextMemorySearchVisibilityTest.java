@@ -59,6 +59,98 @@ class ContextMemorySearchVisibilityTest {
   private static final Map<String, List<String>> OWNER_PENDING_REQUESTED =
       Map.of(ContextMemoryIndex.FIELD_STATUS, List.of("Approved", "Unprocessed", "Draft"));
 
+  @Test
+  void listingAdmitsReadableAnchorsBeforePaginationButKeepsPendingOwnerOnly() {
+    String readable = UUID.randomUUID().toString();
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            new ElasticQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            name -> {
+              assertEquals("alice", name);
+              return Set.of(readable);
+            });
+    String query =
+        serializeElasticQuery(
+            ((ElasticQueryBuilder)
+                    visibility.buildListingVisibilityFilter(
+                        nonAdminSubject(),
+                        List.of(
+                            ContextMemoryStatus.APPROVED,
+                            ContextMemoryStatus.UNPROCESSED,
+                            ContextMemoryStatus.DRAFT)))
+                .build());
+    DocumentContext json = JsonPath.parse(query);
+    String branches = "$.bool.should[1].bool.must[1].bool.should";
+    assertFieldExists(
+        json, branches + "[0]..terms['anchorId']", "published memories admit authorized anchors");
+    assertTrue(query.contains(readable));
+    assertFieldDoesNotExist(
+        json,
+        branches + "[1]..terms['anchorId']",
+        "pending memories are never admitted through an anchor");
+    assertFieldExists(
+        json, branches + "[1]..term['owners.id']", "pending memories require ownership");
+  }
+
+  @Test
+  void pendingOnlyListingsNeedNoAnchorScan() {
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            new ElasticQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            name -> {
+              throw new AssertionError("pending listings are owner-only");
+            });
+    assertNotNull(
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(), ContextMemorySearchVisibility.OWNER_PENDING_STATUSES));
+  }
+
+  @Test
+  void openSearchListingsIncludeTheSameAuthorizedAnchors() {
+    String readable = UUID.randomUUID().toString();
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            new OpenSearchQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            name -> Set.of(readable));
+    OMQueryBuilder filter =
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+    String query = ((OpenSearchQueryBuilder) filter).build().toJsonString();
+    assertTrue(query.contains(readable));
+    assertTrue(query.contains(ContextMemoryStatus.APPROVED.value()));
+  }
+
+  @Test
+  void listingDoesNotEvaluateAnchorsForAdminsOrUnidentifiedSubjects() {
+    ContextMemorySearchVisibility visibility =
+        new ContextMemorySearchVisibility(
+            new ElasticQueryBuilderFactory(),
+            (name, pins) -> Set.of(),
+            name -> {
+              throw new AssertionError("only restricted subjects need anchor authorization");
+            });
+    SubjectContext admin =
+        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+    assertNotNull(
+        visibility.buildListingVisibilityFilter(
+            admin, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
+    assertNull(
+        visibility.buildListingVisibilityFilter(
+            null, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
+  }
+
+  @Test
+  void listingRecognizesCanonicalAndClusterPrefixedMemoryIndicesOnly() {
+    assertTrue(ContextMemorySearchVisibility.isMemoryListingIndex("context_memory_search_index"));
+    assertTrue(
+        ContextMemorySearchVisibility.isMemoryListingIndex("tenant_context_memory_search_index"));
+    assertFalse(ContextMemorySearchVisibility.isMemoryListingIndex("table_search_index"));
+    assertFalse(ContextMemorySearchVisibility.isMemoryListingIndex("contextMemory"));
+  }
+
   private SubjectContext nonAdminSubject() {
     User user =
         new User()

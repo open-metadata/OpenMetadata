@@ -101,6 +101,40 @@ public final class ContextMemoryVisibility {
     List<EntityReference> findAnchors(List<UUID> candidateIds);
   }
 
+  @FunctionalInterface
+  interface AnchorPages {
+    List<EntityReference> after(String afterId, int limit);
+  }
+
+  private static final int LISTING_ANCHOR_PAGE_SIZE = 100;
+
+  /** Context Center evaluates each memory anchor before the search applies its offset and limit. */
+  public static Set<String> readableListingAnchorIds(String userName) {
+    ContextMemoryRepository repository =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    return readableListingAnchorIds(
+        userName, repository::listAnchors, ContextMemoryAnchorAccess::canView);
+  }
+
+  static Set<String> readableListingAnchorIds(
+      String userName, AnchorPages pages, AnchorAccess access) {
+    Set<String> readable = new LinkedHashSet<>();
+    String afterId = "";
+    List<EntityReference> page;
+    do {
+      page = pages.after(afterId, LISTING_ANCHOR_PAGE_SIZE);
+      for (EntityReference anchor : page) {
+        if (access.canView(userName, anchor)) {
+          readable.add(anchor.getId().toString());
+        }
+      }
+      if (!page.isEmpty()) {
+        afterId = page.getLast().getId().toString();
+      }
+    } while (page.size() == LISTING_ANCHOR_PAGE_SIZE);
+    return Set.copyOf(readable);
+  }
+
   private ContextMemoryVisibility() {}
 
   public static boolean isVisibleToUser(ContextMemory memory, String userName, boolean isAdmin) {

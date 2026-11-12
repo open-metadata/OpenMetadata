@@ -593,8 +593,12 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    OMQueryBuilder memoryVisibility =
+        ContextMemorySearchVisibility.isMemoryListingIndex(index)
+            ? contextMemoryVisibility.buildListingVisibilityFilter(subjectContext, statuses)
+            : contextMemoryVisibility.buildVisibilityFilter(
+                subjectContext, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -1215,6 +1219,13 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, visibilityBuilder);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      OMQueryBuilder visibilityBuilder) {
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
