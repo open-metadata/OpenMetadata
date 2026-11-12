@@ -1100,6 +1100,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
+    // This endpoint only applies the term, so a term that is not Approved is refused outright.
+    TagLabelUtil.checkGlossaryTermsApproved(Set.of(term.getFullyQualifiedName()));
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();

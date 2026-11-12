@@ -13,12 +13,14 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
 
+import org.openmetadata.schema.FieldInterface;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -501,5 +503,11 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
       }
     }
     return flattened;
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(DashboardDataModel dataModel) {
+    return Map.of("columns", listOrEmpty(dataModel.getColumns()));
   }
 }

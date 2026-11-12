@@ -25,6 +25,7 @@ import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.mlFeatureMatch;
 import static org.openmetadata.service.util.EntityUtil.mlHyperParameterMatch;
 
+import org.openmetadata.schema.FieldInterface;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -628,5 +629,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         }
       }
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(MlModel mlModel) {
+    return Map.of(
+        "mlFeatures",
+        listOrEmpty(mlModel.getMlFeatures()).stream()
+            .map(
+                feature ->
+                    ApprovedGlossaryTermGuard.TaggedField.of(
+                        feature.getName(), feature.getFullyQualifiedName(), feature.getTags()))
+            .toList());
   }
 }

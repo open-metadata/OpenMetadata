@@ -17,6 +17,7 @@ import static org.openmetadata.service.util.EntityUtil.compareTagLabel;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.getFlattenedEntityField;
 
+import org.openmetadata.schema.FieldInterface;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -1438,5 +1439,15 @@ public class ContainerRepository extends EntityRepository<Container> {
             updated.getDataModel().getIsPartitioned());
       }
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Container container) {
+    return Map.of(
+        "dataModel.columns",
+        container.getDataModel() == null
+            ? List.of()
+            : listOrEmpty(container.getDataModel().getColumns()));
   }
 }

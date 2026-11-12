@@ -46,6 +46,7 @@ import static org.openmetadata.service.util.FullyQualifiedName.getColumnName;
 import static org.openmetadata.service.util.LambdaExceptionUtil.ignoringComparator;
 import static org.openmetadata.service.util.LambdaExceptionUtil.rethrowFunction;
 
+import org.openmetadata.schema.FieldInterface;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -1395,6 +1396,22 @@ public class TableRepository extends EntityRepository<Table> {
     return table;
   }
 
+  // The labels a data model applies, keyed by the table or matching stored column they land on.
+  private static Map<String, List<TagLabel>> modelTagsByTarget(Table table, DataModel dataModel) {
+    Map<String, List<TagLabel>> tagsByTarget = new HashMap<>();
+    tagsByTarget.put(table.getFullyQualifiedName(), listOrEmpty(dataModel.getTags()));
+    for (Column modelColumn : listOrEmpty(dataModel.getColumns())) {
+      listOrEmpty(table.getColumns()).stream()
+          .filter(column -> EntityUtil.columnNameMatch.test(column, modelColumn))
+          .findAny()
+          .ifPresent(
+              column ->
+                  tagsByTarget.put(
+                      column.getFullyQualifiedName(), listOrEmpty(modelColumn.getTags())));
+    }
+    return tagsByTarget;
+  }
+
   @Transaction
   public Table addDataModel(UUID tableId, DataModel dataModel) {
     Table table =
@@ -1404,6 +1421,8 @@ public class TableRepository extends EntityRepository<Table> {
             getFields(Set.of(FIELD_OWNERS, FIELD_TAGS, COLUMN_FIELD, TABLE_CONSTRAINTS_FIELD)),
             NON_DELETED,
             false);
+    ApprovedGlossaryTermGuard.checkNewlyApplied(
+        modelTagsByTarget(table, dataModel), glossaryTagsByTarget(table));
 
     // Update the sql fields only if correct value is present
     if (dataModel.getRawSql() == null || dataModel.getRawSql().isBlank()) {
@@ -3794,5 +3813,11 @@ public class TableRepository extends EntityRepository<Table> {
         pipelineFqn,
         indexName,
         docId);
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Table table) {
+    return Map.of("columns", listOrEmpty(table.getColumns()));
   }
 }

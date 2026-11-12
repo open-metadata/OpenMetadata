@@ -28,6 +28,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 import static org.openmetadata.service.util.EntityUtil.taskMatch;
 
+import org.openmetadata.schema.FieldInterface;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -2714,5 +2715,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           "Failed to get impacted assets FQNs for pipeline '{}': {}", pipelineFqn, e.getMessage());
       return Collections.emptyList();
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Pipeline pipeline) {
+    return Map.of(
+        "tasks",
+        listOrEmpty(pipeline.getTasks()).stream()
+            .map(
+                task ->
+                    ApprovedGlossaryTermGuard.TaggedField.of(
+                        task.getName(), task.getFullyQualifiedName(), task.getTags()))
+            .toList());
   }
 }

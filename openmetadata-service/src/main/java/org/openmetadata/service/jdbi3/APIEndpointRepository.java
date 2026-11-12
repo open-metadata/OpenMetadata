@@ -27,6 +27,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.checkMutuallyExclusive;
 
+import org.openmetadata.schema.FieldInterface;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -816,5 +817,19 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
           origField.getDataTypeDisplay(),
           updatedField.getDataTypeDisplay());
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(APIEndpoint endpoint) {
+    return Map.of(
+        "requestSchema.schemaFields",
+        endpoint.getRequestSchema() == null
+            ? List.of()
+            : listOrEmpty(endpoint.getRequestSchema().getSchemaFields()),
+        "responseSchema.schemaFields",
+        endpoint.getResponseSchema() == null
+            ? List.of()
+            : listOrEmpty(endpoint.getResponseSchema().getSchemaFields()));
   }
 }
