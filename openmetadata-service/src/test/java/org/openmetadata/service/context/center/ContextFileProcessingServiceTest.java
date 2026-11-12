@@ -11,12 +11,17 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.ServiceUnavailableException;
+import jakarta.ws.rs.WebApplicationException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
@@ -43,24 +48,29 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
+import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.events.consumer.ServerStopping;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.llm.LLMCompletionException;
+import org.openmetadata.service.llm.NoopCompletionClient;
 import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(MockitoExtension.class)
@@ -125,7 +135,9 @@ class ContextFileProcessingServiceTest {
   }
 
   @AfterEach
-  void serverIsRunningAgain() {
+  void resetGlobalState() {
+    AiProviderHolder.reset();
+    LLMClientHolder.setForTesting(null);
     ServerStopping.set(false);
   }
 
@@ -417,6 +429,66 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
+  void providerUnavailableSkipsExtraction() throws Exception {
+    // The LLM and memory extraction are on, so only the provider's answer can stop the stage.
+    LLMClientHolder.setForTesting(new NoopCompletionClient());
+    AiProvider provider = mock(AiProvider.class);
+    when(provider.extractionAvailability())
+        .thenReturn(
+            new ExtractionAvailability()
+                .withAvailable(false)
+                .withReason(ExtractionAvailability.Reason.ProviderUnavailable));
+    AiProviderHolder.setForTesting(provider);
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    // No gate is injected, so the service's production default decides.
+    service(Runnable::run, () -> assetService, null).process(fileId, contentId);
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+    verify(jobDao, never())
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
+  }
+
+  @Test
+  void aLaterJobUsesTheExtractorThatHasSinceRecovered() {
+    AtomicBoolean available = new AtomicBoolean();
+    FileContextProcessingEngine unavailable = mock(FileContextProcessingEngine.class);
+    when(unavailable.runExtraction(fileId))
+        .thenThrow(new IllegalStateException("The AI platform is unavailable"));
+    ContextFileProcessingService service =
+        new ContextFileProcessingService(
+            repository,
+            () -> assetService,
+            Runnable::run,
+            textExtractor,
+            jobDao,
+            () -> memoryExtractor,
+            () -> new ExtractionAvailability().withAvailable(true),
+            () -> available.get() ? fileEngine : unavailable);
+
+    assertThrows(IllegalStateException.class, () -> service.runMemoryExtraction(fileId, contentId));
+    available.set(true);
+    service.runMemoryExtraction(fileId, contentId);
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Failed, updatedFileCaptor.getAllValues().getFirst().getProcessingStatus());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+  }
+
+  @Test
   void memoryJobEnqueueFailureKeepsExtractedText() throws Exception {
     when(assetService.read(asset))
         .thenReturn(
@@ -443,9 +515,7 @@ class ContextFileProcessingServiceTest {
         .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
     ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
-    assertEquals(
-        "Unable to queue knowledge pill extraction. Please retry later.",
-        failedContent.getProcessingError());
+    assertEquals("Memory extraction could not be queued.", failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
   }
 
@@ -710,6 +780,316 @@ class ContextFileProcessingServiceTest {
     verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
   }
 
+  /** A memory-stage failure keeps its text, so a retry re-runs memory extraction on it alone. */
+  @Test
+  void aFileThatFailedExtractingMemoriesRetriesThatStageOnItsKeptText() {
+    failedWith("Knowledge pill extraction did not process every source chunk", "Quarterly");
+    List<Runnable> textRuns = new ArrayList<>();
+
+    ContextFile requested =
+        service(textRuns::add, () -> assetService, true).requestExtraction(fileId);
+
+    ContextFile stamped = stampedAs(UPLOADER);
+    assertEquals(ProcessingStatus.ExtractingContext, stamped.getProcessingStatus());
+    assertNull(stamped.getProcessingError());
+    assertEquals("indexed text", stamped.getExtractedText());
+    assertEquals(ProcessingStatus.ExtractingContext, requested.getProcessingStatus());
+    verifyMemoryJobQueuedEvenBesideARunningOne();
+    assertTrue(textRuns.isEmpty(), "the kept text is not extracted again");
+  }
+
+  /** A text-stage failure cleared the text, so a retry starts over at text extraction. */
+  @Test
+  void aFileThatFailedExtractingTextRetriesTextExtraction() throws Exception {
+    failedWith("Unable to read file content from object storage", null);
+    List<Runnable> textRuns = new ArrayList<>();
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), any(ContextFile.class)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(textRuns::add, () -> assetService, true).requestExtraction(fileId);
+    assertEquals(1, textRuns.size(), "text extraction is queued, not run on the request");
+    textRuns.getFirst().run();
+
+    verify(repository, times(3))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(UPLOADER));
+    ContextFile stamped = updatedFileCaptor.getAllValues().getFirst();
+    assertEquals(ProcessingStatus.Uploaded, stamped.getProcessingStatus());
+    assertNull(stamped.getProcessingError());
+    verify(textExtractor).extract(any(InputStream.class), any(ContextFile.class));
+  }
+
+  /** A file processed while extraction was off kept its text, so Extract runs memory extraction. */
+  @Test
+  void aFileUploadedWhileExtractionWasOffRunsMemoryExtraction() {
+    file.withProcessingStatus(ProcessingStatus.Processed).withExtractedText("indexed text");
+    content.withProcessingStatus(ProcessingStatus.Processed).withExtractedText("Quarterly");
+    when(repository.getContentById(contentId.toString())).thenReturn(content);
+    List<Runnable> textRuns = new ArrayList<>();
+
+    service(textRuns::add, () -> assetService, true).requestExtraction(fileId);
+
+    assertEquals(ProcessingStatus.ExtractingContext, stampedAs(UPLOADER).getProcessingStatus());
+    verifyMemoryJobQueuedEvenBesideARunningOne();
+    assertTrue(textRuns.isEmpty());
+  }
+
+  @ParameterizedTest
+  @EnumSource(ExtractionAvailability.Reason.class)
+  void aRequestWhileExtractionIsUnavailableWritesNothingAndSaysWhy(
+      ExtractionAvailability.Reason reason) {
+    failedWith("provider exploded", "Quarterly");
+    ContextFileProcessingService service =
+        service(Runnable::run, () -> assetService, () -> unavailable(reason));
+
+    WebApplicationException refused =
+        assertThrows(WebApplicationException.class, () -> service.requestExtraction(fileId));
+
+    assertEquals(409, refused.getResponse().getStatus());
+    assertEquals("Memory extraction is unavailable: " + reason.value(), refused.getMessage());
+    verifyNothingWritten();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ProcessingStatus.class,
+      names = {"Uploaded", "Analyzing", "ExtractingContext"})
+  void aFileAlreadyQueuedOrBeingExtractedIsRefused(ProcessingStatus status) {
+    file.withProcessingStatus(status).withExtractedText("indexed text");
+
+    assertRefused(ExtractionRequests.ALREADY_REQUESTED);
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ProcessingStatus.class,
+      names = {"Processed", "Unsupported"})
+  void aFileAlreadyExtractedOrWithNothingToExtractIsRefused(ProcessingStatus status) {
+    file.withProcessingStatus(status)
+        .withExtractedText("indexed text")
+        .withExtractionStats(new ExtractionStats().withSourceHash("checksum"));
+
+    assertRefused(ExtractionRequests.NOT_EXTRACTABLE);
+  }
+
+  /** A file created through the metadata API has no status at all, and nothing to extract. */
+  @Test
+  void aFileWithoutAStatusIsRefused() {
+    file.withProcessingStatus(null).withHeadContentId(null);
+
+    assertRefused(ExtractionRequests.NOT_EXTRACTABLE);
+  }
+
+  /** A Collate chat attachment can be Failed, yet it has no content snapshot to extract from. */
+  @Test
+  void aFailedFileWithoutAContentSnapshotIsRefused() {
+    file.withProcessingStatus(ProcessingStatus.Failed).withHeadContentId(null);
+
+    assertRefused(ExtractionRequests.NOT_EXTRACTABLE);
+  }
+
+  @Test
+  void aFileWhoseContentSnapshotIsGoneIsRefused() {
+    file.withProcessingStatus(ProcessingStatus.Failed);
+    when(repository.getContentById(contentId.toString()))
+        .thenThrow(EntityNotFoundException.byId(contentId.toString()));
+
+    assertRefused(ExtractionRequests.NOT_EXTRACTABLE);
+  }
+
+  /** Two requests read one Failed file: the stamp lets one through, and the other then sees it. */
+  @Test
+  void aRequestThatLosesTheStampToAnotherIsRefused() {
+    failedWith("provider exploded", "Quarterly");
+    ContextFile stampedByTheOther =
+        JsonUtils.deepCopy(file, ContextFile.class)
+            .withProcessingStatus(ProcessingStatus.ExtractingContext);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenReturn(file, stampedByTheOther);
+    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
+        .thenThrow(new PreconditionFailedException("Concurrent update"));
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+
+    WebApplicationException refused =
+        assertThrows(WebApplicationException.class, () -> service.requestExtraction(fileId));
+
+    assertEquals(ExtractionRequests.ALREADY_REQUESTED, refused.getMessage());
+    verify(jobDao, never())
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
+  }
+
+  /** A queue that cannot take the memory job leaves the file Failed, its text kept, and 503s. */
+  @Test
+  void aFileTheQueueCannotTakeIsLeftFailedToRetry() {
+    failedWith("provider exploded", "Quarterly");
+    memoryQueueRefuses();
+
+    assertQueueRefused(service(Runnable::run, () -> assetService, true), QUEUE_FAILED);
+
+    List<ContextFile> stamps = fileStamps();
+    assertEquals(
+        List.of(ProcessingStatus.ExtractingContext, ProcessingStatus.Failed),
+        stamps.stream().map(ContextFile::getProcessingStatus).toList());
+    assertEquals(QUEUE_FAILED, stamps.getLast().getProcessingError());
+    assertEquals("indexed text", stamps.getLast().getExtractedText());
+  }
+
+  /** A full text-extraction executor leaves the file Failed too, and 503s. */
+  @Test
+  void aFileTheTextQueueCannotTakeIsLeftFailedToRetry() {
+    failedWith("Unable to read file content from object storage", null);
+    Executor full =
+        task -> {
+          throw new RejectedExecutionException("queue full");
+        };
+
+    assertQueueRefused(service(full, () -> assetService, true), TEXT_QUEUE_FULL);
+
+    List<ContextFile> stamps = fileStamps();
+    assertEquals(
+        List.of(ProcessingStatus.Uploaded, ProcessingStatus.Failed),
+        stamps.stream().map(ContextFile::getProcessingStatus).toList());
+    assertEquals(TEXT_QUEUE_FULL, stamps.getLast().getProcessingError());
+  }
+
+  /** Recording the refusal gets more than one write budget: no job is left to record it later. */
+  @Test
+  void aFileWhoseFailureLosesToContentionIsStillLeftFailed() {
+    failedWith("provider exploded", "Quarterly");
+    memoryQueueRefuses();
+    AtomicInteger writes =
+        fileWritesThatLoseRaces(2, ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 1);
+
+    assertQueueRefused(service(Runnable::run, () -> assetService, true), QUEUE_FAILED);
+
+    assertEquals(ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS + 2, writes.get());
+    ContextFile recorded = fileStamps().getLast();
+    assertEquals(ProcessingStatus.Failed, recorded.getProcessingStatus());
+    assertEquals(QUEUE_FAILED, recorded.getProcessingError());
+  }
+
+  /** A failure no budget can record is still answered 503, never 500. */
+  @Test
+  void aFileWhoseFailureCannotBeRecordedStillAnswers503() {
+    failedWith("provider exploded", "Quarterly");
+    memoryQueueRefuses();
+    AtomicInteger writes = fileWritesThatLoseRaces(2, Integer.MAX_VALUE);
+
+    assertQueueRefused(service(Runnable::run, () -> assetService, true), QUEUE_FAILED);
+
+    assertEquals(
+        1
+            + ExtractionRequests.FAILURE_RECORD_ROUNDS
+                * ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS,
+        writes.get());
+  }
+
+  /** Contention that outlasts a text run, then a full executor, still leave the file Failed. */
+  @Test
+  void aContendedTextRunTheExecutorCannotRequeueIsStillLeftFailed() {
+    int budget = ContextProcessingEngine.MAX_CONDITIONAL_UPDATE_ATTEMPTS;
+    AtomicInteger writes = fileWritesThatLoseRaces(1, 2 * budget);
+    Executor full =
+        task -> {
+          throw new RejectedExecutionException("queue full");
+        };
+
+    service(full, () -> assetService).process(fileId, contentId);
+
+    assertEquals(2 * budget + 1, writes.get(), "the failure is recorded after one more budget");
+    ContextFile recorded = fileStamps().getLast();
+    assertEquals(ProcessingStatus.Failed, recorded.getProcessingStatus());
+    assertEquals(
+        "Concurrent updates prevented text extraction. Please retry later.",
+        recorded.getProcessingError());
+  }
+
+  private static final String QUEUE_FAILED = ExtractionRequests.QUEUE_FAILED;
+  private static final String TEXT_QUEUE_FULL = "Text extraction queue is full.";
+
+  private void memoryQueueRefuses() {
+    doThrow(new IllegalStateException("queue unavailable"))
+        .when(jobDao)
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), eq(false));
+  }
+
+  /** Counts file writes; those numbered {@code first} to {@code last} lose to a concurrent edit. */
+  private AtomicInteger fileWritesThatLoseRaces(int first, int last) {
+    AtomicInteger writes = new AtomicInteger();
+    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
+        .thenAnswer(
+            invocation -> {
+              int write = writes.incrementAndGet();
+              if (write >= first && write <= last) {
+                throw new PreconditionFailedException("Concurrent file update");
+              }
+              return null;
+            });
+    return writes;
+  }
+
+  private List<ContextFile> fileStamps() {
+    verify(repository, atLeastOnce())
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(UPLOADER));
+    return updatedFileCaptor.getAllValues();
+  }
+
+  private void assertQueueRefused(ContextFileProcessingService service, String message) {
+    ServiceUnavailableException refused =
+        assertThrows(ServiceUnavailableException.class, () -> service.requestExtraction(fileId));
+
+    assertEquals(503, refused.getResponse().getStatus());
+    assertEquals(message, refused.getMessage());
+  }
+
+  private void failedWith(String error, String snapshotText) {
+    file.withProcessingStatus(ProcessingStatus.Failed)
+        .withProcessingError(error)
+        .withExtractedText(snapshotText == null ? null : "indexed text");
+    content
+        .withProcessingStatus(ProcessingStatus.Failed)
+        .withProcessingError(error)
+        .withExtractedText(snapshotText);
+    lenient().when(repository.getContentById(contentId.toString())).thenReturn(content);
+  }
+
+  private ContextFile stampedAs(String editor) {
+    verify(repository)
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(editor));
+    return updatedFileCaptor.getValue();
+  }
+
+  /** The stamp, not the queue, refuses a second request: a RUNNING job may be a failed run ending. */
+  private void verifyMemoryJobQueuedEvenBesideARunningOne() {
+    verify(jobDao)
+        .enqueueFileMemoryJob(
+            eq(fileId.toString()),
+            eq(ContextMemoryExtractionJobHandler.Args.file(fileId, contentId).jobKey()),
+            anyString(),
+            eq(Entity.ADMIN_USER_NAME),
+            eq(false));
+  }
+
+  private void assertRefused(String message) {
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+
+    WebApplicationException refused =
+        assertThrows(WebApplicationException.class, () -> service.requestExtraction(fileId));
+
+    assertEquals(409, refused.getResponse().getStatus());
+    assertEquals(message, refused.getMessage());
+    verifyNothingWritten();
+  }
+
+  private void verifyNothingWritten() {
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
+    verify(jobDao, never())
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
+  }
+
   private ContextFile transientFile(ProcessingStatus status) {
     return new ContextFile()
         .withId(UUID.randomUUID())
@@ -742,7 +1122,7 @@ class ContextFileProcessingServiceTest {
 
     service(rejectingExecutor, () -> assetService).submit(fileId, contentId);
 
-    verifyImmediateFailureWith("Text extraction queue is full. Please retry later.");
+    verifyImmediateFailureWith(TEXT_QUEUE_FULL);
     verify(assetService, never()).read(any());
   }
 
@@ -933,6 +1313,19 @@ class ContextFileProcessingServiceTest {
 
   private ContextFileProcessingService service(
       Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
+    return service(
+        executor,
+        assetServiceSupplier,
+        () ->
+            llmEnabled
+                ? available()
+                : unavailable(ExtractionAvailability.Reason.ExtractionDisabled));
+  }
+
+  private ContextFileProcessingService service(
+      Executor executor,
+      Supplier<AssetService> assetServiceSupplier,
+      Supplier<ExtractionAvailability> availability) {
     return new ContextFileProcessingService(
         repository,
         assetServiceSupplier,
@@ -940,7 +1333,15 @@ class ContextFileProcessingServiceTest {
         textExtractor,
         jobDao,
         () -> memoryExtractor,
-        () -> llmEnabled,
+        availability,
         () -> fileEngine);
+  }
+
+  private static ExtractionAvailability available() {
+    return new ExtractionAvailability().withAvailable(true);
+  }
+
+  private static ExtractionAvailability unavailable(ExtractionAvailability.Reason reason) {
+    return new ExtractionAvailability().withAvailable(false).withReason(reason);
   }
 }

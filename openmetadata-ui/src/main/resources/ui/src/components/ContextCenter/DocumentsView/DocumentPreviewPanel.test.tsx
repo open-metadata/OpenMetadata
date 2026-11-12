@@ -11,14 +11,65 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { Tooltip } from '@openmetadata/ui-core-components';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
+import { AxiosError, AxiosResponse } from 'axios';
+import { Reason } from '../../../generated/api/context/extractionAvailability';
 import {
   ContextFile,
   ProcessingStatus,
 } from '../../../generated/entity/data/contextFile';
+import { User } from '../../../generated/entity/teams/user';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import {
+  extractFileMemories,
+  getContextFileById,
+} from '../../../rest/assetAPI';
+import { getExtractionAvailability } from '../../../rest/contextMemoryAPI';
+import {
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../../test/unit/test-utils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import DocumentPreviewPanel from './DocumentPreviewPanel.component';
 
+jest.mock('../../../rest/assetAPI', () => ({
+  ...jest.requireActual('../../../rest/assetAPI'),
+  extractFileMemories: jest.fn(),
+  getContextFileById: jest.fn(),
+}));
+
+jest.mock('../../../rest/contextMemoryAPI', () => ({
+  getExtractionAvailability: jest.fn(),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest.fn(
+    ({
+      children,
+      isDisabled,
+      isLoading,
+      onClick,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      isDisabled?: boolean;
+      isLoading?: boolean;
+      onClick?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <button
+        data-loading={isLoading ? 'true' : undefined}
+        data-testid={testId}
+        disabled={isDisabled || isLoading}
+        onClick={onClick}>
+        {children}
+      </button>
+    )
+  ),
+  Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  )),
   Box: jest.fn(
     ({
       children,
@@ -79,9 +130,19 @@ jest.mock('../../CopyLinkButton/CopyLinkButton.component', () =>
 );
 
 jest.mock('../DocumentStatusBadge/DocumentStatusBadge.component', () =>
-  jest.fn(({ status, error }: { status?: string; error?: string }) => (
-    <span data-error={error} data-status={status} data-testid="status-badge" />
-  ))
+  jest.fn(
+    ({
+      file,
+    }: {
+      file: { processingError?: string; processingStatus?: string };
+    }) => (
+      <span
+        data-error={file.processingError}
+        data-status={file.processingStatus}
+        data-testid="status-badge"
+      />
+    )
+  )
 );
 
 jest.mock('../ExtractedMemoriesCard/ExtractedMemoriesCard.component', () =>
@@ -105,6 +166,8 @@ jest.mock('../ExtractedMemoriesCard/ExtractedMemoriesCard.component', () =>
   )
 );
 
+runQueryNotificationsSynchronously();
+
 const baseFile: ContextFile = {
   id: 'file-1',
   name: 'report.pdf',
@@ -121,7 +184,7 @@ const fullFile: ContextFile = {
 
 describe('DocumentPreviewPanel', () => {
   it('renders the preview panel container', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={baseFile}
         url="http://x"
@@ -133,7 +196,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('renders the file name', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={baseFile}
         url="http://x"
@@ -147,7 +210,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('prefers displayName over name when rendering the file name', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={{ ...baseFile, displayName: 'Report Display Name' }}
         url="http://x"
@@ -161,7 +224,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('renders the file icon based on file extension', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={baseFile}
         url="http://x"
@@ -173,7 +236,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('renders the formatted file size', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={baseFile}
         url="http://x"
@@ -185,7 +248,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('renders folder, updated-by and updated-at rows when present', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={fullFile}
         url="http://x"
@@ -198,7 +261,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('does not render folder, updated-by or updated-at rows when absent', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={baseFile}
         url="http://x"
@@ -212,7 +275,7 @@ describe('DocumentPreviewPanel', () => {
 
   it('calls onClose when the close button is clicked', () => {
     const onClose = jest.fn();
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel file={baseFile} url="http://x" onClose={onClose} />
     );
 
@@ -222,7 +285,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('renders the processing status badge for the file', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={{ ...baseFile, processingStatus: ProcessingStatus.Analyzing }}
         url="http://x"
@@ -237,7 +300,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('lists the memories extracted from the file', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={baseFile}
         url="http://x"
@@ -253,7 +316,7 @@ describe('DocumentPreviewPanel', () => {
 
   // The card offers the file's owners the approval of its extracted memories.
   it('names the file and its owners to the memories card', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={{
           ...baseFile,
@@ -271,7 +334,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('shows the processing error for a failed file', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={{
           ...baseFile,
@@ -289,7 +352,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('does not render an error row when the file processed cleanly', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={{ ...baseFile, processingStatus: ProcessingStatus.Processed }}
         url="http://x"
@@ -301,7 +364,7 @@ describe('DocumentPreviewPanel', () => {
   });
 
   it('renders the copy link button with the given url', () => {
-    render(
+    renderWithQueryClient(
       <DocumentPreviewPanel
         file={baseFile}
         url="http://example.com/file"
@@ -313,5 +376,186 @@ describe('DocumentPreviewPanel', () => {
       'data-url',
       'http://example.com/file'
     );
+  });
+});
+
+const OWNER: User = {
+  id: 'user-alice',
+  name: 'alice',
+  email: 'alice@example.com',
+};
+
+const notExtractedFile: ContextFile = {
+  ...baseFile,
+  headContentId: 'content-1',
+  neverExtracted: true,
+  owners: [{ id: OWNER.id, type: 'user', name: OWNER.name }],
+  processingStatus: ProcessingStatus.Processed,
+};
+
+const failedFile: ContextFile = {
+  ...notExtractedFile,
+  neverExtracted: false,
+  processingError: 'Header doesn’t contain versioninfo',
+  processingStatus: ProcessingStatus.Failed,
+};
+
+const httpError = (status: number, message: string) =>
+  new AxiosError(message, undefined, undefined, undefined, {
+    status,
+    data: { code: status, message },
+  } as AxiosResponse);
+
+// The availability read settles inside the act, so no assertion runs on a half-rendered panel.
+const renderPreview = async (
+  file: ContextFile,
+  onFileRefreshed = jest.fn()
+) => {
+  await act(async () => {
+    renderWithQueryClient(
+      <DocumentPreviewPanel
+        file={file}
+        url="http://x"
+        onClose={jest.fn()}
+        onFileRefreshed={onFileRefreshed}
+      />
+    );
+  });
+};
+
+const extractionButton = () => screen.getByTestId('memory-extraction-btn');
+
+describe('DocumentPreviewPanel — Extract and Retry', () => {
+  beforeEach(() => {
+    useApplicationStore.setState({ currentUser: OWNER });
+    (getExtractionAvailability as jest.Mock).mockResolvedValue({
+      available: true,
+    });
+  });
+
+  // RTL unmounts after this hook, so the sign-out still re-renders the tree.
+  afterEach(() => {
+    act(() => {
+      useApplicationStore.setState({ currentUser: undefined });
+    });
+  });
+
+  it('offers Extract beside the status of a file never extracted, to its owner', async () => {
+    await renderPreview(notExtractedFile);
+
+    expect(extractionButton()).toHaveTextContent('label.extract');
+  });
+
+  it('offers Retry on a failed file to an admin who does not own it', async () => {
+    useApplicationStore.setState({
+      currentUser: { ...OWNER, id: 'user-root', name: 'root', isAdmin: true },
+    });
+    await renderPreview(failedFile);
+
+    expect(extractionButton()).toHaveTextContent('label.retry');
+  });
+
+  it('offers nothing to a user who neither owns the file nor is an admin', async () => {
+    useApplicationStore.setState({
+      currentUser: { ...OWNER, id: 'user-bob', name: 'bob' },
+    });
+    await renderPreview(notExtractedFile);
+
+    expect(screen.getByTestId('status-badge')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('memory-extraction-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers nothing on a file that was extracted', async () => {
+    await renderPreview({ ...notExtractedFile, neverExtracted: false });
+
+    expect(
+      screen.queryByTestId('memory-extraction-btn')
+    ).not.toBeInTheDocument();
+  });
+
+  it('disables it with the reason while the AI service is unavailable', async () => {
+    (getExtractionAvailability as jest.Mock).mockResolvedValue({
+      available: false,
+      reason: Reason.ProviderUnavailable,
+    });
+    await renderPreview(notExtractedFile);
+
+    await waitFor(() =>
+      expect(Tooltip).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'message.memory-extraction-service-unavailable',
+        }),
+        expect.anything()
+      )
+    );
+
+    expect(extractionButton()).toBeDisabled();
+  });
+
+  it('requests the extraction and refreshes the preview with the file the server returns', async () => {
+    const queued: ContextFile = {
+      ...notExtractedFile,
+      neverExtracted: false,
+      processingStatus: ProcessingStatus.ExtractingContext,
+    };
+    (extractFileMemories as jest.Mock).mockResolvedValue(queued);
+    const onFileRefreshed = jest.fn();
+    await renderPreview(notExtractedFile, onFileRefreshed);
+
+    fireEvent.click(extractionButton());
+
+    await waitFor(() => expect(onFileRefreshed).toHaveBeenCalledWith(queued));
+
+    expect(extractFileMemories).toHaveBeenCalledWith('file-1');
+  });
+
+  // The page read extraction as available before it was switched off.
+  it('says extraction is off after a 409 that the availability now explains, and refreshes the preview', async () => {
+    (getExtractionAvailability as jest.Mock)
+      .mockResolvedValueOnce({ available: true })
+      .mockResolvedValue({
+        available: false,
+        reason: Reason.ExtractionDisabled,
+      });
+    (extractFileMemories as jest.Mock).mockRejectedValue(
+      httpError(409, 'Memory extraction is unavailable: ExtractionDisabled')
+    );
+    (getContextFileById as jest.Mock).mockResolvedValue(notExtractedFile);
+    const onFileRefreshed = jest.fn();
+    await renderPreview(notExtractedFile, onFileRefreshed);
+
+    fireEvent.click(extractionButton());
+
+    await waitFor(() =>
+      expect(showErrorToast).toHaveBeenCalledWith(
+        'message.memory-extraction-off'
+      )
+    );
+
+    expect(onFileRefreshed).toHaveBeenCalledWith(notExtractedFile);
+    expect(extractionButton()).toBeDisabled();
+  });
+
+  it('says the run could not be queued after a 503 and refreshes the preview from a fresh read', async () => {
+    (extractFileMemories as jest.Mock).mockRejectedValue(
+      httpError(503, 'Text extraction queue is full.')
+    );
+    (getContextFileById as jest.Mock).mockResolvedValue(failedFile);
+    const onFileRefreshed = jest.fn();
+    await renderPreview(notExtractedFile, onFileRefreshed);
+
+    fireEvent.click(extractionButton());
+
+    await waitFor(() =>
+      expect(onFileRefreshed).toHaveBeenCalledWith(failedFile)
+    );
+
+    expect(showErrorToast).toHaveBeenCalledWith(
+      'message.memory-extraction-not-queued'
+    );
+    expect(getContextFileById).toHaveBeenCalledWith('file-1');
+    expect(extractionButton()).toBeEnabled();
   });
 });
