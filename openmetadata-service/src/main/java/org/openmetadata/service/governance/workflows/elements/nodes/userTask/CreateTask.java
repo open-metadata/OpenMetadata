@@ -205,10 +205,11 @@ public class CreateTask implements TaskListener {
       // A request can end (withdrawn, overridden, cancelled) or be revised while delivery is
       // still creating its task; that task is closed once this Flowable command commits.
       ReviewPolicy reviewPolicy =
-          new ReviewPolicy()
-              .withApprovalThreshold(approvalThreshold)
-              .withRejectionThreshold(rejectionThreshold)
-              .withPartialDecisions(partialDecisions(delegateTask));
+          reviewPolicy(
+              approvalThreshold,
+              rejectionThreshold,
+              partialDecisions(delegateTask),
+              task.getAssignees());
       ChangeRequestRun.from(varHandler)
           .filter(
               run ->
@@ -991,6 +992,26 @@ public class CreateTask implements TaskListener {
         WorkflowStartVariables.APPROVAL_MODE_ALL_ASSIGNEES.equals(approvalMode)
             ? Math.max(nodeThreshold, assignees == null ? 0 : assignees.size())
             : nodeThreshold;
+    return capAtUsersAbleToVote(threshold, assignees);
+  }
+
+  /**
+   * The policy a change request is decided by. Its approval threshold gets the same cap as the
+   * task's, or the only eligible reviewer's approval would read as reviewers failing to agree.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static ReviewPolicy reviewPolicy(
+      int nodeApprovalThreshold,
+      int rejectionThreshold,
+      boolean partialDecisions,
+      List<EntityReference> assignees) {
+    return new ReviewPolicy()
+        .withApprovalThreshold(capAtUsersAbleToVote(nodeApprovalThreshold, assignees))
+        .withRejectionThreshold(rejectionThreshold)
+        .withPartialDecisions(partialDecisions);
+  }
+
+  private static int capAtUsersAbleToVote(int threshold, List<EntityReference> assignees) {
     boolean onlyUsers =
         assignees != null
             && !assignees.isEmpty()
