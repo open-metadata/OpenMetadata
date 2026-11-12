@@ -1852,7 +1852,7 @@
       }
     ],
     "ready": {
-      "text": "Search Index Settings",
+      "testId": "no-data-placeholder",
       "within": {
         "role": "tabpanel"
       }
