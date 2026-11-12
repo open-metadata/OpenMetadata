@@ -25,6 +25,7 @@ import io.dropwizard.db.DataSourceFactory;
 import io.dropwizard.jackson.Jackson;
 import io.dropwizard.jersey.validation.Validators;
 import jakarta.validation.Validator;
+import java.io.Console;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -108,6 +109,8 @@ import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.fernet.Fernet;
+import org.openmetadata.service.fernet.KeyRing;
+import org.openmetadata.service.fernet.rotation.FernetKeyRotation;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AppMarketPlaceRepository;
 import org.openmetadata.service.jdbi3.AppRepository;
@@ -218,7 +221,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "'drop-create', 'changelog', 'migrate', 'migrate-secrets', 'reindex', 'reembed', 'reindex-rdf', 'reindexdi', 'deploy-pipelines', "
             + "'dbServiceCleanup', 'relationshipCleanup', 'tagUsageCleanup', 'drop-indexes', 'remove-security-config', 'create-indexes', "
             + "'setOpenMetadataUrl', 'configureEmailSettings', 'get-security-config', 'update-security-config', 'install-app', 'delete-app', 'create-user', 'reset-password', "
-            + "'syncAlertOffset', 'analyze-tables', 'db-tune', 'search-fitness', 'cleanup-flowable-history', 'regenerate-bot-tokens'");
+            + "'syncAlertOffset', 'analyze-tables', 'db-tune', 'search-fitness', 'cleanup-flowable-history', 'regenerate-bot-tokens', "
+            + "'rotate-fernet-key'");
     LOG.info(
         "Use 'reindex --auto-tune' for automatic performance optimization based on cluster capabilities");
     LOG.info(
@@ -232,6 +236,10 @@ public class OpenMetadataOperations implements Callable<Integer> {
             + "except revoked ones; add --skip-current to leave the tokens the configured key "
             + "already signs unchanged. "
             + "Expiry values: OneHour, One (1 day), Seven (7 days), Thirty, Sixty, Ninety, Unlimited (default)");
+    LOG.info(
+        "Use 'rotate-fernet-key' to see which stored values still need an older Fernet key; add "
+            + "--apply to re-encrypt them with the primary key (--yes skips the prompt, "
+            + "--every-table also reads the large tables that cannot hold a secret)");
     return 0;
   }
 
@@ -3032,6 +3040,81 @@ public class OpenMetadataOperations implements Callable<Integer> {
       String detail = e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName();
       return List.of(rec.tableName(), rec.action().name(), "FAILED", detail);
     }
+  }
+
+  @Command(
+      name = "rotate-fernet-key",
+      description =
+          "Re-encrypts the stored Fernet tokens with the primary key of FERNET_KEY, so that an "
+              + "older key can be removed from the servers. Without --apply the command only reads "
+              + "and reports. It leaves out the large tables that cannot hold a secret unless "
+              + "--every-table is given, and only a run of every table vouches that an older key "
+              + "can go. Exit codes: 0 every value read opens with the primary key, 1 the command "
+              + "failed, 2 refused before reading or writing (no key, --apply with one key or with "
+              + "the default key, not confirmed, Redis unreachable), 3 not safe to remove an older "
+              + "key, 4 only values that no configured key opens.")
+  public Integer rotateFernetKey(
+      @Option(
+              names = {"--apply"},
+              defaultValue = "false",
+              description =
+                  "Re-encrypt the stored values. Without this flag the command only reports.")
+          boolean apply,
+      @Option(
+              names = {"--yes", "-y"},
+              defaultValue = "false",
+              description = "Skip the interactive confirmation when applying.")
+          boolean skipPrompt,
+      @Option(
+              names = {"--every-table"},
+              defaultValue = "false",
+              description =
+                  "Also read the large tables that cannot hold a secret, such as data assets and "
+                      + "change events, and every entity version. Run it once to confirm before an "
+                      + "older key leaves the servers.")
+          boolean everyTable) {
+    try {
+      parseConfig();
+      KeyRing keys = KeyRing.current();
+      FernetKeyRotation.Options options =
+          FernetKeyRotation.Options.of(
+              apply, everyTable, () -> skipPrompt || confirmRotation(keys));
+      String driverClass = config.getDataSourceFactory().getDriverClass();
+      ConnectionType dialect = ConnectionType.from(driverClass);
+      if (dialect == null) {
+        LOG.error("rotate-fernet-key does not support driver class '{}'", driverClass);
+        return 1;
+      }
+      FernetKeyRotation.Report report =
+          FernetKeyRotation.run(options, keys, jdbi, dialect, config.getCacheConfig());
+      report.print(System.out, OpenMetadataOperations::printToAsciiTable);
+      return report.exitCode();
+    } catch (FernetKeyRotation.Refused refused) {
+      System.err.println("Nothing was changed. " + refused.getMessage());
+      return EXIT_KEY_MISMATCH;
+    } catch (Exception e) {
+      LOG.error("Failed to rotate the Fernet key", e);
+      return 1;
+    }
+  }
+
+  // A run without a console (automation, a pipe) cannot confirm; it passes --yes instead.
+  private static boolean confirmRotation(KeyRing keys) {
+    Console console = System.console();
+    boolean confirmed = false;
+    if (console == null) {
+      LOG.info("There is no console to confirm on; pass --yes to apply without a prompt.");
+    } else {
+      String answer =
+          console.readLine(
+              "Every OpenMetadata server must already list key %s first. "
+                  + "Re-encrypt every stored value with it? [y/N] ",
+              keys.fingerprints().getFirst());
+      confirmed =
+          answer != null
+              && (answer.trim().equalsIgnoreCase("y") || answer.trim().equalsIgnoreCase("yes"));
+    }
+    return confirmed;
   }
 
   /**
