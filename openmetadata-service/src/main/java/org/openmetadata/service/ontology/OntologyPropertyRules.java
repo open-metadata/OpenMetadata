@@ -48,6 +48,8 @@ public final class OntologyPropertyRules {
             () -> distinctIris(property.getRange(), "range"),
             () -> absoluteIris(property.getPropertyChain(), "propertyChain"),
             () -> distinctIris(property.getDisjointWith(), "disjointWith"),
+            () -> distinctIris(property.getSuperProperties(), "superProperties"),
+            () -> ownSuperProperty(property),
             () -> optionalIri(property.getInverse(), "inverse"),
             () -> optionalIri(property.getReplacedBy(), "replacedBy"),
             () -> kind(property),
@@ -111,6 +113,14 @@ public final class OntologyPropertyRules {
         .filter(Objects::nonNull)
         .findFirst()
         .orElse(null);
+  }
+
+  private static Violation ownSuperProperty(final OntologyProperty property) {
+    final String iri = property.getIri() == null ? null : property.getIri().toString();
+    return listOrEmpty(property.getSuperProperties()).stream()
+            .anyMatch(superProperty -> superProperty.toString().equals(iri))
+        ? new Violation("superProperties", "A property cannot be its own superproperty")
+        : null;
   }
 
   private static Violation distinctIris(final Collection<URI> iris, final String field) {

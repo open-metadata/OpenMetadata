@@ -73,7 +73,6 @@ import {
   EntityType,
   TabSpecificField,
 } from '../../enums/entity.enum';
-import { ResourceEntity } from '../../enums/permissions.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { ServiceAgentSubTabs, ServiceCategory } from '../../enums/service.enum';
 import { ServiceAttributes } from '../../generated/entity/services/serviceAttributes';
@@ -2098,14 +2097,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     decodedServiceFQN,
     isOpenMetadataService,
   ]);
-  const servicePermissionWithTrigger = useMemo(
-    () => ({
-      ...servicePermission,
-      Trigger: permissions[ResourceEntity.APPLICATION]?.Trigger || false,
-    }),
-    [servicePermission, permissions[ResourceEntity.APPLICATION]]
-  );
-
   const afterAutoPilotAppTrigger = useCallback(() => {
     fetchWorkflowInstanceStates();
   }, [serviceDetails.fullyQualifiedName, fetchWorkflowInstanceStates]);
@@ -2168,7 +2159,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
               entityType={entityType}
               extraDropdownContent={extraDropdownContent}
               isAutoPilotWorkflowStatusLoading={isWorkflowStatusLoading}
-              permissions={servicePermissionWithTrigger}
+              permissions={servicePermission}
               showDomain={!isMetadataService}
               onDisplayNameUpdate={handleUpdateDisplayName}
               onFollowClick={handleFollowClick}

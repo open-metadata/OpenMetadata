@@ -143,16 +143,24 @@ test.describe.serial(
       const stored = await (await apiContext.get(settingsUrl)).json();
       // A value the form cannot produce, so only a save that keeps the field
       // can leave it in place.
-      const graphPerformanceConfig = {
-        ...stored.config_value.graphPerformanceConfig,
-        cacheTTLSeconds: 600,
-      };
       await apiContext.put('/api/v1/system/settings', {
         data: {
           config_type: 'lineageSettings',
-          config_value: { ...stored.config_value, graphPerformanceConfig },
+          config_value: {
+            ...stored.config_value,
+            graphPerformanceConfig: {
+              ...stored.config_value.graphPerformanceConfig,
+              cacheTTLSeconds: 600,
+            },
+          },
         },
       });
+      // An upgraded instance may store no graphPerformanceConfig, and the
+      // server fills the schema defaults on write, so compare against what it kept.
+      const seeded = await (await apiContext.get(settingsUrl)).json();
+      const graphPerformanceConfig = seeded.config_value.graphPerformanceConfig;
+
+      expect(graphPerformanceConfig.cacheTTLSeconds).toBe(600);
 
       try {
         await settingClick(page, GlobalSettingOptions.LINEAGE_CONFIG);

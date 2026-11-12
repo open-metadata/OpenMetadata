@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.MetricUnitOfMeasurement;
 import org.openmetadata.schema.type.SearchIndexField;
 import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
@@ -115,7 +116,11 @@ final class ConceptContextBuilder {
           .withSynonyms(term.getSynonyms())
           .withRelatedTerms(visibleRelations(term));
     } else if (entity instanceof Metric metric) {
-      context.withDefinition(expression(metric));
+      context
+          .withDefinition(expression(metric))
+          .withFilters(filters(metric))
+          .withGranularity(metric.getGranularity() == null ? null : metric.getGranularity().value())
+          .withUnit(unit(metric));
     }
     return context;
   }
@@ -230,6 +235,27 @@ final class ConceptContextBuilder {
 
   private static String expression(Metric metric) {
     return metric.getMetricExpression() == null ? null : metric.getMetricExpression().getCode();
+  }
+
+  /**
+   * The conditions the metric is defined under, which all apply together; null when it has none, so
+   * the field is omitted (ADR:2026-11-10-a-metric-concept-context-carries-what-changes-its-number).
+   */
+  private static List<String> filters(Metric metric) {
+    List<String> where =
+        listOrEmpty(metric.getFilters()).stream()
+            .map(filter -> filter.getWhere())
+            .filter(condition -> condition != null && !condition.isBlank())
+            .toList();
+    return where.isEmpty() ? null : where;
+  }
+
+  /** The custom unit when the metric names {@code OTHER} and gives one, otherwise the enum value. */
+  private static String unit(Metric metric) {
+    MetricUnitOfMeasurement unit = metric.getUnitOfMeasurement();
+    boolean custom =
+        unit == MetricUnitOfMeasurement.OTHER && !nullOrEmpty(metric.getCustomUnitOfMeasurement());
+    return unit == null ? null : custom ? metric.getCustomUnitOfMeasurement() : unit.value();
   }
 
   /**

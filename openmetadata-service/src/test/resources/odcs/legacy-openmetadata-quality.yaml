@@ -1,0 +1,63 @@
+apiVersion: v3.1.0
+kind: DataContract
+id: e5d55f5d-981a-46d1-92c5-a94494424dd8
+name: customers
+version: "1.0.0"
+status: active
+schema:
+  - name: customers
+    logicalType: object
+    quality:
+      - name: Row count range
+        metric: rowCount
+        mustBeBetween: [1, 1000]
+      - name: No blank emails
+        type: sql
+        query: SELECT COUNT(*) FROM ${object} WHERE email = ''
+        mustBe: 0
+    properties:
+      - name: id
+        logicalType: integer
+        quality:
+          - name: Id is set
+            metric: nullValues
+            mustBe: 0
+          - name: Id is unique
+            metric: duplicateValues
+            mustBe: 0
+      - name: status
+        logicalType: string
+        quality:
+          - name: Known status
+            type: library
+            rule: validValues
+            validValues: [open, closed]
+      - name: email
+        logicalType: string
+        quality:
+          - name: Email format
+            metric: invalidValues
+            arguments:
+              pattern: "^[^@]+@[^@]+$"
+            mustBeLessOrEqualTo: 5
+            unit: percent
+      - name: updated_at
+        logicalType: timestamp
+        quality:
+          - name: Updated recently
+            metric: freshness
+            mustBeLessOrEqualTo: 24
+            unit: hours
+servers:
+  - server: prod
+    type: snowflake
+    account: sample
+    database: ecommerce
+    schema: shopify
+quality:
+  - name: Steward review
+    type: text
+  - name: GX check
+    type: custom
+    engine: greatExpectations
+    implementation: "type: expect_column_values_to_not_be_null"
