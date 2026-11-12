@@ -14,6 +14,7 @@
 import {
   Button,
   Dialog,
+  Dropdown,
   Modal,
   ModalOverlay,
   Select,
@@ -21,6 +22,7 @@ import {
 import {
   Download01,
   SwitchVertical01,
+  Upload01,
 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -69,6 +71,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const [isOpen, setIsOpen] = useState(false);
+  const [initialTab, setInitialTab] = useState<'export' | 'import'>('export');
   const guard = useOntologyDraftGuard();
   const [selectedOwner, setSelectedOwner] = useState<Ontology>();
   const { canEditAll } = useEntityPermissions(
@@ -153,6 +156,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
       return (
         <OntologyReleaseExportModal
           canImport={props.canImport}
+          initialTab={initialTab}
           ontology={props.ontology}
           onApplied={props.onApplied}
           onClose={() => setIsOpen(false)}
@@ -172,6 +176,54 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
     );
   };
 
+  const open = (tab: 'export' | 'import') =>
+    guard(() => {
+      if (props.kind === 'ontology') {
+        props.onOpen?.();
+      }
+      setInitialTab(tab);
+      setIsOpen(true);
+    });
+
+  // One ontology offers Import and Export as two actions, each opening its tab.
+  if (props.kind === 'ontology') {
+    return (
+      <>
+        <Dropdown.Root>
+          <Button
+            aria-label={t('label.import-export')}
+            color="secondary"
+            data-testid="ontology-import-export-trigger"
+            iconLeading={Download01}
+            size="sm"
+            tooltip={t('label.import-export')}
+          />
+          <Dropdown.Popover placement="bottom end">
+            <Dropdown.Menu
+              aria-label={t('label.import-export')}
+              onAction={(key) => open(key === 'import' ? 'import' : 'export')}>
+              {props.canImport ? (
+                <Dropdown.Item
+                  data-testid="ontology-import-menu-item"
+                  icon={Upload01}
+                  id="import"
+                  label={t('label.import')}
+                />
+              ) : null}
+              <Dropdown.Item
+                data-testid="ontology-export-menu-item"
+                icon={Download01}
+                id="export"
+                label={t('label.export')}
+              />
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+        {renderModal()}
+      </>
+    );
+  }
+
   return (
     <>
       <Button
@@ -181,14 +233,7 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
         iconLeading={isAiMode ? Download01 : SwitchVertical01}
         size="sm"
         tooltip={t('label.import-export')}
-        onPress={() =>
-          guard(() => {
-            if (props.kind === 'ontology') {
-              props.onOpen?.();
-            }
-            setIsOpen(true);
-          })
-        }
+        onPress={() => guard(() => setIsOpen(true))}
       />
       {renderModal()}
     </>

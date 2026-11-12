@@ -22,6 +22,7 @@ import { expect, test } from '../../support/fixtures/isolatedUser';
 import { deleteFixtureEntity, okJson } from '../../utils/apiResponse';
 import { getWorkerAdminAPIContext, uuid } from '../../utils/common';
 import { visitTriage } from '../../utils/inbox';
+import { releaseNameContaining } from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
@@ -642,7 +643,7 @@ test.describe(
 
         await expect(
           author.getByTestId('ontology-release-history-trigger')
-        ).toHaveText('Draft · 1 unpublished');
+        ).toHaveAccessibleName(releaseNameContaining('Draft · 1 unpublished'));
         await expect(author.getByTestId('ontology-explorer-stats')).toHaveText(
           '1 concept · 0 relations'
         );

@@ -236,6 +236,10 @@ test.describe(
               'ontology-import-export-trigger',
             ]) {
               await page.getByTestId(trigger).click();
+              // One ontology's Import / export opens a menu first; the guard runs on its action.
+              if (trigger === 'ontology-import-export-trigger') {
+                await page.getByTestId('ontology-export-menu-item').click();
+              }
               await expect(confirmation).toBeVisible();
               await confirmation
                 .getByRole('button', { name: 'Cancel', exact: true })

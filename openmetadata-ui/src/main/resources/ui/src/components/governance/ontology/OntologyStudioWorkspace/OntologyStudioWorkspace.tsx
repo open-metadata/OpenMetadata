@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Box, Tabs, Typography } from '@openmetadata/ui-core-components';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Ontology } from '../../../../generated/entity/data/ontology';
@@ -44,7 +44,6 @@ interface OntologyStudioWorkspaceProps {
   selectedConceptId?: string;
   onSelectedConceptChange?: (id?: string) => void;
   onSaved: (ontology: Ontology) => void;
-  settingsRequestKey?: number;
   onRequestEdit?: (conceptId?: string) => void;
   editConceptRequest?: string;
   onEditConceptRequestHandled?: () => void;
@@ -79,7 +78,6 @@ const OntologyStudioWorkspace = ({
   mode,
   viewSurface,
   selectedConceptId,
-  settingsRequestKey = 0,
   onSelectedConceptChange,
   onSaved,
   onRequestEdit,
@@ -97,11 +95,6 @@ const OntologyStudioWorkspace = ({
     'concept'
   );
   const [revision, setRevision] = useState(0);
-  useEffect(() => {
-    if (settingsRequestKey > 0) {
-      setDefinitionTab('settings');
-    }
-  }, [settingsRequestKey]);
   const { canEditAll } = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ontology.id },
@@ -146,6 +139,7 @@ const OntologyStudioWorkspace = ({
               <OntologyOverview
                 ontology={ontology}
                 status={publicationStatus}
+                onOpenTab={(tab) => guard(() => setDefinitionTab(tab))}
               />
             </Tabs.Panel>
             <Tabs.Panel id="concept">
