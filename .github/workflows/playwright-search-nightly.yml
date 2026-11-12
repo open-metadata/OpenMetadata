@@ -39,7 +39,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
 
       - name: Cache Maven Dependencies
         uses: actions/cache@v6

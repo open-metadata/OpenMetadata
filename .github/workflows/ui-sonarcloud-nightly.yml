@@ -45,7 +45,7 @@ jobs:
           docker-images: false
 
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ env.BRANCH_NAME }}
           fetch-depth: 0

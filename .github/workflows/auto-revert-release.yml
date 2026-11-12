@@ -113,7 +113,7 @@ jobs:
 
       - name: Checkout release branch
         if: steps.match.outputs.match == 'true'
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           ref: ${{ steps.ev.outputs.branch }}
           fetch-depth: 0

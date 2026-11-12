@@ -47,7 +47,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Checkout with parent
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
           # older base on demand in the "Determine changed X files" step.
@@ -121,7 +121,7 @@ jobs:
     timeout-minutes: 10
     steps:
       - name: Checkout with parent
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
           # older base on demand in the "Determine changed X files" step.
@@ -187,7 +187,7 @@ jobs:
       UI_WORKING_DIRECTORY: openmetadata-ui/src/main/resources/ui
     steps:
       - name: Checkout with parent
-        uses: actions/checkout@v7
+        uses: actions/checkout@v7.0.1
         with:
           # Shallow: just HEAD and HEAD~1. Multi-commit pushes fetch the
           # older base on demand in the "Determine changed X files" step.
