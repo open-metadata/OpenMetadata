@@ -85,6 +85,15 @@ class CreateTaskTest {
   }
 
   @Test
+  void rejectionThresholdNeverExceedsTheUsersAbleToVote() {
+    assertEquals(1, CreateTask.capAtUsersAbleToVote(2, users(1)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, users(2)));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of(users(1).get(0), team())));
+    assertEquals(2, CreateTask.capAtUsersAbleToVote(2, List.of()));
+    assertEquals(1, CreateTask.reviewPolicy(2, 2, true, users(1)).getRejectionThreshold());
+  }
+
+  @Test
   void changeRequestPolicyNeverRequiresMoreApprovalsThanTheUsersAbleToVote() {
     ReviewPolicy oneReviewerLeft = CreateTask.reviewPolicy(2, 1, true, users(1));
     assertEquals(1, oneReviewerLeft.getApprovalThreshold());

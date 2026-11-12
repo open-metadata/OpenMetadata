@@ -232,7 +232,9 @@ public class CreateTask implements TaskListener {
               approvalThreshold,
               task.getAssignees());
       delegateTask.setVariable("approvalThreshold", catalogCounts ? 1 : taskApprovalThreshold);
-      delegateTask.setVariable("rejectionThreshold", catalogCounts ? 1 : rejectionThreshold);
+      delegateTask.setVariable(
+          "rejectionThreshold",
+          catalogCounts ? 1 : capAtUsersAbleToVote(rejectionThreshold, task.getAssignees()));
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
       delegateTask.setVariable("taskEntityId", task.getId().toString());
@@ -996,8 +998,8 @@ public class CreateTask implements TaskListener {
   }
 
   /**
-   * The policy a change request is decided by. Its approval threshold gets the same cap as the
-   * task's, or the only eligible reviewer's approval would read as reviewers failing to agree.
+   * The policy a change request is decided by. Both thresholds get the same cap as the task's, or
+   * the only eligible reviewer's decision would read as reviewers failing to agree.
    * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
    */
   static ReviewPolicy reviewPolicy(
@@ -1007,11 +1009,15 @@ public class CreateTask implements TaskListener {
       List<EntityReference> assignees) {
     return new ReviewPolicy()
         .withApprovalThreshold(capAtUsersAbleToVote(nodeApprovalThreshold, assignees))
-        .withRejectionThreshold(rejectionThreshold)
+        .withRejectionThreshold(capAtUsersAbleToVote(rejectionThreshold, assignees))
         .withPartialDecisions(partialDecisions);
   }
 
-  private static int capAtUsersAbleToVote(int threshold, List<EntityReference> assignees) {
+  /**
+   * Caps an approval or rejection threshold at the users able to vote, so neither is out of reach
+   * once the requester is removed. ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static int capAtUsersAbleToVote(int threshold, List<EntityReference> assignees) {
     boolean onlyUsers =
         assignees != null
             && !assignees.isEmpty()
