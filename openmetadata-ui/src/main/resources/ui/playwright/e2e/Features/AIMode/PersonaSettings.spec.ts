@@ -221,6 +221,39 @@ test.describe(
       });
     });
 
+    test('closing settings opened from the user menu leaves no settings entry for Back', async ({
+      page,
+    }) => {
+      await redirectToHomePage(page);
+      await page.goto('/explore');
+      await page.getByTestId('ask-ai-user-menu-trigger').click();
+      await page.getByTestId('ask-user-menu-settings').click();
+      await page.getByTestId('profile-nav-personas').click();
+      await expect(page.getByTestId('personas-landing')).toBeVisible();
+      await page.getByTestId('add-persona-button').click();
+      await expect(page.getByTestId('add-persona-container')).toBeVisible();
+
+      await page
+        .getByRole('dialog')
+        .filter({ has: page.getByTestId('ai-profile-page') })
+        .getByRole('button', { name: 'Close', exact: true })
+        .click();
+
+      await expect(page.getByTestId('app-shell')).toBeVisible();
+      await expect(page.getByTestId('ai-profile-page')).not.toBeVisible();
+      await expect(page).toHaveURL(
+        (url) => url.pathname === '/explore' && url.hash === ''
+      );
+
+      await page.goBack();
+
+      await expect(page).toHaveURL(
+        (url) => url.pathname !== '/explore' && url.hash === ''
+      );
+      await expect(page.getByTestId('app-shell')).toBeVisible();
+      await expect(page.getByTestId('ai-profile-page')).not.toBeVisible();
+    });
+
     test('Governance keeps the persona detail tabs and opens an entity full page', async ({
       page,
     }) => {

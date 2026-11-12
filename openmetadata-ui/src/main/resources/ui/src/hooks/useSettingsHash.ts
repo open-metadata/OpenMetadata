@@ -48,6 +48,11 @@ export interface SetHashOptions {
   push?: boolean;
 }
 
+/** History state of a `setHash` push: the hash the modal showed before it. */
+interface SettingsPushState {
+  fromHash: string;
+}
+
 const EMPTY_PARAMS: Record<string, string> = {};
 const EMPTY_STATE: SettingsHashState = {
   tab: null,
@@ -162,8 +167,8 @@ export const useSettingsHash = () => {
   const location = useLocation();
   const navigationType = useNavigationType();
 
-  // History entries a settings link pushed for the open modal: 1 when a link
-  // opened it over the page, +1 per link followed inside it. Closing pops them
+  // History entries pushed for the open modal: 1 when a settings link or a
+  // `setHash` push opened it over the page, +1 per push inside it. Closing pops them
   // so the page's own entry is current again instead of a duplicate of it; 0
   // (deep link, refresh, Back/Forward) closes by replacing as before. Each hook
   // instance counts the pushes it sees, so the count belongs to whoever closes:
@@ -260,8 +265,12 @@ export const useSettingsHash = () => {
     if (navigationType === NavigationType.Push) {
       const liveHash = globalThis.location.hash;
       const pushed = pushedEntriesRef.current;
+      // `setHash` already put its hash in the store, so it says where it came from.
+      const fromHash =
+        (locationRef.current.state as SettingsPushState | null)?.fromHash ??
+        renderedHashRef.current;
       pushedEntriesRef.current =
-        liveHash && (!renderedHashRef.current || pushed) ? pushed + 1 : 0;
+        liveHash && (!fromHash || pushed) ? pushed + 1 : 0;
       setStoreHash(liveHash);
     }
   }, [location.key, navigationType]);
@@ -270,7 +279,7 @@ export const useSettingsHash = () => {
   // useTableFilters) so these callbacks stay referentially stable.
   // Replaces by default, so redirects and param updates never leave an entry
   // that Back would land on; `push` is for a view the user opened, so Back
-  // returns to the one before it.
+  // returns to the one before it (ADR:2026-11-12-settings-modal-views-push-history-only-when-the-user-opens-them).
   const setHash = useCallback(
     (
       tab: string,
@@ -281,6 +290,7 @@ export const useSettingsHash = () => {
       const next = buildHash(tab, subPath, params);
 
       if (storeHash !== next) {
+        const pushState: SettingsPushState = { fromHash: storeHash };
         setStoreHash(next);
         void navigateRef.current(
           {
@@ -288,7 +298,7 @@ export const useSettingsHash = () => {
             search: locationRef.current.search,
             hash: next.slice(1),
           },
-          { replace: !options?.push }
+          options?.push ? { state: pushState } : { replace: true }
         );
       }
     },
@@ -447,7 +457,8 @@ export const useSettingsHashSync = (
   openModal: (panel: 'profile') => void,
   isOpen: boolean,
   suppressHashClear?: boolean,
-  clearSuppressHashClear?: () => void
+  clearSuppressHashClear?: () => void,
+  closeModal?: () => void
 ) => {
   const { state, clearHash } = useSettingsHash();
   const wasOpenRef = useRef(isOpen);
@@ -457,12 +468,16 @@ export const useSettingsHashSync = (
   // Only auto-open when the hash itself changes (deep link, refresh, or Back
   // out of the fullscreen persona customizer to a view the modal shows), not
   // when isOpen flips (which would fight the close path).
+  // Back past the entry that opened the modal lands on the page without a
+  // settings hash: close the modal over it.
   useEffect(() => {
     if (view && view !== prevViewRef.current && !isOpen) {
       openModal('profile');
+    } else if (!view && prevViewRef.current && isOpen) {
+      closeModal?.();
     }
     prevViewRef.current = view;
-  }, [view, isOpen, openModal]);
+  }, [view, isOpen, openModal, closeModal]);
 
   // Clear hash only when modal transitions from open → closed (not on mount).
   // Skip when suppressHashClear is set (fullscreen customize overlay took over).
