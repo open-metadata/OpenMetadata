@@ -146,7 +146,7 @@ describe('Draft and Published switch', () => {
     expect(onVersionChange).toHaveBeenCalledWith('published');
   });
 
-  it('keeps Releases as its own action beside the switch', () => {
+  it('gives an editor only the switch, with no separate release-history button', () => {
     const onPress = jest.fn();
     render(
       <OntologyVersionChip
@@ -157,13 +157,14 @@ describe('Draft and Published switch', () => {
       />
     );
 
-    fireEvent.click(screen.getByTestId('ontology-release-history-trigger'));
-
-    expect(onPress).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByTestId('ontology-release-history-trigger')
+    ).not.toBeInTheDocument();
     expect(screen.getByTestId('ontology-version-published')).toHaveAttribute(
       'aria-pressed',
       'true'
     );
+    expect(onPress).not.toHaveBeenCalled();
   });
 
   it('shows no switch to a user who cannot edit', () => {

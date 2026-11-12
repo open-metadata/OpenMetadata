@@ -15,6 +15,7 @@ import {
   approveExtractedMemories,
   getContextMemoryByName,
   getExtractedMemoryApproval,
+  getExtractionAvailability,
   getMemoryDerivations,
   MAX_DERIVATION_ENTITIES,
 } from './contextMemoryAPI';
@@ -97,6 +98,16 @@ describe('contextMemoryAPI', () => {
     expect(mockedApiClient.put).toHaveBeenCalledWith(
       '/contextCenter/memories/extractedApproval',
       request
+    );
+  });
+
+  it('reads whether memories can be extracted, and why not', async () => {
+    const availability = { available: false, reason: 'ExtractionDisabled' };
+    mockedApiClient.get.mockResolvedValue({ data: availability });
+
+    expect(await getExtractionAvailability()).toEqual(availability);
+    expect(mockedApiClient.get).toHaveBeenCalledWith(
+      '/contextCenter/memories/extractionAvailability'
     );
   });
 });

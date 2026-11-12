@@ -60,6 +60,7 @@ export interface KnowledgePage {
   entityStatus?: EntityStatus;
   processingStatus?: PageProcessingStatus;
   processingError?: string;
+  neverExtracted?: Page['neverExtracted'];
   extension?: Page['extension'];
 }
 
