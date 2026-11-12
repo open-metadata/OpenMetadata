@@ -31,6 +31,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.nio.file.Path;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -372,6 +373,60 @@ class OAuthHttpStatelessServerTransportProviderTest {
     assertThat(new ObjectMapper().readTree(output.toByteArray()).has("registration_endpoint"))
         .isFalse();
     assertThat(metadata.getRegistrationEndpoint()).isNotNull();
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void registrationLimitCannotBeResetBySpoofedForwardedPrefixes(boolean separateHeaders)
+      throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    var registration = mock(RegistrationHandler.class);
+    when(registration.handle(any()))
+        .thenReturn(CompletableFuture.completedFuture(new OAuthClientInformation()));
+    putField(transport, "registrationHandler", registration);
+    putField(transport, "registrationAttempts", new ConcurrentHashMap<>());
+    putField(transport, "objectMapper", new ObjectMapper());
+    for (int attempt = 1; attempt <= 11; attempt++) {
+      var request = mock(HttpServletRequest.class);
+      when(request.getContextPath()).thenReturn("");
+      when(request.getRequestURI()).thenReturn("/mcp/register");
+      when(request.getRemoteAddr()).thenReturn("127.0.0.1");
+      when(request.getHeader("X-Forwarded-For")).thenReturn("192.0.2." + attempt + ", 203.0.113.7");
+      when(request.getInputStream())
+          .thenReturn(
+              HttpServletStatelessServerTransportTest.bodyOf(
+                  new ByteArrayInputStream(new byte[] {'{', '}'})));
+      var response = mock(HttpServletResponse.class);
+      when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+      transport.doPost(request, response);
+      verify(response).setStatus(attempt <= 10 ? 201 : 429);
+    }
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = {"203.0.113.7, garbage", "203.0.113.7,", "203.0.113.7, 999.1.1.1"})
+  void malformedProxyAddressFallsBackToPeer(String forwarded) throws Exception {
+    assertThat(clientIp("127.0.0.1", forwarded)).isEqualTo("127.0.0.1");
+  }
+
+  @Test
+  void forwardedAddressRequiresLocalPeerAndCanonicalizesIpv6() throws Exception {
+    assertThat(clientIp("203.0.113.7", "192.0.2.1")).isEqualTo("203.0.113.7");
+    assertThat(clientIp("127.0.0.1", "192.0.2.1, 2001:0db8:0:0:0:0:0:1")).isEqualTo("2001:db8::1");
+    assertThat(clientIp("::1", "203.0.113.7")).isEqualTo("203.0.113.7");
+    assertThat(clientIp("127.0.0.1", null)).isEqualTo("127.0.0.1");
+  }
+
+  private String clientIp(String peer, String forwarded) throws Exception {
+    var request = mock(HttpServletRequest.class);
+    when(request.getRemoteAddr()).thenReturn(peer);
+    when(request.getHeaders("X-Forwarded-For"))
+        .thenReturn(Collections.enumeration(forwarded == null ? List.of() : List.of(forwarded)));
+    var method =
+        OAuthHttpStatelessServerTransportProvider.class.getDeclaredMethod(
+            "getClientIp", HttpServletRequest.class);
+    method.setAccessible(true);
+    return (String) method.invoke(transportWith(mock(UserSSOOAuthProvider.class)), request);
   }
 
   // ── registration body limit ───────────────────────────────────────────────

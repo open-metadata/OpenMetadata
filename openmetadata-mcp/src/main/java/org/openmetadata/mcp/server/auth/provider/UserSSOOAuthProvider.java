@@ -787,25 +787,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
           "Pending auth request not found or expired: " + authRequestId);
     }
 
-    // Re-validate the redirect URI against the registered client (defense-in-depth against
-    // open redirect; mirrors handleSSOCallbackWithDbState). Even an error redirect must not
-    // be sent to an unregistered URI.
-    OAuthClientInformation client = clientRepository.findByClientId(pendingRequest.clientId());
-    if (client == null) {
-      throw new IllegalStateException(
-          "Client not found for pending auth request: " + pendingRequest.clientId());
-    }
-    URI requestedRedirectUri = URI.create(pendingRequest.redirectUri());
-    try {
-      client.validateRedirectUri(requestedRedirectUri);
-    } catch (Exception e) {
-      LOG.error(
-          "SECURITY ALERT: Redirect URI validation failed in MCP error callback for client "
-              + "{}: {}",
-          client.getClientId(),
-          e.getMessage());
-      throw new IllegalStateException("Redirect URI validation failed: " + e.getMessage(), e);
-    }
+    requireRegisteredRedirect(pendingRequest);
+    final URI requestedRedirectUri = URI.create(pendingRequest.redirectUri());
 
     // Build the OAuth error response per RFC 6749 §4.1.2.1 and the MCP spec, plus the RFC 9207
     // iss parameter (added by constructAuthorizationResponseUri when issuer is set).

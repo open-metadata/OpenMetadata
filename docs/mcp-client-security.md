@@ -29,7 +29,8 @@ separate switches because desktop clients need them. Disabling either can break 
 Settings follow the existing MCP configuration propagation; allow other nodes to reload before
 assuming a policy change has reached the whole cluster.
 
-Policies apply to new authorization codes, including pending sign-ins. Existing tokens are not
+Policies apply to new authorization codes, including pending sign-ins, and to OAuth error
+callbacks. A rejected callback is not offered as a redirect or return link. Existing tokens are not
 revoked by editing a host allowlist. Remove the client if its existing access must end.
 
 ## Inventory and remove a client
@@ -51,3 +52,12 @@ Inventory alone cannot establish exploitation: correlate suspicious clients with
 token-issuance and usage logs. Legitimate hosted integrations may have external redirect domains.
 Do not delete all external clients without checking their owners and usage. These controls do not
 retroactively reconstruct missing logs or prove that no prior misuse occurred.
+
+## Reverse proxies and rate limits
+
+Registration and token limits use the direct peer address unless the peer is loopback. A local
+reverse proxy must overwrite `X-Forwarded-For` with the connection's client address or append
+that address as the rightmost entry. MCP uses only that rightmost entry, validates it as an IP
+literal, and canonicalizes it before counting requests. Invalid entries fall back to the peer;
+headers from non-loopback peers are ignored. Never forward a client-supplied header unchanged.
+With additional proxy hops, requests may share the last proxy's quota. Limits remain per server.

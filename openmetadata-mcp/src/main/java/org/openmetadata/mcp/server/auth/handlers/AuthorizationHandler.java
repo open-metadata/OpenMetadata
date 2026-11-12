@@ -13,6 +13,8 @@ import org.openmetadata.mcp.auth.OAuthAuthorizationServerProvider;
 import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.server.auth.model.AuthorizationErrorResponse;
 import org.openmetadata.mcp.server.auth.util.UriUtils;
+import org.openmetadata.service.security.McpClientPolicy;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 @Slf4j
 public class AuthorizationHandler {
@@ -168,6 +170,12 @@ public class AuthorizationHandler {
         new AuthorizationErrorResponse(error, errorDescription, state);
 
     if (redirectUri != null) {
+      try {
+        new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+            .validateRedirect(redirectUri);
+      } catch (IllegalArgumentException e) {
+        return new AuthorizationResponse(null, false, errorResponse);
+      }
       // Redirect with error parameters. RFC 9207 requires "iss" on error responses too. A remote
       // web callback gets the same URL as a link to click, not a redirect.
       String redirectUrl =

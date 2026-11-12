@@ -124,6 +124,26 @@ class UserSSOOAuthProviderTest {
   }
 
   @Test
+  void handleSSOErrorCallback_rechecksPolicyAfterSignInStarted() throws Exception {
+    var pendingRepo = mock(McpPendingAuthRequestRepository.class);
+    var clientRepo = mock(OAuthClientRepository.class);
+    when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    stubRegisteredClient(clientRepo);
+    var provider = newProvider(pendingRepo, clientRepo, ISSUER);
+    var response = mock(HttpServletResponse.class);
+    captureHtmlResponse(response);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withAllowedRedirectHosts(Set.of("trusted.example")));
+      assertThrows(
+          IllegalStateException.class,
+          () -> provider.handleSSOErrorCallback(response, AUTH_REQUEST_ID, "login_required", null));
+    }
+    verifyNoInteractions(response);
+  }
+
+  @Test
   void handleSSOErrorCallback_buildsErrorRedirectWithAllParams() throws Exception {
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
