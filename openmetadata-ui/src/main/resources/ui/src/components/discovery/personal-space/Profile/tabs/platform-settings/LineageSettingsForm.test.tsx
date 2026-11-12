@@ -17,6 +17,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
 import {
   LineageLayer,
@@ -162,6 +163,39 @@ describe('LineageSettingsForm', () => {
       page: 'lineage',
       isEditing: false,
     });
+  });
+
+  it('read-only view offers Reload, not Edit, when the settings fail to load', async () => {
+    (getSettingsByType as jest.Mock)
+      .mockRejectedValueOnce(new Error('unavailable'))
+      .mockResolvedValueOnce(STORED);
+    const onSetHeaderActions = jest.fn();
+
+    render(
+      <LineageSettings
+        onNavigate={onNavigate}
+        onSetHeaderActions={onSetHeaderActions}
+      />
+    );
+    const reload = await screen.findByRole('button', { name: 'label.reload' });
+
+    expect(
+      screen.queryByTestId('upstream-depth-value')
+    ).not.toBeInTheDocument();
+
+    const { container } = render(
+      <>{onSetHeaderActions.mock.calls.at(-1)?.[0]}</>
+    );
+
+    expect(
+      within(container).queryByTestId('edit-button')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(reload);
+
+    expect(await screen.findByTestId('upstream-depth-value')).toHaveTextContent(
+      '2'
+    );
   });
 
   it('read-only view shows the stored settings with readable labels', async () => {
