@@ -1,7 +1,7 @@
 # Dequeue alerts compare main before attributing failures
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (required gates and bounded baseline lookup)
+- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (required gates and bounded baseline lookup) · v3 2026-11-12 (shared assessment and explicit build evidence gap)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** reviewer
 - **Related:** ADR:2026-11-09-dequeue-alerts-separate-observed-causes-from-attribution
@@ -40,7 +40,11 @@ Global Playwright errors remain unresolved evidence. A consumer job's checkout d
 the revisions of downloaded build bundles, distributions or generated models. These jobs remain
 unknown until producer provenance is available; their failed test names are still shown.
 
-Both destinations lead with `PR vs. main`. A blue circle marks a likely PR/merge-group error, a
+Both destinations show `PR vs. main` once, before the failed jobs. When jobs share an assessment,
+show that assessment and its reason once. Otherwise, show the differing evidence as `Comparison`
+under each job. Each job keeps its own baseline link and failed tests. An unverified downloaded
+build explicitly names the missing source revisions as the reason for unknown attribution.
+A blue circle marks a likely PR/merge-group error, a
 siren marks any confirmed main failure, and a warning marks unknown attribution. Failed test
 names and links remain visible. Neither destination includes a Next steps or What happened section.
 Only main failures receive RCA. RCA uses a fixed description of the observed failure and links

@@ -48,6 +48,9 @@ class Snapshot:
     job: dict
     tests: dict[str, Test]
     environment: tuple
+    unverified_reason: str = (
+        "the tested build or workflow revisions could not be verified."
+    )
 
 
 @dataclass(frozen=True)
@@ -465,7 +468,13 @@ class Evidence:
                 for step in job.get("steps", [])
             )
         ):
-            return Snapshot(run, job, tests, ())
+            return Snapshot(
+                run,
+                job,
+                tests,
+                (),
+                "the source revisions of the downloaded build were not verified.",
+            )
         workflow = run["path"].split("@", 1)[0]
         if not re.fullmatch(r"\.github/workflows/[\w.-]+\.ya?ml", workflow):
             raise ValueError("Invalid workflow path")
@@ -601,7 +610,7 @@ class Evidence:
             return Diagnosis("Unknown — the failing job recorded no failed tests.")
         if not candidate.environment:
             return Diagnosis(
-                "Unknown — the tested build or workflow revisions could not be verified.",
+                f"Unknown — {candidate.unverified_reason}",
                 failures,
             )
         try:

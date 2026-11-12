@@ -325,23 +325,28 @@ def report(
         for comparison in attributed
     )
     icon = "🚨" if main_failure else "🔵" if pr_failure else "⚠️"
-    rows = []
-    if len(attributed) != 1:
+    assessments = {comparison.comparison for comparison in attributed}
+    if not attributed:
+        assessment = "Unknown — no completed required failing job could be compared."
+    elif len(assessments) == 1:
+        assessment = next(iter(assessments))
+    else:
         assessment = (
-            "Main failures confirmed; see each workflow below."
+            "Main failures confirmed; see each job below."
             if main_failure
             else "Likely PR/merge-group error."
             if pr_failure
-            else "Unknown — no single confirmed attribution."
+            else "Unknown — see the comparison evidence for each failed job."
         )
-        rows.append([f"PR vs. main: {assessment}"])
+    rows = [[f"PR vs. main: {assessment}"]]
     for index, entry in enumerate(entries):
+        rows.append(entry)
         if index < len(comparisons) and comparisons[index] is not None:
             comparison = comparisons[index]
-            line = [f"PR vs. main: {comparison.comparison}"]
+            if len(assessments) > 1:
+                rows.append([f"Comparison: {comparison.comparison}"])
             if comparison.baseline_url:
-                line += [" ", ("Main baseline", comparison.baseline_url)]
-            rows.append(line)
+                rows.append([("Main baseline", comparison.baseline_url)])
             rows += [
                 [f"Failed test: {test.name[:500]}"] for test in comparison.failures[:5]
             ]
@@ -365,7 +370,6 @@ def report(
                     )
                 else:
                     rows.append([f"Introducing commit: {note}."])
-        rows.append(entry)
     if summary:
         rows.append([summary])
     shown_tests = {
