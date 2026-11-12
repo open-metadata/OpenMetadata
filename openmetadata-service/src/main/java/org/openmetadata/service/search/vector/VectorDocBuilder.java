@@ -1086,7 +1086,7 @@ public class VectorDocBuilder {
    * fields flattened depth-first as dotted paths so a term that only appears on a nested field
    * still reaches the embedded and lexical text. Empty for any other entity or a schema-less topic.
    */
-  static String schemaFieldsText(EntityInterface<?> entity) {
+  static String schemaFieldsText(EntityInterface entity) {
     List<String> entries = new ArrayList<>();
     if (entity instanceof Topic topic && topic.getMessageSchema() != null) {
       appendSchemaFields(entries, null, topic.getMessageSchema().getSchemaFields());
