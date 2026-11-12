@@ -40,10 +40,13 @@ class OpenSearchMemoryListingAnchorsTest {
   @Test
   void matchingAnchorsUseListingTextAssetAndStatusAcrossCompositePages() throws Exception {
     List<SearchRequest> requests = new ArrayList<>();
+    List<Map<String, FieldValue>> cursors = new ArrayList<>();
     when(client.search(any(SearchRequest.class), eq(JsonData.class)))
         .thenAnswer(
             invocation -> {
-              requests.add(invocation.getArgument(0));
+              SearchRequest request = invocation.getArgument(0);
+              requests.add(request);
+              cursors.add(Map.copyOf(request.aggregations().get(FIELD).composite().after()));
               return page(requests.size() == 1 ? "first" : "last", requests.size() == 1, false, 0);
             });
     var listing =
@@ -76,10 +79,8 @@ class OpenSearchMemoryListingAnchorsTest {
     assertFalse(query.contains("Private"));
     assertTrue(requests.stream().allMatch(request -> request.size() == 0));
     assertEquals(100, requests.getFirst().aggregations().get(FIELD).composite().size());
-    assertTrue(requests.getFirst().aggregations().get(FIELD).composite().after().isEmpty());
-    assertEquals(
-        "first",
-        requests.getLast().aggregations().get(FIELD).composite().after().get(FIELD).stringValue());
+    assertTrue(cursors.getFirst().isEmpty());
+    assertEquals("first", cursors.getLast().get(FIELD).stringValue());
   }
 
   @Test
