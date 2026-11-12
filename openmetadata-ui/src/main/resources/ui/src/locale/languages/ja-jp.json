@@ -6770,7 +6770,6 @@
     "workflow-empty-description": "何かが変化した瞬間に反応する、イベントベースまたはスケジュールされたワークフローを構築します。一度設定すれば、あとはOpenMetadataが処理します。",
     "workflow-fqn-required": "ワークフローFQNが必要です",
     "workflow-id-required": "ワークフローIDが必要です",
-    "workflow-name-cannot-change-after-create": "名前はワークフローの一意の識別子であり、作成後は変更できません。",
     "workflow-name-invalid-characters": "ワークフロー名には英数字、ハイフン、アンダースコアのみ使用できます",
     "workflow-name-max-length": "ワークフロー名は最大{{count}}文字までです",
     "workflow-name-min-length": "ワークフロー名は少なくとも{{count}}文字必要です",

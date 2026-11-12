@@ -6770,7 +6770,6 @@
     "workflow-empty-description": "گردش‌های کاری مبتنی بر رویداد یا زمان‌بندی‌شده بسازید که در لحظه‌ای که چیزی تغییر می‌کند واکنش نشان دهند. یک بار تنظیم کنید و بقیه را OpenMetadata انجام می‌دهد.",
     "workflow-fqn-required": "FQN جریان کار الزامی است",
     "workflow-id-required": "شناسه جریان کار الزامی است",
-    "workflow-name-cannot-change-after-create": "نام شناسه یکتای گردش کار است و پس از ایجاد آن قابل تغییر نیست.",
     "workflow-name-invalid-characters": "نام جریان کاری فقط می‌تواند شامل کاراکترهای الفبایی-عددی، خط تیره و خط زیر باشد",
     "workflow-name-max-length": "نام جریان کاری باید حداکثر {{count}} کاراکتر باشد",
     "workflow-name-min-length": "نام جریان کاری باید حداقل {{count}} کاراکتر باشد",

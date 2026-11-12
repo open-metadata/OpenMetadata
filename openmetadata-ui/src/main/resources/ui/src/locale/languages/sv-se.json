@@ -6770,7 +6770,6 @@
     "workflow-empty-description": "Skapa händelsebaserade eller schemalagda arbetsflöden som svarar i samma stund som något förändras. Ställ in det en gång, så sköter OpenMetadata resten.",
     "workflow-fqn-required": "Arbetsflödets FQN krävs",
     "workflow-id-required": "Arbetsflödets ID krävs",
-    "workflow-name-cannot-change-after-create": "Namnet är arbetsflödets unika identifierare och kan inte ändras efter att arbetsflödet har skapats.",
     "workflow-name-invalid-characters": "Arbetsflödets namn får endast innehålla alfanumeriska tecken, bindestreck och understreck",
     "workflow-name-max-length": "Arbetsflödets namn får vara högst {{count}} tecken",
     "workflow-name-min-length": "Arbetsflödets namn måste vara minst {{count}} tecken",
