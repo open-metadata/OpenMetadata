@@ -39,8 +39,8 @@ import {
   findOntologyInScopeMenu,
   openExportAdvanced,
   openOntologyTransfer,
+  openReleaseHistory,
   readNodePositions,
-  releaseNameContaining,
 } from '../../utils/ontologyStudio';
 import { waitForSearchIndexed } from '../../utils/polling';
 
@@ -156,12 +156,8 @@ const activateRelease = async (
   );
   expect(state.activeReleaseId).toBe(release.id);
   expect(state.activationRevision).toBe(expectedRevision + 1);
-  await expect(
-    page.getByTestId('ontology-release-history-trigger')
-  ).toHaveAccessibleName(
-    releaseNameContaining(
-      release.semanticVersion ?? String(release.releaseRevision)
-    )
+  await expect(page.getByTestId('ontology-version-published')).toContainText(
+    release.semanticVersion ?? String(release.releaseRevision)
   );
   if (action === 'publish') {
     await expect(page.getByTestId('ontology-release-stage')).toContainText(
@@ -874,7 +870,7 @@ test.describe(
 
         const [firstRelease] = releases;
         await author.reload();
-        await author.getByTestId('ontology-release-history-trigger').click();
+        await openReleaseHistory(author);
         await expect(
           author.getByTestId('ontology-publication-tab-releases')
         ).toHaveAttribute('aria-selected', 'true');
@@ -1016,7 +1012,7 @@ test.describe(
           );
           const download = await downloaded;
           expect(download.suggestedFilename()).toBe(
-            `${name}-release-${firstRelease.releaseRevision}.${extension}`
+            `${name.replaceAll('_', '-')}.${extension}`
           );
           const path = testInfo.outputPath(download.suggestedFilename());
           await download.saveAs(path);
@@ -1363,6 +1359,8 @@ test(
       await expect(
         page.getByTestId('ontology-concept-inspector')
       ).toContainText('A customer buys products.');
+      // The concept drawer covers the header's right, publication trigger included.
+      await page.getByTestId('ontology-concept-close').click();
       await page.getByTestId('ontology-publication-trigger').click();
       const captured = page.waitForResponse(
         (response) =>
@@ -1582,16 +1580,16 @@ test.describe(
           author.getByTestId('ontology-publication-modal')
         ).toHaveCount(0);
         await expect(
-          author.getByTestId('ontology-release-history-trigger')
-        ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
+          author.getByTestId('ontology-version-published')
+        ).toContainText('v0.1.0');
         await author.getByTestId('ontology-version-published').click();
         await expect(author).toHaveURL(/version=published/);
         await expect(
           author.getByTestId('ontology-version-published')
         ).toHaveAttribute('aria-pressed', 'true');
         await expect(
-          author.getByTestId('ontology-release-history-trigger')
-        ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
+          author.getByTestId('ontology-version-published')
+        ).toContainText('v0.1.0');
         expect(loads).toBe(0);
         await g6Shot(author, testInfo, 'published');
       } finally {
@@ -2247,7 +2245,7 @@ const resolveReview = async (
 const openReleases = async (page: Page, ontology: Ontology) => {
   await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-  await page.getByTestId('ontology-release-history-trigger').click();
+  await openReleaseHistory(page);
   await expect(page.getByTestId('ontology-release-history')).toBeVisible();
 };
 

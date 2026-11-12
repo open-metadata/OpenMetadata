@@ -802,6 +802,8 @@ for (const mode of ['classic', 'ai'] as const) {
         });
 
         await test.step('switching mode', async () => {
+          // Second's drawer covers the header's Add concept.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-add-concept').click();
           await page.getByTestId('new-class-label').fill('Unsaved again');
           await page.getByTestId('mode-tab-view').click();

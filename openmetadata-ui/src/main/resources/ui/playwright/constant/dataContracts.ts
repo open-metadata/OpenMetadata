@@ -535,6 +535,9 @@ description:
   purpose: This is a draft contract under review.
 `;
 
+// ODCS v3.1.0 SLA properties allow no timezone key; an availability time carries its timezone in valueExt.
+export const ODCS_SLA_TIMEZONE = 'GMT-05:00 (America/New York)';
+
 export const ODCS_VALID_WITH_TIMESTAMPS_YAML = `apiVersion: v3.1.0
 kind: DataContract
 id: timestamp-contract
@@ -547,14 +550,12 @@ slaProperties:
   - property: freshness
     value: "6"
     unit: hour
-    timezone: GMT+00:00 UTC
   - property: latency
     value: "15"
     unit: minute
-  - property: availability
-    value: "99.9"
-    unit: percent
-    timezone: GMT-05:00 America/New_York
+  - property: availabilityTime
+    value: "09:00"
+    valueExt: "${ODCS_SLA_TIMEZONE}"
 `;
 
 export const ODCS_VALID_QUALITY_RULES_YAML = `apiVersion: v3.1.0

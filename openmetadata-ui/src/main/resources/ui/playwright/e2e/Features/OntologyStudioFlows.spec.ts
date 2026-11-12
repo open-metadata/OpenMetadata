@@ -34,8 +34,8 @@ import {
   findEmptyCanvasPoint,
   openOntologyInStudio,
   openPageAs,
+  openReleaseHistory,
   readNodePositions,
-  releaseNameContaining,
   removeFlowOntologies,
   STUDIO_PATH,
 } from '../../utils/ontologyStudio';
@@ -587,8 +587,8 @@ test.describe(
           await page.getByTestId('ontology-version-published').click();
           await expect(page).toHaveURL(/version=published/);
           await expect(
-            page.getByTestId('ontology-release-history-trigger')
-          ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
+            page.getByTestId('ontology-version-published')
+          ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId(`ontology-tree-term-${actors.concept.id}`)
@@ -701,10 +701,8 @@ test.describe(
           await author.getByTestId('mode-tab-view').click();
           await author.getByTestId('ontology-version-published').click();
           await expect(
-            author.getByTestId('ontology-release-history-trigger')
-          ).toHaveAccessibleName(
-            releaseNameContaining(`v${release.semanticVersion}`)
-          );
+            author.getByTestId('ontology-version-published')
+          ).toContainText(`v${release.semanticVersion}`);
           await attachStudioShot(author, testInfo, `p1-reviewed-${mode}`);
         } finally {
           await actors.cleanup();
@@ -977,9 +975,13 @@ test.describe(
 
           await useMode(page, mode);
           await openOntologyInStudio(page, ontology.id);
-          await page.getByTestId('ontology-release-history-trigger').click();
+          await openReleaseHistory(page);
           await expect(page.getByTestId('ontology-release-row')).toHaveCount(2);
 
+          // AI mode keeps Compare on its own screen behind the history toolbar.
+          if (mode === 'ai') {
+            await page.getByTestId('ontology-release-compare-open').click();
+          }
           await page
             .getByRole('button', { name: 'From version', exact: true })
             .click();
@@ -999,6 +1001,9 @@ test.describe(
           );
           await attachStudioShot(page, testInfo, `p1-history-compare-${mode}`);
 
+          if (mode === 'ai') {
+            await page.getByTestId('ontology-release-compare-back').click();
+          }
           await page.getByTestId(`ontology-release-select-${first.id}`).click();
           const activation = page.waitForResponse(isActivation(ontology.id));
           await page.getByTestId('ontology-rollback-release').click();
@@ -1015,8 +1020,8 @@ test.describe(
           await page.getByTestId('mode-tab-view').click();
           await page.getByTestId('ontology-version-published').click();
           await expect(
-            page.getByTestId('ontology-release-history-trigger')
-          ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
+            page.getByTestId('ontology-version-published')
+          ).toContainText('v0.1.0');
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId('ontology-tree-term-' + concepts[0].id)

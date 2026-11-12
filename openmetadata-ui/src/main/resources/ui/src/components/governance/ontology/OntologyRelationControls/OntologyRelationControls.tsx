@@ -11,54 +11,26 @@
  *  limitations under the License.
  */
 
-import {
-  ButtonUtility,
-  Dialog,
-  Modal,
-  ModalOverlay,
-} from '@openmetadata/ui-core-components';
+import { ButtonUtility } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { OntologyModelRelation } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { InspectorRemoveButton } from '../../../OntologyExplorer/OntologyInspectorSection';
-import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
-import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
-import { useRelationWarning } from '../../../OntologyExplorer/RelationWarning.context';
 
 interface OntologyRelationControlsProps {
-  readonly relation: OntologyModelRelation;
-  readonly groups: RelationTypeOptionGroup[];
-  readonly canCreateRelationType: boolean;
-  /** The reason the relation cannot take this type, or undefined. */
-  readonly checkType: (typeId: string) => string | undefined;
-  readonly onEdit: (typeId: string) => Promise<boolean>;
+  /** Opens the inline edit form, the same one Add uses. */
+  readonly onEdit: () => void;
   readonly onDelete: () => Promise<boolean>;
 }
 
-/** Edit and delete for one relationship, shared by the concept inspector and the edge detail. */
+/** Edit and delete for one relationship row in the concept panel. */
 const OntologyRelationControls = ({
-  relation,
-  groups,
-  canCreateRelationType,
-  checkType,
   onEdit,
   onDelete,
 }: OntologyRelationControlsProps) => {
   const { t } = useTranslation();
-  const [isPicking, setIsPicking] = useState(false);
   const [isBusy, setIsBusy] = useState(false);
-  const warnRelation = useRelationWarning();
 
-  const change = async (typeId: string) => {
-    setIsBusy(true);
-    const isChanged = await onEdit(typeId);
-    setIsBusy(false);
-    if (isChanged) {
-      setIsPicking(false);
-    }
-  };
   const remove = async () => {
     setIsBusy(true);
     await onDelete();
@@ -73,7 +45,7 @@ const OntologyRelationControls = ({
         isDisabled={isBusy}
         size="sm"
         tooltip={t('label.edit-entity', { entity: t('label.relationship') })}
-        onClick={() => setIsPicking(true)}
+        onClick={onEdit}
       />
       <InspectorRemoveButton
         isDisabled={isBusy}
@@ -81,37 +53,6 @@ const OntologyRelationControls = ({
         testId="ontology-relation-delete"
         onRemove={() => void remove()}
       />
-      <ModalOverlay
-        isDismissable
-        isOpen={isPicking}
-        onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setIsPicking(false);
-          }
-        }}>
-        <Modal>
-          <Dialog
-            aria-label={t('label.edit-entity', {
-              entity: t('label.relationship'),
-            })}
-            width={320}
-            onClose={() => setIsPicking(false)}>
-            <RelationshipTypePicker
-              canCreateType={canCreateRelationType}
-              checkRelation={checkType}
-              groups={groups}
-              sourceLabel={getEntityName(relation.from)}
-              targetLabel={getEntityName(relation.to)}
-              warnRelation={(typeId) =>
-                warnRelation?.(relation.from.id, relation.to.id, typeId) ??
-                Promise.resolve(undefined)
-              }
-              onCancel={() => setIsPicking(false)}
-              onSelect={(typeId) => void change(typeId)}
-            />
-          </Dialog>
-        </Modal>
-      </ModalOverlay>
     </>
   );
 };

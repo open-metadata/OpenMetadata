@@ -2071,7 +2071,8 @@ const OntologyExplorerContent: React.FC = () => {
 
     return (
       <div
-        className="tw:w-52 tw:shrink tw:empty:hidden"
+        // As wide as the search field it hosts (w-54), so it never runs into the next button.
+        className="tw:w-54 tw:shrink tw:empty:hidden"
         data-testid="ontology-canvas-search-slot"
         ref={setSearchSlot}
       />
