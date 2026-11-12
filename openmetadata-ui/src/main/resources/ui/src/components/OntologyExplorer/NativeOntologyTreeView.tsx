@@ -136,7 +136,9 @@ const anchorAfterToggle = (
     !isExpanded &&
     anchor !== undefined &&
     anchor.frames.length > path.length &&
-    path.every((conceptId, depth) => anchor.frames[depth]?.conceptId === conceptId);
+    path.every(
+      (conceptId, depth) => anchor.frames[depth]?.conceptId === conceptId
+    );
 
   return hidesAnchor ? nativeTreeCursorForPath(index, path) : anchor;
 };
