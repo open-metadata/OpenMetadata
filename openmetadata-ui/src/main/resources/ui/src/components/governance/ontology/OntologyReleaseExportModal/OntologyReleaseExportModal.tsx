@@ -55,6 +55,8 @@ interface OntologyReleaseExportModalProps {
   readonly onClose: () => void;
   readonly canImport?: boolean;
   readonly onApplied?: () => void;
+  /** The tab the dialog opens on; Import falls back to Export without import rights. */
+  readonly initialTab?: 'export' | 'import';
 }
 
 const OntologyReleaseExportModal = ({
@@ -62,6 +64,7 @@ const OntologyReleaseExportModal = ({
   onClose,
   canImport = false,
   onApplied,
+  initialTab = 'export',
 }: OntologyReleaseExportModalProps) => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
@@ -71,7 +74,9 @@ const OntologyReleaseExportModal = ({
     options: ONTOLOGY_RELEASE_EXPORT_DEFAULTS,
     skosXl: false,
   });
-  const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+  const [activeTab, setActiveTab] = useState<'export' | 'import'>(
+    initialTab === 'import' && canImport ? 'import' : 'export'
+  );
   const [scopeChoice, setScopeChoice] = useState<string>();
   const format = resolveExportFormat(selection.card, selection.skosXl);
   const contentOptions = resolveContentOptions(selection);

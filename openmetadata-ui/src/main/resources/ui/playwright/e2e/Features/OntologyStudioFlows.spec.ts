@@ -35,6 +35,7 @@ import {
   openOntologyInStudio,
   openPageAs,
   readNodePositions,
+  releaseNameContaining,
   removeFlowOntologies,
   STUDIO_PATH,
 } from '../../utils/ontologyStudio';
@@ -389,7 +390,6 @@ test.describe(
           .getByRole('textbox', { name: 'Description' });
         const startEditing = async (id: string, text: string) => {
           await clickGraphNode(page, id);
-          await page.getByTestId('ontology-concept-edit').click();
           await description.fill(text);
         };
         try {
@@ -421,10 +421,10 @@ test.describe(
 
           await page.getByTestId('mode-tab-edit').click();
           await startEditing(first.id, 'Unsaved third');
-          await page.getByTestId('ontology-concept-authoring-close').click();
+          await page.getByTestId('ontology-concept-close').click();
           await answer('Cancel');
           await expect(description).toHaveValue('Unsaved third');
-          await page.getByTestId('ontology-concept-authoring-close').click();
+          await page.getByTestId('ontology-concept-close').click();
           await answer('Discard');
           await expect(page.getByTestId('ontology-concept-editor')).toHaveCount(
             0
@@ -585,7 +585,7 @@ test.describe(
           await expect(page).toHaveURL(/version=published/);
           await expect(
             page.getByTestId('ontology-release-history-trigger')
-          ).toContainText('v0.1.0');
+          ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId(`ontology-tree-term-${actors.concept.id}`)
@@ -699,7 +699,9 @@ test.describe(
           await author.getByTestId('ontology-version-published').click();
           await expect(
             author.getByTestId('ontology-release-history-trigger')
-          ).toContainText(`v${release.semanticVersion}`);
+          ).toHaveAccessibleName(
+            releaseNameContaining(`v${release.semanticVersion}`)
+          );
           await attachStudioShot(author, testInfo, `p1-reviewed-${mode}`);
         } finally {
           await actors.cleanup();
@@ -714,7 +716,6 @@ test.describe(
     ) => {
       await page.getByTestId('submode-tab-tree').click();
       await page.getByTestId(`ontology-tree-term-${conceptId}`).click();
-      await page.getByTestId('ontology-concept-edit').click();
       await page
         .getByTestId('ontology-concept-editor')
         .getByRole('textbox', { name: 'Description' })
@@ -1012,7 +1013,7 @@ test.describe(
           await page.getByTestId('ontology-version-published').click();
           await expect(
             page.getByTestId('ontology-release-history-trigger')
-          ).toContainText('v0.1.0');
+          ).toHaveAccessibleName(releaseNameContaining('v0.1.0'));
           await page.getByTestId('submode-tab-tree').click();
           await expect(
             page.getByTestId('ontology-tree-term-' + concepts[0].id)

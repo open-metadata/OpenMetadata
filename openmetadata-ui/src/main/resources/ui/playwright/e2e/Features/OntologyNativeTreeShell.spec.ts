@@ -192,17 +192,22 @@ test.describe(
             'ontology-library-trigger',
             'ontology-import-export-trigger',
             'ontology-publication-trigger',
-            'ontology-tasks-trigger',
           ];
           for (const id of controls) {
             await expect(header.getByTestId(id)).toBeVisible();
           }
-          const isolated = header.getByText('1 Isolated', { exact: true });
-          await expect(isolated).toBeVisible();
+          // AI mode puts Tasks in the row under the header and the isolated count in the health card.
+          const tasks = page
+            .getByTestId('ontology-studio-subbar')
+            .getByTestId('ontology-tasks-trigger');
+          await expect(tasks).toBeVisible();
+          await expect(page.getByTestId('ontology-isolated-count')).toHaveText(
+            '1'
+          );
           const bounds = await header.boundingBox();
           expect(bounds).not.toBeNull();
           const boxes = await Promise.all(
-            [...controls.map((id) => header.getByTestId(id)), isolated].map(
+            [...controls.map((id) => header.getByTestId(id)), tasks].map(
               (control) => control.boundingBox()
             )
           );
@@ -296,11 +301,12 @@ test.describe(
               await expect(shell.getByTestId('mode-tab-query')).toHaveText(
                 'Query'
               );
+              // The header names the Studio in its title; it carries no breadcrumb.
               await expect(
                 shell
                   .getByTestId('ontology-studio-header')
-                  .getByTestId('breadcrumb')
-              ).toContainText('Ontology Studio');
+                  .getByRole('heading', { level: 1 })
+              ).toHaveText('Ontology Studio');
 
               await expectNativeStudioCopy(shell);
               await shell.getByTestId('ontology-scope-menu-trigger').click();
@@ -342,6 +348,9 @@ test.describe(
             await page.getByTestId('ontology-library-close').click();
 
             await shell.getByTestId('ontology-import-export-trigger').click();
+            if (scope !== 'aggregate') {
+              await page.getByTestId('ontology-export-menu-item').click();
+            }
             if (scope === 'aggregate') {
               const target = page.getByTestId('ontology-import-target-picker');
               await expect(target).toContainText('Select Ontology');

@@ -17,16 +17,17 @@ import {
   Box,
   Button,
   ButtonUtility,
+  Dropdown,
   ProgressBarBase,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  ArrowLeft,
   BookClosed,
+  ChevronDown,
   ChevronRight,
   Edit01,
-  Plus,
+  Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useMemo, useState } from 'react';
@@ -34,7 +35,6 @@ import { useTranslation } from 'react-i18next';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getInverseRelationLabel } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
@@ -50,16 +50,21 @@ import {
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import {
-  InspectorEmptyText,
   InspectorList,
   InspectorRow,
-  InspectorSection,
-  InspectorSectionHeading,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
+import {
+  ConceptEditorFields,
+  ConceptEditorFooter,
+  ConceptEditorMappings,
+  ConceptEditorProvider,
+  OntologyConceptEditorState,
+} from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
+import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
 import OntologyConceptLiveData, {
@@ -112,6 +117,10 @@ interface OntologyConceptInspectorProps {
   readonly isEditing?: boolean;
   readonly onOpenData: () => void;
   readonly onSelectConcept: (concept: OntologyConcept) => void;
+  /** Given in Edit mode: the concept's own fields edit in place with a Save bar. */
+  readonly editor?: OntologyConceptEditorState;
+  /** Edit mode could not load the concept's working copy, so it stays read-only. */
+  readonly isEditorUnavailable?: boolean;
 }
 
 interface RelationAuthoringProps {
@@ -122,7 +131,6 @@ interface RelationAuthoringProps {
   readonly isOpen: boolean;
   readonly model: OntologyStudioModel;
   readonly onClose: () => void;
-  readonly onOpen: () => void;
   readonly onSave: (targetId: string, relationType: string) => Promise<boolean>;
   /** The reason the relation cannot be written, or undefined; shown before any write. */
   readonly check?: (
@@ -161,12 +169,10 @@ const RelationAuthoring = ({
   isOpen,
   model,
   onClose,
-  onOpen,
   onSave,
   check,
 }: RelationAuthoringProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const [targetId, setTargetId] = useState('');
   const [relationType, setRelationType] = useState('');
   const [isSaving, setIsSaving] = useState(false);
@@ -285,60 +291,8 @@ const RelationAuthoring = ({
   if (!isAvailable) {
     return null;
   }
-  if (isAiMode) {
-    return isOpen ? renderAiForm() : null;
-  }
-  if (!isOpen) {
-    return (
-      <Button
-        color="secondary"
-        data-testid="ontology-add-relationship"
-        iconLeading={Plus}
-        size="xs"
-        onPress={onOpen}>
-        {t('label.add-entity', { entity: t('label.relationship') })}
-      </Button>
-    );
-  }
 
-  return (
-    <Box
-      className="tw:rounded-lg tw:border tw:border-dashed tw:border-brand tw:bg-secondary tw:p-3"
-      direction="col"
-      gap={3}>
-      {relationType ? (
-        <>
-          <Box align="center" gap={2}>
-            <Badge color="brand" size="sm" type="pill-color">
-              {relationLabel}
-            </Badge>
-            {changeTypeButton}
-          </Box>
-          {targetSelect}
-          {issueMessage}
-          <Box gap={2}>
-            <Button
-              data-testid="ontology-relationship-submit"
-              isDisabled={!targetId || Boolean(issue)}
-              isLoading={isSaving}
-              size="xs"
-              onPress={() => void save()}>
-              {t('label.add')}
-            </Button>
-            <Button
-              color="secondary"
-              isDisabled={isSaving}
-              size="xs"
-              onPress={onClose}>
-              {t('label.cancel')}
-            </Button>
-          </Box>
-        </>
-      ) : (
-        typePicker
-      )}
-    </Box>
-  );
+  return isOpen ? renderAiForm() : null;
 };
 
 const OntologyConceptInspector = ({
@@ -364,10 +318,12 @@ const OntologyConceptInspector = ({
   isEditing = false,
   onOpenData,
   onSelectConcept,
+  editor,
+  isEditorUnavailable,
 }: OntologyConceptInspectorProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const bindings = useOntologyConceptBindings(concept.id);
   let liveDataBindingState: LiveDataBindingState = 'loading';
   if (bindings.data) {
@@ -523,7 +479,6 @@ const OntologyConceptInspector = ({
         key={concept.id}
         reusable={reusableProperties}
         onClose={() => setAuthoring(undefined)}
-        onOpen={() => setAuthoring('property')}
         onSave={onAddProperty}
       />
     ) : null;
@@ -584,7 +539,6 @@ const OntologyConceptInspector = ({
         key={concept.id}
         model={model}
         onClose={() => setAuthoring(undefined)}
-        onOpen={() => setAuthoring('relation')}
         onSave={onAddRelation}
       />
     ) : null;
@@ -624,42 +578,6 @@ const OntologyConceptInspector = ({
     </InspectorRow>
   );
 
-  const renderProperties = () => (
-    <InspectorSection testId="ontology-concept-properties">
-      <InspectorSectionHeading
-        count={properties.length}
-        label={t('label.property-plural')}
-      />
-      {renderInheritedFrom()}
-      {renderBoundCount()}
-      {properties.length > 0 ? (
-        <InspectorList>{properties.map(renderPropertyRow)}</InspectorList>
-      ) : (
-        <InspectorEmptyText>
-          {t('message.no-data-available')}
-        </InspectorEmptyText>
-      )}
-      {renderPropertyAuthoring()}
-    </InspectorSection>
-  );
-
-  const renderRelationships = () => (
-    <InspectorSection testId="ontology-concept-relationships">
-      <InspectorSectionHeading
-        count={conceptRelations.length}
-        label={t('label.relationship-plural')}
-      />
-      {conceptRelations.length > 0 ? (
-        <InspectorList>{conceptRelations.map(renderRelationRow)}</InspectorList>
-      ) : (
-        <InspectorEmptyText>
-          {t('message.no-data-available')}
-        </InspectorEmptyText>
-      )}
-      {renderRelationAuthoring()}
-    </InspectorSection>
-  );
-
   const renderAiEmpty = (
     entity: string,
     hint = t('message.no-data-available')
@@ -676,7 +594,8 @@ const OntologyConceptInspector = ({
       <Typography
         ellipsis
         className="tw:text-tertiary"
-        size="text-xs"
+        data-testid="ontology-concept-owner"
+        size="text-sm"
         weight="medium">
         {ontologyName}
       </Typography>
@@ -695,36 +614,60 @@ const OntologyConceptInspector = ({
     </Box>
   );
 
-  const renderDeleteButton = (size: 'xs') =>
+  const renderMoreMenu = () =>
     onDelete ? (
-      <Button
-        color="secondary-destructive"
-        data-testid="ontology-concept-delete"
-        size={size}
-        onPress={onDelete}>
-        {t('label.delete')}
-      </Button>
+      <Dropdown.Root>
+        <Dropdown.DotsButton
+          aria-label={t('label.more-actions')}
+          data-testid="ontology-concept-more"
+        />
+        <Dropdown.Popover placement="bottom end">
+          <Dropdown.Menu
+            aria-label={t('label.more-actions')}
+            onAction={(key) => key === 'delete' && onDelete()}>
+            <Dropdown.Item
+              data-testid="ontology-concept-delete"
+              icon={Trash01}
+              id="delete"
+              label={t('label.delete-entity', {
+                entity: t('label.concept'),
+              })}
+              textValue={t('label.delete')}
+            />
+          </Dropdown.Menu>
+        </Dropdown.Popover>
+      </Dropdown.Root>
     ) : null;
 
-  const renderAiHeader = () => (
+  const renderHeader = () => (
     <Box
       className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:pt-5 tw:pb-4"
       direction="col"
       gap={3}>
       <Box align="center" gap={2}>
         {renderAiBreadcrumb()}
-        {onEdit ? (
+        {editor?.isDirty ? (
+          <BadgeWithDot
+            color="warning"
+            data-testid="ontology-concept-unsaved"
+            size="sm"
+            type="pill-color">
+            {t('label.unsaved')}
+          </BadgeWithDot>
+        ) : null}
+        {onEdit && !editor ? (
           <Button
             color="secondary"
             data-testid="ontology-concept-edit"
             iconLeading={Edit01}
-            size="xs"
+            size="sm"
             onPress={onEdit}>
             {t('label.edit')}
           </Button>
         ) : null}
-        {renderDeleteButton('xs')}
+        {renderMoreMenu()}
         <ButtonUtility
+          data-testid="ontology-concept-close"
           icon={XClose}
           size="lg"
           tooltip={t('label.close')}
@@ -736,18 +679,34 @@ const OntologyConceptInspector = ({
           <Typography
             as="h2"
             className="not-prose tw:m-0"
-            size="text-lg"
+            size="text-xl"
             weight="semibold">
             {concept.displayName ?? concept.name}
           </Typography>
           <BadgeWithDot color="brand" size="sm" type="color">
             {humanizeName(concept.conceptType)}
           </BadgeWithDot>
+          {concept.abstract ? (
+            <Badge color="gray" size="sm" type="pill-color">
+              {t('label.abstract')}
+            </Badge>
+          ) : null}
           {concept.provider ? (
             <Badge color="gray" size="sm" type="pill-color">
               {concept.provider}
             </Badge>
           ) : null}
+          <Badge
+            color="gray"
+            data-testid="ontology-concept-lifecycle"
+            size="sm"
+            type="pill-color">
+            {t(
+              concept.lifecycleStatus
+                ? CONCEPT_STATUS_LABELS[concept.lifecycleStatus]
+                : 'label.unavailable'
+            )}
+          </Badge>
         </Box>
         <Typography
           ellipsis
@@ -756,7 +715,7 @@ const OntologyConceptInspector = ({
         </Typography>
       </Box>
       <Box align="center" data-testid="ontology-concept-completeness" gap={3}>
-        <Typography className="tw:shrink-0 tw:text-tertiary" size="text-xs">
+        <Typography className="tw:shrink-0 tw:text-tertiary" size="text-sm">
           {t('label.completeness')}
         </Typography>
         <ProgressBarBase
@@ -766,7 +725,7 @@ const OntologyConceptInspector = ({
         />
         <Typography
           className="tw:shrink-0 tw:text-secondary"
-          size="text-xs"
+          size="text-sm"
           weight="medium">
           {t('message.completed-section-count', {
             count: completedSectionCount,
@@ -783,242 +742,173 @@ const OntologyConceptInspector = ({
   ) =>
     isAvailable && authoring !== kind ? () => setAuthoring(kind) : undefined;
 
-  const renderAiPanel = () => (
-    <aside
-      className="tw:flex tw:h-full tw:w-75 tw:xl:w-105 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
-      data-testid="ontology-concept-inspector">
-      {renderAiHeader()}
-      <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-auto tw:px-6">
+  const renderDescription = () =>
+    editor ? (
+      <Box className="tw:py-5" direction="col">
+        <ConceptEditorFields
+          editor={editor}
+          names={['displayName', 'description', 'conceptType']}
+        />
+      </Box>
+    ) : (
+      <Box className="tw:py-4" direction="col" gap={1}>
         <Typography
           as="p"
-          className="tw:m-0 tw:py-4 tw:text-secondary"
+          className="tw:m-0 tw:text-secondary"
           data-testid="ontology-concept-description"
           size="text-sm">
           {concept.description || t('label.no-description')}
         </Typography>
-        <ConceptSection
-          addTestId="ontology-add-relationship"
-          count={conceptRelations.length}
-          testId="ontology-concept-relationships"
-          title={t('label.relationship-plural')}
-          onAdd={getOpenAuthoring(
-            'relation',
-            Boolean(onAddRelation) && canAddRelation
-          )}>
-          {renderRelationAuthoring()}
-          {conceptRelations.length > 0 ? (
-            <InspectorList>
-              {conceptRelations.map(renderRelationRow)}
-            </InspectorList>
-          ) : (
-            renderAiEmpty(
-              t('label.relationship-plural'),
-              t('message.ontology-relationships-feature-description')
-            )
-          )}
-        </ConceptSection>
-        <ConceptSection
-          addTestId="ontology-add-property"
-          count={properties.length}
-          testId="ontology-concept-properties"
-          title={t('label.property-plural')}
-          onAdd={getOpenAuthoring(
-            'property',
-            Boolean(onAddProperty) && canAddProperty
-          )}>
-          {renderPropertyAuthoring()}
-          {renderInheritedFrom()}
-          {renderBoundCount()}
-          {properties.length > 0 ? (
-            <InspectorList>{properties.map(renderPropertyRow)}</InspectorList>
-          ) : (
-            renderAiEmpty(t('label.property-plural'))
-          )}
-        </ConceptSection>
-        {unavailableProperties.length > 0 ? (
-          <ConceptSection
-            count={unavailableProperties.length}
-            title={t('label.unavailable')}>
-            {renderUnavailableList()}
-          </ConceptSection>
+        {concept.definitionSource ? (
+          <Typography
+            className="tw:break-all tw:text-tertiary"
+            data-testid="ontology-concept-definition-source"
+            size="text-xs">
+            {t('label.definition-source')} · {concept.definitionSource}
+          </Typography>
         ) : null}
-        <ConceptSection
-          addTestId="ontology-add-mapping"
-          count={mappings.length}
-          testId="ontology-concept-mappings"
-          title={t('label.mapping-plural')}
-          onAdd={onEditMappings}>
-          {mappings.length > 0 ? (
-            <InspectorList>{mappings.map(renderMappingRow)}</InspectorList>
+      </Box>
+    );
+
+  const renderSynonyms = () => (
+    <ConceptSection
+      count={concept.synonyms?.length ?? 0}
+      testId="ontology-concept-synonyms"
+      title={t('label.synonym-plural')}>
+      {editor ? (
+        <ConceptEditorFields editor={editor} names={['synonyms']} />
+      ) : (
+        <Box gap={1} wrap="wrap">
+          {concept.synonyms?.length ? (
+            concept.synonyms.map((synonym) => (
+              <Badge key={synonym} size="sm">
+                {synonym}
+              </Badge>
+            ))
           ) : (
-            renderAiEmpty(t('label.mapping-plural'))
+            <Typography className="tw:text-tertiary" size="text-sm">
+              {t('label.none')}
+            </Typography>
           )}
-        </ConceptSection>
-        <OntologyConceptAssets
-          canEdit={canEditBindings}
-          conceptId={concept.id}
-          conceptName={getEntityName(concept)}
-          key={concept.id}
-          presentation={
-            isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
-          }
-          properties={bindableProperties}
-        />
-      </div>
-    </aside>
+        </Box>
+      )}
+    </ConceptSection>
   );
 
-  const renderConceptIdentity = () => (
-    <Box direction="col" gap={2}>
-      <Typography as="h2" size="text-lg" weight="semibold">
-        {concept.displayName ?? concept.name}
-      </Typography>
-      <Typography
-        ellipsis
-        className="tw:font-mono tw:text-xs"
-        color="secondary">
-        {concept.iri}
-      </Typography>
-      <Box gap={2} wrap="wrap">
-        <Badge
-          color="gray"
-          data-testid="ontology-concept-lifecycle"
-          size="sm"
-          type="pill-color">
-          {t(
-            concept.lifecycleStatus
-              ? CONCEPT_STATUS_LABELS[concept.lifecycleStatus]
-              : 'label.unavailable'
-          )}
-        </Badge>
-        <Typography
-          color="secondary"
-          data-testid="ontology-concept-owner"
-          size="text-xs">
-          {getEntityName(model.ontology)}
-        </Typography>
-        <Badge color="brand" size="sm" type="pill-color">
-          {humanizeName(concept.conceptType)}
-        </Badge>
-        {concept.abstract ? (
-          <Badge color="gray" size="sm" type="pill-color">
-            {t('label.abstract')}
-          </Badge>
-        ) : null}
-        {concept.provider ? (
-          <Badge color="gray" size="sm" type="pill-color">
-            {concept.provider}
-          </Badge>
-        ) : null}
-      </Box>
-      <Box gap={1} wrap="wrap">
-        {concept.synonyms?.map((synonym) => (
-          <Badge key={synonym} size="sm">
-            {synonym}
-          </Badge>
-        ))}
-      </Box>
-      {concept.definitionSource ? (
-        <Typography
-          className="tw:break-all"
-          data-testid="ontology-concept-definition-source"
-          size="text-xs">
-          {t('label.definition-source')} · {concept.definitionSource}
-        </Typography>
-      ) : null}
-      <Typography as="p" color="secondary" size="text-sm">
-        {concept.description || t('label.no-description')}
-      </Typography>
-    </Box>
-  );
-
-  const renderClassicPanel = () => (
-    <aside
-      className="tw:flex tw:h-full tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
-      data-testid="ontology-concept-inspector">
-      <Box
-        align="center"
-        className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-        gap={2}>
-        <ButtonUtility
-          icon={ArrowLeft}
-          size="lg"
-          tooltip={t('label.close')}
-          onClick={onClose}
-        />
-        <Typography
-          className="tw:flex-1 tw:uppercase tw:tracking-wide"
-          color="secondary"
-          size="text-xs"
-          weight="semibold">
-          {t('label.concept')}
-        </Typography>
-        {onEdit ? (
-          <Button
-            color="secondary"
-            data-testid="ontology-concept-edit"
-            iconLeading={Edit01}
-            size="xs"
-            onPress={onEdit}>
-            {t('label.edit')}
-          </Button>
-        ) : null}
-        {renderDeleteButton('xs')}
-      </Box>
-
-      <Box
-        className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-4"
-        direction="col"
-        gap={3}>
-        {renderConceptIdentity()}
-
-        {renderProperties()}
-
-        {unavailableProperties.length > 0 && (
-          <InspectorSection>
-            <InspectorSectionHeading
-              count={unavailableProperties.length}
-              label={t('label.unavailable')}
-            />
-            {renderUnavailableList()}
-          </InspectorSection>
+  const renderMappings = () =>
+    editor ? (
+      <section className="tw:py-5" data-testid="ontology-concept-mappings">
+        <ConceptEditorMappings editor={editor} />
+      </section>
+    ) : (
+      <ConceptSection
+        addTestId="ontology-add-mapping"
+        count={mappings.length}
+        testId="ontology-concept-mappings"
+        title={t('label.mapping-plural')}
+        onAdd={onEditMappings}>
+        {mappings.length > 0 ? (
+          <InspectorList>{mappings.map(renderMappingRow)}</InspectorList>
+        ) : (
+          renderAiEmpty(t('label.mapping-plural'))
         )}
+      </ConceptSection>
+    );
 
-        {renderRelationships()}
-
-        <InspectorSection testId="ontology-concept-mappings">
-          <InspectorSectionHeading
-            count={mappings.length}
-            label={t('label.mapping-plural')}
-          />
-          {mappings.length > 0 ? (
-            <InspectorList>{mappings.map(renderMappingRow)}</InspectorList>
+  const renderAdvanced = () => (
+    <section className="tw:py-4" data-testid="ontology-concept-advanced">
+      <Button
+        aria-expanded={isAdvancedOpen}
+        color="link-gray"
+        data-testid="ontology-concept-advanced-toggle"
+        iconLeading={isAdvancedOpen ? ChevronDown : ChevronRight}
+        size="sm"
+        onPress={() => setIsAdvancedOpen((open) => !open)}>
+        {t('label.advanced')}
+      </Button>
+      {isAdvancedOpen ? (
+        <Box className="tw:pt-3" direction="col" gap={3}>
+          {editor ? (
+            <ConceptEditorFields editor={editor} names={['name', 'iri']} />
           ) : (
-            <InspectorEmptyText>
-              {t('message.no-data-available')}
-            </InspectorEmptyText>
+            <dl className="tw:m-0 tw:grid tw:grid-cols-[auto_1fr] tw:gap-x-4 tw:gap-y-2 tw:text-sm">
+              <dt className="tw:text-tertiary">{t('label.name')}</dt>
+              <dd className="tw:m-0 tw:break-all tw:font-mono tw:text-xs">
+                {concept.name}
+              </dd>
+              <dt className="tw:text-tertiary">{t('label.concept-iri')}</dt>
+              <dd className="tw:m-0 tw:break-all tw:font-mono tw:text-xs">
+                {concept.iri}
+              </dd>
+            </dl>
           )}
-          {onEditMappings ? (
-            <Button
-              color="secondary"
-              data-testid="ontology-add-mapping"
-              iconLeading={Plus}
-              size="xs"
-              onPress={onEditMappings}>
-              {t('label.add-entity', { entity: t('label.mapping') })}
-            </Button>
-          ) : null}
-        </InspectorSection>
-        <OntologyConceptAssets
-          canEdit={canEditBindings}
-          conceptId={concept.id}
-          conceptName={getEntityName(concept)}
-          key={concept.id}
-          presentation={
-            isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
-          }
-          properties={bindableProperties}
-        />
+        </Box>
+      ) : null}
+    </section>
+  );
+
+  const renderBody = () => (
+    <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-auto tw:px-6">
+      {renderDescription()}
+      <ConceptSection
+        addTestId="ontology-add-relationship"
+        count={conceptRelations.length}
+        testId="ontology-concept-relationships"
+        title={t('label.relationship-plural')}
+        onAdd={getOpenAuthoring(
+          'relation',
+          Boolean(onAddRelation) && canAddRelation
+        )}>
+        {renderRelationAuthoring()}
+        {conceptRelations.length > 0 ? (
+          <InspectorList>
+            {conceptRelations.map(renderRelationRow)}
+          </InspectorList>
+        ) : (
+          renderAiEmpty(
+            t('label.relationship-plural'),
+            t('message.ontology-relationships-feature-description')
+          )
+        )}
+      </ConceptSection>
+      <ConceptSection
+        addTestId="ontology-add-property"
+        count={properties.length}
+        testId="ontology-concept-properties"
+        title={t('label.property-plural')}
+        onAdd={getOpenAuthoring(
+          'property',
+          Boolean(onAddProperty) && canAddProperty
+        )}>
+        {renderPropertyAuthoring()}
+        {renderInheritedFrom()}
+        {renderBoundCount()}
+        {properties.length > 0 ? (
+          <InspectorList>{properties.map(renderPropertyRow)}</InspectorList>
+        ) : (
+          renderAiEmpty(t('label.property-plural'))
+        )}
+      </ConceptSection>
+      {unavailableProperties.length > 0 ? (
+        <ConceptSection
+          count={unavailableProperties.length}
+          title={t('label.unavailable')}>
+          {renderUnavailableList()}
+        </ConceptSection>
+      ) : null}
+      {renderSynonyms()}
+      {renderMappings()}
+      <OntologyConceptAssets
+        canEdit={canEditBindings}
+        conceptId={concept.id}
+        conceptName={getEntityName(concept)}
+        key={concept.id}
+        presentation={
+          isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
+        }
+        properties={bindableProperties}
+      />
+      <Box className="tw:py-5" direction="col">
         <OntologyConceptLiveData
           bindingState={liveDataBindingState}
           concept={concept}
@@ -1030,10 +920,34 @@ const OntologyConceptInspector = ({
           }
         />
       </Box>
-    </aside>
+      {renderAdvanced()}
+    </div>
   );
 
-  return isAiMode ? renderAiPanel() : renderClassicPanel();
+  return (
+    <OntologyStudioDrawer testId="ontology-concept-inspector">
+      {renderHeader()}
+      {isEditorUnavailable ? (
+        <Typography
+          className="tw:px-6 tw:pt-3"
+          color="danger"
+          data-testid="ontology-concept-editor-error"
+          role="alert"
+          size="text-sm">
+          {t('server.unexpected-error')}
+        </Typography>
+      ) : null}
+      {editor ? (
+        // Edit mode: the body and its Save bar are the concept editor's form.
+        <ConceptEditorProvider editor={editor}>
+          {renderBody()}
+          <ConceptEditorFooter editor={editor} />
+        </ConceptEditorProvider>
+      ) : (
+        renderBody()
+      )}
+    </OntologyStudioDrawer>
+  );
 };
 
 export default OntologyConceptInspector;

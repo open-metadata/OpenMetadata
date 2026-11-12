@@ -18,6 +18,7 @@ import {
   waitFor,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError, AxiosResponse } from 'axios';
 import { Profiler, ReactNode, useEffect, useState } from 'react';
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom';
@@ -427,16 +428,13 @@ jest.mock(
 
 jest.mock(
   '../../components/governance/ontology/OntologyConceptEditor/OntologyConceptEditor',
-  () => ({
-    __esModule: true,
-    default: ({
-      concept,
-      onSaved,
-    }: {
+  () => {
+    interface MockEditorInput {
       concept: { displayName?: string };
       onSaved: (saved: unknown) => void;
-    }) => (
-      <div data-testid="ontology-concept-editor">
+    }
+    const MockEditorFields = ({ concept, onSaved }: MockEditorInput) => (
+      <div>
         <span>{concept.displayName}</span>
         <button
           type="button"
@@ -446,8 +444,34 @@ jest.mock(
           Save mock concept
         </button>
       </div>
-    ),
-  })
+    );
+
+    return {
+      __esModule: true,
+      default: (input: MockEditorInput) => (
+        <div data-testid="ontology-concept-editor">
+          {MockEditorFields(input)}
+        </div>
+      ),
+      useOntologyConceptEditor: (input: MockEditorInput) => ({
+        ...input,
+        isDirty: false,
+        reset: () => undefined,
+      }),
+      ConceptEditorProvider: ({ children }: { children: ReactNode }) => (
+        <div data-testid="ontology-concept-editor">{children}</div>
+      ),
+      ConceptEditorFields: ({
+        editor,
+        names,
+      }: {
+        editor: MockEditorInput;
+        names: string[];
+      }) => (names.includes('displayName') ? MockEditorFields(editor) : null),
+      ConceptEditorMappings: () => null,
+      ConceptEditorFooter: () => null,
+    };
+  }
 );
 
 jest.mock(
@@ -806,43 +830,47 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('replaces the canvas with the first-run empty state and keeps only Library, Import/export and Tasks', async () => {
-    mockSearchParams = new URLSearchParams();
-    render(
-      <MemoryRouter>
-        <OntologyExplorerPage />
-      </MemoryRouter>
-    );
+  it.each([false, true])(
+    'replaces the canvas with the first-run empty state and keeps only Library, Import/export and Tasks (AI mode %s)',
+    async (aiMode) => {
+      (useIsAiMode as jest.Mock).mockReturnValue(aiMode);
+      mockSearchParams = new URLSearchParams();
+      render(
+        <MemoryRouter>
+          <OntologyExplorerPage />
+        </MemoryRouter>
+      );
 
-    expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
-    expect(
-      screen.getByRole('heading', { name: 'label.no-ontologies-yet' })
-    ).toBeVisible();
-    expect(
-      screen
-        .getAllByRole('button', {
-          name: /^label\.(install|import-a|create-from)/,
-        })
-        .map((button) => button.textContent)
-    ).toEqual([
-      'label.install-from-library',
-      'label.import-a-file',
-      'label.create-from-scratch',
-    ]);
+      expect(await screen.findByTestId('ontology-empty-state')).toBeVisible();
+      expect(
+        screen.getByRole('heading', { name: 'label.no-ontologies-yet' })
+      ).toBeVisible();
+      expect(
+        screen
+          .getAllByRole('button', {
+            name: /^label\.(install|import-a|create-from)/,
+          })
+          .map((button) => button.textContent)
+      ).toEqual([
+        'label.install-from-library',
+        'label.import-a-file',
+        'label.create-from-scratch',
+      ]);
 
-    ['view', 'edit', 'query'].forEach((mode) =>
-      expect(screen.queryByTestId(`mode-tab-${mode}`)).not.toBeInTheDocument()
-    );
+      ['view', 'edit', 'query'].forEach((mode) =>
+        expect(screen.queryByTestId(`mode-tab-${mode}`)).not.toBeInTheDocument()
+      );
 
-    expect(
-      screen.queryByTestId('ontology-publication-trigger')
-    ).not.toBeInTheDocument();
-    expect(screen.queryByTestId('submode-tab-graph')).not.toBeInTheDocument();
-    expect(mockOntologyExplorer).not.toHaveBeenCalled();
-    expect(screen.getByTestId('ontology-library-trigger')).toBeVisible();
-    expect(screen.getByTestId('ontology-import-export')).toBeVisible();
-    expect(screen.getByTestId('ontology-tasks-trigger')).toBeVisible();
-  });
+      expect(
+        screen.queryByTestId('ontology-publication-trigger')
+      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('submode-tab-graph')).not.toBeInTheDocument();
+      expect(mockOntologyExplorer).not.toHaveBeenCalled();
+      expect(screen.getByTestId('ontology-library-trigger')).toBeVisible();
+      expect(screen.getByTestId('ontology-import-export')).toBeVisible();
+      expect(screen.getByTestId('ontology-tasks-trigger')).toBeVisible();
+    }
+  );
 
   it('does not flash the empty state while the first ontology list loads', async () => {
     mockUseRealScopes = true;
@@ -1075,12 +1103,9 @@ describe('OntologyExplorerPage', () => {
       },
     });
 
-    const chip = await screen.findByRole('button', { name: 'v1.2.0' });
+    const chip = await screen.findByTestId('ontology-release-history-trigger');
 
-    expect(chip).toHaveAttribute(
-      'data-testid',
-      'ontology-release-history-trigger'
-    );
+    expect(chip).toHaveAccessibleName(/v1\.2\.0/);
 
     fireEvent.keyDown(document.body, { key: 'Tab' });
     act(() => chip.focus());
@@ -1238,7 +1263,8 @@ describe('OntologyExplorerPage', () => {
   it('opens a review task from the header Tasks action in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     renderNativeStudio('?ontology=native-sales');
-    fireEvent.click(await screen.findByTestId('ontology-tasks-trigger'));
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
 
     expect(screen.getByTestId('ontology-review-drawer')).toHaveTextContent(
       'review-uuid'
@@ -1392,6 +1418,22 @@ describe('OntologyExplorerPage', () => {
     ).not.toHaveAttribute('aria-describedby');
   });
 
+  it('shows why Publish is disabled when the pointer rests on it', async () => {
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    renderNativeStudio('');
+    const trigger = screen.getByTestId('ontology-publication-trigger');
+
+    expect(trigger).toBeDisabled();
+
+    // react-aria counts hover only after the pointer has moved once.
+    fireEvent.mouseMove(document);
+    await user.hover(trigger.parentElement as HTMLElement);
+
+    expect(await screen.findByRole('tooltip')).toHaveTextContent(
+      'message.ontology-choose-ontology-to-publish'
+    );
+  });
+
   it('disables Publish on All ontologies and opens no dialog', async () => {
     renderNativeStudio('');
     const trigger = screen.getByTestId('ontology-publication-trigger');
@@ -1473,6 +1515,43 @@ describe('OntologyExplorerPage', () => {
     expect(mockUseOntologyEditLease).toHaveBeenLastCalledWith(
       expect.objectContaining({ isActive: false })
     );
+  });
+
+  it('keeps Tasks in the AI header while a memory draft is under review', async () => {
+    (useIsAiMode as jest.Mock).mockReturnValue(true);
+    renderNativeStudio('?ontology=native-sales&draft=native-draft');
+
+    await screen.findByTestId('ontology-memory-review-panel');
+
+    expect(screen.getByTestId('ontology-tasks-trigger')).toBeVisible();
+  });
+
+  it('offers Add concept on the All ontologies graph but not on its Ontology picker', async () => {
+    renderNativeStudio('?ontology=native-sales&mode=edit');
+    await screen.findByTestId('native-canvas');
+    fireEvent.click(screen.getByTestId('ontology-scope-menu-trigger'));
+    fireEvent.click(screen.getByTestId('ontology-scope-all-ontologies'));
+    fireEvent.click(await screen.findByTestId('mode-tab-edit'));
+
+    expect(await screen.findByTestId('ontology-add-concept')).toBeVisible();
+
+    fireEvent.click(await screen.findByTestId('submode-tab-definitions'));
+
+    expect(await screen.findByTestId('ontology-query-picker')).toBeVisible();
+    expect(
+      screen.queryByTestId('ontology-add-concept')
+    ).not.toBeInTheDocument();
+  });
+
+  it('offers Add concept on the Tree view as on the Graph view', async () => {
+    renderNativeStudio('?ontology=native-sales&mode=edit');
+    await screen.findByTestId('native-canvas');
+
+    expect(screen.getByTestId('ontology-add-concept')).toBeVisible();
+
+    fireEvent.click(screen.getByTestId('submode-tab-tree'));
+
+    expect(await screen.findByTestId('ontology-add-concept')).toBeVisible();
   });
 
   it('refreshes the server publication count after a native definition save', async () => {
@@ -2794,7 +2873,9 @@ describe('OntologyExplorerPage', () => {
       'message.query-choose-ontology-title'
     );
 
-    fireEvent.click(
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    await user.type(screen.getByRole('combobox'), 'Nat');
+    await user.click(
       await screen.findByTestId(
         `ontology-query-picker-option-${nativeOntology.id}`
       )

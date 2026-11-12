@@ -15,7 +15,6 @@ import {
   Alert,
   Box,
   Button,
-  ButtonUtility,
   Card,
   Checkbox,
   Dialog,
@@ -24,10 +23,10 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
+  ComponentProps,
   KeyboardEvent,
   lazy,
   Suspense,
@@ -136,7 +135,7 @@ import {
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
 import OntologyConceptDeleteDialog from '../OntologyAuthoringWorkspace/OntologyConceptDeleteDialog';
-import OntologyConceptEditor from '../OntologyConceptEditor/OntologyConceptEditor';
+import { useOntologyConceptEditor } from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from '../OntologyConceptInspector/OntologyConceptInspector';
 import OntologyEmptyCard from '../OntologyEmptyCard/OntologyEmptyCard';
 import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode';
@@ -434,15 +433,65 @@ const useDraftConcept = (
 ) => {
   const conceptId = editor?.conceptId;
 
-  return useQuery({
+  return useQuery<OntologyConcept>({
     enabled: Boolean(conceptId) && isEditing && !releaseId,
     gcTime: 0,
+    // A refetch after a relation or property write keeps the panel editable, so unsaved field edits survive it.
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === conceptId ? previous : undefined,
     queryFn: ({ signal }) =>
       getOntologyConcept(conceptId ?? '', WORKING_CONCEPT_FIELDS, signal),
     queryKey: ['ontology-draft-concept', conceptId, revision],
     retry: false,
     staleTime: 0,
   });
+};
+
+/** Graph and Tree both float the conflicts and health cards, so Validate all stays reachable from either. */
+const showsCanvasCards = (graphMode: string, openPanels: unknown[]) =>
+  graphMode !== 'data' && !openPanels.some(Boolean);
+
+/** The concept whose working copy loads: one being authored, else the selection. */
+const getDraftRequest = (
+  editor: ConceptEditorRequest | undefined,
+  selectedId: string | undefined
+): ConceptEditorRequest | undefined =>
+  editor ?? (selectedId ? { conceptId: selectedId } : undefined);
+
+type InspectorProps = ComponentProps<typeof OntologyConceptInspector>;
+
+interface EditableConceptInspectorProps extends Omit<InspectorProps, 'editor'> {
+  readonly editable: Parameters<typeof useOntologyConceptEditor>[0];
+  /** Edit mode with the concept's working copy loaded: its fields edit in place. */
+  readonly isEditable: boolean;
+}
+
+/**
+ * The concept panel. It stays mounted while the working copy loads, so an add
+ * form the user already opened survives the switch to in-place editing.
+ */
+const EditableConceptInspector = ({
+  editable,
+  isEditable,
+  ...props
+}: EditableConceptInspectorProps) => {
+  const editor = useOntologyConceptEditor(editable);
+  const { reset } = editor;
+  const { isEditing } = props;
+
+  // Leaving Edit discards the in-place edits, so nothing stays marked unsaved in View.
+  useEffect(() => {
+    if (!isEditing) {
+      reset();
+    }
+  }, [isEditing, reset]);
+
+  return (
+    <OntologyConceptInspector
+      {...props}
+      editor={isEditable ? editor : undefined}
+    />
+  );
 };
 
 const OntologyGraphView = ({
@@ -519,8 +568,9 @@ const OntologyGraphView = ({
   );
   const { graph, isError, isFetching, isLoading, model, refetch, relations } =
     useOntologyStudioModel(ontology, releaseId);
+  // Edit mode edits the selected concept in place, so its working copy loads on selection.
   const draftConceptQuery = useDraftConcept(
-    conceptEditor,
+    getDraftRequest(conceptEditor, selectedId),
     isEditing,
     releaseId,
     dataRevision
@@ -1072,7 +1122,6 @@ const OntologyGraphView = ({
   ].every(Boolean);
   useEffect(() => {
     if (canOpenRequestedEditor) {
-      setConceptEditor({ conceptId: editConceptRequest });
       onEditConceptRequestHandled?.();
     }
   }, [canOpenRequestedEditor, editConceptRequest, onEditConceptRequestHandled]);
@@ -1157,113 +1206,60 @@ const OntologyGraphView = ({
   };
 
   const renderConceptEditor = () => {
-    const listedConcept = model.concepts.find(
-      (concept) => concept.id === conceptEditor?.conceptId
-    );
-    const editingConcept = releaseId ? listedConcept : draftConceptQuery.data;
-
-    if (listedConcept && !editingConcept) {
-      return draftConceptQuery.isError ? (
-        <Typography className="tw:p-5" size="text-sm">
-          {t('server.unexpected-error')}
-        </Typography>
-      ) : (
-        <Loader />
-      );
-    }
-
-    if (!editingConcept) {
-      return (
-        <OntologyNewClassPanel
-          canCreate={canCreateNewClass}
-          canCreateAxiom={canCreateAxiom}
-          canCreateProperty={canCreateProperty}
-          model={model}
-          ontology={ontology}
-          onBeforeCreate={() => {
-            creationPositions.current =
-              graphRef.current?.getNodePositions() ?? {};
-          }}
-          onClose={() => guard(() => setConceptEditor(undefined))}
-          onCreated={async (iri, { keepOpen }) => {
-            const refreshed = await refetch();
-            if (refreshed.error || !refreshed.data) {
-              return false;
-            }
-            const created = refreshed.data.concepts.find((c) => c.iri === iri);
-            if (!created) {
-              return false;
-            }
-            const oldNodes = buildOntologyStudioGraph(
-              refreshed.data
-            ).nodes.filter((n) => n.id !== created.id);
-            const positions = placeNewClass(
-              creationPositions.current ??
-                graphRef.current?.getNodePositions() ??
-                {},
-              oldNodes,
-              created.id
-            );
-            setNodePositions(
-              conceptEditor?.position
-                ? { ...positions, [created.id]: conceptEditor.position }
-                : positions
-            );
-            if (keepOpen) {
-              setConceptEditor({});
-            } else {
-              runConfirmed(() =>
-                (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
-              );
-              setConceptEditor(undefined);
-            }
-            noteWorkingChange();
-
-            return true;
-          }}
-          onLockChange={onAuthoringLockChange}
-          onUndone={() => {
-            void refetch();
-            noteWorkingChange();
-          }}
-        />
-      );
-    }
-
     return (
-      <aside
-        className="tw:flex tw:h-full tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-surface"
-        data-testid="ontology-concept-authoring">
-        <Box
-          align="center"
-          className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-          gap={2}>
-          <Typography className="tw:flex-1" size="text-sm" weight="semibold">
-            {t('label.edit-entity', { entity: t('label.concept') })}
-          </Typography>
-          <ButtonUtility
-            data-testid="ontology-concept-authoring-close"
-            icon={XClose}
-            size="sm"
-            tooltip={t('label.close')}
-            onClick={() => guard(() => setConceptEditor(undefined))}
-          />
-        </Box>
-        <div className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-5">
-          <OntologyConceptEditor
-            canEdit={canEditConcept}
-            concept={editingConcept}
-            key={editingConcept.id}
-            ontology={ontology}
-            onSaved={(saved) => {
-              setSelectedId(saved.id);
-              setConceptEditor(undefined);
-              noteWorkingChange();
-              void refetch();
-            }}
-          />
-        </div>
-      </aside>
+      <OntologyNewClassPanel
+        canCreate={canCreateNewClass}
+        canCreateAxiom={canCreateAxiom}
+        canCreateProperty={canCreateProperty}
+        model={model}
+        ontology={ontology}
+        onBeforeCreate={() => {
+          creationPositions.current =
+            graphRef.current?.getNodePositions() ?? {};
+        }}
+        onClose={() => guard(() => setConceptEditor(undefined))}
+        onCreated={async (iri, { keepOpen }) => {
+          const refreshed = await refetch();
+          if (refreshed.error || !refreshed.data) {
+            return false;
+          }
+          const created = refreshed.data.concepts.find((c) => c.iri === iri);
+          if (!created) {
+            return false;
+          }
+          const oldNodes = buildOntologyStudioGraph(
+            refreshed.data
+          ).nodes.filter((n) => n.id !== created.id);
+          const positions = placeNewClass(
+            creationPositions.current ??
+              graphRef.current?.getNodePositions() ??
+              {},
+            oldNodes,
+            created.id
+          );
+          setNodePositions(
+            conceptEditor?.position
+              ? { ...positions, [created.id]: conceptEditor.position }
+              : positions
+          );
+          if (keepOpen) {
+            setConceptEditor({});
+          } else {
+            runConfirmed(() =>
+              (onSelectedConceptChange ?? setLocalSelectedId)(created.id)
+            );
+            setConceptEditor(undefined);
+          }
+          noteWorkingChange();
+
+          return true;
+        }}
+        onLockChange={onAuthoringLockChange}
+        onUndone={() => {
+          void refetch();
+          noteWorkingChange();
+        }}
+      />
     );
   };
 
@@ -1309,11 +1305,33 @@ const OntologyGraphView = ({
     );
   };
 
+  const getWorkingConcept = () =>
+    [isEditing, !releaseId, canEditConcept].every(Boolean)
+      ? draftConceptQuery.data
+      : undefined;
+
+  const getEditable = (
+    selected: OntologyConcept,
+    workingConcept: OntologyConcept | undefined
+  ) => ({
+    canEdit: [Boolean(workingConcept), canEditConcept].every(Boolean),
+    concept: workingConcept ?? selected,
+    ontology,
+    onSaved: (saved: OntologyConcept) => {
+      noteWorkingChange();
+      void refetch();
+      void draftConceptQuery.refetch();
+      setSelectedId(saved.id);
+    },
+  });
+
   const renderInspector = (
     selected: NonNullable<typeof model>['concepts'][number]
   ) => {
+    const workingConcept = getWorkingConcept();
+
     return (
-      <OntologyConceptInspector
+      <EditableConceptInspector
         canAddProperty={canCreateProperty}
         canAddRelation={canCreateAxiom}
         canCreateRelationType={canCreateRelationType}
@@ -1331,7 +1349,14 @@ const OntologyGraphView = ({
           )
         }
         concept={selected}
+        editable={getEditable(selected, workingConcept)}
+        isEditable={Boolean(workingConcept)}
         isEditing={isEditing}
+        isEditorUnavailable={
+          [isEditing, !releaseId, canEditConcept].every(Boolean) &&
+          draftConceptQuery.isError
+        }
+        key={selected.id}
         model={model}
         relationTypeGroups={relationTypeGroups}
         relations={relations}
@@ -1346,17 +1371,7 @@ const OntologyGraphView = ({
         onDeleteRelation={(relation) => deleteRelation(relation)}
         onEdit={
           canEditConceptByRights
-            ? () => {
-                if (!releaseId) {
-                  setConceptEditor({ conceptId: selected.id });
-                }
-                onRequestEdit?.(selected.id);
-              }
-            : undefined
-        }
-        onEditMappings={
-          isEditing && canEditConcept
-            ? () => setConceptEditor({ conceptId: selected.id })
+            ? () => onRequestEdit?.(selected.id)
             : undefined
         }
         onEditRelation={changeRelationType}
@@ -1370,7 +1385,7 @@ const OntologyGraphView = ({
   };
 
   const renderSidebar = () => {
-    if (conceptEditor && isEditing) {
+    if (conceptEditor && isEditing && !conceptEditor.conceptId) {
       return renderConceptEditor();
     }
 
@@ -1382,14 +1397,23 @@ const OntologyGraphView = ({
       return renderInspector(selected);
     }
 
-    if (graphMode === 'data') {
+    return null;
+  };
+
+  // Conflicts float top-right under Model / Data; health floats bottom-right.
+  const hasCanvasCards = showsCanvasCards(graphMode, [
+    selected,
+    selectedRelation,
+    conceptEditor,
+  ]);
+
+  const renderCanvasCards = () => {
+    if (!hasCanvasCards) {
       return null;
     }
 
     return (
-      <div
-        className="tw:flex tw:h-full tw:min-h-0 tw:w-75 tw:shrink-0 tw:flex-col tw:overflow-hidden"
-        data-testid="ontology-graph-sidebar">
+      <>
         {releaseId ? null : (
           <OntologyConflictsPanel
             conceptLabel={(conceptId) => {
@@ -1399,6 +1423,7 @@ const OntologyGraphView = ({
 
               return concept ? getEntityName(concept) : undefined;
             }}
+            hasResult={Boolean(conflictsQuery.data)}
             isChecking={conflictsQuery.isFetching}
             isFailed={conflictsQuery.isError}
             violations={conflictViolations}
@@ -1406,14 +1431,12 @@ const OntologyGraphView = ({
             onValidateAll={() => void conflictsQuery.refetch()}
           />
         )}
-        <div className="tw:min-h-0 tw:flex-1">
-          <OntologyHealthPanel
-            health={health}
-            placement="sidebar"
-            onConnect={canEditOntology ? connectNode : undefined}
-          />
-        </div>
-      </div>
+        <OntologyHealthPanel
+          isRaised
+          health={health}
+          onConnect={canEditOntology ? connectNode : undefined}
+        />
+      </>
     );
   };
 
@@ -1503,17 +1526,26 @@ const OntologyGraphView = ({
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        <OntologyTreeView
-          density="compact"
-          emptyMessage={t('label.no-entity-found', {
-            entity: t('label.concept-plural'),
-          })}
-          metrics={metrics}
-          selectedNodeId={selectedId}
-          source={{ kind: 'native', index: treeIndex }}
-          onConnect={canEditOntology ? connectNode : undefined}
-          onSelect={selectNode}
-        />
+        // Leaves room on the right for the floating cards so they never cover a row.
+        <div
+          className={hasCanvasCards ? 'tw:h-full tw:pr-92' : 'tw:h-full'}
+          data-testid="ontology-tree-surface">
+          <OntologyTreeView
+            density="compact"
+            emptyMessage={t('label.no-entity-found', {
+              entity: t('label.concept-plural'),
+            })}
+            metrics={metrics}
+            selectedNodeId={selectedId}
+            source={{
+              kind: 'native',
+              index: treeIndex,
+              title: getEntityName(ontology),
+            }}
+            onConnect={canEditOntology ? connectNode : undefined}
+            onSelect={selectNode}
+          />
+        </div>
       );
     }
     if (graphMode === 'data') {
@@ -1643,19 +1675,6 @@ const OntologyGraphView = ({
       />
     ) : null;
 
-  const renderAddConcept = () =>
-    [canCreateNewClass, Boolean(onRequestCreateConcept), !isEmptyModel].every(
-      Boolean
-    ) ? (
-      <Button
-        className="tw:absolute tw:bottom-4 tw:right-4 tw:z-6"
-        data-testid="ontology-canvas-add-concept"
-        size="sm"
-        onPress={onRequestCreateConcept}>
-        {t('label.add-entity', { entity: t('label.concept') })}
-      </Button>
-    ) : null;
-
   const renderMissingConcept = () =>
     selectedId && !selected ? (
       <div
@@ -1673,13 +1692,14 @@ const OntologyGraphView = ({
   const renderSearch = () => {
     const finder = (
       <OntologyConceptSearch
+        opensUpward={Boolean(searchSlot)}
         results={searchResults}
         value={search}
         onChange={setSearch}
         onOpen={selectNode}
       />
     );
-    if (isAiMode && searchSlot) {
+    if (searchSlot) {
       return createPortal(finder, searchSlot);
     }
 
@@ -1718,9 +1738,9 @@ const OntologyGraphView = ({
         <div className="tw:relative tw:isolate tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden">
           {renderSearch()}
           {renderMissingConcept()}
-          {renderAddConcept()}
           {renderGraphMode()}
           {renderSurface()}
+          {renderCanvasCards()}
           {renderEmptyCard()}
         </div>
         {renderSidebar()}
