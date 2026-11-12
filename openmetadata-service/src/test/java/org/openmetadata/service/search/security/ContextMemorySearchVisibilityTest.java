@@ -64,15 +64,17 @@ class ContextMemorySearchVisibilityTest {
       Map.of(ContextMemoryIndex.FIELD_STATUS, List.of("Approved", "Unprocessed", "Draft"));
 
   @Test
-  void listingAdmitsReadableAnchorsBeforePaginationButKeepsPendingOwnerOnly() {
+  void listingAdmitsOnlyMatchingReadableAnchorsAndKeepsPendingOwnerOnly() {
     String readable = UUID.randomUUID().toString();
+    Set<String> matches = Set.of(readable);
     ContextMemorySearchVisibility visibility =
         new ContextMemorySearchVisibility(
             new ElasticQueryBuilderFactory(),
             (name, pins) -> Set.of(),
-            name -> {
+            (name, candidates) -> {
               assertEquals("alice", name);
-              return Set.of(readable);
+              assertEquals(matches, Set.copyOf(candidates));
+              return matches;
             });
     String query =
         serializeElasticQuery(
@@ -82,7 +84,8 @@ class ContextMemorySearchVisibilityTest {
                         List.of(
                             ContextMemoryStatus.APPROVED,
                             ContextMemoryStatus.UNPROCESSED,
-                            ContextMemoryStatus.DRAFT)))
+                            ContextMemoryStatus.DRAFT),
+                        matches))
                 .build());
     DocumentContext json = JsonPath.parse(query);
     String branches = "$.bool.should[1].bool.must[1].bool.should";
@@ -98,17 +101,39 @@ class ContextMemorySearchVisibilityTest {
   }
 
   @Test
-  void pendingOnlyListingsNeedNoAnchorScan() {
+  void pendingEmptyAndAdminListingsNeedNoAnchorAuthorization() {
     ContextMemorySearchVisibility visibility =
         new ContextMemorySearchVisibility(
             new ElasticQueryBuilderFactory(),
             (name, pins) -> Set.of(),
-            name -> {
-              throw new AssertionError("pending listings are owner-only");
+            (name, candidates) -> {
+              throw new AssertionError("no matching published anchors require authorization");
             });
+    assertFalse(
+        visibility.needsListingAnchorAccess(
+            nonAdminSubject(), ContextMemorySearchVisibility.OWNER_PENDING_STATUSES));
     assertNotNull(
         visibility.buildListingVisibilityFilter(
-            nonAdminSubject(), ContextMemorySearchVisibility.OWNER_PENDING_STATUSES));
+            nonAdminSubject(),
+            ContextMemorySearchVisibility.OWNER_PENDING_STATUSES,
+            Set.of("unused")));
+    assertNotNull(
+        visibility.buildListingVisibilityFilter(
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of()));
+    SubjectContext admin =
+        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
+    assertFalse(
+        visibility.needsListingAnchorAccess(
+            admin, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
+    assertFalse(
+        visibility.needsListingAnchorAccess(
+            null, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
+    assertNotNull(
+        visibility.buildListingVisibilityFilter(
+            admin, ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of("unused")));
+    assertNull(
+        visibility.buildListingVisibilityFilter(
+            null, ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of("unused")));
   }
 
   @Test
@@ -118,10 +143,10 @@ class ContextMemorySearchVisibilityTest {
         new ContextMemorySearchVisibility(
             new OpenSearchQueryBuilderFactory(),
             (name, pins) -> Set.of(),
-            name -> Set.of(readable));
+            (name, candidates) -> Set.copyOf(candidates));
     OMQueryBuilder filter =
         visibility.buildListingVisibilityFilter(
-            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES, Set.of(readable));
     String query = ((OpenSearchQueryBuilder) filter).build().toJsonString();
     assertTrue(query.contains(readable));
     assertTrue(query.contains(ContextMemoryStatus.APPROVED.value()));
@@ -138,37 +163,39 @@ class ContextMemorySearchVisibilityTest {
         new ContextMemorySearchVisibility(
             openSearch ? new OpenSearchQueryBuilderFactory() : new ElasticQueryBuilderFactory(),
             (name, pins) -> Set.of(),
-            name -> anchors);
+            (name, candidates) -> Set.copyOf(candidates));
     OMQueryBuilder filter =
         visibility.buildListingVisibilityFilter(
-            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES);
+            nonAdminSubject(), ContextMemorySearchVisibility.SEARCHABLE_STATUSES, anchors);
     String query =
         openSearch
             ? ((OpenSearchQueryBuilder) filter).build().toJsonString()
             : serializeElasticQuery(((ElasticQueryBuilder) filter).build());
     List<List<String>> chunks = JsonPath.parse(query).read("$..terms.anchorId");
-
     assertEquals(anchors.size(), chunks.stream().mapToInt(List::size).sum());
     assertTrue(chunks.stream().allMatch(chunk -> chunk.size() <= 1024));
   }
 
-  @Test
-  void listingDoesNotEvaluateAnchorsForAdminsOrUnidentifiedSubjects() {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void anchorCandidatesExcludePrivateSharedPendingAndUnanchoredMemories(boolean openSearch) {
     ContextMemorySearchVisibility visibility =
         new ContextMemorySearchVisibility(
-            new ElasticQueryBuilderFactory(),
-            (name, pins) -> Set.of(),
-            name -> {
-              throw new AssertionError("only restricted subjects need anchor authorization");
-            });
-    SubjectContext admin =
-        new SubjectContext(new User().withId(USER_ID).withName("root").withIsAdmin(true), null);
-    assertNotNull(
-        visibility.buildListingVisibilityFilter(
-            admin, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
-    assertNull(
-        visibility.buildListingVisibilityFilter(
-            null, ContextMemorySearchVisibility.SEARCHABLE_STATUSES));
+            openSearch ? new OpenSearchQueryBuilderFactory() : new ElasticQueryBuilderFactory());
+    OMQueryBuilder filter =
+        visibility.buildListingAnchorCandidateFilter(
+            List.of(ContextMemoryStatus.APPROVED, ContextMemoryStatus.DRAFT));
+    String query =
+        openSearch
+            ? ((OpenSearchQueryBuilder) filter).build().toJsonString()
+            : serializeElasticQuery(((ElasticQueryBuilder) filter).build());
+    assertTrue(query.contains(MemoryVisibility.ENTITY.value()));
+    assertTrue(query.contains(MemoryVisibility.PUBLIC.value()));
+    assertTrue(query.contains(ContextMemoryIndex.UNANCHORED));
+    assertTrue(query.contains(ContextMemoryStatus.APPROVED.value()));
+    assertFalse(query.contains(MemoryVisibility.PRIVATE.value()));
+    assertFalse(query.contains(MemoryVisibility.SHARED.value()));
+    assertFalse(query.contains(ContextMemoryStatus.DRAFT.value()));
   }
 
   @Test

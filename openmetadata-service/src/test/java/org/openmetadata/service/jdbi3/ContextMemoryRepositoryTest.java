@@ -555,19 +555,6 @@ class ContextMemoryRepositoryTest {
   }
 
   @Test
-  void listingReadsAnchorsFromTheRequestedKeyset() {
-    UUID anchor = UUID.randomUUID();
-    when(relationshipDAO.listMemoryAnchorEdges(
-            "after-id",
-            List.of(Relationship.APPLIED_TO.ordinal(), Relationship.HAS.ordinal()),
-            Relationship.APPLIED_TO.ordinal(),
-            100))
-        .thenReturn(List.of(edge(anchor, Entity.TABLE, Relationship.APPLIED_TO)));
-
-    assertEquals(List.of(anchorRef(anchor, Entity.TABLE)), repository.listAnchors("after-id", 100));
-  }
-
-  @Test
   void findAnchors_neverQueriesForNoCandidates() {
     assertTrue(repository.findAnchors(List.of()).isEmpty());
     verify(relationshipDAO, never()).findMemoryAnchorEdges(anyList(), anyList());

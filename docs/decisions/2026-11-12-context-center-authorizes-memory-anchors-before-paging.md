@@ -1,7 +1,7 @@
 # Context Center authorizes memory anchors before pagination
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial)
+- **Revisions:** v1 2026-11-12 (initial); v2 2026-11-12 (evaluate only matching anchors)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryAnchorIT`, `ContextMemoryVisibilityTest`, `ContextMemorySearchVisibilityTest`
 - **Related:** ADR:2026-10-09-search-admits-memories-of-pinned-anchors;
@@ -15,11 +15,17 @@ search visibility rule required a pinned anchor.
 
 ## Decision
 
-Search-backed context-memory listings evaluate the current reader's access to every distinct
-memory anchor before constructing the visibility filter. Anchors are read by UUID keyset in pages
-of 100, using the same live APPLIED_TO and legacy HAS edges as direct memory reads. Legacy domain
-assignment edges are excluded. The page size bounds each database read, not the authorized set.
-Authorized ids are split into terms clauses of at most 1,024 ids to stay below the engine's terms limit.
+Search-backed context-memory listings first page a composite aggregation of distinct anchors from
+memories matching the listing's text, asset/query filters, non-pending statuses, and Entity/Public
+visibility. Each search page contains at most 100 anchors. Only those candidates are resolved through
+the same live APPLIED_TO and legacy HAS edges as direct memory reads, in database batches of 100.
+Legacy domain assignment edges are excluded. Private, Shared, unanchored and pending-only matches
+need no anchor evaluation. An incomplete or timed-out aggregation fails the listing instead of
+producing an undercount. Authorized ids are split into terms clauses of at most 1,024 ids.
+
+This supersedes the pinned-anchor requirement and 20-anchor total cap of
+ADR:2026-10-09-search-admits-memories-of-pinned-anchors for Context Center listings only. Page sizes
+bound each read; they do not truncate the set and hide older matching assets.
 
 Both Elasticsearch and OpenSearch admit Entity and Public memories anchored to that authorized set.
 Visibility and status filters run before the engine counts, sorts, or paginates results. Shared and
@@ -32,6 +38,8 @@ to context-memory listings and their text search, not every broad catalog query.
 ## Consequences
 
 Context Center agrees with direct reads about anchor access without a new index field or reindex.
-A non-admin listing costs a policy check per distinct memory anchor. Access is evaluated for the
-current request, so a role, policy, or file-sharing change applies immediately. Database read failures
-fail the listing instead of returning an empty authorized set.
+A non-admin listing costs a policy check per distinct matching Entity/Public memory anchor. A broad
+unfiltered listing still needs every matching anchor to produce exact visibility-filtered totals;
+selective requests no longer evaluate unrelated anchors. Access is evaluated for the current request,
+so a role, policy, or file-sharing change applies immediately. Database read failures fail the listing
+instead of returning an empty authorized set.

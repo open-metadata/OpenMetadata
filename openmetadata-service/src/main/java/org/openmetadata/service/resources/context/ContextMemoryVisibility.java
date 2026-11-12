@@ -101,37 +101,39 @@ public final class ContextMemoryVisibility {
     List<EntityReference> findAnchors(List<UUID> candidateIds);
   }
 
-  @FunctionalInterface
-  interface AnchorPages {
-    List<EntityReference> after(String afterId, int limit);
-  }
-
   private static final int LISTING_ANCHOR_PAGE_SIZE = 100;
 
   /** Context Center evaluates each memory anchor before the search applies its offset and limit. */
-  public static Set<String> readableListingAnchorIds(String userName) {
+  public static Set<String> readableListingAnchorIds(
+      String userName, Collection<String> matchingAnchorIds) {
     ContextMemoryRepository repository =
         (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
     return readableListingAnchorIds(
-        userName, repository::listAnchors, ContextMemoryAnchorAccess::canView);
+        userName, matchingAnchorIds, repository::findAnchors, ContextMemoryAnchorAccess::canView);
   }
 
   static Set<String> readableListingAnchorIds(
-      String userName, AnchorPages pages, AnchorAccess access) {
+      String userName,
+      Collection<String> matchingAnchorIds,
+      AnchorFinder finder,
+      AnchorAccess access) {
     Set<String> readable = new LinkedHashSet<>();
-    String afterId = "";
-    List<EntityReference> page;
-    do {
-      page = pages.after(afterId, LISTING_ANCHOR_PAGE_SIZE);
-      for (EntityReference anchor : page) {
+    List<UUID> candidates =
+        matchingAnchorIds.stream()
+            .filter(Objects::nonNull)
+            .map(ContextMemoryVisibility::parseAnchorId)
+            .flatMap(Optional::stream)
+            .distinct()
+            .toList();
+    for (int start = 0; start < candidates.size(); start += LISTING_ANCHOR_PAGE_SIZE) {
+      List<UUID> batch =
+          candidates.subList(start, Math.min(start + LISTING_ANCHOR_PAGE_SIZE, candidates.size()));
+      for (EntityReference anchor : finder.findAnchors(batch)) {
         if (access.canView(userName, anchor)) {
           readable.add(anchor.getId().toString());
         }
       }
-      if (!page.isEmpty()) {
-        afterId = page.getLast().getId().toString();
-      }
-    } while (page.size() == LISTING_ANCHOR_PAGE_SIZE);
+    }
     return Set.copyOf(readable);
   }
 

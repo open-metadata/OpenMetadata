@@ -25,6 +25,8 @@ import es.co.elastic.clients.elasticsearch._types.SortMode;
 import es.co.elastic.clients.elasticsearch._types.SortOrder;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregate;
 import es.co.elastic.clients.elasticsearch._types.aggregations.Aggregation;
+import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregate;
+import es.co.elastic.clients.elasticsearch._types.aggregations.CompositeAggregationSource;
 import es.co.elastic.clients.elasticsearch._types.aggregations.StringTermsBucket;
 import es.co.elastic.clients.elasticsearch._types.mapping.Property;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
@@ -37,6 +39,7 @@ import es.co.elastic.clients.elasticsearch.indices.GetMappingResponse;
 import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.JsonpDeserializer;
 import es.co.elastic.clients.json.JsonpMapper;
+import es.co.elastic.clients.util.NamedValue;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.Json;
 import jakarta.json.JsonObject;
@@ -55,6 +58,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -463,7 +467,9 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
         requestBuilder,
         statuses,
         ContextMemoryAnchorPins.ofQueryFilters(filter),
-        ContextMemorySearchVisibility.isMemoryListingIndex(index));
+        ContextMemorySearchVisibility.isMemoryListingIndex(index)
+            ? matchingListingAnchors(index, requestBuilder, subjectContext, statuses)
+            : null);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
   }
@@ -687,7 +693,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       ElasticSearchRequestBuilder requestBuilder,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds) {
-    applyRbacCondition(subjectContext, requestBuilder, statuses, pinnedAnchorIds, false);
+    applyRbacCondition(subjectContext, requestBuilder, statuses, pinnedAnchorIds, null);
   }
 
   private void applyRbacCondition(
@@ -695,7 +701,7 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       ElasticSearchRequestBuilder requestBuilder,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds,
-      boolean memoryListing) {
+      Collection<String> matchingAnchorIds) {
     if (shouldApplyRbacConditions(subjectContext, rbacConditionEvaluator)) {
       OMQueryBuilder rbacQueryBuilder = rbacConditionEvaluator.evaluateConditions(subjectContext);
       if (rbacQueryBuilder != null) {
@@ -718,11 +724,80 @@ public class ElasticSearchSearchManager implements SearchManagementClient {
       }
     }
     OMQueryBuilder memoryVisibility =
-        memoryListing
-            ? contextMemoryVisibility.buildListingVisibilityFilter(subjectContext, statuses)
+        matchingAnchorIds != null
+            ? contextMemoryVisibility.buildListingVisibilityFilter(
+                subjectContext, statuses, matchingAnchorIds)
             : contextMemoryVisibility.buildVisibilityFilter(
                 subjectContext, statuses, pinnedAnchorIds);
     applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
+  }
+
+  Set<String> matchingListingAnchors(
+      String index,
+      ElasticSearchRequestBuilder listing,
+      SubjectContext subject,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    Set<String> anchors = Set.of();
+    if (contextMemoryVisibility.needsListingAnchorAccess(subject, statuses)) {
+      ElasticSearchRequestBuilder candidates =
+          new ElasticSearchRequestBuilder()
+              .query(listing.query())
+              .size(0)
+              .timeout("30s")
+              .contextMemoryVisibilityResolved()
+              .filter(
+                  ((ElasticQueryBuilder)
+                          contextMemoryVisibility.buildListingAnchorCandidateFilter(statuses))
+                      .buildV2());
+      if (listing.postFilter() != null) {
+        candidates.filter(listing.postFilter());
+      }
+      anchors = matchingMemoryAnchorIds(index, candidates);
+    }
+    return anchors;
+  }
+
+  Set<String> matchingMemoryAnchorIds(String index, ElasticSearchRequestBuilder candidates)
+      throws IOException {
+    Set<String> anchors = new LinkedHashSet<>();
+    Map<String, FieldValue> after = Map.of();
+    do {
+      CompositeAggregate page = memoryAnchorPage(index, candidates, after);
+      page.buckets()
+          .array()
+          .forEach(
+              bucket ->
+                  anchors.add(bucket.key().get(ContextMemoryIndex.FIELD_ANCHOR_ID).stringValue()));
+      after = page.afterKey();
+    } while (after != null && !after.isEmpty());
+    return anchors;
+  }
+
+  private CompositeAggregate memoryAnchorPage(
+      String index, ElasticSearchRequestBuilder candidates, Map<String, FieldValue> after)
+      throws IOException {
+    var source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(ContextMemoryIndex.FIELD_ANCHOR_ID)));
+    candidates.aggregation(
+        ContextMemoryIndex.FIELD_ANCHOR_ID,
+        Aggregation.of(
+            a ->
+                a.composite(
+                    c -> {
+                      c.sources(List.of(NamedValue.of(ContextMemoryIndex.FIELD_ANCHOR_ID, source)))
+                          .size(ContextMemorySearchVisibility.LISTING_ANCHOR_PAGE_SIZE);
+                      if (!after.isEmpty()) {
+                        c.after(after);
+                      }
+                      return c;
+                    })));
+    SearchResponse<JsonData> response = client.search(candidates.build(index), JsonData.class);
+    if (response.timedOut() || response.shards().failed().intValue() > 0) {
+      throw new IOException("Incomplete memory anchor listing for " + index);
+    }
+    return response.aggregations().get(ContextMemoryIndex.FIELD_ANCHOR_ID).composite();
   }
 
   /**

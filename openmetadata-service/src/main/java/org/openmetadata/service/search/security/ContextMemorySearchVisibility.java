@@ -21,7 +21,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
+import java.util.function.BiFunction;
 import org.openmetadata.schema.entity.context.ContextMemoryStatus;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.teams.User;
@@ -80,13 +80,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * once by the REST rule, and the {@code Entity} memories of the readable ones are admitted too
  * (ADR:2026-10-09-search-admits-memories-of-pinned-anchors). An explicit unanchored marker is
  * required: old documents without the marker stay hidden from non-owners until reindexed.
- * Context Center listings evaluate all distinct anchors before pagination through
+ * Context Center listings evaluate their matching anchors before pagination through
  * {@link #buildListingVisibilityFilter}, so their text search needs no explicit asset filter.
  */
 public class ContextMemorySearchVisibility {
 
   private static final String MEMORY_INDEX_NAME = "context_memory_search_index";
   private static final int MAX_ANCHOR_IDS_PER_TERMS_QUERY = 1024;
+  public static final int LISTING_ANCHOR_PAGE_SIZE = 100;
 
   /** listWithOffset receives the canonical index name, optionally prefixed by the cluster alias. */
   public static boolean isMemoryListingIndex(String index) {
@@ -116,7 +117,7 @@ public class ContextMemorySearchVisibility {
 
   private final QueryBuilderFactory queryBuilderFactory;
   private final AnchorReadability anchorReadability;
-  private final Function<String, Set<String>> listingAnchors;
+  private final BiFunction<String, Collection<String>, Set<String>> listingAnchors;
 
   public ContextMemorySearchVisibility(QueryBuilderFactory queryBuilderFactory) {
     this(queryBuilderFactory, ContextMemoryVisibility::readableAnchorIds);
@@ -130,7 +131,7 @@ public class ContextMemorySearchVisibility {
   ContextMemorySearchVisibility(
       QueryBuilderFactory queryBuilderFactory,
       AnchorReadability anchorReadability,
-      Function<String, Set<String>> listingAnchors) {
+      BiFunction<String, Collection<String>, Set<String>> listingAnchors) {
     this.queryBuilderFactory = queryBuilderFactory;
     this.anchorReadability = anchorReadability;
     this.listingAnchors = listingAnchors;
@@ -138,7 +139,9 @@ public class ContextMemorySearchVisibility {
 
   /** Context Center lists readable anchored memories even when the caller has not picked an asset. */
   public OMQueryBuilder buildListingVisibilityFilter(
-      SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
+      SubjectContext subjectContext,
+      List<ContextMemoryStatus> statuses,
+      Collection<String> matchingAnchorIds) {
     List<ContextMemoryStatus> ownersOnly =
         isVisibilityEnforced(subjectContext)
             ? statuses.stream().filter(OWNER_PENDING_STATUSES::contains).toList()
@@ -146,10 +149,35 @@ public class ContextMemorySearchVisibility {
     List<ContextMemoryStatus> visibleStatuses =
         statuses.stream().filter(status -> !ownersOnly.contains(status)).toList();
     Set<String> readable =
-        isVisibilityEnforced(subjectContext) && !visibleStatuses.isEmpty()
-            ? listingAnchors.apply(subjectContext.user().getName())
+        needsListingAnchorAccess(subjectContext, statuses) && !matchingAnchorIds.isEmpty()
+            ? listingAnchors.apply(subjectContext.user().getName(), matchingAnchorIds)
             : Set.of();
     return visibilityFilter(subjectContext, visibleStatuses, ownersOnly, readable);
+  }
+
+  public boolean needsListingAnchorAccess(
+      SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
+    return isVisibilityEnforced(subjectContext)
+        && statuses.stream().anyMatch(status -> !OWNER_PENDING_STATUSES.contains(status));
+  }
+
+  /** Only non-pending anchor-dependent matches need an access decision before listing pagination. */
+  public OMQueryBuilder buildListingAnchorCandidateFilter(List<ContextMemoryStatus> statuses) {
+    OMQueryBuilder anchored =
+        queryBuilderFactory
+            .boolQuery()
+            .must(
+                List.of(
+                    queryBuilderFactory.termsQuery(
+                        FIELD_VISIBILITY,
+                        List.of(MemoryVisibility.ENTITY.value(), MemoryVisibility.PUBLIC.value()))))
+            .mustNot(
+                List.of(
+                    queryBuilderFactory.termQuery(
+                        ContextMemoryIndex.FIELD_ANCHOR_ID, ContextMemoryIndex.UNANCHORED)));
+    return statusMemoryClause(
+        anchored,
+        statuses.stream().filter(status -> !OWNER_PENDING_STATUSES.contains(status)).toList());
   }
 
   /**

@@ -96,15 +96,17 @@ class ContextMemoryVisibilityTest {
                 index ->
                     new EntityReference().withId(new UUID(0, index + 1)).withType(Entity.TABLE))
             .toList();
-    List<String> cursors = new ArrayList<>();
+    List<Integer> batchSizes = new ArrayList<>();
     Set<UUID> readable = Set.of(anchors.getFirst().getId(), anchors.getLast().getId());
     Set<String> selected =
         ContextMemoryVisibility.readableListingAnchorIds(
             BOB,
-            (afterId, limit) -> {
-              cursors.add(afterId);
-              assertEquals(100, limit);
-              return afterId.isEmpty() ? anchors.subList(0, 100) : anchors.subList(100, 101);
+            anchors.stream().map(anchor -> anchor.getId().toString()).toList(),
+            candidates -> {
+              batchSizes.add(candidates.size());
+              return anchors.stream()
+                  .filter(anchor -> candidates.contains(anchor.getId()))
+                  .toList();
             },
             (userName, anchor) -> {
               assertEquals(BOB, userName);
@@ -112,7 +114,7 @@ class ContextMemoryVisibilityTest {
             });
 
     assertEquals(readable.stream().map(UUID::toString).collect(Collectors.toSet()), selected);
-    assertEquals(List.of("", anchors.get(99).getId().toString()), cursors);
+    assertEquals(List.of(100, 1), batchSizes);
   }
 
   @Test

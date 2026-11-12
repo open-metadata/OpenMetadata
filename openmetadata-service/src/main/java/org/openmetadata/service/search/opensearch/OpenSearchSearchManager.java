@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -100,6 +101,8 @@ import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.mapping.Property;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
@@ -595,12 +598,83 @@ public class OpenSearchSearchManager implements SearchManagementClient {
 
     OMQueryBuilder memoryVisibility =
         ContextMemorySearchVisibility.isMemoryListingIndex(index)
-            ? contextMemoryVisibility.buildListingVisibilityFilter(subjectContext, statuses)
+            ? contextMemoryVisibility.buildListingVisibilityFilter(
+                subjectContext,
+                statuses,
+                matchingListingAnchors(index, requestBuilder, subjectContext, statuses))
             : contextMemoryVisibility.buildVisibilityFilter(
                 subjectContext, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
     applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
+
+  Set<String> matchingListingAnchors(
+      String index,
+      OpenSearchRequestBuilder listing,
+      SubjectContext subject,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    Set<String> anchors = Set.of();
+    if (contextMemoryVisibility.needsListingAnchorAccess(subject, statuses)) {
+      OpenSearchRequestBuilder candidates =
+          new OpenSearchRequestBuilder()
+              .query(listing.query())
+              .size(0)
+              .timeout("30s")
+              .contextMemoryVisibilityResolved()
+              .filter(
+                  ((OpenSearchQueryBuilder)
+                          contextMemoryVisibility.buildListingAnchorCandidateFilter(statuses))
+                      .buildV2());
+      if (listing.postFilter() != null) {
+        candidates.filter(listing.postFilter());
+      }
+      anchors = matchingMemoryAnchorIds(index, candidates);
+    }
+    return anchors;
+  }
+
+  Set<String> matchingMemoryAnchorIds(String index, OpenSearchRequestBuilder candidates)
+      throws IOException {
+    Set<String> anchors = new LinkedHashSet<>();
+    Map<String, FieldValue> after = Map.of();
+    do {
+      CompositeAggregate page = memoryAnchorPage(index, candidates, after);
+      page.buckets()
+          .array()
+          .forEach(
+              bucket ->
+                  anchors.add(bucket.key().get(ContextMemoryIndex.FIELD_ANCHOR_ID).stringValue()));
+      after = page.afterKey();
+    } while (after != null && !after.isEmpty());
+    return anchors;
+  }
+
+  private CompositeAggregate memoryAnchorPage(
+      String index, OpenSearchRequestBuilder candidates, Map<String, FieldValue> after)
+      throws IOException {
+    var source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(ContextMemoryIndex.FIELD_ANCHOR_ID)));
+    candidates.aggregation(
+        ContextMemoryIndex.FIELD_ANCHOR_ID,
+        Aggregation.of(
+            a ->
+                a.composite(
+                    c -> {
+                      c.sources(List.of(Map.of(ContextMemoryIndex.FIELD_ANCHOR_ID, source)))
+                          .size(ContextMemorySearchVisibility.LISTING_ANCHOR_PAGE_SIZE);
+                      if (!after.isEmpty()) {
+                        c.after(after);
+                      }
+                      return c;
+                    })));
+    SearchResponse<JsonData> response = client.search(candidates.build(index), JsonData.class);
+    if (response.timedOut() || response.shards().failed() > 0) {
+      throw new IOException("Incomplete memory anchor listing for " + index);
+    }
+    return response.aggregations().get(ContextMemoryIndex.FIELD_ANCHOR_ID).composite();
   }
 
   @Override
