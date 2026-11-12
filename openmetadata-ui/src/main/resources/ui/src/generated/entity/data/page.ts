@@ -95,6 +95,11 @@ export interface Page {
      */
     name: string;
     /**
+     * Whether this article has a body but its memories were never extracted, so it shows as Not
+     * processed. Computed on read and never stored.
+     */
+    neverExtracted?: boolean;
+    /**
      * Owners of this Knowledge Page.
      */
     owners?: EntityReference[];

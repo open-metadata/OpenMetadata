@@ -156,6 +156,7 @@ import {
   AI_GRAPH_BACKDROP_CLASS,
   AI_GRAPH_CONTROLS_CLASS,
 } from './OntologyGraphView.constants';
+import OntologyTreeConflicts from './OntologyTreeConflicts';
 
 const OntologyGraphG6 = lazy(
   () => import('../../../OntologyExplorer/OntologyGraphG6')
@@ -1136,6 +1137,33 @@ const OntologyGraphView = ({
       model?.concepts.some((concept) => concept.id === editConceptRequest)
     ),
   ].every(Boolean);
+  // Leaving Edit discards a New concept form (the guard already asked), so it must not
+  // come back when Edit is reopened.
+  useEffect(() => {
+    if (!isEditing) {
+      setConceptEditor(undefined);
+    }
+  }, [isEditing]);
+  const requestedConceptId = model?.concepts.some(
+    (concept) => concept.id === editConceptRequest
+  )
+    ? editConceptRequest
+    : undefined;
+  // A request from outside the graph (a Concepts row) arrives with nothing selected; select it.
+  // The requester already ran the draft guard, so this selection does not ask again.
+  useEffect(() => {
+    if (isEditing && requestedConceptId && selectedId !== requestedConceptId) {
+      runConfirmed(() =>
+        (onSelectedConceptChange ?? setLocalSelectedId)(requestedConceptId)
+      );
+    }
+  }, [
+    isEditing,
+    onSelectedConceptChange,
+    requestedConceptId,
+    runConfirmed,
+    selectedId,
+  ]);
   useEffect(() => {
     if (canOpenRequestedEditor) {
       onEditConceptRequestHandled?.();
@@ -1518,6 +1546,14 @@ const OntologyGraphView = ({
     return null;
   };
 
+  const conflictConceptLabel = (conceptId: string) => {
+    const concept = model?.concepts.find(
+      (candidate) => candidate.id === conceptId
+    );
+
+    return concept ? getEntityName(concept) : undefined;
+  };
+
   // Conflicts float top-right under Model / Data; health floats bottom-right.
   const hasCanvasCards = showsCanvasCards(graphMode, [
     selected,
@@ -1532,16 +1568,9 @@ const OntologyGraphView = ({
 
     return (
       <>
-        {releaseId ? null : (
+        {releaseId || surface === 'tree' ? null : (
           <OntologyConflictsPanel
-            conceptLabel={(conceptId) => {
-              const concept = model?.concepts.find(
-                (candidate) => candidate.id === conceptId
-              );
-
-              return concept ? getEntityName(concept) : undefined;
-            }}
-            hasResult={Boolean(conflictsQuery.data)}
+            conceptLabel={conflictConceptLabel}
             isChecking={conflictsQuery.isFetching}
             isFailed={conflictsQuery.isError}
             violations={conflictViolations}
@@ -1641,13 +1670,27 @@ const OntologyGraphView = ({
     );
   };
 
+  // On Tree the conflicts sit inside the tree's card instead of a floating card.
+  const renderTreeConflicts = () =>
+    !releaseId && (conflictsQuery.isError || conflictViolations.length > 0) ? (
+      <OntologyTreeConflicts
+        conceptLabel={conflictConceptLabel}
+        isFailed={conflictsQuery.isError}
+        violations={conflictViolations}
+        onOpenConcept={(conceptId) => selectNode({ id: conceptId })}
+        onRetry={() => void conflictsQuery.refetch()}
+        onShowOnGraph={(conceptId) => {
+          selectNode({ id: conceptId });
+          onRequestGraphSurface();
+        }}
+      />
+    ) : undefined;
+
   const renderSurface = () => {
     if (surface === 'tree') {
       return (
-        // Leaves room on the right for the floating cards so they never cover a row.
-        <div
-          className={hasCanvasCards ? 'tw:h-full tw:pr-92' : 'tw:h-full'}
-          data-testid="ontology-tree-surface">
+        // The tree takes the full width; the floating cards sit on top, as in the design.
+        <div className="tw:h-full" data-testid="ontology-tree-surface">
           <OntologyTreeView
             density="compact"
             emptyMessage={t('label.no-entity-found', {
@@ -1659,6 +1702,7 @@ const OntologyGraphView = ({
               kind: 'native',
               index: treeIndex,
               title: getEntityName(ontology),
+              notice: renderTreeConflicts(),
             }}
             onConnect={canEditOntology ? connectNode : undefined}
             onSelect={selectNode}

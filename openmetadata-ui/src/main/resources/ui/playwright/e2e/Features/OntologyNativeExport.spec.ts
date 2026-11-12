@@ -216,7 +216,7 @@ test.describe(
             expect(response.ok()).toBeTruthy();
             const download = await downloaded;
             expect(download.suggestedFilename()).toBe(
-              `${name}-release-${release.releaseRevision}.${extension}`
+              `${name.replaceAll('_', '-')}.${extension}`
             );
             const path = testInfo.outputPath(download.suggestedFilename());
             await download.saveAs(path);
@@ -242,7 +242,7 @@ test.describe(
           );
           expect((await fetched).ok()).toBeTruthy();
           expect((await downloaded).suggestedFilename()).toBe(
-            `${name}-release-${release.releaseRevision}.rdf`
+            `${name.replaceAll('_', '-')}.rdf`
           );
           await openOntologyTransfer(page);
         });
