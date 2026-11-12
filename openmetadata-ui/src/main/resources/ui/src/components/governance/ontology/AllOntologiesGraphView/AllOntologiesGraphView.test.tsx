@@ -122,6 +122,8 @@ describe('AllOntologiesGraphView tree', () => {
     rerender(<AllOntologiesGraphView {...props} surface="tree" />);
 
     expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
-    expect(screen.getByTestId('ontology-tree-surface')).toHaveClass('tw:pr-92');
+    expect(screen.getByTestId('ontology-tree-surface')).not.toHaveClass(
+      'tw:pr-92'
+    );
   });
 });

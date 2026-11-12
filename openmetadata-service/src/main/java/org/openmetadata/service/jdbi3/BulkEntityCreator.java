@@ -89,6 +89,7 @@ final class BulkEntityCreator<T extends EntityInterface<?>> {
   private boolean prepare(Candidate<T> candidate) {
     try {
       repository.prepareInternal(candidate.entity(), false);
+      repository.checkAppliedGlossaryTermsApproved(candidate.entity());
       return true;
     } catch (IllegalArgumentException | EntityNotFoundException exception) {
       final UUID storedId = existingIds(List.of(candidate)).get(candidate.hash());

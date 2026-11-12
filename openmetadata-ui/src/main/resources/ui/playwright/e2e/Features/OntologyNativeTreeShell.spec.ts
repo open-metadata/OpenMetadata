@@ -30,6 +30,7 @@ import {
   findOntologyInQueryPicker,
   openExportAdvanced,
   openOntologyTransfer,
+  openReleaseHistory,
   selectOntologyOption,
 } from '../../utils/ontologyStudio';
 
@@ -221,7 +222,7 @@ test.describe(
             expect(box?.x).toBeGreaterThanOrEqual(bounds?.x ?? 0);
             expect((box?.x ?? 0) + (box?.width ?? 0)).toBeLessThanOrEqual(924);
           }
-          await page.getByTestId('ontology-release-history-trigger').click();
+          await openReleaseHistory(page);
           await expect(
             page.getByTestId('ontology-publication-tab-releases')
           ).toHaveAttribute('aria-selected', 'true');
@@ -543,6 +544,7 @@ test.describe(
         await page.getByTestId('submode-tab-tree').click();
         await test.step('Show the lifecycle, owner and capped asset list', async () => {
           const rail = page.getByTestId('ontology-concept-inspector');
+          await rail.getByTestId('ontology-concept-advanced-toggle').click();
           await expect(
             rail.getByTestId('ontology-concept-lifecycle')
           ).toContainText('Draft');
