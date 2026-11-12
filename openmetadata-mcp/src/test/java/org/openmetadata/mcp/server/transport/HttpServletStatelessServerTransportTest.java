@@ -23,19 +23,24 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.modelcontextprotocol.common.McpTransportContext;
 import io.modelcontextprotocol.server.McpStatelessServerHandler;
 import io.modelcontextprotocol.spec.McpError;
 import io.modelcontextprotocol.spec.McpSchema;
+import jakarta.servlet.ReadListener;
+import jakarta.servlet.ServletInputStream;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
 import java.io.PrintWriter;
-import java.io.StringReader;
 import java.io.StringWriter;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import reactor.core.publisher.Mono;
 
 class HttpServletStatelessServerTransportTest {
@@ -231,9 +236,40 @@ class HttpServletStatelessServerTransportTest {
   private static HttpServletRequest requestFor(String accept, String payload) throws Exception {
     HttpServletRequest request = mock(HttpServletRequest.class);
     when(request.getRequestURI()).thenReturn(MCP_ENDPOINT);
+    when(request.getContentType()).thenReturn("application/json");
     when(request.getHeader(HttpServletStatelessServerTransport.ACCEPT)).thenReturn(accept);
-    when(request.getReader()).thenReturn(new BufferedReader(new StringReader(payload)));
+    when(request.getInputStream())
+        .thenReturn(bodyOf(new ByteArrayInputStream(payload.getBytes(StandardCharsets.UTF_8))));
     return request;
+  }
+
+  static ServletInputStream bodyOf(ByteArrayInputStream content) {
+    return new ServletInputStream() {
+      @Override
+      public int read() {
+        return content.read();
+      }
+
+      @Override
+      public int read(byte[] buffer, int offset, int length) {
+        return content.read(buffer, offset, length);
+      }
+
+      @Override
+      public boolean isFinished() {
+        return content.available() == 0;
+      }
+
+      @Override
+      public boolean isReady() {
+        return true;
+      }
+
+      @Override
+      public void setReadListener(ReadListener readListener) {
+        throw new UnsupportedOperationException();
+      }
+    };
   }
 
   private static HttpServletStatelessServerTransport transportRejectingWith(Throwable failure) {
@@ -270,6 +306,55 @@ class HttpServletStatelessServerTransportTest {
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
     assertThat(body.toString()).contains("\"code\":-32603");
+  }
+
+  @ParameterizedTest
+  @NullAndEmptySource
+  @ValueSource(strings = {"text/plain", "text/plain; a=application/json", "application/jsonx"})
+  void doPost_nonJsonContentType_answers415WithoutReachingTheHandler(String contentType)
+      throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
+    when(request.getContentType()).thenReturn(contentType);
+
+    transportWith(handler).doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+    verify(handler, never()).handleRequest(any(), any());
+  }
+
+  @Test
+  void doPost_withoutAValidToken_answers401BeforeTheContentTypeCheck() throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    HttpServletStatelessServerTransport transport =
+        new HttpServletStatelessServerTransport(
+            new ObjectMapper(), MCP_ENDPOINT, request -> McpTransportContext.EMPTY) {
+          @Override
+          protected boolean authenticateRequest(
+              HttpServletRequest request, HttpServletResponse response) {
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            return false;
+          }
+        };
+    transport.setMcpHandler(handler);
+    HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
+    when(request.getContentType()).thenReturn("text/plain");
+
+    transport.doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+    verify(response, never()).setStatus(HttpServletResponse.SC_UNSUPPORTED_MEDIA_TYPE);
+    verify(handler, never()).handleRequest(any(), any());
+  }
+
+  @Test
+  void doPost_jsonWithCharset_reachesTheHandler() throws Exception {
+    HttpServletRequest request = requestFor("application/json", UNKNOWN_METHOD_REQUEST);
+    when(request.getContentType()).thenReturn("Application/JSON; charset=utf-8");
+
+    transportRejectingWith(methodNotFound("server/discover")).doPost(request, response);
+
+    verify(response).setStatus(HttpServletResponse.SC_OK);
   }
 
   @Test
@@ -322,5 +407,35 @@ class HttpServletStatelessServerTransportTest {
     verify(response).setStatus(HttpServletResponse.SC_ACCEPTED);
     verify(handler, never()).handleNotification(any(), any());
     assertThat(body.toString()).isEmpty();
+  }
+
+  // ── request body limit ────────────────────────────────────────────────────
+
+  @Test
+  void readBody_readsABodyAtTheLimitAndStopsOneBytePastIt() throws Exception {
+    byte[] payload = UNKNOWN_METHOD_REQUEST.getBytes(StandardCharsets.UTF_8);
+    assertThat(
+            HttpServletStatelessServerTransport.readBody(
+                requestFor("application/json", UNKNOWN_METHOD_REQUEST), payload.length))
+        .isEqualTo(payload);
+
+    ByteArrayInputStream oversized = new ByteArrayInputStream(new byte[4096]);
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getInputStream()).thenReturn(bodyOf(oversized));
+    assertThat(HttpServletStatelessServerTransport.readBody(request, 1024)).isNull();
+    assertThat(oversized.available()).isEqualTo(4096 - 1024 - 1);
+  }
+
+  @Test
+  void doPost_oversizedMessage_answers413WithoutReachingTheHandler() throws Exception {
+    McpStatelessServerHandler handler = mock(McpStatelessServerHandler.class);
+    String oversized =
+        notification("x".repeat(HttpServletStatelessServerTransport.MAX_MESSAGE_BODY_BYTES));
+
+    transportWith(handler).doPost(requestFor("application/json", oversized), response);
+
+    verify(response).setStatus(HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE);
+    verifyNoInteractions(handler);
+    assertThat(body.toString()).contains("\"code\":-32600");
   }
 }

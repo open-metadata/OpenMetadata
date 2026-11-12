@@ -18,12 +18,13 @@ import {
   ButtonGroupItem,
   Dropdown,
   Grid,
+  selectedTriggerClassName,
 } from '@openmetadata/ui-core-components';
+import { WeeklyEmailPreferences } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { map } from 'lodash';
+import { findKey, map } from 'lodash';
 import { Key, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterIcon } from '../../../assets/svg/filter.svg';
 import {
   EXECUTION_FILTER_RANGE,
   MenuOptions,
@@ -34,7 +35,7 @@ import {
   SEGMENT_TOGGLE_ITEM_CLASS,
 } from '../../../constants/SegmentToggle.constants';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
-import { getPipelineStatus } from '../../../rest/pipelineAPI';
+import { getAllPipelineStatuses } from '../../../rest/pipelineAPI';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
 import {
   getCurrentMillis,
@@ -63,24 +64,37 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   const [status, setStatus] = useState(MenuOptions.all);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchPipelineStatus = async (startRange: number, endRange: number) => {
+  const fetchPipelineStatus = async (
+    startRange: number,
+    endRange: number,
+    signal: AbortSignal
+  ) => {
     try {
       setIsLoading(true);
 
-      const response = await getPipelineStatus(pipelineFQN, {
-        startTs: startRange,
-        endTs: endRange,
-      });
-      setExecutions(response.data);
-    } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('message.fetch-pipeline-status-error')
+      const statuses = await getAllPipelineStatuses(
+        pipelineFQN,
+        { startTs: startRange, endTs: endRange },
+        signal
       );
+      if (!signal.aborted) {
+        setExecutions(statuses);
+      }
+    } catch (error) {
+      if (!signal.aborted) {
+        showErrorToast(
+          error as AxiosError,
+          t('message.fetch-pipeline-status-error')
+        );
+      }
     } finally {
-      setIsLoading(false);
+      if (!signal.aborted) {
+        setIsLoading(false);
+      }
     }
   };
+
+  const isStatusFiltered = status !== MenuOptions.all;
 
   const handleMenuClick = useCallback(
     (key: Key) => setStatus(MenuOptions[key as keyof typeof MenuOptions]),
@@ -97,7 +111,11 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
   };
 
   useEffect(() => {
-    fetchPipelineStatus(startTime, endTime);
+    // Reading a range can take several requests, so a superseded read must not land last.
+    const controller = new AbortController();
+    fetchPipelineStatus(startTime, endTime, controller.signal);
+
+    return () => controller.abort();
   }, [pipelineFQN, datesSelected, startTime, endTime]);
 
   const handleSearch = (value: string) => {
@@ -148,17 +166,23 @@ const ExecutionsTab = ({ pipelineFQN, tasks }: ExecutionProps) => {
               itemClassName="layout-space-item">
               <Dropdown.Root>
                 <Button
-                  className="tw:text-brand-secondary tw:after:outline-brand"
+                  className={
+                    isStatusFiltered ? selectedTriggerClassName(true) : undefined
+                  }
                   color="secondary"
                   data-testid="status-button"
-                  iconLeading={<FilterIcon height={12} width={12} />}
+                  iconLeading={WeeklyEmailPreferences}
                   size="sm">
-                  {status === MenuOptions.all ? t('label.status') : status}
+                  {isStatusFiltered ? status : t('label.status')}
                 </Button>
                 <Dropdown.Popover className="tw:w-auto" placement="bottom">
                   <Dropdown.Menu
+                    disallowEmptySelection
                     aria-label={t('label.status')}
-                    selectionMode="none"
+                    selectedKeys={[
+                      findKey(MenuOptions, (v) => v === status) ?? 'all',
+                    ]}
+                    selectionMode="single"
                     onAction={handleMenuClick}>
                     {map(MenuOptions, (value, key) => (
                       <Dropdown.Item id={key} key={key}>

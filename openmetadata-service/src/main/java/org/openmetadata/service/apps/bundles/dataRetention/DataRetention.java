@@ -151,6 +151,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("test_cases_missing_executable_suite", new StepStats());
     entityStats.withAdditionalProperty("orphaned_ingestion_pipelines", new StepStats());
     entityStats.withAdditionalProperty("orphan_test_case_resolution_status", new StepStats());
+    entityStats.withAdditionalProperty("orphan_test_case_incident", new StepStats());
     entityStats.withAdditionalProperty("orphan_agent_execution", new StepStats());
     entityStats.withAdditionalProperty("orphan_mcp_execution", new StepStats());
     entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
@@ -489,6 +490,9 @@ public class DataRetention extends AbstractNativeApplication {
     executeOrphanCleanup(
         "orphan_test_case_resolution_status",
         () -> resolutionStatusDao.deleteOrphanedRecords(BATCH_SIZE));
+    // After the record sweep, which leaves the incident rows of the records it removes.
+    executeOrphanCleanup(
+        "orphan_test_case_incident", () -> resolutionStatusDao.deleteOrphanedIncidents(BATCH_SIZE));
     executeOrphanCleanup(
         "orphan_agent_execution", () -> agentExecutionDao.deleteOrphanedRecords(BATCH_SIZE));
     executeOrphanCleanup(

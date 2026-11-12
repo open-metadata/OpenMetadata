@@ -18,6 +18,7 @@ import {
   screen,
   within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import i18next from 'i18next';
 import { Profiler } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -335,7 +336,7 @@ describe('native Data mode cluster paging', () => {
     const onLoadMoreTerms = jest.fn();
     renderGraph({ hasMoreTerms: true, onLoadMoreTerms });
 
-    fireEvent.click(screen.getByText('label.load-more'));
+    fireEvent.click(screen.getByText('label.load-more-lowercase'));
 
     expect(onLoadMoreTerms).toHaveBeenCalledTimes(1);
   });
@@ -349,7 +350,9 @@ describe('native Data mode cluster paging', () => {
     expect(screen.getByTestId('ontology-data-context-full')).toHaveTextContent(
       'message.ontology-data-context-full'
     );
-    expect(screen.queryByText('label.load-more')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('label.load-more-lowercase')
+    ).not.toBeInTheDocument();
   });
 });
 
@@ -808,5 +811,291 @@ describe('native Data mode in English', () => {
     expect(
       screen.getByTestId('ontology-data-asset-asset:transfer:t1')
     ).toHaveTextContent('BigQuery · 0 cols');
+  });
+});
+
+describe('native Data mode of one concept', () => {
+  const singleConceptData = () => {
+    const graph = applyClustersPage(
+      EMPTY_NATIVE_DATA_GRAPH,
+      pageFixture({
+        clusters: [
+          {
+            id: 'transfer',
+            name: 'Funds Transfer',
+            count: 2,
+            assets: [
+              {
+                id: 't0',
+                name: 'table_0',
+                serviceType: 'Snowflake',
+                columns: 2,
+              },
+              { id: 't1', name: 'table_1', serviceType: 'BigQuery' },
+            ],
+          },
+        ],
+        loaded: [prefixFixture('transfer')],
+      })
+    );
+
+    return buildNativeDataGraph(
+      graph,
+      new Set(),
+      'label.lineage',
+      new Map([
+        [
+          't0',
+          [
+            {
+              path: ['amount'],
+              type: 'decimal(10,2)',
+              propertyLabel: 'amount',
+              isResolved: true,
+            },
+            {
+              path: ['gone'],
+              propertyLabel: 'status',
+              isResolved: false,
+            },
+          ],
+        ],
+      ])
+    );
+  };
+
+  it('starts the single concept card below the concept chip, and a multi-concept graph at the top', () => {
+    const sizes = jest
+      .spyOn(HTMLElement.prototype, 'clientHeight', 'get')
+      .mockReturnValue(300);
+    const widths = jest
+      .spyOn(HTMLElement.prototype, 'clientWidth', 'get')
+      .mockReturnValue(1200);
+    const canvasTop = () => {
+      const transform = screen.getByRole('button', { name: 'label.graph' })
+        .style.transform;
+
+      return Number(/translate3d\([^,]+px, ([\d.]+)px/.exec(transform)?.[1]);
+    };
+    const single = renderGraph({
+      data: singleConceptData(),
+      isSingleConcept: true,
+    });
+    // The chip's bottom edge is at 104px; the card starts 48px into the canvas.
+    const cardTopSingle = canvasTop() + 48 * 1;
+
+    expect(cardTopSingle).toBeGreaterThanOrEqual(104);
+
+    single.unmount();
+
+    renderGraph({ data: singleConceptData() });
+
+    expect(canvasTop()).toBeLessThan(cardTopSingle - 48);
+
+    sizes.mockRestore();
+    widths.mockRestore();
+  });
+
+  it('counts the bound columns on the row that has them and draws nothing until they are opened', () => {
+    renderGraph({ data: singleConceptData(), isSingleConcept: true });
+
+    const toggle = screen.getByTestId(
+      'ontology-data-asset-columns-toggle-asset:transfer:t0'
+    );
+
+    expect(toggle).toHaveTextContent('label.bound-column-count');
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(
+      screen.queryByTestId(
+        'ontology-data-asset-columns-toggle-asset:transfer:t1'
+      )
+    ).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId('ontology-data-column')).toHaveLength(0);
+    expect(screen.queryAllByTestId('ontology-data-column-edge')).toHaveLength(
+      0
+    );
+  });
+
+  it('draws each bound column as its own node with an edge to its table, named by column and type', () => {
+    renderGraph({ data: singleConceptData(), isSingleConcept: true });
+    const toggle = screen.getByTestId(
+      'ontology-data-asset-columns-toggle-asset:transfer:t0'
+    );
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+    expect(
+      screen.queryByTestId('ontology-data-asset-columns-asset:transfer:t0')
+    ).not.toBeInTheDocument();
+
+    const nodes = screen.getAllByTestId('ontology-data-column');
+
+    expect(nodes.map((node) => node.textContent)).toEqual([
+      'amountdecimal(10,2)',
+      'gone',
+    ]);
+    expect(nodes.map((node) => node.getAttribute('aria-label'))).toEqual([
+      'label.ontology-column-node-aria',
+      'label.ontology-column-node-aria',
+    ]);
+
+    const edges = screen.getAllByTestId('ontology-data-column-edge');
+
+    expect(edges.map((edge) => edge.getAttribute('data-column'))).toEqual([
+      'amount',
+      'gone',
+    ]);
+    expect(
+      screen.getByTestId('ontology-data-legend-column-binding')
+    ).toHaveTextContent('label.ontology-column-binding');
+
+    fireEvent.click(toggle);
+
+    expect(screen.queryAllByTestId('ontology-data-column')).toHaveLength(0);
+  });
+
+  it('selects a column node with the keyboard and the pointer, and marks the selected one', async () => {
+    const user = userEvent.setup();
+    const onSelectColumn = jest.fn();
+    const { rerender } = renderGraph({
+      data: singleConceptData(),
+      isSingleConcept: true,
+      onSelectColumn,
+    });
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-columns-toggle-asset:transfer:t0')
+    );
+    const [amount, gone] = screen.getAllByTestId('ontology-data-column');
+
+    act(() => amount.focus());
+    await user.keyboard('{Enter}');
+
+    expect(onSelectColumn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'asset:transfer:t0' }),
+      expect.objectContaining({ path: ['amount'], propertyLabel: 'amount' })
+    );
+
+    await user.click(gone);
+
+    expect(onSelectColumn).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'asset:transfer:t0' }),
+      expect.objectContaining({ path: ['gone'], isResolved: false })
+    );
+    expect(amount).toHaveAttribute('aria-pressed', 'false');
+
+    rerender(
+      <OntologyDataGraph
+        isSingleConcept
+        data={singleConceptData()}
+        glossaryColorMap={{}}
+        hasMoreTerms={false}
+        isLoadingMoreTerms={false}
+        relationTypes={[]}
+        selectedColumnKey="asset:transfer:t0::gone"
+        variant="native"
+        onLoadMore={jest.fn()}
+        onLoadMoreTerms={jest.fn()}
+        onPaneClick={jest.fn()}
+        onSelectColumn={onSelectColumn}
+        onSelectNode={jest.fn()}
+      />
+    );
+
+    expect(gone).toHaveAttribute('aria-pressed', 'true');
+    expect(amount).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('keeps five column nodes per table and expands the rest from a +N more node', () => {
+    const columns = Array.from({ length: 8 }, (_, index) => ({
+      path: [`col_${index}`],
+      propertyLabel: `prop_${index}`,
+      isResolved: true,
+    }));
+    const data = singleConceptData();
+    renderGraph({
+      data: {
+        ...data,
+        nodes: data.nodes.map((node) =>
+          node.id === 'asset:transfer:t0'
+            ? { ...node, boundColumns: columns }
+            : node
+        ),
+      },
+      isSingleConcept: true,
+    });
+    fireEvent.click(
+      screen.getByTestId('ontology-data-asset-columns-toggle-asset:transfer:t0')
+    );
+
+    expect(screen.getAllByTestId('ontology-data-column')).toHaveLength(5);
+    expect(screen.getAllByTestId('ontology-data-column-edge')).toHaveLength(5);
+
+    const more = screen.getByTestId(
+      'ontology-data-column-more-asset:transfer:t0'
+    );
+
+    expect(more).toHaveTextContent('label.show-count-more');
+
+    fireEvent.click(more);
+
+    expect(screen.getAllByTestId('ontology-data-column')).toHaveLength(8);
+    expect(screen.getAllByTestId('ontology-data-column-edge')).toHaveLength(8);
+
+    fireEvent.click(
+      screen.getByTestId('ontology-data-column-fewer-asset:transfer:t0')
+    );
+
+    expect(screen.getAllByTestId('ontology-data-column')).toHaveLength(5);
+  });
+
+  it('names the column binding in the legend only when a column is bound, and drops the multi-concept heading and inferred legend', () => {
+    const { rerender } = renderGraph({
+      data: singleConceptData(),
+      isSingleConcept: true,
+    });
+
+    expect(
+      screen.getByTestId('ontology-data-legend-column-binding')
+    ).toBeVisible();
+    expect(screen.queryByTestId('ontology-data-legend-inferred')).toBeNull();
+    expect(screen.queryByTestId('ontology-data-layer-heading')).toBeNull();
+
+    rerender(
+      <OntologyDataGraph
+        isSingleConcept
+        data={buildNativeDataGraph(
+          applyClustersPage(
+            EMPTY_NATIVE_DATA_GRAPH,
+            pageFixture({
+              clusters: [
+                {
+                  id: 'transfer',
+                  name: 'Funds Transfer',
+                  count: 1,
+                  assets: [{ id: 't1', name: 'table_1' }],
+                },
+              ],
+              loaded: [prefixFixture('transfer')],
+            })
+          ),
+          new Set(),
+          'label.lineage'
+        )}
+        glossaryColorMap={{}}
+        hasMoreTerms={false}
+        isLoadingMoreTerms={false}
+        relationTypes={[]}
+        variant="native"
+        onLoadMore={jest.fn()}
+        onLoadMoreTerms={jest.fn()}
+        onPaneClick={jest.fn()}
+        onSelectNode={jest.fn()}
+      />
+    );
+
+    expect(
+      screen.queryByTestId('ontology-data-legend-column-binding')
+    ).toBeNull();
   });
 });

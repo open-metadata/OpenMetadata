@@ -11,11 +11,13 @@
  *  limitations under the License.
  */
 import { Tooltip, Typography } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@openmetadata/ui-core-components/icons';
+import {
+  CheckCircle02,
+  ChevronDown,
+  XCircle,
+} from '@openmetadata/ui-core-components/icons';
 import { startCase } from 'lodash';
 import type { Column, RenderCellProps } from 'react-data-grid';
-import { ReactComponent as SuccessBadgeIcon } from '../..//assets/svg/success-badge.svg';
-import { ReactComponent as FailBadgeIcon } from '../../assets/svg/fail-badge.svg';
 import CsvCellPreview from '../../components/common/EntityImport/CsvCellPreview/CsvCellPreview.component';
 import {
   BulkActionOperation,
@@ -370,18 +372,16 @@ export const isMetricBulkEditHiddenColumn = (
 
 const statusRenderer = (value: Status) => {
   return value === Status.Failure ? (
-    <FailBadgeIcon
-      className="m-t-xss"
+    <XCircle
+      className="m-t-xss tw:text-utility-error-600"
       data-testid="failure-badge"
-      height={16}
-      width={16}
+      size={16}
     />
   ) : (
-    <SuccessBadgeIcon
-      className="m-t-xss"
+    <CheckCircle02
+      className="m-t-xss tw:text-utility-green-500"
       data-testid="success-badge"
-      height={16}
-      width={16}
+      size={16}
     />
   );
 };

@@ -23,6 +23,7 @@ import type {
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
+import { ButtonUtility } from '@/components/base/buttons/button-utility';
 import { Typography } from '@/components/foundations/typography';
 import { cx } from '@/utils/cx';
 import { FileUploadDropZone } from '../../file-upload/file-upload';
@@ -615,14 +616,14 @@ export const CoverImageUploadField = ({
                     {mergedLabels.reposition}
                   </Button>
                 )}
-                <Button
-                  aria-label={mergedLabels.remove}
+                <ButtonUtility
                   className="tw:pointer-events-auto"
-                  color="secondary-destructive"
+                  color="tertiary-destructive"
                   data-testid="cover-image-upload-remove"
-                  iconLeading={Trash01}
-                  size="sm"
-                  onPress={handleRemove}
+                  icon={Trash01}
+                  size="lg"
+                  tooltip={mergedLabels.remove}
+                  onClick={handleRemove}
                 />
               </>
             )}

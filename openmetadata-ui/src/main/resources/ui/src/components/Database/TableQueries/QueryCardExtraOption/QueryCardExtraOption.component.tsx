@@ -18,18 +18,23 @@ import {
   Dropdown,
   Tooltip,
 } from '@openmetadata/ui-core-components';
+import {
+  DotsVertical,
+  Edit01,
+  ThumbsDown,
+  ThumbsDownFilled,
+  ThumbsUp,
+  ThumbsUpFilled,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import Qs from 'qs';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../../assets/svg/edit-new.svg';
-import { ReactComponent as DeleteIcon } from '../../../../assets/svg/ic-delete.svg';
-import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
-import { ReactComponent as ThumbsUpFilled } from '../../../../assets/svg/thumbs-up-filled.svg';
-import { ReactComponent as ThumbsUpOutline } from '../../../../assets/svg/thumbs-up-outline.svg';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -98,14 +103,14 @@ const QueryCardExtraOption = ({
       {
         key: 'edit-query',
         label: t('label.edit'),
-        icon: EditIcon,
+        icon: Edit01,
         disabled: !canEditQuery,
         onAction: () => onEditClick(true),
       },
       {
         key: 'delete-query',
         label: t('label.delete'),
-        icon: DeleteIcon,
+        icon: Trash01,
         disabled: !canDelete,
         onAction: () => setShowDeleteModal(true),
       },
@@ -169,14 +174,15 @@ const QueryCardExtraOption = ({
 
       <Tooltip arrow title={t('label.up-vote')}>
         <Button
+          className={classNames(
+            'tw:gap-1',
+            voteStatus === QueryVoteType.votedUp &&
+              'tw:*:data-icon:text-utility-brand-600'
+          )}
           color="secondary"
           data-testid="up-vote-btn"
           iconLeading={
-            voteStatus === QueryVoteType.votedUp ? (
-              <ThumbsUpFilled className="text-success" height={15} width={15} />
-            ) : (
-              <ThumbsUpOutline height={15} width={15} />
-            )
+            voteStatus === QueryVoteType.votedUp ? ThumbsUpFilled : ThumbsUp
           }
           isLoading={loading === QueryVoteType.votedUp}
           size="xs"
@@ -187,22 +193,17 @@ const QueryCardExtraOption = ({
 
       <Tooltip arrow title={t('label.down-vote')}>
         <Button
+          className={classNames(
+            'tw:gap-1',
+            voteStatus === QueryVoteType.votedDown &&
+              'tw:*:data-icon:text-fg-warning-primary'
+          )}
           color="secondary"
           data-testid="down-vote-btn"
           iconLeading={
-            voteStatus === QueryVoteType.votedDown ? (
-              <ThumbsUpFilled
-                className="rotate-inverse text-warning-7"
-                height={15}
-                width={15}
-              />
-            ) : (
-              <ThumbsUpOutline
-                className="rotate-inverse"
-                height={15}
-                width={15}
-              />
-            )
+            voteStatus === QueryVoteType.votedDown
+              ? ThumbsDownFilled
+              : ThumbsDown
           }
           isLoading={loading === QueryVoteType.votedDown}
           size="xs"
@@ -213,10 +214,9 @@ const QueryCardExtraOption = ({
 
       <Dropdown.Root>
         <ButtonUtility
-          color="tertiary"
           data-testid="query-btn"
-          icon={IconDropdown}
-          size="xs"
+          icon={DotsVertical}
+          size="lg"
           tooltip={t('label.manage-entity', {
             entity: t('label.query'),
           })}

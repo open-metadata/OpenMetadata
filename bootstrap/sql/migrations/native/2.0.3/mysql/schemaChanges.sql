@@ -11,5 +11,28 @@ DROP TABLE IF EXISTS rdf_index_server_stats;
 -- A fourth-level nested table column has eight segments and needs 263 characters.
 -- VARCHAR(512) supports eleven column levels after the four-part table FQN while keeping
 -- extension usable in the composite primary key; MySQL cannot fully index a TEXT value.
-ALTER TABLE entity_extension
-  MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ascii COLLATE ascii_bin NOT NULL;
+-- The column keeps its character set and collation: changing either makes MySQL copy the whole
+-- table and block writes to it, while widening alone is done in place.
+-- This block replaces the statement 2.0.3 first shipped, which also switched the column to
+-- ascii_bin. Its new text makes it run again where the runner reprocesses 2.0.3; there the column
+-- is already 512, so it does nothing and the column stays ascii_bin until #37180 aligns it with
+-- its table. The guard stays in SQL, as an exception to
+-- ADR:2026-10-22-guarded-index-ddl-runs-from-a-java-data-migration, because it replaces this
+-- file's statement. The runner retries a guarded block as one unit, per
+-- ADR:2026-10-22-mysql-guarded-blocks-run-as-one-migration-unit.
+SET @entity_extension_widen_ddl = (
+  SELECT IF(
+    c.CHARACTER_MAXIMUM_LENGTH < 512,
+    CONCAT(
+      'ALTER TABLE entity_extension MODIFY COLUMN extension VARCHAR(512) CHARACTER SET ',
+      c.CHARACTER_SET_NAME, ' COLLATE ', c.COLLATION_NAME, ' NOT NULL'),
+    'SELECT 1'
+  )
+  FROM information_schema.columns c
+  WHERE c.table_schema = DATABASE()
+    AND c.table_name = 'entity_extension'
+    AND c.column_name = 'extension'
+);
+PREPARE entity_extension_widen_stmt FROM @entity_extension_widen_ddl;
+EXECUTE entity_extension_widen_stmt;
+DEALLOCATE PREPARE entity_extension_widen_stmt;

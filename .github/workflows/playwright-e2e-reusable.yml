@@ -163,18 +163,17 @@ env:
 concurrency:
   # PR and manual runs for the same branch supersede stale commits. This also
   # lets a manually dispatched full-suite run replace the automatic PR subset.
-  # Include event_name AND database in the group so pull_request vs
-  # pull_request_target runs for the same PR don't cancel each other, and so
-  # a postgres run and a mysql run for the same ref don't fight — the caller
-  # workflows drive different events/schedules and share this reusable.
+  # Include event_name AND database in the group so a postgres run and a mysql
+  # run for the same ref don't fight — the caller workflows drive different
+  # events/schedules and share this reusable.
   group: playwright-ci-${{ inputs.database }}-${{ github.event_name }}-${{ github.event.pull_request.head.ref || github.ref_name }}
-  cancel-in-progress: ${{ !contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  cancel-in-progress: true
 
 jobs:
   # Playwright runs only in the merge queue (plus schedule / dispatch / main
   # cache-warm pushes); callers skip this workflow on PR events.
   gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions: {}
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
@@ -192,7 +191,7 @@ jobs:
   check-changes:
     needs: gate
     if: ${{ needs.gate.outputs.should_run == 'true' }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
@@ -211,7 +210,7 @@ jobs:
           persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' || github.event_name == 'merge_group' }}
+        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
         with:
           base: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || '' }}
           filters: |
@@ -335,10 +334,8 @@ jobs:
 
   cache-keys:
     needs: check-changes
-    runs-on: ubuntu-latest
-    if: |
-      !github.event.pull_request.draft &&
-      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft }}
     outputs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
       distribution: ${{ steps.fingerprints.outputs.distribution }}
@@ -349,15 +346,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
-          # unless the workflow opts in. The gate job already restricts this event to
-          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
-          # tree run in docker containers — not directly in the workflow context — so
-          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
-          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
-          # deliberately checks out base.sha instead, closing the pwn-request path there.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Calculate cache fingerprints
@@ -385,45 +374,17 @@ jobs:
 
   build:
     needs: [check-changes, cache-keys]
-    runs-on: ubuntu-latest
-    if: |
-      !github.event.pull_request.draft &&
-      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft }}
     env:
       DISTRIBUTION_FINGERPRINT: ${{ needs.cache-keys.outputs.distribution }}
       BUNDLE_MODE: ${{ needs.cache-keys.outputs.bundle_mode }}
       BUILD_TOOLCHAIN: ${{ needs.cache-keys.outputs.toolchain }}
     steps:
-      - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@369769072fe522a3a8a85c03c96af1e5242a1994 # v1.9.1
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          check-name: Team Label
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-          wait-interval: 90
-
-      - name: Verify PR labels
-        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
-        with:
-          github-token: "${{ secrets.GITHUB_TOKEN }}"
-          valid-labels: "safe to test"
-          pull-request-number: "${{ github.event.pull_request.number }}"
-          disable-reviews: true
-
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
-          # unless the workflow opts in. The gate job already restricts this event to
-          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
-          # tree run in docker containers — not directly in the workflow context — so
-          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
-          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
-          # deliberately checks out base.sha instead, closing the pwn-request path there.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Initialize distribution cache path
@@ -476,14 +437,7 @@ jobs:
         run: sudo make install_antlr_cli
 
       - name: Restore openmetadata-ui dist cache
-        # Two guards ANDed together:
-        #   - distribution-cache miss (otherwise we already have the tarball)
-        #   - not a fork PR under pull_request_target — that combination runs
-        #     base-branch privileged with untrusted checked-out code, so a
-        #     cache save would poison the default-branch cache scope (CodeQL
-        #     `actions/actions/cache-poisoning`). Same guard lives inside the
-        #     composite action for defence in depth, but CodeQL is a static
-        #     analyser and needs to see it here at the workflow level.
+        # Skipped on a distribution-cache hit: the tarball is already there.
         #
         # Deliberately NOT gated on merge_group, unlike every actions/cache/save
         # step below. This one wraps `actions/cache`, whose save is a post-step:
@@ -492,10 +446,7 @@ jobs:
         # ~48 MB entry. Wrong trade — the queue-ref copy is cheap and
         # prune-ephemeral-caches.yml collects it. Revisit only if this is split
         # into cache/restore + a post-build cache/save.
-        if: >-
-          steps.distribution-cache.outputs.usable != 'true' &&
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
+        if: ${{ steps.distribution-cache.outputs.usable != 'true' }}
         uses: ./.github/actions/cache-ui-dist
         with:
           # PW_E2E_BUILD alters vite chunking; PW_E2E_BUNDLE alters it further.
@@ -511,17 +462,12 @@ jobs:
         run: mvn -DskipTests clean package -pl openmetadata-dist -am
 
       - name: Save Maven Dependencies
-        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
-        # merge_group skips it too — see the dist-cache step for why an
+        # merge_group skips the save — see the dist-cache step for why an
         # ephemeral queue ref must never write the cache.
-        # The restore above stays ungated so forks are not forced into a cold
-        # ~/.m2 download; only the write into main's cache scope is blocked.
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           steps.maven-cache.outputs.cache-hit != 'true' &&
-          github.event_name != 'merge_group' &&
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
+          github.event_name != 'merge_group'
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -547,16 +493,12 @@ jobs:
       # warmer's main-scoped fixtures evicted within ~2.5 h of being saved.
       # Only populate-playwright-caches.yml (push / schedule) writes these.
       - name: Save OpenMetadata distribution cache
-        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
-        # merge_group skips it too — see the dist-cache step for why an
+        # merge_group skips the save — see the dist-cache step for why an
         # ephemeral queue ref must never write the cache.
-        # Restores stay unconditional: reading main's cache into a fork job is harmless.
         if: >-
           steps.distribution-cache.outputs.usable != 'true' &&
           github.event_name != 'merge_group' &&
-          github.event_name != 'pull_request' &&
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
+          github.event_name != 'pull_request'
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -572,7 +514,7 @@ jobs:
             "$BUILD_TOOLCHAIN"
 
       - name: Upload OpenMetadata distribution
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: openmetadata-distribution
           overwrite: true
@@ -588,26 +530,19 @@ jobs:
   # shared server instead (ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle).
   build-visual-ui:
     needs: [check-changes]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     if: |
       needs.check-changes.outputs.visual == 'true' &&
       !inputs.warm_caches_only &&
-      !github.event.pull_request.draft &&
-      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+      !github.event.pull_request.draft
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # Same opt-in and reasoning as the build job's checkout.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Restore openmetadata-ui dist cache
-        # Same fork guard as the build job's cache step.
-        if: >-
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
         uses: ./.github/actions/cache-ui-dist
         with:
           variant: pw-e2e-build
@@ -648,10 +583,8 @@ jobs:
 
   detect-changes:
     needs: check-changes
-    runs-on: ubuntu-latest
-    if: |
-      !github.event.pull_request.draft &&
-      (!contains(fromJSON('["pull_request","pull_request_target"]'), github.event_name) || github.event.action != 'labeled' || github.event.label.name == 'safe to test')
+    runs-on: ubuntu-24.04
+    if: ${{ !github.event.pull_request.draft }}
     outputs:
       mode: ${{ steps.select.outputs.mode }}
       selected_count: ${{ steps.select.outputs.selected_count }}
@@ -661,16 +594,14 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           fetch-depth: 0
           filter: blob:none
-          # See allow-unsafe-pr-checkout rationale on other checkouts above.
-          allow-unsafe-pr-checkout: true
           persist-credentials: false
 
       - name: Get all changed files
         id: all-changes
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'pull_request_target' }}
+        if: ${{ github.event_name == 'pull_request' }}
         uses: tj-actions/changed-files@9426d40962ed5378910ee2e21d5f8c6fcbf2dd96 # v47.0.6
 
       - name: Select PR coverage
@@ -692,7 +623,7 @@ jobs:
             "$RUNNER_TEMP/playwright-selection/selection.json"
 
       - name: Upload Playwright selection
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-selection
           path: ${{ runner.temp }}/playwright-selection/selection.json
@@ -702,7 +633,7 @@ jobs:
     # Planning reads no build output, so it runs alongside `build` instead of
     # adding its ~4 min after it on the path to the shards.
     needs: [check-changes, detect-changes]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       shard_count: ${{ steps.plan.outputs.shard_count }}
@@ -711,15 +642,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
-          # unless the workflow opts in. The gate job already restricts this event to
-          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
-          # tree run in docker containers — not directly in the workflow context — so
-          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
-          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
-          # deliberately checks out base.sha instead, closing the pwn-request path there.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Download selection
@@ -793,16 +716,11 @@ jobs:
         run: npx playwright install chromium
 
       - name: Seed Playwright browser cache
-        # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
-        # merge_group skips it too — see the dist-cache step for why an
+        # merge_group skips the save — see the dist-cache step for why an
         # ephemeral queue ref must never write the cache.
-        # The restore above stays ungated: on a fork PR the shards fall back to
-        # the main-scoped entry saved by populate-playwright-caches.yml.
         if: >-
           steps.seed-browser-cache.outputs.cache-hit != 'true' &&
-          github.event_name != 'merge_group' &&
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
+          github.event_name != 'merge_group'
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -927,7 +845,7 @@ jobs:
             --config=playwright/browser-helper-tests.config.ts
 
       - name: Upload browser helper failure diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         # Failure-only, so a green run uploads nothing. Without this the traces
         # and results.json the container just wrote are discarded with it.
         if: ${{ !inputs.ref && (failure() || cancelled()) }}
@@ -1039,7 +957,7 @@ jobs:
             > "$RUNNER_TEMP/playwright-plans/quarantine-inventory.json"
 
       - name: Upload shard plans
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-shard-plans
           path: ${{ runner.temp }}/playwright-plans
@@ -1047,22 +965,14 @@ jobs:
 
   restore-playwright-fixture:
     needs: [cache-keys, plan-playwright]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     outputs:
       fixture_cache_hit: ${{ steps.validate-fixture.outputs.usable }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
-          # unless the workflow opts in. The gate job already restricts this event to
-          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
-          # tree run in docker containers — not directly in the workflow context — so
-          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
-          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
-          # deliberately checks out base.sha instead, closing the pwn-request path there.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Initialize fixture cache paths
@@ -1095,7 +1005,7 @@ jobs:
 
       - name: Upload restored seeded fixture
         if: ${{ steps.validate-fixture.outputs.usable == 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -1114,7 +1024,7 @@ jobs:
       ]
     # The ingestion image only matters when the fixture is rebuilt.
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.cache-keys.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.restore-playwright-fixture.result == 'success' && (needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' || needs.prepare-ingestion-image.result == 'success') }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     env:
       ELASTICSEARCH_CLUSTER_ALIAS: openmetadata
     steps:
@@ -1150,15 +1060,7 @@ jobs:
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
-          # unless the workflow opts in. The gate job already restricts this event to
-          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
-          # tree run in docker containers — not directly in the workflow context — so
-          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
-          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
-          # deliberately checks out base.sha instead, closing the pwn-request path there.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Initialize generated fixture paths
@@ -1383,7 +1285,7 @@ jobs:
       - name: Upload fixture-state failure diagnostics
         if: ${{ failure() && needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
         continue-on-error: true
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-fixture-state-diagnostics-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
@@ -1409,16 +1311,13 @@ jobs:
             "$FIXTURE_CACHE_DIR/playwright-fixture.tar.zst" \
             "${{ needs.cache-keys.outputs.fixture }}"
 
-      # Fork PRs under pull_request_target skip the save — actions/cache-poisoning.
-      # merge_group skips it too — see the dist-cache step for why an
+      # merge_group skips the save — see the dist-cache step for why an
       # ephemeral queue ref must never write the cache.
       - name: Save golden fixture cache
         if: >-
           needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' &&
           github.event_name != 'merge_group' &&
-          github.event_name != 'pull_request' &&
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
+          github.event_name != 'pull_request'
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -1427,7 +1326,7 @@ jobs:
 
       - name: Upload seeded fixture
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-seeded-fixture
           path: ${{ env.FIXTURE_CACHE_DIR }}/playwright-fixture.tar.zst
@@ -1446,15 +1345,12 @@ jobs:
   # Airflow shards. Neither builds it again.
   prepare-ingestion-image:
     needs: [cache-keys]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # Same fork-PR rationale as the build job: the tree is only consumed
-          # by `docker build`, never executed in the workflow context.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Initialize ingestion cache path
@@ -1504,14 +1400,12 @@ jobs:
             "${{ needs.cache-keys.outputs.ingestion }}"
 
       # Same guards as the fixture save: never from an ephemeral merge-queue
-      # ref, a pull_request run, or a fork PR.
+      # ref or a pull_request run.
       - name: Save ingestion image cache
         if: >-
           steps.validate-ingestion.outputs.usable != 'true' &&
           github.event_name != 'merge_group' &&
-          github.event_name != 'pull_request' &&
-          !(github.event_name == 'pull_request_target' &&
-            github.event.pull_request.head.repo.full_name != github.repository)
+          github.event_name != 'pull_request'
         continue-on-error: true
         uses: actions/cache/save@v6
         with:
@@ -1519,7 +1413,7 @@ jobs:
           key: playwright-ingestion-image-v2-${{ runner.os }}-${{ runner.arch }}-${{ needs.cache-keys.outputs.ingestion }}
 
       - name: Upload ingestion image
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-ingestion-image
           path: ${{ env.INGESTION_CACHE_DIR }}
@@ -1537,7 +1431,7 @@ jobs:
         prepare-playwright-fixture,
         prepare-ingestion-image,
       ]
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # Budget breakdown: up to 60 min playwright hang-protection wrapper on
     # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
     # and teardown/artifact upload. The job clock must clear the inner
@@ -1585,15 +1479,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v7
         with:
-          ref: ${{ inputs.ref != '' && inputs.ref || (github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha) }}
-          # actions/checkout@v7 refuses to fetch fork code under pull_request_target
-          # unless the workflow opts in. The gate job already restricts this event to
-          # "safe to test"-labelled fork PRs, and the build/test steps that consume this
-          # tree run in docker containers — not directly in the workflow context — so
-          # the fork code cannot exfiltrate GITHUB_TOKEN or repo secrets. The one
-          # workflow-runner script consumer (playwright-summary/render_playwright_summary.cjs)
-          # deliberately checks out base.sha instead, closing the pwn-request path there.
-          allow-unsafe-pr-checkout: true
+          ref: ${{ inputs.ref != '' && inputs.ref || github.sha }}
           persist-credentials: false
 
       - name: Download OpenMetadata distribution
@@ -2212,7 +2098,7 @@ jobs:
       # Uploaded on merge_group too: the blob carries the traces the merged HTML
       # report links to, the only way to debug a queue failure or retry pass.
       - name: Upload Playwright blob report
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: always()
         continue-on-error: true
         with:
@@ -2224,7 +2110,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload failure-only test results
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -2235,7 +2121,7 @@ jobs:
           if-no-files-found: ignore
 
       - name: Upload timing and request metrics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: ${{ always() && github.event_name != 'merge_group' }}
         continue-on-error: true
         with:
@@ -2269,7 +2155,7 @@ jobs:
       # sees the current attempt's uploads.
       - name: Upload results JSON for summary
         id: upload-results-json
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) }}
         continue-on-error: true
         with:
@@ -2296,7 +2182,7 @@ jobs:
       # the retry when both are present within the same attempt.
       - name: Retry upload results JSON for summary
         if: ${{ always() && (github.event_name != 'merge_group' || failure() || cancelled()) && steps.upload-results-json.outcome == 'failure' }}
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         continue-on-error: true
         with:
           name: playwright-results-json-${{ matrix.shardId }}-a${{ github.run_attempt }}-retry
@@ -2343,7 +2229,7 @@ jobs:
           fi
 
       - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         if: failure() || cancelled()
         continue-on-error: true
         with:
@@ -2366,7 +2252,7 @@ jobs:
     name: Slack notification
     needs: [playwright-ci]
     if: ${{ always() && inputs.send_slack_notification }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:
       - name: Checkout

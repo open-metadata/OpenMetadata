@@ -31,6 +31,7 @@ import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.handlers.AuthorizationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RegistrationHandler;
 import org.openmetadata.mcp.server.auth.handlers.RevocationHandler;
+import org.openmetadata.mcp.server.auth.html.HtmlTemplates;
 import org.openmetadata.mcp.server.auth.middleware.ClientAuthenticator;
 import org.openmetadata.mcp.server.auth.provider.UserSSOOAuthProvider;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
@@ -120,6 +121,10 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   private static final int REGISTRATION_MAX_PER_HOUR = 10;
   private static final int TOKEN_MAX_PER_MINUTE = 30;
   private static final int MAX_RATE_LIMIT_ENTRIES = 10_000;
+  // Client metadata that passes RegistrationHandler's field limits is at most about 31 KB (ten
+  // 2048-character redirect URIs alone are 20 KiB); 64 KiB leaves room for an inline jwks.
+  // ADR:2026-11-02-mcp-request-bodies-are-bounded-before-parsing
+  static final int MAX_REGISTRATION_BODY_BYTES = 64 * 1024;
   private static final java.util.regex.Pattern IP_PATTERN =
       java.util.regex.Pattern.compile("[0-9a-fA-F.:]+");
   private final java.util.concurrent.ConcurrentHashMap<
@@ -726,11 +731,26 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
             "Cannot send MCP OAuth redirect — response already committed by SSO provider. "
                 + "Redirect target (sanitized): {}",
             sanitizeRedirectUrlForLogging(redirectUrl));
-      } else if (redirectUrl != null) {
+      } else if (redirectUrl != null && authResponse.isRedirect()) {
         response.setHeader("Location", redirectUrl);
         response.setHeader("Cache-Control", "no-store");
         setCorsHeaders(request, response);
         response.sendRedirect(redirectUrl);
+      } else if (redirectUrl != null) {
+        // An error for a remote web callback: the user follows it by clicking, never by itself.
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        response.setContentType("text/html; charset=UTF-8");
+        response.setHeader("Cache-Control", "no-store");
+        response
+            .getWriter()
+            .write(
+                HtmlTemplates.generateErrorReturnPage(
+                    "Authorization Failed",
+                    "The application's sign-in request could not be completed ("
+                        + authResponse.getError().getError()
+                        + ").",
+                    redirectUrl,
+                    UriUtils.describeRedirectTarget(URI.create(redirectUrl))));
       } else if (response.isCommitted()) {
         // SSO_REDIRECT_INITIATED: the provider (e.g. SAML AuthnRequest, or OIDC handleLogin)
         // already wrote the login redirect straight to the browser and committed the response.
@@ -1050,9 +1070,22 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
       LOG.info("Client registration request received");
 
+      // Registration needs no credentials and RegistrationHandler only checks the parsed object,
+      // so the body is bounded before Jackson reads it.
+      byte[] body = readBody(request, MAX_REGISTRATION_BODY_BYTES);
+      if (body == null) {
+        LOG.warn("Registration request body exceeds {} bytes", MAX_REGISTRATION_BODY_BYTES);
+        sendOAuthError(
+            request,
+            response,
+            HttpServletResponse.SC_REQUEST_ENTITY_TOO_LARGE,
+            "invalid_client_metadata",
+            "Registration request is too large");
+        return;
+      }
+
       // Parse registration request
-      OAuthClientMetadata metadata =
-          getObjectMapper().readValue(request.getInputStream(), OAuthClientMetadata.class);
+      OAuthClientMetadata metadata = getObjectMapper().readValue(body, OAuthClientMetadata.class);
 
       // Register client
       OAuthClientInformation clientInfo = registrationHandler.handle(metadata).join();

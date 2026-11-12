@@ -7,6 +7,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.net.URI;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -25,6 +28,7 @@ import org.openmetadata.schema.api.data.CreateOntologyAxiom;
 import org.openmetadata.schema.api.data.CreateOntologyProperty;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.data.OntologyReleaseValidation;
+import org.openmetadata.schema.api.data.OntologyValidationError;
 import org.openmetadata.schema.api.data.UpdateOntologyConceptBinding;
 import org.openmetadata.schema.entity.data.Ontology;
 import org.openmetadata.schema.entity.data.OntologyConcept;
@@ -40,6 +44,7 @@ import org.openmetadata.schema.type.OntologyConceptBindingsResponse;
 import org.openmetadata.schema.type.OntologyExpression;
 import org.openmetadata.schema.type.OntologyExpressionKind;
 import org.openmetadata.schema.type.OntologyLiteral;
+import org.openmetadata.schema.type.OntologyProfileViolationCode;
 import org.openmetadata.schema.type.OntologyPropertyKind;
 import org.openmetadata.schema.type.OntologyReleaseLogicalCheck;
 import org.openmetadata.schema.type.OntologyReleaseMember;
@@ -55,6 +60,73 @@ import org.openmetadata.service.Entity;
 @ExtendWith(TestNamespaceExtension.class)
 public class IndependentOntologyReleaseValidationIT extends BaseOntologyApprovalIT {
   @Test
+  void aStandingDisjointnessClashBlocksCaptureUntilTheAxiomIsRemoved(TestNamespace ns)
+      throws Exception {
+    final Ontology ontology = createOntology(ns);
+    final URI animalIri = URI.create("urn:" + ns.shortPrefix() + ":Animal");
+    final URI dogIri = URI.create("urn:" + ns.shortPrefix() + ":Dog");
+    final OntologyConcept animal = declareClass(ontology, "Animal", animalIri);
+    final OntologyConcept dog = declareClass(ontology, "Dog", dogIri);
+    final var axioms = SdkClients.adminClient().ontologyAxioms();
+    axioms.create(
+        clashAxiom(ontology, "DogIsAnimal", OntologyAxiomType.SUBCLASS_OF, dogIri, animalIri));
+    final var clash =
+        axioms.create(
+            clashAxiom(
+                ontology, "DogNotAnimal", OntologyAxiomType.DISJOINT_WITH, dogIri, animalIri));
+
+    final var refused = captureRequest(ontology);
+    assertEquals(400, refused.statusCode(), refused.body());
+    final var error = JsonUtils.readValue(refused.body(), OntologyValidationError.class);
+    final var violation = error.getViolations().getFirst();
+    assertEquals(OntologyProfileViolationCode.DISJOINT_CLASH, violation.getViolation().getCode());
+    assertEquals("Dog is disjoint with its ancestor Animal", violation.getViolation().getMessage());
+    assertEquals(dog.getId(), violation.getMemberId());
+    assertEquals(List.of(dog.getId(), animal.getId()), violation.getViolation().getConceptIds());
+
+    axioms.delete(clash.getId().toString(), Map.of("hardDelete", "true"));
+    assertNotNull(capture(ontology).getId());
+  }
+
+  private static CreateOntologyAxiom clashAxiom(
+      Ontology ontology, String name, OntologyAxiomType type, URI subject, URI other) {
+    return new CreateOntologyAxiom()
+        .withName(name)
+        .withDisplayName(name)
+        .withDescription(name)
+        .withOntology(ontology.getFullyQualifiedName())
+        .withAxiomType(type)
+        .withSubjectIri(subject)
+        .withProvenance(RelationProvenance.MANUAL)
+        .withExpressions(
+            List.of(
+                new OntologyExpression()
+                    .withKind(OntologyExpressionKind.NAMED_CLASS)
+                    .withClassIri(other)));
+  }
+
+  private static HttpResponse<String> captureRequest(Ontology ontology) throws Exception {
+    final long revision =
+        SdkClients.adminClient().ontologies().state(ontology.getId()).getWorkingRevision();
+    return HttpClient.newHttpClient()
+        .send(
+            HttpRequest.newBuilder()
+                .uri(
+                    URI.create(
+                        SdkClients.getServerUrl()
+                            + "/v1/ontologies/"
+                            + ontology.getId()
+                            + "/releases"))
+                .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+                .header("Content-Type", "application/json")
+                .POST(
+                    HttpRequest.BodyPublishers.ofString(
+                        "{\"expectedWorkingRevision\":" + revision + "}"))
+                .build(),
+            HttpResponse.BodyHandlers.ofString());
+  }
+
+  @Test
   void cleanAndForeignCapturedClassesUseTheNameLabelFallback(TestNamespace ns) {
     final Ontology ontology = createOntology(ns);
     declareClass(
@@ -65,7 +137,7 @@ public class IndependentOntologyReleaseValidationIT extends BaseOntologyApproval
 
     final OntologyReleaseValidation report = validate(release);
     assertTrue(report.getValid());
-    assertEquals(OntologyReleaseLogicalCheck.NOT_RUN, report.getLogicalCheck());
+    assertEquals(OntologyReleaseLogicalCheck.NOT_APPLICABLE, report.getLogicalCheck());
     assertEquals(release.getId(), report.getReleaseId());
     assertEquals(0, report.getShacl().getViolationCount());
     assertEquals(0, report.getShacl().getWarningCount());

@@ -13,19 +13,22 @@
 
 import {
   Autocomplete,
-  Button,
+  ButtonUtility,
   Divider,
   Popover,
   PopoverTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ActivityOwnerChanged as RoleIcon } from '@openmetadata/ui-core-components/icons';
+import {
+  ActivityOwnerChanged,
+  CloseCircleFilled,
+  Edit01,
+  Save,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ClosePopoverIcon } from '../../../../../assets/svg/ic-popover-close.svg';
-import { ReactComponent as SavePopoverIcon } from '../../../../../assets/svg/ic-popover-save.svg';
 import { TERM_ADMIN } from '../../../../../constants/constants';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { Role } from '../../../../../generated/entity/teams/role';
@@ -34,7 +37,6 @@ import { searchRoles } from '../../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Chip from '../../../../common/Chip/Chip.component';
-import { WidgetEditButton } from '../../../../common/WidgetActionButton/WidgetActionButton';
 import '../../users.less';
 import UserProfileInheritedRoles from '../UserProfileInheritedRoles/UserProfileInheritedRoles.component';
 import { UserProfileRolesProps } from './UserProfileRoles.interface';
@@ -222,7 +224,7 @@ const UserProfileRoles = ({
       data-testid="user-profile-roles">
       <div className="tw:mb-2 tw:flex tw:w-full tw:items-center tw:justify-start tw:gap-2">
         <div className="tw:m-0.5 tw:flex tw:items-center tw:justify-center">
-          <RoleIcon size={16} />
+          <ActivityOwnerChanged size={16} />
         </div>
         <div className="d-flex justify-between w-full">
           <Typography className="text-sm font-medium">
@@ -230,9 +232,11 @@ const UserProfileRoles = ({
           </Typography>
           {isAdminUser && (
             <PopoverTrigger isOpen={isRolesEdit} onOpenChange={setIsRolesEdit}>
-              <WidgetEditButton
+              <ButtonUtility
                 data-testid="edit-roles-button"
-                title={t('label.edit-entity', {
+                icon={Edit01}
+                size="sm"
+                tooltip={t('label.edit-entity', {
                   entity: t('label.role-plural'),
                 })}
               />
@@ -245,7 +249,7 @@ const UserProfileRoles = ({
                   data-testid="user-profile-edit-popover">
                   <div className="d-flex justify-start items-center gap-2 m-b-sm">
                     <div className="d-flex flex-start items-center">
-                      <RoleIcon size={16} />
+                      <ActivityOwnerChanged size={16} />
                     </div>
                     <Typography className="user-profile-edit-popover-card-title">
                       {t('label.role-plural')}
@@ -275,21 +279,21 @@ const UserProfileRoles = ({
                   </div>
 
                   <div className="flex justify-end gap-2 mt-4">
-                    <Button
-                      aria-label={t('label.cancel')}
+                    <ButtonUtility
                       color="primary"
                       data-testid="user-profile-edit-roles-cancel-button"
-                      iconLeading={<ClosePopoverIcon height={24} />}
-                      size="xs"
+                      icon={CloseCircleFilled}
+                      size="sm"
+                      tooltip={t('label.cancel')}
                       onClick={handleCloseEditRole}
                     />
-                    <Button
-                      aria-label={t('label.save')}
+                    <ButtonUtility
                       color="primary"
                       data-testid="user-profile-edit-roles-save-button"
-                      iconLeading={<SavePopoverIcon height={24} />}
+                      icon={Save}
                       isLoading={isLoading}
-                      size="xs"
+                      size="sm"
+                      tooltip={t('label.save')}
                       onClick={handleRolesSave}
                     />
                   </div>

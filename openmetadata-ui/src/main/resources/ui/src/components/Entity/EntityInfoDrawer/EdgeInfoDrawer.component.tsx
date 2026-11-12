@@ -517,7 +517,6 @@ const EdgeInfoDrawer = ({
             />
             <ButtonUtility
               aria-label={t('label.close')}
-              color="tertiary"
               data-testid="drawer-close-icon"
               icon={XClose}
               size="lg"

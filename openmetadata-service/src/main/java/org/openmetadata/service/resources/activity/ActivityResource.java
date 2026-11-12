@@ -555,8 +555,10 @@ public class ActivityResource {
           @QueryParam("limit")
           int limit) {
     authorizeEntityLinkView(securityContext, entityLink);
-    return activityStreamRepository.getActivityByEntityLink(
-        securityContext, entityLink, domain, days, limit);
+    return viewableOnly(
+        securityContext,
+        activityStreamRepository.getActivityByEntityLink(
+            securityContext, entityLink, domain, days, limit));
   }
 
   @GET

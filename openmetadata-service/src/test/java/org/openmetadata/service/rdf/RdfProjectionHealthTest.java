@@ -9,12 +9,14 @@ import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.time.Duration;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.openmetadata.service.rdf.storage.RdfStorageMaintenanceException;
 
 @Isolated
 class RdfProjectionHealthTest {
@@ -51,6 +53,18 @@ class RdfProjectionHealthTest {
   void resetLocalHealth() {
     RdfProjectionHealth.initialize(null);
     RdfProjectionHealth.markReady();
+  }
+
+  @Test
+  void aMaintenanceRefusalOutsideTheQueueMarksTheProjectionDegraded() {
+    unavailable.set(false);
+    RdfProjectionHealth.initialize(store);
+
+    RdfProjectionHealth.markDegraded(
+        new RdfStorageMaintenanceException("compaction", Duration.ofSeconds(5)));
+
+    assertTrue(
+        RdfProjectionHealth.isDegraded(), "nothing retries a write refused outside the queue");
   }
 
   @Test

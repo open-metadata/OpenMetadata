@@ -18,7 +18,19 @@ import {
   within,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
+import {
+  Code,
+  OntologyProfileReport,
+  Severity,
+} from '../../../../generated/api/data/ontologyProfileReport';
 import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
+import { Ontology } from '../../../../generated/entity/data/ontology';
+import {
+  AxiomType,
+  ExpressionKind,
+  OntologyAxiom,
+  Provenance,
+} from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import {
   Kind,
@@ -35,22 +47,33 @@ import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { BindingSnapshot } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
 import APIClient from '../../../../rest/axiosClient';
 import {
+  createOntologyAxiom,
   deleteOntologyConceptBinding,
   generateOntologyConceptQuery,
   getOntologyConceptBindings,
   putOntologyConceptBinding,
+  validateOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
   getModelRelations,
+  OntologyModelRelation,
   OntologyStudioModel,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
-import { showSuccessToast } from '../../../../utils/ToastUtils';
+import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
+import {
+  RelationWarningCheck,
+  RelationWarningContext,
+} from '../../../OntologyExplorer/RelationWarning.context';
+import { useOntologyConceptEditor } from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from './OntologyConceptInspector';
 
 jest.mock('../../../../rest/ontologyAPI');
 jest.mock('../../../../rest/permissionAPI');
+jest.mock('../../../../utils/governance/ontology/OntologyUndoToast', () => ({
+  showUndoToast: jest.fn(),
+}));
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
@@ -277,7 +300,9 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
     await within(picker).findByRole('checkbox', { name: 'customers' });
 
     fireEvent.click(
-      within(picker).getByRole('checkbox', { name: 'label.select-all' })
+      within(picker).getByRole('checkbox', {
+        name: 'label.select-all-lowercase',
+      })
     );
     fireEvent.click(within(picker).getByTestId('ontology-data-asset-save'));
     await waitFor(() =>
@@ -405,6 +430,29 @@ describe('OntologyConceptInspector column assignment cleanup', () => {
       screen.getByTestId(`ontology-bind-property-${property.id}`)
     ).toBeEnabled();
   });
+
+  it('offers Bind to column on a data property but not on an annotation', async () => {
+    const annotation: OntologyProperty = {
+      ...property,
+      id: 'review-note',
+      iri: 'urn:sales:reviewNote',
+      kind: Kind.Annotation,
+      name: 'reviewNote',
+      range: [],
+    };
+    renderInspector([property, annotation]);
+    await screen.findByTestId('ontology-native-assets');
+
+    expect(
+      await screen.findByTestId(`ontology-bind-property-${property.id}`)
+    ).toBeEnabled();
+    expect(
+      screen.getByTestId(`ontology-property-bindings-${annotation.id}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId(`ontology-bind-property-${annotation.id}`)
+    ).not.toBeInTheDocument();
+  });
 });
 
 describe('OntologyConceptInspector relationships', () => {
@@ -482,6 +530,81 @@ describe('OntologyConceptInspector relationships', () => {
     expect(
       screen.getByTestId('ontology-concept-relationships')
     ).toHaveTextContent(/Account\s*part of/);
+  });
+});
+
+describe('OntologyConceptInspector header and empty sections', () => {
+  const parent = {
+    ...concept,
+    id: 'party',
+    name: 'Party',
+    displayName: 'Party',
+    fullyQualifiedName: 'Sales.Party',
+    iri: 'urn:sales:Party',
+  };
+  const renderHeader = (
+    relations: OntologyModelRelation[],
+    onSelectConcept = jest.fn()
+  ) =>
+    renderWithQueryClient(
+      <MemoryRouter>
+        <OntologyConceptInspector
+          concept={concept}
+          model={{ ...model, concepts: [concept, parent] }}
+          relations={relations}
+          onClose={jest.fn()}
+          onOpenData={jest.fn()}
+          onSelectConcept={onSelectConcept}
+        />
+      </MemoryRouter>
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 0,
+      assets: [],
+    });
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  it('places a concept with no parent at the top level and says each empty section is empty', () => {
+    renderHeader([]);
+
+    expect(screen.getByTestId('ontology-concept-parent')).toHaveTextContent(
+      'label.top-level-concept'
+    );
+    expect(
+      screen.getByTestId('ontology-concept-relationships')
+    ).toHaveTextContent('message.ontology-no-relationships-yet');
+    expect(screen.getByTestId('ontology-concept-mappings')).toHaveTextContent(
+      'message.ontology-no-mappings-yet'
+    );
+  });
+
+  it('names the parent in the breadcrumb and opens it from there', () => {
+    const onSelectConcept = jest.fn();
+    renderHeader(
+      [{ key: 'is-a', kind: 'subClassOf', from: concept, to: parent }],
+      onSelectConcept
+    );
+    fireEvent.click(screen.getByTestId('ontology-concept-parent'));
+
+    expect(onSelectConcept).toHaveBeenCalledWith(parent);
+  });
+
+  it('copies the IRI', async () => {
+    const writeText = jest.fn().mockResolvedValue(undefined);
+    Object.assign(navigator, { clipboard: { writeText } });
+    Object.defineProperty(window, 'isSecureContext', {
+      configurable: true,
+      value: true,
+    });
+    renderHeader([]);
+    fireEvent.click(screen.getByTestId('ontology-concept-copy-iri'));
+
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith(concept.iri));
   });
 });
 
@@ -633,9 +756,17 @@ it('adds a relationship from the rail, changes its type and retries a refused sa
   );
   fireEvent.click(screen.getByTestId('ontology-add-relationship'));
   fireEvent.click(screen.getByTestId('relation-type-isA'));
-  fireEvent.click(screen.getByRole('button', { name: 'label.change' }));
+  fireEvent.click(screen.getByTestId('ontology-relationship-type'));
   fireEvent.click(screen.getByTestId('relation-type-isA'));
-  fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
+
+  expect(screen.getByTestId('ontology-relationship-type')).toHaveTextContent(
+    'Is a'
+  );
+  expect(screen.getByTestId('ontology-relationship-form')).toHaveTextContent(
+    'message.pick-concept-to-complete-sentence'
+  );
+
+  fireEvent.click(screen.getByRole('button', { name: /label.target-concept/ }));
   fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
   await act(async () => {
     fireEvent.click(screen.getByTestId('ontology-relationship-submit'));
@@ -697,7 +828,7 @@ describe('OntologyConceptInspector in AI mode', () => {
 
   afterEach(() => (useIsAiMode as jest.Mock).mockReturnValue(false));
 
-  const renderAiInspector = () => {
+  const renderAiInspector = (extraProperties: OntologyProperty[] = []) => {
     const handlers = {
       onAddProperty: jest.fn().mockResolvedValue(true),
       onAddRelation: jest.fn().mockResolvedValue(true),
@@ -714,7 +845,11 @@ describe('OntologyConceptInspector in AI mode', () => {
           canAddRelation
           canEditBindings
           concept={concept}
-          model={{ ...model, concepts: [concept, party] }}
+          model={{
+            ...model,
+            concepts: [concept, party],
+            properties: [property, ...extraProperties],
+          }}
           relationTypeGroups={[
             {
               id: 'hierarchy',
@@ -801,6 +936,11 @@ describe('OntologyConceptInspector in AI mode', () => {
       screen.queryByTestId('ontology-add-property')
     ).not.toBeInTheDocument();
 
+    const form = screen.getByTestId('ontology-property-form');
+
+    expect(within(form).getByTestId('ontology-property-name')).toBeVisible();
+    expect(within(form).getByTestId('ontology-property-submit')).toBeVisible();
+
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'loyaltyTier' },
     });
@@ -816,6 +956,7 @@ describe('OntologyConceptInspector in AI mode', () => {
         datatype: 'enum',
         enumValues: ['gold', 'silver'],
         isIdentifier: true,
+        kind: 'data',
         name: 'loyaltyTier',
       })
     );
@@ -828,6 +969,62 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
     expect(screen.getByTestId('ontology-relationship-form')).toBeVisible();
+  });
+
+  it('adds an annotation property with no data type to pick', async () => {
+    const handlers = renderAiInspector();
+    await screen.findByTestId('ontology-native-assets');
+
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.click(screen.getByTestId('ontology-property-kind-annotation'));
+
+    expect(
+      screen.queryByTestId('ontology-property-type-string')
+    ).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByTestId('ontology-property-name'), {
+      target: { value: 'reviewNote' },
+    });
+    fireEvent.click(screen.getByTestId('ontology-property-submit'));
+
+    await waitFor(() =>
+      expect(handlers.onAddProperty).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: 'annotation', name: 'reviewNote' })
+      )
+    );
+  });
+
+  it('reuses a property another concept declared, and does not offer one this concept already has', async () => {
+    const shared: OntologyProperty = {
+      ...property,
+      domain: ['urn:sales:Order'],
+      id: 'shared-note',
+      iri: 'urn:sales:note',
+      kind: Kind.Annotation,
+      name: 'note',
+    };
+    const handlers = renderAiInspector([shared]);
+    await screen.findByTestId('ontology-native-assets');
+
+    fireEvent.click(screen.getByTestId('ontology-add-property'));
+    fireEvent.click(screen.getByTestId('ontology-property-source-existing'));
+
+    expect(screen.getByTestId('ontology-property-submit')).toBeDisabled();
+
+    const picker = screen.getByRole('combobox', { name: /label.property/ });
+    fireEvent.focus(picker);
+    fireEvent.keyDown(picker, { key: 'ArrowDown' });
+
+    expect(await screen.findAllByRole('option')).toHaveLength(1);
+
+    fireEvent.click(screen.getByRole('option', { name: /note/ }));
+    fireEvent.click(screen.getByTestId('ontology-property-submit'));
+
+    await waitFor(() =>
+      expect(handlers.onAddProperty).toHaveBeenCalledWith(
+        expect.objectContaining({ reusePropertyIri: 'urn:sales:note' })
+      )
+    );
   });
 
   it('reads an incoming relation through its inverse in the AI panel', async () => {
@@ -936,16 +1133,427 @@ describe('OntologyConceptInspector in AI mode', () => {
     expect(deleteOntologyConceptBinding).not.toHaveBeenCalled();
 
     fireEvent.click(
-      await screen.findByRole('button', { name: 'label.remove' })
+      await screen.findByRole('button', { name: 'label.unlink' })
     );
     await waitFor(() =>
-      expect(showSuccessToast).toHaveBeenCalledWith('label.saved')
+      expect(showUndoToast).toHaveBeenCalledWith(
+        'message.ontology-asset-unlinked',
+        expect.any(Function)
+      )
     );
 
     expect(deleteOntologyConceptBinding).toHaveBeenCalledWith(concept.id, {
       assetType: AssetType.Table,
       assetId: 'table',
       expectedRevision: 4,
+    });
+  });
+});
+
+describe('OntologyConceptInspector relationship authoring', () => {
+  const party = {
+    ...concept,
+    id: 'party',
+    iri: 'urn:sales:Party',
+    name: 'Party',
+  };
+  const customerIsParty: OntologyAxiom = {
+    axiomType: AxiomType.SubclassOf,
+    description: 'Customer is a Party',
+    displayName: 'Customer is a Party',
+    expressions: [{ classIri: party.iri, kind: ExpressionKind.NamedClass }],
+    fullyQualifiedName: 'Sales.CustomerIsParty',
+    id: 'axiom-customer-party',
+    name: 'CustomerIsParty',
+    ontology: { id: ontology.id, type: 'ontology' },
+    provenance: Provenance.Manual,
+    subjectIri: concept.iri,
+  };
+  const authoringModel: OntologyStudioModel = {
+    ...model,
+    axioms: [customerIsParty],
+    concepts: [concept, party],
+  };
+  const relationTypeGroups = [
+    {
+      id: 'hierarchy',
+      title: 'Hierarchy',
+      options: [{ id: 'isA', label: 'Is a', paletteKey: PaletteKey.Blue }],
+    },
+  ];
+
+  const renderAuthoring = (
+    props: Partial<React.ComponentProps<typeof OntologyConceptInspector>> = {},
+    warn?: RelationWarningCheck
+  ) =>
+    renderWithQueryClient(
+      <RelationWarningContext.Provider value={warn}>
+        <MemoryRouter>
+          <OntologyConceptInspector
+            canAddRelation
+            canEditRelations
+            concept={concept}
+            model={authoringModel}
+            relationTypeGroups={relationTypeGroups}
+            relations={getModelRelations(authoringModel)}
+            onAddRelation={jest.fn().mockResolvedValue(true)}
+            onClose={jest.fn()}
+            onDeleteRelation={jest.fn().mockResolvedValue(true)}
+            onEditRelation={jest.fn().mockResolvedValue(true)}
+            onOpenData={jest.fn()}
+            onSelectConcept={jest.fn()}
+            {...props}
+          />
+        </MemoryRouter>
+      </RelationWarningContext.Provider>
+    );
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetBindings.mockResolvedValue({
+      kind: 'complete',
+      revision: 0,
+      assets: [],
+    });
+    mockGetPermission.mockResolvedValue({ resource: 'table', permissions: [] });
+  });
+
+  it('deletes the relationship on its row', () => {
+    const onDeleteRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({ onDeleteRelation });
+
+    const row = screen.getByTestId('ontology-concept-relationships');
+
+    expect(row).toHaveTextContent('Party');
+
+    fireEvent.click(within(row).getByTestId('ontology-relation-delete'));
+
+    expect(onDeleteRelation).toHaveBeenCalledTimes(1);
+    expect(onDeleteRelation).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'subClassOf',
+        from: expect.objectContaining({ id: concept.id }),
+        to: expect.objectContaining({ id: party.id }),
+      })
+    );
+  });
+
+  it('changes the type of the relationship on its row', async () => {
+    const onEditRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({ onEditRelation });
+
+    fireEvent.click(screen.getByTestId('ontology-relation-edit'));
+    fireEvent.click(await screen.findByTestId('relation-type-isA'));
+
+    await waitFor(() => expect(onEditRelation).toHaveBeenCalledTimes(1));
+
+    expect(onEditRelation).toHaveBeenCalledWith(
+      expect.objectContaining({ key: expect.any(String) }),
+      'isA'
+    );
+  });
+
+  it('shows the reason in the picker and keeps the type unchanged when the edit is refused', async () => {
+    const onEditRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({
+      checkRelationType: () => 'Customer is already a subclass of Party.',
+      onEditRelation,
+    });
+
+    fireEvent.click(screen.getByTestId('ontology-relation-edit'));
+    fireEvent.click(await screen.findByTestId('relation-type-isA'));
+
+    expect(
+      await screen.findByTestId('relation-check-message')
+    ).toHaveTextContent('Customer is already a subclass of Party.');
+    expect(onEditRelation).not.toHaveBeenCalled();
+  });
+
+  it('offers no row actions without relation edit rights', () => {
+    renderAuthoring({ canEditRelations: false });
+
+    expect(
+      screen.queryByTestId('ontology-relation-delete')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-relation-edit')
+    ).not.toBeInTheDocument();
+  });
+
+  it('shows the server clash beside the chosen parent and still allows Add', async () => {
+    renderAuthoring(
+      { relations: [] },
+      async () => 'Customer would also be a Supplier, which are disjoint.'
+    );
+
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    fireEvent.click(screen.getByTestId('relation-type-isA'));
+    fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
+
+    expect(
+      await screen.findByTestId('ontology-relationship-clash')
+    ).toHaveTextContent(
+      'Customer would also be a Supplier, which are disjoint.'
+    );
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeEnabled();
+  });
+
+  it('explains why a new relationship cannot be added and disables Add', async () => {
+    renderAuthoring({
+      checkAddRelation: () => 'Party is already above Customer.',
+      relations: [],
+    });
+
+    fireEvent.click(screen.getByTestId('ontology-add-relationship'));
+    fireEvent.click(screen.getByTestId('relation-type-isA'));
+    fireEvent.click(screen.getByRole('button', { name: /label.target/ }));
+    fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
+
+    expect(screen.getByTestId('ontology-relationship-issue')).toHaveTextContent(
+      'Party is already above Customer.'
+    );
+    expect(screen.getByTestId('ontology-relationship-submit')).toBeDisabled();
+  });
+
+  it('opens the relationship from its row when the panel can, else the other concept', () => {
+    const onOpenRelation = jest.fn();
+    const onSelectConcept = jest.fn();
+    const { unmount } = renderAuthoring({ onOpenRelation, onSelectConcept });
+
+    fireEvent.click(
+      screen.getByTestId(`ontology-concept-relation-${party.id}`)
+    );
+
+    expect(onOpenRelation).toHaveBeenCalledWith(
+      expect.objectContaining({ key: expect.any(String), kind: 'subClassOf' })
+    );
+    expect(onSelectConcept).not.toHaveBeenCalled();
+
+    unmount();
+    renderAuthoring({ onSelectConcept });
+    fireEvent.click(
+      screen.getByTestId(`ontology-concept-relation-${party.id}`)
+    );
+
+    expect(onSelectConcept).toHaveBeenCalledWith(
+      expect.objectContaining({ id: party.id })
+    );
+  });
+
+  it('lists the rules about the concept apart from its relationships', () => {
+    const rule: OntologyAxiom = {
+      ...customerIsParty,
+      axiomType: AxiomType.SubclassOf,
+      displayName: 'Customer must have exactly 1 name',
+      expressions: [],
+      id: 'axiom-rule',
+      name: 'CustomerMustHaveName',
+    };
+    const rulesModel = {
+      ...authoringModel,
+      axioms: [customerIsParty, rule],
+    };
+    renderAuthoring({
+      model: rulesModel,
+      relations: getModelRelations(rulesModel),
+    });
+    const rules = screen.getByTestId('ontology-concept-rules');
+
+    expect(
+      within(rules).getByTestId('ontology-concept-rule-axiom-rule')
+    ).toHaveTextContent('Customer must have exactly 1 name');
+    expect(rules).not.toHaveTextContent('Customer is a Party');
+    // Adding a rule edits the concept, so View offers none.
+    expect(
+      within(rules).queryByTestId('ontology-add-rule')
+    ).not.toBeInTheDocument();
+  });
+
+  it('flags a synonym that reads like a relationship, read-only in View', () => {
+    renderAuthoring({
+      concept: { ...concept, synonyms: ['Client', 'part of Order'] },
+      findRelationType: () => 'isA',
+    });
+
+    expect(
+      screen.getByTestId('ontology-synonym-relation-warning')
+    ).toHaveTextContent('message.synonym-looks-like-relationship');
+    expect(
+      screen.queryByTestId('ontology-synonym-add-as-relationship')
+    ).not.toBeInTheDocument();
+  });
+
+  describe('in Edit', () => {
+    const EditableInspector = (
+      props: React.ComponentProps<typeof OntologyConceptInspector>
+    ) => {
+      const editor = useOntologyConceptEditor({
+        canEdit: true,
+        concept: props.concept,
+        ontology: ontology as Ontology,
+        onSaved: jest.fn(),
+      });
+
+      return <OntologyConceptInspector {...props} isEditing editor={editor} />;
+    };
+
+    const renderEditable = (
+      props: Partial<React.ComponentProps<typeof OntologyConceptInspector>>
+    ) =>
+      renderWithQueryClient(
+        <MemoryRouter>
+          <EditableInspector
+            canAddProperty
+            canAddRelation
+            canAddRule
+            concept={concept}
+            model={authoringModel}
+            relationTypeGroups={relationTypeGroups}
+            relations={getModelRelations(authoringModel)}
+            onAddProperty={jest.fn().mockResolvedValue(true)}
+            onAddRelation={jest.fn().mockResolvedValue(true)}
+            onClose={jest.fn()}
+            onOpenData={jest.fn()}
+            onRuleCreated={jest.fn()}
+            onSelectConcept={jest.fn()}
+            {...props}
+          />
+        </MemoryRouter>
+      );
+
+    it('turns a relation-like synonym into a relationship form with its type chosen', async () => {
+      const findRelationType = jest.fn().mockReturnValue('isA');
+      renderEditable({
+        concept: { ...concept, synonyms: ['Client', 'part of Order'] },
+        findRelationType,
+      });
+
+      fireEvent.click(
+        await screen.findByTestId('ontology-synonym-add-as-relationship')
+      );
+
+      expect(findRelationType).toHaveBeenCalledWith('part of');
+      expect(
+        await screen.findByTestId('ontology-relationship-type')
+      ).toHaveTextContent('Is a');
+      expect(
+        screen.queryByTestId('ontology-synonym-relation-warning')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('ontology-concept-synonyms')).toHaveTextContent(
+        'Client'
+      );
+      expect(
+        screen.getByTestId('ontology-concept-synonyms')
+      ).not.toHaveTextContent('part of Order');
+    });
+
+    it('adds an object property from this concept to a target concept', async () => {
+      const onAddProperty = jest.fn().mockResolvedValue(true);
+      renderEditable({ onAddProperty });
+
+      fireEvent.click(await screen.findByTestId('ontology-add-property'));
+      fireEvent.click(screen.getByTestId('ontology-property-kind-object'));
+      fireEvent.change(screen.getByTestId('ontology-property-name'), {
+        target: { value: 'servedBy' },
+      });
+
+      expect(screen.getByTestId('ontology-property-submit')).toBeDisabled();
+
+      fireEvent.click(screen.getByRole('button', { name: /label.range/ }));
+      fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
+      fireEvent.click(screen.getByTestId('ontology-property-submit'));
+
+      await waitFor(() =>
+        expect(onAddProperty).toHaveBeenCalledWith({
+          kind: 'object',
+          name: 'servedBy',
+          rangeIri: party.iri,
+        })
+      );
+    });
+
+    const fillNeverAlsoBeParty = async () => {
+      fireEvent.click(await screen.findByTestId('ontology-add-rule'));
+      const form = screen.getByTestId('ontology-rule-form');
+
+      expect(form).toHaveTextContent(
+        'label.new-entitymessage.rule-applies-to-every-concept'
+      );
+      expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
+
+      fireEvent.click(
+        within(form).getAllByRole('button', { name: /label.rule/ })[0]
+      );
+      fireEvent.click(
+        await screen.findByRole('option', {
+          name: 'label.can-never-also-be-lowercase',
+        })
+      );
+      const other = within(form).getByRole('combobox', {
+        name: /label.concept/,
+      });
+      fireEvent.focus(other);
+      fireEvent.change(other, { target: { value: 'Party' } });
+      fireEvent.keyDown(other, { key: 'ArrowDown' });
+      fireEvent.click(await screen.findByRole('option', { name: 'Party' }));
+
+      return form;
+    };
+
+    it('does not create a rule the server finds invalid and shows why', async () => {
+      const onRuleCreated = jest.fn();
+      jest.mocked(validateOntologyAxiom).mockResolvedValue({
+        valid: false,
+        violations: [
+          {
+            code: Code.InvalidAxiomShape,
+            message: 'The statement is not valid OWL',
+            path: '/axiomType',
+            severity: Severity.Error,
+          },
+        ],
+      } as OntologyProfileReport);
+      renderEditable({ onRuleCreated });
+      const form = await fillNeverAlsoBeParty();
+      await act(async () => {
+        fireEvent.click(within(form).getByTestId('ontology-rule-submit'));
+      });
+
+      expect(
+        await within(form).findByText('The statement is not valid OWL')
+      ).toBeInTheDocument();
+      expect(validateOntologyAxiom).toHaveBeenCalledWith(
+        expect.objectContaining({ subjectIri: concept.iri })
+      );
+      expect(createOntologyAxiom).not.toHaveBeenCalled();
+      expect(onRuleCreated).not.toHaveBeenCalled();
+      expect(screen.getByTestId('ontology-rule-form')).toBeVisible();
+    });
+
+    it('adds a rule about the concept with the quick rule fields', async () => {
+      const onRuleCreated = jest.fn();
+      jest.mocked(validateOntologyAxiom).mockResolvedValue({
+        valid: true,
+        violations: [],
+      } as OntologyProfileReport);
+      jest.mocked(createOntologyAxiom).mockResolvedValue(customerIsParty);
+      renderEditable({ onRuleCreated });
+      const form = await fillNeverAlsoBeParty();
+      fireEvent.click(within(form).getByTestId('ontology-rule-submit'));
+
+      await waitFor(() => expect(onRuleCreated).toHaveBeenCalledTimes(1));
+
+      expect(createOntologyAxiom).toHaveBeenCalledWith(
+        expect.objectContaining({
+          axiomType: AxiomType.DisjointWith,
+          ontology: 'Sales',
+          subjectIri: concept.iri,
+        })
+      );
+      expect(
+        screen.queryByTestId('ontology-rule-form')
+      ).not.toBeInTheDocument();
     });
   });
 });

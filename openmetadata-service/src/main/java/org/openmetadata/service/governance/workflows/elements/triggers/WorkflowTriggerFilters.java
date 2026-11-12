@@ -22,6 +22,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowTriggerFieldsRegistry;
+import org.openmetadata.service.governance.workflows.elements.triggers.impl.TriggerEntityFilter;
 import org.openmetadata.service.rules.RuleEngine;
 
 /**
@@ -105,8 +106,7 @@ public final class WorkflowTriggerFilters {
     if (filterObj instanceof String filterStr) {
       filterLogic = extractFromFilterString(filterStr, entityType);
     } else if (filterObj instanceof Map) {
-      Map<String, String> filterMap = JsonUtils.convertValue(filterObj, FILTER_MAP_TYPE);
-      filterLogic = extractFromFilterMap(filterMap, entityType);
+      filterLogic = extractFromFilterMap(TriggerEntityFilter.textEntries(filterObj), entityType);
     } else if (filterObj != null) {
       LOG.error("Unexpected filter object type: {}", filterObj.getClass().getName());
     }

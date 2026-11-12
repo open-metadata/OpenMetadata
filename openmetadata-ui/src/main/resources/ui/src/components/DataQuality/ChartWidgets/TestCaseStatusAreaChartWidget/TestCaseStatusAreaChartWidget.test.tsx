@@ -41,17 +41,6 @@ jest.mock('../../../Visualisations/Chart/CustomAreaChart.component', () =>
 );
 
 // Mock SVG icons
-jest.mock('../../../../assets/svg/ic-check.svg', () => ({
-  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
-    <svg data-testid="success-icon" {...props} />
-  ),
-}));
-
-jest.mock('../../../../assets/svg/ic-warning-2.svg', () => ({
-  ReactComponent: (props: React.SVGProps<SVGSVGElement>) => (
-    <svg data-testid="failed-icon" {...props} />
-  ),
-}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Skeleton: ({

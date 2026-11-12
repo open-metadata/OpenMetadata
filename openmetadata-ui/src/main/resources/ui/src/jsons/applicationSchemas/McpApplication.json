@@ -30,6 +30,24 @@
       "type": "integer",
       "minimum": 25000,
       "default": 100000
+    },
+    "readOnly": {
+      "title": "Read-only Mode",
+      "description": "Expose only the MCP tools that do not change metadata, such as search, lineage and entity details. Tools that create or edit metadata are blocked for every MCP client and every user, admins included. Each user's own permissions still apply to the remaining tools. A change applies right away to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again, usually on reconnect.",
+      "type": "boolean",
+      "default": false
+    },
+    "disabledTools": {
+      "title": "Disabled Tools",
+      "description": "MCP tools to turn off for every MCP client and every user, admins included, whatever their permissions. Use it to hide single tools, read or write; Read-only Mode still applies to the rest. A change applies right away to tool calls and to the tool list; an MCP client that already listed the tools sees the change when it lists them again, usually on reconnect.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "uniqueItems": true,
+      "uiFieldType": "treeSelect",
+      "expandAllValue": true,
+      "default": []
     }
   },
   "required": [

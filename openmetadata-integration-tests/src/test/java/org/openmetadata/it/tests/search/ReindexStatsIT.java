@@ -72,6 +72,7 @@ class ReindexStatsIT {
     final StepStats processed = run.getSuccessContext().getStats().getProcessStats();
     final StepStats sink = run.getSuccessContext().getStats().getSinkStats();
 
+    assertThat(reader.getFailedRecords()).as("clean run must have no reader errors").isZero();
     assertThat(reader.getTotalRecords())
         .as("reader records must equal processor records")
         .isEqualTo(processed.getTotalRecords());

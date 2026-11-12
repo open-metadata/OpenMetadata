@@ -73,6 +73,25 @@ class ConcurrentFirstOidcLoginTest {
     assertSame(DUPLICATE_EMAIL, thrown);
   }
 
+  /** {@code equalsIgnoreCase} folds a dotless ı into an i; two such addresses are two people. */
+  @Test
+  void refusesAnAccountWhoseEmailOnlyFoldsToTheSameAddress() {
+    User lookalike = user("erin", "er\u0131n@example.com");
+
+    UserCreationException thrown =
+        assertThrows(
+            UserCreationException.class,
+            () ->
+                AuthenticationCodeFlowHandler.createOrAdoptConcurrentlyCreatedUser(
+                    () -> {
+                      throw DUPLICATE_EMAIL;
+                    },
+                    () -> lookalike,
+                    EMAIL));
+
+    assertSame(DUPLICATE_EMAIL, thrown);
+  }
+
   @Test
   void keepsTheConflictWhenNoAccountHasTheName() {
     UserCreationException thrown =

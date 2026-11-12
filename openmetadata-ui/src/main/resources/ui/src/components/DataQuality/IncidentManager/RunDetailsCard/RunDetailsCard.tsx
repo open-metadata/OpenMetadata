@@ -20,17 +20,24 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Clock } from '@openmetadata/ui-core-components/icons';
+import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import type { TFunction } from 'i18next';
 import { isUndefined, maxBy } from 'lodash';
 import { useTranslation } from 'react-i18next';
+import { TableType } from '../../../../generated/entity/data/table';
 import {
   TestCase,
   TestCaseErrorDetails,
   TestCaseEvaluationScope,
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
+import {
+  tableQueryFn,
+  tableQueryKey,
+} from '../../../../rest/queries/tableQuery';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getRunScopeBadges,
   getRunThresholdData,
@@ -43,6 +50,7 @@ import {
 import { formatThresholdAmount } from '../../../../utils/observability/data-quality/testCaseThresholdSentence.utils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import { formatNumber } from '../../../Database/Profiler/TestSummary/TestSummary.utils';
+import { ExecutionSource } from '../../../observability/profiler/ExecutionSource/ExecutionSource';
 import { STATUS_CONFIG } from '../IncidentManagerPageHeader/TestCaseLastRunBanner.constants';
 import RunExecutionError from '../RunExecutionError/RunExecutionError';
 import { useTestCaseStore } from '../useTestCase.store';
@@ -401,6 +409,29 @@ const RunNote = ({ style }: { style: RunDetailsStatusStyle }) => {
   );
 };
 
+const RunExecutionSource = ({
+  testCase,
+  result,
+}: {
+  testCase: TestCase;
+  result: RunResult;
+}) => {
+  const tableFqn = getEntityFQN(testCase.entityLink ?? '');
+  const { data: table } = useQuery({
+    queryKey: tableQueryKey(tableFqn, ''),
+    queryFn: tableQueryFn(tableFqn, ''),
+    enabled: Boolean(tableFqn && !result.evaluationScope?.executionSource),
+  });
+
+  return (
+    <ExecutionSource
+      isSharded={table?.tableType === TableType.Sharded}
+      source={result.evaluationScope?.executionSource}
+      testId="run-execution-source"
+    />
+  );
+};
+
 const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
   const { t } = useTranslation();
   const selectedRunTimestamp = useTestCaseStore(
@@ -526,6 +557,7 @@ const RunDetailsCard = ({ results, testCase }: RunDetailsCardProps) => {
         <div className="tw:grid tw:grid-cols-2 tw:gap-x-3 tw:gap-y-3.5 tw:@lg:grid-cols-[minmax(max-content,1fr)_repeat(3,minmax(0,1fr))]">
           <DetailCells cells={details} />
         </div>
+        <RunExecutionSource result={result} testCase={testCase} />
         <RunThreshold
           result={result}
           testCase={testCase}

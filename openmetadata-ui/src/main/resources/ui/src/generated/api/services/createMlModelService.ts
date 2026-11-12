@@ -82,7 +82,9 @@ export interface Connection {
     mlModelFilterPattern?: FilterPattern;
     /**
      * Mlflow Model registry backend. E.g.,
-     * mysql+pymysql://mlflow:password@localhost:3307/experiments
+     * mysql+pymysql://mlflow:password@localhost:3307/experiments. The entire URI is protected
+     * as a secret, including URIs without credentials. Secret references must resolve to the
+     * entire URI.
      */
     registryUri?:                string;
     supportsMetadataExtraction?: boolean;

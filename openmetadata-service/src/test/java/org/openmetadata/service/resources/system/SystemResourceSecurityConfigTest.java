@@ -13,7 +13,10 @@
 package org.openmetadata.service.resources.system;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import jakarta.ws.rs.BadRequestException;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.LdapConfiguration;
@@ -47,6 +50,44 @@ class SystemResourceSecurityConfigTest {
 
     assertEquals("new-oidc-secret", oidcSecret(updated));
     assertEquals("new-ldap-password", ldapPassword(updated));
+  }
+
+  @Test
+  void aMaskedBindPasswordIsNotRestoredForAnotherDirectory() {
+    SecurityConfiguration original = securityConfiguration(OIDC_SECRET, LDAP_PASSWORD);
+    original.getAuthenticationConfiguration().getLdapConfiguration().setHost("ldap.corp.example");
+    SecurityConfiguration updated =
+        securityConfiguration(OIDC_SECRET, PasswordEntityMasker.PASSWORD_MASK);
+    updated
+        .getAuthenticationConfiguration()
+        .getLdapConfiguration()
+        .setHost("ldap.elsewhere.example");
+
+    BadRequestException refused =
+        assertThrows(
+            BadRequestException.class,
+            () -> SystemResource.preserveMaskedSecuritySecrets(updated, original));
+
+    assertTrue(refused.getMessage().contains("dnAdminPassword"), refused.getMessage());
+  }
+
+  @Test
+  void aMaskedClientSecretIsNotRestoredForAnotherProvider() {
+    SecurityConfiguration original = securityConfiguration(OIDC_SECRET, LDAP_PASSWORD);
+    original
+        .getAuthenticationConfiguration()
+        .getOidcConfiguration()
+        .setDiscoveryUri("https://idp.corp.example/.well-known/openid-configuration");
+    SecurityConfiguration updated =
+        securityConfiguration(PasswordEntityMasker.PASSWORD_MASK, LDAP_PASSWORD);
+    updated
+        .getAuthenticationConfiguration()
+        .getOidcConfiguration()
+        .setDiscoveryUri("https://idp.elsewhere.example/.well-known/openid-configuration");
+
+    assertThrows(
+        BadRequestException.class,
+        () -> SystemResource.preserveMaskedSecuritySecrets(updated, original));
   }
 
   private SecurityConfiguration securityConfiguration(String oidcSecret, String ldapPassword) {

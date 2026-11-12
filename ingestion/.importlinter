@@ -100,6 +100,8 @@ ignore_imports =
     metadata.ingestion.sink.metadata_rest -> metadata.ingestion.source.pipeline.pipeline_service
     metadata.sampler.messaging.kafka.sampler -> metadata.ingestion.source.messaging.kafka.connection
     metadata.sampler.pandas.burstiq.sampler -> metadata.ingestion.source.database.burstiq.client
+# Remove when the BigQuery sampler moves into the connector package.
+    metadata.sampler.sqlalchemy.bigquery.sampler -> metadata.ingestion.source.database.bigquery.sharding
     metadata.sampler.sqlalchemy.databricks.sampler -> metadata.ingestion.source.database.databricks.connection
     metadata.sampler.sqlalchemy.timescale.sampler -> metadata.ingestion.source.database.timescale.queries
     metadata.sampler.storage.gcs.sampler -> metadata.ingestion.source.storage.gcs.connection

@@ -306,9 +306,7 @@ public final class OntologyConceptQueryService {
     final EntityRepository<Table> repository = tableRepository();
     final List<Table> loaded =
         load(access, repository, rows, ResourceContext.authorizationFields(repository));
-    final var tags =
-        new BulkFieldHydrator(
-            Map.of(Entity.FIELD_TAGS, () -> repository.batchLoadTags(new ArrayList<>(loaded))));
+    final var tags = BulkFieldHydrator.forTags(repository, loaded);
     return loaded.stream()
         .filter(table -> canView(access, repository, table, tags))
         .map(Table::getId)

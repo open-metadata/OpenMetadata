@@ -324,9 +324,16 @@ public final class JsonUtils {
   }
 
   /** Applies the patch on original object and returns the updated object */
+  /**
+   * How far a single patch may grow the document through {@code copy}, which can double a growing
+   * array each time. Every other operation only adds values the patch body carries, which the input
+   * bound the reader applies already caps (ADR:2026-11-03-input-parsing-is-bounded).
+   */
+  public static final int MAX_PATCH_GROWTH_BYTES = 10 * 1024 * 1024;
+
   public static JsonValue applyPatch(Object original, JsonPatch patch) {
-    JsonStructure targetJson = JsonUtils.getJsonStructure(original);
-    JsonStructure currentJson = targetJson;
+    JsonStructure currentJson = JsonUtils.getJsonStructure(original);
+    long copiedLength = 0;
 
     // ---------------------------------------------------------------------
     // JSON patch modification - Ignore operations related to read-only fields
@@ -375,9 +382,26 @@ public final class JsonUtils {
       JsonArrayBuilder singleOp = Json.createArrayBuilder();
       singleOp.add(operation);
       JsonPatch singlePatch = Json.createPatch(singleOp.build());
+      JsonStructure previousJson = currentJson;
       currentJson = singlePatch.apply(currentJson);
+
+      // Measure only what a copy duplicates: serializing the whole document after each operation
+      // would make a patch cost its operation count times the document size.
+      String op = operation.getString("op", "");
+      if (JsonPatch.Operation.COPY.operationName().equalsIgnoreCase(op)) {
+        copiedLength += copiedValueLength(previousJson, operation);
+        if (copiedLength > MAX_PATCH_GROWTH_BYTES) {
+          throw new IllegalArgumentException(
+              "JSON Patch grows the document beyond the allowed size");
+        }
+      }
     }
     return currentJson;
+  }
+
+  // Read from the document the copy ran on: a copy onto an ancestor of its source replaces it.
+  private static long copiedValueLength(JsonStructure document, JsonObject copy) {
+    return Json.createPointer(copy.getString("from")).getValue(document).toString().length();
   }
 
   private static void validateJsonPointer(String pointer, String fieldName) {
@@ -492,14 +516,14 @@ public final class JsonUtils {
    * Message for a patch that names a real field but supplies a value the field cannot hold - a stale
    * enum constant or the wrong JSON type. Enumerating the accepted constants matters more than the
    * raw Jackson text here, because the caller that just guessed a field name will guess the value
-   * next.
+   * next. The rejected value is never quoted: a patch can copy it from anywhere in the entity.
    */
   private static String invalidValueMessage(JsonMappingException e, Class<?> clz) {
     String field = mappingFieldPath(e);
     List<String> allowed = allowedValuesFor(e);
     String detail =
         allowed.isEmpty()
-            ? String.format(": %s", rootReason(e))
+            ? String.format(": must be %s%s", expectedValue(e), uriSyntaxReason(e))
             : String.format(". Allowed values are: %s", String.join(", ", allowed));
     return String.format(
         "Invalid value for field '%s' on %s%s", field, clz.getSimpleName(), detail);
@@ -542,12 +566,6 @@ public final class JsonUtils {
       result = mismatch.getTargetType();
     }
     return result;
-  }
-
-  /** Jackson's own reason, minus the "at [Source: UNKNOWN...]" location noise it appends. */
-  private static String rootReason(JsonMappingException e) {
-    String message = e.getOriginalMessage();
-    return message == null ? e.toString() : message;
   }
 
   /**
@@ -1105,6 +1123,12 @@ public final class JsonUtils {
       }
       if (t == com.fasterxml.jackson.core.JsonToken.VALUE_NULL) {
         return null;
+      }
+      if (t == com.fasterxml.jackson.core.JsonToken.START_OBJECT
+          || t == com.fasterxml.jackson.core.JsonToken.START_ARRAY) {
+        // getValueAsString() is null for these, and returning without consuming the structure
+        // would leave its members to be read as fields of the enclosing object.
+        return (Date) ctxt.handleUnexpectedToken(Date.class, p);
       }
       String value = p.getValueAsString();
       if (value == null) {

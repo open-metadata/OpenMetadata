@@ -2010,7 +2010,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "redshift_prod.warehouse.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # MySQL namespace -> scheme resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"
@@ -2065,7 +2073,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "mysql_cluster_b.db.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # cluster-a namespace -> mapping resolves to mysql_cluster_a
             result_a = source._get_table_fqn(table, namespace="mysql://cluster-a:3306/db")
             assert result_a == "mysql_cluster_a.db.analytics.user_stat"
@@ -2110,7 +2126,15 @@ class OpenLineageUnitTest(unittest.TestCase):
                 return "custom_lakehouse.lake.analytics.user_stat"
             return None
 
-        with patch("metadata.utils.fqn.build", side_effect=mock_fqn_build), patch.object(source, "metadata"):
+        with (
+            patch("metadata.utils.fqn.build", side_effect=mock_fqn_build),
+            patch.object(source, "metadata") as metadata,
+        ):
+            metadata.get_by_name.side_effect = lambda entity, fqn, **kwargs: (
+                Table(id=uuid4(), name=fqn.rsplit(".", 1)[-1], fullyQualifiedName=fqn, columns=[])
+                if entity == Table
+                else None
+            )
             # mysql:// namespace -> scheme matches Mysql -> resolves to mysql_prod only
             mysql_result = source._get_table_fqn(table, namespace="mysql://mysql-host:3306/db")
             assert mysql_result == "mysql_prod.db.analytics.user_stat"

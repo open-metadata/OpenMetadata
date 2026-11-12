@@ -26,15 +26,16 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
-import org.openmetadata.service.migration.utils.v207.MigrationUtil;
+import org.openmetadata.service.migration.utils.v210.McpConsentColumns;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 /**
  * Exercises the MCP consent SQL on the shipped migrations: a consent is stored once per request,
- * claimed once with its token hash and never after the request expires. On MySQL the columns come
- * from the 2.0.7 Java migration step, run twice to show a rerun is harmless.
+ * claimed once with its token hash and never after the request expires. The columns come from
+ * 2.1.0: its schemaChanges.sql on PostgreSQL, its Java migration step on MySQL, run twice to show a
+ * rerun is harmless. 2.0.7 is applied as it shipped, without them.
  * ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip
  */
 @Testcontainers(disabledWithoutDocker = true)
@@ -44,7 +45,15 @@ class McpPendingConsentSqlTest {
   private static final String PASSWORD = "mcp-consent-test";
   private static final String TABLE = "mcp_pending_auth_requests";
   private static final String MYSQL = "mysql";
-  private static final List<String> MIGRATIONS = List.of("1.12.4", "1.13.0", "2.0.7");
+  private static final List<String> MIGRATIONS_BEFORE_CONSENT =
+      List.of("1.12.4", "1.13.0", "2.0.7");
+  private static final String CONSENT_VERSION = "2.1.0";
+  private static final String CONSENT_COLUMNS =
+      """
+      SELECT COUNT(*) FROM information_schema.columns
+      WHERE table_schema = %s AND table_name = 'mcp_pending_auth_requests'
+        AND column_name IN ('consent_token_hash', 'consent_user_name')
+      """;
   private static final long NOW = 1_000_000L;
   private static final long LATER = NOW + 600_000L;
 
@@ -132,24 +141,43 @@ class McpPendingConsentSqlTest {
         expiresAt);
   }
 
-  /** Runs the shipped statements that create and alter the table, oldest first. */
+  /**
+   * Runs the shipped statements that create and alter the table, oldest first. 2.0.7 shipped
+   * without the consent feature, so the columns must not exist before 2.1.0: a database that has
+   * run a later 2.0.x never reads 2.0.7 again, and 2.1.0 is the only version every upgrade to 2.1
+   * runs. 2.1.0 runs twice, as on a database that already has the columns.
+   */
   private void applyTableMigrations(Jdbi jdbi, String dialect) throws IOException {
-    Path root = OntologyTestDatabase.repositoryRoot();
-    for (String version : MIGRATIONS) {
-      Path file =
-          root.resolve("bootstrap/sql/migrations/native")
-              .resolve(version)
-              .resolve(dialect)
-              .resolve("schemaChanges.sql");
-      List<String> statements =
-          Arrays.stream(Files.readString(file).split(";"))
-              .filter(statement -> statement.contains(TABLE))
-              .toList();
-      jdbi.useHandle(handle -> statements.forEach(handle::execute));
+    for (String version : MIGRATIONS_BEFORE_CONSENT) {
+      applyTableStatements(jdbi, dialect, version);
     }
+    assertEquals(0, consentColumnCount(jdbi, dialect));
+    applyTableStatements(jdbi, dialect, CONSENT_VERSION);
+    applyTableStatements(jdbi, dialect, CONSENT_VERSION);
     if (MYSQL.equals(dialect)) {
-      jdbi.useHandle(MigrationUtil::addMcpConsentColumnsOnMySql);
-      jdbi.useHandle(MigrationUtil::addMcpConsentColumnsOnMySql);
+      jdbi.useHandle(McpConsentColumns::addOnMySql);
+      jdbi.useHandle(McpConsentColumns::addOnMySql);
     }
+    assertEquals(2, consentColumnCount(jdbi, dialect));
+  }
+
+  private void applyTableStatements(Jdbi jdbi, String dialect, String version) throws IOException {
+    Path file =
+        OntologyTestDatabase.repositoryRoot()
+            .resolve("bootstrap/sql/migrations/native")
+            .resolve(version)
+            .resolve(dialect)
+            .resolve("schemaChanges.sql");
+    List<String> statements =
+        Arrays.stream(Files.readString(file).split(";"))
+            .filter(statement -> statement.contains(TABLE))
+            .toList();
+    jdbi.useHandle(handle -> statements.forEach(handle::execute));
+  }
+
+  private int consentColumnCount(Jdbi jdbi, String dialect) {
+    String schema = MYSQL.equals(dialect) ? "DATABASE()" : "current_schema()";
+    return jdbi.withHandle(
+        handle -> handle.createQuery(CONSENT_COLUMNS.formatted(schema)).mapTo(Integer.class).one());
   }
 }

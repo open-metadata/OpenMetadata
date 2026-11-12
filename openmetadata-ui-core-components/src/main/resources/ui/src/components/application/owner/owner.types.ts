@@ -39,6 +39,8 @@ export interface OwnerAvatarStackProps {
   showOverflowHeadings?: boolean;
 }
 
+export type OwnerLabelVariant = 'subtle' | 'cell' | 'header';
+
 export interface OwnerProps {
   /**
    * Owner refs to display. Accepts raw refs (the app's EntityReference shape) —
@@ -55,12 +57,29 @@ export interface OwnerProps {
   avatarSize?: AvatarSize;
   /** Show the "Owners" section label in non-compact view. */
   showLabel?: boolean;
-  /** Render a dash (—) instead of nothing when owners is empty. */
+  /**
+   * Show `--` even when `placeHolder` is set. With no owners the component
+   * already shows `--` unless `placeHolder` names the empty state.
+   */
   showDashPlaceholder?: boolean;
-  /** Label text for the owners section; defaults to no label. */
+  /**
+   * In the non-compact view with `showLabel`, the label text (default
+   * "Owners"), and the empty value stays `--`. Otherwise the empty-state text
+   * shown instead of `--` (e.g. "No Assignee"); the compact and inline
+   * layouts put a user glyph before it.
+   */
   placeHolder?: string;
   /** Override display names keyed by owner id. */
   ownerDisplayName?: Map<string, ReactNode>;
+  /**
+   * Style of the label shown when there are no owners (`--`, or the
+   * `placeHolder` empty state), so it matches the values beside it:
+   * - `header`: a page-header field, in the header value type. Default in
+   *   the labelled column layout when `selectorContent` is set.
+   * - `cell`: a table cell, at the row's body size.
+   * - `subtle`: de-emphasised, for cards and panels. Default otherwise.
+   */
+  labelVariant?: OwnerLabelVariant;
   className?: string;
   hasPermission?: boolean;
   /**

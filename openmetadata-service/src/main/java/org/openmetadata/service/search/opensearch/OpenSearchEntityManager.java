@@ -49,6 +49,7 @@ import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.ColumnLineageReconciler;
 import org.openmetadata.service.search.EntityManagementClient;
+import org.openmetadata.service.search.EntityManagementClient.ChildUpdateStatus;
 import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchEngineErrors;
 import org.openmetadata.service.search.SearchIndexRetryQueue;
@@ -72,12 +73,14 @@ import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch._types.Refresh;
 import os.org.opensearch.client.opensearch._types.Result;
 import os.org.opensearch.client.opensearch._types.SlicesCalculation;
+import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.RangeQuery;
 import os.org.opensearch.client.opensearch.core.BulkRequest;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
+import os.org.opensearch.client.opensearch.core.DeleteByQueryRequest;
 import os.org.opensearch.client.opensearch.core.DeleteByQueryResponse;
 import os.org.opensearch.client.opensearch.core.DeleteResponse;
 import os.org.opensearch.client.opensearch.core.GetResponse;
@@ -87,6 +90,7 @@ import os.org.opensearch.client.opensearch.core.UpdateByQueryResponse;
 import os.org.opensearch.client.opensearch.core.UpdateRequest;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.search.Hit;
+import os.org.opensearch.client.opensearch.tasks.GetTasksResponse;
 
 /**
  * OpenSearch implementation of entity management operations.
@@ -94,6 +98,10 @@ import os.org.opensearch.client.opensearch.core.search.Hit;
  */
 @Slf4j
 public class OpenSearchEntityManager implements EntityManagementClient {
+  private static final String MATCHING_INDICES = "matchingIndices";
+  // A full page may be cut short, so the rewrite then targets the whole alias
+  // (ADR:2026-11-11-a-global-alias-rewrite-targets-only-the-indices-holding-a-match).
+  static final int MAX_MATCHING_INDICES = 1000;
   private final OpenSearchClient client;
   private final boolean isClientAvailable;
   private final OpenSearchAsyncClient asyncClient;
@@ -103,6 +111,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
   // Cap on how long a realtime bulk write blocks the (post-commit, request-thread) caller so a
   // stalled search backend can't hold the thread indefinitely; the async result is still handled.
   private static final long BULK_AWAIT_TIMEOUT_SECONDS = 30;
+  private static final int MAX_SCRIPT_DELETE_ATTEMPTS = 3;
 
   public OpenSearchEntityManager(OpenSearchClient client) {
     this.client = client;
@@ -329,42 +338,61 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       return;
     }
 
-    DeleteByQueryResponse response =
-        client.deleteByQuery(
-            d ->
-                d.index(indexName)
-                    .query(
-                        q ->
-                            q.script(
-                                s ->
-                                    s.script(
-                                        script ->
-                                            script.inline(
-                                                inline ->
-                                                    inline
-                                                        .lang(
-                                                            l ->
-                                                                l.builtin(
-                                                                    os.org.opensearch.client
-                                                                        .opensearch._types
-                                                                        .BuiltinScriptLanguage
-                                                                        .Painless))
-                                                        .source(scriptTxt)
-                                                        .params(convertToJsonDataMap(params))))))
-                    .refresh(Refresh.True));
-
-    LOG.info(
-        "DeleteByQuery by script response from OS - Deleted: {}, Failures: {}",
-        response.deleted(),
-        response.failures().size());
-
-    if (!response.failures().isEmpty()) {
-      String failureDetails =
-          response.failures().stream()
-              .map(BulkByScrollFailure::toString)
-              .collect(Collectors.joining("; "));
-      LOG.error("DeleteByQuery script encountered failures: {}", failureDetails);
+    DeleteByQueryRequest request = buildDeleteByScriptRequest(indexName, scriptTxt, params);
+    for (int attempt = 1; attempt <= MAX_SCRIPT_DELETE_ATTEMPTS; attempt++) {
+      if (attempt > 1) {
+        client.indices().refresh(r -> r.index(request.index()));
+      }
+      DeleteByQueryResponse response = client.deleteByQuery(request);
+      LOG.info(
+          "DeleteByQuery by script response from OS - Attempt: {}, Deleted: {}, Version conflicts: {}, Failures: {}",
+          attempt,
+          response.deleted(),
+          response.versionConflicts(),
+          response.failures().size());
+      if (!response.failures().isEmpty() || Boolean.TRUE.equals(response.timedOut())) {
+        LOG.error(
+            "DeleteByQuery script on {} failed: {}, timed out: {}",
+            indexName,
+            response.failures(),
+            response.timedOut());
+        break;
+      }
+      if (zeroIfNull(response.versionConflicts()) == 0) {
+        break;
+      }
+      if (attempt == MAX_SCRIPT_DELETE_ATTEMPTS) {
+        LOG.warn(
+            "DeleteByQuery script on {} left {} version conflict(s) after {} attempts",
+            indexName,
+            response.versionConflicts(),
+            attempt);
+      }
     }
+  }
+
+  DeleteByQueryRequest buildDeleteByScriptRequest(
+      String indexName, String scriptTxt, Map<String, Object> params) {
+    return DeleteByQueryRequest.of(
+        d ->
+            d.index(indexName)
+                .query(
+                    q ->
+                        q.script(
+                            s ->
+                                s.script(
+                                    script ->
+                                        script.inline(
+                                            inline ->
+                                                inline
+                                                    .lang(
+                                                        l ->
+                                                            l.builtin(
+                                                                BuiltinScriptLanguage.Painless))
+                                                    .source(scriptTxt)
+                                                    .params(convertToJsonDataMap(params))))))
+                .conflicts(Conflicts.Proceed)
+                .refresh(Refresh.True));
   }
 
   @Override
@@ -528,12 +556,65 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Pair<String, String> fieldAndValue,
       Pair<String, Map<String, Object>> updates)
       throws IOException {
-    if (!isClientAvailable) {
+    updateChildrenInBackground(indexNames, fieldAndValue, updates);
+  }
+
+  @Override
+  public String updateChildrenInBackground(
+      List<String> indexNames,
+      Pair<String, String> fieldAndValue,
+      Pair<String, Map<String, Object>> updates)
+      throws IOException {
+    String taskId = null;
+    if (isClientAvailable) {
+      taskId =
+          client
+              .updateByQuery(buildUpdateChildrenRequest(indexNames, fieldAndValue, updates))
+              .task();
+      LOG.info(
+          "Successfully submitted child update in OpenSearch for indices: {} (task {})",
+          indexNames,
+          taskId);
+    } else {
       LOG.error("OpenSearch client is not available. Cannot update children for indices.");
-      return;
     }
-    submitChildUpdate(indexNames, fieldAndValue, updates);
-    LOG.info("Successfully submitted child update in OpenSearch for indices: {}", indexNames);
+    return taskId;
+  }
+
+  @Override
+  public ChildUpdateStatus childUpdateStatus(String taskId) throws IOException {
+    return childUpdateStatusOf(client.tasks().get(g -> g.taskId(taskId)));
+  }
+
+  // A task that ran to the end can still have failed: the engine reports a refused scroll as the
+  // task's error, and per-document failures in its response.
+  static ChildUpdateStatus childUpdateStatusOf(GetTasksResponse task) {
+    ChildUpdateStatus status = ChildUpdateStatus.running();
+    if (task.completed()) {
+      List<String> failures = new ArrayList<>();
+      if (task.error() != null) {
+        failures.add(describe(task.error()));
+      }
+      if (task.response() != null) {
+        task.response().failures().forEach(failure -> failures.add(failure.toString()));
+        if (task.response().timedOut()) {
+          failures.add("timed out");
+        }
+      }
+      status =
+          failures.isEmpty()
+              ? ChildUpdateStatus.succeeded()
+              : new ChildUpdateStatus(true, String.join("; ", failures));
+    }
+    return status;
+  }
+
+  // The engine wraps the reason a task stopped, e.g. too_many_scroll_contexts_exception, inside a
+  // search_phase_execution_exception; report both.
+  private static String describe(ErrorCause error) {
+    String cause =
+        error.causedBy() == null ? "" : " caused by %s".formatted(describe(error.causedBy()));
+    return "%s: %s%s".formatted(error.type(), error.reason(), cause);
   }
 
   private void submitChildUpdate(
@@ -1147,6 +1228,34 @@ public class OpenSearchEntityManager implements EntityManagementClient {
         failures);
   }
 
+  // Each shard an update-by-query reaches opens a scroll context, matching or not. Across the
+  // global alias that is one per shard of every index, so a busy node exhausts its open scroll
+  // contexts and the engine retries for about a minute before failing with 429 (#37466). A size-0
+  // search opens none, so it picks the indices to rewrite.
+  private List<String> indicesHoldingMatches(String indexOrAlias, Query query) throws IOException {
+    SearchResponse<JsonData> response =
+        client.search(
+            s ->
+                s.index(indexOrAlias)
+                    .size(0)
+                    .query(query)
+                    .aggregations(
+                        MATCHING_INDICES,
+                        a -> a.terms(t -> t.field("_index").size(MAX_MATCHING_INDICES))),
+            JsonData.class);
+    // A shard the search could not reach may hold a match, so the rename goes to the retry queue.
+    if (response.shards().failed() > 0) {
+      throw new IOException(
+          "Search for the indices tagged in '%s' failed on %s shards"
+              .formatted(indexOrAlias, response.shards().failed()));
+    }
+    final List<String> indices =
+        response.aggregations().get(MATCHING_INDICES).sterms().buckets().array().stream()
+            .map(StringTermsBucket::key)
+            .toList();
+    return indices.size() < MAX_MATCHING_INDICES ? indices : List.of(indexOrAlias);
+  }
+
   @Override
   public void updateGlossaryTermByFqnPrefix(
       String indexName, String oldFqnPrefix, String newFqnPrefix, String prefixFieldCondition) {
@@ -1159,6 +1268,14 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       Query prefixQuery =
           Query.of(q -> q.prefix(p -> p.field(prefixFieldCondition).value(oldFqnPrefix)));
 
+      List<String> indices =
+          indicesHoldingMatches(
+              Entity.getSearchRepository().getIndexOrAliasName(indexName), prefixQuery);
+      if (indices.isEmpty()) {
+        LOG.info("No search documents are tagged under {}; nothing to rewrite", oldFqnPrefix);
+        return;
+      }
+
       Map<String, JsonData> params =
           Map.of(
               "oldParentFQN", JsonData.of(oldFqnPrefix),
@@ -1167,7 +1284,7 @@ public class OpenSearchEntityManager implements EntityManagementClient {
       UpdateByQueryRequest request =
           UpdateByQueryRequest.of(
               req ->
-                  req.index(Entity.getSearchRepository().getIndexOrAliasName(indexName))
+                  req.index(indices)
                       .query(prefixQuery)
                       .conflicts(Conflicts.Proceed)
                       .script(

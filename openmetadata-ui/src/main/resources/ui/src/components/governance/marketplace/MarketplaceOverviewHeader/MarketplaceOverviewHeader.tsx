@@ -12,9 +12,9 @@
  */
 
 import { PageLayout } from '@openmetadata/ui-core-components';
+import { Marketplace } from '@openmetadata/ui-core-components/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as MarketplaceIcon } from '../../../../assets/svg/marketplace-default.svg';
 import { ROUTES } from '../../../../constants/constants';
 import HeaderBreadcrumb from '../../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { SearchHeaderRow } from '../../../common/ListPageHeader/ListPageHeader';
@@ -51,8 +51,8 @@ export const MarketplaceOverviewHeader: FC<MarketplaceOverviewHeaderProps> = ({
             {
               label: '',
               ariaLabel: t('label.data-marketplace'),
-              icon: MarketplaceIcon,
-              href: ROUTES.DATA_MARKETPLACE,
+              icon: Marketplace,
+              href: isCustomizeView ? undefined : ROUTES.DATA_MARKETPLACE,
             },
             { label: t('label.data-marketplace') },
           ]}

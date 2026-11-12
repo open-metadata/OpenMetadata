@@ -20,9 +20,15 @@ import {
   Popover,
   PopoverTrigger,
   Tooltip as CoreTooltip,
-  Tooltip,
 } from '@openmetadata/ui-core-components';
-import { RefreshCw01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Bell01,
+  ChevronDown,
+  CollapsePanel,
+  ExpandPanel,
+  HelpCircle,
+  RefreshCw01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { startCase, upperCase } from 'lodash';
@@ -37,11 +43,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DropDownIcon } from '../../assets/svg/drop-down.svg';
-import { ReactComponent as IconBell } from '../../assets/svg/ic-alert-bell.svg';
-import { ReactComponent as Help } from '../../assets/svg/ic-help.svg';
-import { ReactComponent as SidebarCollapsedIcon } from '../../assets/svg/ic-sidebar-collapsed.svg';
-import { ReactComponent as SidebarExpandedIcon } from '../../assets/svg/ic-sidebar-expanded.svg';
 import {
   LAST_VERSION_FETCH_TIME_KEY,
   NOTIFICATION_READ_TIMER,
@@ -493,16 +494,17 @@ const NavBar = () => {
       />
     </CoreTooltip>
   ) : (
+    // A domain-restricted user with several domains also gets "All Domains". It only removes the
+    // filter; what they can see stays with their role.
     <DomainSelect
       bordered
+      showAllDomains
       className="tw:self-center"
       data-testid="domain-dropdown"
-      isClearable={!isDomainRestricted}
       isOpen={isDomainDropdownOpen}
       label={domainDisplayName}
       restrictedDomains={restrictedDomains}
       selectedDomain={activeDomainEntityRef}
-      showAllDomains={!isDomainRestricted}
       triggerClassName="tw:h-10 tw:max-w-[15vw] tw:truncate"
       triggerVariant="button"
       onOpenChange={setIsDomainDropdownOpen}
@@ -571,21 +573,16 @@ const NavBar = () => {
       <header className="app-navbar-header" style={headerStyle}>
         <div className="navbar-container">
           <div className="flex-center gap-2">
-            <Tooltip arrow placement="right" title={sidebarTooltipTitle}>
-              <ButtonUtility
-                color="tertiary"
-                data-testid="sidebar-toggle"
-                icon={
-                  isSidebarCollapsed
-                    ? SidebarCollapsedIcon
-                    : SidebarExpandedIcon
-                }
-                size="lg"
-                onClick={() =>
-                  setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
-                }
-              />
-            </Tooltip>
+            <ButtonUtility
+              data-testid="sidebar-toggle"
+              icon={isSidebarCollapsed ? ExpandPanel : CollapsePanel}
+              size="lg"
+              tooltip={sidebarTooltipTitle}
+              tooltipPlacement="right"
+              onClick={() =>
+                setPreference({ isSidebarCollapsed: !isSidebarCollapsed })
+              }
+            />
             {/* The home page used to own a search bar and a domain scope
               control of its own, so the navbar suppressed its own pair there.
               HomeLandingPage renders neither, so suppressing them now leaves
@@ -603,7 +600,7 @@ const NavBar = () => {
               <Button
                 color="tertiary"
                 data-testid="language-selector-button"
-                iconTrailing={<DropDownIcon width={12} />}
+                iconTrailing={ChevronDown}
                 size="sm">
                 {currentLanguage}
               </Button>
@@ -624,7 +621,7 @@ const NavBar = () => {
                 color="tertiary"
                 iconLeading={
                   <span className="tw:relative tw:inline-flex tw:items-center">
-                    <IconBell data-testid="task-notifications" width={20} />
+                    <Bell01 data-testid="task-notifications" size={20} />
                     {(hasTaskNotification || hasMentionNotification) && (
                       <Dot
                         aria-label={t('label.notification-plural')}
@@ -651,12 +648,11 @@ const NavBar = () => {
               </Popover>
             </PopoverTrigger>
             <Dropdown.Root>
-              <Button
-                aria-label={t('label.need-help')}
-                color="tertiary"
+              <ButtonUtility
                 data-testid="help-icon"
-                iconLeading={<Help width={20} />}
-                size="sm"
+                icon={HelpCircle}
+                size="lg"
+                tooltip={t('label.need-help')}
               />
               <Dropdown.Popover className="tw:w-44" placement="bottom end">
                 <Dropdown.Menu

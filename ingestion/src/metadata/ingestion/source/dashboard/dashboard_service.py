@@ -58,10 +58,10 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.generated.schema.type.usageRequest import UsageRequest
-from metadata.ingestion.api.delete import delete_entity_from_source
+from metadata.ingestion.api.delete import SourceListing, delete_entity_from_source
 from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import C, TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import C, PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.delete_entity import DeleteEntity
@@ -71,7 +71,6 @@ from metadata.ingestion.models.patch_request import PatchRequest
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -206,6 +205,12 @@ class DashboardServiceTopology(ServiceTopology):
                 consumer=["dashboard_service"],
                 nullable=True,
             ),
+            NodeStage(
+                type_=PatchRequest,
+                processor="yield_dashboard_extension",
+                consumer=["dashboard_service"],
+                nullable=True,
+            ),
         ],
     )
 
@@ -227,10 +232,9 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: DashboardConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = DashboardServiceTopology()
-    context: TopologyContextManager
-    dashboard_source_state: set = set()  # noqa: RUF012
-    datamodel_source_state: set = set()  # noqa: RUF012
-    chart_source_state: set = set()  # noqa: RUF012
+    dashboard_source_state = PerSourceState(set)
+    datamodel_source_state = PerSourceState(set)
+    chart_source_state = PerSourceState(set)
 
     @property
     def tags_registry(self) -> TagRegistry:
@@ -331,11 +335,13 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         metadata: OpenMetadata,
     ):
         super().__init__()
-        self.context = TopologyContextManager(self.topology)
         self.config = config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
+        # Per instance, unlike the class-level seen-sets, so each run starts unconfirmed.
+        self.dashboard_listing = SourceListing()
+        self.datamodel_listing = SourceListing()
         self._connection = create_connection(self.service_connection)
         self.client = self._connection.client if self._connection else get_connection(self.service_connection)
         self.connection_obj = self.client
@@ -581,6 +587,15 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         if not self.source_config.includeUsage:
             return
 
+    def yield_dashboard_extension(self, dashboard_details: Any) -> Iterable[Either[PatchRequest]]:
+        """
+        Custom property values that change on every run, such as the last run status. They
+        are patched in once the dashboard exists: a bot PUT keeps the stored extension unless
+        metadata is overridden, so values sent with the dashboard would stop updating after
+        the first run (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
+        """
+        yield from ()
+
     def close(self):
         if self._connection is not None:
             self._connection.close()
@@ -606,6 +621,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_source_state=self.dashboard_source_state,
                 recursive=self.source_config.markDeletedDashboards,
                 params={"service": self.context.get().dashboard_service},
+                source_listing=self.dashboard_listing,
             )
 
     def mark_datamodels_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
@@ -620,6 +636,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
                 entity_source_state=self.datamodel_source_state,
                 recursive=self.source_config.markDeletedDataModels,
                 params={"service": self.context.get().dashboard_service},
+                # A run that skips data models has not confirmed that none exist.
+                source_listing=self.datamodel_listing if self.source_config.includeDataModels else None,
             )
 
     def mark_charts_as_deleted(self) -> Iterable[Either[DeleteEntity]]:

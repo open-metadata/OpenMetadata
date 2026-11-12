@@ -25,6 +25,7 @@ import {
 import {
   buildPermissionRule,
   createDisposableArchivedDocument,
+  createMemoryViaApi,
   getLoggedInUser,
   loginAsUser,
   MEMORIES_API,
@@ -244,16 +245,14 @@ test.describe('Context Center Permissions', () => {
     });
 
     ownerMemoryTitle = `CC Permission Memory ${uuid()}`;
-    const memoryRes = await apiContext.post(MEMORIES_API, {
-      data: {
-        name: `cc_permission_memory_${uuid()}`,
-        title: ownerMemoryTitle,
-        question: 'Owned by admin for permission matrix tests',
-        answer: 'Owned by admin for permission matrix tests',
-        shareConfig: { visibility: 'Entity' },
-      },
+    const ownerMemory = await createMemoryViaApi(apiContext, {
+      name: `cc_permission_memory_${uuid()}`,
+      title: ownerMemoryTitle,
+      question: 'Owned by admin for permission matrix tests',
+      answer: 'Owned by admin for permission matrix tests',
+      shareConfig: { visibility: 'Entity' },
     });
-    ownerMemoryId = (await memoryRes.json()).id;
+    ownerMemoryId = ownerMemory.id;
 
     viewOnlyUser = new UserClass();
     await viewOnlyUser.create(apiContext, false);
@@ -652,7 +651,11 @@ test.describe('Context Center Permissions', () => {
         const feedRes = await feedResPromise;
 
         expect(feedRes.status()).toBe(201);
-        await expect(viewOnlyPage.getByText(conversationMessage)).toBeVisible();
+        await expect(
+          viewOnlyPage
+            .getByTestId('feed-card-v2-sidebar')
+            .filter({ hasText: conversationMessage })
+        ).toBeVisible();
         await viewOnlyPage.getByTestId('closeDrawer').click();
       });
 

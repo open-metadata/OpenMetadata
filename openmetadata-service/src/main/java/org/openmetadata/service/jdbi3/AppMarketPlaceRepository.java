@@ -1,8 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
-import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppMarketPlaceDefinition;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apps.AppMarketPlaceResource;
 import org.openmetadata.service.util.EntityUtil;
@@ -28,10 +26,6 @@ public class AppMarketPlaceRepository extends EntityRepository<AppMarketPlaceDef
       EntityUtil.Fields fields,
       RelationIncludes relationIncludes) {
     /* Nothing to do */
-  }
-
-  public AppMarketPlaceDefinition getDefinition(App app) {
-    return findByName(app.getName(), Include.NON_DELETED);
   }
 
   @Override

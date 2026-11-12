@@ -40,6 +40,7 @@ import es.co.elastic.clients.util.NamedValue;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -61,10 +62,14 @@ import org.openmetadata.service.search.ColumnAggregator;
 import org.openmetadata.service.search.ColumnGridIndexConfigs;
 import org.openmetadata.service.search.ColumnMetadataGrouper;
 import org.openmetadata.service.search.ColumnMetadataGrouper.ColumnWithContext;
+import org.openmetadata.service.search.elasticsearch.queries.ElasticQueryBuilderFactory;
+import org.openmetadata.service.search.security.RBACConditionEvaluator;
 
 @Slf4j
 public class ElasticSearchColumnAggregator implements ColumnAggregator {
   private final ElasticsearchClient client;
+  private final RBACConditionEvaluator rbacConditionEvaluator =
+      new RBACConditionEvaluator(new ElasticQueryBuilderFactory());
 
   /**
    * Index configuration per entity type, derived from the child-field registry and shared with the
@@ -578,7 +583,10 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
           Query.of(q -> q.terms(t -> t.field(tagFQNField).terms(tv -> tv.value(tagValues)))));
     }
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return ElasticRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private boolean isIndexNotFoundException(ElasticsearchException e) {
@@ -657,7 +665,10 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
     addColumnNamePatternFilter(boolBuilder, request, columnNameKeyword);
     addTagFilters(boolBuilder, request, columnNameKeyword, columnNamesFromTagFilter);
 
-    return Query.of(q -> q.bool(boolBuilder.build()));
+    return ElasticRbacQueries.withAccessPolicies(
+        Query.of(q -> q.bool(boolBuilder.build())),
+        request.getSubjectContext(),
+        rbacConditionEvaluator);
   }
 
   private void addEntityTypeFilter(
@@ -727,8 +738,11 @@ public class ElasticSearchColumnAggregator implements ColumnAggregator {
 
   private void addDomainFilter(BoolQuery.Builder boolBuilder, ColumnAggregationRequest request) {
     if (!nullOrEmpty(request.getDomainId())) {
+      // One domain, or a navbar pick with its sub-domains (comma-separated ids).
+      List<FieldValue> domainIds =
+          Arrays.stream(request.getDomainId().split(",")).map(FieldValue::of).toList();
       boolBuilder.filter(
-          Query.of(q -> q.term(t -> t.field("domains.id").value(request.getDomainId()))));
+          Query.of(q -> q.terms(t -> t.field("domains.id").terms(tv -> tv.value(domainIds)))));
     }
   }
 

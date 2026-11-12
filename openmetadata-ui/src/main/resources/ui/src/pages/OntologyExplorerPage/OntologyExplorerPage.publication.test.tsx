@@ -142,7 +142,7 @@ it('publishes the captured version and refreshes the live header, working count 
     },
   };
   const validationResponse = (url: string) => {
-    if (url.endsWith('/validation')) {
+    if (url.endsWith('/validation') && !url.includes('/working/')) {
       return {
         data: {
           releaseId: release.id,
@@ -183,43 +183,46 @@ it('publishes the captured version and refreshes the live header, working count 
 
     return validationResponse(url);
   };
-  get.mockImplementation(async (url) => {
-    const validation = releaseResponse(url);
-    if (validation) {
-      return validation;
-    }
-    if (url === '/ontologies') {
-      return { data: { data: [ontology], paging: { total: 1 } } };
-    }
-    if (url === '/ontologies/' + ontology.id) {
-      return { data: ontology };
-    }
-    if (url.endsWith('/state')) {
-      return { data: state };
-    }
-    if (url.endsWith('/working/diff')) {
-      return {
+  const emptyPage = () => ({ data: { data: [], paging: { total: 0 } } });
+  const exactResponses: Record<string, () => unknown> = {
+    '/ontologies': () => ({
+      data: { data: [ontology], paging: { total: 1 } },
+    }),
+    ['/ontologies/' + ontology.id]: () => ({ data: ontology }),
+    '/ontologyConcepts': emptyPage,
+    '/ontologyProperties': emptyPage,
+    '/ontologyAxioms': emptyPage,
+    '/relationshipTypes': emptyPage,
+  };
+  const suffixResponses: [string, () => unknown][] = [
+    ['/state', () => ({ data: state })],
+    ['/working/validation', () => ({ data: { valid: true, violations: [] } })],
+    [
+      '/working/diff',
+      () => ({
         data: {
           state,
           data: [],
           paging: { total: state.activeReleaseId === release.id ? 0 : 1 },
         },
-      };
+      }),
+    ],
+    ['/events', emptyPage],
+    ['/diff', emptyPage],
+  ];
+  get.mockImplementation(async (url) => {
+    const validation = releaseResponse(url);
+    if (validation) {
+      return validation;
     }
-    if (
-      [
-        '/ontologyConcepts',
-        '/ontologyProperties',
-        '/ontologyAxioms',
-        '/relationshipTypes',
-      ].includes(url) ||
-      url.endsWith('/events') ||
-      url.endsWith('/diff')
-    ) {
-      return { data: { data: [], paging: { total: 0 } } };
+    const respond =
+      exactResponses[url] ??
+      suffixResponses.find(([suffix]) => url.endsWith(suffix))?.[1];
+    if (!respond) {
+      throw new Error('Unexpected host request: ' + url);
     }
 
-    throw new Error('Unexpected host request: ' + url);
+    return respond();
   });
   put.mockImplementation(async () => {
     state = { ...state, activeReleaseId: release.id, activationRevision: 4 };
@@ -254,7 +257,7 @@ it('publishes the captured version and refreshes the live header, working count 
 
   expect(
     await screen.findByTestId('ontology-release-history-trigger')
-  ).toHaveTextContent('1.0.0');
+  ).toHaveAccessibleName(/1\.0\.0/);
   expect(screen.getByTestId('ontology-publication-trigger')).toHaveTextContent(
     '(1)'
   );
@@ -280,7 +283,7 @@ it('publishes the captured version and refreshes the live header, working count 
   );
   expect(
     screen.getByTestId('ontology-release-history-trigger')
-  ).toHaveTextContent('1.5.0');
+  ).toHaveAccessibleName(/1\.5\.0/);
   expect(screen.getByTestId('ontology-publication-trigger')).toHaveTextContent(
     '(0)'
   );

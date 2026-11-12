@@ -29,11 +29,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 )
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
-from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.api.topology_runner import PerSourceState, TopologyRunnerMixin
 from metadata.ingestion.models.topology import (
     NodeStage,
     ServiceTopology,
-    TopologyContextManager,
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -88,8 +87,7 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
     service_connection: SecurityConnection.model_fields["config"].annotation  # noqa: F821
 
     topology = SecurityServiceTopology()
-    context = TopologyContextManager(topology)
-    security_source_state: set = set()  # noqa: RUF012
+    security_source_state = PerSourceState(set)
 
     def __init__(
         self,

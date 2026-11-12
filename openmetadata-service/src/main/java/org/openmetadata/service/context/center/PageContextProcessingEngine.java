@@ -1,9 +1,12 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.service.jobs.Interruptions.isStopInterruption;
+
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
@@ -95,10 +98,32 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
       if (outcome.skipped()) {
         stampStatus(pageId, PageProcessingStatus.Processed, null);
       }
+    } catch (ConditionalUpdateExhaustedException e) {
+      schedule(pageId);
     } catch (RuntimeException e) {
-      LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
-      stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+      recordFailure(pageId, e);
       throw e;
+    }
+  }
+
+  /**
+   * A run a server stop cuts short keeps its status, and rethrowing keeps its job from completing,
+   * so the stale-job reaper requeues the job to resume it.
+   */
+  private void recordFailure(UUID pageId, RuntimeException failure) {
+    if (isStopInterruption(failure)) {
+      LOG.info(
+          "Knowledge pill extraction for page {} was cut short by a server stop; recovery resumes"
+              + " it: {}",
+          pageId,
+          ExceptionUtils.getRootCauseMessage(failure));
+    } else {
+      LOG.error("Knowledge pill extraction failed for page {}", pageId, failure);
+      try {
+        stampStatus(pageId, PageProcessingStatus.Failed, failure.getMessage());
+      } catch (ConditionalUpdateExhaustedException exhausted) {
+        schedule(pageId);
+      }
     }
   }
 
@@ -121,13 +146,17 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
    * so an unchanged-content skip does not churn the row.
    */
   private void stampStatus(UUID pageId, PageProcessingStatus status, String error) {
-    Page current = getPage(pageId);
-    if (current != null && current.getProcessingStatus() != status) {
-      Page updated = JsonUtils.deepCopy(current, Page.class);
-      updated.setProcessingStatus(status);
-      updated.setProcessingError(error);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
-    }
+    updateSource(
+        pageId,
+        () -> {
+          Page current = getPage(pageId);
+          if (current != null && current.getProcessingStatus() != status) {
+            Page updated = JsonUtils.deepCopy(current, Page.class);
+            updated.setProcessingStatus(status);
+            updated.setProcessingError(error);
+            pageRepository.updateIfCurrent(null, current, updated, lastEditorOf(current));
+          }
+        });
   }
 
   /**
@@ -162,14 +191,18 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
 
   @Override
   protected void stampStats(UUID pageId, ExtractionStats stats) {
-    Page current = getPage(pageId);
-    if (current != null) {
-      Page updated = JsonUtils.deepCopy(current, Page.class);
-      updated.setExtractionStats(stats);
-      updated.setProcessingStatus(PageProcessingStatus.Processed);
-      updated.setProcessingError(null);
-      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
-    }
+    updateSource(
+        pageId,
+        () -> {
+          Page current = getPage(pageId);
+          if (current != null) {
+            Page updated = JsonUtils.deepCopy(current, Page.class);
+            updated.setExtractionStats(stats);
+            updated.setProcessingStatus(PageProcessingStatus.Processed);
+            updated.setProcessingError(null);
+            pageRepository.updateIfCurrent(null, current, updated, lastEditorOf(current));
+          }
+        });
   }
 
   @Override

@@ -76,6 +76,7 @@ import { t } from './i18next/LocalUtil';
 import { getPageSummaryComponent } from './KnowledgeComponentUtils';
 import { getKnowledgePagePath } from './KnowledgePagePureUtils';
 import { getChartDetailsPath } from './RouterUtils';
+import { getSafeHttpUrl } from './StringUtils';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
 const SERVICE_ICON_CLASS = 'service-icon w-4 h-4 tw:text-quaternary';
@@ -110,7 +111,7 @@ const getKnowledgePageEntityLink = (entity: SearchSourceAlias): EntityLink => {
   const pageEntity = entity as KnowledgePageSearchSource;
   const isQuickLink = pageEntity.pageType === PageType.QUICK_LINK;
   const link = isQuickLink
-    ? (pageEntity?.page as QuickLink)?.url
+    ? getSafeHttpUrl((pageEntity?.page as QuickLink)?.url)
     : getKnowledgePagePath(pageEntity.fullyQualifiedName ?? '');
 
   return link ?? '';

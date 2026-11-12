@@ -59,10 +59,8 @@ const buildTitleSuffix = (
           aria-label={t('label.edit-entity', {
             entity: t('label.display-name'),
           })}
-          color="tertiary"
           data-testid="edit-display-name"
           icon={Edit01}
-          size="xs"
           onClick={() => onStartEditName(getEntityName(team))}
         />
       )}
@@ -94,18 +92,18 @@ const buildTitleInput = (
         }}
       />
       <Button
-        color="primary"
-        data-testid="save-display-name"
-        size="xs"
-        onPress={onSaveDisplayName}>
-        {t('label.save')}
-      </Button>
-      <Button
         color="tertiary"
         data-testid="cancel-display-name"
         size="xs"
         onPress={onCancelEditName}>
         {t('label.cancel')}
+      </Button>
+      <Button
+        color="primary"
+        data-testid="save-display-name"
+        size="xs"
+        onPress={onSaveDisplayName}>
+        {t('label.save')}
       </Button>
     </Box>
   ) : undefined;
@@ -217,15 +215,14 @@ const buildTeamActionsMenu = (
   );
 };
 
-// A member can always leave; joining is only offered on joinable teams (admins
-// hold canEditAll, so they can still join a private team).
+// Only admins join or leave a team that is not joinable, as the server enforces.
 const canJoinOrLeave = (
   team: Team,
-  { canEditAll, isCurrentUserMember, isGroupType }: UseMembersTeamHeaderParams
+  { isAdminUser, isGroupType }: UseMembersTeamHeaderParams
 ): boolean =>
   Boolean(isGroupType) &&
   !team.deleted &&
-  Boolean(isCurrentUserMember || team.isJoinable || canEditAll);
+  Boolean(team.isJoinable || isAdminUser);
 
 const buildHeaderActions = (
   t: TFunction,
@@ -341,5 +338,6 @@ export const useMembersTeamHeader = (
     params.isGroupType,
     params.isOrgType,
     params.isCurrentUserMember,
+    params.isAdminUser,
   ]);
 };

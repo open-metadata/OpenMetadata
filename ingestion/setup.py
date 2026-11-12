@@ -46,7 +46,10 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.7",
     "pandas": "pandas>=2.2.2,<3",
-    "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
+    # pyarrow 26 needs Python >=3.11, so 3.10 stays on the 23.0.1+ range. Every consumer lists
+    # both entries: their markers are mutually exclusive.
+    "pyarrow": "pyarrow>=26.0.0,<27; python_version >= '3.11'",
+    "pyarrow-py310": "pyarrow>=23.0.1,<26; python_version < '3.11'",
     "pydantic": "pydantic>=2.12.5,<3",
     "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
@@ -110,6 +113,7 @@ COMMONS = {
     "storage-archive": {
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["rarfile"],
         VERSIONS["py7zr"],
         VERSIONS["brotli"],
@@ -122,6 +126,7 @@ COMMONS = {
         VERSIONS["ijson"],
         VERSIONS["pandas"],
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["numpy"],
         # python-snappy does not work well on 3.11 https://github.com/aio-libs/aiokafka/discussions/931
         # Using this as an alternative
@@ -222,7 +227,7 @@ base_requirements = {
     # private in SQLAlchemy 2.1 — importing the Snowflake dialect raises AttributeError there.
     # Raise the ceiling once a snowflake-sqlalchemy release supports 2.1.
     "sqlalchemy>=2.0.0,<2.1",
-    "collate-sqllineage==2.1.8",
+    "collate-sqllineage==2.1.9",
     "tabulate==0.9.0",
     "tenacity>=8.0,<10",
     "typing-inspect",
@@ -251,6 +256,8 @@ plugins: dict[str, set[str]] = {
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
         "tornado>=6.5.9",  # CVE-2026-49853/49854/49855, GHSA-pw6j-qg29-8w7f; CVE-2026-103261/103262/103263 query/curl DoS and symlink traversal
+        # GHSA-pcg2-g6cj-q92c / GHSA-r4j5-9xpp-3985 / GHSA-pw9p-v7r6-gx4p: 6.6 needs Python 3.11, no 6.5.x backport
+        'tornado>=6.6; python_version >= "3.11"',
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
         "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
@@ -268,6 +275,7 @@ plugins: dict[str, set[str]] = {
         "google-cloud-datacatalog>=3.6.2",
         "google-cloud-logging",
         VERSIONS["pyarrow"],
+        VERSIONS["pyarrow-py310"],
         VERSIONS["numpy"],
         VERSIONS["sqlalchemy-bigquery"],
     },
@@ -299,7 +307,7 @@ plugins: dict[str, set[str]] = {
         "google-cloud",
         VERSIONS["boto3"],
         VERSIONS["google-cloud-storage"],
-        "collate-dbt-artifacts-parser",
+        "collate-dbt-artifacts-parser>=0.1.5",
         VERSIONS["azure-storage-blob"],
         VERSIONS["azure-identity"],
     },
@@ -320,7 +328,7 @@ plugins: dict[str, set[str]] = {
         VERSIONS["thrift"],
         "ndg-httpsclient~=0.5.1",
         "pyOpenSSL>=26.0.0",  # CVE-2026-27459 DTLS cookie callback BoF
-        "pyasn1>=0.6.3",  # CVE-2026-30922 DoS via unbounded recursion
+        "pyasn1>=0.6.5",  # CVE-2026-30922, GHSA-2qm8-x737-gmw5 / -9m75-vc3g-4x39 / -fm9c-5rcf-2q5p / -mm57-4v3p-rchx
     },
     "datalake-azure": {
         VERSIONS["azure-storage-blob"],
@@ -483,7 +491,7 @@ plugins: dict[str, set[str]] = {
     # SDK Data Quality: Required for DataFrame validation (DataFrameValidator)
     # Install with: pip install 'openmetadata-ingestion[pandas]'
     "pandas": {VERSIONS["pandas"], VERSIONS["numpy"]},
-    "pyarrow": {VERSIONS["pyarrow"]},
+    "pyarrow": {VERSIONS["pyarrow"], VERSIONS["pyarrow-py310"]},
     "pii-processor": {
         VERSIONS["spacy"],
         VERSIONS["preshed"],
@@ -517,7 +525,7 @@ dev = {
 
 # Dependencies for unit testing in addition to dev dependencies and plugins
 test_unit = {
-    "pytest==7.0.1",
+    "pytest==9.0.3",
     "pytest-cov",
     "pytest-order",
     "pytest-rerunfailures",
@@ -546,19 +554,20 @@ test = {
     "coverage",
     # Install GE because it's not in the `all` plugin
     VERSIONS["great-expectations"],
-    "pytest==7.0.1",
+    "pytest==9.0.3",
     "pytest-cov",
     "pytest-xdist~=3.5",
     "pytest-order",
     "pytest-timeout~=2.4",
     "dirty-equals",
     # install dbt dependency
-    "collate-dbt-artifacts-parser",
+    "collate-dbt-artifacts-parser>=0.1.5",
     "freezegun",
     VERSIONS["databricks-sdk"],
     VERSIONS["databricks-sql-connector"],
     VERSIONS["scikit-learn"],
     VERSIONS["pyarrow"],
+    VERSIONS["pyarrow-py310"],
     VERSIONS["trino"],
     VERSIONS["spacy"],
     VERSIONS["pydomo"],

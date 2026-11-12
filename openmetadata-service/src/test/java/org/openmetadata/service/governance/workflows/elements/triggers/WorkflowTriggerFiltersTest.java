@@ -178,6 +178,17 @@ class WorkflowTriggerFiltersTest {
   }
 
   @Test
+  void extractSkipsNonStringEntriesOfAFilterObject() {
+    String rule = "{\"==\":[{\"var\":\"name\"},\"foo\"]}";
+    Map<String, Object> filter =
+        Map.of("table", rule, "description", Map.of("nested", List.of("value")));
+
+    assertEquals(rule, WorkflowTriggerFilters.extractEntitySpecificFilter(filter, "table"));
+    assertNull(WorkflowTriggerFilters.extractEntitySpecificFilter(filter, "description"));
+    assertNull(WorkflowTriggerFilters.extractEntitySpecificFilter(filter, "glossaryTerm"));
+  }
+
+  @Test
   void jsonEncodedEmptyStringSanitizedToNull() {
     assertNull(WorkflowTriggerFilters.sanitizeFilterValue("\"\""));
     assertNull(WorkflowTriggerFilters.sanitizeFilterValue("{}"));

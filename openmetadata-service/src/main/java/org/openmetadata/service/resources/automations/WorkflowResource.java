@@ -80,7 +80,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -728,8 +727,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     if (WorkflowType.TEST_CONNECTION.equals(workflow.getWorkflowType())) {
       // in case of test connection type, we get the original connection values from the service
       // name
-      originalWorkflow = buildFromOriginalServiceConnection(workflow);
-      if (!readsStoredSecrets(securityContext)) {
+      originalWorkflow = buildFromOriginalServiceConnection(securityContext, workflow);
+      if (!ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
         requireSecretsReenteredOnRetarget(workflow, originalWorkflow);
       }
     } else {
@@ -737,12 +736,6 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     }
     return EntityMaskerFactory.getEntityMasker().unmaskWorkflow(workflow, originalWorkflow);
-  }
-
-  /** Admins and bots may already read or replace any connection's secrets. */
-  private static boolean readsStoredSecrets(SecurityContext securityContext) {
-    SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
-    return subject.isAdmin() || subject.isBot();
   }
 
   /** A test against another endpoint may not borrow the stored secrets it would be sent. */
@@ -791,7 +784,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     return workflowDecrypted;
   }
 
-  private Workflow buildFromOriginalServiceConnection(Workflow workflow) {
+  private Workflow buildFromOriginalServiceConnection(
+      SecurityContext securityContext, Workflow workflow) {
     Workflow originalWorkflow =
         repository.findByNameOrNull(workflow.getFullyQualifiedName(), Include.NON_DELETED);
     if (originalWorkflow == null) {
@@ -807,6 +801,12 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               serviceRepository.findByNameOrNull(
                   testServiceConnection.getServiceName(), Include.NON_DELETED);
       if (originalService != null && originalService.getConnection() != null) {
+        // ADR:2026-11-03-test-connection-workflows-check-service-edit-permission
+        final String serviceEntityType = serviceRepository.getEntityType();
+        authorizer.authorize(
+            securityContext,
+            new OperationContext(serviceEntityType, MetadataOperation.EDIT_ALL),
+            new ResourceContext<>(serviceEntityType, originalService.getId(), null));
         testServiceConnection.setConnection(originalService.getConnection());
         originalWorkflow.setRequest(testServiceConnection);
       }

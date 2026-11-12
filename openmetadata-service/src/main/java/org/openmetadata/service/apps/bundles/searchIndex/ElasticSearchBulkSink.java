@@ -46,6 +46,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
@@ -369,20 +370,16 @@ public class ElasticSearchBulkSink implements BulkSink {
 
         boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
 
-        // Pre-fetch cached embeddings for entities whose state is unchanged so we can splice them
-        // into the staged doc instead of regenerating (avoids expensive embedding-provider calls).
-        // The doc is always re-indexed via a full index op, so the embedding must be carried on it
-        // —
-        // skipping it would strip the stored vector.
+        // Pre-fetch cached embeddings for entities whose fingerprint is unchanged so we can splice
+        // them into the staged doc instead of regenerating (avoids expensive embedding-provider
+        // calls). The doc is always re-indexed via a full index op, so the embedding must be
+        // carried on it — skipping it would strip the stored vector.
         Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
         if (embeddingsEnabled) {
-          Map<String, ElasticSearchVectorService.EntityFingerprintInput> currentById =
-              new HashMap<>(entityInterfaces.size());
+          Map<String, Supplier<String>> currentById = new HashMap<>(entityInterfaces.size());
           for (EntityInterface<?> e : entityInterfaces) {
             currentById.put(
-                e.getId().toString(),
-                new ElasticSearchVectorService.EntityFingerprintInput(
-                    e.getUpdatedAt(), () -> VectorDocBuilder.computeFingerprintForEntity(e)));
+                e.getId().toString(), () -> VectorDocBuilder.computeFingerprintForEntity(e));
           }
           existingEmbeddingsById =
               fetchExistingEmbeddings(entityInterfaces, currentById, indexName, reindexContext);
@@ -430,6 +427,9 @@ public class ElasticSearchBulkSink implements BulkSink {
           for (EntityInterface<?> entity : entityInterfaces) {
             submitColumnIndexTask(entity, reindexContext);
           }
+        }
+        if (Entity.PIPELINE.equals(entityType) && !scriptedPartialUpdates) {
+          searchRepository.restampPipelineRuns(entityInterfaces);
         }
       }
       if (tracker != null) {
@@ -915,10 +915,11 @@ public class ElasticSearchBulkSink implements BulkSink {
       columnIndexName = columnIndexMapping.getIndexName(searchRepository.getClusterAlias());
     }
     List<Column> flattenedColumns = ColumnSearchIndex.flattenColumns(table.getColumns());
+    List<String> tablePolicyTags = SearchIndexUtils.policyTagFqns(table);
 
     for (Column column : flattenedColumns) {
       try {
-        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table);
+        ColumnSearchIndex columnIndex = new ColumnSearchIndex(column, table, tablePolicyTags);
         Map<String, Object> searchIndexDoc = columnIndex.buildSearchIndexDoc();
         String json = JsonUtils.pojoToJson(searchIndexDoc);
         String docId = searchIndexDoc.get("id").toString();
@@ -1165,7 +1166,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
       if (canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splice the cached embedding so the full index op carries the vector instead of stripping
-        // it; the service-layer pre-filter only admits state-matched entries.
+        // it; the service-layer pre-filter only admits entries with the current fingerprint.
         doc.setAll((ObjectNode) cached);
       } else {
         Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
@@ -1189,7 +1190,7 @@ public class ElasticSearchBulkSink implements BulkSink {
 
   private Map<String, JsonNode> fetchExistingEmbeddings(
       List<EntityInterface<?>> entities,
-      Map<String, ElasticSearchVectorService.EntityFingerprintInput> currentById,
+      Map<String, Supplier<String>> currentById,
       String indexName,
       ReindexContext reindexContext) {
     try {

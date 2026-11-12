@@ -221,6 +221,13 @@ const resolveSavedValue = (propertyTypeName: string, value: unknown) => {
   if (NUMERIC_PROPERTY_TYPES.has(propertyTypeName) && value) {
     return toNumber(value);
   }
+  // A table's column list is always present, so only its rows say whether it holds a value.
+  if (
+    propertyTypeName === TABLE_TYPE_CUSTOM_PROPERTY &&
+    isEmpty((value as { rows?: unknown[] } | undefined)?.rows)
+  ) {
+    return undefined;
+  }
 
   return value;
 };

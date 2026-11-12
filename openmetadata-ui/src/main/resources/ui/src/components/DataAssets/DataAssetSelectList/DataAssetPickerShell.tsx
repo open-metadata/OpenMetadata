@@ -270,7 +270,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
           </Box>
 
           {selectedIds.size === 0 && (
-            <Check className="tw:shrink-0" size={16} strokeWidth={1.5} />
+            <Check className="tw:shrink-0" size={18} />
           )}
         </button>
         <Divider className="tw:my-1" />
@@ -342,9 +342,9 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
               <Input
                 // eslint-disable-next-line jsx-a11y/no-autofocus -- focus the search input when the picker opens
                 autoFocus
+                autoComplete="off"
                 className="tw:w-full"
                 icon={Search}
-                iconClassName="tw:size-3.5"
                 inputClassName="tw:text-xs tw:placeholder:text-xs"
                 placeholder={
                   placeholder ??

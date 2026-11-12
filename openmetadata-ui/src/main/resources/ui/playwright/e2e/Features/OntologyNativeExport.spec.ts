@@ -35,10 +35,15 @@ import {
   getWorkerAdminAPIContext,
   uuid,
 } from '../../utils/common';
+import {
+  openExportAdvanced,
+  openOntologyTransfer,
+} from '../../utils/ontologyStudio';
 
 test.use({ isolatedUserOptions: { isAdmin: true } });
 
 const EXPORT_CARDS = [
+  { card: 'turtle', extension: 'ttl', marker: 'owl:Class' },
   { card: 'rdfxml', extension: 'rdf', marker: 'rdf:RDF' },
   { card: 'skos', extension: 'ttl', marker: 'skos:broader' },
   { card: 'jsonld', extension: 'jsonld', marker: '@id' },
@@ -105,7 +110,8 @@ const approveAndActivate = async (
 const openExport = async (page: Page, ontology: Ontology) => {
   await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
-  await page.getByTestId('ontology-import-export-trigger').click();
+  await openOntologyTransfer(page);
+  await openExportAdvanced(page);
   await expect(
     page.getByTestId('ontology-release-export-preview')
   ).toBeVisible();
@@ -194,9 +200,7 @@ test.describe(
 
         for (const { card, extension, marker } of EXPORT_CARDS) {
           await test.step(`Download ${card}`, async () => {
-            if (card !== 'rdfxml') {
-              await page.getByTestId(`ontology-release-format-${card}`).click();
-            }
+            await page.getByTestId(`ontology-release-format-${card}`).click();
             const fetched = page.waitForResponse(
               (response) =>
                 new URL(response.url()).pathname === exportPath(release) &&
@@ -212,7 +216,7 @@ test.describe(
             expect(response.ok()).toBeTruthy();
             const download = await downloaded;
             expect(download.suggestedFilename()).toBe(
-              `${name}-release-${release.releaseRevision}.${extension}`
+              `${name.replaceAll('_', '-')}.${extension}`
             );
             const path = testInfo.outputPath(download.suggestedFilename());
             await download.saveAs(path);
@@ -220,11 +224,12 @@ test.describe(
             expect(content).toContain(marker);
             expect(content).toContain(customer.iri);
             expect(content).not.toContain('Stranger');
-            await page.getByTestId('ontology-import-export-trigger').click();
+            await openOntologyTransfer(page);
           });
         }
 
         await test.step('A gated download of the valid release completes', async () => {
+          await openExportAdvanced(page);
           await page.getByTestId('ontology-export-shacl-gate').click();
           const fetched = page.waitForResponse(
             (response) =>
@@ -237,13 +242,14 @@ test.describe(
           );
           expect((await fetched).ok()).toBeTruthy();
           expect((await downloaded).suggestedFilename()).toBe(
-            `${name}-release-${release.releaseRevision}.rdf`
+            `${name.replaceAll('_', '-')}.rdf`
           );
-          await page.getByTestId('ontology-import-export-trigger').click();
+          await openOntologyTransfer(page);
         });
 
         await test.step('SKOS-XL gives every label its own node', async () => {
           await page.getByTestId('ontology-release-format-skos').click();
+          await openExportAdvanced(page);
           await page.getByTestId('ontology-export-skos-xl').click();
           const preview = page.getByTestId('ontology-release-export-preview');
           await expect(preview).toContainText('skosxl:Label');
@@ -309,6 +315,57 @@ test.describe(
         await deleteFixtureEntity(
           api,
           `/api/v1/ontologies/${other.id}?recursive=true`
+        );
+      }
+    });
+
+    test('previews a draft whose ontology IRI is a bare urn as RDF/XML', async ({
+      isolatedUserPage: page,
+    }) => {
+      const api = await getWorkerAdminAPIContext();
+      const name = `pw_urn_export_${uuid()}`;
+      const iri = `urn:${name}`;
+      const ontology = await okJson<Ontology>(
+        await api.post('/api/v1/ontologies', {
+          data: { name, iri, namespace: `${iri}:` },
+        }),
+        'Create urn ontology'
+      );
+      try {
+        await okJson(
+          await api.post('/api/v1/ontologyConcepts', {
+            data: {
+              name: 'Order',
+              ontology: ontology.fullyQualifiedName,
+              iri: `${iri}:Order`,
+              conceptType: 'OWL_CLASS',
+            },
+          }),
+          'Create Order'
+        );
+        const draftExport = page.waitForResponse(
+          (response) =>
+            new URL(response.url()).pathname ===
+              `/api/v1/ontologies/${ontology.id}/export` &&
+            new URL(response.url()).searchParams.get('format') === 'rdfxml'
+        );
+        await openExport(page, ontology);
+
+        expect((await draftExport).status()).toBe(200);
+        await expect(
+          page.getByTestId('ontology-export-contents-draft').getByRole('radio')
+        ).toBeChecked();
+        await expect(page.getByTestId('ontology-export-scope')).toContainText(
+          'Current draft'
+        );
+        const preview = page.getByTestId('ontology-release-export-preview');
+        await expect(preview).toContainText('rdf:RDF');
+        await expect(preview).toContainText(`rdf:about="${iri}"`);
+        await expect(preview).toContainText(`${iri}:Order`);
+      } finally {
+        await deleteFixtureEntity(
+          api,
+          `/api/v1/ontologies/${ontology.id}?recursive=true`
         );
       }
     });

@@ -14,8 +14,6 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.CALLS_REAL_METHODS;
-import static org.mockito.Mockito.mock;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
@@ -35,7 +33,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 class AppRepositoryStorageStrippingTest {
 
   private static AppRepository testRepository() {
-    return mock(AppRepository.class, CALLS_REAL_METHODS);
+    return RealMethodRepositories.of(AppRepository.class, App.class);
   }
 
   private static App appWithRuntimeSecrets() {

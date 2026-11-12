@@ -13,6 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { useCallback, useRef, useState } from 'react';
+import { PAGE_SIZE_BASE } from '../../../../constants/constants';
 import { SearchIndex } from '../../../../enums/search.enum';
 import {
   Aggregations,
@@ -61,7 +62,7 @@ export const useDataFetching = <
   const {
     searchIndex,
     baseFilter = '',
-    pageSize = 10,
+    pageSize = PAGE_SIZE_BASE,
     transform,
     useNlq = false,
   } = config;

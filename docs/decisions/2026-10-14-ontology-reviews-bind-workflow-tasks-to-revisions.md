@@ -118,3 +118,15 @@ through its release. List rows and totals include only releases the caller can v
 same policy check as the per-release endpoint. The list starts from the caller's own open approval
 tasks, which the database narrows to the caller as reviewer, assignee or requester, so a page costs
 the caller's reviews rather than every open review in the catalog.
+
+## Amendment: no reviewers means no review (2026-11-02)
+
+An ontology with no listed reviewers has nobody to ask. `PUT /v1/ontologies/{id}/activation` on a
+sealed Draft with no review task then approves and activates it in one transaction when the caller
+has `EditAll`: the release records `approvalBasis` `NO_REVIEWERS_CONFIGURED`, an `APPROVED` event
+with empty voters, and an `ACTIVATED` event. The reviewer list is read under the ontology state
+lock, which a reviewer or rule change also takes, so each pair of changes lands in one order. When
+reviewers exist the call returns 409 and the Draft goes through review as before. Requesting and
+withdrawing a review append `REVIEW_REQUESTED` and `REVIEW_WITHDRAWN` events, and the server refuses
+a rejection without a reason. Releases approved before `approvalBasis` existed carry none and count
+as reviewed.

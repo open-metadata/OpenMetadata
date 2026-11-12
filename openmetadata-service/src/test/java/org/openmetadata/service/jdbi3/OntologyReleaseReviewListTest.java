@@ -15,7 +15,9 @@ package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.when;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.migrate;
 import static org.openmetadata.service.jdbi3.OntologyTestDatabase.withDatabase;
 
@@ -53,6 +55,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.ontology.OntologyReleaseReviewReader.View;
 import org.openmetadata.service.ontology.OntologyReview;
+import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /**
@@ -141,6 +144,29 @@ class OntologyReleaseReviewListTest {
         });
   }
 
+  @ParameterizedTest
+  @EnumSource(
+      value = ConnectionType.class,
+      names = {"MYSQL", "POSTGRES"})
+  void anOntologyFilterListsOnlyThatOntologysReviewsInEachView(ConnectionType dialect) {
+    withReviews(
+        dialect,
+        reviews -> {
+          User requester = reviews.user("requester");
+          User alice = reviews.user("alice");
+          Ontology other = reviews.anotherOntology("other");
+          reviews.inReview("here", requester, List.of(alice), List.of(alice), List.of());
+          reviews.inReview(other, "there", requester, List.of(alice), List.of(alice), List.of());
+
+          assertAll(
+              () -> assertEquals(List.of("there"), reviews.list(View.ASSIGNED, alice, other)),
+              () -> assertEquals(List.of("there"), reviews.list(View.PENDING, alice, other)),
+              () -> assertEquals(List.of("there"), reviews.list(View.CREATED, requester, other)),
+              () ->
+                  assertEquals(List.of("there", "here"), reviews.list(View.ASSIGNED, alice, null)));
+        });
+  }
+
   private static TaskReviewVote approval(User voter) {
     return new TaskReviewVote()
         .withVoter(voter.getEntityReference())
@@ -161,7 +187,11 @@ class OntologyReleaseReviewListTest {
           Entity.setCollectionDAO(handle.getJdbi().onDemand(CollectionDAO.class));
           Entity.setEntityRelationshipRepository(
               new EntityRelationshipRepository(Entity.getCollectionDAO()));
-          try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class)) {
+          DatasourceConfig datasource = mock(DatasourceConfig.class);
+          when(datasource.isMySQL()).thenReturn(dialect == ConnectionType.MYSQL);
+          try (MockedStatic<SubjectContext> subjects = mockStatic(SubjectContext.class);
+              MockedStatic<DatasourceConfig> config = mockStatic(DatasourceConfig.class)) {
+            config.when(DatasourceConfig::getInstance).thenReturn(datasource);
             new UserRepository();
             new OntologyRepository();
             test.accept(
@@ -265,6 +295,31 @@ class OntologyReleaseReviewListTest {
         List<User> reviewers,
         List<User> assignees,
         List<TaskReviewVote> votes) {
+      return inReview(ontology, label, requester, reviewers, assignees, votes);
+    }
+
+    Ontology anotherOntology(String label) {
+      Ontology other =
+          new Ontology()
+              .withId(UUID.randomUUID())
+              .withName(label + run)
+              .withFullyQualifiedName(label + run)
+              .withIri(URI.create("https://example.org/" + label + "/" + run))
+              .withNamespace(URI.create("https://example.org/" + label + "/" + run + "/"))
+              .withVersion(0.1)
+              .withUpdatedAt(1L)
+              .withUpdatedBy("admin");
+      Entity.getCollectionDAO().ontologyEntityDAO().insert(other, other.getName());
+      return other;
+    }
+
+    UUID inReview(
+        Ontology target,
+        String label,
+        User requester,
+        List<User> reviewers,
+        List<User> assignees,
+        List<TaskReviewVote> votes) {
       UUID taskId = UUID.randomUUID();
       revision++;
       OntologyRelease release =
@@ -272,7 +327,7 @@ class OntologyReleaseReviewListTest {
               .withId(UUID.randomUUID())
               .withName(label + run)
               .withFullyQualifiedName(label + run)
-              .withOntology(ontology.getEntityReference())
+              .withOntology(target.getEntityReference())
               .withReleaseRevision(revision)
               .withSourceWorkingRevision(0L)
               .withVersion(0.1)
@@ -333,12 +388,22 @@ class OntologyReleaseReviewListTest {
     }
 
     List<String> list(View view, User caller) {
-      return rows(view, caller).stream().map(Row::release).toList();
+      return list(view, caller, null);
+    }
+
+    List<String> list(View view, User caller, Ontology filter) {
+      return rows(view, caller, filter == null ? null : filter.getId()).stream()
+          .map(Row::release)
+          .toList();
     }
 
     List<Row> rows(View view, User caller) {
+      return rows(view, caller, null);
+    }
+
+    List<Row> rows(View view, User caller, UUID ontologyId) {
       return releases
-          .listReviews(view, caller.getName(), DEFAULT_PAGE_SIZE, null, release -> true)
+          .listReviews(view, caller.getName(), ontologyId, DEFAULT_PAGE_SIZE, null, release -> true)
           .getData()
           .stream()
           .map(review -> new Row(labels.get(review.getRelease().getId()), review.getTask().getId()))

@@ -27,7 +27,7 @@ import {
   Share07,
 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode, useMemo, useState } from 'react';
-import { Key } from 'react-aria-components';
+import { Key, Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import NativeOntologyTreeView from './NativeOntologyTreeView';
@@ -157,7 +157,7 @@ const ConceptsSectionHeader = ({
             : t('label.concept-plural')}
         </Typography>
         <Typography className="tw:text-tertiary" size="text-xs">
-          {`${count} ${t('label.concept-plural').toLocaleLowerCase()}`}
+          {t('message.native-concept-count', { count })}
         </Typography>
       </Box>
       {actions}
@@ -301,6 +301,15 @@ const GlossaryTreeView = ({
     }
   };
 
+  // With a row selected, React Aria drops Enter and clicks on other rows in the
+  // default toggle behaviour; replace behaviour reports clicks as selection changes.
+  const handleSelectionChange = (keys: Selection) => {
+    const [key] = keys === 'all' ? [] : keys;
+    if (key !== undefined) {
+      handleAction(key);
+    }
+  };
+
   if (rows.length === 0 && metrics.length === 0) {
     return (
       <Box
@@ -334,13 +343,15 @@ const GlossaryTreeView = ({
               className={TREE_CLASS}
               expandedKeys={expandedKeys}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionBehavior="replace"
               selectionMode="single"
               onAction={handleAction}
               onExpandedChange={(keys) =>
                 setCollapsedIds(
                   new Set(parentIds.filter((id) => !keys.has(id)))
                 )
-              }>
+              }
+              onSelectionChange={handleSelectionChange}>
               {concepts.map((item) => (
                 <ConceptTreeItem
                   compact={compact}
@@ -364,8 +375,10 @@ const GlossaryTreeView = ({
               aria-label={t('label.metric-plural')}
               className={TREE_CLASS}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionBehavior="replace"
               selectionMode="single"
-              onAction={handleAction}>
+              onAction={handleAction}
+              onSelectionChange={handleSelectionChange}>
               {metrics.map(({ measures, node }) => (
                 <Tree.Item
                   className={ROW_CLASS}
@@ -419,8 +432,10 @@ const GlossaryTreeView = ({
               aria-label={t('label.not-connected')}
               className={TREE_CLASS}
               selectedKeys={selectedNodeId ? [selectedNodeId] : []}
+              selectionBehavior="replace"
               selectionMode="single"
-              onAction={handleAction}>
+              onAction={handleAction}
+              onSelectionChange={handleSelectionChange}>
               {unconnected.map(({ node }) => (
                 <Tree.Item
                   className={ROW_CLASS}
@@ -461,12 +476,16 @@ const OntologyTreeView = ({
   ...props
 }: Omit<OntologyTreeViewProps, 'groups' | 'metrics'> & {
   readonly source:
-    | { kind: 'native'; index: NativeTreeIndex }
+    | { kind: 'native'; index: NativeTreeIndex; title?: string }
     | { kind: 'glossary'; groups: OntologyTreeGroup[] };
   readonly metrics?: OntologyTreeMetric[];
 }) =>
   source.kind === 'native' ? (
-    <NativeOntologyTreeView {...props} index={source.index} />
+    <NativeOntologyTreeView
+      {...props}
+      index={source.index}
+      title={source.title}
+    />
   ) : (
     <GlossaryTreeView {...props} groups={source.groups} metrics={metrics} />
   );

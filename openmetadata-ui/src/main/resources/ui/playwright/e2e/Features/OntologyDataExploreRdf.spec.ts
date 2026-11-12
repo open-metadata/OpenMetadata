@@ -182,7 +182,7 @@ async function assertOntologyDesignContract(
 ): Promise<void> {
   const shell = page.getByTestId('ontology-studio-shell');
   const header = shell.locator(':scope > header');
-  const subNavigation = shell.locator(':scope > nav');
+  const subNavigation = shell.getByTestId('ontology-studio-subbar');
   const dataTab = page.getByRole('tab', { name: 'Data', exact: true });
   const cluster = page.getByTestId(`ontology-data-cluster-${termId}`);
   const assetName = cluster
@@ -193,7 +193,7 @@ async function assertOntologyDesignContract(
   await expect(
     header.getByRole('heading', { name: 'Ontology Studio', exact: true })
   ).toBeVisible();
-  await expect(subNavigation).toHaveCSS('height', '46px');
+  await expect(subNavigation).toHaveCSS('height', '62px');
   await expect(dataTab).toHaveAttribute('aria-selected', 'true');
   await expect(cluster).toHaveCSS('width', '380px');
   await expect(assetName).toHaveCSS('font-size', '14px');

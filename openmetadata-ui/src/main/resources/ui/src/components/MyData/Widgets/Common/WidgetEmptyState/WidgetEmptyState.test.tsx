@@ -11,13 +11,13 @@
  *  limitations under the License.
  */
 
+import { TotalOccurrences } from '@openmetadata/ui-core-components/icons';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { ReactComponent as TaskIcon } from '../../../../../assets/svg/ic-task.svg';
 import WidgetEmptyState from './WidgetEmptyState';
 
 const mockProps = {
-  icon: <TaskIcon data-testid="empty-icon" />,
+  icon: <TotalOccurrences data-testid="empty-icon" />,
   title: 'No Data Found',
   description: 'There are no items to display',
   showActionButton: true,

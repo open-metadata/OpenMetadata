@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
@@ -17,6 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,30 +32,43 @@ import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.context.MemoryShareConfig;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.llm.LLMCompletionException;
+import org.openmetadata.service.util.RequestEntityCache;
 
 @ExtendWith(MockitoExtension.class)
 class ContextFileProcessingServiceTest {
 
   private static final String UPLOADER = "test.user";
+  private static final String CLOSED_ASSET_SERVICE =
+      "AssetService not initialized. Please make sure ObjectStorage is configured.";
 
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
@@ -109,6 +124,11 @@ class ContextFileProcessingServiceTest {
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
   }
 
+  @AfterEach
+  void serverIsRunningAgain() {
+    ServerStopping.set(false);
+  }
+
   @Test
   void processSuccessMarksAnalyzingThenProcessed() throws Exception {
     when(assetService.read(asset))
@@ -136,6 +156,237 @@ class ContextFileProcessingServiceTest {
     assertNull(contentUpdates.get(0).getProcessingError());
     assertEquals(ProcessingStatus.Processed, contentUpdates.get(1).getProcessingStatus());
     assertEquals("Quarterly results", contentUpdates.get(1).getExtractedText());
+  }
+
+  /** A file with no recorded editor is stamped as admin, as the extraction engines do. */
+  @Test
+  void processStampsAdminWhenTheFileHasNoEditor() throws Exception {
+    file.setUpdatedBy(null);
+    content.setUpdatedBy(null);
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), any(), eq(Entity.ADMIN_USER_NAME));
+    verify(contentRepository, times(2))
+        .updateIfCurrent(isNull(), same(content), any(), eq(Entity.ADMIN_USER_NAME));
+  }
+
+  @Test
+  void processKeepsMetadataEditedDuringTextExtraction() throws Exception {
+    AtomicReference<ContextFile> stored = new AtomicReference<>(file);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(
+            ignored -> {
+              ContextFile cached =
+                  RequestEntityCache.getById(
+                      Entity.CONTEXT_FILE, fileId, null, null, false, ContextFile.class);
+              if (cached == null) {
+                cached = JsonUtils.deepCopy(stored.get(), ContextFile.class);
+                RequestEntityCache.putById(
+                    Entity.CONTEXT_FILE, fileId, null, null, false, cached, ContextFile.class);
+              }
+              return cached;
+            });
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              stored.set(invocation.getArgument(2));
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE, fileId, null);
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), any(ContextFile.class)))
+        .thenAnswer(
+            ignored -> {
+              stored.set(
+                  JsonUtils.deepCopy(stored.get(), ContextFile.class)
+                      .withDescription("Current description")
+                      .withShareConfig(
+                          new MemoryShareConfig().withVisibility(MemoryVisibility.PRIVATE)));
+              return ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3);
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals("Current description", stored.get().getDescription());
+    assertEquals(MemoryVisibility.PRIVATE, stored.get().getShareConfig().getVisibility());
+    assertEquals("Quarterly results", stored.get().getExtractedText());
+    assertEquals(ProcessingStatus.Processed, stored.get().getProcessingStatus());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void processKeepsContentMetadataEditedDuringTextExtraction(boolean conflictOnResult)
+      throws Exception {
+    AtomicReference<ContextFileContent> stored = new AtomicReference<>(content);
+    AtomicInteger resultWrites = new AtomicInteger();
+    when(contentRepository.getById(contentId))
+        .thenAnswer(
+            ignored -> {
+              ContextFileContent cached =
+                  RequestEntityCache.getById(
+                      Entity.CONTEXT_FILE_CONTENT,
+                      contentId,
+                      null,
+                      null,
+                      false,
+                      ContextFileContent.class);
+              if (cached == null) {
+                cached = JsonUtils.deepCopy(stored.get(), ContextFileContent.class);
+                RequestEntityCache.putById(
+                    Entity.CONTEXT_FILE_CONTENT,
+                    contentId,
+                    null,
+                    null,
+                    false,
+                    cached,
+                    ContextFileContent.class);
+              }
+              return cached;
+            });
+    when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              ContextFileContent updated = invocation.getArgument(2);
+              if (conflictOnResult
+                  && updated.getProcessingStatus() == ProcessingStatus.Processed
+                  && resultWrites.getAndIncrement() == 0) {
+                stored.set(
+                    JsonUtils.deepCopy(stored.get(), ContextFileContent.class)
+                        .withDescription("Latest description"));
+                throw new PreconditionFailedException("Concurrent content update");
+              }
+              stored.set(invocation.getArgument(2));
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE_CONTENT, contentId, null);
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenAnswer(
+            ignored -> {
+              stored.set(
+                  JsonUtils.deepCopy(stored.get(), ContextFileContent.class)
+                      .withDescription("Current description"));
+              return ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3);
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(
+        conflictOnResult ? "Latest description" : "Current description",
+        stored.get().getDescription());
+    assertEquals("Quarterly results", stored.get().getExtractedText());
+    assertEquals(ProcessingStatus.Processed, stored.get().getProcessingStatus());
+  }
+
+  @Test
+  void processStopsWhenTheHeadChangesBeforeTheFileUpdate() {
+    AtomicReference<ContextFile> stored = new AtomicReference<>(file);
+    UUID replacement = UUID.randomUUID();
+    AtomicBoolean firstRead = new AtomicBoolean(true);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(
+            ignored -> {
+              ContextFile snapshot = readCachedFile(stored);
+              if (firstRead.getAndSet(false)) {
+                stored.set(
+                    JsonUtils.deepCopy(snapshot, ContextFile.class)
+                        .withHeadContentId(replacement.toString()));
+              }
+              return snapshot;
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(replacement.toString(), stored.get().getHeadContentId());
+    assertEquals(ProcessingStatus.Uploaded, stored.get().getProcessingStatus());
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
+    verify(assetService, never()).read(any());
+  }
+
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void processStopsWhenTheSourceChangesBeforeTheContentUpdate(boolean contentRemoved)
+      throws Exception {
+    AtomicReference<ContextFile> storedFile = new AtomicReference<>(file);
+    AtomicReference<ContextFileContent> storedContent = new AtomicReference<>(content);
+    UUID replacement = UUID.randomUUID();
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(ignored -> readCachedFile(storedFile));
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              ContextFile updated = invocation.getArgument(2);
+              RequestEntityCache.invalidate(Entity.CONTEXT_FILE, fileId, null);
+              RequestEntityCache.putById(
+                  Entity.CONTEXT_FILE, fileId, null, null, false, updated, ContextFile.class);
+              if (contentRemoved) {
+                storedFile.set(updated);
+                storedContent.set(null);
+              } else {
+                storedFile.set(
+                    JsonUtils.deepCopy(updated, ContextFile.class)
+                        .withHeadContentId(replacement.toString())
+                        .withProcessingStatus(ProcessingStatus.Uploaded));
+              }
+              return null;
+            });
+    when(contentRepository.getById(contentId)).thenAnswer(ignored -> storedContent.get());
+    lenient()
+        .when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedContent.set(invocation.getArgument(2));
+              return null;
+            });
+    lenient()
+        .when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    lenient()
+        .when(textExtractor.extract(any(InputStream.class), any(ContextFile.class)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(
+        contentRemoved ? contentId.toString() : replacement.toString(),
+        storedFile.get().getHeadContentId());
+    assertEquals(
+        contentRemoved ? ProcessingStatus.Analyzing : ProcessingStatus.Uploaded,
+        storedFile.get().getProcessingStatus());
+    if (contentRemoved) {
+      assertNull(storedContent.get());
+    } else {
+      assertEquals(ProcessingStatus.Uploaded, storedContent.get().getProcessingStatus());
+    }
+    verify(assetService, never()).read(any());
+  }
+
+  private ContextFile readCachedFile(AtomicReference<ContextFile> stored) {
+    ContextFile cached =
+        RequestEntityCache.getById(
+            Entity.CONTEXT_FILE, fileId, null, null, false, ContextFile.class);
+    if (cached == null) {
+      cached = JsonUtils.deepCopy(stored.get(), ContextFile.class);
+      RequestEntityCache.putById(
+          Entity.CONTEXT_FILE, fileId, null, null, false, cached, ContextFile.class);
+    }
+    return cached;
   }
 
   @Test
@@ -232,6 +483,179 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
+  void anInterruptedFileExtractionStaysExtractingContext() throws Exception {
+    stubTextExtraction();
+    when(fileEngine.runExtraction(fileId))
+        .thenAnswer(
+            ignored -> {
+              throw interruptedLlmCall();
+            });
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+
+    try {
+      assertThrows(
+          LLMCompletionException.class, () -> service.runMemoryExtraction(fileId, contentId));
+    } finally {
+      Thread.interrupted();
+    }
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.ExtractingContext,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+    verify(contentRepository, times(2))
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedContentCaptor.getAllValues().getLast().getProcessingStatus());
+  }
+
+  @Test
+  void aRealLlmFailureStillMarksFailed() throws Exception {
+    stubTextExtraction();
+    LLMCompletionException failure =
+        new LLMCompletionException(
+            "Knowledge pill extraction failed for 1 of 1 chunks",
+            new LLMCompletionException(
+                "OpenAI completion failed due to IO error", new IOException("Connection reset")));
+    when(fileEngine.runExtraction(fileId)).thenThrow(failure);
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+
+    assertThrows(
+        LLMCompletionException.class, () -> service.runMemoryExtraction(fileId, contentId));
+
+    verify(repository, times(3))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    ContextFile failed = updatedFileCaptor.getAllValues().getLast();
+    assertEquals(ProcessingStatus.Failed, failed.getProcessingStatus());
+    assertEquals(failure.getMessage(), failed.getProcessingError());
+  }
+
+  /** The read ran on another thread, so only the failure's cause records the interrupt. */
+  @Test
+  void anInterruptedTextStageIsFailedAsInterruptedByAStop() {
+    file.setProcessingStatus(ProcessingStatus.Analyzing);
+    content.setProcessingStatus(ProcessingStatus.Analyzing);
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.failedFuture(
+                new IllegalStateException("Asset read interrupted", new InterruptedException())));
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verifyFailedWith(ContextFileProcessingService.INTERRUPTED_BY_STOP);
+    verifyNoMemoryJob();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ProcessingStatus.class,
+      names = {"Processed", "ExtractingContext"})
+  void aStoppedTextRunPreservesAResultAnotherRunFinished(ProcessingStatus peerStatus) {
+    AtomicReference<ContextFile> storedFile = new AtomicReference<>(file);
+    AtomicReference<ContextFileContent> storedContent = new AtomicReference<>(content);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(ignored -> storedFile.get());
+    when(contentRepository.getById(contentId)).thenAnswer(ignored -> storedContent.get());
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedFile.set(invocation.getArgument(2));
+              return null;
+            });
+    when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedContent.set(invocation.getArgument(2));
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenAnswer(
+            ignored -> {
+              storedContent.set(
+                  JsonUtils.deepCopy(storedContent.get(), ContextFileContent.class)
+                      .withProcessingStatus(peerStatus)
+                      .withExtractedText("Peer result"));
+              storedFile.set(
+                  JsonUtils.deepCopy(storedFile.get(), ContextFile.class)
+                      .withProcessingStatus(peerStatus)
+                      .withExtractedText("Peer result"));
+              return CompletableFuture.failedFuture(new InterruptedException("Server is stopping"));
+            });
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    assertEquals(peerStatus, storedFile.get().getProcessingStatus());
+    assertEquals(peerStatus, storedContent.get().getProcessingStatus());
+    assertEquals("Peer result", storedFile.get().getExtractedText());
+    assertEquals("Peer result", storedContent.get().getExtractedText());
+  }
+
+  /** The asset service's own shutdown hook closes object storage under running text extraction. */
+  @Test
+  void theAssetServiceClosingDuringAServerStopFailsTheFileAsInterrupted() {
+    file.setProcessingStatus(ProcessingStatus.Analyzing);
+    content.setProcessingStatus(ProcessingStatus.Analyzing);
+    ServerStopping.set(true);
+
+    service(Runnable::run, closedAssetService(), true).process(fileId, contentId);
+
+    verifyFailedWith(ContextFileProcessingService.INTERRUPTED_BY_STOP);
+    verifyNoMemoryJob();
+  }
+
+  @Test
+  void theAssetServiceFailingWhileTheServerRunsStillMarksTheFileFailed() {
+    service(Runnable::run, closedAssetService()).process(fileId, contentId);
+
+    verifyFailedWith(CLOSED_ASSET_SERVICE);
+  }
+
+  /** A failure the run determines itself, rather than one it throws, keeps its own reason. */
+  @Test
+  void aGenuineTextFailureWhileTheServerStopsKeepsItsOwnMessage() {
+    ServerStopping.set(true);
+    when(assetService.read(asset)).thenReturn(CompletableFuture.completedFuture(null));
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verifyFailedWith("Unable to read file content from object storage");
+  }
+
+  /** What {@code AssetServiceFactory.getService()} throws once its shutdown hook closed it. */
+  private static Supplier<AssetService> closedAssetService() {
+    return () -> {
+      throw new IllegalStateException(CLOSED_ASSET_SERVICE);
+    };
+  }
+
+  private void verifyNoMemoryJob() {
+    verify(jobDao, never())
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
+  }
+
+  private void stubTextExtraction() throws IOException {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+  }
+
+  /** Fails as the LLM clients do when a stop interrupts them: flag re-set, interrupt as cause. */
+  private static LLMCompletionException interruptedLlmCall() {
+    Thread.currentThread().interrupt();
+    return new LLMCompletionException(
+        "Knowledge pill extraction failed for 1 of 1 chunks",
+        new LLMCompletionException(
+            "OpenAI completion was interrupted", new InterruptedException()));
+  }
+
+  @Test
   void recoverInterruptedProcessingResubmitsTransientFiles() {
     ContextFile analyzing = transientFile(ProcessingStatus.Analyzing);
     ContextFile extracting = transientFile(ProcessingStatus.ExtractingContext);
@@ -269,6 +693,21 @@ class ContextFileProcessingServiceTest {
     verify(jobDao)
         .enqueueFileMemoryJob(
             eq(fileId.toString()), anyString(), anyString(), anyString(), eq(false));
+  }
+
+  @Test
+  void memoryStatsContentionQueuesRetryDespiteRunningJob() {
+    when(fileEngine.runExtraction(fileId))
+        .thenThrow(
+            new ContextProcessingEngine.ConditionalUpdateExhaustedException(
+                Entity.CONTEXT_FILE, fileId));
+
+    service(Runnable::run, () -> assetService, true).runMemoryExtraction(fileId, contentId);
+
+    verify(jobDao)
+        .enqueueFileMemoryJob(
+            eq(fileId.toString()), anyString(), anyString(), anyString(), eq(false));
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
   }
 
   private ContextFile transientFile(ProcessingStatus status) {

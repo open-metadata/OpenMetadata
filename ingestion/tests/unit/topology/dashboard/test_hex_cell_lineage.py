@@ -13,9 +13,11 @@ Hex data models and column lineage built from the SQL cells of a project
 """
 
 import fnmatch
+import json
 import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
+from urllib.parse import parse_qs, urlsplit
 
 import pytest
 from requests import HTTPError
@@ -35,6 +37,7 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.tagLabel import LabelType, State, TagLabel, TagSource
+from metadata.ingestion.ometa.mixins.es_mixin import ESMixin
 from metadata.ingestion.source.dashboard.hex.cell_lineage import (
     ChainedCells,
     get_output_columns,
@@ -322,6 +325,7 @@ class FakeOpenMetadata:
             name=request.name,
             fullyQualifiedName=model_fqn,
             dataModelType=request.dataModelType,
+            sql=request.sql,
             columns=columns,
             service=EntityReference(id=uuid.uuid4(), type="dashboardService"),
         )
@@ -470,8 +474,11 @@ class TestHexCellLineage:
         # Columns are still known from the SQL, only their source tables are missing
         assert [child.name.root for child in data_models[0].columns[0].children] == ["region", "revenue", "segment"]
 
-    def test_unreadable_cells_fall_back_to_the_warehouse_queries(self, make_source):
-        source = make_source(None)
+    def test_unreadable_cells_link_the_warehouse_queries_to_the_existing_data_model(self, make_source):
+        source = make_source([REVENUE_CELL])
+        run(source)
+        source.client.get_project_cells.return_value = None
+        source._cell_lineage = None
         warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
         warehouse_lineage.add_table(ORDERS_TABLE)
         source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
@@ -480,8 +487,131 @@ class TestHexCellLineage:
 
         assert data_models == []
         assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
-            ("snowflake_prod.prod.sales.orders", "dashboard")
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
         ]
+        assert edges[0].lineageDetails.columnsLineage is None
+
+    def test_unreadable_cells_with_query_history_get_a_data_model_without_columns(self, make_source):
+        source = make_source(None)
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+
+        (request,), edges = run(source)
+
+        assert request.columns == []
+        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
+        ]
+
+    def test_a_cell_whose_table_gives_no_columns_still_links_it_to_a_data_model(self, make_source):
+        source = make_source(
+            [sql_cell("c1", "select * from sales.orders", "orders")], tables=(make_table("orders", {}),)
+        )
+
+        (request,), edges = run(source)
+
+        assert request.columns == []
+        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
+            ("snowflake_prod.prod.sales.orders", "dashboardDataModel")
+        ]
+
+    def test_a_data_model_without_columns_outlives_the_query_history_window(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        run(source)
+        # A later run whose seven days of query history hold no query of the project
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, edges = run(source)
+
+        assert (data_models, edges) == ([], [])
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_only_the_query_history_fills_outlives_its_window_beside_unresolved_cells(self, make_source):
+        # The cell reads a table not in OpenMetadata: SQL, but no tables and no columns
+        source = make_source([sql_cell("c1", "select * from other.missing", "missing")])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        (request,), _ = run(source)
+        assert request.sql is None
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, _ = run(source)
+
+        assert data_models == []
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_without_columns_that_cant_be_looked_up_is_kept(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+        run(source)
+        source.hex_project_lineage = {}
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+        lookup = source.metadata.get_by_name
+
+        def unavailable(entity, fqn, **kwargs):
+            if entity is DashboardDataModel and "fields" in kwargs:
+                raise ConnectionError("server unavailable")
+            return lookup(entity, fqn, **kwargs)
+
+        source.metadata.get_by_name = unavailable
+
+        run(source)
+
+        assert f"{SERVICE}.model.{PROJECT.id}" in source.datamodel_source_state
+
+    def test_a_data_model_without_columns_from_a_deleted_cell_is_not_kept(self, make_source):
+        source = make_source(
+            [sql_cell("c1", "select * from sales.orders", "orders")], tables=(make_table("orders", {}),)
+        )
+        run(source)
+        source.client.get_project_cells.return_value = [MARKDOWN_CELL]
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, edges = run(source)
+
+        assert (data_models, edges) == ([], [])
+        assert source.datamodel_source_state == set()
+
+    def test_a_data_model_whose_cells_are_all_gone_is_not_kept(self, make_source):
+        source = make_source([REVENUE_CELL])
+        run(source)
+        source.client.get_project_cells.return_value = [MARKDOWN_CELL]
+        source._cell_lineage = None
+        source.datamodel_source_state = set()
+
+        data_models, _ = run(source)
+
+        assert data_models == []
+        assert source.datamodel_source_state == set()
+
+    def test_a_project_only_the_query_history_reads_from_gets_a_data_model_without_columns(self, make_source):
+        source = make_source([MARKDOWN_CELL])
+        warehouse_lineage = HexProjectLineage(project_id=PROJECT.id)
+        warehouse_lineage.add_table(ORDERS_TABLE)
+        source.hex_project_lineage = {PROJECT.id: warehouse_lineage}
+
+        (request,), (edge,) = run(source)
+
+        assert request.columns == []
+        assert request.sql is None
+        assert (edge.fromEntity.fullyQualifiedName, edge.toEntity.type) == (
+            "snowflake_prod.prod.sales.orders",
+            "dashboardDataModel",
+        )
+        assert edge.lineageDetails.columnsLineage is None
 
     def test_cells_are_fetched_once_per_project(self, make_source):
         source = make_source([REVENUE_CELL])
@@ -629,9 +759,11 @@ class TestHexCellLineage:
 
         _, edges = run(source)
 
-        assert [(edge.fromEntity.fullyQualifiedName, edge.toEntity.type) for edge in edges] == [
-            ("snowflake_prod.prod.sales.orders", "dashboard")
-        ]
+        # Node level only: the query history doesn't say which cell read the table
+        assert [
+            (edge.fromEntity.fullyQualifiedName, edge.toEntity.type, edge.lineageDetails.columnsLineage)
+            for edge in edges
+        ] == [("snowflake_prod.prod.sales.orders", "dashboardDataModel", None)]
 
     def test_names_are_made_valid_column_names(self, make_source):
         cell = REVENUE_CELL.model_copy(
@@ -1217,3 +1349,259 @@ cells:
 
         assert 429 in client.client.config.retry_codes
         assert 429 not in client.client.config.limit_codes
+
+
+class UnscopedMetadata(FakeOpenMetadata, ESMixin):
+    def get_by_name(self, entity, fqn, **kwargs):
+        if entity is Table:
+            return next((table for table in self.tables if table.fullyQualifiedName.root == fqn), None)
+        return super().get_by_name(entity, fqn, **kwargs)
+
+
+def shard_table(service="warehouse", prefix="events_", schema="demo_db.analytics"):
+    table = make_table(f"{prefix}yyyymmdd", {"id": DataType.INT}, f"{service}.{schema}")
+    return Table.model_validate(
+        {
+            **table.model_dump(),
+            "serviceType": "BigQuery",
+            "tableType": "Sharded",
+            "tableSharding": {
+                "prefix": prefix,
+                "suffixFormat": "YYYYMMDD",
+                "shardCount": 1,
+                "firstShardDate": "2026-11-01",
+                "lastShardDate": "2026-11-01",
+                "representative": {
+                    "databaseName": schema.split(".")[0],
+                    "schemaName": schema.split(".")[1],
+                    "tableName": f"{prefix}20261101",
+                    "shardDate": "2026-11-01",
+                },
+            },
+        }
+    )
+
+
+@pytest.fixture
+def make_unscoped_source(make_source):
+    def make(tables, reference="demo_db.analytics.events_20261101", connection_type="bigquery", repeat=False):
+        quoted = f"`{reference}`" if connection_type == "bigquery" else reference
+        cell = sql_cell("c1", f"select id from {quoted}", "result", "connection")
+        source = make_source([cell, cell] if repeat else [cell], tables=tables)
+        metadata = UnscopedMetadata(list(tables))
+        metadata.entities = source.metadata.entities
+        metadata.client = MagicMock()
+        metadata.client.get.return_value = {
+            "hits": {
+                "total": {"value": len(tables), "relation": "eq"},
+                "hits": [{"_source": {"fullyQualifiedName": table.fullyQualifiedName.root}} for table in tables],
+            }
+        }
+        source.metadata = metadata
+        source.client.get_data_connections.return_value = {
+            "connection": DataConnection(id="connection", name="Warehouse", type=connection_type)
+        }
+        return source
+
+    return make
+
+
+class TestUnscopedShardLineage:
+    @pytest.mark.parametrize("name", ["orders", "events_20261101", "events_20260230"])
+    def test_ordinary_tables_use_the_same_single_search(self, make_unscoped_source, name):
+        table = make_table(name, {"id": DataType.INT}, "warehouse.demo_db.analytics")
+        source = make_unscoped_source([table], f"demo_db.analytics.{name}")
+        _, edges = run(source)
+        assert {edge.fromEntity.id.root for edge in edges} == {table.id.root}
+        assert source.metadata.client.get.call_count == 1
+
+    def test_connection_defaults_scope_an_unqualified_reference(self, make_unscoped_source):
+        family = shard_table()
+        source = make_unscoped_source([family], "events_20261101")
+        source.client.get_data_connections.return_value["connection"].connectionDetails = {
+            "bigquery": {"database": "demo_db", "schema": "analytics"}
+        }
+        _, edges = run(source)
+        assert {edge.fromEntity.id.root for edge in edges} == {family.id.root}
+
+    def test_missing_schema_does_not_search_all_datasets(self, make_unscoped_source):
+        source = make_unscoped_source([shard_table()], "events_20261101")
+        _, edges = run(source)
+        assert edges == []
+        assert source.metadata.client.get.call_count == 0
+
+    def test_one_search_resolves_family_and_column_lineage_without_service_discovery(self, make_unscoped_source):
+        family = shard_table()
+        source = make_unscoped_source([family], repeat=True)
+
+        _, edges = run(source)
+
+        assert {edge.fromEntity.id.root for edge in edges} == {family.id.root}
+        assert any(
+            family.columns[0].fullyQualifiedName.root in sources
+            for edge in edges
+            for sources in column_lineage(edge).values()
+        )
+        assert source.metadata.client.get.call_count == 1
+        path = source.metadata.client.get.call_args.args[0]
+        params = parse_qs(urlsplit(path).query)
+        assert urlsplit(path).path == "/search/query"
+        assert params["size"] == ["101"]
+        assert params["deleted"] == ["false"]
+        assert params["track_total_hits"] == ["true"]
+        assert params["include_aggregations"] == ["false"]
+        assert json.loads(params["query_filter"][0]) == {
+            "query": {
+                "bool": {
+                    "filter": [
+                        {"term": {"database.name.keyword": "demo_db"}},
+                        {"term": {"databaseSchema.name.keyword": "analytics"}},
+                    ],
+                    "should": [
+                        {"term": {"name.keyword": "events_20261101"}},
+                        {
+                            "bool": {
+                                "filter": [
+                                    {"term": {"serviceType": "BigQuery"}},
+                                    {"term": {"tableType": "Sharded"}},
+                                    {"term": {"name.keyword": "events_yyyymmdd"}},
+                                ]
+                            }
+                        },
+                    ],
+                    "minimum_should_match": 1,
+                }
+            }
+        }
+
+    @pytest.mark.parametrize("second_family", [False, True])
+    def test_matches_in_two_services_are_ambiguous(self, make_unscoped_source, second_family):
+        other = (
+            shard_table("other")
+            if second_family
+            else make_table("events_20261101", {"id": DataType.INT}, "other.demo_db.analytics")
+        )
+        source = make_unscoped_source([shard_table(), other])
+        _, edges = run(source)
+        assert edges == []
+        assert source.metadata.client.get.call_count == 1
+
+    def test_physical_identity_wins_within_its_namespace(self, make_unscoped_source):
+        physical = make_table("events_20261101", {"id": DataType.INT}, "warehouse.demo_db.analytics")
+        source = make_unscoped_source([shard_table(), physical])
+        _, edges = run(source)
+        assert {edge.fromEntity.id.root for edge in edges} == {physical.id.root}
+
+    @pytest.mark.parametrize("prefix", ["events_", "events", ""])
+    def test_daily_names_and_partition_decorators(self, make_unscoped_source, prefix):
+        family = shard_table(prefix=prefix)
+        source = make_unscoped_source([family], f"demo_db.analytics.{prefix}20261101$20261101")
+        _, edges = run(source)
+        assert {edge.fromEntity.id.root for edge in edges} == {family.id.root}
+
+    @pytest.mark.parametrize("invalid", ["prefix", "serviceType", "representative", "tableType", "namespace"])
+    def test_stale_or_unrelated_family_hits_are_rejected(self, make_unscoped_source, invalid):
+        family = shard_table()
+        if invalid == "prefix":
+            family.tableSharding.prefix = "events_extra_"
+        elif invalid == "serviceType":
+            family.serviceType = "Postgres"
+        elif invalid == "representative":
+            family.tableSharding.representative.schemaName = "other"
+        elif invalid == "tableType":
+            family.tableType = "Regular"
+        else:
+            family = shard_table(schema="demo_db.other")
+        source = make_unscoped_source([family])
+        _, edges = run(source)
+        assert edges == []
+
+    def test_wildcard_expands_all_matching_families_without_column_guesses(self, make_unscoped_source):
+        families = [shard_table(), shard_table(prefix="events_extra_")]
+        source = make_unscoped_source(families, "demo_db.analytics.events_*")
+        _, edges = run(source)
+        assert {edge.fromEntity.id.root for edge in edges} == {family.id.root for family in families}
+        assert all(not edge.lineageDetails or not edge.lineageDetails.columnsLineage for edge in edges)
+        assert source.metadata.client.get.call_count == 1
+
+    def test_wildcard_in_two_namespaces_is_ambiguous(self, make_unscoped_source):
+        source = make_unscoped_source([shard_table(), shard_table("other")], "demo_db.analytics.events_*")
+        _, edges = run(source)
+        assert edges == []
+
+    @pytest.mark.parametrize(
+        "failure,reference",
+        [
+            (failure, "events_20261101")
+            for failure in ("overflow", "partial", "inexact", "timeout", "shards", "http", "missing")
+        ]
+        + [(failure, "events_*") for failure in ("overflow", "partial", "inexact", "timeout", "shards", "http")],
+    )
+    def test_incomplete_search_preserves_existing_model(self, make_unscoped_source, failure, reference):
+        family = shard_table()
+        previous = make_unscoped_source([family])
+        run(previous)
+        source = make_unscoped_source([family], f"demo_db.analytics.{reference}")
+        source.metadata.entities.update(previous.metadata.entities)
+        model_fqn = f"{SERVICE}.model.{PROJECT.id}"
+        stored_model = source.metadata.entities[model_fqn]
+        source.context.get.return_value = SimpleNamespace(dashboard_service=SERVICE, charts=[], dataModels=[])
+        response = source.metadata.client.get.return_value
+        if failure == "overflow":
+            response["hits"]["total"]["value"] = 101
+        elif failure == "partial":
+            response["hits"]["total"]["value"] = 2
+        elif failure == "inexact":
+            response["hits"]["total"]["relation"] = "gte"
+        elif failure == "timeout":
+            response["timed_out"] = True
+        elif failure == "shards":
+            response["_shards"] = {"failed": 1}
+        elif failure == "http":
+            source.metadata.client.get.side_effect = ConnectionError("search unavailable")
+        else:
+            source.metadata.tables = []
+        requests, edges = run(source)
+        assert requests == []
+        assert edges == []
+        assert source.metadata.entities[model_fqn] is stored_model
+        assert model_fqn in source.datamodel_source_state
+        (dashboard,) = source.yield_dashboard(PROJECT)
+        assert [model.root for model in dashboard.right.dataModels] == [model_fqn]
+
+    def test_date_constrained_wildcard_is_logged_and_skipped_without_search(self, make_unscoped_source, caplog):
+        caplog.set_level("DEBUG", logger="metadata.Ingestion")
+        source = make_unscoped_source([shard_table()], "demo_db.analytics.events_2026*")
+        requests, edges = run(source)
+        assert len(requests) == 1
+        assert [child.name.root for child in requests[0].columns[0].children] == ["id"]
+        assert edges == []
+        assert source._kept_data_model is None
+        assert source.metadata.client.get.call_count == 0
+        assert "Skipping unsupported Hex table reference events_2026*" in caplog.text
+
+    @pytest.mark.parametrize("unsupported", ["events_2026*", "ev*ents_*", "events_*_archive"])
+    def test_unsupported_wildcard_keeps_lineage_from_other_cells(self, make_unscoped_source, unsupported):
+        family = shard_table()
+        source = make_unscoped_source([family])
+        source.client.get_project_cells.return_value.extend(
+            [
+                sql_cell("c2", f"select id from `demo_db.analytics.{unsupported}`", "unsupported", "connection"),
+                sql_cell("c3", "select id from `demo_db.analytics.events_20261101`", "later", "connection"),
+            ]
+        )
+        requests, edges = run(source)
+        assert [column.name.root for column in requests[0].columns] == ["c1", "c2", "c3"]
+        assert {edge.fromEntity.id.root for edge in edges} == {family.id.root}
+        assert {target for edge in edges for target in column_lineage(edge)} == {
+            f"{SERVICE}.model.{PROJECT.id}.c1.id",
+            f"{SERVICE}.model.{PROJECT.id}.c3.id",
+        }
+
+    def test_unknown_connection_type_keeps_ordinary_cross_service_lookup(self, make_unscoped_source):
+        physical = make_table("events_20261101", {"id": DataType.INT}, "warehouse.demo_db.analytics")
+        source = make_unscoped_source([physical], connection_type=None)
+        _, edges = run(source)
+        assert {edge.fromEntity.id.root for edge in edges} == {physical.id.root}
+        assert source.metadata.client.get.call_count == 0
+        assert len(source.metadata.searches) == 1

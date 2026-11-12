@@ -15,7 +15,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import PersonaCustomizeGrid from './PersonaCustomizeGrid';
 
 describe('PersonaCustomizeGrid', () => {
-  it('renders a card for every customize category with its label', () => {
+  it('renders a card for every customize category except the merged AI sidebar', () => {
     render(<PersonaCustomizeGrid onSelectCategory={jest.fn()} />);
 
     const keys = screen
@@ -25,7 +25,6 @@ describe('PersonaCustomizeGrid', () => {
     expect(keys).toEqual([
       'customize-card-navigation',
       'customize-card-app-layout',
-      'customize-card-askCollateSidebar',
       'customize-card-LandingPage',
       'customize-card-DataMarketplace',
       'customize-card-governance',

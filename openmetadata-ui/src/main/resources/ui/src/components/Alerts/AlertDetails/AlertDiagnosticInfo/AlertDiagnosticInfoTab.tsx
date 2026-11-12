@@ -90,7 +90,7 @@ function AlertDiagnosticInfoTab() {
                           aria-label={item.description}
                           color="tertiary"
                           icon={InfoCircle}
-                          size="xs"
+                          size="sm"
                         />
                       </Tooltip>
                     </Typography>

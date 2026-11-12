@@ -145,11 +145,10 @@ export const ManageMenu = ({
     <Dropdown.Root isOpen={isOpen} onOpenChange={onOpenChange}>
       {trigger ?? (
         <ButtonUtility
-          className={classNames('tw:p-2', triggerClassName)}
-          color="secondary"
+          className={triggerClassName}
           data-testid={dataTestId}
           icon={DotsVertical}
-          size="xs"
+          size="lg"
           tooltip={label}
           tooltipPlacement="top end"
         />

@@ -90,6 +90,21 @@
   ],
   "mappings": [
     {
+      "_comment": "QueryViewer renders the topic Config, search index Settings, table dbt and View Definition tabs and the incident SQL Query tab.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/common/QueryViewer/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Topic/TopicDetails/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/SearchIndexUtils.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/EntityConfigTabs.spec.ts",
+        "playwright/e2e/Features/Table.spec.ts",
+        "playwright/e2e/Features/Topic.spec.ts",
+        "playwright/e2e/Features/DataQuality/IncidentManagerSqlQuery.spec.ts"
+      ]
+    },
+    {
       "sources": [
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.setup.ts",
         "openmetadata-ui/src/main/resources/ui/playwright/e2e/search-rbac.teardown.ts"
@@ -116,6 +131,8 @@
         "openmetadata-ui/src/main/resources/ui/src/interface/feed.interface.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/Task/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TaskNavigationUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/Task.constant.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/Feeds.constants.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useCloseOnNavigation*",
@@ -138,7 +155,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/PlatformLineage/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/EntityLineage*",
         "openmetadata-ui/src/main/resources/ui/src/utils/Lineage/**",
-        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts"
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useLineageStore.ts",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/lineage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useCanvasEdgeRenderer.ts",
+        "openmetadata-ui/src/main/resources/ui/src/utils/EdgeMidpointUtils*"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
@@ -344,6 +364,10 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/Glossary/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/Glossary*",
         "openmetadata-ui/src/main/resources/ui/src/utils/GlossaryReview/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/Modals/ChangeParentHierarchy/**",
+        "openmetadata-ui/src/main/resources/ui/src/interface/governance/glossary.interface.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/glossaryAPI.ts",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/Glossary*.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/glossary/**"
       ],
       "projects": ["chromium", "Basic", "ImportExport"],
@@ -541,6 +565,7 @@
         "openmetadata-ui/src/main/resources/ui/src/pages/ContextCenterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/pages/KnowledgeCenterFilterPage/**",
         "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/contextMemoryAPI.test.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/knowledgeCenterAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/ContextCenter.constants.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/KnowledgeCenter.constant.ts",
@@ -551,6 +576,8 @@
         "openmetadata-ui/src/main/resources/ui/src/hooks/discovery/context-center/**",
         "openmetadata-ui/src/main/resources/ui/src/components/discovery/context-center/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/context/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/context/center/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/context/center/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/context/review/**",
         "openmetadata-service/src/test/java/org/openmetadata/service/context/review/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/context/outcome/**",
@@ -564,6 +591,9 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycleTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/knowledge/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/drive/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/drive/**",
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextFile*.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextFile*Test.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/KnowledgePageRepository.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/search/indexes/ContextMemoryIndex.java",
@@ -601,12 +631,24 @@
         "openmetadata-ui/src/main/resources/ui/src/generated/governance/**",
         "openmetadata-ui/src/main/resources/ui/src/generated/api/governance/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/governance/**",
+        "openmetadata-service/src/test/java/org/openmetadata/service/governance/**",
         "openmetadata-service/src/main/java/org/openmetadata/service/resources/governance/**",
         "openmetadata-spec/src/main/resources/json/schema/governance/workflows/**",
         "openmetadata-spec/src/main/resources/json/schema/api/governance/**"
       ],
       "projects": ["chromium"],
       "specs": ["playwright/e2e/Features/Workflows/**/*.spec.ts"]
+    },
+    {
+      "_comment": "The query builder's JsonLogic/Elasticsearch save and load pipeline, shared by workflow conditions, advanced search, curated assets and data contract semantics.",
+      "sources": ["openmetadata-ui/src/main/resources/ui/src/utils/queryBuilder/**"],
+      "specs": [
+        "playwright/e2e/Features/Workflows/**/*.spec.ts",
+        "playwright/e2e/Features/AdvancedSearch.spec.ts",
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
+        "playwright/e2e/Features/AdvancedSearchSuggestions.spec.ts",
+        "playwright/e2e/Pages/DataContractsSemanticRules.spec.ts"
+      ]
     },
     {
       "sources": [
@@ -781,6 +823,8 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/Widgets/**",
         "openmetadata-ui/src/main/resources/ui/src/components/MyData/HomeLandingPage/**",
+        "openmetadata-ui/src/main/resources/ui/src/hooks/useRailPager.ts",
+        "openmetadata-ui/src/main/resources/ui/src/rest/queries/criticalAnnouncementsQuery.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataEstate.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useKpiProgress.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useDataQualitySummary.ts",
@@ -929,6 +973,28 @@
       ]
     },
     {
+      "_comment": "TagsUtils builds the classification page's tag table actions (edit / delete / enable) and shared tag helpers used by the tag pages.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/utils/TagsUtils.tsx"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Pages/Tags.spec.ts",
+        "playwright/e2e/Pages/Tag.spec.ts",
+        "playwright/e2e/Pages/ClassificationConditionalRendering.spec.ts"
+      ]
+    },
+    {
+      "_comment": "In AI mode the home page's Customize button opens the standalone customize route; its header owns where closing (with or without unsaved changes) lands.",
+      "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/components/MyData/CustomizableComponents/CustomizablePageHeader/**"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/AIMode/HomePageCustomizeExit.spec.ts"
+      ]
+    },
+    {
       "_comment": "Default glossary and glossary-term page layouts and their widget registry. Persona customization edits these layouts, and the glossary pages render them.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeGlossaryPage/**",
@@ -1016,10 +1082,13 @@
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/rest/announcementsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/components/Modals/AnnouncementModal/**",
-        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**"
+        "openmetadata-ui/src/main/resources/ui/src/components/Announcement/**",
+        "openmetadata-ui/src/main/resources/ui/src/components/common/AnnouncementsWidget/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/AnnouncementsUtils.ts"
       ],
       "projects": ["chromium"],
       "specs": [
+        "playwright/e2e/Pages/DataMarketplaceAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/SystemAnnouncements.spec.ts",
         "playwright/e2e/Features/Announcements/AnnouncementEntity.spec.ts",
         "playwright/e2e/Features/Announcements/EntityHeaderAnnouncements.spec.ts"
@@ -1569,6 +1638,21 @@
       ],
       "projects": ["DomainIsolation"],
       "specs": ["playwright/e2e/Features/DomainIsolation/**/*.spec.ts"]
+    },
+    {
+      "_comment": "The Metric backend: hierarchy, restore and governance rules that the Metric specs drive through the API and the metric pages.",
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/MetricRepository.java",
+        "openmetadata-service/src/main/java/org/openmetadata/service/resources/metrics/**"
+      ],
+      "projects": ["chromium", "Basic"],
+      "specs": [
+        "playwright/e2e/Features/MetricHierarchy.spec.ts",
+        "playwright/e2e/Features/MetricGovernance.spec.ts",
+        "playwright/e2e/Features/MetricAssets.spec.ts",
+        "playwright/e2e/Features/MetricCustomUnitFlow.spec.ts",
+        "playwright/e2e/VersionPages/MetricVersionPage.spec.ts"
+      ]
     }
   ]
 }

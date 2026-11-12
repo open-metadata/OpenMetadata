@@ -34,6 +34,8 @@ from metadata.ingestion.source.dashboard.hex.models import (
     Project,
     ProjectExport,
     ProjectListResponse,
+    ProjectRun,
+    ProjectRunsResponse,
     SqlCellContents,
 )
 from metadata.utils.constants import AUTHORIZATION_HEADER
@@ -65,6 +67,8 @@ class HexApiClient:
     """
 
     client: TrackedREST
+    # Single slot: the chart, data model and lineage stages of a project share its export
+    _export: tuple[str, dict | Exception] | None = None
 
     def __init__(self, config: HexConnection):
         self.config = config
@@ -100,11 +104,11 @@ class HexApiClient:
 
     def get_projects(self) -> list[Project]:
         """
-        Fetch all projects from Hex
+        Fetch all projects and components from Hex
         """
         projects = []
         try:
-            for page in self._paginate("/projects", {}, ProjectListResponse):
+            for page in self._paginate("/projects", {"includeComponents": "true"}, ProjectListResponse):
                 projects.extend(page.values)
         except Exception as exc:
             logger.debug(traceback.format_exc())
@@ -123,8 +127,7 @@ class HexApiClient:
         transient export failure the cells it would give are incomplete, so None.
         """
         try:
-            export = ProjectExport.model_validate(self.client.post("/projects/export", json={"projectId": project_id}))
-            return _flatten_export_cells(yaml.safe_load(export.content).get("cells") or [])
+            return _flatten_export_cells(self._get_export(project_id).get("cells") or [])
         except Exception as exc:
             logger.debug(traceback.format_exc())
             if _status_code(exc) not in UNAVAILABLE_STATUSES:
@@ -141,6 +144,48 @@ class HexApiClient:
             logger.debug(traceback.format_exc())
             logger.warning("Error fetching cells for project %s: %s", project_id, exc)
             return None
+
+    def get_component_ids(self, project_id: str) -> list[str] | None:
+        """
+        The components the project imports, in notebook order. Only the export names
+        them, so a token that can't export sees none; None when it failed this time.
+        """
+        try:
+            return _flatten_component_ids(self._get_export(project_id).get("cells") or [])
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            if _status_code(exc) in UNAVAILABLE_STATUSES:
+                return []
+            logger.warning("Could not read the components of Hex project %s: %s", project_id, exc)
+            return None
+
+    def _get_export(self, project_id: str) -> dict:
+        if not self._export or self._export[0] != project_id:
+            try:
+                export = ProjectExport.model_validate(
+                    self.client.post("/projects/export", json={"projectId": project_id})
+                )
+                self._export = (project_id, yaml.safe_load(export.content) or {})
+            except Exception as exc:
+                # Kept, so the next stage of the same project doesn't spend another call to fail again
+                self._export = (project_id, exc)
+        result = self._export[1]
+        if isinstance(result, Exception):
+            raise result
+        return result
+
+    def get_last_run(self, project_id: str, status: str | None = None) -> ProjectRun | None:
+        """The project's most recent run, or its most recent one with this status"""
+        params: dict = {"limit": 1, "runTriggerFilter": "ALL"}
+        if status:
+            params["statusFilter"] = status
+        try:
+            runs = ProjectRunsResponse.model_validate(self.client.get(f"/projects/{project_id}/runs", data=params)).runs
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read the runs of Hex project %s: %s", project_id, exc)
+            return None
+        return runs[0] if runs else None
 
     def get_data_connections(self) -> dict[str, DataConnection] | None:
         """
@@ -216,6 +261,21 @@ def _flatten_export_cells(export_cells: list[dict]) -> list[Cell]:
             )
         cells.extend(_flatten_export_cells(config.get("cells") or []))
     return cells
+
+
+def _flatten_component_ids(export_cells: list[dict]) -> list[str]:
+    """Ids of the components an export imports, with the ones nested in collapsible sections"""
+    component_ids = []
+    for export_cell in export_cells:
+        config = export_cell.get("config") or {}
+        if export_cell.get("cellType") == "COMPONENT_IMPORT":
+            component_id = (config.get("component") or {}).get("id")
+            if component_id and component_id not in component_ids:
+                component_ids.append(component_id)
+        component_ids.extend(
+            nested for nested in _flatten_component_ids(config.get("cells") or []) if nested not in component_ids
+        )
+    return component_ids
 
 
 def _status_code(exc: Exception) -> int | None:

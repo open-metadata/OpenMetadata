@@ -978,4 +978,11 @@ public class DatabaseResource extends EntityResource<Database, DatabaseRepositor
           String userId) {
     return deleteFollowerInternal(securityContext, id, UUID.fromString(userId));
   }
+
+  @Override
+  protected List<ReferenceListField<Database>> viewFilteredReferenceFields() {
+    return List.of(
+        new ReferenceListField<>(
+            "databaseSchemas", Database::getDatabaseSchemas, Database::setDatabaseSchemas));
+  }
 }

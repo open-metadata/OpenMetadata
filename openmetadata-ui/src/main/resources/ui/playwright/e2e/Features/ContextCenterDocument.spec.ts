@@ -23,6 +23,7 @@ import { installServerLoadReducers } from '../../support/fixtures/serverLoad';
 import { UserClass } from '../../support/user/UserClass';
 import { createAdminApiContext } from '../../utils/admin';
 import {
+  clickIgnoringToasts,
   disableEtagConditionalReads,
   getApiContext,
   redirectToHomePage,
@@ -32,30 +33,38 @@ import {
   BulkOperationResult,
   ContextCenterDocument,
   ContextCenterFolder,
+  createMemoryViaApi,
+  DOCUMENTS_URL,
   expectBulkIdsRequest,
   expectSelectedCount,
   getDocumentRowByName,
   getDocumentSearchInput,
   getFolderTreeItem,
+  getMemoryStatus,
+  MEMORIES_API,
   navigateToDocuments,
   parseResponseJson,
   revealFolderRow,
   scrollUntilResponse,
   searchAndGetDocumentRow,
   selectDocumentByName,
+  selectDocumentsBySharedTerm,
   selectFolderInSidebar,
   uploadDocument as uploadDocumentToApi,
+  waitForDocumentProcessingComplete,
 } from '../../utils/ContextCenterUtil';
 import {
   copyAndGetClipboardText,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { captureRecoverableStorageState } from '../../utils/storageStateRecovery';
 import { waitForResponseWithStatus } from '../../utils/waitHelpers';
 
 // ─── Cleanup Sets ─────────────────────────────────────────────────────────────
 
 const contextFileIdsToCleanup = new Set<string>();
 const contextFolderIdsToCleanup = new Set<string>();
+const contextMemoryNamesToCleanup = new Set<string>();
 let paginationFolder: ContextCenterFolder;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -75,6 +84,36 @@ const uploadDocument = async (
   contextFileIdsToCleanup.add(document.id);
 
   return document;
+};
+
+interface ExtractedMemoryApproval {
+  approved: number;
+  failed?: number;
+  needsDecision: { id: string }[];
+}
+
+/** A memory as extraction stores it: Unprocessed, linked to its document and anchored on it. */
+const createExtractedMemory = async (
+  apiContext: APIRequestContext,
+  document: ContextCenterDocument,
+  question: string,
+  answer: string
+): Promise<{ id: string; name: string }> => {
+  const name = `cc_extracted_${uuid()}`;
+  contextMemoryNamesToCleanup.add(name);
+  const source = { id: document.id, type: 'contextFile' };
+
+  return createMemoryViaApi(apiContext, {
+    name,
+    title: question,
+    question,
+    answer,
+    sourceType: 'FileExtraction',
+    sourceEntity: source,
+    primaryEntity: source,
+    entityStatus: 'Unprocessed',
+    shareConfig: { visibility: 'Entity' },
+  });
 };
 
 // ─── Auth ─────────────────────────────────────────────────────────────────────
@@ -107,7 +146,7 @@ const test = base.extend<object, { documentSession: DocumentSession }>({
           // A worker's fixture cleanup must not cover another worker's controls.
           await use({
             apiContext,
-            storageState: await context.storageState({ indexedDB: true }),
+            storageState: await captureRecoverableStorageState(context),
           });
         } finally {
           await disposeApiContext();
@@ -136,6 +175,7 @@ test.describe('Context Center - Documents Page', () => {
     test.setTimeout(EXTENDED_TEST_TIMEOUT);
     contextFileIdsToCleanup.clear();
     contextFolderIdsToCleanup.clear();
+    contextMemoryNamesToCleanup.clear();
     const { apiContext } = documentSession;
     await uploadDocument(
       apiContext,
@@ -182,7 +222,20 @@ test.describe('Context Center - Documents Page', () => {
             ).toContain(response.status());
           })
         );
+      const deleteMemories = () =>
+        Promise.allSettled(
+          [...contextMemoryNamesToCleanup].map(async (name) => {
+            const response = await apiContext.delete(
+              `${MEMORIES_API}/name/${encodeURIComponent(name)}?hardDelete=true`
+            );
+            expect(
+              [200, 404],
+              `Delete memory ${name}: ${await response.text()}`
+            ).toContain(response.status());
+          })
+        );
       const results = [
+        ...(await deleteMemories()),
         ...(await deleteIds('folders', contextFolderIdsToCleanup)),
         ...(await deleteIds('files', contextFileIdsToCleanup)),
       ];
@@ -199,6 +252,7 @@ test.describe('Context Center - Documents Page', () => {
     } finally {
       contextFileIdsToCleanup.clear();
       contextFolderIdsToCleanup.clear();
+      contextMemoryNamesToCleanup.clear();
     }
   });
 
@@ -1073,6 +1127,88 @@ test.describe('Context Center - Documents Page', () => {
     await expect(panel).not.toBeVisible();
   });
 
+  // ─── Req 5b: Approve a document's extracted memories from its preview ─────
+
+  test('approving extracted memories from the preview approves a unique fact and leaves two values of one question pending', async ({
+    documentSession,
+    page,
+  }) => {
+    // The upload's processing has to finish before the memories exist, which can take a while.
+    test.slow();
+    const { apiContext } = documentSession;
+    const token = uuid();
+    const fileName = `extracted-approval-${token}.txt`;
+    // Unique content: processing reuses the memories of a file with the same checksum.
+    const document = await uploadDocument(
+      apiContext,
+      fileName,
+      Buffer.from(`Refund policy ${token} for extracted memory approval`)
+    );
+    // Extraction deletes the Unprocessed memories of a document it no longer derives, so the
+    // fixtures are linked only after it has run.
+    await waitForDocumentProcessingComplete(apiContext, document.id);
+    const refundWindow = `What is the refund window for ${token}?`;
+    const unique = await createExtractedMemory(
+      apiContext,
+      document,
+      `Who signs off refunds for ${token}?`,
+      'The finance lead'
+    );
+    const thirtyDays = await createExtractedMemory(
+      apiContext,
+      document,
+      refundWindow,
+      '30 days'
+    );
+    const fortyFiveDays = await createExtractedMemory(
+      apiContext,
+      document,
+      refundWindow,
+      '45 days'
+    );
+
+    await page.goto(`${DOCUMENTS_URL}?document=${document.id}`, {
+      waitUntil: 'domcontentloaded',
+    });
+    const panel = page.getByTestId('document-preview-panel');
+    await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
+    const card = panel.getByTestId('extracted-memories-card');
+    for (const memory of [unique, thirtyDays, fortyFiveDays]) {
+      await expect(
+        card.getByTestId(`extracted-memory-${memory.id}`)
+      ).toBeVisible();
+    }
+    // The action counts the fact it approves and the two values it leaves for a decision.
+    const approve = card.getByTestId('approve-extracted-memories-btn');
+    await expect(approve).toHaveText(/\b3 pending\b/);
+
+    const approval = waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'PUT' &&
+        new URL(response.url()).pathname ===
+          `${MEMORIES_API}/extractedApproval`,
+      200
+    );
+    await clickIgnoringToasts(approve);
+    const result = (await (await approval).json()) as ExtractedMemoryApproval;
+
+    expect(result.approved).toBe(1);
+    expect(result.failed ?? 0).toBe(0);
+    expect(new Set(result.needsDecision.map(({ id }) => id))).toEqual(
+      new Set([thirtyDays.id, fortyFiveDays.id])
+    );
+    // Nothing is left that approval could approve, so the action goes away.
+    await expect(approve).toHaveCount(0);
+    expect(await getMemoryStatus(apiContext, unique.id)).toBe('Approved');
+    expect(await getMemoryStatus(apiContext, thirtyDays.id)).toBe(
+      'Unprocessed'
+    );
+    expect(await getMemoryStatus(apiContext, fortyFiveDays.id)).toBe(
+      'Unprocessed'
+    );
+  });
+
   // ─── Req 6: Copy link button on document list row ─────────────────────────
 
   test('copy link button on document list row copies URL with correct document id and opening the link shows the preview panel', async ({
@@ -1120,8 +1256,9 @@ test.describe('Context Center - Documents Page', () => {
     page,
   }) => {
     const folderName = `bulk-move-folder-${uuid()}`;
-    const firstFileName = `bulk-move-one-${uuid()}.txt`;
-    const secondFileName = `bulk-move-two-${uuid()}.txt`;
+    const fileId = uuid();
+    const firstFileName = `bulk-move-one-${fileId}.txt`;
+    const secondFileName = `bulk-move-two-${fileId}.txt`;
 
     const { apiContext } = documentSession;
     const firstDocument = await uploadDocument(
@@ -1154,8 +1291,10 @@ test.describe('Context Center - Documents Page', () => {
     contextFolderIdsToCleanup.add(targetFolder.id);
 
     await revealFolderRow(page, folderName);
-    await selectDocumentByName(page, firstFileName);
-    await selectDocumentByName(page, secondFileName);
+    await selectDocumentsBySharedTerm(page, fileId, [
+      firstFileName,
+      secondFileName,
+    ]);
     await expectSelectedCount(page, 2);
 
     await page.getByTestId('bulk-move-btn').click();
@@ -1194,8 +1333,9 @@ test.describe('Context Center - Documents Page', () => {
     documentSession,
     page,
   }) => {
-    const firstName = `bulk-del-archive-one-${uuid()}.txt`;
-    const secondName = `bulk-del-archive-two-${uuid()}.txt`;
+    const fileId = uuid();
+    const firstName = `bulk-del-archive-one-${fileId}.txt`;
+    const secondName = `bulk-del-archive-two-${fileId}.txt`;
 
     const { apiContext } = documentSession;
     const doc1 = await uploadDocument(
@@ -1211,8 +1351,7 @@ test.describe('Context Center - Documents Page', () => {
 
     await navigateToDocuments(page);
 
-    await selectDocumentByName(page, firstName);
-    await selectDocumentByName(page, secondName);
+    await selectDocumentsBySharedTerm(page, fileId, [firstName, secondName]);
     await expectSelectedCount(page, 2);
 
     await page.getByTestId('bulk-delete-btn').click();

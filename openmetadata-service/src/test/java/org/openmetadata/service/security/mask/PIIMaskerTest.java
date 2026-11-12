@@ -1,6 +1,7 @@
 package org.openmetadata.service.security.mask;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.Mockito.mock;
@@ -8,11 +9,14 @@ import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import jakarta.ws.rs.core.SecurityContext;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.SearchIndex;
@@ -21,11 +25,15 @@ import org.openmetadata.schema.entity.data.Topic;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestCaseParameterValue;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MessageSchema;
 import org.openmetadata.schema.type.SearchIndexField;
@@ -33,13 +41,50 @@ import org.openmetadata.schema.type.TableData;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.searchindex.SearchIndexSampleData;
 import org.openmetadata.schema.type.topic.TopicSampleData;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.ColumnUtil;
+import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.security.Authorizer;
 
 class PIIMaskerTest {
+
+  @Test
+  void aUserChangeEventIsMaskedAsAReadOfTheUserIs() {
+    String snapshot = "{\"name\":\"alice\",\"email\":\"alice@example.com\"}";
+    ChangeEvent stored =
+        new ChangeEvent()
+            .withEntityType(Entity.USER)
+            .withEntity(snapshot)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(
+                        List.of(
+                            new FieldChange()
+                                .withName("email")
+                                .withOldValue("alice@old.example.com")
+                                .withNewValue("alice@example.com"),
+                            new FieldChange()
+                                .withName("displayName")
+                                .withOldValue("Alice")
+                                .withNewValue("Alice A."))));
+
+    ChangeEvent masked = PIIMasker.maskUserChangeEvent(stored);
+
+    JsonNode entity = JsonUtils.readTree((String) masked.getEntity());
+    assertEquals(PIIMasker.MASKED_MAIL, entity.get("email").asText());
+    assertEquals("alice", entity.get("name").asText());
+    FieldChange email = masked.getChangeDescription().getFieldsUpdated().get(0);
+    assertEquals(PIIMasker.MASKED_MAIL, email.getOldValue());
+    assertEquals(PIIMasker.MASKED_MAIL, email.getNewValue());
+    assertEquals("Alice A.", masked.getChangeDescription().getFieldsUpdated().get(1).getNewValue());
+
+    ChangeEvent table = new ChangeEvent().withEntityType(Entity.TABLE).withEntity(snapshot);
+    assertEquals(snapshot, PIIMasker.maskUserChangeEvent(table).getEntity());
+  }
 
   @Test
   void maskSampleDataMasksSensitiveColumnsAndWholeTables() {
@@ -352,6 +397,236 @@ class PIIMaskerTest {
   }
 
   @Test
+  void tableProfileMaskingReachesNestedColumnChildren() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The leaf city carries the tag; the contact struct carries it above email; zip is untouched
+    List<Column> columns = nestedProfileColumns(tableFqn);
+    Table table = table(tableFqn, columns, false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "owners", Include.ALL))
+          .thenReturn(table);
+
+      List<Column> masked =
+          PIIMasker.getTableProfile(tableFqn, columns, authorizer, securityContext);
+
+      // The tagged leaf and the struct whose subtree holds it lose their profiles
+      assertNull(masked.getFirst().getProfile());
+      assertEquals("address [MASKED]", masked.getFirst().getName());
+      assertNull(masked.getFirst().getChildren().getFirst().getProfile());
+      assertEquals("city [MASKED]", masked.getFirst().getChildren().getFirst().getName());
+
+      // A sibling leaf under the same struct keeps its profile: no direct tag covers it
+      Column zip = masked.getFirst().getChildren().get(1);
+      assertNotNull(zip.getProfile());
+      assertEquals("zip", zip.getName());
+
+      // The direct tag on the contact struct covers the untagged email field beneath it
+      assertNull(masked.get(1).getProfile());
+      assertEquals("contact [MASKED]", masked.get(1).getName());
+      assertNull(masked.get(1).getChildren().getFirst().getProfile());
+      assertEquals("email [MASKED]", masked.get(1).getChildren().getFirst().getName());
+
+      // Columns with no PII anywhere along their path stay fully intact
+      assertNotNull(masked.get(2).getProfile());
+      assertEquals("id", masked.get(2).getName());
+
+      // An authorized caller gets every profile back: a fresh list, not the one the unauthorized
+      // pass above already mutated in place
+      List<Column> authorizedColumns = nestedProfileColumns(tableFqn);
+      List<Column> authorized =
+          PIIMasker.getTableProfile(tableFqn, authorizedColumns, authorizer, securityContext);
+
+      assertSame(authorizedColumns, authorized);
+      assertNotNull(authorized.getFirst().getProfile());
+      assertEquals("address", authorized.getFirst().getName());
+      assertNotNull(authorized.getFirst().getChildren().getFirst().getProfile());
+      assertEquals("city", authorized.getFirst().getChildren().getFirst().getName());
+      assertEquals("zip", authorized.getFirst().getChildren().get(1).getName());
+      assertEquals("email", authorized.get(1).getChildren().getFirst().getName());
+      assertNotNull(authorized.get(1).getChildren().getFirst().getProfile());
+      assertEquals("id", authorized.get(2).getName());
+    }
+  }
+
+  private static List<Column> nestedProfileColumns(String tableFqn) {
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".address", "city", true).withProfile(profile("city")),
+                    column(tableFqn + ".address", "zip", false)
+                        .withProfile(profile("zip"))
+                        .withChildren(
+                            List.of(
+                                column(tableFqn + ".address.zip", "code", false)
+                                    .withProfile(profile("code"))))));
+    Column contact =
+        column(tableFqn, "contact", true)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".contact", "email", false).withProfile(profile("email"))));
+    return new ArrayList<>(
+        List.of(
+            address.withProfile(profile("address")),
+            contact.withProfile(profile("contact")),
+            column(tableFqn, "id", false).withProfile(profile("id"))));
+  }
+
+  @Test
+  void singleColumnProfileMaskingSeesTagsOnAncestorColumns() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // city carries no tag itself; the struct it nests under is the only PII-tagged column
+    Column address =
+        column(tableFqn, "address", true)
+            .withChildren(List.of(column(tableFqn + ".address", "city", false)));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    List<Column> masked =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledCityColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNull(masked.getFirst().getProfile());
+    assertEquals("city [MASKED]", masked.getFirst().getName());
+
+    List<Column> untouched =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledCityColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNotNull(untouched.getFirst().getProfile());
+    assertEquals("city", untouched.getFirst().getName());
+  }
+
+  private static Column profiledCityColumn(String tableFqn) {
+    return column(tableFqn + ".address", "city", false).withProfile(profile("city"));
+  }
+
+  @Test
+  void singleColumnProfileMaskingUnderAncestorCoversRequestedSubtree() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // address (tagged ancestor) > zip (requested struct, untagged) > code (profiled grandchild)
+    // zip carries no tag itself; only the ancestor's tag covers its own nested child
+    Column address =
+        column(tableFqn, "address", true)
+            .withChildren(
+                List.of(
+                    column(tableFqn + ".address", "zip", false)
+                        .withProfile(profile("zip"))
+                        .withChildren(
+                            List.of(
+                                column(tableFqn + ".address.zip", "code", false)
+                                    .withProfile(profile("code"))))));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    List<Column> masked =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledZipColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNull(masked.getFirst().getProfile());
+    assertEquals("zip [MASKED]", masked.getFirst().getName());
+    assertNull(masked.getFirst().getChildren().getFirst().getProfile());
+    assertEquals("code [MASKED]", masked.getFirst().getChildren().getFirst().getName());
+
+    List<Column> untouched =
+        PIIMasker.getSingleColumnProfile(
+            List.of(owner),
+            List.of(address),
+            profiledZipColumn(tableFqn),
+            authorizer,
+            securityContext);
+    assertNotNull(untouched.getFirst().getProfile());
+    assertEquals("zip", untouched.getFirst().getName());
+    assertNotNull(untouched.getFirst().getChildren().getFirst().getProfile());
+    assertEquals("code", untouched.getFirst().getChildren().getFirst().getName());
+  }
+
+  private static Column profiledZipColumn(String tableFqn) {
+    return column(tableFqn + ".address", "zip", false)
+        .withProfile(profile("zip"))
+        .withChildren(
+            List.of(column(tableFqn + ".address.zip", "code", false).withProfile(profile("code"))));
+  }
+
+  private static ColumnProfile profile(String name) {
+    return new ColumnProfile().withName(name).withNullCount(1.0);
+  }
+
+  @Test
+  void columnProfileMaskingReachesNestedColumnsThroughTagsOnThePath() {
+    String tableFqn = "service.db.schema.orders";
+    String nestedFqn = tableFqn + ".address.city";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The leaf carries the tag itself; the parent struct covers the nested fields beneath it
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(List.of(column(tableFqn + ".address", "city", true)));
+    Column contact =
+        column(tableFqn, "contact", true)
+            .withChildren(List.of(column(tableFqn + ".contact", "email", false)));
+    Table table = table(tableFqn, List.of(address, contact), false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "columns,tags,owners", Include.ALL))
+          .thenReturn(table);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(table);
+
+      List<ColumnProfile> profiles =
+          List.of(new ColumnProfile().withName("city").withNullCount(1.0));
+
+      List<ColumnProfile> masked =
+          PIIMasker.getColumnProfile(nestedFqn, profiles, authorizer, securityContext);
+      assertEquals(1, masked.size());
+      assertNull(masked.getFirst().getName());
+      assertNull(masked.getFirst().getNullCount());
+
+      assertSame(
+          profiles, PIIMasker.getColumnProfile(nestedFqn, profiles, authorizer, securityContext));
+
+      ColumnProfile sensitiveProfile =
+          new ColumnProfile().withName("address.city").withNullCount(1.0);
+      ColumnProfile maskedProfile = PIIMasker.maskColumnProfile(tableFqn, sensitiveProfile);
+      assertEquals("address.city", maskedProfile.getName());
+      assertNull(maskedProfile.getNullCount());
+
+      // The same walk reaches a tag on the parent struct above the profiled field
+      ColumnProfile parentTaggedProfile =
+          new ColumnProfile().withName("contact.email").withNullCount(1.0);
+      ColumnProfile maskedViaParent = PIIMasker.maskColumnProfile(tableFqn, parentTaggedProfile);
+      assertEquals("contact.email", maskedViaParent.getName());
+      assertNull(maskedViaParent.getNullCount());
+    }
+  }
+
+  @Test
   void maskColumnProfileReturnsOnlyTheColumnNameForSensitiveColumns() {
     String tableFqn = "service.db.schema.orders";
     Table table =
@@ -374,6 +649,163 @@ class PIIMaskerTest {
       assertEquals("email", masked.getName());
       assertNull(masked.getNullCount());
       assertSame(plainProfile, plain);
+    }
+  }
+
+  @Test
+  void maskColumnProfileFailsClosedForProfileRowsWhoseColumnNoLongerResolves() {
+    String tableFqn = "service.db.schema.orders";
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", true), column(tableFqn, "city", false)),
+            false,
+            List.of());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(table);
+
+      // A profile row outliving its column must not come back with its statistics attached
+      ColumnProfile dropped = new ColumnProfile().withName("phone").withNullCount(1.0);
+      ColumnProfile masked = PIIMasker.maskColumnProfile(tableFqn, dropped);
+      assertEquals("phone", masked.getName());
+      assertNull(masked.getNullCount());
+
+      ColumnProfile staleNested = new ColumnProfile().withName("address.zip").withNullCount(2.0);
+      ColumnProfile maskedNested = PIIMasker.maskColumnProfile(tableFqn, staleNested);
+      assertEquals("address.zip", maskedNested.getName());
+      assertNull(maskedNested.getNullCount());
+    }
+  }
+
+  @Test
+  void maskColumnProfileCoversSensitiveLiteralColumnsShadowedByNestedPaths() {
+    String tableFqn = "service.db.schema.orders";
+    // A top-level column literally named address.city, and an untagged address struct with a city
+    // field: the nested path walk would otherwise hide the sensitive literal column
+    Column literal =
+        new Column()
+            .withName("address.city")
+            .withFullyQualifiedName(tableFqn + ".\"address.city\"")
+            .withTags(List.of(piiTag()));
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(List.of(column(tableFqn + ".address", "city", false)));
+    Table table = table(tableFqn, List.of(literal, address), false, List.of());
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(table);
+
+      ColumnProfile profile = new ColumnProfile().withName("address.city").withNullCount(1.0);
+      ColumnProfile masked = PIIMasker.maskColumnProfile(tableFqn, profile);
+      assertEquals("address.city", masked.getName());
+      assertNull(masked.getNullCount());
+
+      // The same name on a table whose literal column is not sensitive stays untouched
+      Column untaggedLiteral =
+          new Column()
+              .withName("address.city")
+              .withFullyQualifiedName(tableFqn + ".\"address.city\"")
+              .withTags(List.of());
+      Table untaggedTable = table(tableFqn, List.of(untaggedLiteral, address), false, List.of());
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TABLE, tableFqn, "columns,tags", Include.ALL))
+          .thenReturn(untaggedTable);
+      ColumnProfile plainProfile = new ColumnProfile().withName("address.city").withNullCount(1.0);
+      assertSame(plainProfile, PIIMasker.maskColumnProfile(tableFqn, plainProfile));
+    }
+  }
+
+  @Test
+  void getColumnProfileFailsClosedForStaleColumnFqns() {
+    String tableFqn = "service.db.schema.orders";
+    String staleFqn = tableFqn + ".phone";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", true), column(tableFqn, "city", false)),
+            false,
+            List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, true);
+
+    List<ColumnProfile> profiles =
+        List.of(new ColumnProfile().withName("phone").withNullCount(1.0));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "columns,tags,owners", Include.ALL))
+          .thenReturn(table);
+
+      List<ColumnProfile> masked =
+          PIIMasker.getColumnProfile(staleFqn, profiles, authorizer, securityContext);
+      assertEquals(1, masked.size());
+      assertNull(masked.getFirst().getName());
+      assertNull(masked.getFirst().getNullCount());
+
+      assertSame(
+          profiles, PIIMasker.getColumnProfile(staleFqn, profiles, authorizer, securityContext));
+    }
+  }
+
+  @Test
+  void getColumnProfileResolvesNonNormalizedColumnFqnsAgainstTheRealColumn() {
+    String tableFqn = "service.db.schema.orders";
+    // Redundant quotes on the service segment: the table and the profile rows are looked up with
+    // the normalized hash, so masking must resolve the path through the same normalization — a
+    // character offset taken against the normalized table FQN would slice the raw string mid-word
+    String quotedServiceFqn = "\"service\".db.schema.orders.city";
+    String quotedEmailFqn = "\"service\".db.schema.orders.email";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", true), column(tableFqn, "city", false)),
+            false,
+            List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false, false, true);
+
+    List<ColumnProfile> plainProfiles =
+        List.of(new ColumnProfile().withName("city").withNullCount(1.0));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "columns,tags,owners", Include.ALL))
+          .thenReturn(table);
+
+      // An untagged column arriving under a redundantly quoted FQN keeps its statistics
+      List<ColumnProfile> unmasked =
+          PIIMasker.getColumnProfile(quotedServiceFqn, plainProfiles, authorizer, securityContext);
+      assertEquals(1, unmasked.size());
+      assertEquals("city", unmasked.getFirst().getName());
+      assertEquals(1.0, unmasked.getFirst().getNullCount());
+
+      // The PII-tagged column next to it is still masked under an equivalently quoted FQN
+      List<ColumnProfile> piiProfiles =
+          List.of(new ColumnProfile().withName("email").withNullCount(2.0));
+      List<ColumnProfile> masked =
+          PIIMasker.getColumnProfile(quotedEmailFqn, piiProfiles, authorizer, securityContext);
+      assertEquals(1, masked.size());
+      assertNull(masked.getFirst().getName());
+      assertNull(masked.getFirst().getNullCount());
+
+      assertSame(
+          plainProfiles,
+          PIIMasker.getColumnProfile(quotedServiceFqn, plainProfiles, authorizer, securityContext));
     }
   }
 
@@ -426,6 +858,121 @@ class PIIMaskerTest {
     }
   }
 
+  @ParameterizedTest
+  @CsvSource({
+    "ssn, ssn",
+    "ssn, SSN",
+    "contact.ssn, contact.ssn",
+    "contact.ssn, CONTACT.SSN",
+    "ssn, ssn::description"
+  })
+  void getTestCasesMasksValidatedColumnLinks(String columnName, String linkedColumn) {
+    String tableFqn = "service.db.schema.customers";
+    Table table = table(tableFqn, List.of(column(tableFqn, columnName, true)), false, List.of());
+    ColumnUtil.setColumnFQN(tableFqn, table.getColumns());
+    TestCase testCase =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withIncidentStatus(
+                new TestCaseResolutionStatus().withFailureSummary("Incident details"))
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::" + linkedColumn + ">")
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("regex").withValue("^078-")))
+            .withTestCaseResult(new TestCaseResult().withResult("Sensitive failure"));
+    MessageParser.EntityLink link = MessageParser.EntityLink.parse(testCase.getEntityLink());
+    EntityRepository.validateColumn(table, link.getArrayFieldName(), false);
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+
+      TestCase masked =
+          PIIMasker.getTestCases(new ResultList<>(List.of(testCase)), authorizer, securityContext)
+              .getData()
+              .getFirst();
+
+      assertEquals("ssn_format [MASKED]", masked.getName());
+      assertNull(masked.getDescription());
+      assertNull(masked.getParameterValues());
+      assertNull(masked.getTestCaseResult());
+      assertNull(masked.getIncidentStatus());
+      assertEquals(testCase.getEntityLink(), masked.getEntityLink());
+    }
+  }
+
+  @Test
+  void getTestCasesMasksNestedColumnCasesThroughTagsOnThePath() {
+    String tableFqn = "service.db.schema.orders";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // city carries the PII tag itself, contact carries it above the linked field
+    Column address =
+        column(tableFqn, "address", false)
+            .withChildren(List.of(column(tableFqn + ".address", "city", true)));
+    Column contact =
+        column(tableFqn, "contact", true)
+            .withChildren(List.of(column(tableFqn + ".contact", "email", false)));
+    Table table = table(tableFqn, List.of(address, contact), false, List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    // authorizePII is consulted per test case: the unauthorized page asks twice, the authorized
+    // page twice
+    when(authorizer.authorizePII(securityContext, List.of(owner)))
+        .thenReturn(false, false, true, true);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+
+      ResultList<TestCase> unauthorized =
+          PIIMasker.getTestCases(
+              new ResultList<>(nestedCasesOn(tableFqn)), authorizer, securityContext);
+
+      assertEquals("city_not_null [MASKED]", unauthorized.getData().get(0).getName());
+      assertNull(unauthorized.getData().get(0).getParameterValues());
+      assertNull(unauthorized.getData().get(0).getTestCaseResult());
+      assertEquals("email_not_null [MASKED]", unauthorized.getData().get(1).getName());
+
+      ResultList<TestCase> authorized =
+          PIIMasker.getTestCases(
+              new ResultList<>(nestedCasesOn(tableFqn)), authorizer, securityContext);
+
+      assertEquals("city_not_null", authorized.getData().get(0).getName());
+      assertEquals("email_not_null", authorized.getData().get(1).getName());
+    }
+  }
+
+  private static List<TestCase> nestedCasesOn(String tableFqn) {
+    TestCase cityCase =
+        new TestCase()
+            .withName("city_not_null")
+            .withEntityLink(
+                new MessageParser.EntityLink(
+                        Entity.TABLE, tableFqn, "columns", "address.city", null)
+                    .getLinkString())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("min").withValue("1")))
+            .withTestCaseResult(new TestCaseResult());
+    TestCase emailCase =
+        new TestCase()
+            .withName("email_not_null")
+            .withEntityLink(
+                new MessageParser.EntityLink(
+                        Entity.TABLE, tableFqn, "columns", "contact.email", null)
+                    .getLinkString());
+    return new ArrayList<>(List.of(cityCase, emailCase));
+  }
+
   @Test
   void getTestCasesTolerateTestCasesWhoseTableWasHardDeleted() {
     String liveFqn = "service.db.schema.orders";
@@ -471,6 +1018,269 @@ class PIIMaskerTest {
       assertEquals("email_not_null [MASKED]", masked.getData().get(0).getName());
       assertNull(masked.getData().get(0).getTestCaseResult());
       assertEquals("row_count", masked.getData().get(1).getName());
+    }
+  }
+
+  @Test
+  void getTestCasesFailsClosedForColumnOrphansWhoseTableStillExists() {
+    String tableFqn = "service.db.schema.customers";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The table still resolves, but the column its test case points at has been
+    // renamed/dropped, so the stored entityLink no longer resolves against the table's
+    // current columns. The deciding column tags died with the column, so the case must
+    // fail closed — exactly like the missing-table path above — rather than be served
+    // unmasked to a PII-restricted caller.
+    Table drifted =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", false), column(tableFqn, "phone", false)),
+            false,
+            List.of(owner));
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    // authorizePII(securityContext, null) sets `unrestricted` on construction; the per-table
+    // call is consulted afterwards. A PII-restricted caller denies both the unrestricted probe
+    // and the per-table authorization, so the column-orphan must fail closed.
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(false);
+
+    TestCase columnOrphan =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withIncidentStatus(
+                new TestCaseResolutionStatus().withFailureSummary("Incident details"))
+            .withEntityLink(
+                new MessageParser.EntityLink(Entity.TABLE, tableFqn, "columns", "ssn", null)
+                    .getLinkString())
+            .withParameterValues(
+                List.of(new TestCaseParameterValue().withName("regex").withValue("^078-")))
+            .withTestCaseResult(new TestCaseResult().withResult("Sensitive failure"));
+    TestCase tableCase =
+        new TestCase()
+            .withName("row_count")
+            .withEntityLink(new MessageParser.EntityLink(Entity.TABLE, tableFqn).getLinkString());
+    ResultList<TestCase> testCases =
+        new ResultList<>(new ArrayList<>(List.of(columnOrphan, tableCase)));
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(drifted);
+
+      // Restrictive read: the column-orphan is masked even though its table resolves,
+      // because the dangling column path must fail closed; a table-level case stays open.
+      ResultList<TestCase> masked = PIIMasker.getTestCases(testCases, authorizer, securityContext);
+      TestCase maskedOrphan = masked.getData().get(0);
+      assertEquals("ssn_format [MASKED]", maskedOrphan.getName());
+      assertNull(maskedOrphan.getDescription());
+      assertNull(maskedOrphan.getParameterValues());
+      assertNull(maskedOrphan.getTestCaseResult());
+      assertNull(maskedOrphan.getIncidentStatus());
+      assertEquals(columnOrphan.getEntityLink(), maskedOrphan.getEntityLink());
+      assertEquals("row_count", masked.getData().get(1).getName());
+
+      // The single GET path uses the same decision: a stale column link masks the case.
+      TestCase maskedSingle = PIIMasker.getTestCase(columnOrphan, authorizer, securityContext);
+      assertEquals("ssn_format [MASKED]", maskedSingle.getName());
+      assertNull(maskedSingle.getDescription());
+      assertNull(maskedSingle.getIncidentStatus());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false", "true"})
+  void getTestCaseFailsClosedForColumnOrphansAndRespectsPiiAuthorization(boolean authorized) {
+    String tableFqn = "service.db.schema.customers";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // The table resolves but the test case's `ssn` column link no longer does: the column-
+    // orphan fail-closed rule must mask the case for restricted callers, while a PII-authorized
+    // caller (the table owner, here) still sees the full case — the stricter default is scoped
+    // to PII-restricted users only.
+    Table drifted =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", false), column(tableFqn, "phone", false)),
+            false,
+            List.of(owner));
+    TestCase columnOrphan =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::ssn>");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(authorized);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(drifted);
+
+      TestCase visible = PIIMasker.getTestCase(columnOrphan, authorizer, securityContext);
+      assertEquals(authorized ? "ssn_format" : "ssn_format [MASKED]", visible.getName());
+      assertEquals(authorized ? "Sensitive description" : null, visible.getDescription());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false", "true"})
+  void getTestCaseResultsFailClosedForColumnOrphansWhoseTableStillExists(boolean authorized) {
+    String tableFqn = "service.db.schema.customers";
+    String testFqn = tableFqn + ".ssn.ssn_format";
+    EntityReference owner = entityReference(Entity.USER, "owner");
+    // Table resolves; the result's test case still references the table via a dangling
+    // column link (`ssn` was dropped/renamed, leaving `email` and `phone` behind).
+    Table drifted =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "email", false), column(tableFqn, "phone", false)),
+            false,
+            List.of(owner));
+    TestCase columnOrphan =
+        new TestCase().withEntityLink("<#E::table::" + tableFqn + "::columns::ssn>");
+    TestCaseResult result =
+        new TestCaseResult()
+            .withId(UUID.randomUUID())
+            .withTestCaseFQN(testFqn)
+            .withTimestamp(123L)
+            .withResult("Sensitive failure")
+            .withSampleData("Sensitive sample");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(false);
+    when(authorizer.authorizePII(securityContext, List.of(owner))).thenReturn(authorized);
+
+    try (MockedStatic<Entity> mockedEntity = mockStatic(Entity.class)) {
+      mockedEntity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(drifted);
+      mockedEntity
+          .when(() -> Entity.getEntityByName(Entity.TEST_CASE, testFqn, "", Include.ALL))
+          .thenReturn(columnOrphan);
+
+      // Result read paths' decision delegates to the same `shouldMask`; an unresolved column
+      // link must mask the result (only id, testCaseFQN, timestamp survive) for restricted
+      // callers and leave authorized callers untouched.
+      TestCaseResult visible =
+          PIIMasker.getTestCaseResults(
+                  new ResultList<>(List.of(result)), authorizer, securityContext)
+              .getData()
+              .getFirst();
+      assertEquals(result.getId(), visible.getId());
+      assertEquals(testFqn, visible.getTestCaseFQN());
+      assertEquals(123L, visible.getTimestamp());
+      assertEquals(authorized ? "Sensitive failure" : null, visible.getResult());
+      assertEquals(authorized ? "Sensitive sample" : null, visible.getSampleData());
+      assertEquals(visible, PIIMasker.getTestCaseResult(result, authorizer, securityContext));
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"ssn, false, true", "SSN, false, false", "ssn, true, false"})
+  void getTestCasesPrefersExactColumnNamesAndRespectsPiiAuthorization(
+      String linkedColumn, boolean authorized, boolean masked) {
+    String tableFqn = "service.db.schema.customers";
+    Table table =
+        table(
+            tableFqn,
+            List.of(column(tableFqn, "SSN", false), column(tableFqn, "ssn", true)),
+            false,
+            List.of());
+    TestCase testCase =
+        new TestCase()
+            .withName("ssn_format")
+            .withDescription("Sensitive description")
+            .withEntityLink("<#E::table::" + tableFqn + "::columns::" + linkedColumn + ">");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of())).thenReturn(authorized);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+
+      TestCase result = PIIMasker.getTestCase(testCase, authorizer, securityContext);
+      assertEquals(masked ? "ssn_format [MASKED]" : "ssn_format", result.getName());
+      assertEquals(masked ? null : "Sensitive description", result.getDescription());
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({"false", "true"})
+  void getTestCaseResultsUsesTheLinkedColumnPolicy(boolean authorized) {
+    String tableFqn = "service.db.schema.customers";
+    String testFqn = tableFqn + ".SSN.ssn_format";
+    Table table = table(tableFqn, List.of(column(tableFqn, "ssn", true)), false, List.of());
+    TestCase testCase =
+        new TestCase().withEntityLink("<#E::table::" + tableFqn + "::columns::SSN>");
+    TestCaseResult result =
+        new TestCaseResult()
+            .withId(UUID.randomUUID())
+            .withTestCaseFQN(testFqn)
+            .withTimestamp(123L)
+            .withResult("Sensitive failure")
+            .withSampleData("Sensitive sample");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, List.of())).thenReturn(authorized);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(
+              () ->
+                  Entity.getEntityByName(
+                      Entity.TABLE, tableFqn, "owners,tags,columns", Include.ALL))
+          .thenReturn(table);
+      entity
+          .when(() -> Entity.getEntityByName(Entity.TEST_CASE, testFqn, "", Include.ALL))
+          .thenReturn(testCase);
+
+      TestCaseResult visible =
+          PIIMasker.getTestCaseResults(
+                  new ResultList<>(List.of(result)), authorizer, securityContext)
+              .getData()
+              .getFirst();
+      assertEquals(result.getId(), visible.getId());
+      assertEquals(testFqn, visible.getTestCaseFQN());
+      assertEquals(123L, visible.getTimestamp());
+      assertEquals(authorized ? "Sensitive failure" : null, visible.getResult());
+      assertEquals(authorized ? "Sensitive sample" : null, visible.getSampleData());
+      assertEquals(visible, PIIMasker.getTestCaseResult(result, authorizer, securityContext));
+      assertNull(PIIMasker.getTestCaseResult(null, authorizer, securityContext));
+    }
+  }
+
+  @ParameterizedTest
+  @CsvSource({", false", "missing, false", ", true", "missing, true"})
+  void getTestCaseResultsHandlesMissingTestCases(String fqn, boolean authorized) {
+    TestCaseResult result =
+        new TestCaseResult().withTestCaseFQN(fqn).withResult("Sensitive failure");
+    Authorizer authorizer = mock(Authorizer.class);
+    SecurityContext securityContext = mock(SecurityContext.class);
+    when(authorizer.authorizePII(securityContext, null)).thenReturn(authorized);
+
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+      entity
+          .when(() -> Entity.getEntityByName(Entity.TEST_CASE, fqn, "", Include.ALL))
+          .thenThrow(new EntityNotFoundException("deleted"));
+
+      TestCaseResult visible = PIIMasker.getTestCaseResult(result, authorizer, securityContext);
+      assertEquals(authorized ? "Sensitive failure" : null, visible.getResult());
     }
   }
 

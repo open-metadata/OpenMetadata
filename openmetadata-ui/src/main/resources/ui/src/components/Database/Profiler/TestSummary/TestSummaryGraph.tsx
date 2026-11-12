@@ -25,6 +25,7 @@ import {
   hexToRgba,
   useChartPalette,
 } from '@openmetadata/ui-core-components/charts';
+import { NoFilterFunnel } from '@openmetadata/ui-core-components/icons';
 import { useQueries } from '@tanstack/react-query';
 import { isEmpty, isNumber, isUndefined } from 'lodash';
 import {
@@ -38,7 +39,6 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FilterOffIcon } from '../../../../assets/svg/ic-filter-off.svg';
 import {
   TABLE_DATA_TO_BE_FRESH,
   TABLE_FRESHNESS_KEY,
@@ -575,7 +575,7 @@ function TestSummaryGraph({
       <Box className="tw:relative tw:min-h-80 tw:w-full">
         <NoFilteredResultsPlaceholder
           description={t('message.try-extending-time-frame')}
-          icon={<FilterOffIcon />}
+          icon={<NoFilterFunnel />}
           title={t('message.no-test-result-for-days', {
             days: selectedTimeRange,
           })}

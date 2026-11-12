@@ -66,6 +66,10 @@ export const dragAndDropElement = async (
     .catch(() => undefined);
 
   await dragRowLocator.scrollIntoViewIfNeeded();
+  // dragTo presses the source, then scrolls the target into view mid-drag; a
+  // target clipped by a scroll area (the settings modal) then moves under the
+  // pointer and the drop never lands. Bring it into view before pressing.
+  await dropTargetLocator.scrollIntoViewIfNeeded();
   await waitForStableBox(dragRowLocator);
   await waitForStableBox(dropTargetLocator);
 

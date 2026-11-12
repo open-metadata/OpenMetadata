@@ -52,6 +52,22 @@ describe('ConfirmPopover', () => {
     ).toHaveAttribute('aria-expanded', 'true');
   });
 
+  it('omits Cancel when showCancel is false and still dismisses on Escape', async () => {
+    const onCancel = vi.fn();
+    renderWithTrigger({ onCancel, showCancel: false });
+
+    await userEvent.click(screen.getByRole('button', { name: 'Trash' }));
+
+    expect(screen.queryByTestId('confirm-popover-cancel')).toBeNull();
+
+    await userEvent.keyboard('{Escape}');
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('confirm-popover')).toBeNull()
+    );
+    expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+
   it('closes after an async confirm resolves', async () => {
     let resolve: () => void = () => undefined;
     const onConfirm = vi.fn(() => new Promise<void>((r) => (resolve = r)));

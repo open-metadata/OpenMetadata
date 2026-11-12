@@ -332,7 +332,8 @@ export interface TasksTabProps {
 interface TasksTabBodyProps {
   // Status, search and filter controls, heading the list column.
   toolbar: ReactNode;
-  // Shown in place of the detail when no task matches.
+  // Shown when no task matches: in place of the detail, or in the list while a
+  // kept selection holds the detail pane.
   emptyState?: ReactNode;
   // A failed load with nothing listed leaves nothing to filter, so the
   // placeholder takes the whole tab.
@@ -394,12 +395,33 @@ const TasksDetailPane: React.FC<TasksDetailPaneProps> = ({
     </Box>
   );
 
+  // A kept selection (e.g. a deep-linked task held past the loaded page) owns
+  // the detail pane, so the empty placeholder only shows here when no task is
+  // selected — the list column carries it otherwise.
+  let detailPane: ReactNode;
+  if (isLoading) {
+    detailPane = <TaskDetailSkeleton />;
+  } else if (selectedTaskId) {
+    detailPane = detailContent;
+  } else {
+    detailPane = emptyState;
+  }
+
   return (
     <Box className="tw:relative tw:min-h-0 tw:w-full" direction="col">
-      {isLoading ? <TaskDetailSkeleton /> : emptyState ?? detailContent}
+      {detailPane}
     </Box>
   );
 };
+
+// Without a free detail pane — none in the list-only layout, or a kept
+// selection holding it — the list is where "nothing here" shows, so its
+// "Clear all", "Load more" and retry stay reachable.
+const getListEmptyState = (
+  emptyState: ReactNode,
+  onOpenTask: TasksTabBodyProps['onOpenTask'],
+  selectedTaskId: TasksTabBodyProps['selectedTaskId']
+): ReactNode => (onOpenTask || selectedTaskId ? emptyState : undefined);
 
 // The two panes: the list column (its controls over the grouped rows) and the
 // selected task's detail, each scrolling on its own.
@@ -500,8 +522,7 @@ const TasksTabBody: React.FC<TasksTabBodyProps> = ({
           <InboxTaskListSkeleton />
         ) : (
           <div className="tw:flex tw:flex-col tw:gap-2 tw:px-3 tw:pb-3">
-            {/* Without a detail pane, the list is where "nothing here" shows. */}
-            {(onOpenTask && emptyState) ||
+            {getListEmptyState(emptyState, onOpenTask, selectedTaskId) ||
               (groupedList ?? tasks.map(renderRow))}
           </div>
         )}

@@ -31,8 +31,11 @@ export const useSwitchActiveDomain = () => {
 
   return useCallback(
     async (domain?: EntityReference) => {
-      updateActiveDomain(domain);
-      if (currentUser?.id) {
+      // With a user, the pick is stored only once saved (updateCurrentUser syncs it), so another
+      // tab that reloads on the change never reads the old defaultDomain back.
+      if (!currentUser?.id) {
+        updateActiveDomain(domain);
+      } else {
         try {
           // JSON Patch `add` upserts, so one op covers first-set, change, and clear (null).
           const updated = await updateUserDetail(currentUser.id, [
@@ -44,21 +47,13 @@ export const useSwitchActiveDomain = () => {
           ]);
           updateCurrentUser(updated);
         } catch (error) {
-          // The reload restores the persisted value, which would silently undo the switch.
           showErrorToast(error as AxiosError);
-          updateActiveDomain(currentUser.defaultDomain);
 
           return;
         }
       }
       navigate(0);
     },
-    [
-      currentUser?.id,
-      currentUser?.defaultDomain,
-      navigate,
-      updateActiveDomain,
-      updateCurrentUser,
-    ]
+    [currentUser?.id, navigate, updateActiveDomain, updateCurrentUser]
   );
 };

@@ -31,6 +31,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jobs.BackgroundJobLog;
 import org.openmetadata.service.jobs.JobDAO;
+import org.openmetadata.service.security.ImpersonationContext;
 
 @Slf4j
 public final class CsvAsyncJobManager {
@@ -93,6 +94,7 @@ public final class CsvAsyncJobManager {
             .setDryRun(dryRun)
             .setRecursive(recursive)
             .setCsv(csv)
+            .setImpersonatedBy(ImpersonationContext.getImpersonatedBy())
             .setVersioningEntityType(versioningEntityType);
     String message =
         operation == CsvAsyncJob.Operation.IMPORT ? IMPORT_QUEUED_MESSAGE : EXPORT_QUEUED_MESSAGE;
@@ -356,7 +358,7 @@ public final class CsvAsyncJobManager {
     return log;
   }
 
-  private void validateImportPayload(String csv) {
+  public static void validateImportPayload(String csv) {
     if (csv != null) {
       int payloadBytes = csv.getBytes(StandardCharsets.UTF_8).length;
       if (payloadBytes > MAX_IMPORT_CSV_BYTES) {

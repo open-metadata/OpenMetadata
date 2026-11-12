@@ -31,6 +31,7 @@ import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.scim.ScimProvisioningService;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.IdentityEndpoint;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
@@ -107,6 +108,7 @@ public class ScimResource {
 
   @POST
   @Path("/Users")
+  @IdentityEndpoint
   @Operation(
       operationId = "createScimUser",
       summary = "Create SCIM user",

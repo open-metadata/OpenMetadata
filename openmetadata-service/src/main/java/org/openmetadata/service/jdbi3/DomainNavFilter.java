@@ -124,7 +124,8 @@ public final class DomainNavFilter {
     if (applies) {
       filter.addQueryParam("domainId", matchedDomainIds.get());
       filter.addQueryParam("domainEntityType", entityType);
-      if (parent == ParentScope.IN_SELECTION) {
+      if (parent == ParentScope.IN_SELECTION
+          || DomainFilterExclusions.keepsUnassigned(entityType)) {
         filter.addQueryParam("domainAccessControl", Boolean.TRUE.toString());
       }
     }

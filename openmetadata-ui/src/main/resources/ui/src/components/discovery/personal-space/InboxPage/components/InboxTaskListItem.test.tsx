@@ -23,7 +23,8 @@ jest.mock('./ClampedText', () => ({
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
-  default: () => <div />,
+  default: ({ isAgent }: { isAgent?: boolean }) =>
+    isAgent ? <span data-testid="agent-avatar" /> : <div />,
 }));
 
 jest.mock('../taskTitle.utils', () => ({
@@ -137,9 +138,8 @@ describe('InboxTaskListItem', () => {
       />
     );
 
-    expect(screen.getByTestId('agent-badge')).toHaveTextContent(
-      'Glossary Agent'
-    );
+    expect(screen.getByTestId('agent-avatar')).toBeInTheDocument();
+    expect(screen.getByText('Glossary Agent')).toBeInTheDocument();
     expect(
       screen.queryByText('aiautomationapplicationbot')
     ).not.toBeInTheDocument();

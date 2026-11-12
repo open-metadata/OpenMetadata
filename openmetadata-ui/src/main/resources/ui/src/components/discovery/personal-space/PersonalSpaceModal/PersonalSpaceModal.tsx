@@ -97,7 +97,6 @@ const PersonalSpaceModal: React.FC = () => {
       // its own body, so the overlay must not add a second scrollbar — without
       // this it scrolls the whole dialog whenever an inner page (e.g. a long team
       // table) is tall. `!` beats the core overlay's base `overflow-y-auto`.
-      isKeyboardDismissDisabled
       className="tw:overflow-hidden!"
       isOpen={isOpen}
       onOpenChange={(isOpen) => !isOpen && requestClose()}>

@@ -26,6 +26,7 @@ export interface CustomBarChartProps {
 }
 
 export interface DataDistributionHistogramProps {
+  isSharded?: boolean;
   data: {
     firstDayData?: ColumnProfile;
     currentDayData?: ColumnProfile;

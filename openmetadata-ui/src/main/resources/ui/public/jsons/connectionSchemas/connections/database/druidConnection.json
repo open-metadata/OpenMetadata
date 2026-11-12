@@ -88,6 +88,13 @@
     "schemaFilterPattern": {
       "title": "Default Schema Filter Pattern",
       "description": "Regex to only include/exclude schemas that matches the pattern.",
+      "default": {
+        "includes": [],
+        "excludes": [
+          "^INFORMATION_SCHEMA$",
+          "^sys$"
+        ]
+      },
       "type": "object",
       "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
       "properties": {

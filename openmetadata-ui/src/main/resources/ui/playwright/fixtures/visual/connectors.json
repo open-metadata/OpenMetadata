@@ -1,0 +1,554 @@
+[
+  {
+    "category": "databaseServices",
+    "connector": "Athena",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/athenaConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "AzureSQL",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/azureSQLConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "BigQuery",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/bigQueryConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "BigTable",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/bigTableConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "BurstIQ",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/burstIQConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Cassandra",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/cassandraConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Clickhouse",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/clickhouseConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Clickzetta",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/clickzettaConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Cockroach",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/cockroachConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Couchbase",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/couchbaseConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "CustomDatabase",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/customDatabaseConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Data360",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/data360Connection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Databend",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/databendConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Databricks",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/databricksConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Datalake",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/datalakeConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Db2",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/db2Connection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "DomoDatabase",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/domoDatabaseConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Doris",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/dorisConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Druid",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/druidConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "DynamoDB",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/dynamoDBConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Exasol",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/exasolConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Glue",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/glueConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Greenplum",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/greenplumConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Hive",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/hiveConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Impala",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/impalaConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Iomete",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/iometeConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "MariaDB",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/mariaDBConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "MongoDB",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/mongoDBConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Mssql",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/mssqlConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Mysql",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/mysqlConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Neo4j",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/neo4jConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Oracle",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/oracleConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "PinotDB",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/pinotDBConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Postgres",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/postgresConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Presto",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/prestoConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "QuestDB",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/questdbConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Redshift",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/redshiftConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SAS",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/sasConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SQLite",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/sqliteConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Salesforce",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/salesforceConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SapErp",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/sapErpConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SapHana",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/sapHanaConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "SingleStore",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/singleStoreConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Snowflake",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/snowflakeConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "StarRocks",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/starrocksConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Teradata",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/teradataConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Timescale",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/timescaleConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Trino",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/trinoConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "UnityCatalog",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/unityCatalogConnection.json"
+  },
+  {
+    "category": "databaseServices",
+    "connector": "Vertica",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/database/verticaConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "CustomDashboard",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/customDashboardConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "DomoDashboard",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/domoDashboardConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Grafana",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/grafanaConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Hex",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/hexConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Lightdash",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/lightdashConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Looker",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/lookerConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Metabase",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/metabaseConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "MicroStrategy",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/microStrategyConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Mode",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/modeConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Omni",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/omniConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "PowerBI",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/powerBIConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "QlikCloud",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/qlikCloudConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "QlikSense",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/qlikSenseConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "QuickSight",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/quickSightConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Redash",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/redashConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Rill",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/rillConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Sigma",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/sigmaConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Ssrs",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/ssrsConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Superset",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/supersetConnection.json"
+  },
+  {
+    "category": "dashboardServices",
+    "connector": "Tableau",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/dashboard/tableauConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Airbyte",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/airbyteConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Airflow",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/airflowConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "CustomPipeline",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/customPipelineConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "DBTCloud",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/dbtCloudConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Dagster",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/dagsterConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Data360Pipeline",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/data360PipelineConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "DatabricksPipeline",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/databricksPipelineConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "DomoPipeline",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/domoPipelineConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Fivetran",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/fivetranConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Flink",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/flinkConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "GluePipeline",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/gluePipelineConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "KafkaConnect",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/kafkaConnectConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "KinesisFirehose",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/kinesisFirehoseConnection.json",
+    "layout": "unconfigured",
+    "reason": "The OSS wizard has no configuration schema registered for this connector."
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Nifi",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/nifiConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "OpenLineage",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/openLineageConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Prefect",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/prefectConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "Spline",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/splineConnection.json"
+  },
+  {
+    "category": "pipelineServices",
+    "connector": "TableauPipeline",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/pipeline/tableauPipelineConnection.json"
+  },
+  {
+    "category": "messagingServices",
+    "connector": "CustomMessaging",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/customMessagingConnection.json"
+  },
+  {
+    "category": "messagingServices",
+    "connector": "Kafka",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/kafkaConnection.json"
+  },
+  {
+    "category": "messagingServices",
+    "connector": "Kinesis",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/kinesisConnection.json"
+  },
+  {
+    "category": "messagingServices",
+    "connector": "Nats",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/natsConnection.json"
+  },
+  {
+    "category": "messagingServices",
+    "connector": "PubSub",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/pubSubConnection.json"
+  },
+  {
+    "category": "messagingServices",
+    "connector": "Redpanda",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/messaging/redpandaConnection.json"
+  },
+  {
+    "category": "mlmodelServices",
+    "connector": "CustomMlModel",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/mlmodel/customMlModelConnection.json"
+  },
+  {
+    "category": "mlmodelServices",
+    "connector": "Mlflow",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/mlmodel/mlflowConnection.json"
+  },
+  {
+    "category": "mlmodelServices",
+    "connector": "SageMaker",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/mlmodel/sageMakerConnection.json"
+  },
+  {
+    "category": "metadataServices",
+    "connector": "AlationSink",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/alationSinkConnection.json"
+  },
+  {
+    "category": "metadataServices",
+    "connector": "Amundsen",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/amundsenConnection.json"
+  },
+  {
+    "category": "metadataServices",
+    "connector": "Atlas",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/metadata/atlasConnection.json"
+  },
+  {
+    "category": "driveServices",
+    "connector": "CustomDrive",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/drive/customDriveConnection.json"
+  },
+  {
+    "category": "driveServices",
+    "connector": "GoogleDrive",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/drive/googleDriveConnection.json"
+  },
+  {
+    "category": "driveServices",
+    "connector": "Sftp",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/drive/sftpConnection.json"
+  },
+  {
+    "category": "storageServices",
+    "connector": "CustomStorage",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/storage/customStorageConnection.json"
+  },
+  {
+    "category": "storageServices",
+    "connector": "GCS",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/storage/gcsConnection.json"
+  },
+  {
+    "category": "storageServices",
+    "connector": "S3",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/storage/s3Connection.json"
+  },
+  {
+    "category": "searchServices",
+    "connector": "CustomSearch",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/search/customSearchConnection.json"
+  },
+  {
+    "category": "searchServices",
+    "connector": "ElasticSearch",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/search/elasticSearchConnection.json"
+  },
+  {
+    "category": "searchServices",
+    "connector": "OpenSearch",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/search/openSearchConnection.json"
+  },
+  {
+    "category": "apiServices",
+    "connector": "Rest",
+    "schema": "openmetadata-spec/src/main/resources/json/schema/entity/services/connections/api/restConnection.json"
+  }
+]

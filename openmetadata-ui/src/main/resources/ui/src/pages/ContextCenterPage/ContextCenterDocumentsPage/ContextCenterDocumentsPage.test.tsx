@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
-import { render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
+import { MemoryRouter, useNavigate } from 'react-router-dom';
+import {
+  deleteDriveFile,
+  getContextFileById,
+  listContextFiles,
+} from '../../../rest/assetAPI';
 import ContextCenterDocumentsPage from './ContextCenterDocumentsPage';
 
 // Resource-level permission (getResourcePermission(KNOWLEDGE_PAGE)) — no prior
@@ -63,7 +74,17 @@ jest.mock(
   '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="context-center-header" />,
+    default: jest.fn().mockImplementation(({ onSearch }) => (
+      <div data-testid="context-center-header">
+        {onSearch && (
+          <button
+            data-testid="trigger-search-btn"
+            onClick={() => onSearch('query')}>
+            search
+          </button>
+        )}
+      </div>
+    )),
   })
 );
 
@@ -71,7 +92,17 @@ jest.mock(
   '../../../components/ContextCenter/DocumentsView/DocumentFolderView.component',
   () => ({
     __esModule: true,
-    default: () => <div data-testid="document-folder-view" />,
+    default: jest.fn().mockImplementation(({ onSelectFolder }) => (
+      <div data-testid="document-folder-view">
+        {onSelectFolder && (
+          <button
+            data-testid="select-folder-btn"
+            onClick={() => onSelectFolder('folder-1')}>
+            folder
+          </button>
+        )}
+      </div>
+    )),
   })
 );
 
@@ -81,13 +112,50 @@ jest.mock(
     __esModule: true,
     default: jest
       .fn()
-      .mockImplementation(({ canEdit, canDelete }) => (
-        <div
-          data-can-delete={String(Boolean(canDelete))}
-          data-can-edit={String(Boolean(canEdit))}
-          data-testid="documents-view"
-        />
-      )),
+      .mockImplementation(
+        ({
+          canEdit,
+          canDelete,
+          previewFileId,
+          selectedIds,
+          onSelectFile,
+          onClearSelection,
+          onDeleteFile,
+        }) => (
+          <div
+            data-can-delete={String(Boolean(canDelete))}
+            data-can-edit={String(Boolean(canEdit))}
+            data-preview-file-id={previewFileId ?? ''}
+            data-selected-ids={Array.from(selectedIds ?? []).join(',')}
+            data-testid="documents-view">
+            <button
+              data-testid="select-file-btn"
+              onClick={() => onSelectFile?.('file-1')}>
+              select
+            </button>
+            <button
+              data-testid="clear-selection-btn"
+              onClick={() => onClearSelection?.()}>
+              clear
+            </button>
+            <button
+              data-testid="delete-file-btn"
+              onClick={() =>
+                onDeleteFile?.({ id: 'file-1', name: 'file-1.pdf' })
+              }>
+              delete-file
+            </button>
+          </div>
+        )
+      ),
+  })
+);
+
+jest.mock(
+  '../../../components/ContextCenter/DocumentsView/DocumentPreviewPanel.component',
+  () => ({
+    __esModule: true,
+    default: () => <div data-testid="document-preview-panel" />,
   })
 );
 
@@ -98,6 +166,22 @@ jest.mock(
     default: () => null,
   })
 );
+
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(({ open, onDelete, onCancel }) =>
+    open ? (
+      <div data-testid="delete-modal">
+        <button data-testid="confirm-delete-btn" onClick={onDelete}>
+          confirm
+        </button>
+        <button data-testid="cancel-delete-btn" onClick={onCancel}>
+          cancel
+        </button>
+      </div>
+    ) : null
+  ),
+}));
 
 // react-markdown ships ESM and is not in jest's transformIgnorePatterns allowlist, so the
 // CreateMemoryModal this page now pulls in transitively fails to parse. Same stub the
@@ -164,6 +248,231 @@ describe('ContextCenterDocumentsPage — permissions', () => {
     expect(screen.getByTestId('documents-view')).toHaveAttribute(
       'data-can-edit',
       'false'
+    );
+  });
+});
+
+const NavigateTo = ({ to }: { to: string }) => {
+  const navigate = useNavigate();
+
+  return (
+    <button data-testid="navigate" onClick={() => navigate(to)}>
+      {to}
+    </button>
+  );
+};
+
+const NavigateBack = () => {
+  const navigate = useNavigate();
+
+  return (
+    <button data-testid="navigate-back" onClick={() => navigate(-1)}>
+      Back
+    </button>
+  );
+};
+
+describe('ContextCenterDocumentsPage — previewed document', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({});
+  });
+
+  it('closes the preview when Back returns to the documents list', async () => {
+    render(
+      <MemoryRouter
+        initialEntries={[
+          '/context-center/documents',
+          '/context-center/documents?document=file-1',
+        ]}>
+        <ContextCenterDocumentsPage />
+        <NavigateBack />
+      </MemoryRouter>
+    );
+
+    expect(
+      await screen.findByTestId('document-preview-panel')
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('navigate-back'));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByTestId('document-preview-panel')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-preview-file-id',
+        ''
+      );
+    });
+  });
+
+  // A memory previewed from a document can link the copy it was reused from; the page stays mounted.
+  it('previews the document a link opens while another is previewed', async () => {
+    (getContextFileById as jest.Mock).mockResolvedValue({
+      id: 'file-2',
+      name: 'file-2.pdf',
+    });
+
+    render(
+      <MemoryRouter
+        initialEntries={['/context-center/documents?document=file-1']}>
+        <ContextCenterDocumentsPage />
+        <NavigateTo to="/context-center/documents?document=file-2" />
+      </MemoryRouter>
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-preview-file-id',
+        'file-1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('navigate'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-preview-file-id',
+        'file-2'
+      )
+    );
+
+    expect(getContextFileById).toHaveBeenCalledWith('file-2');
+  });
+});
+
+// Selection state (selectedIds) lives on the page and must be cleared when the
+// visible context changes (folder navigation, search) and pruned when a
+// selected row is deleted, so stale "ghost" ids can never drive bulk actions.
+describe('ContextCenterDocumentsPage — selection', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockGetResourcePermission.mockResolvedValue({});
+  });
+
+  it('wires onClearSelection to empty the selection', async () => {
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('select-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-selected-ids',
+        'file-1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('clear-selection-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-selected-ids',
+        ''
+      )
+    );
+  });
+
+  it('clears selection when the selected folder changes', async () => {
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('select-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-selected-ids',
+        'file-1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('select-folder-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-selected-ids',
+        ''
+      )
+    );
+  });
+
+  it('clears selection when a search query is entered', async () => {
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('select-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-selected-ids',
+        'file-1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('trigger-search-btn'));
+
+    await act(async () => {
+      jest.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByTestId('documents-view')).toHaveAttribute(
+      'data-selected-ids',
+      ''
+    );
+  });
+
+  it('prunes the deleted file id from selection on single-file delete', async () => {
+    (deleteDriveFile as jest.Mock).mockResolvedValue(undefined);
+    (listContextFiles as jest.Mock).mockResolvedValue({
+      data: [
+        { id: 'file-1', name: 'file-1.pdf' },
+        { id: 'file-2', name: 'file-2.pdf' },
+      ],
+      paging: { total: 2 },
+    });
+
+    renderPage();
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toBeInTheDocument()
+    );
+
+    fireEvent.click(screen.getByTestId('select-file-btn'));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-selected-ids',
+        'file-1'
+      )
+    );
+
+    fireEvent.click(screen.getByTestId('delete-file-btn'));
+
+    expect(screen.getByTestId('delete-modal')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('confirm-delete-btn'));
+    });
+
+    await waitFor(() =>
+      expect(deleteDriveFile).toHaveBeenCalledWith('file-1', false)
+    );
+
+    await waitFor(() =>
+      expect(screen.getByTestId('documents-view')).toHaveAttribute(
+        'data-selected-ids',
+        ''
+      )
     );
   });
 });

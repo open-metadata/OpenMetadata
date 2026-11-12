@@ -86,6 +86,9 @@ public final class CatalogExceptionMessage {
       "Self Signup can only create user for self. Only Admin can create other users.";
   public static final String SELF_SIGNUP_DISABLED_MESSAGE =
       "Self Signup is not enabled. Please contact your Administrator for assistance with account creation";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED = "SELF_SIGNUP_DOMAIN_NOT_ALLOWED";
+  public static final String SELF_SIGNUP_DOMAIN_NOT_ALLOWED_MESSAGE =
+      "Self Signup is not allowed for this email domain. Please contact your Administrator for assistance with account creation";
 
   public static final String NOT_IMPLEMENTED_METHOD = "Method not implemented.";
 

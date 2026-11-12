@@ -681,9 +681,9 @@ describe('TestSuites component', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should not render pagination when showPagination is false', async () => {
+  it('should not render pagination when there are no test suites', async () => {
     (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(() =>
-      Promise.resolve({ data: [], paging: { total: 5 } })
+      Promise.resolve({ data: [], paging: { total: 0 } })
     );
 
     render(<TestSuites />);

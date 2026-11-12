@@ -1218,6 +1218,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     const search = (
       <Input
         aria-label={t('label.find-concept')}
+        autoComplete="off"
         icon={SearchInputIcon}
         inputDataTestId="ontology-graph-search"
         placeholder={`${t('label.find-concept')}…`}
@@ -1295,6 +1296,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
               className="tw:pointer-events-none tw:absolute tw:left-3 tw:top-1/2 tw:z-1 tw:size-5 tw:-translate-y-1/2 tw:text-fg-quaternary"
             />
             <Input
+              autoComplete="off"
               data-testid="ontology-graph-search"
               inputClassName="tw:pl-10"
               placeholder={t('label.search-in-graph')}

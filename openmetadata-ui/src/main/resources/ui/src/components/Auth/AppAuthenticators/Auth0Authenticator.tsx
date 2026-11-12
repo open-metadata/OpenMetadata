@@ -108,7 +108,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
       async invokeLogout() {
         try {
           logout({
-            localOnly: true,
+            openUrl: false,
           });
         } finally {
           // This will cleanup the application state
@@ -133,7 +133,7 @@ const Auth0Authenticator = forwardRef<AuthenticatorRef, Props>(
       // out there.
       async invokeSilentReauth() {
         await loginWithRedirect({
-          prompt: 'none',
+          authorizationParams: { prompt: 'none' },
           appState: {
             returnTo: `${window.location.pathname}${window.location.search}`,
           },

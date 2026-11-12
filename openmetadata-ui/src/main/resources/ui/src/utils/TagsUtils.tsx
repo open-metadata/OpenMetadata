@@ -12,10 +12,12 @@
  */
 
 import { Box, Typography } from '@openmetadata/ui-core-components';
-import { Check } from '@openmetadata/ui-core-components/icons';
+import {
+  Check,
+  Classification as ClassificationIcon,
+  Trash01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
-import { ReactComponent as DeleteIcon } from '../assets/svg/ic-delete.svg';
 import Loader from '../components/common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../components/common/RichTextEditor/RichTextEditorPreviewerV1';
 import { SettledStatus } from '../enums/Axios.enum';
@@ -136,15 +138,13 @@ export const getDeleteIcon = (arg: {
   const { deleteTagId, id, status } = arg;
   if (deleteTagId === id) {
     if (status === 'success') {
-      return (
-        <Check className="tw:shrink-0" data-testid="check-outline" size={14} />
-      );
+      return <Check data-icon data-testid="check-outline" />;
     }
 
     return <Loader size="small" type="default" />;
   }
 
-  return <DeleteIcon data-testid="delete-icon" name="Delete" width={14} />;
+  return <Trash01 data-icon data-testid="delete-icon" />;
 };
 
 export const fetchGlossaryList = async (
@@ -188,7 +188,7 @@ export const TagListItemRenderer = (props: EntityReference) => {
       className="layout-space layout-space-horizontal"
       gap={2}
       itemClassName="layout-space-item">
-      <ClassificationIcon className="tw:block" height={22} width={16} />
+      <ClassificationIcon className="tw:block" size={16} />
       <Typography>{getEntityName(props)}</Typography>
     </Box>
   );

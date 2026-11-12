@@ -318,7 +318,7 @@ const SearchSettingsView = ({
         count={termBoosts.length}
         testId="term-boosts"
         title={t('label.term-boost')}>
-        <Box direction="row" gap={3} justify="between" wrap="wrap">
+        <Box direction="row" gap={3} wrap="wrap">
           {termBoosts.map((boost) => (
             <TermBoostCard
               key={boost.value}

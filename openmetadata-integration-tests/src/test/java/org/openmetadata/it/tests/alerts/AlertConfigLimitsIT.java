@@ -17,6 +17,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.events.CreateEventSubscription;
+import org.openmetadata.schema.entity.events.AlertType;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.type.Webhook;
@@ -169,7 +170,7 @@ class AlertConfigLimitsIT {
       TestNamespace ns, String name, List<SubscriptionDestination> destinations) {
     return new CreateEventSubscription()
         .withName(ns.prefix(name))
-        .withAlertType(CreateEventSubscription.AlertType.NOTIFICATION)
+        .withAlertType(AlertType.NOTIFICATION)
         .withResources(List.of(Entity.TABLE))
         .withEnabled(false)
         .withDestinations(destinations);

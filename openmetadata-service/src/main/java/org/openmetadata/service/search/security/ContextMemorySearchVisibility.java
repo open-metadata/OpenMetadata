@@ -67,6 +67,11 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
  * (ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request). REST needs no third
  * edit for it: an owner already reads their own memories in every stage there.
  *
+ * <p>A listing that selects stages ({@code statuses=}) shows a memory awaiting review ({@link
+ * #OWNER_PENDING_STATUSES}) to its owners and admins only; REST lists by the same rule ({@link
+ * ContextMemoryVisibility#isPending})
+ * (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+ *
  * <p>Search cannot evaluate an anchor's policy per document. An anchored {@code Entity} memory is
  * therefore searchable only by its owners and admins, unless the query pins its anchor: a caller
  * that names the anchors it asks about ({@link ContextMemoryAnchorPins}) has each of them evaluated
@@ -118,7 +123,11 @@ public class ContextMemorySearchVisibility {
     return buildVisibilityFilter(subjectContext, SEARCHABLE_STATUSES);
   }
 
-  /** As above, admitting memories in any of {@code statuses} instead of Approved only. */
+  /**
+   * As above, admitting memories in any of {@code statuses} instead of Approved only. A stage
+   * awaiting review ({@link #OWNER_PENDING_STATUSES}) reaches only the subject's own memories,
+   * unless the subject is an admin, who reads every memory in every stage.
+   */
   public OMQueryBuilder buildVisibilityFilter(
       SubjectContext subjectContext, List<ContextMemoryStatus> statuses) {
     return buildVisibilityFilter(subjectContext, statuses, List.of());
@@ -134,7 +143,15 @@ public class ContextMemorySearchVisibility {
       SubjectContext subjectContext,
       List<ContextMemoryStatus> statuses,
       Collection<String> pinnedAnchorIds) {
-    return buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds, List.of());
+    List<ContextMemoryStatus> ownersOnly =
+        isVisibilityEnforced(subjectContext)
+            ? statuses.stream().filter(OWNER_PENDING_STATUSES::contains).toList()
+            : List.of();
+    return buildVisibilityFilter(
+        subjectContext,
+        statuses.stream().filter(status -> !ownersOnly.contains(status)).toList(),
+        pinnedAnchorIds,
+        ownersOnly);
   }
 
   /**

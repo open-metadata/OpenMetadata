@@ -22,7 +22,14 @@ import {
   Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  Download01,
+  LockUnlocked01,
+  Plus,
+  Restore,
+  Teams,
+  Upload01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { cloneDeep, isEmpty, isUndefined } from 'lodash';
@@ -37,11 +44,6 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ExportIcon } from '../../../../assets/svg/ic-export.svg';
-import { ReactComponent as ImportIcon } from '../../../../assets/svg/ic-import.svg';
-import { ReactComponent as IconRestore } from '../../../../assets/svg/ic-restore.svg';
-import { ReactComponent as IconTeams } from '../../../../assets/svg/ic-teams.svg';
-import { ReactComponent as IconOpenLock } from '../../../../assets/svg/open-lock.svg';
 import { PAGE_SIZE, ROUTES } from '../../../../constants/constants';
 import {
   GLOSSARIES_DOCS,
@@ -605,7 +607,7 @@ const TeamDetailsV1 = ({
             description={t('message.export-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ExportIcon}
+            icon={Download01}
             id="export"
             name={t('label.export')}
           />
@@ -623,7 +625,7 @@ const TeamDetailsV1 = ({
             description={t('message.import-entity-help', {
               entity: t('label.team-lowercase'),
             })}
-            icon={ImportIcon}
+            icon={Upload01}
             id="import-button"
             name={t('label.import')}
           />
@@ -645,7 +647,7 @@ const TeamDetailsV1 = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.restore-deleted-team')}
-                  icon={IconRestore}
+                  icon={Restore}
                   id="restore-team-dropdown"
                   name={t('label.restore-entity', {
                     entity: t('label.team'),
@@ -664,7 +666,7 @@ const TeamDetailsV1 = ({
               label: (
                 <ManageButtonItemLabel
                   description={t('message.access-to-collaborate')}
-                  icon={IconOpenLock}
+                  icon={LockUnlocked01}
                   id="open-group-dropdown"
                   name={
                     <Grid className="layout-row layout-grid">
@@ -1004,9 +1006,13 @@ const TeamDetailsV1 = ({
   );
 
   const teamActionButton = useMemo(() => {
-    const canManageTeamMembership =
+    const isMembershipTeam =
       !isOrganization && !isUndefined(currentUser) && isGroupType;
-    const joinTeamButton = (Boolean(currentTeam.isJoinable) || isAdminUser) && (
+    // Only admins join or leave a team that is not joinable, as the server enforces.
+    const canChangeOwnMembership =
+      Boolean(currentTeam.isJoinable) || isAdminUser;
+    const canManageTeamMembership = isMembershipTeam && canChangeOwnMembership;
+    const joinTeamButton = (
       <Button color="primary" data-testid="join-teams" onClick={joinTeam}>
         {t('label.join-team')}
       </Button>
@@ -1031,9 +1037,11 @@ const TeamDetailsV1 = ({
     );
   }, [
     currentUser,
+    currentTeam.isJoinable,
     isAlreadyJoinedTeam,
     isGroupType,
     isAdminUser,
+    isOrganization,
     joinTeam,
     deleteUserHandler,
   ]);
@@ -1056,7 +1064,7 @@ const TeamDetailsV1 = ({
                 contrastBorder={false}
                 placeholder={
                   <>
-                    <IconTeams className="text-primary" width={20} />
+                    <Teams className="text-primary" size={20} />
                   </>
                 }
                 size="md"

@@ -90,6 +90,19 @@ public interface GovernanceDAOs {
       return false;
     }
 
+    /** Id and style of every styled domain, as JSON; served to chips by id from {@code /v1/domains/styles}. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_OBJECT('id', id, 'style', JSON_EXTRACT(json, '$.style')) FROM domain_entity"
+                + " WHERE JSON_EXTRACT(json, '$.style') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT jsonb_build_object('id', id, 'style', json -> 'style')::text FROM domain_entity"
+                + " WHERE json -> 'style' IS NOT NULL",
+        connectionType = POSTGRES)
+    List<String> listStyles();
+
     /** Ids of the domain with {@code fqnHash} and of every domain nested under it. */
     @SqlQuery(
         "SELECT id FROM domain_entity WHERE fqnHash = :fqnHash OR fqnHash LIKE :fqnHashPrefix")
@@ -218,6 +231,19 @@ public interface GovernanceDAOs {
     default String getTableName() {
       return "data_product_entity";
     }
+
+    /** Id and style of every styled data product, as JSON; served to chips by id from {@code /v1/domains/styles}. */
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT JSON_OBJECT('id', id, 'style', JSON_EXTRACT(json, '$.style')) FROM data_product_entity"
+                + " WHERE JSON_EXTRACT(json, '$.style') IS NOT NULL",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT jsonb_build_object('id', id, 'style', json -> 'style')::text FROM data_product_entity"
+                + " WHERE json -> 'style' IS NOT NULL",
+        connectionType = POSTGRES)
+    List<String> listStyles();
 
     @Override
     default Class<DataProduct> getEntityClass() {

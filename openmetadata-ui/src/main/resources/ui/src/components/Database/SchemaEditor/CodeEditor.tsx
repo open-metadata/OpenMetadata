@@ -96,11 +96,9 @@ const CodeEditor = ({
               className="tw:ml-auto tw:text-sm tw:leading-[1.5715] tw:font-normal tw:text-primary"
               data-testid="copy-button-container">
               <ButtonUtility
-                aria-label={t('message.copy-to-clipboard')}
-                color="tertiary"
                 data-testid="query-copy-button"
                 icon={Copy01}
-                size="sm"
+                size="lg"
                 tooltip={
                   hasCopied ? t('label.copied') : t('message.copy-to-clipboard')
                 }

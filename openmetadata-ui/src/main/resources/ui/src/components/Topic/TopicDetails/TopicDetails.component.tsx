@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Tabs } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Tabs } from '@openmetadata/ui-core-components';
+import { Collapse, Expand } from '@openmetadata/ui-core-components/icons';
 
 import type { AxiosError } from 'axios';
 import type { EntityTags } from 'Models';
-import type { ComponentType } from 'react';
 import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -50,6 +50,7 @@ import {
 import { getPartialNameFromTableFQN } from '../../../utils/FqnUtils';
 import { getDerivedPermissionFlags } from '../../../utils/PermissionDerivation';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
+import { getJSONEditorValue } from '../../../utils/SchemaEditor.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   createTagObject,
@@ -67,7 +68,6 @@ import type {
   ExtentionEntitiesKeys,
 } from '../../common/CustomPropertyTable/CustomPropertyTable.interface';
 import PermissionPlaceholder from '../../common/EmptyPlaceholder/PermissionPlaceholder';
-import type { IconButtonProps } from '../../common/IconButtons/EditIconButton';
 import Loader from '../../common/Loader/Loader';
 import type { GenericProviderProps } from '../../Customization/GenericProvider/GenericProvider.interface';
 import type { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
@@ -134,14 +134,6 @@ const EntityLineageTab = withSuspenseFallback(
 const QueryViewer = withSuspenseFallback(
   lazy(() => import('../../common/QueryViewer/QueryViewer.component'))
 );
-
-const AlignRightIconButton = withSuspenseFallback(
-  lazy(() =>
-    import('../../common/IconButtons/EditIconButton').then((module) => ({
-      default: module.AlignRightIconButton,
-    }))
-  )
-) as ComponentType<IconButtonProps>;
 
 const TopicDetails: React.FC<TopicDetailsProps> = ({
   updateTopicDetailsState,
@@ -431,8 +423,7 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
       queryViewerTab: (
         <QueryViewer
           isActive={activeTab === EntityTabs.CONFIG}
-          sqlQuery={JSON.stringify(topicDetails.topicConfig)}
-          title={t('label.config')}
+          sqlQuery={getJSONEditorValue(topicDetails.topicConfig)}
         />
       ),
       lineageTab: (
@@ -553,9 +544,11 @@ const TopicDetails: React.FC<TopicDetailsProps> = ({
               <Tabs.List
                 actions={
                   isExpandViewSupported && (
-                    <AlignRightIconButton
-                      className={isTabExpanded ? 'rotate-180' : ''}
-                      title={
+                    <ButtonUtility
+                      data-testid="tab-expand-button"
+                      icon={isTabExpanded ? Collapse : Expand}
+                      size="lg"
+                      tooltip={
                         isTabExpanded ? t('label.collapse') : t('label.expand')
                       }
                       onClick={toggleTabExpanded}

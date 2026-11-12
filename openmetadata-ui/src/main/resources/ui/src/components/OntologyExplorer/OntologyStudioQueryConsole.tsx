@@ -11,31 +11,36 @@
  *  limitations under the License.
  */
 
+import { Prec } from '@codemirror/state';
+import { keymap } from '@codemirror/view';
 import {
   Badge,
   Box,
   Button,
   ButtonUtility,
   Dialog,
+  Dropdown,
   Input,
   Modal,
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  Check,
-  Edit03,
+  Copy01,
+  Edit01,
   InfoCircle,
   Lock01,
   Play,
   Plus,
+  Search,
   Trash01,
-  XClose,
+  User01,
 } from '@openmetadata/ui-core-components/icons';
-import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import {
+  FC,
   ReactNode,
+  RefObject,
   useCallback,
   useEffect,
   useMemo,
@@ -54,11 +59,23 @@ import {
   SavedSparqlQuery,
   SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
+import { NavigatorHelper } from '../../utils/NavigatorUtils';
 import { generateUUID } from '../../utils/StringUtils';
-import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { showSuccessToast } from '../../utils/ToastUtils';
 import SchemaEditor from '../Database/SchemaEditor/SchemaEditor';
 import { OntologyGraphData } from './OntologyExplorer.interface';
-import OntologyQueryResults from './OntologyQueryResults';
+import {
+  describeQueryError,
+  QueryErrorDisplay,
+} from './OntologyQueryError.utils';
+import OntologyQueryResults, {
+  QueryResultsEmptyState,
+} from './OntologyQueryResults';
+import { describeTimeAgo } from './OntologyQueryResults.utils';
+import {
+  buildQueryScopeLabel,
+  OntologyQueryScope,
+} from './OntologyQueryScope.utils';
 import {
   buildOntologyQuerySuggestions,
   isCanonicalGlossaryQueryTemplate,
@@ -73,6 +90,8 @@ interface OntologyStudioQueryConsoleProps {
   readonly createQueryOnMount?: boolean;
   readonly initialQuery?: string;
   readonly onQueryCreated?: () => void;
+  /** What a native ontology's queries read: the active release or the working draft. */
+  readonly queryScope?: OntologyQueryScope;
   readonly graphData: OntologyGraphData | null;
   readonly relationTypes: RelationshipType[];
   readonly selectedGlossaryIds: string[];
@@ -83,6 +102,10 @@ type SaveTarget = 'personal' | 'template';
 
 const SPARQL_QUERY_FORM = /\b(SELECT|CONSTRUCT|ASK|DESCRIBE)\b/i;
 
+const GRAPH_QUERY_FORMS = new Set(['CONSTRUCT', 'DESCRIBE']);
+
+const META_SEPARATOR = ' · ';
+
 // SELECT / CONSTRUCT / ASK / DESCRIBE, read past the PREFIX declarations.
 function getQueryForm(query: string): string {
   return (query.match(SPARQL_QUERY_FORM)?.[1] ?? 'SELECT').toUpperCase();
@@ -92,16 +115,15 @@ interface QueryListItem {
   readonly id: string;
   readonly isDirty?: boolean;
   readonly label: string;
+  readonly subtitle?: string;
   readonly testId: string;
   readonly actions?: ReactNode;
   readonly onRun: () => void;
 }
 
 interface QueryGroupProps {
-  /** My queries keep rename/delete visible; shared admin actions show on hover. */
-  readonly areActionsAlwaysVisible?: boolean;
   readonly emptyText: string;
-  readonly hint: string;
+  readonly icon: FC<{ className?: string }>;
   readonly isLoading?: boolean;
   readonly items: QueryListItem[];
   readonly activeQueryId?: string;
@@ -110,9 +132,8 @@ interface QueryGroupProps {
 }
 
 const QueryGroup = ({
-  areActionsAlwaysVisible,
   emptyText,
-  hint,
+  icon: Icon,
   isLoading,
   items,
   activeQueryId,
@@ -123,28 +144,27 @@ const QueryGroup = ({
 
   return (
     <Box direction="col" gap={1}>
-      <Box align="center" className="tw:px-3" gap={2}>
-        <Typography className="tw:text-primary" size="text-sm" weight="medium">
+      <Box align="center" className="tw:px-1 tw:pb-1" gap={2}>
+        <Icon
+          aria-hidden="true"
+          className="tw:size-3.5 tw:text-fg-quaternary"
+        />
+        <Typography size="text-sm" weight="medium">
           {title}
         </Typography>
         <Badge color="gray" size="sm" type="pill-color">
           {items.length}
         </Badge>
       </Box>
-      <Typography className="tw:px-3 tw:pb-1.5 tw:text-tertiary" size="text-xs">
-        {hint}
-      </Typography>
       {isLoading && items.length === 0 ? (
-        <Typography className="tw:px-3 tw:text-tertiary" size="text-xs">
+        <Typography className="tw:px-1" color="secondary" size="text-xs">
           {t('label.loading')}
         </Typography>
       ) : null}
       {!isLoading && items.length === 0 ? (
-        <Box className="tw:mx-1 tw:rounded-lg tw:border tw:border-dashed tw:border-primary tw:p-3">
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {emptyText}
-          </Typography>
-        </Box>
+        <Typography className="tw:px-1" color="quaternary" size="text-xs">
+          {emptyText}
+        </Typography>
       ) : null}
       {items.length > 0 ? (
         <Box className="tw:gap-0.5" data-testid={listTestId} direction="col">
@@ -164,18 +184,23 @@ const QueryGroup = ({
                   noTextPadding
                   aria-pressed={isActive}
                   className={classNames(
-                    'tw:min-w-0 tw:flex-1 tw:justify-start tw:py-2 tw:pl-3 tw:text-left',
+                    'tw:min-w-0 tw:flex-1 tw:justify-start tw:py-2 tw:pl-2.5 tw:text-left',
                     'tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:truncate',
                     isActive
-                      ? 'tw:font-semibold tw:text-brand-secondary'
-                      : 'tw:font-normal tw:text-secondary'
+                      ? 'tw:font-medium tw:text-brand-secondary'
+                      : 'tw:font-normal tw:text-primary'
                   )}
                   color="tertiary"
                   data-testid={item.testId}
                   size="sm"
                   title={item.label}
                   onClick={item.onRun}>
-                  {item.label}
+                  <span className="tw:block tw:truncate">{item.label}</span>
+                  {item.subtitle ? (
+                    <span className="tw:block tw:truncate tw:text-xs tw:font-normal tw:text-tertiary">
+                      {item.subtitle}
+                    </span>
+                  ) : null}
                 </Button>
                 {item.isDirty ? (
                   <span
@@ -185,13 +210,10 @@ const QueryGroup = ({
                   />
                 ) : null}
                 {item.actions ? (
+                  // Row actions stay out of the way until the row is hovered or focused.
                   <Box
                     align="center"
-                    className={classNames(
-                      'tw:gap-0.5',
-                      !areActionsAlwaysVisible &&
-                        'tw:opacity-0 tw:transition-opacity tw:group-hover:opacity-100 tw:group-focus-within:opacity-100'
-                    )}>
+                    className="tw:gap-0.5 tw:opacity-0 tw:transition-opacity tw:group-hover:opacity-100 tw:group-focus-within:opacity-100">
                     {item.actions}
                   </Box>
                 ) : null}
@@ -238,6 +260,7 @@ function describeActiveQuery(
 }
 
 interface QueryRename {
+  readonly inputRef: RefObject<HTMLInputElement>;
   readonly isRenaming: boolean;
   readonly value: string;
   readonly onCancel: () => void;
@@ -251,81 +274,58 @@ interface QueryTitleProps {
   readonly rename: QueryRename;
 }
 
-// Only a query under My queries can be renamed; shared ones are read-only.
+// A query under My queries is renamed in place; shared ones are read-only.
 const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
   const { t } = useTranslation();
-  const renameInputRef = useRef<HTMLInputElement>(null);
-  const isRenaming = Boolean(activeQuery.savedQuery) && rename.isRenaming;
+  const { savedQuery } = activeQuery;
 
-  // Starting a rename is a user action, so the name field takes focus with the text selected.
-  useEffect(() => {
-    if (isRenaming) {
-      renameInputRef.current?.focus();
-      renameInputRef.current?.select();
-    }
-  }, [isRenaming]);
+  if (savedQuery) {
+    const commitOrCancel = () =>
+      rename.isRenaming &&
+      rename.value.trim() &&
+      rename.value.trim() !== savedQuery.name
+        ? rename.onCommit()
+        : rename.onCancel();
 
-  if (isRenaming) {
     return (
-      <Box align="center" className="tw:w-80 tw:max-w-full" gap={1}>
-        <Input
-          aria-label={t('label.name')}
-          inputDataTestId="ontology-query-rename-input"
-          ref={renameInputRef}
-          size="sm"
-          value={rename.value}
-          wrapperClassName="tw:min-w-0 tw:flex-1"
-          onChange={rename.onChange}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') {
-              rename.onCommit();
-            }
-            if (event.key === 'Escape') {
-              rename.onCancel();
-            }
-          }}
-        />
-        <ButtonUtility
-          color="tertiary"
-          data-testid="ontology-query-rename-save"
-          icon={Check}
-          isDisabled={!rename.value.trim()}
-          size="xs"
-          tooltip={t('label.save')}
-          onClick={rename.onCommit}
-        />
-        <ButtonUtility
-          color="tertiary"
-          icon={XClose}
-          size="xs"
-          tooltip={t('label.cancel')}
-          onClick={rename.onCancel}
-        />
-      </Box>
+      <Input
+        borderless
+        aria-label={t('label.name')}
+        fontSize="lg"
+        inputClassName="tw:font-semibold"
+        inputDataTestId="ontology-query-rename-input"
+        ref={rename.inputRef}
+        size="sm"
+        value={rename.isRenaming ? rename.value : savedQuery.name}
+        wrapperClassName="tw:w-80 tw:max-w-full"
+        onBlur={commitOrCancel}
+        onChange={(value) => {
+          if (!rename.isRenaming) {
+            rename.onStart();
+          }
+          rename.onChange(value);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            commitOrCancel();
+          }
+          if (event.key === 'Escape') {
+            rename.onCancel();
+          }
+        }}
+      />
     );
   }
 
   return (
-    <Box align="center" className="tw:min-w-0" gap={1}>
-      <Typography
-        ellipsis
-        className="tw:min-w-0 tw:text-primary"
-        data-testid="ontology-query-title"
-        size="text-sm"
-        weight="medium">
-        {activeQuery.title ?? t('label.untitled-query')}
-      </Typography>
-      {activeQuery.savedQuery ? (
-        <ButtonUtility
-          color="tertiary"
-          data-testid="ontology-query-rename"
-          icon={Edit03}
-          size="xs"
-          tooltip={t('label.rename')}
-          onClick={rename.onStart}
-        />
-      ) : null}
-    </Box>
+    <Typography
+      ellipsis
+      className="tw:min-w-0"
+      data-testid="ontology-query-title"
+      size="text-lg"
+      weight="semibold">
+      {activeQuery.title ?? t('label.untitled-query')}
+    </Typography>
   );
 };
 
@@ -336,7 +336,9 @@ interface QueryConsoleHeaderProps {
   readonly isDirty: boolean;
   readonly query: string;
   readonly running: boolean;
+  readonly onDelete: () => void;
   readonly onDiscard: () => void;
+  readonly onDuplicate: () => void;
   readonly onRun: () => void;
   readonly onSave: () => void;
   readonly onSaveTemplate: () => void;
@@ -348,60 +350,106 @@ type QueryConsoleActionsProps = Omit<
   'query' | 'rename'
 >;
 
-const QueryConsoleActions = ({
+// Rarely used saves and Discard live behind "⋯" so the header keeps Duplicate, Save and Run.
+const QueryMoreActions = ({
   activeQuery,
   isAdminUser,
   isDirty,
-  running,
   onDiscard,
-  onRun,
   onSave,
   onSaveTemplate,
-  onUpdateSaved,
 }: QueryConsoleActionsProps) => {
   const { t } = useTranslation();
 
   return (
-    <Box align="center" className="tw:ml-auto" gap={2} wrap="wrap">
-      {isDirty ? (
-        <Button
-          color="tertiary"
-          data-testid="ontology-query-discard"
-          size="sm"
-          onClick={onDiscard}>
-          {t('label.discard')}
-        </Button>
-      ) : null}
-      <Button
+    <Dropdown.Root>
+      <Dropdown.DotsButton
         color="secondary"
-        data-testid="ontology-query-save"
-        size="sm"
-        onClick={onSave}>
-        {activeQuery.savedQuery
-          ? t('label.save-as-new')
-          : t('label.save-as-my-query')}
-      </Button>
+        data-testid="ontology-query-more"
+        size="lg"
+      />
+      <Dropdown.Popover className="tw:w-56">
+        <Dropdown.Menu aria-label={t('label.more-actions')}>
+          <Dropdown.Item
+            data-testid="ontology-query-save"
+            label={
+              activeQuery.savedQuery
+                ? t('label.save-as-new')
+                : t('label.save-as-my-query')
+            }
+            onAction={onSave}
+          />
+          {isAdminUser ? (
+            <Dropdown.Item
+              data-testid="ontology-query-save-template"
+              label={
+                activeQuery.template
+                  ? t('label.update-sample-query')
+                  : t('label.save-as-sample-query')
+              }
+              onAction={onSaveTemplate}
+            />
+          ) : null}
+          {isDirty ? (
+            <Dropdown.Item
+              data-testid="ontology-query-discard"
+              label={t('label.discard')}
+              onAction={onDiscard}
+            />
+          ) : null}
+        </Dropdown.Menu>
+      </Dropdown.Popover>
+    </Dropdown.Root>
+  );
+};
+
+const QueryConsoleActions = (props: QueryConsoleActionsProps) => {
+  const { activeQuery, isDirty, running, onDelete, onDuplicate, onRun } = props;
+  const { t } = useTranslation();
+
+  return (
+    <Box align="center" className="tw:ml-auto" gap={2} wrap="wrap">
+      <QueryMoreActions {...props} />
       {activeQuery.savedQuery ? (
+        <>
+          <ButtonUtility
+            color="tertiary-destructive"
+            data-testid="ontology-query-delete"
+            icon={Trash01}
+            size="sm"
+            tooltip={t('label.delete-entity', {
+              entity: t('label.query').toLocaleLowerCase(),
+            })}
+            onClick={onDelete}
+          />
+          <ButtonUtility
+            data-testid="ontology-query-duplicate"
+            icon={Copy01}
+            size="sm"
+            tooltip={t('label.duplicate')}
+            onClick={onDuplicate}
+          />
+          <Button
+            color="secondary"
+            data-testid="ontology-query-update"
+            isDisabled={!isDirty}
+            size="sm"
+            onClick={props.onUpdateSaved}>
+            {isDirty ? t('label.save') : t('label.saved')}
+          </Button>
+        </>
+      ) : (
         <Button
           color="secondary"
-          data-testid="ontology-query-update"
-          isDisabled={!isDirty}
+          data-testid="ontology-query-duplicate"
+          iconLeading={Copy01}
           size="sm"
-          onClick={onUpdateSaved}>
-          {t('label.save-changes')}
+          onClick={onDuplicate}>
+          {t(
+            activeQuery.isShared ? 'label.duplicate-to-edit' : 'label.duplicate'
+          )}
         </Button>
-      ) : null}
-      {isAdminUser ? (
-        <Button
-          color="secondary"
-          data-testid="ontology-query-save-template"
-          size="sm"
-          onClick={onSaveTemplate}>
-          {activeQuery.template
-            ? t('label.update-sample-query')
-            : t('label.save-as-sample-query')}
-        </Button>
-      ) : null}
+      )}
       <Button
         color="primary"
         data-testid="ontology-sparql-run"
@@ -415,77 +463,89 @@ const QueryConsoleActions = ({
   );
 };
 
+function describeQuerySubtitle(
+  activeQuery: ActiveQuery,
+  t: (key: string, options?: Record<string, unknown>) => string
+): string | undefined {
+  if (activeQuery.isShared) {
+    return t('message.shared-with-everyone');
+  }
+  if (activeQuery.savedQuery) {
+    return [
+      t('label.saved-time', {
+        time: describeTimeAgo(
+          activeQuery.savedQuery.savedAt,
+          t('label.just-now')
+        ),
+      }),
+      t('message.only-visible-to-you'),
+    ].join(META_SEPARATOR);
+  }
+
+  return undefined;
+}
+
 const QueryConsoleHeader = ({
   activeQuery,
   rename,
-  isAdminUser,
   isDirty,
   query,
-  running,
-  onDiscard,
-  onRun,
-  onSave,
-  onSaveTemplate,
-  onUpdateSaved,
+  ...actions
 }: QueryConsoleHeaderProps) => {
   const { t } = useTranslation();
+  const subtitle = describeQuerySubtitle(activeQuery, t);
 
   return (
     <>
       <Box
         align="center"
-        className="tw:min-h-14 tw:shrink-0 tw:border-b tw:border-secondary tw:px-5 tw:py-2.5"
+        className="tw:min-h-16 tw:shrink-0 tw:border-b tw:border-secondary tw:px-5 tw:py-3"
         gap={3}
         wrap="wrap">
-        <Box
-          align="center"
-          className="tw:min-w-0 tw:flex-1"
-          gap={2}
-          wrap="wrap">
-          <QueryTitle activeQuery={activeQuery} rename={rename} />
-          <Badge
-            color="blue"
-            data-testid="ontology-query-form"
-            size="sm"
-            type="pill-color">
-            {getQueryForm(query)}
-          </Badge>
-          {activeQuery.isShared ? (
+        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+          <Box align="center" gap={2} wrap="wrap">
+            <QueryTitle activeQuery={activeQuery} rename={rename} />
             <Badge
-              className="tw:gap-1"
-              color="gray"
-              data-testid="ontology-query-read-only"
+              color="blue"
+              data-testid="ontology-query-form"
               size="sm"
               type="pill-color">
-              <Lock01 aria-hidden="true" className="tw:size-3" />
-              {t('label.shared-read-only')}
+              {getQueryForm(query)}
             </Badge>
-          ) : null}
-          {activeQuery.savedQuery ? (
-            <Badge color="purple" size="sm" type="pill-color">
-              {t('label.my-query')}
-            </Badge>
-          ) : null}
-          {isDirty ? (
-            <Badge
-              color="warning"
-              data-testid="ontology-query-unsaved"
-              size="sm"
-              type="pill-color">
-              {t('label.unsaved-changes')}
-            </Badge>
+            {activeQuery.isShared ? (
+              <Badge
+                className="tw:gap-1"
+                color="gray"
+                data-testid="ontology-query-read-only"
+                size="sm"
+                type="pill-color">
+                <Lock01 aria-hidden="true" className="tw:size-3" />
+                {t('label.read-only')}
+              </Badge>
+            ) : null}
+            {isDirty ? (
+              <Badge
+                color="warning"
+                data-testid="ontology-query-unsaved"
+                size="sm"
+                type="pill-color">
+                {t('label.unsaved-changes')}
+              </Badge>
+            ) : null}
+          </Box>
+          {subtitle ? (
+            <Typography
+              color="secondary"
+              data-testid="ontology-query-subtitle"
+              size="text-sm">
+              {subtitle}
+            </Typography>
           ) : null}
         </Box>
         <QueryConsoleActions
           activeQuery={activeQuery}
-          isAdminUser={isAdminUser}
           isDirty={isDirty}
-          running={running}
-          onDiscard={onDiscard}
-          onRun={onRun}
-          onSave={onSave}
-          onSaveTemplate={onSaveTemplate}
-          onUpdateSaved={onUpdateSaved}
+          {...actions}
         />
       </Box>
 
@@ -502,6 +562,52 @@ const QueryConsoleHeader = ({
         </Box>
       ) : null}
     </>
+  );
+};
+
+interface QueryStatusBarProps {
+  readonly canSave: boolean;
+  readonly isReadOnly: boolean;
+  readonly query: string;
+  readonly scopeLabel?: string;
+}
+
+const QueryStatusBar = ({
+  canSave,
+  isReadOnly,
+  query,
+  scopeLabel,
+}: QueryStatusBarProps) => {
+  const { t } = useTranslation();
+  const mod = NavigatorHelper.isMacOs() ? '⌘' : t('label.ctrl-key');
+  const hints = [t('label.mod-enter-to-run', { mod })];
+  if (canSave) {
+    hints.push(t('label.mod-s-to-save', { mod }));
+  }
+  if (isReadOnly) {
+    hints.push(t('label.read-only'));
+  }
+
+  return (
+    <Box
+      align="center"
+      className="tw:h-8 tw:shrink-0 tw:border-b tw:border-secondary tw:bg-secondary tw:px-4"
+      data-testid="ontology-query-status-bar"
+      gap={3}
+      justify="between">
+      <Typography color="secondary" size="text-xs">
+        {t('label.line-count', { count: query.split('\n').length })}
+        {scopeLabel ? (
+          <>
+            {META_SEPARATOR}
+            <span data-testid="ontology-query-scope">{scopeLabel}</span>
+          </>
+        ) : null}
+      </Typography>
+      <Typography color="secondary" size="text-xs">
+        {hints.join(META_SEPARATOR)}
+      </Typography>
+    </Box>
   );
 };
 
@@ -597,10 +703,14 @@ const SaveQueryModal = ({
   );
 };
 
+const getNewQueryTemplate = (selectedOntologyId: string | undefined) =>
+  selectedOntologyId ? NEW_NATIVE_ONTOLOGY_QUERY : NEW_ONTOLOGY_QUERY;
+
 const OntologyStudioQueryConsole = ({
   createQueryOnMount,
   initialQuery,
   onQueryCreated,
+  queryScope,
   graphData,
   relationTypes,
   selectedGlossaryIds,
@@ -628,9 +738,7 @@ const OntologyStudioQueryConsole = ({
     [graphData, relationTypes, selectedGlossaryIds]
   );
   const defaultSuggestion = querySuggestions[0];
-  const newQuery = selectedOntologyId
-    ? NEW_NATIVE_ONTOLOGY_QUERY
-    : NEW_ONTOLOGY_QUERY;
+  const newQuery = getNewQueryTemplate(selectedOntologyId);
   const [query, setQuery] = useState(
     initialQuery ?? defaultSuggestion?.query ?? newQuery
   );
@@ -640,12 +748,22 @@ const OntologyStudioQueryConsole = ({
     initialQuery ? 'draft' : defaultSuggestion?.id
   );
   const [running, setRunning] = useState(false);
-  const [result, setResult] = useState<SparqlPlaygroundResult | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // The scope is kept with the result: switching the version later must not relabel old rows.
+  const [result, setResult] = useState<{
+    readonly data: SparqlPlaygroundResult;
+    readonly ranAt: number;
+    readonly scopeLabel?: string;
+  } | null>(null);
+  const [queryError, setQueryError] = useState<QueryErrorDisplay | null>(null);
+  const [findText, setFindText] = useState('');
+  const scopeLabel = queryScope
+    ? buildQueryScopeLabel(queryScope, t)
+    : undefined;
   const [isSaveModalOpen, setIsSaveModalOpen] = useState(false);
   const [saveName, setSaveName] = useState('');
   const [saveTarget, setSaveTarget] = useState<SaveTarget>('personal');
   const [renameValue, setRenameValue] = useState<string>();
+  const renameInputRef = useRef<HTMLInputElement>(null);
   const hasCreatedOnMountRef = useRef(false);
 
   const openQuery = useCallback((id: string, text: string) => {
@@ -660,7 +778,7 @@ const OntologyStudioQueryConsole = ({
     }
     openQuery('draft', initialQuery);
     setResult(null);
-    setErrorMessage(null);
+    setQueryError(null);
   }, [initialQuery, openQuery]);
 
   useEffect(() => {
@@ -690,54 +808,58 @@ const OntologyStudioQueryConsole = ({
   const executeQuery = useCallback(
     async (nextQuery: string) => {
       if (!nextQuery.trim()) {
-        setErrorMessage(t('message.sparql-empty-query-error'));
+        setQueryError({
+          title: t('message.query-error-empty-title'),
+          hint: t('message.sparql-empty-query-error'),
+        });
 
         return;
       }
       setRunning(true);
       setResult(null);
-      setErrorMessage(null);
+      setQueryError(null);
       try {
+        // CONSTRUCT and DESCRIBE return a graph, which the server refuses to write as JSON.
         const queryParams = {
           query: nextQuery,
-          format: 'json' as const,
+          format: GRAPH_QUERY_FORMS.has(getQueryForm(nextQuery))
+            ? ('turtle' as const)
+            : ('json' as const),
           inference: 'none' as const,
         };
         const glossaryId = selectedGlossaryIds[0];
         if (!glossaryId && !selectedOntologyId && !isAdminUser) {
-          throw new Error(
-            t('label.please-select-entity', { entity: t('label.glossary') })
-          );
+          throw new Error(t('message.ontology-select-glossary-to-query'));
         }
         let nextResult;
         if (selectedOntologyId) {
           nextResult = await runOntologySparqlQuery(
             selectedOntologyId,
-            queryParams
+            queryParams,
+            { scope: queryScope?.version === 'draft' ? 'draft' : 'release' }
           );
         } else if (glossaryId) {
           nextResult = await runGlossarySparqlQuery(glossaryId, queryParams);
         } else {
           nextResult = await runSparqlQuery(queryParams);
         }
-        setResult(nextResult);
+        setResult({ data: nextResult, ranAt: Date.now(), scopeLabel });
       } catch (error) {
-        let message: string;
-        if (isAxiosError(error)) {
-          message =
-            typeof error.response?.data === 'string'
-              ? error.response.data
-              : error.message;
-        } else {
-          message = (error as Error).message;
-        }
-        setErrorMessage(message);
-        showErrorToast(message);
+        setQueryError(
+          describeQueryError(error, { isAdmin: Boolean(isAdminUser), t })
+        );
       } finally {
         setRunning(false);
       }
     },
-    [isAdminUser, selectedGlossaryIds, selectedOntologyId, t]
+    [
+      isAdminUser,
+      queryScope?.version,
+      scopeLabel,
+      selectedGlossaryIds,
+      selectedOntologyId,
+      t,
+    ]
   );
 
   const runListedQuery = useCallback(
@@ -763,7 +885,7 @@ const OntologyStudioQueryConsole = ({
     openQuery(created ? `saved-${id}` : 'draft', newQuery);
     setRenameValue(undefined);
     setResult(null);
-    setErrorMessage(null);
+    setQueryError(null);
   }, [newQuery, openQuery, t, upsertSavedQuery]);
 
   useEffect(() => {
@@ -816,9 +938,14 @@ const OntologyStudioQueryConsole = ({
       if (activeQueryId !== `saved-${savedQuery.id}`) {
         openQuery(`saved-${savedQuery.id}`, savedQuery.query);
         setResult(null);
-        setErrorMessage(null);
+        setQueryError(null);
       }
       setRenameValue(savedQuery.name);
+      // The title input mounts once the query opens, so focus it on the next tick.
+      setTimeout(() => {
+        renameInputRef.current?.focus();
+        renameInputRef.current?.select();
+      });
     },
     [activeQueryId, openQuery]
   );
@@ -886,6 +1013,27 @@ const OntologyStudioQueryConsole = ({
     }
   }, [activeSavedQuery, query, t, upsertSavedQuery]);
 
+  const duplicateIntoMyQueries = useCallback(
+    async (name: string, text: string) => {
+      const id = generateUUID();
+      const saved = await upsertSavedQuery({
+        id,
+        name: t('message.query-copy-name', { name }),
+        query: text,
+        format: 'json',
+        inference: 'none',
+        savedAt: Date.now(),
+      });
+      if (saved) {
+        openQuery(`saved-${id}`, text);
+        setResult(null);
+        setQueryError(null);
+        showSuccessToast(t('message.query-duplicated'));
+      }
+    },
+    [openQuery, t, upsertSavedQuery]
+  );
+
   const handleDeleteSavedQuery = useCallback(
     async (id: string) => {
       const deleted = await deleteSavedQuery(id);
@@ -902,9 +1050,53 @@ const OntologyStudioQueryConsole = ({
     (queryTemplate: SavedSparqlQuery) => {
       openQuery(`template-${queryTemplate.id}`, queryTemplate.query);
       setResult(null);
-      setErrorMessage(null);
+      setQueryError(null);
     },
     [openQuery]
+  );
+
+  // The editor keymap is built once, so it reads the current handlers through this ref.
+  const shortcutsRef = useRef<{ run: () => void; save?: () => void }>({
+    run: () => undefined,
+  });
+  useEffect(() => {
+    shortcutsRef.current = {
+      run: () => {
+        if (!running) {
+          void executeQuery(query);
+        }
+      },
+      save:
+        activeSavedQuery && isDirty
+          ? () => void handleUpdateSavedQuery()
+          : undefined,
+    };
+  });
+  const editorExtensions = useMemo(
+    () => [
+      Prec.highest(
+        keymap.of([
+          {
+            key: 'Mod-Enter',
+            run: () => {
+              shortcutsRef.current.run();
+
+              return true;
+            },
+          },
+          {
+            key: 'Mod-s',
+            preventDefault: true,
+            run: () => {
+              shortcutsRef.current.save?.();
+
+              return true;
+            },
+          },
+        ])
+      ),
+    ],
+    []
   );
 
   const handleDeleteTemplate = useCallback(
@@ -919,6 +1111,8 @@ const OntologyStudioQueryConsole = ({
     [deleteQueryTemplate]
   );
 
+  const matchesFind = (label: string) =>
+    label.toLocaleLowerCase().includes(findText.trim().toLocaleLowerCase());
   const sharedQueryItems: QueryListItem[] = [
     ...querySuggestions.map((suggestion: OntologyQuerySuggestion) => ({
       id: suggestion.id,
@@ -936,18 +1130,17 @@ const OntologyStudioQueryConsole = ({
         actions: isAdminUser ? (
           <>
             <ButtonUtility
-              color="tertiary"
               data-testid={`ontology-query-template-edit-${queryTemplate.id}`}
-              icon={Edit03}
-              size="xs"
+              icon={Edit01}
+              size="sm"
               tooltip={`${t('label.edit')} ${queryTemplate.name}`}
               onClick={() => handleTemplateEdit(queryTemplate)}
             />
             <ButtonUtility
-              color="tertiary"
+              color="tertiary-destructive"
               data-testid={`ontology-query-template-delete-${queryTemplate.id}`}
               icon={Trash01}
-              size="xs"
+              size="sm"
               tooltip={`${t('label.delete')} ${queryTemplate.name}`}
               onClick={() => void handleDeleteTemplate(queryTemplate.id)}
             />
@@ -960,43 +1153,73 @@ const OntologyStudioQueryConsole = ({
         onRun: () =>
           runListedQuery(`template-${queryTemplate.id}`, queryTemplate.query),
       })),
-  ];
-  const myQueryItems: QueryListItem[] = savedQueries.map((savedQuery) => ({
-    actions: (
-      <>
-        <ButtonUtility
-          color="tertiary"
-          data-testid={`ontology-query-saved-rename-${savedQuery.id}`}
-          icon={Edit03}
-          size="xs"
-          tooltip={`${t('label.rename')} ${savedQuery.name}`}
-          onClick={() => startRename(savedQuery)}
-        />
-        <ButtonUtility
-          color="tertiary"
-          data-testid={`ontology-query-saved-delete-${savedQuery.id}`}
-          icon={Trash01}
-          size="xs"
-          tooltip={`${t('label.delete')} ${savedQuery.name}`}
-          onClick={() => void handleDeleteSavedQuery(savedQuery.id)}
-        />
-      </>
-    ),
-    id: `saved-${savedQuery.id}`,
-    isDirty: isDirty && activeQueryId === `saved-${savedQuery.id}`,
-    label: savedQuery.name,
-    testId: `ontology-query-saved-${savedQuery.id}`,
-    onRun: () => runListedQuery(`saved-${savedQuery.id}`, savedQuery.query),
-  }));
+  ].filter((item) => matchesFind(item.label));
+  const myQueryItems: QueryListItem[] = savedQueries
+    .filter((savedQuery) => matchesFind(savedQuery.name))
+    .map((savedQuery) => ({
+      actions: (
+        <>
+          <ButtonUtility
+            data-testid={`ontology-query-saved-duplicate-${savedQuery.id}`}
+            icon={Copy01}
+            size="sm"
+            tooltip={`${t('label.duplicate')} ${savedQuery.name}`}
+            onClick={() =>
+              void duplicateIntoMyQueries(savedQuery.name, savedQuery.query)
+            }
+          />
+          <ButtonUtility
+            data-testid={`ontology-query-saved-rename-${savedQuery.id}`}
+            icon={Edit01}
+            size="sm"
+            tooltip={`${t('label.rename')} ${savedQuery.name}`}
+            onClick={() => startRename(savedQuery)}
+          />
+          <ButtonUtility
+            color="tertiary-destructive"
+            data-testid={`ontology-query-saved-delete-${savedQuery.id}`}
+            icon={Trash01}
+            size="sm"
+            tooltip={`${t('label.delete')} ${savedQuery.name}`}
+            onClick={() => void handleDeleteSavedQuery(savedQuery.id)}
+          />
+        </>
+      ),
+      id: `saved-${savedQuery.id}`,
+      isDirty: isDirty && activeQueryId === `saved-${savedQuery.id}`,
+      label: savedQuery.name,
+      subtitle: t('label.saved-time', {
+        time: describeTimeAgo(savedQuery.savedAt, t('label.just-now')),
+      }),
+      testId: `ontology-query-saved-${savedQuery.id}`,
+      onRun: () => runListedQuery(`saved-${savedQuery.id}`, savedQuery.query),
+    }));
+  const isFinding = findText.trim() !== '';
+  const searchLabel = t('label.search-entity', {
+    entity: t('label.query-plural').toLocaleLowerCase(),
+  });
 
   const renderResults = () => {
-    if (errorMessage) {
+    if (queryError) {
       return (
         <Box
           className="tw:rounded-lg tw:border tw:border-utility-error-200 tw:bg-utility-error-50 tw:px-3 tw:py-2"
-          data-testid="ontology-sparql-error">
-          <Typography className="tw:text-utility-error-700" size="text-sm">
-            {errorMessage}
+          data-testid="ontology-sparql-error"
+          direction="col"
+          gap={1}
+          role="alert">
+          <Typography
+            className="tw:text-utility-error-700"
+            data-testid="ontology-sparql-error-title"
+            size="text-sm"
+            weight="semibold">
+            {queryError.title}
+          </Typography>
+          <Typography
+            className="tw:text-utility-error-700"
+            data-testid="ontology-sparql-error-hint"
+            size="text-sm">
+            {queryError.hint}
           </Typography>
         </Box>
       );
@@ -1005,32 +1228,17 @@ const OntologyStudioQueryConsole = ({
     if (result) {
       return (
         <OntologyQueryResults
+          exportName={activeQuery.title}
           graphData={graphData}
+          ranAt={result.ranAt}
           relationshipTypes={relationTypes}
-          result={result}
+          result={result.data}
+          scopeLabel={result.scopeLabel}
         />
       );
     }
 
-    return (
-      <Box
-        align="center"
-        className="tw:min-h-40 tw:text-center"
-        data-testid="ontology-sparql-results-empty"
-        direction="col"
-        gap={1}
-        justify="center">
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.no-results-yet')}
-        </Typography>
-        <Typography className="tw:text-tertiary" size="text-xs">
-          {t('message.run-query-to-see-results')}
-        </Typography>
-      </Box>
-    );
+    return <QueryResultsEmptyState />;
   };
 
   return (
@@ -1044,29 +1252,37 @@ const OntologyStudioQueryConsole = ({
           data-library-state={loadStatus}
           data-testid="ontology-query-sample-rail"
           direction="col">
-          <Box
-            align="center"
-            className="tw:h-14 tw:shrink-0 tw:border-b tw:border-secondary tw:pr-2.5 tw:pl-5"
-            gap={2}>
-            <Typography
-              className="tw:flex-1 tw:text-primary"
-              size="text-sm"
-              weight="medium">
+          <Box align="center" className="tw:shrink-0 tw:px-4 tw:pt-4" gap={2}>
+            <Typography className="tw:flex-1" size="text-md" weight="semibold">
               {t('label.query-plural')}
             </Typography>
-            <Button
-              color="link-color"
+            <ButtonUtility
+              color="secondary"
               data-testid="ontology-query-new"
-              iconLeading={Plus}
+              icon={Plus}
+              size="lg"
+              tooltip={t('label.new-entity', {
+                entity: t('label.query').toLocaleLowerCase(),
+              })}
+              onClick={() => void handleNewQuery()}
+            />
+          </Box>
+          <Box className="tw:shrink-0 tw:px-4 tw:pt-3">
+            <Input
+              aria-label={searchLabel}
+              autoComplete="off"
+              icon={Search}
+              inputDataTestId="ontology-query-find"
+              placeholder={searchLabel}
               size="sm"
-              onClick={() => void handleNewQuery()}>
-              {t('label.new-entity', { entity: t('label.query') })}
-            </Button>
+              value={findText}
+              onChange={setFindText}
+            />
           </Box>
           <Box
             className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-2 tw:pt-4 tw:pb-6"
             direction="col"
-            gap={6}>
+            gap={3}>
             {loadStatus === 'error' ? (
               <Typography
                 className="tw:px-3 tw:text-error-primary"
@@ -1078,21 +1294,29 @@ const OntologyStudioQueryConsole = ({
               <>
                 <QueryGroup
                   activeQueryId={activeQueryId}
-                  emptyText={t('message.no-query-available')}
-                  hint={t('message.shared-queries-description')}
-                  isLoading={isLoading}
-                  items={sharedQueryItems}
-                  listTestId="ontology-query-template-list"
-                  title={t('label.shared-queries')}
-                />
-                <QueryGroup
-                  areActionsAlwaysVisible
-                  activeQueryId={activeQueryId}
-                  emptyText={t('message.my-queries-empty')}
-                  hint={t('message.sparql-private-queries-description')}
+                  emptyText={
+                    isFinding
+                      ? t('message.no-match-found')
+                      : t('message.my-queries-empty')
+                  }
+                  icon={User01}
                   items={myQueryItems}
                   listTestId="ontology-query-saved-list"
                   title={t('label.my-queries')}
+                />
+                <hr className="tw:mx-1 tw:border-secondary" />
+                <QueryGroup
+                  activeQueryId={activeQueryId}
+                  emptyText={
+                    isFinding
+                      ? t('message.no-match-found')
+                      : t('message.no-query-available')
+                  }
+                  icon={Lock01}
+                  isLoading={isLoading}
+                  items={sharedQueryItems}
+                  listTestId="ontology-query-template-list"
+                  title={t('label.shared')}
                 />
               </>
             )}
@@ -1106,6 +1330,7 @@ const OntologyStudioQueryConsole = ({
             isDirty={isDirty}
             query={query}
             rename={{
+              inputRef: renameInputRef,
               isRenaming: renameValue !== undefined,
               value: renameValue ?? '',
               onCancel: () => setRenameValue(undefined),
@@ -1114,7 +1339,17 @@ const OntologyStudioQueryConsole = ({
               onStart: () => setRenameValue(activeSavedQuery?.name ?? ''),
             }}
             running={running}
+            onDelete={() =>
+              activeSavedQuery &&
+              void handleDeleteSavedQuery(activeSavedQuery.id)
+            }
             onDiscard={() => setQuery(openedQuery)}
+            onDuplicate={() =>
+              void duplicateIntoMyQueries(
+                activeQuery.title ?? t('label.untitled-query'),
+                query
+              )
+            }
             onRun={() => void executeQuery(query)}
             onSave={handleSaveCurrent}
             onSaveTemplate={handleSaveTemplate}
@@ -1122,11 +1357,12 @@ const OntologyStudioQueryConsole = ({
           />
 
           <Box
-            className="tw:h-2/5 tw:min-h-50 tw:shrink-0 tw:overflow-auto tw:border-b tw:border-secondary"
+            className="tw:h-2/5 tw:min-h-50 tw:shrink-0 tw:overflow-auto"
             data-testid="ontology-sparql-editor"
             direction="col">
             <SchemaEditor
               className="ontology-studio-query-editor"
+              extensions={editorExtensions}
               mode={{ name: CSMode.SPARQL }}
               options={{
                 lineNumbers: true,
@@ -1145,6 +1381,12 @@ const OntologyStudioQueryConsole = ({
               }}
             />
           </Box>
+          <QueryStatusBar
+            canSave={Boolean(activeSavedQuery)}
+            isReadOnly={activeQuery.isShared}
+            query={query}
+            scopeLabel={scopeLabel}
+          />
 
           <Box
             className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:px-5 tw:pt-4 tw:pb-6"

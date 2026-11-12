@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   Effect,
   Operation,
@@ -94,16 +94,42 @@ describe('AccessControlRulesTable', () => {
     expect(row.textContent?.match(/--/g)).toHaveLength(2);
   });
 
-  it('hands the clicked rule to onEdit and its name to onDelete', () => {
+  it('hands the clicked rule to onEdit', () => {
     renderTable();
 
     fireEvent.click(screen.getByTestId('edit-rule-ViewTables'));
 
     expect(onEdit).toHaveBeenCalledWith(expect.objectContaining(ALLOW_RULE));
+  });
+
+  it('deletes a rule only after the confirmation is accepted', async () => {
+    renderTable();
 
     fireEvent.click(screen.getByTestId('delete-rule-DenyDelete'));
 
-    expect(onDelete).toHaveBeenCalledWith('DenyDelete');
+    expect(
+      await screen.findByTestId('delete-rule-popover')
+    ).toBeInTheDocument();
+    expect(onDelete).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('delete-rule-popover-confirm'));
+
+    await waitFor(() => expect(onDelete).toHaveBeenCalledWith('DenyDelete'));
+  });
+
+  it('keeps the rule when the confirmation is cancelled', async () => {
+    renderTable();
+
+    fireEvent.click(screen.getByTestId('delete-rule-DenyDelete'));
+    fireEvent.click(await screen.findByTestId('delete-rule-popover-cancel'));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('delete-rule-popover')
+      ).not.toBeInTheDocument()
+    );
+
+    expect(onDelete).not.toHaveBeenCalled();
   });
 
   it('disables edit and delete without edit permission', () => {

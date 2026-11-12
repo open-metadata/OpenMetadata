@@ -25,7 +25,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Calendar,
-  Edit03,
+  Edit01,
   Percent01,
   Tag01,
   Variable01 as Variable,
@@ -425,7 +425,7 @@ const MetricDefinitionCard = ({
               className="tw:shadow-none tw:after:outline-dashed"
               color="secondary"
               data-testid="metric-definition-edit"
-              iconLeading={Edit03}
+              iconLeading={Edit01}
               size="xs"
               onPress={() => setIsEditing(true)}>
               {t('label.edit')}
@@ -445,7 +445,11 @@ const MetricDefinitionCard = ({
       />
       <Card.Content>
         <Box direction="col" gap={5}>
-          <MetricExpression isEmbedded metric={metric} />
+          <MetricExpression
+            isEmbedded
+            changeDescription={changeDescription}
+            metric={metric}
+          />
           {/* Columns follow the card's width, not the viewport's: the card is often narrow (version
               view, beside a panel), where viewport breakpoints let one-word labels overlap. */}
           <Box

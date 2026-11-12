@@ -215,7 +215,7 @@ const BucketServicesList: React.FC<BucketServicesListProps> = ({
     <>
       {services.length > 0 && (
         <ul
-          className="tw:mt-2 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+          className="tw:mt-2 tw:flex tw:flex-col"
           data-testid="platform-health-rows">
           {services.map((service) => (
             <BucketServiceRow
@@ -255,7 +255,7 @@ const FailingServicesList: React.FC<FailingServicesListProps> = ({
     <>
       {failingServices.length > 0 && (
         <ul
-          className="tw:mt-2 tw:flex tw:flex-col tw:divide-y tw:divide-secondary"
+          className="tw:mt-2 tw:flex tw:flex-col"
           data-testid="platform-health-rows">
           {failingServices.slice(0, MAX_VISIBLE_ROWS).map((service) => (
             <FailingServiceRow

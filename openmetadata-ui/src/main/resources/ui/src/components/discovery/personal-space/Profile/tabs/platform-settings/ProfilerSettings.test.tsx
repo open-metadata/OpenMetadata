@@ -17,7 +17,9 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { values } from 'lodash';
 import {
   DataType,
@@ -192,6 +194,53 @@ describe('Profiler configuration settings', () => {
       page: 'profiler-configuration',
       isEditing: false,
     });
+  });
+
+  // Typing narrows the list so the first option is the wanted one.
+  const pickMetric = async (rowIndex: number, search: string) => {
+    const user = userEvent.setup({ delay: null });
+
+    await user.click(
+      within(screen.getByTestId(`metric-row-${rowIndex}`)).getByRole('combobox')
+    );
+    await user.keyboard(`${search}{ArrowDown}{Enter}`);
+  };
+
+  const savedMetrics = async () => {
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('save-button'));
+    });
+
+    return (updateSettingsConfig as jest.Mock).mock.calls[0][0].config_value
+      .metricConfiguration[0].metrics;
+  };
+
+  it('picking a metric while "All" is selected replaces "All"', async () => {
+    mockStored(STORED);
+    render(<ProfilerSettingsForm showHint={false} onNavigate={onNavigate} />);
+    await screen.findByTestId('metric-row-1');
+
+    await pickMetric(0, 'Max');
+
+    expect(await savedMetrics()).toEqual([MetricType.Max]);
+  });
+
+  it('picking "All" clears the individually selected metrics', async () => {
+    mockStored({
+      ...STORED,
+      metricConfiguration: [
+        { dataType: DataType.Int, metrics: [MetricType.Max] },
+      ],
+    });
+    render(<ProfilerSettingsForm showHint={false} onNavigate={onNavigate} />);
+    await screen.findByTestId('metric-row-0');
+
+    await pickMetric(0, 'label.all');
+
+    expect(
+      within(screen.getByTestId('metric-row-0')).queryByText('Max')
+    ).not.toBeInTheDocument();
+    expect(await savedMetrics()).toEqual(values(MetricType));
   });
 
   it('removing a row drops it from the saved configuration', async () => {

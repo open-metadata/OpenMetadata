@@ -36,6 +36,7 @@ from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig 
 from metadata.generated.schema.type.tableUsageCount import TableColumn, TableColumnJoin
 from metadata.ingestion.lineage.masker import mask_query
 from metadata.ingestion.lineage.models import Dialect
+from metadata.ingestion.lineage.tsql import rewrite_switch_statements
 from metadata.utils.helpers import (
     find_in_iter,
     get_formatted_entity_name,
@@ -89,6 +90,8 @@ class LineageParser:
         self.dialect = dialect
         self.masked_query = None
         self._clean_query = self.clean_raw_query(query)
+        if self._clean_query and dialect == Dialect.TSQL:
+            self._clean_query = rewrite_switch_statements(self._clean_query)
         self.parser = self._evaluate_best_parser(
             self._clean_query,
             dialect=dialect,

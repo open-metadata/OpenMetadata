@@ -25,6 +25,7 @@ INVENTORY = ContractInventory(
     required=frozenset(
         {
             "catalog.metadata",
+            "catalog.sharding",
             "catalog.multi-project",
             "procedure.code",
             "fk.relationships",

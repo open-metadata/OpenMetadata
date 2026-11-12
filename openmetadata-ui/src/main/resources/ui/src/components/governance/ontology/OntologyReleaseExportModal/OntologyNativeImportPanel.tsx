@@ -16,18 +16,23 @@ import {
   Badge,
   Box,
   Button,
-  Card,
-  FeaturedIcon,
+  CloseButton,
+  Dialog,
   FileTrigger,
   FileUpload,
-  ProgressSteps,
+  getReadableFileSize,
   Select,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Upload01 } from '@openmetadata/ui-core-components/icons';
 import { useQueryClient } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
-import { MutableRefObject, useEffect, useReducer, useRef } from 'react';
+import {
+  Dispatch,
+  MutableRefObject,
+  useEffect,
+  useReducer,
+  useRef,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
@@ -42,25 +47,35 @@ import {
 } from '../../../../hooks/governance/ontology/useNativeOntologyInstall';
 import { ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY } from '../../../../hooks/governance/ontology/useOntologyStudioScopes';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { previewNativeOntologyImport } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import { getErrorText } from '../../../../utils/StringUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
+import { GeneratedOntologyIdentity } from '../OntologyCreateForm/OntologyCreateForm.utils';
+import { useOntologyIdentitySource } from '../OntologyCreateForm/useOntologyIdentitySource';
 import { resolveNativeLibraryTarget } from '../OntologyNativeLibraryDetail/OntologyNativeLibraryDetail.utils';
+import OntologyNativeImportItems from './OntologyNativeImportItems';
 import {
+  canApplyImport,
+  detectedFormatOf,
   detectNativeImportFile,
   hasReviewers,
+  importBusyOf,
+  importItemsOf,
+  importSummaryParts,
   INITIAL_NATIVE_IMPORT_STATE,
+  isFileChoiceDisabled,
+  isNewImportTarget,
+  isSelectableItem,
+  itemImportCount,
   landOnImportedOntology,
-  nativeImportActionFlags,
+  NativeImportAction,
   nativeImportErrorMessage,
   nativeImportOntologyRequest,
   NativeImportParse,
   nativeImportReducer,
   NativeImportState,
-  nativeImportStep,
   NativeImportTarget,
   NATIVE_IMPORT_ACCEPTED_EXTENSIONS,
   NATIVE_IMPORT_FORMAT_LABEL_KEYS,
@@ -68,34 +83,22 @@ import {
   parseNativeImportFile,
   pick,
   readySummaryOf,
+  selectChanges,
+  selectionOf,
 } from './OntologyNativeImportPanel.utils';
+import OntologyNativeImportSkipped from './OntologyNativeImportSkipped';
 
 interface OntologyNativeImportPanelProps {
   readonly canImport: boolean;
   readonly ontology?: Ontology;
   readonly onApplied: () => void;
   readonly onBusyChange?: (isBusy: boolean) => void;
+  readonly onCancel: () => void;
 }
 
-const STEP_INDEX = { drop: 0, parse: 1, import: 2 } as const;
 const NEW_TARGET_KEY = 'new';
-const COUNT_TILES = [
-  {
-    id: 'new-concepts',
-    label: 'label.new-concept-plural',
-    count: 'newConcepts',
-  },
-  { id: 'relations', label: 'label.relation-plural', count: 'newRelations' },
-  {
-    id: 'new-properties',
-    label: 'label.property-plural',
-    count: 'newProperties',
-  },
-  { id: 'mappings', label: 'label.mapping-plural', count: 'newMappings' },
-  { id: 'skipped', label: 'label.skipped', count: 'skippedDefinitions' },
-] as const;
 
-const ImportResult = ({
+const ImportOutcome = ({
   summary,
   isNewTarget,
   hasReviewers,
@@ -105,54 +108,13 @@ const ImportResult = ({
   readonly hasReviewers: boolean;
 }) => {
   const { t } = useTranslation();
-  const { counts, ontologyLabel } = summary;
-  const hasOtherChanges =
-    counts.updatedConcepts +
-      counts.updatedProperties +
-      counts.skippedRelations >
-    0;
 
   return (
-    <Box data-testid="ontology-native-import-result" direction="col" gap={3}>
-      <Typography weight="semibold">
-        {t('message.native-import-nothing-persisted')}
-      </Typography>
-      {isNewTarget && ontologyLabel && (
+    <>
+      {isNewTarget && summary.ontologyLabel && (
         <Typography color="secondary" size="text-sm">
           {t('message.native-import-new-ontology-named', {
-            name: ontologyLabel,
-          })}
-        </Typography>
-      )}
-      <Box gap={3}>
-        {COUNT_TILES.map((tile) => (
-          <Card className="tw:flex-1" key={tile.id} size="sm" variant="muted">
-            <Card.Content>
-              <Typography
-                as="div"
-                data-testid={`ontology-native-import-count-${tile.id}`}
-                size="text-xl"
-                weight="semibold">
-                {counts[tile.count]}
-              </Typography>
-              <Typography color="secondary" size="text-xs">
-                {tile.id === 'new-properties'
-                  ? `${t('label.new')} ${t(tile.label)}`
-                  : t(tile.label)}
-              </Typography>
-            </Card.Content>
-          </Card>
-        ))}
-      </Box>
-      {hasOtherChanges && (
-        <Typography
-          color="secondary"
-          data-testid="ontology-native-import-also"
-          size="text-sm">
-          {t('message.native-import-also', {
-            updatedConcepts: counts.updatedConcepts,
-            updatedProperties: counts.updatedProperties,
-            skippedRelations: counts.skippedRelations,
+            name: summary.ontologyLabel,
           })}
         </Typography>
       )}
@@ -163,21 +125,61 @@ const ImportResult = ({
           {t('message.native-import-enters-draft')}
         </Alert>
       )}
-    </Box>
+    </>
   );
 };
 
-const ImportFileLabel = ({ state }: { readonly state: NativeImportState }) => {
+const fileExtensionOf = (fileName: string) => {
+  const dot = fileName.lastIndexOf('.');
+
+  return dot > 0 ? fileName.slice(dot + 1).toUpperCase() : '';
+};
+
+const ImportFileCard = ({
+  isDisabled,
+  state,
+  onClear,
+  onReplace,
+}: {
+  readonly isDisabled: boolean;
+  readonly state: NativeImportState;
+  readonly onClear: () => void;
+  readonly onReplace: (files: FileList | null) => void;
+}) => {
   const { t } = useTranslation();
-  const format =
-    state.detection.kind === 'ready' ? state.detection.format : undefined;
-  const isUndetected = state.detection.kind === 'ready' && !format;
+  const format = detectedFormatOf(state);
+  const summary = readySummaryOf(state);
+  const items = summary ? importItemsOf(summary) : [];
+  const details = [
+    state.fileSize === undefined
+      ? undefined
+      : getReadableFileSize(state.fileSize),
+    items.length > 0
+      ? t('message.native-import-items-found', {
+          count: items.length,
+          skipped: items.filter((item) => !isSelectableItem(item)).length,
+        })
+      : undefined,
+  ].filter(Boolean);
 
   return (
-    <>
-      {state.fileName && (
+    <Box
+      align="center"
+      className="tw:rounded-xl tw:border tw:border-secondary tw:p-4"
+      data-testid="ontology-native-import-file-card"
+      gap={3}>
+      <Box
+        align="center"
+        className="tw:size-10 tw:shrink-0 tw:rounded-lg tw:border tw:border-brand tw:bg-brand-primary tw:text-xs tw:font-semibold tw:text-brand-secondary"
+        justify="center">
+        {fileExtensionOf(state.fileName ?? '')}
+      </Box>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
         <Box align="center" gap={2}>
-          <Typography data-testid="ontology-native-import-file-name">
+          <Typography
+            className="tw:break-words"
+            data-testid="ontology-native-import-file-name"
+            weight="medium">
             {state.fileName}
           </Typography>
           {format && (
@@ -186,31 +188,58 @@ const ImportFileLabel = ({ state }: { readonly state: NativeImportState }) => {
             </Badge>
           )}
         </Box>
-      )}
-      {isUndetected && (
-        <Alert variant="warning">
-          {t('message.native-import-format-undetected')}
-        </Alert>
-      )}
-    </>
+        {details.length > 0 && (
+          <Typography
+            color="secondary"
+            data-testid="ontology-native-import-items-found"
+            size="text-sm">
+            {details.join(' · ')}
+          </Typography>
+        )}
+      </Box>
+      <FileTrigger
+        acceptedFileTypes={NATIVE_IMPORT_ACCEPTED_EXTENSIONS.split(',')}
+        onSelect={onReplace}>
+        <Button
+          color="link-color"
+          data-testid="ontology-native-import-replace"
+          isDisabled={isDisabled}
+          size="sm">
+          {t('label.replace')}
+        </Button>
+      </FileTrigger>
+      <CloseButton
+        data-testid="ontology-native-import-clear"
+        isDisabled={isDisabled}
+        label={t('label.remove')}
+        size="sm"
+        onPress={onClear}
+      />
+    </Box>
   );
 };
 
 const ImportFileStep = ({
   state,
   isDisabled,
+  onClear,
   onFile,
+  onReplace,
   onSizeLimitExceed,
 }: {
   readonly state: NativeImportState;
   readonly isDisabled: boolean;
+  readonly onClear: () => void;
   readonly onFile: (files: FileList) => void;
+  readonly onReplace: (files: FileList | null) => void;
   readonly onSizeLimitExceed: () => void;
 }) => {
   const { t } = useTranslation();
+  const isUndetected =
+    state.detection.kind === 'ready' && !detectedFormatOf(state);
 
-  return (
-    <>
+  if (!state.fileName) {
+    return (
       <FileUpload.DropZone
         accept={NATIVE_IMPORT_ACCEPTED_EXTENSIONS}
         allowsMultiple={false}
@@ -223,53 +252,92 @@ const ImportFileStep = ({
         onDropFiles={onFile}
         onSizeLimitExceed={onSizeLimitExceed}
       />
-      <ImportFileLabel state={state} />
+    );
+  }
+
+  return (
+    <>
+      <ImportFileCard
+        isDisabled={isDisabled}
+        state={state}
+        onClear={onClear}
+        onReplace={onReplace}
+      />
+      {isUndetected && (
+        <Alert variant="warning">
+          {t('message.native-import-format-undetected')}
+        </Alert>
+      )}
     </>
   );
 };
 
-const ImportActions = ({
-  canParse,
+const ImportButton = ({
   canImport,
+  importCount,
   isImporting,
   isLocked,
-  isParsed,
-  isParsing,
   onImport,
-  onParse,
 }: {
-  readonly canParse: boolean;
   readonly canImport: boolean;
+  readonly importCount?: number;
   readonly isImporting: boolean;
   readonly isLocked: boolean;
-  readonly isParsed: boolean;
-  readonly isParsing: boolean;
   readonly onImport: () => void;
-  readonly onParse: () => void;
 }) => {
   const { t } = useTranslation();
+  let label = t('label.import-change-count', { count: importCount });
+  if (isLocked) {
+    label = t('label.retry');
+  } else if (importCount === undefined) {
+    label = t('label.import');
+  }
 
   return (
-    <Box gap={2}>
-      {!isParsed && (
-        <Button
-          color="secondary"
-          data-testid="ontology-native-import-parse"
-          isDisabled={!canParse}
-          isLoading={isParsing}
-          onPress={onParse}>
-          {t('label.parse')}
-        </Button>
-      )}
-      <Button
-        color="primary"
-        data-testid="ontology-native-import-apply"
-        isDisabled={!canImport}
-        isLoading={isImporting}
-        onPress={onImport}>
-        {isLocked ? t('label.retry') : t('label.import')}
-      </Button>
-    </Box>
+    <Button
+      color="primary"
+      data-testid="ontology-native-import-apply"
+      isDisabled={!canImport}
+      isLoading={isImporting}
+      onPress={onImport}>
+      {label}
+    </Button>
+  );
+};
+
+const ImportFooterSummary = ({
+  selection,
+  summary,
+}: {
+  readonly selection: ReadonlySet<string>;
+  readonly summary?: NativeOntologyImportSummary;
+}) => {
+  const { t, i18n } = useTranslation();
+  const parts = summary ? importSummaryParts(summary, selection) : [];
+  let text = t('message.ontology-import-supported-files');
+  if (summary) {
+    text =
+      parts.length > 0
+        ? t('message.native-import-saved-as-draft', {
+            changes: new Intl.ListFormat(i18n.language, {
+              type: 'unit',
+            }).format(
+              parts.map(({ part, count }) =>
+                t(`message.native-import-count-${part}`, { count })
+              )
+            ),
+          })
+        : t('message.native-import-nothing-selected');
+  }
+
+  return (
+    <Typography
+      className="tw:mr-auto tw:self-center"
+      color="secondary"
+      data-testid="ontology-native-import-summary"
+      size="text-sm">
+      {text}
+    </Typography>
   );
 };
 
@@ -306,6 +374,39 @@ const ImportTargetSelect = ({
         label={t('label.new-ontology')}
       />
     </Select>
+  );
+};
+
+const ImportIntro = ({
+  canCreate,
+  isDisabled,
+  isNewTarget,
+  ontology,
+  onTargetChange,
+}: {
+  readonly canCreate: boolean;
+  readonly isDisabled: boolean;
+  readonly isNewTarget: boolean;
+  readonly ontology?: Ontology;
+  readonly onTargetChange: (target: NativeImportTarget) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <Typography color="secondary" size="text-sm">
+        {isNewTarget
+          ? t('message.native-ontology-import-help')
+          : t('message.ontology-import-into-help')}
+      </Typography>
+      <ImportTargetSelect
+        canCreate={canCreate}
+        isDisabled={isDisabled}
+        isNewTarget={isNewTarget}
+        ontology={ontology}
+        onChange={onTargetChange}
+      />
+    </>
   );
 };
 
@@ -352,14 +453,16 @@ const useNativeImportInstall = ({
     resolveNew: resolveNativeLibraryTarget,
     plan: async (resolved) => {
       if (!isNewTarget && parse.kind === 'ready' && parse.changeSet) {
-        return parse.changeSet;
+        return selectChanges(parse.changeSet, parse.summary, parse.selection);
       }
       const preview = await previewNativeOntologyImport(resolved.id, {
         data: content.current,
         fileName,
       });
 
-      return preview.changeSet;
+      return parse.kind === 'ready'
+        ? selectChanges(preview.changeSet, preview.summary, parse.selection)
+        : preview.changeSet;
     },
     onInstalled: (installed) => {
       showSuccessToast(t('label.ontology-applied'));
@@ -379,7 +482,8 @@ const useNativeImportInstall = ({
 const nativeImportInstallTarget = (
   state: NativeImportState,
   ontology: Ontology | undefined,
-  userId: string | undefined
+  userId: string | undefined,
+  identityOf: (title: string) => GeneratedOntologyIdentity | undefined
 ): NativeInstallTarget | undefined => {
   if (state.parse.kind !== 'ready' || !state.fileName) {
     return undefined;
@@ -394,97 +498,66 @@ const nativeImportInstallTarget = (
         request: nativeImportOntologyRequest(
           state.parse.summary.ontologyLabel,
           state.fileName,
-          userId
+          userId,
+          identityOf
         ),
       }
     : undefined;
 };
 
-const OntologyNativeImportPanel = ({
-  canImport,
-  ontology,
-  onApplied,
-  onBusyChange,
-}: OntologyNativeImportPanelProps) => {
+const useNativeImportFileChoice = ({
+  content,
+  describe,
+  dispatch,
+  isLocked,
+  nextToken,
+  onDetected,
+}: {
+  readonly content: MutableRefObject<string>;
+  readonly describe: (error: unknown) => string;
+  readonly dispatch: Dispatch<NativeImportAction>;
+  readonly isLocked: boolean;
+  readonly nextToken: () => number;
+  readonly onDetected: (fileName: string) => void;
+}) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
-  const { canCreate, currentUserId } = useCanCreateOntology();
-  const [state, dispatch] = useReducer(nativeImportReducer, {
-    ...INITIAL_NATIVE_IMPORT_STATE,
-    target: ontology ? 'existing' : 'new',
-  });
-  const content = useRef('');
-  const token = useRef(0);
   const fileToken = useRef(0);
-  const nextToken = () => ++token.current;
-  const isNewTarget = state.target === 'new' || !ontology;
-  const canUseTarget = pick(isNewTarget, canCreate, canImport);
-  const unexpected = t('server.unexpected-error');
-
-  const install = useNativeImportInstall({
-    canCreate,
-    content,
-    isNewTarget,
-    parse: state.parse,
-    fileName: state.fileName,
-    onApplied,
-  });
-
-  const isParsing = state.parse.kind === 'pending';
-  const isBusy = isParsing || install.isBusy;
-  useEffect(() => {
-    onBusyChange?.(isBusy);
-  }, [isBusy, onBusyChange]);
-
-  const describe = (error: unknown) => describeError(error, unexpected);
 
   const handleFile = async (files: FileList) => {
     const file = files[0];
-    if (!file || install.isLocked) {
+    if (!file || isLocked) {
       return;
     }
     const fileId = nextToken();
     fileToken.current = fileId;
     content.current = '';
-    dispatch({ type: 'fileChosen', token: fileId, fileName: file.name });
-    const text = await detectNativeImportFile(file, fileId, dispatch, describe);
-    if (fileToken.current === fileId) {
-      content.current = text;
-    }
-  };
-
-  const handleParse = async () => {
-    const parseId = nextToken();
-    dispatch({ type: 'parseStarted', token: parseId });
-    await parseNativeImportFile(
-      { data: content.current, fileName: state.fileName },
-      parseId,
-      isNewTarget ? undefined : ontology,
+    dispatch({
+      type: 'fileChosen',
+      token: fileId,
+      fileName: file.name,
+      fileSize: file.size,
+    });
+    const { text, format } = await detectNativeImportFile(
+      file,
+      fileId,
       dispatch,
       describe
     );
-  };
-
-  const handleImport = () => {
-    const target = nativeImportInstallTarget(
-      state,
-      isNewTarget ? undefined : ontology,
-      currentUserId
-    );
-    if (target) {
-      void install.start(target);
+    if (fileToken.current !== fileId) {
+      return;
+    }
+    content.current = text;
+    if (format) {
+      onDetected(file.name);
     }
   };
 
-  const readySummary = readySummaryOf(state);
-  const errorMessage = nativeImportErrorMessage(state, install.error);
-  const isLockedOrBusy = install.isLocked || isBusy;
-  const flags = nativeImportActionFlags(state, {
-    canUseTarget,
-    isBusy,
-    isLockedOrBusy,
-  });
-  const isFileDisabled = isLockedOrBusy || !canUseTarget;
+  const clearFile = () => {
+    const fileId = nextToken();
+    fileToken.current = fileId;
+    content.current = '';
+    dispatch({ type: 'fileCleared', token: fileId });
+  };
 
   const rejectOversizedFile = () => {
     const fileId = nextToken();
@@ -510,99 +583,263 @@ const OntologyNativeImportPanel = ({
     void handleFile(files);
   };
 
-  const targetSelect = (
-    <ImportTargetSelect
-      canCreate={canCreate}
-      isDisabled={isLockedOrBusy}
-      isNewTarget={isNewTarget}
-      ontology={ontology}
-      onChange={(target) =>
-        dispatch({ type: 'targetChanged', token: nextToken(), target })
-      }
-    />
+  return { clearFile, handleFile, handleSelectedFile, rejectOversizedFile };
+};
+
+const ImportReview = ({
+  hasReviewers: hasReviewerGate,
+  isDisabled,
+  isNewTarget,
+  selection,
+  summary,
+  onSelectionChange,
+}: {
+  readonly hasReviewers: boolean;
+  readonly isDisabled: boolean;
+  readonly isNewTarget: boolean;
+  readonly selection: ReadonlySet<string>;
+  readonly summary: NativeOntologyImportSummary;
+  readonly onSelectionChange: (selection: ReadonlySet<string>) => void;
+}) => {
+  const items = importItemsOf(summary);
+
+  return (
+    <Box data-testid="ontology-native-import-result" direction="col" gap={4}>
+      <ImportOutcome
+        hasReviewers={hasReviewerGate}
+        isNewTarget={isNewTarget}
+        summary={summary}
+      />
+      {summary.skippedStatements && summary.skippedStatements.total > 0 && (
+        <OntologyNativeImportSkipped skipped={summary.skippedStatements} />
+      )}
+      {(items.length > 0 || (summary.omittedItems ?? 0) > 0) && (
+        <OntologyNativeImportItems
+          hasSummary={false}
+          isDisabled={isDisabled}
+          items={items}
+          omittedItems={summary.omittedItems ?? 0}
+          selection={selection}
+          onSelectionChange={onSelectionChange}
+        />
+      )}
+    </Box>
   );
+};
 
-  const importResult = readySummary && (
-    <ImportResult
-      hasReviewers={!isNewTarget && hasReviewers(ontology)}
-      isNewTarget={isNewTarget}
-      summary={readySummary}
-    />
-  );
+const ImportErrors = ({
+  message,
+  onRetry,
+}: {
+  readonly message?: string;
+  readonly onRetry?: () => void;
+}) => {
+  const { t } = useTranslation();
 
-  const errors = errorMessage && <Alert variant="error">{errorMessage}</Alert>;
+  return message ? (
+    <Alert variant="error">
+      {message}
+      {onRetry ? (
+        <Button
+          color="secondary"
+          data-testid="ontology-native-import-retry"
+          size="sm"
+          onPress={onRetry}>
+          {t('label.retry')}
+        </Button>
+      ) : null}
+    </Alert>
+  ) : null;
+};
 
-  const importActions = (
-    <ImportActions
-      canImport={flags.canImport}
-      canParse={flags.canParse}
-      isImporting={install.isBusy}
-      isLocked={install.isLocked}
-      isParsed={Boolean(readySummary)}
-      isParsing={isParsing}
-      onImport={handleImport}
-      onParse={() => void handleParse()}
-    />
-  );
+const ImportReading = ({
+  fileName,
+  isParsing,
+}: {
+  readonly fileName?: string;
+  readonly isParsing: boolean;
+}) => {
+  const { t } = useTranslation();
 
-  if (isAiMode) {
-    return (
-      <Box direction="col" gap={4}>
-        {targetSelect}
-        <Box
-          align="center"
-          className="tw:rounded-xl tw:border tw:border-dashed tw:border-secondary tw:bg-secondary_alt tw:px-6 tw:py-8 tw:text-center"
-          direction="col"
-          gap={3}>
-          <FeaturedIcon color="gray" icon={Upload01} size="md" theme="modern" />
-          <Typography color="secondary" size="text-sm">
-            {t('message.native-ontology-import-help')}
-          </Typography>
-          <FileTrigger
-            acceptedFileTypes={NATIVE_IMPORT_ACCEPTED_EXTENSIONS.split(',')}
-            onSelect={handleSelectedFile}>
-            <Button
-              color="secondary"
-              data-testid="ontology-native-import-file"
-              isDisabled={isFileDisabled}>
-              {t('label.choose-file')}
-            </Button>
-          </FileTrigger>
-          <ImportFileLabel state={state} />
-        </Box>
-        {importResult}
-        {errors}
-        <Box justify="end">{importActions}</Box>
-      </Box>
-    );
+  if (!isParsing || !fileName) {
+    return null;
   }
 
   return (
-    <Box direction="col" gap={4}>
-      <Typography color="secondary" size="text-sm">
-        {t('message.native-ontology-import-help')}
-      </Typography>
-      <ProgressSteps
-        currentStep={STEP_INDEX[nativeImportStep(state)]}
-        size="sm"
-        steps={[
-          { id: 'drop', title: t('label.choose-file') },
-          { id: 'parse', title: t('label.parse') },
-          { id: 'import', title: t('label.import') },
-        ]}
-        type="number"
-      />
-      {targetSelect}
-      <ImportFileStep
-        isDisabled={isFileDisabled}
-        state={state}
-        onFile={(files) => void handleFile(files)}
-        onSizeLimitExceed={rejectOversizedFile}
-      />
-      {importResult}
-      {errors}
-      {importActions}
-    </Box>
+    <Typography
+      color="secondary"
+      data-testid="ontology-native-import-reading"
+      role="status"
+      size="text-sm">
+      {t('message.native-import-reading-file', { fileName })}
+    </Typography>
+  );
+};
+
+const OntologyNativeImportPanel = ({
+  canImport,
+  ontology,
+  onApplied,
+  onBusyChange,
+  onCancel,
+}: OntologyNativeImportPanelProps) => {
+  const { t } = useTranslation();
+  const { canCreate, currentUserId } = useCanCreateOntology();
+  const {
+    identityOf,
+    refreshIdentityOf,
+    isReady: isIdentityReady,
+  } = useOntologyIdentitySource(!ontology || canCreate);
+  const [state, dispatch] = useReducer(nativeImportReducer, {
+    ...INITIAL_NATIVE_IMPORT_STATE,
+    target: ontology ? 'existing' : 'new',
+  });
+  const content = useRef('');
+  const token = useRef(0);
+  const nextToken = () => ++token.current;
+  const isNewTarget = isNewImportTarget(state, ontology);
+  const canUseTarget = pick(isNewTarget, canCreate, canImport);
+  const unexpected = t('server.unexpected-error');
+
+  const install = useNativeImportInstall({
+    canCreate,
+    content,
+    isNewTarget,
+    parse: state.parse,
+    fileName: state.fileName,
+    onApplied,
+  });
+
+  const { isBusy, isParsing } = importBusyOf(state, install.isBusy);
+  useEffect(() => {
+    onBusyChange?.(isBusy);
+  }, [isBusy, onBusyChange]);
+
+  const describe = (error: unknown) => describeError(error, unexpected);
+
+  // The preview is a dry run, so it starts as soon as the file's format is known.
+  const parse = async (fileName: string, isNew: boolean) => {
+    if (!pick(isNew, canCreate, canImport)) {
+      return;
+    }
+    const parseId = nextToken();
+    dispatch({ type: 'parseStarted', token: parseId });
+    await parseNativeImportFile(
+      { data: content.current, fileName },
+      parseId,
+      isNew ? undefined : ontology,
+      dispatch,
+      describe
+    );
+  };
+
+  // Detection resolves after later renders; the dry run must use the target chosen by then.
+  const latestParse = useRef({ parse, isNewTarget });
+  latestParse.current = { parse, isNewTarget };
+
+  const { clearFile, handleFile, handleSelectedFile, rejectOversizedFile } =
+    useNativeImportFileChoice({
+      content,
+      describe,
+      dispatch,
+      isLocked: install.isLocked,
+      nextToken,
+      onDetected: (fileName) =>
+        void latestParse.current.parse(
+          fileName,
+          latestParse.current.isNewTarget
+        ),
+    });
+
+  const changeTarget = (target: NativeImportTarget) => {
+    dispatch({ type: 'targetChanged', token: nextToken(), target });
+    if (state.fileName && detectedFormatOf(state) && target !== state.target) {
+      void parse(state.fileName, target === 'new' || !ontology);
+    }
+  };
+
+  const handleImport = async () => {
+    const target = nativeImportInstallTarget(
+      state,
+      isNewTarget ? undefined : ontology,
+      currentUserId,
+      isNewTarget ? await refreshIdentityOf() : identityOf
+    );
+    if (target) {
+      void install.start(target);
+    }
+  };
+
+  const readySummary = readySummaryOf(state);
+  const isLockedOrBusy = install.isLocked || isBusy;
+  const selection = selectionOf(state.parse);
+
+  return (
+    <>
+      <Dialog.Content>
+        <ImportIntro
+          canCreate={canCreate}
+          isDisabled={isLockedOrBusy}
+          isNewTarget={isNewTarget}
+          ontology={ontology}
+          onTargetChange={changeTarget}
+        />
+        <ImportFileStep
+          isDisabled={isFileChoiceDisabled(isLockedOrBusy, canUseTarget)}
+          state={state}
+          onClear={clearFile}
+          onFile={(files) => void handleFile(files)}
+          onReplace={handleSelectedFile}
+          onSizeLimitExceed={rejectOversizedFile}
+        />
+        <ImportReading fileName={state.fileName} isParsing={isParsing} />
+        {readySummary && (
+          <ImportReview
+            hasReviewers={!isNewTarget && hasReviewers(ontology)}
+            isDisabled={isLockedOrBusy}
+            isNewTarget={isNewTarget}
+            selection={selection}
+            summary={readySummary}
+            onSelectionChange={(next) =>
+              dispatch({
+                type: 'selectionChanged',
+                parseId: state.parseId,
+                selection: next,
+              })
+            }
+          />
+        )}
+        <ImportErrors
+          message={nativeImportErrorMessage(state, install.error)}
+          onRetry={
+            state.parse.kind === 'failed' && state.fileName && !isLockedOrBusy
+              ? () => void parse(state.fileName ?? '', isNewTarget)
+              : undefined
+          }
+        />
+      </Dialog.Content>
+      <Dialog.Footer>
+        <ImportFooterSummary selection={selection} summary={readySummary} />
+        <Button
+          color="secondary"
+          data-testid="ontology-native-import-cancel"
+          isDisabled={isBusy}
+          onPress={onCancel}>
+          {t('label.cancel')}
+        </Button>
+        <ImportButton
+          canImport={canApplyImport(state, {
+            canUseTarget,
+            isBusy,
+            isIdentityReady,
+          })}
+          importCount={readySummary && itemImportCount(readySummary, selection)}
+          isImporting={install.isBusy}
+          isLocked={install.isLocked}
+          onImport={() => void handleImport()}
+        />
+      </Dialog.Footer>
+    </>
   );
 };
 

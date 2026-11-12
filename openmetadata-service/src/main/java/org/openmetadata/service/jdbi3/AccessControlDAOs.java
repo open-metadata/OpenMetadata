@@ -33,6 +33,7 @@ import java.util.stream.Collectors;
 import org.jdbi.v3.core.mapper.RowMapper;
 import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
+import org.jdbi.v3.sqlobject.config.RegisterConstructorMapper;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.customizer.BindList;
@@ -57,6 +58,7 @@ import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.UsageDetails;
 import org.openmetadata.schema.type.UsageStats;
 import org.openmetadata.schema.utils.EntityInterfaceUtil;
+import org.openmetadata.service.events.ChangeEventMasking;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.UsageDAO.UsageDetailsMapper;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlBatch;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -107,7 +109,44 @@ public interface AccessControlDAOs {
     }
   }
 
+  record PersonaUserCount(UUID personaId, int userCount) {}
+
   interface PersonaDAO extends EntityDAO<Persona> {
+    @SqlQuery(
+        """
+        SELECT assigned.personaId, COUNT(DISTINCT assigned.userId) AS userCount
+        FROM (
+          SELECT fromId AS personaId, toId AS userId FROM entity_relationship
+          WHERE fromEntity = 'persona' AND toEntity = 'user'
+            AND relation IN (:appliedTo, :defaultsTo) AND fromId IN (<personaIds>)
+          UNION ALL
+          SELECT tp.toId AS personaId, tu.toId AS userId
+          FROM entity_relationship tp
+          JOIN team_entity team ON team.id = tp.fromId AND team.deleted = FALSE
+          JOIN entity_relationship tu ON tu.fromId = tp.fromId
+            AND tu.fromEntity = 'team' AND tu.toEntity = 'user' AND tu.relation = :has
+          JOIN user_entity member ON member.id = tu.toId AND member.isBot = FALSE
+          WHERE tp.fromEntity = 'team' AND tp.toEntity = 'persona' AND tp.relation = :has
+            AND tp.toId IN (<personaIds>)
+          UNION ALL
+          SELECT :systemDefaultId AS personaId, member.id AS userId FROM user_entity member
+          WHERE :systemDefaultId IN (<personaIds>) AND member.isBot = FALSE AND NOT EXISTS (
+            SELECT 1 FROM entity_relationship defaults
+            WHERE defaults.fromEntity = 'persona' AND defaults.toEntity = 'user'
+              AND defaults.toId = member.id AND defaults.relation = :defaultsTo
+          )
+        ) assigned
+        JOIN user_entity activeUser ON activeUser.id = assigned.userId AND activeUser.deleted = FALSE
+        GROUP BY assigned.personaId
+        """)
+    @RegisterConstructorMapper(PersonaUserCount.class)
+    List<PersonaUserCount> countEffectiveUsers(
+        @BindList("personaIds") List<String> personaIds,
+        @Bind("systemDefaultId") String systemDefaultId,
+        @Bind("appliedTo") int appliedTo,
+        @Bind("defaultsTo") int defaultsTo,
+        @Bind("has") int has);
+
     @Override
     default String getTableName() {
       return "persona_entity";
@@ -1228,14 +1267,31 @@ public interface AccessControlDAOs {
         "SELECT CASE WHEN EXISTS (SELECT 1 FROM event_subscription_entity WHERE id = :id) THEN 1 ELSE 0 END AS record_exists")
     int recordExists(@Bind("id") String id);
 
+    /**
+     * Every change event is written through here, so none is stored with a masked field
+     * (ADR:2026-10-26-masked-fields-stay-out-of-change-events-and-version-history).
+     */
+    default void insert(String json) {
+      insertMaskedRow(ChangeEventMasking.masked(json));
+    }
+
+    default void insertBatch(List<String> jsons) {
+      if (nullOrEmpty(jsons)) {
+        return;
+      }
+      insertMaskedRows(jsons.stream().map(ChangeEventMasking::masked).toList());
+    }
+
+    /** Only for {@link #insert}: the event must already be masked. */
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "INSERT INTO change_event (json) VALUES (:json :: jsonb)",
         connectionType = POSTGRES)
-    void insert(@BindJson("json") String json);
+    void insertMaskedRow(@BindJson("json") String json);
 
+    /** Only for {@link #insertBatch}: the events must already be masked. */
     @Transaction
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (:json)",
@@ -1243,14 +1299,7 @@ public interface AccessControlDAOs {
     @ConnectionAwareSqlBatch(
         value = "INSERT INTO change_event (json) VALUES (CAST(:json AS jsonb))",
         connectionType = POSTGRES)
-    void insertBatchRows(@BindJson("json") List<String> jsons);
-
-    default void insertBatch(List<String> jsons) {
-      if (nullOrEmpty(jsons)) {
-        return;
-      }
-      insertBatchRows(jsons);
-    }
+    void insertMaskedRows(@BindJson("json") List<String> jsons);
 
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);

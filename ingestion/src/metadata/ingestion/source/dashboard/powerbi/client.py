@@ -15,6 +15,7 @@ REST Auth & Client for PowerBi
 import json
 import math
 import traceback
+from collections.abc import Callable
 from copy import deepcopy
 from time import sleep
 from typing import Any
@@ -474,8 +475,16 @@ class PowerBiApiClient:
             return None
 
     # pylint: disable=too-many-branches,too-many-statements
-    def fetch_all_workspaces(self, filter_pattern: FilterPattern | None = None) -> list[Group] | None:  # noqa: C901
+    def fetch_all_workspaces(  # noqa: C901
+        self,
+        filter_pattern: FilterPattern | None = None,
+        on_incomplete: Callable[[], None] | None = None,
+    ) -> list[Group] | None:
         """Method to fetch all powerbi workspace details
+        Args:
+            filter_pattern: project filter, sent as an OData $filter
+            on_incomplete: called when the returned list may be missing workspaces, because the
+                workspace count could not be read or fewer workspaces were fetched than it
         Returns:
             Group
         """
@@ -497,6 +506,7 @@ class PowerBiApiClient:
                 " further paginate all workspace calls)"
             )
             response = self.client.get(api_url, data=params_data)
+            is_count_known = True
             if (
                 not response
                 or API_RESPONSE_MESSAGE_KEY in response
@@ -507,6 +517,7 @@ class PowerBiApiClient:
                     logger.warning(f"Error message from API response: {str(response.get(API_RESPONSE_MESSAGE_KEY))}")  # noqa: RUF010
                 failed_indexes.append(params_data)
                 count = 0
+                is_count_known = False
             else:
                 try:
                     response = GroupsResponse(**response)
@@ -514,6 +525,7 @@ class PowerBiApiClient:
                 except Exception as exc:
                     logger.warning(f"Error processing GetGroups response: {exc}")
                     count = 0
+                    is_count_known = False
             indexes = math.ceil(count / entities_per_page)
             logger.debug(
                 f"Total {count} workspaces found, Will run {indexes} iterations fetching"
@@ -584,6 +596,8 @@ class PowerBiApiClient:
                         workspaces.extend(response.value)
                     except Exception as exc:
                         logger.warning(f"Error processing GetGroups response: {exc}")
+            if on_incomplete and (not is_count_known or len(workspaces) < count):
+                on_incomplete()
             return workspaces  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())

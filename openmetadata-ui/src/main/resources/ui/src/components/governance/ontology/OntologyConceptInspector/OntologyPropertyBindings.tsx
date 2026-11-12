@@ -29,6 +29,9 @@ import OntologyColumnBindingEditor from './OntologyColumnBindingEditor';
 interface OntologyPropertyBindingsProps {
   conceptId: string;
   propertyId: string;
+  /** Names the column the editor suggests for this property. */
+  propertyLabel?: string;
+  isIdentifier?: boolean;
   canEdit: boolean;
   canAdd?: boolean;
   bindings: ReturnType<typeof useOntologyConceptBindings>;
@@ -37,6 +40,8 @@ interface OntologyPropertyBindingsProps {
 const OntologyPropertyBindings = ({
   conceptId,
   propertyId,
+  propertyLabel,
+  isIdentifier,
   canEdit,
   canAdd = true,
   bindings,
@@ -58,8 +63,10 @@ const OntologyPropertyBindings = ({
     return isOpen ? (
       <OntologyColumnBindingEditor
         conceptId={conceptId}
+        isIdentifier={isIdentifier}
         key={`${conceptId}:${propertyId}`}
         propertyId={propertyId}
+        propertyLabel={propertyLabel}
         onClose={() => setIsOpen(false)}
       />
     ) : (
@@ -100,7 +107,6 @@ const OntologyPropertyBindings = ({
           </Typography>
           {canEdit ? (
             <ButtonUtility
-              color="tertiary"
               data-testid={`ontology-binding-remove-${propertyId}`}
               icon={Trash01}
               isDisabled={!bindings.editableSnapshot}

@@ -17,7 +17,10 @@ import {
   AlertSourceSearch,
   getAlertSourceSearch,
 } from '../../../utils/Alerts/AlertSourceSearch';
-import { searchAlertAiArgumentOptions } from './AlertAiFormFieldsSearchUtils';
+import {
+  resolveAlertAiArgumentLabels,
+  searchAlertAiArgumentOptions,
+} from './AlertAiFormFieldsSearchUtils';
 
 const mockSearchContracts = jest.fn();
 
@@ -136,6 +139,71 @@ describe('searchAlertAiArgumentOptions', () => {
         searchText: '',
         sourceSearch: sourceSearchOf({ byName }),
       })
+    ).resolves.toEqual([]);
+  });
+});
+
+describe('resolveAlertAiArgumentLabels', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('looks saved values up by FQN and labels them by display name', async () => {
+    (searchQuery as jest.Mock).mockResolvedValue({
+      hits: {
+        hits: [
+          {
+            _source: {
+              fullyQualifiedName: 'finance',
+              name: 'finance',
+              displayName: 'Finance',
+            },
+          },
+        ],
+      },
+    });
+
+    await expect(
+      resolveAlertAiArgumentLabels('domainList', ['finance', 'sales'])
+    ).resolves.toEqual([{ id: 'finance', label: 'Finance' }]);
+
+    const { query, queryFilter, searchIndex } = (searchQuery as jest.Mock).mock
+      .calls[0][0];
+
+    expect(query).toBe('');
+    expect(searchIndex).toBe(SearchIndex.DOMAIN);
+    expect(queryFilter).toEqual({
+      query: {
+        bool: {
+          should: [
+            { term: { fullyQualifiedName: 'finance' } },
+            { term: { fullyQualifiedName: 'sales' } },
+          ],
+          minimum_should_match: 1,
+        },
+      },
+    });
+  });
+
+  it('skips the lookup when the value already is its label, or there is nothing to resolve', async () => {
+    await expect(
+      resolveAlertAiArgumentLabels('tableNameList', ['shop.orders'])
+    ).resolves.toEqual([]);
+    await expect(
+      resolveAlertAiArgumentLabels('fqnList', ['shop.orders'])
+    ).resolves.toEqual([]);
+    await expect(
+      resolveAlertAiArgumentLabels('domainList', [])
+    ).resolves.toEqual([]);
+
+    expect(searchQuery).not.toHaveBeenCalled();
+  });
+
+  it('resolves nothing when the lookup fails', async () => {
+    (searchQuery as jest.Mock).mockRejectedValue(new Error('down'));
+
+    await expect(
+      resolveAlertAiArgumentLabels('userList', ['ada'])
     ).resolves.toEqual([]);
   });
 });

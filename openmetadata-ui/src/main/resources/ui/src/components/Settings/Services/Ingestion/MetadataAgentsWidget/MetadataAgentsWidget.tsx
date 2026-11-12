@@ -13,12 +13,12 @@
 
 import { Card, Typography } from '@openmetadata/ui-core-components';
 
+import { Application } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { isEmpty } from 'lodash';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as MetadataAgentIcon } from '../../../../../assets/svg/application.svg';
 import { DISABLED } from '../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { ServiceCategory } from '../../../../../enums/service.enum';
@@ -204,7 +204,7 @@ function MetadataAgentsWidget({
       <div className="p-md flex items-center justify-between">
         <div className="flex gap-4 items-center">
           <div className="agent-icon-container">
-            <MetadataAgentIcon height={16} width={16} />
+            <Application className="tw:text-utility-gray-500" size={16} />
           </div>
           <div className="flex flex-col gap-1">
             <Typography className="font-medium text-md">

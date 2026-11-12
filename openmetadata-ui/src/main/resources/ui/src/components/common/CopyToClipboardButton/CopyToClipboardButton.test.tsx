@@ -63,7 +63,6 @@ describe('Test CopyToClipboardButton Component', () => {
   it('Should render all child elements', async () => {
     render(<CopyToClipboardButton copyText={value} />);
 
-    expect(screen.getByTestId('copy-icon')).toBeInTheDocument();
     expect(screen.getByTestId('copy-secret')).toBeInTheDocument();
   });
 

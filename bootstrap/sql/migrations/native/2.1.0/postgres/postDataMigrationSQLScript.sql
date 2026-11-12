@@ -1,6 +1,7 @@
 -- Backfill test_case_incident from existing history: fold each stateId chain to its
 -- first/last timestamps, pick the latest record (MAX(id) tie-break, matching the read
 -- query this table replaces), and upsert one summary row per incident. Idempotent.
+-- Incidents whose test case was hard-deleted lost their parentOf row (relation 9) and are skipped.
 INSERT INTO test_case_incident (stateId, entityFQNHash, testCaseResolutionStatusType, assignee, severity, createdAt, updatedAt, latestRecordId)
 WITH chain AS (
   SELECT stateId, MIN(timestamp) AS createdAt, MAX(timestamp) AS updatedAt
@@ -19,6 +20,11 @@ SELECT t.stateId, t.entityFQNHash, t.testCaseResolutionStatusType, t.assignee,
 FROM latestRecord l
 INNER JOIN test_case_resolution_status_time_series t ON t.id = l.latestId
 WHERE t.entityFQNHash IS NOT NULL
+  AND EXISTS (
+    SELECT 1 FROM entity_relationship er
+    WHERE er.toId = t.id AND er.relation = 9
+      AND er.fromEntity = 'testCase' AND er.toEntity = 'testCaseResolutionStatus'
+  )
 ON CONFLICT (stateId) DO UPDATE SET
   testCaseResolutionStatusType = EXCLUDED.testCaseResolutionStatusType,
   assignee = EXCLUDED.assignee,
@@ -738,3 +744,287 @@ WHERE revoked = FALSE
   AND NOT EXISTS (SELECT 1 FROM user_entity u WHERE LOWER(u.name) = LOWER(oauth_refresh_tokens.user_name) AND u.deleted IS NOT TRUE);
 DELETE FROM oauth_access_tokens
 WHERE NOT EXISTS (SELECT 1 FROM user_entity u WHERE LOWER(u.name) = LOWER(oauth_access_tokens.user_name) AND u.deleted IS NOT TRUE);
+
+-- Apps no longer create the alerts listed in their marketplace definition. An app's own code
+-- still creates alerts it needs and links them to the app (relation 0 is CONTAINS); those run
+-- the app's own consumer class. An alert linked to an app that is named in the app's
+-- definition, or that uses the default alert consumer, came from a definition: it is disabled,
+-- kept for an admin to review and no longer tied to the app. The list then leaves every stored
+-- definition, definition version and definition change event.
+
+-- event_subscription_entity: alerts an app install created from its definition
+UPDATE event_subscription_entity
+SET json = jsonb_set(json, '{enabled}', 'false'::jsonb)
+WHERE id IN (SELECT id FROM (
+  SELECT DISTINCT e.id FROM event_subscription_entity e
+    JOIN entity_relationship r ON r.toId = e.id
+      AND r.fromEntity = 'app' AND r.toEntity = 'eventsubscription' AND r.relation = 0
+    LEFT JOIN installed_apps a ON a.id = r.fromId
+    LEFT JOIN apps_marketplace m ON m.name = a.name
+    WHERE e.json ->> 'className' IS NULL
+      OR e.json ->> 'className' = 'alert'
+      OR e.json ->> 'className' LIKE '%.AlertPublisher'
+      OR EXISTS (SELECT 1 FROM jsonb_array_elements(
+        CASE WHEN jsonb_typeof(m.json -> 'eventSubscriptions') = 'array'
+          THEN m.json -> 'eventSubscriptions' ELSE '[]'::jsonb END) s
+        WHERE s ->> 'name' = e.name)
+) planted);
+
+DELETE FROM entity_relationship
+WHERE fromEntity = 'app' AND toEntity = 'eventsubscription' AND relation = 0
+  AND toId IN (SELECT id FROM (
+  SELECT DISTINCT e.id FROM event_subscription_entity e
+    JOIN entity_relationship r ON r.toId = e.id
+      AND r.fromEntity = 'app' AND r.toEntity = 'eventsubscription' AND r.relation = 0
+    LEFT JOIN installed_apps a ON a.id = r.fromId
+    LEFT JOIN apps_marketplace m ON m.name = a.name
+    WHERE e.json ->> 'className' IS NULL
+      OR e.json ->> 'className' = 'alert'
+      OR e.json ->> 'className' LIKE '%.AlertPublisher'
+      OR EXISTS (SELECT 1 FROM jsonb_array_elements(
+        CASE WHEN jsonb_typeof(m.json -> 'eventSubscriptions') = 'array'
+          THEN m.json -> 'eventSubscriptions' ELSE '[]'::jsonb END) s
+        WHERE s ->> 'name' = e.name)
+) planted);
+
+UPDATE apps_marketplace SET json = json - 'eventSubscriptions'
+WHERE json -> 'eventSubscriptions' IS NOT NULL;
+
+UPDATE entity_extension SET json = json - 'eventSubscriptions'
+WHERE extension LIKE 'appMarketPlaceDefinition.version.%'
+  AND json -> 'eventSubscriptions' IS NOT NULL;
+
+-- change_event: an event that holds its entity as an object
+UPDATE change_event
+SET json = json #- '{entity,eventSubscriptions}'
+WHERE entityType = 'appMarketPlaceDefinition'
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'object'
+    THEN json -> 'entity' -> 'eventSubscriptions' IS NOT NULL
+    ELSE false END;
+
+-- change_event: an event that holds its entity as a string of JSON
+UPDATE change_event
+SET json = jsonb_set(json, '{entity}',
+  to_jsonb(((json ->> 'entity')::jsonb - 'eventSubscriptions')::text))
+WHERE entityType = 'appMarketPlaceDefinition'
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'string'
+    THEN CASE WHEN (json ->> 'entity') LIKE '{%'
+      THEN (json ->> 'entity')::jsonb -> 'eventSubscriptions' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- successful_sent_change_events: an event that holds its entity as an object
+UPDATE successful_sent_change_events
+SET json = json #- '{entity,eventSubscriptions}'
+WHERE json ->> 'entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'object'
+    THEN json -> 'entity' -> 'eventSubscriptions' IS NOT NULL
+    ELSE false END;
+
+-- successful_sent_change_events: an event that holds its entity as a string of JSON
+UPDATE successful_sent_change_events
+SET json = jsonb_set(json, '{entity}',
+  to_jsonb(((json ->> 'entity')::jsonb - 'eventSubscriptions')::text))
+WHERE json ->> 'entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'string'
+    THEN CASE WHEN (json ->> 'entity') LIKE '{%'
+      THEN (json ->> 'entity')::jsonb -> 'eventSubscriptions' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- consumers_dlq: an event that holds its entity as an object
+UPDATE consumers_dlq
+SET json = json #- '{changeEvent,entity,eventSubscriptions}'
+WHERE json -> 'changeEvent' ->> 'entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN jsonb_typeof(json -> 'changeEvent' -> 'entity') = 'object'
+    THEN json -> 'changeEvent' -> 'entity' -> 'eventSubscriptions' IS NOT NULL
+    ELSE false END;
+
+-- consumers_dlq: an event that holds its entity as a string of JSON
+UPDATE consumers_dlq
+SET json = jsonb_set(json, '{changeEvent,entity}',
+  to_jsonb(((json -> 'changeEvent' ->> 'entity')::jsonb - 'eventSubscriptions')::text))
+WHERE json -> 'changeEvent' ->> 'entityType' = 'appMarketPlaceDefinition'
+  AND CASE WHEN jsonb_typeof(json -> 'changeEvent' -> 'entity') = 'string'
+    THEN CASE WHEN (json -> 'changeEvent' ->> 'entity') LIKE '{%'
+      THEN (json -> 'changeEvent' ->> 'entity')::jsonb -> 'eventSubscriptions' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- audit_log_event: an event that holds its entity as an object
+UPDATE audit_log_event
+SET event_json = (event_json::jsonb #- '{entity,eventSubscriptions}')::text
+WHERE entity_type = 'appMarketPlaceDefinition'
+  AND CASE WHEN event_json LIKE '{%'
+    THEN CASE WHEN jsonb_typeof(event_json::jsonb -> 'entity') = 'object'
+      THEN event_json::jsonb -> 'entity' -> 'eventSubscriptions' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- audit_log_event: an event that holds its entity as a string of JSON
+UPDATE audit_log_event
+SET event_json = (jsonb_set(event_json::jsonb, '{entity}',
+  to_jsonb(((event_json::jsonb ->> 'entity')::jsonb - 'eventSubscriptions')::text)))::text
+WHERE entity_type = 'appMarketPlaceDefinition'
+  AND CASE WHEN event_json LIKE '{%'
+    THEN CASE WHEN jsonb_typeof(event_json::jsonb -> 'entity') = 'string'
+      THEN CASE WHEN (event_json::jsonb ->> 'entity') LIKE '{%'
+        THEN (event_json::jsonb ->> 'entity')::jsonb -> 'eventSubscriptions' IS NOT NULL
+        ELSE false END
+      ELSE false END
+    ELSE false END;
+
+-- An app's alert list is filled from the app->alert relationship on every read and is no longer
+-- stored. The copy in the app JSON, and any alert written into it by hand, leaves stored apps and
+-- app versions; the relationship rows that record the app's own alerts stay.
+UPDATE installed_apps SET json = json - 'eventSubscriptions'
+WHERE json -> 'eventSubscriptions' IS NOT NULL;
+
+UPDATE entity_extension SET json = json - 'eventSubscriptions'
+WHERE extension LIKE 'app.version.%'
+  AND json -> 'eventSubscriptions' IS NOT NULL;
+
+-- A user's authentication mechanism (a password hash or a bot token) leaves every stored
+-- change event and user version; new ones no longer carry it.
+
+-- change_event: an event that holds its entity as an object
+UPDATE change_event
+SET json = json #- '{entity,authenticationMechanism}'
+WHERE entityType IN ('user')
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'object'
+    THEN json -> 'entity' -> 'authenticationMechanism' IS NOT NULL
+    ELSE false END;
+
+-- change_event: an event that holds its entity as a string of JSON
+UPDATE change_event
+SET json = jsonb_set(json, '{entity}',
+  to_jsonb(((json ->> 'entity')::jsonb - 'authenticationMechanism')::text))
+WHERE entityType IN ('user')
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'string'
+    THEN CASE WHEN (json ->> 'entity') LIKE '{%'
+      THEN (json ->> 'entity')::jsonb -> 'authenticationMechanism' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- successful_sent_change_events: an event that holds its entity as an object
+UPDATE successful_sent_change_events
+SET json = json #- '{entity,authenticationMechanism}'
+WHERE json ->> 'entityType' IN ('user')
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'object'
+    THEN json -> 'entity' -> 'authenticationMechanism' IS NOT NULL
+    ELSE false END;
+
+-- successful_sent_change_events: an event that holds its entity as a string of JSON
+UPDATE successful_sent_change_events
+SET json = jsonb_set(json, '{entity}',
+  to_jsonb(((json ->> 'entity')::jsonb - 'authenticationMechanism')::text))
+WHERE json ->> 'entityType' IN ('user')
+  AND CASE WHEN jsonb_typeof(json -> 'entity') = 'string'
+    THEN CASE WHEN (json ->> 'entity') LIKE '{%'
+      THEN (json ->> 'entity')::jsonb -> 'authenticationMechanism' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- consumers_dlq: an event that holds its entity as an object
+UPDATE consumers_dlq
+SET json = json #- '{changeEvent,entity,authenticationMechanism}'
+WHERE json -> 'changeEvent' ->> 'entityType' IN ('user')
+  AND CASE WHEN jsonb_typeof(json -> 'changeEvent' -> 'entity') = 'object'
+    THEN json -> 'changeEvent' -> 'entity' -> 'authenticationMechanism' IS NOT NULL
+    ELSE false END;
+
+-- consumers_dlq: an event that holds its entity as a string of JSON
+UPDATE consumers_dlq
+SET json = jsonb_set(json, '{changeEvent,entity}',
+  to_jsonb(((json -> 'changeEvent' ->> 'entity')::jsonb - 'authenticationMechanism')::text))
+WHERE json -> 'changeEvent' ->> 'entityType' IN ('user')
+  AND CASE WHEN jsonb_typeof(json -> 'changeEvent' -> 'entity') = 'string'
+    THEN CASE WHEN (json -> 'changeEvent' ->> 'entity') LIKE '{%'
+      THEN (json -> 'changeEvent' ->> 'entity')::jsonb -> 'authenticationMechanism' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- audit_log_event: an event that holds its entity as an object
+UPDATE audit_log_event
+SET event_json = (event_json::jsonb #- '{entity,authenticationMechanism}')::text
+WHERE entity_type IN ('user')
+  AND CASE WHEN event_json LIKE '{%'
+    THEN CASE WHEN jsonb_typeof(event_json::jsonb -> 'entity') = 'object'
+      THEN event_json::jsonb -> 'entity' -> 'authenticationMechanism' IS NOT NULL
+      ELSE false END
+    ELSE false END;
+
+-- audit_log_event: an event that holds its entity as a string of JSON
+UPDATE audit_log_event
+SET event_json = (jsonb_set(event_json::jsonb, '{entity}',
+  to_jsonb(((event_json::jsonb ->> 'entity')::jsonb - 'authenticationMechanism')::text)))::text
+WHERE entity_type IN ('user')
+  AND CASE WHEN event_json LIKE '{%'
+    THEN CASE WHEN jsonb_typeof(event_json::jsonb -> 'entity') = 'string'
+      THEN CASE WHEN (event_json::jsonb ->> 'entity') LIKE '{%'
+        THEN (event_json::jsonb ->> 'entity')::jsonb -> 'authenticationMechanism' IS NOT NULL
+        ELSE false END
+      ELSE false END
+    ELSE false END;
+
+-- entity_extension: stored user versions
+UPDATE entity_extension SET json = json - 'authenticationMechanism'
+WHERE extension LIKE 'user.version.%'
+  AND json -> 'authenticationMechanism' IS NOT NULL;
+
+-- Data Insights: keep test case definitions out of the data-asset charts.
+--
+-- testCase is now aliased into di-data-assets-* by dataInsightAliases so a chart can count test
+-- cases and group them by table, suite or definition. Its documents carry entityType "testCase",
+-- so the data-asset filter and the entityType breakdown must exclude it, or total_data_assets
+-- and the breakdown beneath it stop reconciling the way they did in #31478. The test case mapping
+-- lowercase-normalizes entityType.keyword, and a terms aggregation exclude matches the stored
+-- bucket key, so the breakdown excludes the lowercase forms as well.
+--
+-- Both statements are guarded on the stored value, so a deployment that already holds the
+-- corrected definitions is left untouched.
+
+-- Scope every data-asset metric to documents that actually carry an entityType.
+UPDATE di_chart_entity
+SET json = jsonb_set(json, '{chartDetails,metrics,0,filter}', to_jsonb('{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}'::text))
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND jsonb_typeof(json -> 'chartDetails' -> 'metrics') = 'array'
+  AND jsonb_array_length(json -> 'chartDetails' -> 'metrics') = 1
+  AND COALESCE(json -> 'chartDetails' -> 'metrics' -> 0 ->> 'filter', '') <> '{"query":{"bool":{"must":[{"exists":{"field":"entityType"}}],"must_not":[{"term":{"entityType.keyword":"tag"}},{"term":{"entityType.keyword":"glossaryTerm"}},{"term":{"entityType.keyword":"dataProduct"}},{"term":{"entityType.keyword":"testCase"}}]}}}';
+
+-- Drop the same governance types from the breakdown that the filter above drops from the card.
+UPDATE di_chart_entity
+SET json = jsonb_set(json, '{chartDetails,excludeGroups}', '["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]'::jsonb)
+WHERE name IN (
+    'total_data_assets',
+    'total_data_assets_by_tier',
+    'total_data_assets_summary_card',
+    'total_data_assets_with_tier_summary_card',
+    'percentage_of_data_asset_with_description',
+    'percentage_of_data_asset_with_owner',
+    'percentage_of_service_with_description',
+    'percentage_of_service_with_owner',
+    'data_assets_with_description_summary_card',
+    'data_assets_with_owner_summary_card',
+    'percentage_of_data_asset_with_description_kpi',
+    'percentage_of_data_asset_with_owner_kpi',
+    'number_of_data_asset_with_description_kpi',
+    'number_of_data_asset_with_owner_kpi'
+  )
+  AND json -> 'chartDetails' ->> 'groupBy' = 'entityType.keyword'
+  AND COALESCE(json -> 'chartDetails' -> 'excludeGroups', 'null'::jsonb) <> '["tag","glossaryTerm","glossaryterm","dataProduct","dataproduct","testCase","testcase"]'::jsonb;

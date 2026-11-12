@@ -32,7 +32,12 @@ const mockShowErrorToast = jest.fn();
 const mockGetEntityPermission = jest.fn();
 const mockGetResolvedTaskFormSchema = jest.fn();
 
-let mockCurrentUser: { id?: string; name?: string; isAdmin?: boolean } = {
+let mockCurrentUser: {
+  id?: string;
+  name?: string;
+  isAdmin?: boolean;
+  teams?: { id: string; type: string }[];
+} = {
   name: 'bob',
 };
 
@@ -54,6 +59,8 @@ jest.mock('constants/Task.constant', () => ({
 }));
 
 jest.mock('rest/tasksAPI', () => ({
+  TaskEntityStatus: jest.requireActual('generated/entity/tasks/task')
+    .TaskStatus,
   getTask: (...args: unknown[]) => mockGetTaskById(...args),
   resolveTask: (...args: unknown[]) => mockResolveTask(...args),
   addTaskComment: (...a: unknown[]) => mockAddComment(...a),
@@ -297,7 +304,8 @@ jest.mock('components/common/Loader/Loader', () => ({
 
 jest.mock('components/common/ProfilePicture/ProfilePicture', () => ({
   __esModule: true,
-  default: () => <div />,
+  default: ({ isAgent }: { isAgent?: boolean }) =>
+    isAgent ? <span data-testid="agent-avatar" /> : <div />,
 }));
 
 jest.mock('components/common/RichTextEditor/RichTextEditorPreviewerV1', () => ({
@@ -448,8 +456,10 @@ jest.mock(
     )
 );
 
+const mockT = jest.fn((key: string) => key);
+
 jest.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
+  useTranslation: () => ({ t: mockT }),
 }));
 
 jest.mock('react-router-dom', () => ({
@@ -473,6 +483,7 @@ jest.mock('react-router-dom', () => ({
 // Boundary stub for the routing layer: the panel only cares that a task with an
 // about-entity links to it, and that an incident falls back to its test case.
 jest.mock('utils/TaskNavigationUtils', () => ({
+  ...jest.requireActual('utils/TaskNavigationUtils'),
   getTaskAboutPath: (
     task: { about?: { type?: string; fullyQualifiedName?: string } },
     incidentTestCaseFqn: string
@@ -579,10 +590,12 @@ describe('TaskDetailPanel', () => {
 
     const byline = screen.getByTestId('task-byline');
 
-    expect(within(byline).getByTestId('agent-badge')).toHaveTextContent(
-      'Glossary Agent'
-    );
+    expect(within(byline).getByTestId('agent-avatar')).toBeInTheDocument();
     expect(byline).toHaveTextContent('message.task-opened-by');
+    expect(mockT).toHaveBeenCalledWith(
+      'message.task-opened-by',
+      expect.objectContaining({ user: 'Glossary Agent' })
+    );
   });
 
   it('falls back to the description when the name is only the taskId', async () => {
@@ -1370,6 +1383,116 @@ describe('TaskDetailPanel', () => {
       expect(
         screen.queryByTestId('task-resolve-denied-hint')
       ).not.toBeInTheDocument();
+    });
+
+    describe('workflow approval decided by its assignees', () => {
+      const APPROVAL_TASK = {
+        ...TASK,
+        type: 'RequestApproval',
+        workflowInstanceId: 'wf-1',
+        workflowStageId: 'review',
+        assignees: [
+          { id: 'u9', name: 'shailesh', type: 'user' },
+          { id: 'team-1', name: 'stewards', type: 'team' },
+        ],
+      };
+
+      it('hides Approve/Reject from a reviewer who is not an assignee, even with ResolveTask', async () => {
+        mockCurrentUser = { name: 'bob', id: 'u2' };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+        expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+        expect(
+          screen.getByTestId('task-resolve-denied-hint')
+        ).toHaveTextContent('message.only-assignees-can-approve-or-reject');
+      });
+
+      it('tells the requester who is not assigned that the task is not theirs to decide', async () => {
+        mockCurrentUser = { name: 'alice', id: 'u1' };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(
+          screen.getByTestId('task-resolve-denied-hint')
+        ).toHaveTextContent('message.only-assignees-can-approve-or-reject');
+      });
+
+      it('shows Approve/Reject to a member of an assigned team', async () => {
+        mockCurrentUser = {
+          name: 'bob',
+          id: 'u2',
+          teams: [{ id: 'team-1', type: 'team' }],
+        };
+        mockGetTaskById.mockResolvedValue({ data: APPROVAL_TASK });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.getByText('label.approve')).toBeInTheDocument();
+        expect(screen.getByText('label.reject')).toBeInTheDocument();
+      });
+
+      it('replaces Approve/Reject with the counted votes once the assignee voted in this stage', async () => {
+        mockCurrentUser = { name: 'shailesh', id: 'u9' };
+        mockGetTaskById.mockResolvedValue({
+          data: {
+            ...APPROVAL_TASK,
+            // The server drops the voter's own entry after a non-final vote.
+            assignees: [{ id: 'team-1', name: 'stewards', type: 'team' }],
+            reviewVotes: [
+              {
+                voter: { id: 'u9', name: 'shailesh', type: 'user' },
+                assignee: { id: 'u9', name: 'shailesh', type: 'user' },
+                decision: 'Approved',
+                stage: 'review',
+                timestamp: 1,
+              },
+            ],
+          },
+        });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.queryByText('label.approve')).not.toBeInTheDocument();
+        expect(screen.queryByText('label.reject')).not.toBeInTheDocument();
+        expect(screen.getByTestId('task-review-votes')).toHaveTextContent(
+          'message.user-approved-task'
+        );
+        expect(
+          screen.getByTestId('task-review-votes-waiting')
+        ).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('task-resolve-denied-hint')
+        ).not.toBeInTheDocument();
+      });
+
+      it('keeps Approve/Reject when the assignee only voted in an earlier stage', async () => {
+        mockCurrentUser = { name: 'shailesh', id: 'u9' };
+        mockGetTaskById.mockResolvedValue({
+          data: {
+            ...APPROVAL_TASK,
+            reviewVotes: [
+              {
+                voter: { id: 'u9', name: 'shailesh', type: 'user' },
+                assignee: { id: 'u9', name: 'shailesh', type: 'user' },
+                decision: 'Approved',
+                stage: 'draft',
+                timestamp: 1,
+              },
+            ],
+          },
+        });
+
+        await act(async () => render(<TaskDetailPanel taskId="task-1" />));
+
+        expect(screen.getByText('label.approve')).toBeInTheDocument();
+        expect(
+          screen.queryByTestId('task-review-votes')
+        ).not.toBeInTheDocument();
+      });
     });
 
     it('does not gate an incident task on ResolveTask and skips the permission fetch', async () => {

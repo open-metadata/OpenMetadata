@@ -10,36 +10,35 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Mail } from '@openmetadata/ui-core-components/icons';
+import {
+  Mail,
+  Star01,
+  TextEditorMention,
+  User01,
+  Webhook,
+} from '@openmetadata/ui-core-components/icons';
 import { includes, isNil } from 'lodash';
 import { ReactComponent as AdminIcon } from '../assets/svg/admin-colored-icon.svg';
 import { ReactComponent as GChatIcon } from '../assets/svg/gchat.svg';
-import { ReactComponent as MentionIcon } from '../assets/svg/ic-mentions.svg';
-import { ReactComponent as FollowingIcon } from '../assets/svg/ic-star.svg';
 import { ReactComponent as MSTeamsIcon } from '../assets/svg/ms-teams.svg';
 import { ReactComponent as SlackIcon } from '../assets/svg/slack.svg';
 import { ReactComponent as TeamIcon } from '../assets/svg/team-colored-icon.svg';
 import { ReactComponent as UserIcon } from '../assets/svg/user-colored-icon.svg';
-import {
-  ReactComponent as AssigneeIcon,
-  ReactComponent as OwnerIcon,
-} from '../assets/svg/user.svg';
-import { ReactComponent as GenericIcon } from '../assets/svg/webhook.svg';
 import { SubscriptionCategory } from '../generated/events/eventSubscription';
 
 const ALERT_DESTINATION_CATEGORY_ICONS = {
   Teams: TeamIcon,
   Users: UserIcon,
   Admins: AdminIcon,
-  Assignees: AssigneeIcon,
-  Mentions: MentionIcon,
+  Assignees: User01,
+  Mentions: TextEditorMention,
   GChat: GChatIcon,
   Slack: SlackIcon,
   Email: Mail,
   MsTeams: MSTeamsIcon,
-  Followers: FollowingIcon,
-  Webhook: GenericIcon,
-  Owners: OwnerIcon,
+  Followers: Star01,
+  Webhook: Webhook,
+  Owners: User01,
 };
 
 export const getAlertDestinationCategoryIcons = (type: string) => {

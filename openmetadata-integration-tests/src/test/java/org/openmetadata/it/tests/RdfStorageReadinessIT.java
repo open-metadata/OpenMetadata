@@ -20,13 +20,13 @@ import org.apache.jena.rdf.model.ModelFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.it.bootstrap.FusekiTestImage;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.JenaFusekiStorage;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface.EntityWriteRequest;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.images.builder.Transferable;
 
 /**
@@ -39,9 +39,11 @@ import org.testcontainers.images.builder.Transferable;
 class RdfStorageReadinessIT {
   private static final String BASE = "https://open-metadata.org/";
   private static final String NAME = BASE + "ontology/name";
-  private static final String ADMIN_PASSWORD = "test-admin";
+  private static final String ADMIN_PASSWORD = FusekiTestImage.ADMIN_PASSWORD;
   private static final String WRITER_PASSWORD = "test-writer";
   private static final String ADMIN_CREATED_DATASET = "readiness_admin_created";
+  private static final String SCOPED_DATASET = "openmetadata";
+  private static final String OUTSIDE_SCOPE_DATASET = "readiness_outside_scope";
   private static final String STOCK_DATASET = "stock";
   private static final String STOCK_WITHOUT_UNION = "stock_without_union";
   private static final String STOCK_READ_ONLY = "stock_read_only";
@@ -55,38 +57,55 @@ class RdfStorageReadinessIT {
   private static final String WITHOUT_UPDATE =
       "fuseki:serviceQuery \"sparql\" ; fuseki:serviceReadWriteGraphStore \"data\"";
   private static final String UNION_DISABLED = "does not enable tdb2:unionDefaultGraph";
-  private static final int FUSEKI_PORT = 3030;
+  private static final int FUSEKI_PORT = FusekiTestImage.PORT;
+  // An operator-managed shiro.ini (FUSEKI_MANAGE_SHIRO=false) with a writer limited to one dataset,
+  // since the image's own rendering creates only the admin account.
+  private static final String SCOPED_SHIRO =
+      String.join(
+          "\n",
+          "[main]",
+          "plainMatcher = org.apache.shiro.authc.credential.SimpleCredentialsMatcher",
+          "iniRealm.credentialsMatcher = $plainMatcher",
+          "[users]",
+          "admin = " + ADMIN_PASSWORD + ", admin",
+          "openmetadata = " + WRITER_PASSWORD + ", writer",
+          "[roles]",
+          "admin = *",
+          "writer = *",
+          "[urls]",
+          "/$/ping = anon",
+          "/" + SCOPED_DATASET + "/** = authcBasic, roles[writer]",
+          "/** = authcBasic, roles[admin]",
+          "");
   private static final HttpClient HTTP = HttpClient.newHttpClient();
 
   private static GenericContainer<?> shipped;
+  private static GenericContainer<?> scoped;
   private static GenericContainer<?> stock;
 
   @BeforeAll
   static void start() throws Exception {
-    final ImageFromDockerfile image =
-        new ImageFromDockerfile()
-            .withFileFromPath(".", RdfTestDatabase.repositoryRoot().resolve("docker/rdf-store"));
-    shipped =
-        new GenericContainer<>(image)
-            .withExposedPorts(FUSEKI_PORT)
-            .withEnv("FUSEKI_ADMIN_PASSWORD", ADMIN_PASSWORD)
-            .withEnv("FUSEKI_OPENMETADATA_PASSWORD", WRITER_PASSWORD)
-            .withEnv("JVM_ARGS", "-Xms512m -Xmx512m")
-            .waitingFor(Wait.forHttp("/$/ping").withStartupTimeout(Duration.ofMinutes(2)));
+    shipped = FusekiTestImage.forOpenMetadata("-Xms512m -Xmx512m");
+    scoped =
+        FusekiTestImage.forOpenMetadata("-Xms256m -Xmx256m")
+            .withEnv("FUSEKI_MANAGE_SHIRO", "false")
+            .withEnv("FUSEKI_DATASETS", SCOPED_DATASET + "," + OUTSIDE_SCOPE_DATASET)
+            .withCopyToContainer(
+                Transferable.of(SCOPED_SHIRO), FusekiTestImage.FUSEKI_BASE + "/shiro.ini");
     // The same Fuseki distribution launched directly, so the extension is never on the classpath.
     stock =
-        new GenericContainer<>(image)
-            .withExposedPorts(FUSEKI_PORT)
+        FusekiTestImage.bare()
             .withCopyToContainer(Transferable.of(stockConfig()), STOCK_CONFIG_PATH)
             .withCreateContainerCmdModifier(command -> command.withEntrypoint("java"))
             .withCommand(
                 "-Xmx512m",
                 "-cp",
-                "/fuseki/fuseki-server.jar",
+                FusekiTestImage.FUSEKI_SERVER_JAR,
                 "org.apache.jena.fuseki.main.cmds.FusekiMainCmd",
                 "--config=" + STOCK_CONFIG_PATH)
             .waitingFor(Wait.forHttp("/$/ping").withStartupTimeout(Duration.ofMinutes(2)));
     shipped.start();
+    scoped.start();
     stock.start();
     createDatasetThroughAdminApi(ADMIN_CREATED_DATASET);
   }
@@ -98,6 +117,9 @@ class RdfStorageReadinessIT {
     }
     if (shipped != null) {
       shipped.close();
+    }
+    if (scoped != null) {
+      scoped.close();
     }
     HTTP.close();
   }
@@ -118,13 +140,13 @@ class RdfStorageReadinessIT {
     }
   }
 
+  /** FUSEKI_UNION_DEFAULT_GRAPH applies server-wide, not only to the seeded datasets. */
   @Test
-  void datasetCreatedThroughTheAdminApiFailsNamingUnionDefaultGraph() {
+  void datasetCreatedThroughTheAdminApiInheritsTheUnionDefaultGraph() {
     try (JenaFusekiStorage storage =
         storage(shipped, ADMIN_CREATED_DATASET, "admin", ADMIN_PASSWORD)) {
-      final String failure = assertNotReadyLeavingNoTrace(storage);
-      assertTrue(failure.contains(UNION_DISABLED), failure);
-      assertTrue(failure.contains("'" + ADMIN_CREATED_DATASET + "'"), failure);
+      assertReadyLeavingNoTrace(storage);
+      assertBulkAppendIsReadable(storage);
     }
   }
 
@@ -176,7 +198,7 @@ class RdfStorageReadinessIT {
 
   @Test
   void rejectedPasswordFailsAsACredentialsProblem() {
-    try (JenaFusekiStorage storage = storage(shipped, "openmetadata", "openmetadata", "wrong")) {
+    try (JenaFusekiStorage storage = storage(shipped, "openmetadata", "admin", "wrong")) {
       final IllegalStateException failure =
           assertThrows(IllegalStateException.class, storage::ensureStorageReady);
       assertTrue(failure.getMessage().contains("credentials"), failure.getMessage());
@@ -184,9 +206,17 @@ class RdfStorageReadinessIT {
   }
 
   @Test
+  void writerInsideItsDatasetIsReady() {
+    try (JenaFusekiStorage storage =
+        storage(scoped, SCOPED_DATASET, "openmetadata", WRITER_PASSWORD)) {
+      assertReadyLeavingNoTrace(storage);
+    }
+  }
+
+  @Test
   void writerOutsideItsDatasetsFailsAsAnAuthorizationProblem() {
     try (JenaFusekiStorage storage =
-        storage(shipped, ADMIN_CREATED_DATASET, "openmetadata", WRITER_PASSWORD)) {
+        storage(scoped, OUTSIDE_SCOPE_DATASET, "openmetadata", WRITER_PASSWORD)) {
       final IllegalStateException failure =
           assertThrows(IllegalStateException.class, storage::ensureStorageReady);
       assertTrue(failure.getMessage().contains("not authorized"), failure.getMessage());

@@ -19,36 +19,41 @@ import {
   ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@openmetadata/ui-core-components/icons';
-import { MouseEvent, useEffect, useRef, useState } from 'react';
+import { Trash01 } from '@openmetadata/ui-core-components/icons';
+import { MouseEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { EntityReference } from '../../../../generated/type/entityReference';
+import {
+  AssetBinding,
+  AssetType,
+} from '../../../../generated/type/ontologyConceptBindingsResponse';
+import { useOntologyAssetLinking } from '../../../../hooks/governance/ontology/useOntologyAssetLinking';
+import { useOntologyAssetUnlink } from '../../../../hooks/governance/ontology/useOntologyAssetUnlink';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useAnchoredConfirm } from '../../../../hooks/popover/useAnchoredConfirm';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
-import { NativeBindingBatchOutcome } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getOntologyAssetPath,
-  getOntologyBindingWriteMessage,
+  getUnlinkDescription,
   NATIVE_BINDING_ASSET_TYPES,
 } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
-import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
-import {
-  InspectorEmptyText,
-  InspectorSectionHeading,
-} from '../../../OntologyExplorer/OntologyInspectorSection';
+import OntologyColumnMappingStep, {
+  ColumnMappingProperty,
+} from './OntologyColumnMappingStep';
 import { ConceptEmptyState, ConceptSection } from './OntologyConceptSection';
 
 interface OntologyConceptAssetsProps {
   conceptId: string;
+  conceptName: string;
   canEdit: boolean;
+  /** The concept's bindable properties; without them no column step is offered. */
+  properties?: readonly ColumnMappingProperty[];
   presentation: { kind: 'edit' } | { kind: 'view'; onOpenData: () => void };
 }
 
@@ -86,111 +91,71 @@ const OntologyAssetLinks = ({ asset }: { asset: EntityReference }) => {
 
 const OntologyConceptAssets = ({
   conceptId,
+  conceptName,
   canEdit,
+  properties = [],
   presentation,
 }: OntologyConceptAssetsProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const bindings = useOntologyConceptBindings(conceptId);
-  const unlink = useAnchoredConfirm<
-    Parameters<typeof bindings.removeAsset>[0] & {
-      conceptId: string;
-      name: string;
-    }
-  >();
+  const unlink = useAnchoredConfirm<{
+    binding: AssetBinding;
+    conceptId: string;
+    name: string;
+  }>();
   const [isPickerOpen, setIsPickerOpen] = useState(false);
+  const [bindAssets, setBindAssets] = useState<EntityReference[]>();
   const [page, setPage] = useState(0);
-  const batch = useRef<AbortController>();
-  useEffect(() => () => batch.current?.abort(), [conceptId]);
+  const linking = useOntologyAssetLinking(conceptId, bindings);
+  const unlinkAsset = useOntologyAssetUnlink(bindings, conceptName);
   const assets = bindings.data?.assets ?? [];
   const visiblePage = Math.min(
     page,
     Math.max(0, Math.ceil(assets.length / 10) - 1)
   );
-  const saveAssets = async (
-    selected: EntityReference[]
-  ): Promise<NativeBindingBatchOutcome> => {
-    const run = new AbortController();
-    batch.current?.abort();
-    batch.current = run;
-    const completedIds: string[] = [];
-    let current = bindings.editableSnapshot;
-    for (const [index, asset] of selected.entries()) {
-      const assetType = NATIVE_BINDING_ASSET_TYPES.find(
-        (type) => type === asset.type
-      );
-      if (run.signal.aborted || !current || !assetType) {
-        return {
-          completedIds,
-          remaining: selected.slice(index),
-          stop: 'not-ready',
-        };
-      }
-      if (
-        current.assets.some(
-          (item) => item.assetId === asset.id && item.assetType === assetType
-        )
-      ) {
-        completedIds.push(asset.id);
-
-        continue;
-      }
-      const result = await bindings.replaceAsset({
-        expectedRevision: current.revision,
-        asset: { assetType, assetId: asset.id, columns: [] },
-      });
-      if (result.kind !== 'confirmed') {
-        return {
-          completedIds,
-          remaining: selected.slice(index),
-          stop: result.kind,
-        };
-      }
-      completedIds.push(asset.id);
-      if (result.read.kind === 'unavailable') {
-        return {
-          completedIds,
-          remaining: selected.slice(index + 1),
-          stop: 'read-unavailable',
-        };
-      }
-      current = result.read.snapshot;
-    }
-
-    return { completedIds, remaining: [], stop: 'none' };
-  };
 
   const canLink = canEdit && bindings.isSuccess;
 
   const renderPicker = () => {
-    if (!canEdit || (isAiMode && !isPickerOpen)) {
+    if (!canEdit || (!isPickerOpen && !bindAssets)) {
       return null;
     }
+    if (bindAssets) {
+      return (
+        <OntologyColumnMappingStep
+          assets={bindAssets}
+          conceptId={conceptId}
+          conceptName={conceptName}
+          key={bindAssets.map(({ id }) => id).join()}
+          properties={properties}
+          onClose={() => setBindAssets(undefined)}
+        />
+      );
+    }
 
-    return isPickerOpen ? (
+    return (
       <OntologyDataAssetPicker
         native={{
           assetTypes: NATIVE_BINDING_ASSET_TYPES,
+          concept: { name: conceptName },
           isDisabled: !bindings.editableSnapshot,
           linkedIds: assets.map((asset) => asset.assetId),
-          saveAssets,
+          saveAssets: linking.saveAssets,
         }}
         onCancel={() => {
-          batch.current?.abort();
+          linking.cancel();
           setIsPickerOpen(false);
         }}
-        onSave={() => setIsPickerOpen(false)}
+        onSave={(linked) => {
+          setIsPickerOpen(false);
+          const tables = linked.filter(
+            (asset) => asset.type === EntityType.TABLE
+          );
+          if (tables.length > 0 && properties.length > 0) {
+            setBindAssets(tables);
+          }
+        }}
       />
-    ) : (
-      <Button
-        color="secondary"
-        data-testid="ontology-native-link-assets"
-        iconLeading={Plus}
-        isDisabled={!bindings.editableSnapshot}
-        size="xs"
-        onPress={() => setIsPickerOpen(true)}>
-        {t('label.add-entity', { entity: t('label.data-asset-plural') })}
-      </Button>
     );
   };
 
@@ -200,14 +165,18 @@ const OntologyConceptAssets = ({
         <ConfirmPopover
           {...unlink.popoverProps}
           cancelText={t('label.cancel')}
-          confirmText={t('label.remove')}
+          confirmText={t('label.unlink')}
           data-testid="ontology-unlink"
+          description={getUnlinkDescription(unlink.target.binding, t)}
           isConfirmDisabled={
             !canEdit ||
             !bindings.editableSnapshot ||
             unlink.target.conceptId !== conceptId
           }
-          title={t('label.remove-entity', { entity: unlink.target.name })}
+          title={t('message.ontology-unlink-asset-title', {
+            asset: unlink.target.name,
+            concept: conceptName,
+          })}
           onConfirm={async () => {
             if (
               !canEdit ||
@@ -217,17 +186,8 @@ const OntologyConceptAssets = ({
             ) {
               return false;
             }
-            const { assetId, assetType, expectedRevision } = unlink.target;
-            const result = await bindings.removeAsset({
-              assetId,
-              assetType,
-              expectedRevision,
-            });
-            const notify =
-              result.kind === 'confirmed' ? showSuccessToast : showErrorToast;
-            notify(t(getOntologyBindingWriteMessage(result)));
 
-            return result.kind === 'confirmed';
+            return unlinkAsset(unlink.target.binding);
           }}
         />
       )}
@@ -275,9 +235,20 @@ const OntologyConceptAssets = ({
                   })}
                 </Typography>
               </Box>
+              {canEdit &&
+              properties.length > 0 &&
+              binding.assetType === AssetType.Table ? (
+                <Button
+                  color="link-color"
+                  data-testid={`ontology-native-asset-bind-columns-${binding.assetId}`}
+                  isDisabled={!bindings.editableSnapshot}
+                  size="xs"
+                  onPress={() => setBindAssets([binding.asset])}>
+                  {t('label.ontology-bind-columns')}
+                </Button>
+              ) : null}
               {canEdit ? (
                 <ButtonUtility
-                  color="tertiary"
                   data-testid={`ontology-native-asset-remove-${binding.assetId}`}
                   icon={Trash01}
                   isDisabled={!bindings.editableSnapshot}
@@ -289,9 +260,7 @@ const OntologyConceptAssets = ({
                     if (bindings.editableSnapshot) {
                       unlink.open(
                         {
-                          assetType: binding.assetType,
-                          assetId: binding.assetId,
-                          expectedRevision: bindings.editableSnapshot.revision,
+                          binding,
                           conceptId,
                           name: getEntityName(binding.asset),
                         },
@@ -368,35 +337,7 @@ const OntologyConceptAssets = ({
     </ConceptSection>
   );
 
-  if (isAiMode) {
-    return renderAiSection();
-  }
-
-  return (
-    <Box
-      className="tw:py-1"
-      data-testid="ontology-native-assets"
-      direction="col"
-      gap={2}>
-      <InspectorSectionHeading
-        count={assets.length}
-        label={t('label.data-asset-plural')}
-      />
-      <Typography color="secondary" size="text-xs">
-        {t('message.ontology-current-catalog-links')}
-      </Typography>
-      {renderStatus()}
-      {renderAssetList()}
-      {assets.length === 0 && bindings.isSuccess ? (
-        <InspectorEmptyText>
-          {t('message.no-data-available')}
-        </InspectorEmptyText>
-      ) : null}
-      {renderMoreAssets()}
-      {renderPager()}
-      {renderPicker()}
-    </Box>
-  );
+  return renderAiSection();
 };
 
 export default OntologyConceptAssets;

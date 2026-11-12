@@ -24,16 +24,16 @@ type ConditionRewrite = (
 
 const CONJUNCTIONS = ['and', 'or'];
 
-const isObject = (node: unknown): node is JsonLogic =>
+export const isObject = (node: unknown): node is JsonLogic =>
   typeof node === 'object' && node !== null && !Array.isArray(node);
 
-const singleEntry = (node: unknown): [string, unknown] | undefined => {
+export const singleEntry = (node: unknown): [string, unknown] | undefined => {
   const entries = isObject(node) ? Object.entries(node) : [];
 
   return entries.length === 1 ? entries[0] : undefined;
 };
 
-const asPair = (args: unknown): [unknown, unknown] | undefined =>
+export const asPair = (args: unknown): [unknown, unknown] | undefined =>
   Array.isArray(args) && args.length === 2
     ? (args as [unknown, unknown])
     : undefined;

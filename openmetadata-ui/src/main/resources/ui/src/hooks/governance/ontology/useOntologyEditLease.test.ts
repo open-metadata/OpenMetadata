@@ -99,6 +99,26 @@ describe('./useOntologyEditLease', () => {
     );
   });
 
+  it('skips the release once the guarded operation consumed the lease', async () => {
+    mockAcquire.mockResolvedValue(LOCK);
+    const { result, rerender, unmount } = renderHook(
+      ({ isConsumed }) =>
+        useOntologyEditLease({
+          isActive: true,
+          isConsumed,
+          resourceId: 'changeset-id',
+          resourceType: 'ontologyChangeSet',
+        }),
+      { initialProps: { isConsumed: false } }
+    );
+    await waitFor(() => expect(result.current.state).toBe('owned'));
+
+    rerender({ isConsumed: true });
+    unmount();
+
+    expect(mockRelease).not.toHaveBeenCalled();
+  });
+
   it('reports the active holder when another session owns the lease', async () => {
     mockAcquire.mockRejectedValue(new Error('conflict'));
     mockGet.mockResolvedValue({

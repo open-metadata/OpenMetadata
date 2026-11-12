@@ -7,6 +7,7 @@ import java.util.List;
 import org.openmetadata.schema.api.events.AlertFilteringInput;
 import org.openmetadata.schema.entity.events.Argument;
 import org.openmetadata.schema.entity.events.ArgumentsInput;
+import org.openmetadata.schema.entity.events.Effect;
 import org.openmetadata.schema.type.FilterResourceDescriptor;
 
 /**
@@ -55,8 +56,7 @@ final class UnreachableSource {
   private static List<String> includedValuesOf(AlertFilteringInput input, String filter) {
     List<String> values = new ArrayList<>();
     for (ArgumentsInput chosen : listOrEmpty(input.getFilters())) {
-      boolean included =
-          filter.equals(chosen.getName()) && chosen.getEffect() != ArgumentsInput.Effect.EXCLUDE;
+      boolean included = filter.equals(chosen.getName()) && chosen.getEffect() != Effect.EXCLUDE;
       if (included) {
         for (Argument argument : listOrEmpty(chosen.getArguments())) {
           values.addAll(listOrEmpty(argument.getInput()));

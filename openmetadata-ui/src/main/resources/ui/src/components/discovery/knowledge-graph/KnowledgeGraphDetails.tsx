@@ -16,6 +16,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Input,
   Tabs,
   Typography,
@@ -626,6 +627,7 @@ const KnowledgeGraphDetails = ({
           {drawer !== 'coverage' && (
             <Input
               aria-label={t('label.search')}
+              autoComplete="off"
               className="tw:w-52 tw:max-w-full"
               placeholder={t('label.search')}
               size="sm"
@@ -636,12 +638,11 @@ const KnowledgeGraphDetails = ({
               }}
             />
           )}
-          <Button
-            aria-label={t('label.close')}
-            color="tertiary"
-            iconLeading={XClose}
-            size="sm"
-            onPress={close}
+          <ButtonUtility
+            icon={XClose}
+            size="lg"
+            tooltip={t('label.close')}
+            onClick={close}
           />
         </Box>
         <Tabs.Panel

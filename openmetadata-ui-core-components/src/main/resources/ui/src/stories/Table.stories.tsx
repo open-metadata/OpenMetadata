@@ -179,6 +179,29 @@ export const SmallSize: Story = {
   ),
 };
 
+export const CenteredColumn: Story = {
+  render: () => (
+    <Table aria-label="Users table (centred status)">
+      <Table.Header>
+        <Table.Head isRowHeader label="Name" />
+        <Table.Head align="center" label="Status" />
+      </Table.Header>
+      <AriaTableBody>
+        {SAMPLE_DATA.map((user) => (
+          <Table.Row id={String(user.id)} key={user.id}>
+            <Table.Cell>{user.name}</Table.Cell>
+            <Table.Cell>
+              <div className="tw:flex tw:justify-center">
+                <StatusBadge status={user.status} />
+              </div>
+            </Table.Cell>
+          </Table.Row>
+        ))}
+      </AriaTableBody>
+    </Table>
+  ),
+};
+
 const WithSelectionExample = () => {
   const [selectedKeys, setSelectedKeys] = useState<'all' | Set<string>>(
     new Set()

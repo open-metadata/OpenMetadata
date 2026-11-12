@@ -127,8 +127,9 @@ export const DatePicker = ({
       <AriaPopover
         className={({ isEntering, isExiting }) =>
           cx(
-            // React Aria limits the popover height, but its calendar can exceed that limit in a modal.
-            'tw:origin-(--trigger-anchor-point) tw:will-change-transform tw:overflow-y-auto',
+            // React Aria caps the popover height to the space left in the viewport, which a
+            // calendar in a modal can exceed: the calendar scrolls, the footer stays in view.
+            'tw:flex tw:origin-(--trigger-anchor-point) tw:flex-col tw:will-change-transform',
             isEntering &&
               'tw:duration-150 tw:ease-out tw:animate-in tw:fade-in tw:placement-right:slide-in-from-left-0.5 tw:placement-top:slide-in-from-bottom-0.5 tw:placement-bottom:slide-in-from-top-0.5',
             isExiting &&
@@ -137,15 +138,16 @@ export const DatePicker = ({
         }
         offset={4}
         placement="bottom right">
-        {/* outline-[3px] ports the bare `tw:ring` faithfully (3px in Tailwind v4, almost
-            certainly unintended vs the ring-1 used elsewhere — tracked as a follow-up). */}
-        <AriaDialog className="tw:rounded-2xl tw:bg-overlay-surface tw:shadow-xl tw:outline-[3px] tw:outline-secondary_alt">
+        {/* The outline ported from the bare `tw:ring` was removed: the popover's
+            overflow clip cut it along the straight edges but not around the rounded
+            corners, so it rendered as corner artefacts. The shadow alone defines the edge. */}
+        <AriaDialog className="tw:flex tw:min-h-0 tw:flex-col tw:rounded-2xl tw:bg-floating tw:shadow-raised">
           {({ close }) => (
             <>
-              <div className="tw:flex tw:px-6 tw:py-5">
+              <div className="tw:flex tw:min-h-0 tw:overflow-y-auto tw:px-6 tw:py-5">
                 <Calendar highlightedDates={highlightedDates} />
               </div>
-              <div className="tw:grid tw:grid-cols-2 tw:gap-3 tw:border-t tw:border-secondary tw:p-4">
+              <div className="tw:grid tw:shrink-0 tw:grid-cols-2 tw:gap-3 tw:border-t tw:border-secondary tw:p-4">
                 <Button
                   color="secondary"
                   size="md"

@@ -1,38 +1,5 @@
-# Add here any member that should belong to either a specific team,
-# or that can have the tests automatically validated to run safely.
-
-"safe to test":
-  - '@ayush-shah'
-  - '@TeddyCr'
-  - '@ulixius9'
-  - '@pmbrull'
-  - '@aniketkatkar97'
-  - '@chirag-madlani'
-  - '@shahsank3t'
-  - '@ShaileshParmar11'
-  - '@karanh37'
-  - '@harshach'
-  - '@mohityadav766'
-  - '@sureshms'
-  - '@akash-jain-10'
-  - '@tutte'
-  - '@IceS2'
-  - '@snyk-bot'
-  - '@dependabot'
-  - '@harshsoni2024'
-  - '@Prajwal214'
-  - '@sonika-shah'
-  - '@sweta1308'
-  - '@mohittilala'
-  - '@pellejador'
-  - '@manerow'
-  - '@miriann-uu'
-  - '@github-actions[bot]'
-  - '@Shreyansh100704'
-  - '@Vishnuujain'
-  - '@lautel'
-  - '@tomasmontielp'
-  - '@yan-3005'
+# Each @open-metadata/<team> in CODEOWNERS needs a key here (case-insensitive): pr-auto-assign.yml
+# assigns external PRs from these lists (ADR:2026-11-04-a-new-pr-is-assigned-to-one-owner).
 
 ingestion:
   - '@ayush-shah'

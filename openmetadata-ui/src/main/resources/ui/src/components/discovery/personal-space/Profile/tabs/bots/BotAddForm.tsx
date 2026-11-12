@@ -13,6 +13,7 @@
 
 import type { FieldProp } from '@openmetadata/ui-core-components';
 import {
+  Alert,
   Box,
   Button,
   FieldTypes,
@@ -131,7 +132,6 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
               label: t('label.allow-impersonation'),
               type: FieldTypes.SWITCH,
               required: false,
-              helperText: t('message.allow-impersonation-help'),
               props: { 'data-testid': 'allow-impersonation' },
             },
           ]
@@ -220,6 +220,11 @@ const BotAddForm: React.FC<BotAddFormProps> = ({ onNavigate }) => {
 
           <FormFields fields={tokenFields} />
           <FormFields fields={switchFields} />
+          {isAdminUser && (
+            <Alert data-testid="impersonation-warning" variant="warning">
+              {t('message.allow-impersonation-help')}
+            </Alert>
+          )}
         </Box>
       </div>
 

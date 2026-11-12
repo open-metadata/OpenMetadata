@@ -83,7 +83,7 @@ export const StatItem = ({
     <Button
       aria-busy={loading || undefined}
       aria-label={srLabel ?? tooltip}
-      className="tw:rounded tw:p-0 tw:hover:bg-transparent"
+      className="tw:rounded tw:p-0 tw:hover:bg-transparent tw:*:data-text:flex"
       color="tertiary"
       data-active={isActive || undefined}
       data-testid={testId}

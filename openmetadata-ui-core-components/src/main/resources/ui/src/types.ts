@@ -97,6 +97,8 @@ export interface OwnerEntityReference {
   href?: string;
   /** URL to the user's profile picture, if available. */
   profileUrl?: string;
+  /** True when the owner is inherited from a parent entity. */
+  inherited?: boolean;
   /** Custom avatar icon component — overrides the default placeholder icon. */
   icon?: React.FC<{ className?: string }>;
 }

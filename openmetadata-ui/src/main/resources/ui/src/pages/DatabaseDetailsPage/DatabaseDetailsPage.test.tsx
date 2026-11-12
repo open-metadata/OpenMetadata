@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { findByTestId, findByText, fireEvent } from '@testing-library/react';
+import {
+  act,
+  findByTestId,
+  findByText,
+  fireEvent,
+  waitFor,
+} from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -19,11 +25,20 @@ import { OperationPermission } from '../../context/PermissionProvider/Permission
 import {
   getDatabaseDetailsByFQN,
   patchDatabaseDetails,
+  updateDatabaseVotes,
 } from '../../rest/databaseAPI';
-import { renderWithQueryClient } from '../../test/unit/test-utils';
+import {
+  renderWithQueryClient,
+  runQueryNotificationsSynchronously,
+} from '../../test/unit/test-utils';
 import { getDerivedPermissionFlags } from '../../utils/PermissionDerivation';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import DatabaseDetailsPage from './DatabaseDetailsPage';
+
+// React Query notifies its observers on a timer, which the suite's global fake timers hold
+// back. With this in place, a read that resolves inside an awaited `act` is on screen when
+// the `act` returns — needed for the voting tests, which assert the header's post-vote state.
+runQueryNotificationsSynchronously();
 
 const mockDatabase = {
   id: 'b705cc69-55fd-4338-aa45-86f34b655ae6',
@@ -42,6 +57,60 @@ const mockDatabase = {
     deleted: false,
     href: 'http://localhost:8585/api/v1/services/databaseServices/bc13e95f-83ac-458a-9528-f4ca26657568',
   },
+};
+
+// Full-fields entity, matching what the server returns for the page's default fields
+// `owners,tags,domains,votes,extension,dataProducts,followers` — i.e. the entry the React
+// Query cache is keyed on. Used to assert voting does NOT wipe these fields.
+const mockFullDatabase = {
+  ...mockDatabase,
+  version: 0.1,
+  serviceType: 'BigQuery',
+  owners: [
+    { id: 'owner-1', type: 'user', name: 'admin', displayName: 'admin' },
+  ],
+  tags: [],
+  votes: {
+    upVotes: 0,
+    downVotes: 0,
+    totalVotes: 0,
+    upVoters: [],
+    downVoters: [],
+  },
+  domains: [
+    {
+      id: 'domain-1',
+      type: 'domain',
+      name: 'Sales',
+      fullyQualifiedName: 'Sales',
+      displayName: 'Sales',
+    },
+  ],
+  followers: [
+    { id: 'user-1', type: 'user', name: 'admin', displayName: 'admin' },
+  ],
+  extension: { customProperty: 'value' },
+  dataProducts: [
+    {
+      id: 'dp-1',
+      type: 'dataProduct',
+      name: 'revenue-product',
+      fullyQualifiedName: 'revenue-product',
+      href: 'http://localhost:8585/api/v1/dataProducts/dp-1',
+    },
+  ],
+};
+
+// Narrow-fields entity: mirrors the server's `clearFieldsInternal` behaviour — a GET that
+// requests only `owners,tags,votes` returns every other relationship-backed field (`domains`,
+// `followers`, `extension`, `dataProducts`) as null. Used to prove that the pre-fix path
+// (narrow GET + `setDatabase`) would wipe the header state.
+const mockNarrowDatabase = {
+  ...mockFullDatabase,
+  domains: null,
+  followers: null,
+  extension: null,
+  dataProducts: null,
 };
 
 const mockSchemaData = {
@@ -184,14 +253,31 @@ jest.mock(
 jest.mock('../../rest/databaseAPI', () => ({
   getDatabaseDetailsByFQN: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(mockDatabase)),
+    .mockImplementation((_fqn: string, params) => {
+      // Mirror the server's `clearFieldsInternal`: a request that does NOT ask for `domains`
+      // (or `followers`/`extension`/`dataProducts`) gets them back null. The page's default
+      // fields include `domains`, so the full cache fetch keeps the populated entity; the
+      // pre-fix narrow GET (`owners,tags,votes`) would return the nulled variant.
+      const fields = (params?.fields ?? '') as string;
+      const isFullFields =
+        String(fields).includes('domains') &&
+        String(fields).includes('followers') &&
+        String(fields).includes('extension') &&
+        String(fields).includes('dataProducts');
+
+      return Promise.resolve(
+        isFullFields ? mockFullDatabase : mockNarrowDatabase
+      );
+    }),
   patchDatabaseDetails: jest
     .fn()
-    .mockImplementation(() => Promise.resolve(mockDatabase)),
+    .mockImplementation(() => Promise.resolve(mockFullDatabase)),
 
   getDatabaseSchemas: jest
     .fn()
     .mockImplementation(() => Promise.resolve(mockSchemaData)),
+
+  updateDatabaseVotes: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
 jest.mock('../../utils/TablePureUtils', () => ({
@@ -268,29 +354,62 @@ jest.mock(
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
-    DataAssetsHeader: jest
-      .fn()
-      .mockImplementation(
-        ({
-          afterDeleteAction,
-        }: {
-          afterDeleteAction: (isSoftDelete?: boolean) => void;
-        }) => (
-          <div>
-            <p>DataAssetsHeader</p>
-            <button
-              data-testid="hard-delete"
-              onClick={() => afterDeleteAction(false)}>
-              hardDelete
-            </button>
-            <button
-              data-testid="soft-delete"
-              onClick={() => afterDeleteAction(true)}>
-              softDelete
-            </button>
-          </div>
-        )
-      ),
+    DataAssetsHeader: jest.fn().mockImplementation(
+      ({
+        afterDeleteAction,
+        onUpdateVote,
+        dataAsset,
+      }: {
+        afterDeleteAction: (isSoftDelete?: boolean) => void;
+        onUpdateVote?: (
+          data: { updatedVoteType: string },
+          id: string
+        ) => Promise<void>;
+        dataAsset?: {
+          id?: string;
+          domains?: unknown;
+          followers?: unknown;
+          extension?: unknown;
+          dataProducts?: unknown;
+        };
+      }) => (
+        <div>
+          <p>DataAssetsHeader</p>
+          <span data-testid="header-domains">
+            {dataAsset?.domains ? 'has-domains' : 'no-domains'}
+          </span>
+          <span data-testid="header-followers">
+            {dataAsset?.followers ? 'has-followers' : 'no-followers'}
+          </span>
+          <span data-testid="header-extension">
+            {dataAsset?.extension ? 'has-extension' : 'no-extension'}
+          </span>
+          <span data-testid="header-data-products">
+            {dataAsset?.dataProducts ? 'has-data-products' : 'no-data-products'}
+          </span>
+          <button
+            data-testid="vote-up"
+            onClick={() =>
+              onUpdateVote?.(
+                { updatedVoteType: 'votedUp' },
+                dataAsset?.id ?? ''
+              )
+            }>
+            voteUp
+          </button>
+          <button
+            data-testid="hard-delete"
+            onClick={() => afterDeleteAction(false)}>
+            hardDelete
+          </button>
+          <button
+            data-testid="soft-delete"
+            onClick={() => afterDeleteAction(true)}>
+            softDelete
+          </button>
+        </div>
+      )
+    ),
   })
 );
 
@@ -489,5 +608,106 @@ describe('Test DatabaseDetails page', () => {
     fireEvent.click(softDeleteButton);
 
     expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
+  it('should refresh votes by invalidating the cache with the full default fields instead of a narrow GET + replace', async () => {
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
+
+    // Wait for the initial full-fields fetch to settle.
+    await findByText(container, 'DataAssetsHeader');
+    await waitFor(() => {
+      expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
+        fields: 'owners,tags,domains,votes,extension,dataProducts,followers',
+        include: 'all',
+      });
+    });
+    (getDatabaseDetailsByFQN as jest.Mock).mockClear();
+    (updateDatabaseVotes as jest.Mock).mockClear();
+
+    const voteButton = await findByTestId(container, 'vote-up');
+    await act(async () => {
+      fireEvent.click(voteButton);
+    });
+
+    // The vote mutation is recorded against the loaded entity's id with the chosen vote type.
+    await waitFor(() => {
+      expect(updateDatabaseVotes).toHaveBeenCalledWith(mockFullDatabase.id, {
+        updatedVoteType: 'votedUp',
+      });
+    });
+
+    // The post-vote fetch is the full-default-fields refetch produced by cache invalidation,
+    // NOT the narrow `owners,tags,votes` GET the pre-fix handler issued (which the server
+    // answers with `domains`/`followers`/`extension`/`dataProducts` null).
+    await waitFor(() => {
+      expect(getDatabaseDetailsByFQN).toHaveBeenCalledWith('bigquery.shopify', {
+        fields: 'owners,tags,domains,votes,extension,dataProducts,followers',
+        include: 'all',
+      });
+    });
+
+    expect(getDatabaseDetailsByFQN).not.toHaveBeenCalledWith(
+      'bigquery.shopify',
+      {
+        fields: ['owners', 'tags', 'votes'],
+        include: 'all',
+      }
+    );
+  });
+
+  it('should not wipe domains, followers, extension or dataProducts from the header after voting', async () => {
+    const { container } = renderWithQueryClient(
+      <MemoryRouter>
+        <DatabaseDetailsPage />
+      </MemoryRouter>
+    );
+
+    await findByText(container, 'DataAssetsHeader');
+
+    // Initial header carries all four fields from the full-fields fetch.
+    expect(await findByTestId(container, 'header-domains')).toHaveTextContent(
+      'has-domains'
+    );
+    expect(await findByTestId(container, 'header-followers')).toHaveTextContent(
+      'has-followers'
+    );
+    expect(await findByTestId(container, 'header-extension')).toHaveTextContent(
+      'has-extension'
+    );
+    expect(
+      await findByTestId(container, 'header-data-products')
+    ).toHaveTextContent('has-data-products');
+
+    const voteButton = await findByTestId(container, 'vote-up');
+    await act(async () => {
+      fireEvent.click(voteButton);
+    });
+
+    // The cache invalidation re-runs the full-fields fetch (previous test), keeping the
+    // four fields intact instead of overwriting them with a narrow-GET response — which is
+    // the user-visible bug (domain label drops, follow state resets, custom properties tab
+    // empties).
+    await waitFor(() => {
+      expect(updateDatabaseVotes).toHaveBeenCalled();
+    });
+    await waitFor(() => {
+      expect(
+        container.querySelector('[data-testid="header-domains"]')
+      ).toHaveTextContent('has-domains');
+    });
+
+    expect(
+      container.querySelector('[data-testid="header-followers"]')
+    ).toHaveTextContent('has-followers');
+    expect(
+      container.querySelector('[data-testid="header-extension"]')
+    ).toHaveTextContent('has-extension');
+    expect(
+      container.querySelector('[data-testid="header-data-products"]')
+    ).toHaveTextContent('has-data-products');
   });
 });

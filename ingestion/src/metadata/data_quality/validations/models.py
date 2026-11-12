@@ -17,6 +17,7 @@ from metadata.generated.schema.entity.services.databaseService import (
 from metadata.generated.schema.tests.basic import TestCaseEvaluationScope
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.generated.schema.type.basic import ProfileSampleType
+from metadata.generated.schema.type.tableExecutionSource import TableExecutionSource
 from metadata.ingestion.models.custom_pydantic import CustomSecretStr
 
 
@@ -74,6 +75,7 @@ class EvaluationScopeRuntimeParameters(BaseModel):
     sampling and no partitioning gives and what an unset scope has to fall back to.
     """
 
+    execution_source: TableExecutionSource | None = Field(default=None)
     profile_sample: float | None = None
     profile_sample_type: ProfileSampleType | None = None
     # Whether the sampler actually read a subset. A configured amount does not say so on its
@@ -115,6 +117,7 @@ class EvaluationScopeRuntimeParameters(BaseModel):
         sized = sampled and not by_query
         return TestCaseEvaluationScope(
             sampled=sampled,
+            executionSource=self.execution_source if not bypasses_sampler and not by_query else None,
             profileSample=self.profile_sample if sized else None,
             profileSampleType=self.profile_sample_type if sized else None,
             partitioned=partition is not None,

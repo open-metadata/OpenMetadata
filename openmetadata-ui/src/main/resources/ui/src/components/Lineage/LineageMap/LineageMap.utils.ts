@@ -305,6 +305,17 @@ export const getLensRootLabelKey = (lens: LineageLens) => {
   }
 };
 
+export const getLensLabelKey = (lens: LineageLens) => {
+  switch (lens) {
+    case LineageLens.Domain:
+      return 'label.domain';
+    case LineageLens.DataProduct:
+      return 'label.data-product';
+    default:
+      return 'label.service';
+  }
+};
+
 /**
  * The root breadcrumb of a scene that has been drilled into, i.e. the way back
  * to "All services" (or domains / data products). Undefined at the root itself.

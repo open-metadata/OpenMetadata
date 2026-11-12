@@ -116,10 +116,8 @@ const InlineDescriptionEditor: FC<InlineDescriptionEditorProps> = ({
         </Typography>
         {canEdit && !isEditing && (
           <ButtonUtility
-            color="tertiary"
             data-testid="edit-description-btn"
             icon={Edit01}
-            size="xs"
             tooltip={String(
               t('label.edit-entity', { entity: t('label.description') })
             )}
@@ -240,11 +238,10 @@ function buildHeaderActions({
   return (
     <Box direction="row" gap={2}>
       <ButtonUtility
-        color="tertiary"
         data-testid="sync-alert-btn"
         icon={RefreshCw01}
         isDisabled={isSyncing || !canEditAll}
-        size="xs"
+        size="lg"
         tooltip={String(
           canEditAll
             ? t('label.sync-alert-offset')
@@ -254,10 +251,9 @@ function buildHeaderActions({
       />
       {canEditAll && !isSystemProvider && (
         <ButtonUtility
-          color="tertiary"
           data-testid="edit-alert-btn"
           icon={Edit01}
-          size="xs"
+          size="lg"
           tooltip={String(t('label.edit'))}
           onPress={() => onNavigate({ type: 'edit', fqn })}
         />
@@ -274,10 +270,9 @@ function buildHeaderActions({
           entityName={alertName}
           entityType={EntityType.SUBSCRIPTION}>
           <ButtonUtility
-            color="tertiary"
             data-testid="delete-alert-btn"
             icon={Trash01}
-            size="xs"
+            size="lg"
             tooltip={String(t('label.delete'))}
           />
         </DeleteEntityPopover>
@@ -523,8 +518,9 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
         onStartEdit={() => setIsEditingDescription(true)}
       />
 
-      {/* Owners + event-stats summary row */}
-      <Card className="tw:mb-2" size="sm" variant="muted">
+      {/* Owners + event-stats summary row. shrink-0: Card is overflow-hidden, so as a flex
+          item it would otherwise collapse to fit a tall tab panel instead of the panel scrolling. */}
+      <Card className="tw:mb-2 tw:shrink-0" size="sm" variant="muted">
         <Card.Content className="tw:flex tw:flex-row tw:items-center tw:flex-wrap tw:gap-6">
           <Box align="center" direction="row" gap={2}>
             <Typography className="tw:text-tertiary tw:shrink-0" size="text-sm">
@@ -536,6 +532,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
               selectorContent={
                 <UserTeamSelectableList
                   hasPermission={editOwnersPermission}
+                  multiple={{ user: true, team: false }}
                   owner={alert?.owners}
                   onUpdate={handleOwnerUpdate}
                 />
@@ -548,7 +545,10 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
         </Card.Content>
       </Card>
 
-      <Tabs selectedKey={activeTab} onSelectionChange={handleTabChange}>
+      <Tabs
+        className="tw:min-h-0 tw:flex-1"
+        selectedKey={activeTab}
+        onSelectionChange={handleTabChange}>
         <Tabs.List size="sm" type="underline">
           <Tabs.Item id={AlertDetailTabs.CONFIGURATION}>
             {t('label.configuration')}
@@ -561,17 +561,17 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
           </Tabs.Item>
         </Tabs.List>
         <Tabs.Panel
-          className="tw:overflow-auto tw:py-4 tw:px-1"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.CONFIGURATION}>
           {alert && <NotificationAlertConfigView alertDetails={alert} />}
         </Tabs.Panel>
         <Tabs.Panel
-          className="tw:overflow-auto tw:py-4 tw:px-1"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.RECENT_EVENTS}>
           {alert && <NotificationRecentEvents alertDetails={alert} />}
         </Tabs.Panel>
         <Tabs.Panel
-          className="tw:overflow-auto tw:py-4 tw:px-1"
+          className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:py-4 tw:px-1"
           id={AlertDetailTabs.DIAGNOSTIC_INFO}>
           <NotificationDiagnosticInfo
             diagnosticData={diagnosticData}

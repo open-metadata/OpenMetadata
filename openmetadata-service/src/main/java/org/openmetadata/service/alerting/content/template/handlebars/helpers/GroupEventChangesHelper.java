@@ -25,6 +25,7 @@ import java.util.Objects;
 import java.util.Optional;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelper;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperMetadata;
 import org.openmetadata.service.alerting.content.template.handlebars.HandlebarsHelperUsage;
@@ -54,7 +55,10 @@ public class GroupEventChangesHelper implements HandlebarsHelper {
   @Override
   public void register(Handlebars handlebars) {
     handlebars.registerHelper(
-        getName(), (Helper<ChangeDescription>) (changeDesc, options) -> groupChanges(changeDesc));
+        getName(),
+        (Helper<Object>)
+            (changeDesc, options) ->
+                groupChanges(JsonUtils.convertValue(changeDesc, ChangeDescription.class)));
   }
 
   private ChangeGroups groupChanges(ChangeDescription changeDesc) {
@@ -227,6 +231,6 @@ public class GroupEventChangesHelper implements HandlebarsHelper {
                 new HandlebarsHelperUsage()
                     .withSyntax("{{groupEventChanges }}")
                     .withExample(
-                        "{{#with (groupEventChanges event.changeDescription) as |grouped|}}{{#if grouped.updates}}Updates: {{grouped.updates}}{{/if}}{{/with}}")));
+                        "{{#with (groupEventChanges event.changeDescription) as |changes|}}{{#each changes.updates}}{{name}}: {{oldValue}} to {{newValue}} {{/each}}{{/with}}")));
   }
 }

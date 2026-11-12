@@ -85,7 +85,7 @@ public final class OntologyReasoningResource {
 
   private Glossary glossary(final OntologyInferenceExplanationRequest request) {
     return glossaryRepository.get(
-        null, request.getGlossaryId(), glossaryRepository.getFields("owners"));
+        null, request.getGlossaryId(), ResourceContext.authorizationFields(glossaryRepository));
   }
 
   private void authorizeView(final SecurityContext securityContext, final Glossary glossary) {

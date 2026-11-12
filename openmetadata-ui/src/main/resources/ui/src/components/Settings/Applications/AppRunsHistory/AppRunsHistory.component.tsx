@@ -19,9 +19,12 @@ import {
   ModalOverlay,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ClockRewind } from '@openmetadata/ui-core-components/icons';
+import {
+  ClockRewind,
+  Settings01,
+} from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
-import { isNull, noop } from 'lodash';
+import { isEmpty, isNull, noop } from 'lodash';
 import {
   forwardRef,
   useCallback,
@@ -582,7 +585,7 @@ const AppRunsHistory = forwardRef(
               width={800}
               onClose={() => setShowConfigModal(false)}>
               <Dialog.Content>
-                {jsonSchema && (
+                {jsonSchema && !isEmpty(jsonSchema.properties) ? (
                   <FormBuilderV1
                     hideFooter
                     readonly
@@ -592,6 +595,16 @@ const AppRunsHistory = forwardRef(
                     uiSchema={UiSchema}
                     onSubmit={noop}
                   />
+                ) : (
+                  <Box className="tw:relative tw:min-h-60">
+                    <NoDataPlaceholder
+                      data-testid="app-run-config-empty"
+                      icon={Settings01}
+                      title={t('label.no-entity', {
+                        entity: t('label.configuration'),
+                      })}
+                    />
+                  </Box>
                 )}
               </Dialog.Content>
               <Dialog.Footer>

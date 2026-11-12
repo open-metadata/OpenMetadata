@@ -5,7 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeFalse;
-import static org.openmetadata.it.tests.NativeOntologyGraphScanProbe.reads;
+import static org.openmetadata.it.tests.NativeOntologyGraphScanProbe.fewestReads;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.CUSTOMER;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.INVOICE;
 import static org.openmetadata.it.tests.OntologyBindingFixtures.ORDER;
@@ -308,8 +308,8 @@ class NativeOntologyDataGraphIT extends BaseOntologyApprovalIT {
       for (final var client : List.of(admin(), reader)) {
         assertEquals(4, graph(client, narrow, "").getClusters().size());
         assertEquals(12, graph(client, wide, "").getClusters().size());
-        final int narrowReads = reads(client, narrow);
-        final int wideReads = reads(client, wide);
+        final int narrowReads = fewestReads(client, narrow);
+        final int wideReads = fewestReads(client, wide);
         log.info("Native data graph SQL reads: narrow={}, wide={}", narrowReads, wideReads);
         assertTrue(narrowReads > 0, "The SQL counter must observe the graph request");
         assertTrue(

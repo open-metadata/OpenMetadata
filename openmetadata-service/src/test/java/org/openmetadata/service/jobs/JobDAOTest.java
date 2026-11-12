@@ -25,9 +25,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Method;
+import java.sql.ResultSet;
 import java.util.Optional;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.schema.jobs.BackgroundJob;
 import org.openmetadata.service.context.center.MemoryGlossaryDerivationJobHandler;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlQuery;
@@ -50,6 +53,37 @@ class JobDAOTest {
       assertTrue(query.value().contains("'CONTEXT_MEMORY_EXTRACTION'"));
       assertTrue(query.value().contains("'MEMORY_GLOSSARY_DERIVATION'"));
     }
+  }
+
+  @Test
+  void ontologyBulkListQuerySupportsGlossaryFilterForBothConnectionTypes()
+      throws NoSuchMethodException {
+    final ConnectionAwareSqlQuery[] queries =
+        JobDAO.class
+            .getMethod("listOntologyBulkJobsByUser", String.class, String.class, int.class)
+            .getAnnotationsByType(ConnectionAwareSqlQuery.class);
+
+    assertEquals(2, queries.length);
+    for (ConnectionAwareSqlQuery query : queries) {
+      assertTrue(query.value().contains("jobType = 'ONTOLOGY_BULK'"));
+      assertTrue(query.value().contains(":glossaryId IS NULL"));
+      assertTrue(query.value().contains(":glossaryId"));
+      assertTrue(query.value().contains("ORDER BY createdAt DESC LIMIT :limit"));
+    }
+    // MySQL variant uses JSON_EXTRACT; Postgres variant uses ->>'glossaryId'
+    boolean hasMysqlVariant = false;
+    boolean hasPostgresVariant = false;
+    for (ConnectionAwareSqlQuery query : queries) {
+      if (query.value().contains("JSON_UNQUOTE(JSON_EXTRACT")) {
+        hasMysqlVariant = true;
+        assertTrue(query.value().contains("$.request.glossaryId"));
+      }
+      if (query.value().contains("->>'glossaryId'")) {
+        hasPostgresVariant = true;
+      }
+    }
+    assertTrue(hasMysqlVariant, "Missing MySQL JSON_EXTRACT variant");
+    assertTrue(hasPostgresVariant, "Missing PostgreSQL ->> variant");
   }
 
   @Test
@@ -233,5 +267,29 @@ class JobDAOTest {
             "{}",
             "admin",
             null);
+  }
+
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "ADMIN_OPS_REINDEX",
+        "ADMIN_OPS_DEPLOY_PIPELINES",
+        "ADMIN_OPS_SSO_CONFIG",
+        "ADMIN_OPS_AUTHORIZER_CONFIG",
+        "ADMIN_OPS_LIMITS_CONFIG",
+        "ADMIN_OPS_APP_CONFIG"
+      })
+  void workerReadsAQueuedAdminOpsJob(String storedJobType) throws Exception {
+    ResultSet row = mock(ResultSet.class);
+    when(row.getLong("id")).thenReturn(7L);
+    when(row.getString("jobType")).thenReturn(storedJobType);
+    when(row.getString("methodName")).thenReturn("AdminOpsJobHandler");
+    when(row.getString("jobArgs")).thenReturn("{}");
+    when(row.getString("status")).thenReturn("PENDING");
+
+    BackgroundJob job = new JobDAO.BackgroundJobMapper().map(row, null);
+
+    assertEquals(storedJobType, job.getJobType().value());
+    assertEquals(BackgroundJob.Status.PENDING, job.getStatus());
   }
 }

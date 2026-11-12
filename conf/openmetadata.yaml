@@ -812,6 +812,7 @@ pipelineServiceClientConfiguration:
     runAsNonRoot: ${K8S_RUN_AS_NON_ROOT:-"true"}
     extraEnvVars: ${K8S_EXTRA_ENV_VARS:-[]}
     podAnnotations: ${K8S_POD_ANNOTATIONS:-""}
+    podLabels: ${K8S_POD_LABELS:-""}
     tolerations: ${K8S_TOLERATIONS:-[]}
     useOMJobOperator: ${USE_OMJOB_OPERATOR:-"true"}
 
@@ -884,7 +885,7 @@ alerting:
   # When true, an event waits for the mail server's answer to each of its emails, up to the time
   # left in the tick's budget, and a rejection or a wait that runs out is recorded as a failure.
   # When false an email counts as delivered once it is handed to the mail library.
-  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-false}
+  awaitEmailOutcome: ${ALERTING_AWAIT_EMAIL_OUTCOME:-true}
   # How many of one event's targets are sent to at the same time, 1 to 8. With 1 they are sent one
   # after another, so an event takes the sum of its targets' waits. The next event never starts
   # before every target of the previous one is done.
@@ -965,6 +966,7 @@ rdf:
   bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
   maxUpdatePayloadBytes: ${RDF_MAX_UPDATE_PAYLOAD_BYTES:-4194304}
   maxAppendPayloadBytes: ${RDF_MAX_APPEND_PAYLOAD_BYTES:-16777216}
+  graphReplaceChunkBytes: ${RDF_GRAPH_REPLACE_CHUNK_BYTES:-16777216}
   bulkAppendEntityBatchSize: ${RDF_BULK_APPEND_ENTITY_BATCH_SIZE:-1000}
   streamingAppendEnabled: ${RDF_STREAMING_APPEND_ENABLED:-true}
   gzipRequests: ${RDF_GZIP_REQUESTS:-false}
@@ -984,6 +986,12 @@ rdf:
   federation:
     enabled: ${RDF_FEDERATION_ENABLED:-false}
     allowedEndpoints: ${RDF_FEDERATION_ALLOWED_ENDPOINTS:-[]}
+  # TDB2 keeps every page a write replaces until compaction; compact on a schedule with writes paused.
+  storageMaintenance:
+    enabled: ${RDF_STORAGE_MAINTENANCE_ENABLED:-true}
+    compactionIntervalHours: ${RDF_COMPACTION_INTERVAL_HOURS:-24}
+    maxDurationMinutes: ${RDF_MAINTENANCE_MAX_DURATION_MINUTES:-240}
+    urgentFreeSpacePercent: ${RDF_URGENT_COMPACTION_FREE_PERCENT:-50}
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load

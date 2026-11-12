@@ -566,8 +566,9 @@ async function init() {
   app.all('/v2/logout', rewriteTo('/session/end'));
   app.get('/.well-known/jwks.json', rewriteTo('/jwks'));
 
-  // Auth0 SPA SDK posts /oauth/token as `Content-Type: application/json`
-  // (Auth0-specific — the spec-standard body is
+  // auth0-spa-js v1 posts /oauth/token as `Content-Type: application/json`;
+  // v2 defaults to form-urlencoded (`useFormData: true`), parsed by the
+  // route-level `express.urlencoded()` below. Accept both (the spec-standard body is
   // `application/x-www-form-urlencoded`, which is what oidc-provider
   // accepts and errors on anything else). A simple URL rewrite would fail:
   //  1. oidc-provider looks at Content-Type before parsing and rejects
@@ -579,7 +580,7 @@ async function init() {
   // /token endpoint with the correct headers and body, and stream the
   // upstream response straight back to the SDK. Downstream cares only
   // about the JSON body oidc-provider returns, which is identical.
-  app.post('/oauth/token', (req, res) => {
+  app.post('/oauth/token', express.urlencoded({ extended: false }), (req, res) => {
     let form;
     if (req.is('application/json') && req.body && typeof req.body === 'object') {
       const params = new URLSearchParams();

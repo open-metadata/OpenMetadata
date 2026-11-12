@@ -2,12 +2,12 @@ package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 
-import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.json.JsonPatch;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
@@ -22,6 +22,7 @@ import org.openmetadata.schema.type.OntologyApprovalRule;
 import org.openmetadata.schema.type.OntologyPackInstallation;
 import org.openmetadata.schema.type.OntologyReference;
 import org.openmetadata.schema.type.OntologyState;
+import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -89,10 +90,8 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   }
 
   @Override
-  protected String serializeForVersionHistory(final Ontology entity) {
-    final ObjectNode node = (ObjectNode) JsonUtils.valueToTree(entity);
-    node.remove(PUBLICATION_STATUS);
-    return node.toString();
+  protected List<String> getFieldsHiddenFromHistory() {
+    return List.of(PUBLICATION_STATUS);
   }
 
   private void fetchPublicationStatus(final List<Ontology> ontologies, final Fields fields) {
@@ -145,6 +144,33 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
     }
   }
 
+  /**
+   * Orders a reviewer or rule change against a direct publish, which reads the reviewer list
+   * under this same lock.
+   */
+  private void lockState(final UUID ontologyId) {
+    daoCollection.ontologyStateDAO().initialize(ontologyId);
+    daoCollection.ontologyStateDAO().lock(ontologyId);
+  }
+
+  /**
+   * Whether any reviewer is listed on the ontology. Read under the ontology state lock so it
+   * cannot change before a direct publish commits.
+   */
+  public boolean hasReviewers(final UUID ontologyId) {
+    return !findFromRecords(ontologyId, Entity.ONTOLOGY, Relationship.REVIEWS, null).isEmpty();
+  }
+
+  /** The release awaiting a reviewer decision, if one is open on the ontology. */
+  public Optional<OntologyRelease> findOpenReview(final UUID ontologyId) {
+    return daoCollection
+        .ontologyReleaseDAO()
+        .listByStatus(ontologyId, EntityStatus.IN_REVIEW.value())
+        .stream()
+        .map(json -> JsonUtils.readValue(json, OntologyRelease.class))
+        .findFirst();
+  }
+
   private static Set<UUID> reviewerIds(final List<EntityReference> reviewers) {
     return listOrEmpty(reviewers).stream()
         .filter(reviewer -> !Boolean.TRUE.equals(reviewer.getInherited()))
@@ -169,6 +195,7 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
 
     @Override
     protected void updateReviewers() {
+      lockState(original.getId());
       if (!reviewerIds(original.getReviewers()).equals(reviewerIds(updated.getReviewers()))) {
         requireNoOpenReview(original.getId());
       }
@@ -178,6 +205,7 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
     @Override
     protected void entitySpecificUpdate(final boolean consolidatingChanges) {
       updated.setInstalledPacks(original.getInstalledPacks());
+      lockState(original.getId());
       if (!Objects.equals(approvalRule(original), approvalRule(updated))) {
         requireNoOpenReview(original.getId());
       }

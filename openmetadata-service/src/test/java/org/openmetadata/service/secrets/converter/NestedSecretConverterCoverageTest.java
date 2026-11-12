@@ -3,9 +3,6 @@ package org.openmetadata.service.secrets.converter;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.Resource;
-import io.github.classgraph.ScanResult;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Deque;
@@ -14,9 +11,9 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import org.junit.jupiter.api.Test;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.secrets.JsonSchemas;
+import org.openmetadata.service.secrets.JsonSchemas.Ref;
 
 /**
  * Secrets that live behind a JSON-Schema {@code oneOf} are generated as a bare {@code Object} field
@@ -33,8 +30,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 class NestedSecretConverterCoverageTest {
 
   private static final String SECRET = "openmetadata-nested-secret";
-  private static final String SCHEMA_ROOT = "json/schema/";
-  private static final String CONNECTIONS_PATH = SCHEMA_ROOT + "entity/services/connections";
+  private static final String CONNECTIONS_PATH = "json/schema/entity/services/connections";
 
   /**
    * Secret-bearing {@code oneOf} branches that jsonschema2pojo never materialised into a class, so
@@ -49,14 +45,15 @@ class NestedSecretConverterCoverageTest {
 
   @Test
   void everySecretBearingOneOfPropertyHasAConverter() {
-    Map<String, JsonNode> schemas = loadSchemas();
+    JsonSchemas schemas = JsonSchemas.load();
     assertTrue(
-        schemas.size() > 100, "No JSON schemas found on the classpath, found " + schemas.size());
+        schemas.all().size() > 100,
+        "No JSON schemas found on the classpath, found " + schemas.all().size());
 
     List<String> uncovered = new ArrayList<>();
     List<String> staleAllowlist = new ArrayList<>(KNOWN_UNCONVERTIBLE);
 
-    for (Map.Entry<String, JsonNode> entry : schemas.entrySet()) {
+    for (Map.Entry<String, JsonNode> entry : schemas.all().entrySet()) {
       String path = entry.getKey();
       // serviceConnection.json is the union of every connection config; covered via its members.
       if (!path.startsWith(CONNECTIONS_PATH) || path.endsWith("serviceConnection.json")) {
@@ -98,7 +95,7 @@ class NestedSecretConverterCoverageTest {
    * walkers skip, so a map here means the secrets below it stay in the clear.
    */
   private boolean leavesSecretsInAMap(
-      JsonNode schema, String property, Ref oneOf, Map<String, JsonNode> schemas) {
+      JsonNode schema, String property, Ref oneOf, JsonSchemas schemas) {
     Class<?> connectionClass;
     try {
       connectionClass = Class.forName(schema.path("javaType").asText(""));
@@ -117,13 +114,13 @@ class NestedSecretConverterCoverageTest {
     }
   }
 
-  private Ref secretBearingBranch(JsonNode oneOf, String path, Map<String, JsonNode> schemas) {
+  private Ref secretBearingBranch(JsonNode oneOf, String path, JsonSchemas schemas) {
     JsonNode branches = oneOf.has("oneOf") ? oneOf.get("oneOf") : oneOf.get("anyOf");
     for (JsonNode branch : branches) {
       Ref resolved = new Ref(branch, path);
       String ref = branch.path("$ref").asText("");
       if (!ref.isEmpty()) {
-        resolved = resolveRef(ref, path, schemas);
+        resolved = schemas.resolve(ref, path);
       }
       if (resolved != null && containsPasswordFormat(resolved.node(), resolved.path(), schemas)) {
         return resolved;
@@ -136,13 +133,13 @@ class NestedSecretConverterCoverageTest {
    * The smallest payload that reaches every {@code format: password} leaf of {@code branch}, with
    * each level's single-valued enum carried along so a converter candidate list can discriminate.
    */
-  private Object secretPayload(JsonNode branch, String path, Map<String, JsonNode> schemas) {
+  private Object secretPayload(JsonNode branch, String path, JsonSchemas schemas) {
     Map<String, Object> payload = new LinkedHashMap<>();
     JsonNode properties = branch.path("properties");
     for (String name : iterable(properties.fieldNames())) {
       JsonNode property = properties.get(name);
       String ref = property.path("$ref").asText("");
-      Ref resolved = ref.isEmpty() ? new Ref(property, path) : resolveRef(ref, path, schemas);
+      Ref resolved = ref.isEmpty() ? new Ref(property, path) : schemas.resolve(ref, path);
       if (resolved == null) {
         continue;
       }
@@ -178,7 +175,7 @@ class NestedSecretConverterCoverageTest {
    * Returns the {@code oneOf}/{@code anyOf} node a property resolves to, or {@code null} when the
    * property is not generated as a bare {@code Object} because it declares its own properties.
    */
-  private Ref resolveToOneOfNode(JsonNode property, String path, Map<String, JsonNode> schemas) {
+  private Ref resolveToOneOfNode(JsonNode property, String path, JsonSchemas schemas) {
     JsonNode node = property;
     String base = path;
     for (int depth = 0; depth < 8 && node != null; depth++) {
@@ -192,7 +189,7 @@ class NestedSecretConverterCoverageTest {
       if (ref.isEmpty()) {
         return null;
       }
-      Ref resolved = resolveRef(ref, base, schemas);
+      Ref resolved = schemas.resolve(ref, base);
       if (resolved == null) {
         return null;
       }
@@ -202,8 +199,7 @@ class NestedSecretConverterCoverageTest {
     return null;
   }
 
-  private boolean containsPasswordFormat(
-      JsonNode node, String path, Map<String, JsonNode> schemas) {
+  private boolean containsPasswordFormat(JsonNode node, String path, JsonSchemas schemas) {
     Deque<Ref> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
     queue.add(new Ref(node, path));
@@ -219,7 +215,7 @@ class NestedSecretConverterCoverageTest {
       String ref = value.path("$ref").asText("");
       if (!ref.isEmpty()) {
         if (visited.add(current.path() + "|" + ref)) {
-          Ref resolved = resolveRef(ref, current.path(), schemas);
+          Ref resolved = schemas.resolve(ref, current.path());
           if (resolved != null) {
             queue.add(resolved);
           }
@@ -237,57 +233,7 @@ class NestedSecretConverterCoverageTest {
     return false;
   }
 
-  private Ref resolveRef(String ref, String base, Map<String, JsonNode> schemas) {
-    int hash = ref.indexOf('#');
-    String filePart = hash >= 0 ? ref.substring(0, hash) : ref;
-    String fragment = hash >= 0 ? ref.substring(hash + 1) : "";
-    String targetPath = filePart.isEmpty() ? base : normalize(base, filePart);
-    JsonNode node = schemas.get(targetPath);
-    if (node == null) {
-      return null;
-    }
-    for (String segment : fragment.split("/")) {
-      if (!segment.isEmpty()) {
-        node = node.path(segment);
-      }
-    }
-    return node.isMissingNode() ? null : new Ref(node, targetPath);
-  }
-
-  /** Resolves a schema-relative {@code $ref} file path against the referring schema's path. */
-  private String normalize(String base, String relative) {
-    Deque<String> segments = new ArrayDeque<>();
-    for (String segment : base.substring(0, base.lastIndexOf('/')).split("/")) {
-      segments.addLast(segment);
-    }
-    for (String segment : relative.split("/")) {
-      if (segment.equals("..")) {
-        segments.pollLast();
-      } else if (!segment.equals(".") && !segment.isEmpty()) {
-        segments.addLast(segment);
-      }
-    }
-    return String.join("/", segments);
-  }
-
-  /** Every schema under {@code json/schema/}, keyed by its classpath-relative path. */
-  private Map<String, JsonNode> loadSchemas() {
-    Map<String, JsonNode> schemas = new TreeMap<>();
-    try (ScanResult scan = new ClassGraph().acceptPaths(SCHEMA_ROOT).scan()) {
-      for (Resource resource : scan.getResourcesWithExtension("json")) {
-        try {
-          schemas.put(resource.getPath(), JsonUtils.readTree(resource.getContentAsString()));
-        } catch (Exception ignored) {
-          // Not every JSON under json/schema parses as a schema; those cannot declare secrets.
-        }
-      }
-    }
-    return schemas;
-  }
-
   private static <T> Iterable<T> iterable(java.util.Iterator<T> iterator) {
     return () -> iterator;
   }
-
-  private record Ref(JsonNode node, String path) {}
 }

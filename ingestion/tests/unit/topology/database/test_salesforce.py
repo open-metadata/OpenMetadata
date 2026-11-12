@@ -496,8 +496,7 @@ EXPECTED_COLUMN_TYPE = ["VARCHAR", "VARCHAR", "VARCHAR", "UNKNOWN"]
 class SalesforceUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
     @patch("metadata.ingestion.source.database.salesforce.connection.Salesforce")
-    def __init__(self, methodName, salesforce, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, salesforce, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_config)
         self.salesforce_source = SalesforceSource.create(

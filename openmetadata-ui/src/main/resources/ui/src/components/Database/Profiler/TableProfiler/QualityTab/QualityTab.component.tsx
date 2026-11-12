@@ -12,19 +12,20 @@
  */
 import {
   Box,
+  Button,
   Select,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
   AbortedTests,
-  FailedTests,
   SuccessfulTests,
-  TotalTests,
+  TestSuite,
+  XCircle,
 } from '@openmetadata/ui-core-components/icons';
 import { isEmpty } from 'lodash';
 import QueryString from 'qs';
-import { useEffect, useMemo, useState } from 'react';
+import { lazy, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { INITIAL_PAGING_VALUE } from '../../../../../constants/constants';
@@ -52,6 +53,7 @@ import { getDerivedPermissionFlags } from '../../../../../utils/PermissionDeriva
 import { checkPermission } from '../../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
 import { ExtraTestCaseDropdownOptions } from '../../../../../utils/TestCaseUtils';
+import withSuspenseFallback from '../../../../AppRouter/withSuspenseFallback';
 import PermissionPlaceholder from '../../../../common/EmptyPlaceholder/PermissionPlaceholder';
 import ManageButton from '../../../../common/EntityPageInfos/ManageButton/ManageButton';
 import { NextPreviousProps } from '../../../../common/NextPrevious/NextPrevious.interface';
@@ -66,6 +68,15 @@ import {
   ProfilerTabPath,
 } from '../../ProfilerDashboard/profilerDashboard.interface';
 import { useTableProfiler } from '../TableProfilerProvider';
+
+const TestSuitePipelineFormDrawer = withSuspenseFallback(
+  lazy(
+    () =>
+      import(
+        '../../../../DataQuality/AddDataQualityTest/components/TestSuitePipelineFormDrawer'
+      )
+  )
+);
 
 export const QualityTab = () => {
   const {
@@ -149,6 +160,9 @@ export const QualityTab = () => {
   const testSuite = useMemo(() => table?.testSuite, [table]);
   const [ingestionPipelineCount, setIngestionPipelineCount] =
     useState<number>(0);
+  const [isPipelineDrawerOpen, setIsPipelineDrawerOpen] = useState(false);
+  // Bumped after a pipeline is created to remount the list so it refetches.
+  const [pipelineListKey, setPipelineListKey] = useState(0);
 
   const hasActiveFilters = useMemo(
     () =>
@@ -166,7 +180,7 @@ export const QualityTab = () => {
         title: t('label.test-plural-type', { type: t('label.total') }),
         key: 'total-tests',
         value: tests.total,
-        icon: TotalTests,
+        icon: TestSuite,
       },
       {
         title: t('label.test-plural-type', { type: t('label.successful') }),
@@ -178,7 +192,7 @@ export const QualityTab = () => {
         title: t('label.test-plural-type', { type: t('label.failed') }),
         key: 'failed-tests',
         value: tests.failed,
-        icon: FailedTests,
+        icon: XCircle,
       },
       {
         title: t('label.test-plural-type', { type: t('label.aborted') }),
@@ -220,6 +234,11 @@ export const QualityTab = () => {
     }
     handlePageChange(currentPage);
   };
+
+  const handleAddPipeline = () => setIsPipelineDrawerOpen(true);
+
+  // The remounted list refetches and reports the new total.
+  const handlePipelineCreated = () => setPipelineListKey((key) => key + 1);
 
   const handleSearchTestCase = (value?: string) => {
     setSearchValue(value);
@@ -523,6 +542,15 @@ export const QualityTab = () => {
               </Box>
             </Box>
           )}
+
+          {!isTestCaseTab && ingestionPipelineCount > 0 && (
+            <Button
+              className="tw:ml-auto tw:shrink-0"
+              data-testid="add-pipeline-button"
+              onPress={handleAddPipeline}>
+              {t('label.add-entity', { entity: t('label.pipeline') })}
+            </Button>
+          )}
         </div>
 
         {qualityTab === EntityTabs.TEST_CASES && (
@@ -548,8 +576,21 @@ export const QualityTab = () => {
         )}
 
         {qualityTab === EntityTabs.PIPELINE && (
-          <TestSuitePipelineTab testSuite={testSuite} />
+          <TestSuitePipelineTab
+            key={pipelineListKey}
+            showAddPipelineButton={false}
+            testSuite={testSuite}
+            onAddPipeline={handleAddPipeline}
+            onPipelinesChange={setIngestionPipelineCount}
+          />
         )}
+
+        <TestSuitePipelineFormDrawer
+          open={isPipelineDrawerOpen}
+          table={table}
+          onClose={() => setIsPipelineDrawerOpen(false)}
+          onSuccess={handlePipelineCreated}
+        />
       </div>
     </div>
   );

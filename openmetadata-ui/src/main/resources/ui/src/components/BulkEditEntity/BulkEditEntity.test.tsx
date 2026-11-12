@@ -879,6 +879,26 @@ describe('BulkEditEntity', () => {
       expect(operationSummary.getByText('1')).toBeInTheDocument();
       expect(screen.getByText('1 label.error')).toBeInTheDocument();
     });
+
+    it('hides the add-metric footer while a search is active', () => {
+      mockEntityType = EntityType.METRIC;
+      const { rerender } = renderComponent({
+        searchText: 'zzz',
+        visibleRows: [],
+      });
+
+      expect(
+        screen.queryByTestId('bulk-edit-add-metric')
+      ).not.toBeInTheDocument();
+
+      rerender(
+        <MemoryRouter>
+          <BulkEditEntity {...defaultProps} />
+        </MemoryRouter>
+      );
+
+      expect(screen.getByTestId('bulk-edit-add-metric')).toBeInTheDocument();
+    });
   });
 
   describe('Loading State', () => {

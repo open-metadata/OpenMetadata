@@ -13,6 +13,7 @@
 
 import { ReactNode } from 'react';
 import { UseFormReturn } from 'react-hook-form';
+import { OperationPermission } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Type } from '../../../../../../generated/entity/type';
 import { CustomProperty } from '../../../../../../generated/type/customProperty';
 
@@ -65,9 +66,11 @@ export interface CustomPropertiesDetailPageProps {
   entityType: Type;
   onAddProperty: () => void;
   onEditProperty: (property: CustomProperty) => void;
+  onEntityTypeChange: (entityType: Type) => void;
   onSetHeaderActions: (actions: ReactNode) => void;
+  permission: OperationPermission;
 }
 
 export interface CustomPropertiesLandingPageProps {
-  onSelectEntityType: (entityType: Type) => void;
+  onSelectEntityType: (entityTypeFqn: string) => void;
 }

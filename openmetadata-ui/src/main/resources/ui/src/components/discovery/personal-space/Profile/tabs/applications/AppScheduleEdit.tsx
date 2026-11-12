@@ -36,7 +36,7 @@ const AppScheduleEdit: FC<AppScheduleEditProps> = ({
 
   return (
     <Box
-      className="tw:mx-auto tw:w-3/5"
+      className="tw:mx-auto tw:w-full tw:max-w-[50%]"
       data-testid="update-schedule-form"
       direction="col">
       <ScheduleInterval
