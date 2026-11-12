@@ -28,7 +28,10 @@ import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.openmetadata.schema.api.data.CreateFolder;
 import org.openmetadata.schema.api.data.RestoreEntity;
 import org.openmetadata.schema.entity.data.ContextFile;
@@ -37,12 +40,18 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.FolderRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
+import org.openmetadata.service.util.EntityUtil.Fields;
 
 @Tag(
     name = "Context Center Drive Folders",
@@ -54,6 +63,9 @@ import org.openmetadata.service.security.Authorizer;
 public class FolderResource extends EntityResource<Folder, FolderRepository> {
   public static final String COLLECTION_PATH = "v1/contextCenter/drive/folders/";
   public static final String FIELDS = "owners,tags,parent,children,domains,followers,childrenCount";
+  private static final String CONTEXT_FILE = ContextFileRepository.CONTEXT_FILE_ENTITY;
+  private static final List<MetadataOperation> VIEW_BASIC_ONLY =
+      List.of(MetadataOperation.VIEW_BASIC);
   private final FolderMapper mapper = new FolderMapper();
 
   public static class FolderContents {
@@ -110,8 +122,11 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @QueryParam("before") String before,
       @QueryParam("after") String after,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return super.listInternal(
-        uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
+    ResultList<Folder> folders =
+        super.listInternal(
+            uriInfo, securityContext, fieldsParam, new ListFilter(include), limit, before, after);
+    countVisibleFiles(securityContext, folders.getData());
+    return folders;
   }
 
   @GET
@@ -123,7 +138,9 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @PathParam("id") UUID id,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    Folder folder = getInternal(uriInfo, securityContext, id, fieldsParam, include);
+    countVisibleFiles(securityContext, List.of(folder));
+    return folder;
   }
 
   @GET
@@ -135,7 +152,62 @@ public class FolderResource extends EntityResource<Folder, FolderRepository> {
       @PathParam("fqn") String fqn,
       @QueryParam("fields") String fieldsParam,
       @QueryParam("include") @DefaultValue("non-deleted") Include include) {
-    return getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    Folder folder = getByNameInternal(uriInfo, securityContext, fqn, fieldsParam, include);
+    countVisibleFiles(securityContext, List.of(folder));
+    return folder;
+  }
+
+  /**
+   * A folder's {@code childrenCount} counts only the files the caller may see, as its file listing
+   * does (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+   */
+  private void countVisibleFiles(SecurityContext securityContext, List<Folder> folders) {
+    List<Folder> counted =
+        folders.stream().filter(folder -> folder.getChildrenCount() != null).toList();
+    if (counted.isEmpty() || ContextFileVisibility.seesEveryFile(securityContext)) {
+      return;
+    }
+    Map<UUID, List<ContextFile>> byFolder =
+        repository.childFilesByFolder(counted, visibilityFields(securityContext));
+    Set<UUID> visible =
+        visibleFileIds(securityContext, byFolder.values().stream().flatMap(List::stream).toList());
+    counted.forEach(
+        folder ->
+            folder.setChildrenCount(
+                (int)
+                    byFolder.getOrDefault(folder.getId(), List.of()).stream()
+                        .filter(file -> visible.contains(file.getId()))
+                        .count()));
+  }
+
+  /** The file fields the checks read; the authorization fields only when a rule could use them. */
+  private static Fields visibilityFields(SecurityContext securityContext) {
+    Fields fields = files().getFields(ContextFileVisibility.guardFields(null));
+    return fileRowsMayDiffer(securityContext)
+        ? ResourceContext.authorizationFields(files(), fields)
+        : fields;
+  }
+
+  /** The files the caller may see: the row check a file listing applies, then sharing. */
+  private Set<UUID> visibleFileIds(SecurityContext securityContext, List<ContextFile> candidates) {
+    List<ContextFile> readable =
+        fileRowsMayDiffer(securityContext)
+            ? new ViewPermissionFilter(authorizer)
+                .retainPermitted(
+                    securityContext, CONTEXT_FILE, files(), candidates, VIEW_BASIC_ONLY)
+            : candidates;
+    return ContextFileVisibility.filterVisible(readable, securityContext).stream()
+        .map(ContextFile::getId)
+        .collect(Collectors.toSet());
+  }
+
+  private static boolean fileRowsMayDiffer(SecurityContext securityContext) {
+    return RowDecisionGate.mayDiffer(
+        DefaultAuthorizer.getSubjectContext(securityContext), CONTEXT_FILE, VIEW_BASIC_ONLY);
+  }
+
+  private static ContextFileRepository files() {
+    return (ContextFileRepository) Entity.getEntityRepository(CONTEXT_FILE);
   }
 
   @GET

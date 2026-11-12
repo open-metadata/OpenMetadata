@@ -578,10 +578,19 @@ class ContextFileIT {
     assertEquals(List.of(orgWide.getId().toString()), listed);
     assertEquals(
         1, listFiles(readerRest, folder.getId(), 0, null).get("paging").get("total").asInt());
+    assertEquals(1, folderChildrenCount(readerRest, folder.getId()), "folder badge");
 
     RestClient ownerRest = RestClient.forUser(owner.getEmail(), new String[] {});
     assertEquals(
         2, listFiles(ownerRest, folder.getId(), 1, null).get("paging").get("total").asInt());
+    assertEquals(2, folderChildrenCount(ownerRest, folder.getId()), "owner's folder badge");
+  }
+
+  private static int folderChildrenCount(RestClient rest, UUID folderId) {
+    try (Response response = rest.rawGet(FOLDER_PATH + "/" + folderId + "?fields=childrenCount")) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readTree(response.readEntity(String.class)).get("childrenCount").asInt();
+    }
   }
 
   private static CreateContextFile ownedFileIn(Folder folder, String name, User owner) {

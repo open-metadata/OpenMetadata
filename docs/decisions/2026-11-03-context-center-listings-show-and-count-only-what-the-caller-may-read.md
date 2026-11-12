@@ -59,3 +59,7 @@ than the page. The recount reads the rows straight from the repository and appli
 row check and the file sharing rules; the caller's teams and domains are resolved once per list.
 The listing ordered by update time (`orderBy`) applies the same row check to its page, so the page
 and its total agree; it does not refill, and its cursors are sealed when rows are checked.
+
+A folder's `childrenCount`, which the Documents page shows as the folder's badge, counts the same
+files: for anyone but an admin, the files of every folder in the response are read in one batch and
+counted after the same row check and sharing rules.
