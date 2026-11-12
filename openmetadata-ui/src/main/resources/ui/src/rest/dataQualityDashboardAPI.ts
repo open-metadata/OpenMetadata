@@ -69,7 +69,7 @@ export const fetchTotalEntityCount = (
       },
     }),
     index: 'table',
-    aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+    aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
     domain: filters?.domainFqn,
   });
 };

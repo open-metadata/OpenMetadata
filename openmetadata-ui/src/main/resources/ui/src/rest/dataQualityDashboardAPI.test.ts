@@ -91,7 +91,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
         domain: undefined,
       });
     });
@@ -126,7 +126,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -163,7 +163,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -200,7 +200,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -256,7 +256,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
 
@@ -272,7 +272,7 @@ describe('dataQualityDashboardAPI', () => {
           },
         }),
         index: 'table',
-        aggregationQuery: `bucketName=count:aggType=cardinality:field=fullyQualifiedName`,
+        aggregationQuery: `bucketName=count:aggType=value_count:field=fullyQualifiedName`,
       });
     });
   });
