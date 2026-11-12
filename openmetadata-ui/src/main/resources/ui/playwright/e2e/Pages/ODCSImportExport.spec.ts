@@ -24,6 +24,7 @@ import {
   ODCS_INVALID_SCHEMA_FIELDS_YAML,
   ODCS_INVALID_WRONG_APIVERSION_YAML,
   ODCS_INVALID_WRONG_KIND_YAML,
+  ODCS_SLA_TIMEZONE,
   ODCS_VALID_BASIC_JSON,
   ODCS_VALID_BASIC_YAML,
   ODCS_VALID_DRAFT_STATUS_YAML,
@@ -48,6 +49,7 @@ import { selectDropdownOption } from '../../utils/destination';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   clickImportODCSButton,
+  confirmODCSExport,
   getContractForTable,
   importODCSYaml,
   navigateToContractTab,
@@ -439,9 +441,10 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
         'Cannot Import',
         { timeout: 10000 }
       );
+      // The published-schema check names the failing path, not the rejected value
       await expect(
         page.getByTestId('odcs-report-blocking-issues')
-      ).toContainText('WrongKind');
+      ).toContainText('/kind');
     } finally {
       await table.delete(apiContext);
     }
@@ -513,6 +516,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
 
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const filename = download.suggestedFilename();
@@ -553,6 +557,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
 
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
 
@@ -618,6 +623,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/merge-verify-${Date.now()}.yaml`;
@@ -696,6 +702,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/replace-verify-${Date.now()}.yaml`;
@@ -931,6 +938,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const odcsDownloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const odcsDownload = await odcsDownloadPromise;
       const odcsTempPath = `/tmp/odcs-roundtrip-${Date.now()}.yaml`;
@@ -1035,6 +1043,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/timezone-export-${Date.now()}.yaml`;
@@ -1043,11 +1052,11 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const fsModule = await import('fs');
       const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
-      // Verify SLA properties are in the export
-      // Note: timezone field is not yet exported by backend, but SLA properties should be preserved
       expect(exportedYaml).toContain('freshness');
       expect(exportedYaml).toContain('latency');
       expect(exportedYaml).toContain('slaProperties');
+      expect(exportedYaml).toContain('availabilityTime');
+      expect(exportedYaml).toContain(ODCS_SLA_TIMEZONE);
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
@@ -1077,6 +1086,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/security-export-${Date.now()}.yaml`;
@@ -1120,6 +1130,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/quality-export-${Date.now()}.yaml`;
@@ -1159,6 +1170,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/quality-between-export-${Date.now()}.yaml`;
@@ -1203,6 +1215,7 @@ test.describe('ODCS Import/Export', { tag: '@import-export' }, () => {
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/team-export-${Date.now()}.yaml`;
@@ -1793,6 +1806,7 @@ version: "1.0.0"`;
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/import-modify-export-${Date.now()}.yaml`;
@@ -1887,6 +1901,7 @@ version: "1.0.0"`;
       const downloadPromise = page.waitForEvent('download');
       await page.getByTestId('manage-contract-actions').click();
       await page.getByTestId('export-odcs-contract-button').click();
+      await confirmODCSExport(page);
 
       const download = await downloadPromise;
       const tempPath = `/tmp/sla-modified-${Date.now()}.yaml`;
@@ -2276,9 +2291,10 @@ version: "1.0.0"`;
       await expect(rules).toContainText('columnValuesToBeNotNull');
       await expect(rules).toContainText('tableRowCountToBeBetween');
       await expect(rules).toContainText('Not Run');
-      await expect(
-        page.getByTestId('odcs-report-not-imported-schema')
-      ).toContainText('businessName');
+      // Fields without an OpenMetadata equivalent are kept for export, not dropped
+      await expect(page.getByTestId('odcs-report-info')).toContainText(
+        'businessName'
+      );
       await expect(
         page.getByRole('checkbox', {
           name: 'Create Test Cases from Quality Rules',
