@@ -24,6 +24,7 @@ on:
       - ".github/scripts/tests/test_ci_speed_*.py"
       - ".github/scripts/configure_docker_storage.sh"
       - "openmetadata-ui/src/main/resources/ui/jest.config.js"
+      - "openmetadata-integration-tests/pom.xml"
 
 permissions:
   contents: read
