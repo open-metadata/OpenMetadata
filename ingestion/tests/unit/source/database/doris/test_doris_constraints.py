@@ -15,6 +15,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy.dialects.mysql.base import MySQLDialect
+from sqlalchemy.exc import OperationalError
 
 from metadata.generated.schema.entity.data.table import Constraint, ConstraintType
 from metadata.ingestion.ometa.utils import model_str
@@ -63,6 +64,12 @@ SHOW_FULL_COLUMNS_ROWS = {
         ("k_id", "bigint", "", "NO", "YES", None, "", "", ""),
         ("c_int", "int", "", "YES", "NO", None, "NONE", "", ""),
     ],
+    # the legacy PRIMARY KEY model, KeysType.PRIMARY_KEYS
+    "t_pri": [
+        ("k1", "int", "", "NO", "YES", None, "", "", ""),
+        ("k2", "int", "", "NO", "YES", None, "", "", ""),
+        ("v", "int", "", "YES", "NO", None, "NONE", "", ""),
+    ],
     # DUPLICATE KEY(region), the model CREATE TABLE ... AS SELECT gives a table
     "t_ctas": [
         ("region", "varchar(10)", "", "NO", "YES", None, "", "", ""),
@@ -76,6 +83,7 @@ TABLE_OPTIONS_ROWS = [
     SimpleNamespace(TABLE_NAME="t_uniq_single", TABLE_MODEL="UNI", TABLE_MODEL_KEY="id"),
     SimpleNamespace(TABLE_NAME="t_agg", TABLE_MODEL="AGG", TABLE_MODEL_KEY="dt,site"),
     SimpleNamespace(TABLE_NAME="t_dup", TABLE_MODEL="DUP", TABLE_MODEL_KEY="k_date,k_id"),
+    SimpleNamespace(TABLE_NAME="t_pri", TABLE_MODEL="PRI", TABLE_MODEL_KEY="k1,k2"),
     SimpleNamespace(TABLE_NAME="t_ctas", TABLE_MODEL="DUP", TABLE_MODEL_KEY="region"),
 ]
 
@@ -130,6 +138,12 @@ class TestPrimaryKeyConstraints:
                 id="aggregate-key",
             ),
             pytest.param(
+                "t_pri",
+                [(ConstraintType.PRIMARY_KEY, ["k1", "k2"])],
+                {"k1": Constraint.NOT_NULL, "k2": Constraint.NOT_NULL, "v": Constraint.NULL},
+                id="primary-key",
+            ),
+            pytest.param(
                 "t_dup",
                 [],
                 {"k_date": Constraint.NOT_NULL, "k_id": Constraint.NOT_NULL, "c_int": Constraint.NULL},
@@ -156,4 +170,25 @@ class TestPrimaryKeyConstraints:
             doris_source.get_columns_and_constraints("om_verify", table_name, "default", inspector=None)
 
         queries = [str(call.args[0]) for call in doris_source.engine.connect.return_value.execute.call_args_list]
+        assert sum("information_schema.table_options" in query for query in queries) == 1
+
+    def test_table_options_failure_keeps_tables_without_primary_keys(self, doris_source):
+        """A Doris without information_schema.table_options, or a failing query, must not drop the tables"""
+
+        def execute(statement, *args):
+            if "information_schema.table_options" in str(statement):
+                raise OperationalError(str(statement), {}, Exception("Unknown table 'table_options'"))
+            return _execute(statement, *args)
+
+        execute_mock = doris_source.engine.connect.return_value.execute
+        execute_mock.side_effect = execute
+
+        for table_name in ("t_uniq", "t_uniq_single"):
+            columns, constraints, _ = doris_source.get_columns_and_constraints(
+                "om_verify", table_name, "default", inspector=None
+            )
+            assert constraints == []
+            assert Constraint.PRIMARY_KEY not in {column.constraint for column in columns}
+
+        queries = [str(call.args[0]) for call in execute_mock.call_args_list]
         assert sum("information_schema.table_options" in query for query in queries) == 1

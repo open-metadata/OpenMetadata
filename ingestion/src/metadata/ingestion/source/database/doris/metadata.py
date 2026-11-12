@@ -75,10 +75,10 @@ RELKIND_MAP = {
     "ICEBERG": TableType.Iceberg,
 }
 
-# Doris has no PRIMARY KEY constraint of its own. The key of a UNIQUE KEY table identifies a row,
-# and so does the key of an AGGREGATE KEY table, whose rows are merged by key. The key of a
-# DUPLICATE KEY table is only a sort key and can repeat.
-PRIMARY_KEY_TABLE_MODELS = {"UNI", "AGG"}
+# TABLE_MODEL values (KeysType.toMetadata in Doris) whose key identifies a row: UNIQUE KEY,
+# AGGREGATE KEY, whose rows are merged by key, and the legacy PRIMARY KEY model. The key of a
+# DUPLICATE KEY table ("DUP") is only a sort key and can repeat; other tables report "".
+PRIMARY_KEY_TABLE_MODELS = {"UNI", "AGG", "PRI"}
 
 # Schemas whose primary keys are kept; with `threads`, each worker processes its own schema
 PRIMARY_KEY_CACHE_SIZE = 32
@@ -249,11 +249,17 @@ class DorisSource(CommonDbSourceService):
             # worker thread between the two calls would raise here
             primary_keys = self.primary_key_columns_cache.get(schema_name)
         except KeyError:
-            primary_keys = {
-                row.TABLE_NAME: row.TABLE_MODEL_KEY.split(",")
-                for row in self.connection.execute(sql.text(DORIS_GET_TABLE_KEY_MODELS), {"schema": schema_name})
-                if row.TABLE_MODEL in PRIMARY_KEY_TABLE_MODELS
-            }
+            try:
+                primary_keys = {
+                    row.TABLE_NAME: row.TABLE_MODEL_KEY.split(",")
+                    for row in self.connection.execute(sql.text(DORIS_GET_TABLE_KEY_MODELS), {"schema": schema_name})
+                    if row.TABLE_MODEL in PRIMARY_KEY_TABLE_MODELS
+                }
+            except Exception as exc:
+                # Ingest the schema's tables without primary keys rather than fail each of them
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Could not read the table models of schema [{schema_name}]: {exc}")
+                primary_keys = {}
             self.primary_key_columns_cache.put(schema_name, primary_keys)
         return primary_keys.get(table_name, [])
 
