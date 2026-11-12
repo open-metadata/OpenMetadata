@@ -79,14 +79,22 @@ public final class ForkedServerNode implements AutoCloseable {
             new Thread(() -> OPEN.forEach(ForkedServerNode::close), "forked-node-cleanup"));
   }
 
-  /** Per-node overrides of the {@code credentialVerification:} block, such as the sweep cadence. */
-  public record Settings(Map<String, String> credentialVerification) {
-    public static final Settings DEFAULT = new Settings(Map.of());
+  /**
+   * Per-node overrides: the {@code credentialVerification:} block, such as the sweep cadence, and
+   * the Fernet key list. A null {@code fernetKey} keeps the suite's own key.
+   */
+  public record Settings(Map<String, String> credentialVerification, String fernetKey) {
+    public static final Settings DEFAULT = new Settings(Map.of(), null);
 
     public Settings withCredentialVerification(String key, String value) {
       Map<String, String> merged = new TreeMap<>(credentialVerification);
       merged.put(key, value);
-      return new Settings(Map.copyOf(merged));
+      return new Settings(Map.copyOf(merged), fernetKey);
+    }
+
+    /** The node's {@code fernetConfiguration.fernetKey}: comma separated, the primary key first. */
+    public Settings withFernetKey(String keys) {
+      return new Settings(credentialVerification, keys);
     }
   }
 
@@ -190,7 +198,8 @@ public final class ForkedServerNode implements AutoCloseable {
     Path baseYaml = Path.of(ResourceHelpers.resourceFilePath("openmetadata-secure-test.yaml"));
     try {
       String yaml =
-          ForkedServerConfig.render(baseYaml, suite, ports, settings.credentialVerification());
+          ForkedServerConfig.render(
+              baseYaml, suite, ports, settings.credentialVerification(), settings.fernetKey());
       return Files.writeString(ForkedJvm.logFile("forked-node-" + number + ".yaml"), yaml);
     } catch (IOException failure) {
       throw new UncheckedIOException(failure);

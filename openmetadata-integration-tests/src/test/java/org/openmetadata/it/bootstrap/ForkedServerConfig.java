@@ -59,10 +59,24 @@ final class ForkedServerConfig {
       Ports ports,
       Map<String, String> credentialVerification)
       throws IOException {
+    return render(baseYaml, suite, ports, credentialVerification, null);
+  }
+
+  /**
+   * As above, with the node's own Fernet key list, comma separated and primary first, in place of
+   * the suite's key; {@code null} keeps the suite's key.
+   */
+  static String render(
+      Path baseYaml,
+      OpenMetadataApplicationConfig suite,
+      Ports ports,
+      Map<String, String> credentialVerification,
+      String fernetKey)
+      throws IOException {
     ObjectNode root = (ObjectNode) YAML.readTree(baseYaml.toFile());
     setPorts(root, ports);
     setDatabase(root, suite);
-    setSharedKeys(root, suite);
+    setSharedKeys(root, suite, fernetKey);
     setBackingServices(root, suite);
     ObjectNode verification = (ObjectNode) JSON.valueToTree(suite.getCredentialVerification());
     credentialVerification.forEach(verification::put);
@@ -91,7 +105,8 @@ final class ForkedServerConfig {
     database.put("initialSize", POOL_MIN);
   }
 
-  private static void setSharedKeys(ObjectNode root, OpenMetadataApplicationConfig suite) {
+  private static void setSharedKeys(
+      ObjectNode root, OpenMetadataApplicationConfig suite, String fernetKey) {
     ObjectNode jwt = (ObjectNode) root.path("jwtTokenConfiguration");
     var jwtConfig = suite.getJwtTokenConfiguration();
     jwt.put("rsapublicKeyFilePath", absolute(jwtConfig.getRsapublicKeyFilePath()));
@@ -99,7 +114,9 @@ final class ForkedServerConfig {
     jwt.put("jwtissuer", jwtConfig.getJwtissuer());
     jwt.put("keyId", jwtConfig.getKeyId());
     ((ObjectNode) root.path("fernetConfiguration"))
-        .put("fernetKey", suite.getFernetConfiguration().getFernetKey());
+        .put(
+            "fernetKey",
+            fernetKey != null ? fernetKey : suite.getFernetConfiguration().getFernetKey());
   }
 
   private static void setBackingServices(ObjectNode root, OpenMetadataApplicationConfig suite) {
