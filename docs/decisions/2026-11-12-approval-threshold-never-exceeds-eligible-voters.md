@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Harshit Shah
 - **Guard:** `CreateTaskTest#approvalThresholdNeverExceedsTheUsersAbleToVote`, `CreateTaskTest#changeRequestPolicyNeverRequiresMoreApprovalsThanTheUsersAbleToVote`
-- **Related:** LHV support ticket 22036
+- **Related:** LHV support ticket 22036; amends ADR:2026-10-14-ontology-reviews-bind-workflow-tasks-to-revisions (v14: the `allAssignees` threshold is capped at the user entry count)
 
 ## Context
 A User Approval node's threshold is a fixed number from its configuration. The assignees are
