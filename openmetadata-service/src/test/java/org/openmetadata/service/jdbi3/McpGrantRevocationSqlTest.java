@@ -31,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareAnnotationSqlLocator;
+import org.openmetadata.service.migration.utils.v208.McpConsentColumns;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
@@ -50,7 +51,7 @@ class McpGrantRevocationSqlTest {
   private static final String DATABASE = "mcp_grants";
   private static final String PASSWORD = "mcp-grants-test";
   private static final String MYSQL = "mysql";
-  private static final List<String> MIGRATIONS = List.of("1.12.4");
+  private static final List<String> MIGRATIONS = List.of("1.12.4", "2.0.8");
   private static final String CLIENT = "client-1";
   // Grants written before they used the account's own name may hold the provider's spelling.
   private static final String DELETED_USER = "alice";
@@ -138,6 +139,21 @@ class McpGrantRevocationSqlTest {
   }
 
   private void seedGrant(Jdbi jdbi, String userName) {
+    CollectionDAO.McpPendingAuthRequestDAO pending =
+        jdbi.onDemand(CollectionDAO.McpPendingAuthRequestDAO.class);
+    pending.insert(
+        "pending-" + userName,
+        CLIENT,
+        "challenge",
+        "S256",
+        "https://client.example/callback",
+        null,
+        "[]",
+        null,
+        null,
+        null,
+        LATER);
+    pending.storeConsent("pending-" + userName, "consent-hash", userName, LATER, 0L);
     jdbi.onDemand(CollectionDAO.OAuthAuthorizationCodeDAO.class)
         .insert(
             "code-" + userName,
@@ -185,6 +201,9 @@ class McpGrantRevocationSqlTest {
 
   private void assertGrantEnded(Jdbi jdbi, String userName) {
     assertNull(
+        jdbi.onDemand(CollectionDAO.McpPendingAuthRequestDAO.class)
+            .findByAuthRequestId("pending-" + userName));
+    assertNull(
         jdbi.onDemand(CollectionDAO.OAuthAuthorizationCodeDAO.class)
             .findByCode("code-" + userName));
     assertNull(
@@ -197,6 +216,9 @@ class McpGrantRevocationSqlTest {
   }
 
   private void assertGrantKept(Jdbi jdbi, String userName) {
+    assertNotNull(
+        jdbi.onDemand(CollectionDAO.McpPendingAuthRequestDAO.class)
+            .findByAuthRequestId("pending-" + userName));
     assertNotNull(
         jdbi.onDemand(CollectionDAO.OAuthAuthorizationCodeDAO.class)
             .findByCode("code-" + userName));
@@ -227,11 +249,16 @@ class McpGrantRevocationSqlTest {
               .resolve("schemaChanges.sql");
       List<String> statements =
           Arrays.stream(Files.readString(file).split(";"))
-              .filter(statement -> statement.contains("oauth_"))
+              .filter(
+                  statement ->
+                      statement.contains("oauth_")
+                          || statement.contains("mcp_pending_auth_requests"))
               .toList();
       jdbi.useHandle(handle -> statements.forEach(handle::execute));
     }
     if (MYSQL.equals(dialect)) {
+      jdbi.useHandle(McpConsentColumns::addOnMySql);
+      jdbi.useHandle(McpConsentColumns::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
       jdbi.useHandle(McpGrantUserNameIndexes::addOnMySql);
     }

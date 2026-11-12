@@ -12,6 +12,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -30,11 +31,13 @@ import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestReposito
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthClientRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthTokenRepository;
+import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
 
 class UserSSOOAuthProviderTest {
@@ -95,10 +98,12 @@ class UserSSOOAuthProviderTest {
   }
 
   @Test
-  void handleSSOCallbackWithDbState_keepsTheGrantUnderTheAccountsOwnName() throws Exception {
+  void handleSSOCallbackWithDbState_keepsConsentUnderTheAccountsOwnName() throws Exception {
     // A SAML NameID keeps the provider's casing; the account it resolves to is lowercase.
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     when(pendingRepo.findByAuthRequestId(AUTH_REQUEST_ID)).thenReturn(samplePendingRequest());
+    when(pendingRepo.storeConsent(eq(AUTH_REQUEST_ID), anyString(), eq(USER_NAME)))
+        .thenReturn(true);
     OAuthClientInformation client = mock(OAuthClientInformation.class);
     when(client.validateRedirectUri(URI.create(MCP_REDIRECT_URI)))
         .thenReturn(URI.create(MCP_REDIRECT_URI));
@@ -109,7 +114,12 @@ class UserSSOOAuthProviderTest {
     HttpServletResponse response = mock(HttpServletResponse.class);
     when(response.getWriter()).thenReturn(new PrintWriter(new StringWriter()));
 
-    try (MockedStatic<Entity> entity = mockStatic(Entity.class)) {
+    try (MockedStatic<Entity> entity = mockStatic(Entity.class);
+        MockedStatic<SecurityConfigurationManager> config =
+            mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withBaseUrl(ISSUER));
       entity
           .when(() -> Entity.getEntityByName(Entity.USER, "Alice", "", Include.NON_DELETED))
           .thenReturn(new User().withName(USER_NAME));
@@ -121,16 +131,8 @@ class UserSSOOAuthProviderTest {
           "mcp:" + AUTH_REQUEST_ID);
     }
 
-    verify(codeRepo)
-        .store(
-            anyString(),
-            eq(CLIENT_ID),
-            eq(USER_NAME),
-            anyString(),
-            anyString(),
-            any(),
-            any(),
-            anyLong());
+    verify(pendingRepo).storeConsent(eq(AUTH_REQUEST_ID), anyString(), eq(USER_NAME));
+    verifyNoInteractions(codeRepo);
   }
 
   private static McpPendingAuthRequest samplePendingRequest() {

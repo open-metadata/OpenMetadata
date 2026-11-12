@@ -36,6 +36,7 @@ import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryption
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
 import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
+import org.openmetadata.service.migration.utils.v208.McpConsentColumns;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
 import org.openmetadata.service.migration.utils.v208.WorkflowRedeployMigration;
@@ -60,6 +61,7 @@ class WorkflowRedeployEntryPointTest {
             mockStatic(ConnectionSecretsEncryptionMigration.class);
         MockedStatic<LifeCycleCreatedSentinelMigration> createdSentinel =
             mockStatic(LifeCycleCreatedSentinelMigration.class);
+        MockedStatic<McpConsentColumns> consentColumns = mockStatic(McpConsentColumns.class);
         MockedStatic<MigrationUtil> migrationUtil = mockStatic(MigrationUtil.class);
         MockedStatic<WorkflowRedeployMigration> workflowRedeploy =
             mockStatic(WorkflowRedeployMigration.class);
@@ -71,6 +73,8 @@ class WorkflowRedeployEntryPointTest {
         MockedStatic<EntityExtensionCollationAlignment> collationAlignment =
             mockStatic(EntityExtensionCollationAlignment.class)) {
       migration.runDataMigration();
+
+      consentColumns.verify(() -> McpConsentColumns.addOnMySql(handle), times(mySqlStepRuns));
 
       migrationUtil.verify(MigrationUtil::rewriteWorkflowRules);
       // `migrate` runs before Flowable starts, so the steps that deploy workflows start it.
