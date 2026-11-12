@@ -1,7 +1,8 @@
 # Vector chunks list a table's columns and a topic's schema fields under one `columns:` section
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial)
+- **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-12 (Elasticsearch topics refresh on the
+  next reindex, not only when edited)
 - **Deciders:** Search and AI context maintainers
 - **Guard:** `VectorDocBuilderTopicFieldsTest` (topic format, chunk boundary) and
   `VectorDocBuilderTest` (`tableChunkText_isByteIdenticalToTheFormatBeforeTopicFields`,
@@ -53,5 +54,13 @@ entry format are a contract with that repository.
   - OpenSearch: run Search Indexing for `topic` to rebuild the chunk index.
   - Elasticsearch: existing topics pick up the fields only when they are edited, because the
     reindex reuses an embedding whose `updatedAt` is unchanged. Elasticsearch embeds chunk 0 only.
+    No longer true; see the v2 amendment.
 - **No cap on fields.** Flattened fields are not capped, matching table columns. A cap would be a
   new decision, recorded here as an amendment.
+
+## Amendment
+
+v2 (2026-11-12): a reindex reuses a stored embedding only when its fingerprint matches;
+`updatedAt` no longer decides (ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches).
+On Elasticsearch, the next Search Indexing run for `topic` re-embeds every topic with schema
+fields, one paid call each, without waiting for an edit. Elasticsearch still embeds chunk 0 only.

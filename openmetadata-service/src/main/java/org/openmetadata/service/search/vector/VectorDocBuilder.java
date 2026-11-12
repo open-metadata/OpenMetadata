@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -36,6 +37,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -743,14 +745,28 @@ public class VectorDocBuilder {
 
     parts.add("owners: " + joinOrEmpty(ownerNames));
 
-    Object customProperties = entity.getExtension();
-    parts.add(
-        "customProperties: "
-            + (customProperties != null && !String.valueOf(customProperties).isBlank()
-                ? String.valueOf(customProperties)
-                : "[]"));
+    parts.add("customProperties: " + customPropertiesText(entity.getExtension()));
 
     return String.join("; ", parts) + " | ";
+  }
+
+  /**
+   * The same custom properties reach this method as a {@code Map} in the entity's input order on the
+   * live write path and as an {@code ObjectNode} in database order on a reindex. Rendering both as
+   * JSON with sorted top-level keys gives them one fingerprint, so a reindex does not pay to
+   * re-embed an unchanged entity; a reindexed extension whose keys were already sorted renders as
+   * it did before. ADR:2026-11-11-reindex-reuses-an-embedding-only-when-its-fingerprint-matches
+   */
+  static String customPropertiesText(Object extension) {
+    String text = extension == null ? "" : String.valueOf(extension);
+    if (extension != null && JsonUtils.valueToTree(extension) instanceof ObjectNode properties) {
+      ObjectNode sorted = JsonUtils.getObjectNode();
+      properties.properties().stream()
+          .sorted(Map.Entry.comparingByKey())
+          .forEach(property -> sorted.set(property.getKey(), property.getValue()));
+      text = sorted.toString();
+    }
+    return text.isBlank() ? "[]" : text;
   }
 
   static String buildBodyText(EntityInterface entity, String entityType) {
