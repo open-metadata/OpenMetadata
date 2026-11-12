@@ -323,6 +323,57 @@ class OAuthHttpStatelessServerTransportProviderTest {
     transport.doGet(request, response);
   }
 
+  @Test
+  void disabledRegistrationRejectsPostBeforeReadingBody() throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "objectMapper", new ObjectMapper());
+    HttpServletRequest request = mock(HttpServletRequest.class);
+    when(request.getContextPath()).thenReturn("");
+    when(request.getRequestURI()).thenReturn("/mcp/register");
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    when(response.getOutputStream()).thenReturn(mock(ServletOutputStream.class));
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withDynamicClientRegistrationEnabled(false));
+      transport.doPost(request, response);
+    }
+    verify(response).setStatus(HttpServletResponse.SC_FORBIDDEN);
+    verify(request, never()).getInputStream();
+  }
+
+  @Test
+  void discoveryRemovesDisabledRegistrationWithoutMutatingSharedMetadata() throws Exception {
+    var transport = transportWith(mock(UserSSOOAuthProvider.class));
+    putField(transport, "objectMapper", new ObjectMapper());
+    var metadata = new org.openmetadata.mcp.auth.OAuthMetadata();
+    metadata.setRegistrationEndpoint(URI.create("https://om.test/mcp/register"));
+    putField(transport, "oauthMetadata", metadata);
+    HttpServletResponse response = mock(HttpServletResponse.class);
+    java.io.ByteArrayOutputStream output = new java.io.ByteArrayOutputStream();
+    ServletOutputStream stream = mock(ServletOutputStream.class);
+    org.mockito.Mockito.doAnswer(
+            inv -> {
+              output.write(
+                  inv.<byte[]>getArgument(0),
+                  inv.<Integer>getArgument(1),
+                  inv.<Integer>getArgument(2));
+              return null;
+            })
+        .when(stream)
+        .write(any(byte[].class), anyInt(), anyInt());
+    when(response.getOutputStream()).thenReturn(stream);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withDynamicClientRegistrationEnabled(false));
+      transport.handleMetadata(mock(HttpServletRequest.class), response);
+    }
+    assertThat(new ObjectMapper().readTree(output.toByteArray()).has("registration_endpoint"))
+        .isFalse();
+    assertThat(metadata.getRegistrationEndpoint()).isNotNull();
+  }
+
   // ── registration body limit ───────────────────────────────────────────────
 
   @Test

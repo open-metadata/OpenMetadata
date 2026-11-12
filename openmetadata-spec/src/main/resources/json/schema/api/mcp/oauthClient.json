@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/api/mcp/oauthClient.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "oauthClient",
+  "description": "Administrative MCP OAuth client inventory. Never includes client secrets or tokens.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.mcp.OAuthClient",
+  "properties": {
+    "clientId": {
+      "type": "string"
+    },
+    "clientName": {
+      "type": "string"
+    },
+    "redirectUris": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "issuedAt": {
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "additionalProperties": false
+}

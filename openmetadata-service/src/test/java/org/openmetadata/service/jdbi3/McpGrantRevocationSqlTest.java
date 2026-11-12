@@ -130,6 +130,35 @@ class McpGrantRevocationSqlTest {
     }
     assertGrantEnded(jdbi, DELETED_USER_AS_STORED);
     assertGrantKept(jdbi, OTHER_USER);
+    assertClientRemoval(jdbi);
+  }
+
+  private void assertClientRemoval(Jdbi jdbi) {
+    OAuthDAOs.OAuthClientDAO clients = jdbi.onDemand(OAuthDAOs.OAuthClientDAO.class);
+    clients.insert("unrelated", null, "Unaffected", "[]", "[]", "none", "[]");
+    assertEquals(2, clients.listClients("", 100).size());
+    assertEquals("unrelated", clients.listClients(CLIENT, 100).getFirst().getClientId());
+    assertTrue(clients.listClients("", 100).getFirst().getIssuedAt() > 0);
+    assertEquals(1, clients.deleteWithGrants(CLIENT));
+    assertNull(clients.findByClientId(CLIENT));
+    assertNotNull(clients.findByClientId("unrelated"));
+    for (String table :
+        List.of(
+            "oauth_authorization_codes",
+            "oauth_access_tokens",
+            "oauth_refresh_tokens",
+            "mcp_pending_auth_requests")) {
+      final int remaining =
+          jdbi.withHandle(
+              handle ->
+                  handle
+                      .createQuery("SELECT COUNT(*) FROM " + table + " WHERE client_id = :client")
+                      .bind("client", CLIENT)
+                      .mapTo(Integer.class)
+                      .one());
+      assertEquals(0, remaining);
+    }
+    assertEquals(0, clients.deleteWithGrants(CLIENT));
   }
 
   /** The statements of OAuthTokenRepository.rotateRefreshToken, in its order. */

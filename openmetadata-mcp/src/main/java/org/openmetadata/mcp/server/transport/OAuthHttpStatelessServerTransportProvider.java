@@ -3,6 +3,7 @@ package org.openmetadata.mcp.server.transport;
 import static org.openmetadata.service.socket.SocketAddressFilter.validatePrefixedTokenRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import io.modelcontextprotocol.server.McpTransportContextExtractor;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -43,6 +44,7 @@ import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration.TokenValidationAlgorithm;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.service.security.JwtFilter;
+import org.openmetadata.service.security.McpClientPolicy;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.credentials.CredentialUnavailableException;
 
@@ -688,7 +690,12 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
     response.setContentType("application/json");
     setCorsHeaders(request, response);
     response.setStatus(200);
-    getObjectMapper().writeValue(response.getOutputStream(), oauthMetadata);
+    final ObjectNode metadata = getObjectMapper().valueToTree(oauthMetadata);
+    if (!new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+        .registrationEnabled()) {
+      metadata.remove("registration_endpoint");
+    }
+    getObjectMapper().writeValue(response.getOutputStream(), metadata);
   }
 
   private void handleProtectedResourceMetadataRequest(
@@ -1054,6 +1061,21 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
 
   private void handleRegistrationRequest(HttpServletRequest request, HttpServletResponse response)
       throws IOException {
+    if (!new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+        .registrationEnabled()) {
+      setCorsHeaders(request, response);
+      response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+      response.setContentType("application/json");
+      getObjectMapper()
+          .writeValue(
+              response.getOutputStream(),
+              Map.of(
+                  "error",
+                  "access_denied",
+                  "error_description",
+                  "Dynamic client registration is disabled"));
+      return;
+    }
     try {
       String clientIp = getClientIp(request);
       if (isRegistrationRateLimited(clientIp)) {

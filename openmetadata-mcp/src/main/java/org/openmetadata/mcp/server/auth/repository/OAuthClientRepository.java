@@ -79,7 +79,7 @@ public class OAuthClientRepository {
    * Delete OAuth client.
    */
   public void delete(String clientId) {
-    dao.delete(clientId);
+    dao.deleteWithGrants(clientId);
     LOG.info("Deleted OAuth client from database: {}", clientId);
   }
 }

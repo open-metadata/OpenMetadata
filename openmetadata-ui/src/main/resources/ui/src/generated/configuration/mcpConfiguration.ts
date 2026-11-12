@@ -1,15 +1,3 @@
-/*
- *  Copyright 2026 Collate.
- *  Licensed under the Apache License, Version 2.0 (the "License");
- *  you may not use this file except in compliance with the License.
- *  You may obtain a copy of the License at
- *  http://www.apache.org/licenses/LICENSE-2.0
- *  Unless required by applicable law or agreed to in writing, software
- *  distributed under the License is distributed on an "AS IS" BASIS,
- *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- *  See the License for the specific language governing permissions and
- *  limitations under the License.
- */
 /**
  * This schema defines the Model Context Protocol (MCP) Server configuration
  */
@@ -19,6 +7,21 @@ export interface MCPConfiguration {
      * security. Wildcard (*) is NOT recommended.
      */
     allowedOrigins?: string[];
+    /**
+     * Exact HTTPS redirect host allowlist, case-insensitive. Empty allows any HTTPS host. No
+     * wildcards or suffix matching. Loopback and native redirects are controlled separately.
+     * Applies to new registration and new authorization flows.
+     */
+    allowedRedirectHosts?: string[];
+    /**
+     * Allow HTTP or HTTPS loopback callbacks for desktop clients.
+     */
+    allowLoopbackRedirects?: boolean;
+    /**
+     * Allow private-use URI scheme callbacks for native clients. Disable to require HTTPS or
+     * enabled loopback callbacks.
+     */
+    allowNativeRedirects?: boolean;
     /**
      * Base URL for MCP OAuth endpoints. Used for OAuth metadata (issuer, endpoints). If not
      * set, falls back to system settings. For clustered deployments, set this to the
@@ -37,6 +40,11 @@ export interface MCPConfiguration {
      * name that matches no tool is ignored.
      */
     disabledTools?: string[];
+    /**
+     * Allow anonymous OAuth client registration. Disabling it stops new registrations but
+     * preserves existing clients and grants.
+     */
+    dynamicClientRegistrationEnabled?: boolean;
     /**
      * Enable or disable the MCP server
      */

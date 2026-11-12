@@ -31,6 +31,8 @@ import org.jdbi.v3.sqlobject.customizer.Bind;
 import org.jdbi.v3.sqlobject.statement.SqlQuery;
 import org.jdbi.v3.sqlobject.statement.SqlUpdate;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
+import org.openmetadata.schema.api.mcp.OAuthClient;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.jdbi3.locator.ConnectionAwareSqlUpdate;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords;
 import org.openmetadata.service.util.jdbi.BindJson;
@@ -70,6 +72,25 @@ public interface OAuthDAOs {
 
   interface OAuthClientDAO {
     @SqlQuery(
+        "SELECT client_id, client_name, redirect_uris, created_at FROM oauth_clients WHERE client_id > :after ORDER BY client_id LIMIT :limit")
+    @RegisterRowMapper(OAuthClientInventoryMapper.class)
+    List<OAuthClient> listClients(@Bind("after") String after, @Bind("limit") int limit);
+
+    @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
+    int deleteClient(@Bind("clientId") String clientId);
+
+    @SqlUpdate("DELETE FROM mcp_pending_auth_requests WHERE client_id = :clientId")
+    void deletePendingRequests(@Bind("clientId") String clientId);
+
+    /** Foreign keys revoke codes and tokens; pending sign-ins have no foreign key. */
+    @Transaction
+    default int deleteWithGrants(String clientId) {
+      final int deleted = deleteClient(clientId);
+      deletePendingRequests(clientId);
+      return deleted;
+    }
+
+    @SqlQuery(
         "SELECT id, client_id, client_secret_encrypted, client_name, redirect_uris, grant_types, token_endpoint_auth_method, scopes FROM oauth_clients WHERE client_id = :clientId")
     @RegisterRowMapper(SystemTokenDAOs.OAuthClientRowMapper.class)
     OAuthRecords.OAuthClientRecord findByClientId(@Bind("clientId") String clientId);
@@ -93,6 +114,17 @@ public interface OAuthDAOs {
 
     @SqlUpdate("DELETE FROM oauth_clients WHERE client_id = :clientId")
     void delete(@Bind("clientId") String clientId);
+  }
+
+  class OAuthClientInventoryMapper implements RowMapper<OAuthClient> {
+    @Override
+    public OAuthClient map(ResultSet result, StatementContext context) throws SQLException {
+      return new OAuthClient()
+          .withClientId(result.getString("client_id"))
+          .withClientName(result.getString("client_name"))
+          .withRedirectUris(JsonUtils.readObjects(result.getString("redirect_uris"), String.class))
+          .withIssuedAt(result.getTimestamp("created_at").getTime());
+    }
   }
 
   interface OAuthAuthorizationCodeDAO {

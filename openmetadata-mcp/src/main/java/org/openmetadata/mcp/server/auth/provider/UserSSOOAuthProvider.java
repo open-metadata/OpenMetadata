@@ -47,6 +47,7 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.McpPendingAuthRequest;
 import org.openmetadata.service.jdbi3.oauth.OAuthRecords.OAuthAuthorizationCodeRecord;
 import org.openmetadata.service.security.AuthenticationCodeFlowHandler;
+import org.openmetadata.service.security.McpClientPolicy;
 import org.openmetadata.service.security.auth.SamlAuthServletHandler;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
@@ -240,6 +241,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   public CompletableFuture<String> authorize(
       OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
     try {
+      new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+          .validateRedirect(params.getRedirectUri());
       if (currentRequest.get() == null || currentResponse.get() == null) {
         throw new AuthorizeException(
             "server_error", "Request context not set. Cannot proceed with authorization.");
@@ -598,6 +601,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
 
     // Validate redirect URI against registered URIs to prevent open redirect attacks
     try {
+      new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+          .validateRedirect(URI.create(pendingRequest.redirectUri()));
       client.validateRedirectUri(URI.create(pendingRequest.redirectUri()));
     } catch (Exception e) {
       LOG.error(
@@ -1208,6 +1213,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
       String codeChallenge,
       URI redirectUri,
       List<String> scopes) {
+    new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+        .validateRedirect(redirectUri);
     // Generate cryptographically secure authorization code (32 bytes = 256 bits)
     String code = generateSecureToken(32);
     long expiresAt = System.currentTimeMillis() + (AUTH_CODE_EXPIRY_SECONDS * 1000);
