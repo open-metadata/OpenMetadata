@@ -18,6 +18,8 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import java.time.Clock;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -33,6 +35,7 @@ import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.sdk.exceptions.ConflictException;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.rdf.RdfInitialIndexRun;
@@ -48,6 +51,8 @@ import org.openmetadata.service.rdf.RdfLiveWriteStore;
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class RdfFirstIndexRunIT {
   private static final String APP_NAME = "RdfIndexApp";
+  private static final Set<AppRunRecord.Status> COMPLETED =
+      Set.of(AppRunRecord.Status.SUCCESS, AppRunRecord.Status.COMPLETED);
 
   @Test
   @Order(1)
@@ -100,10 +105,68 @@ class RdfFirstIndexRunIT {
     }
   }
 
+  /** Only a rebuild of the entire projection brings back what was missed while RDF was off. */
+  @Test
+  @Order(4)
+  void anIncrementalRunAfterAStartWithRdfOffLeavesTheProjectionDegraded() {
+    assumeTrue(RdfTestUtils.isRdfEnabled(), "Run with the RDF integration-test profile");
+    awaitReady();
+    final int runsBefore = startupRuns().size();
+    final RdfLiveWriteStore health = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+
+    health.recordRdfDisabled();
+    try {
+      final long floor = System.currentTimeMillis();
+      triggerIncrementalRun();
+      awaitSuccessfulRunStartedAtOrAfter(floor);
+
+      assertEquals(RdfProjectionState.DEGRADED, projectionState());
+
+      enqueueAsServerStartDoes();
+      assertEquals(runsBefore, startupRuns().size());
+    } finally {
+      health.markRebuilt(health.failureVersion());
+    }
+  }
+
+  private static void triggerIncrementalRun() {
+    Awaitility.await("trigger an incremental " + APP_NAME + " run")
+        .atMost(Duration.ofMinutes(2))
+        .pollInterval(Duration.ofSeconds(3))
+        .ignoreException(ConflictException.class)
+        .until(
+            () -> {
+              SdkClients.adminClient()
+                  .getHttpClient()
+                  .execute(
+                      HttpMethod.POST,
+                      "/v1/apps/trigger/" + APP_NAME,
+                      Map.of("recreateIndex", false),
+                      Void.class);
+              return true;
+            });
+  }
+
+  private static void awaitSuccessfulRunStartedAtOrAfter(final long floor) {
+    Awaitility.await("incremental run completed")
+        .atMost(Duration.ofMinutes(5))
+        .pollInterval(Duration.ofSeconds(2))
+        .until(
+            () ->
+                allRuns().stream()
+                    .anyMatch(
+                        run ->
+                            run.getStartTime() != null
+                                && run.getStartTime() >= floor
+                                && COMPLETED.contains(run.getStatus())));
+  }
+
+  // The start-up hook receives the app as AppResource loads it, bot included.
   private static void enqueueAsServerStartDoes() {
+    final AppRepository repository = (AppRepository) Entity.getEntityRepository(Entity.APPLICATION);
     final App app =
-        ((AppRepository) Entity.getEntityRepository(Entity.APPLICATION))
-            .findByNameOrNull(APP_NAME, Include.ALL);
+        repository.getByName(
+            null, APP_NAME, repository.getFields("bot,pipelines"), Include.ALL, false);
     RdfInitialIndexRun.enqueueIfNeverRun(
         app, Entity.getCollectionDAO(), Entity.getSearchRepository());
   }
@@ -116,12 +179,17 @@ class RdfFirstIndexRunIT {
   }
 
   private static List<AppRunRecord> startupRuns() {
+    return allRuns().stream()
+        .filter(run -> RdfInitialIndexRun.TRIGGERED_BY.equals(run.getTriggeredBy()))
+        .toList();
+  }
+
+  private static List<AppRunRecord> allRuns() {
     return Entity.getCollectionDAO()
         .appExtensionTimeSeriesDao()
         .listAppExtensionByName(APP_NAME, 1000, 0, AppExtension.ExtensionType.STATUS.toString())
         .stream()
         .map(json -> JsonUtils.readValue(json, AppRunRecord.class))
-        .filter(run -> RdfInitialIndexRun.TRIGGERED_BY.equals(run.getTriggeredBy()))
         .toList();
   }
 

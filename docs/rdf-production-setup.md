@@ -400,14 +400,14 @@ thrashes the database. Two mechanisms keep them apart:
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
 
-**Turning RDF on.** Every server that starts with RDF off records the time in
-`rdf_projection_health.rdfDisabledAt` (the 2.1.0 migration adds the column), because changes made
-in that time never reach the graph. A server that starts with RDF on queues one `RdfIndexApp`
-rebuild unless a run has started since that time. The same start raises `failureVersion`, so
-`/v1/rdf/status` reports `DEGRADED` until a full Recreate that started after it completes. A run
-on a server with RDF off indexes nothing and does not count. This is the one case where a start
-queues a full reindex, apart from the first install. See
-ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
+**Turning RDF on.** Changes made while RDF is off never reach the graph. So every server that
+starts with RDF off records it in `rdf_projection_health`: it raises `failureVersion`, and writes
+the time to `rdfDisabledAt` (the 2.1.0 migration adds the column). Once RDF is on, `/v1/rdf/status`
+reports `DEGRADED` (or `REBUILDING` when the graph was never built) until a full Recreate that
+started after that time completes. A server that starts with RDF on queues one `RdfIndexApp` run
+unless a run has already started since that time; this is the one case where a start queues a
+full reindex, apart from the first install. A run on a server with RDF off indexes nothing and
+does not count. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
 
 
 ## Blue/green rebuilds
