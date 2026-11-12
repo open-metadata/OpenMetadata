@@ -781,6 +781,44 @@ describe('OntologyGraphView', () => {
     expect(latestGraphProps().ghostNode).toBeUndefined();
   });
 
+  it('selects a concept requested from outside the graph, such as a Concepts row', async () => {
+    const onSelectedConceptChange = jest.fn();
+    render(
+      <OntologyGraphView
+        isEditing
+        editConceptRequest={customer.id}
+        ontology={ontology}
+        surface="graph"
+        onRequestGraphSurface={jest.fn()}
+        onSelectedConceptChange={onSelectedConceptChange}
+      />
+    );
+
+    await waitFor(() =>
+      expect(onSelectedConceptChange).toHaveBeenCalledWith(customer.id)
+    );
+  });
+
+  it('does not bring a New concept form back after leaving Edit and returning', async () => {
+    const props = {
+      ontology,
+      surface: 'graph' as const,
+      onRequestGraphSurface: jest.fn(),
+    };
+    const { rerender } = render(<OntologyGraphView isEditing {...props} />);
+    await screen.findByTestId('native-ontology-graph');
+    act(() => latestGraphProps().onCanvasDoubleClick({ x: 40, y: 60 }));
+
+    expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
+
+    rerender(<OntologyGraphView isEditing={false} {...props} />);
+    rerender(<OntologyGraphView isEditing {...props} />);
+
+    expect(
+      screen.queryByTestId('ontology-new-class-panel')
+    ).not.toBeInTheDocument();
+  });
+
   it('turns a relation-like synonym into a relationship and leaves the concept unsaved', async () => {
     const withSynonym = { ...customer, synonyms: ['Buyer', 'part of Party'] };
     const synonymModel = {

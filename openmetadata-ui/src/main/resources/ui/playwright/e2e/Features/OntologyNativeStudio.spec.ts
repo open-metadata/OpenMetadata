@@ -240,6 +240,11 @@ test.describe(
               await expect(
                 page.getByTestId('ontology-new-class-panel')
               ).toHaveCount(0);
+              // Create selects the new concept; its drawer covers the header's Add concept.
+              const inspector = page.getByTestId('ontology-concept-inspector');
+              await expect(inspector).toContainText(conceptName);
+              await inspector.getByTestId('ontology-concept-close').click();
+              await expect(inspector).toHaveCount(0);
               const concepts = await okJson<{ data: OntologyConcept[] }>(
                 await api.get('/api/v1/ontologyConcepts', {
                   params: { ontology: fullyQualifiedName },
@@ -520,6 +525,11 @@ test.describe(
             contentType: 'image/png',
           });
           await page.getByTestId('mode-tab-view').click();
+          // Customer stays selected across modes; its drawer covers the header's Publish.
+          await page.getByTestId('ontology-concept-close').click();
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toHaveCount(0);
 
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
@@ -818,6 +828,7 @@ test.describe(
             await page
               .getByTestId(`ontology-scope-settings-${created.id}`)
               .click();
+            await page.getByTestId('ontology-settings-advanced-toggle').click();
             await expect(
               page.getByRole('textbox', { name: 'Namespace' })
             ).toBeDisabled();
