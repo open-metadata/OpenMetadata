@@ -18,8 +18,9 @@ client applied the term. CSV import already rejected a non-Approved term on ever
   term is Approved. A target is the asset or one of its inline fields (columns, schema fields,
   tasks, features), addressed by FQN. A term with no `entityStatus` predates the approval
   lifecycle and counts as Approved, the same as in the UI.
-- A repository names its tagged inline fields through `EntityRepository.taggedFieldContainers`
-  (the `ChildFieldResolver` registry by default; `FileRepository` adds its columns). Terms are
+- A repository names its tagged inline fields through `EntityRepository.taggedFieldContainers`.
+  On 2.0 each repository whose entity has them overrides it (table, data model, worksheet, file
+  and container columns; topic, search index and API schema fields; pipeline tasks; ML features). Terms are
   compared by FQN hash, so quoting a segment cannot disguise a term.
 - "Newly" is judged per target against the stored state before the write. Only a term the
   target holds in its own right counts as held there. A term held on another column, or one the
