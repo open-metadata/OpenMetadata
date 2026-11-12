@@ -319,8 +319,13 @@ def report(
         rows.append(entry)
     if summary:
         rows.append([summary])
-    if tests and not any(comparison.failures for comparison in comparisons):
-        rows += [[f"Failed test: {test[:500]}"] for test in tests[:5]]
+    shown_tests = {
+        test.name for comparison in comparisons for test in comparison.failures
+    }
+    annotation_tests = list(
+        dict.fromkeys(test for test in tests if test not in shown_tests)
+    )
+    rows += [[f"Failed test: {test[:500]}"] for test in annotation_tests[:5]]
     markdown = [
         f"### {icon} Removed from {title} ({args.created})",
         *[

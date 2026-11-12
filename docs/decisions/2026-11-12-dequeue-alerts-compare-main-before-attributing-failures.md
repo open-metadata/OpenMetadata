@@ -32,6 +32,10 @@ evidence remain unknown. Mixed failures keep their separate counts; one main fai
 other failures. Attribution concerns the merge group, not necessarily the individual PR.
 Each independent failed job is compared; the repository's known summary gates are listed with
 their upstream failure instead of receiving their own attribution.
+Workflow identity includes the complete local workflows, actions and scripts trees at the run
+revision and every resolved same-repository reusable-workflow revision. Changes to an unrelated
+CI definition can therefore make evidence incomparable. Unverified external definitions stay
+unknown. Existing annotation names remain visible even when another workflow has readable results.
 Global Playwright errors remain unresolved evidence. A consumer job's checkout does not establish
 the revisions of downloaded build bundles, distributions or generated models. These jobs remain
 unknown until producer provenance is available; their failed test names are still shown.

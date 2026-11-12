@@ -266,6 +266,29 @@ class Evidence:
     def api(self, path: str):
         return mq.rest(f"/repos/{self.repo}/{path}", self.token)
 
+    def workflow_environment(self, run: dict) -> tuple:
+        revisions = {run["head_sha"]}
+        for reference in run.get("referenced_workflows", []):
+            if not reference["path"].startswith(f"{self.repo}/.github/workflows/"):
+                return ()
+            if not re.fullmatch(r"[0-9a-f]{40}", reference["sha"]):
+                return ()
+            revisions.add(reference["sha"])
+        definitions = set()
+        for revision in sorted(revisions):
+            entries = self.api(f"contents/.github?ref={revision}")
+            trees = tuple(
+                sorted(
+                    (entry["name"], entry["sha"])
+                    for entry in entries
+                    if entry["name"] in {"workflows", "actions", "scripts"}
+                )
+            )
+            if not any(name == "workflows" for name, _ in trees):
+                return ()
+            definitions.add(trees)
+        return tuple(sorted(definitions))
+
     @lru_cache(maxsize=MAX_CACHED_SNAPSHOTS)
     def snapshot(self, run_id: int, job_id: int) -> Snapshot | None:
         run = self.api(f"actions/runs/{run_id}")
@@ -397,9 +420,18 @@ class Evidence:
         workflow = run["path"].split("@", 1)[0]
         if not re.fullmatch(r"\.github/workflows/[\w.-]+\.ya?ml", workflow):
             raise ValueError("Invalid workflow path")
-        blob = self.api(f"contents/{workflow}?ref={run['head_sha']}")["sha"]
+        try:
+            definitions = self.workflow_environment(run)
+        except Exception as exc:
+            print(
+                f"::warning::Could not verify workflow definitions: {type(exc).__name__}",
+                file=sys.stderr,
+            )
+            definitions = ()
+        if not definitions:
+            return Snapshot(run, job, tests, ())
         environment = (
-            blob,
+            definitions,
             tuple(sorted(job["labels"])),
             (),
             tuple(sorted(configurations)),
@@ -501,7 +533,7 @@ class Evidence:
             return Diagnosis("Unknown — the failing job recorded no failed tests.")
         if not candidate.environment:
             return Diagnosis(
-                "Unknown — tests consume separately built artifacts whose dependency provenance is unavailable.",
+                "Unknown — the tested build or workflow revisions could not be verified.",
                 failures,
             )
         try:
