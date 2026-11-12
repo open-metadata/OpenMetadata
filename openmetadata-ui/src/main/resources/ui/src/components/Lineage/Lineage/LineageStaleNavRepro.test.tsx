@@ -15,7 +15,12 @@ import { ReactNode, useEffect } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { ReactFlowInstance } from 'reactflow';
 import { EntityType } from '../../../enums/entity.enum';
+import {
+  LineageLayer,
+  PipelineViewMode,
+} from '../../../generated/configuration/lineageSettings';
 import { usePersistentStorage } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useLineageStore } from '../../../hooks/useLineageStore';
 import { getLineageDataByFQN } from '../../../rest/lineageAPI';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -168,6 +173,9 @@ describe('Lineage stale navigation (same-type, no remount)', () => {
 
   afterEach(() => {
     usePersistentStorage.getState().clearUserPreference('admin');
+    useApplicationStore.getState().setAppPreferences({
+      lineageConfig: undefined,
+    });
   });
 
   it('refetches and clears the stale graph when navigating to a new entity of the same type without unmounting', async () => {
@@ -234,6 +242,32 @@ describe('Lineage stale navigation (same-type, no remount)', () => {
     await waitFor(() => expect(useLineageStore.getState().loading).toBe(false));
 
     expect(useLineageStore.getState().init).toBe(true);
+  });
+
+  it('fetches once, at the saved depth, after the store was reset by an earlier lineage view', async () => {
+    (getLineageDataByFQN as jest.Mock).mockResolvedValue(emptyResponse);
+    useApplicationStore.getState().setAppPreferences({
+      lineageConfig: {
+        upstreamDepth: 2,
+        downstreamDepth: 2,
+        pipelineViewMode: PipelineViewMode.Edge,
+        lineageLayer: LineageLayer.EntityLineage,
+      },
+    });
+
+    render(renderLineage(entityA, 'svc.db.s.entityA'));
+
+    await waitFor(() => expect(useLineageStore.getState().loading).toBe(false));
+
+    expect(getLineageDataByFQN).toHaveBeenCalledTimes(1);
+    expect(getLineageDataByFQN).toHaveBeenCalledWith(
+      expect.objectContaining({
+        config: expect.objectContaining({
+          upstreamDepth: 2,
+          downstreamDepth: 2,
+        }),
+      })
+    );
   });
 
   it('does not refetch when rerendered with the same entity identity (dedup preserved)', async () => {
