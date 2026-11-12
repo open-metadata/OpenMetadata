@@ -16,7 +16,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
-import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 
 /**
@@ -31,7 +30,6 @@ class McpAvailabilityIT extends McpTestBase {
   private static final String APP_PATH = "apps/name/" + McpAppConstants.MCP_APP_NAME;
   private static final String CONFIG_PATH = "system/mcp/config";
   private static final String PROTECTED_RESOURCE = "/.well-known/oauth-protected-resource";
-  private static final String USAGE_EXTENSION = AppExtension.ExtensionType.LIMITS.value();
   private static final List<String> GET_ROUTES =
       List.of(PROTECTED_RESOURCE, "/.well-known/oauth-authorization-server", "/mcp/callback");
   // Above the 30 second entity cache TTL, in case the change is read from a cached entry.
@@ -58,23 +56,33 @@ class McpAvailabilityIT extends McpTestBase {
     final long restoredAt = System.currentTimeMillis();
     await().atMost(SWITCH_TIMEOUT).untilAsserted(this::assertMcpAnswers);
     // Disable takes the app out of ApplicationContext and Enable does not put it back, so usage
-    // is only still recorded if the recorder does not depend on it.
+    // is only still recorded and reported if neither side depends on it.
     await()
         .atMost(SWITCH_TIMEOUT)
-        .untilAsserted(() -> assertThat(usageRecordsSince(restoredAt)).isPositive());
+        .untilAsserted(() -> assertThat(usageCallsSince(restoredAt)).isPositive());
   }
 
   @Test
   void turningTheSettingOffStopsMcpUntilItIsOn() throws Exception {
-    final JsonNode stored = get(CONFIG_PATH, JsonNode.class);
+    final ObjectNode stored = storedMcpConfig();
     assertMcpAnswers();
     try {
-      put(CONFIG_PATH, ((ObjectNode) stored.deepCopy()).put("enabled", false), JsonNode.class);
+      put(CONFIG_PATH, stored.deepCopy().put("enabled", false), JsonNode.class);
       await().atMost(SWITCH_TIMEOUT).untilAsserted(this::assertMcpRefused);
     } finally {
       put(CONFIG_PATH, stored, JsonNode.class);
     }
     await().atMost(SWITCH_TIMEOUT).untilAsserted(this::assertMcpAnswers);
+  }
+
+  // A server that never saved the setting answers 404, which means the defaults: enabled. Putting
+  // that back stores a row with the same defaults.
+  private static ObjectNode storedMcpConfig() throws Exception {
+    final HttpResponse<String> response = getResponse(CONFIG_PATH, authToken);
+    assertThat(response.statusCode()).as(CONFIG_PATH).isIn(200, 404);
+    return response.statusCode() == 404
+        ? OBJECT_MAPPER.createObjectNode().put("enabled", true)
+        : (ObjectNode) OBJECT_MAPPER.readTree(response.body());
   }
 
   private void assertMcpAnswers() throws Exception {
@@ -99,9 +107,8 @@ class McpAvailabilityIT extends McpTestBase {
     assertThat(response.body()).as(route).isEmpty();
   }
 
-  private static int usageRecordsSince(long startTs) throws Exception {
-    final String query = "/extension?extensionType=" + USAGE_EXTENSION + "&limit=100&startTs=";
-    return get(APP_PATH + query + startTs, JsonNode.class).path("data").size();
+  private static long usageCallsSince(long startTs) throws Exception {
+    return get("mcp/usage/summary?startTs=" + startTs, JsonNode.class).path("total").asLong();
   }
 
   private HttpResponse<String> postInitialize() throws Exception {

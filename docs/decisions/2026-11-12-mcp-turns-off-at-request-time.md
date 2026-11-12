@@ -21,12 +21,16 @@ kept answering, and an uninstalled app is re-seeded at the next start. Setting
   logins to `/mcp/callback`. `OAuthWellKnownFilter` checks it on the discovery paths it serves, so
   the two filters do not depend on their registration order. The SAML login hook is not under
   `/mcp/`, so it checks it too.
-- MCP usage recording reads the app from the repository, not from `ApplicationContext`. Disable
-  runs `uninstall()`, which takes the app out of the context of the server that handled it, and
-  Enable never puts it back, so a context lookup fails on that server until it restarts.
-- Both values are read through existing caches: the server that took the change answers 404 at
-  once, and other servers follow when their entry expires (30 seconds for the app, 3 minutes for
-  the setting).
+- MCP usage recording and the `/v1/mcp/usage` endpoints read the app from the repository, not
+  from `ApplicationContext`. Disable runs `uninstall()`, which takes the app out of the context of
+  the server that handled it, and Enable never puts it back, so a context lookup fails on that
+  server until it restarts.
+- The setting is read from `SecurityConfigurationManager`, in memory: the server that saved it
+  follows at once, other servers when the settings watcher picks the change up
+  (`watchIntervalSeconds`, 10 by default). `SettingsCache` was not used because it does not cache
+  a missing value, so an install that never saved the setting would query on every request.
+- The app is read through the entity cache: the server that took the click follows at once,
+  other servers when their entry expires (30 seconds by default).
 
 ## Consequences
 

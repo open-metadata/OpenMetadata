@@ -1,7 +1,5 @@
 package org.openmetadata.mcp;
 
-import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
-
 import jakarta.servlet.Filter;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -14,7 +12,7 @@ import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
-import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 
 /**
  * Answers 404 on every /mcp route while MCP is off, so switching it off needs no restart
@@ -38,19 +36,24 @@ public class McpAvailabilityFilter implements Filter {
     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
   }
 
-  /** Both reads are cached, so a change reaches other pods once their cache entry expires. */
   static boolean isMcpAvailable() {
     return isEnabledInSettings() && isAppActive();
   }
 
+  /**
+   * In memory, reloaded when the setting is saved and on other servers by the settings watcher.
+   * SettingsCache would run a query on every request on an install that never saved the setting,
+   * because it does not cache a missing value. No setting means the schema default, enabled.
+   */
   private static boolean isEnabledInSettings() {
-    MCPConfiguration config =
-        SettingsCache.getSettingOrDefault(
-            MCP_CONFIGURATION, new MCPConfiguration(), MCPConfiguration.class);
-    return config != null && Boolean.TRUE.equals(config.getEnabled());
+    MCPConfiguration config = SecurityConfigurationManager.getCurrentMcpConfig();
+    return config == null || Boolean.TRUE.equals(config.getEnabled());
   }
 
-  /** Disabling the app soft-deletes it; uninstalling removes it until a restart re-seeds it. */
+  /**
+   * Through the entity cache. Disabling the app soft-deletes it; uninstalling removes it until a
+   * restart re-seeds it.
+   */
   private static boolean isAppActive() {
     App app =
         Entity.findEntityByNameOrNull(
