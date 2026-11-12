@@ -25,6 +25,7 @@ public final class IncidentWorkflowStages {
   public static final String ASSIGNED_STAGE_ID = "assigned";
   public static final String RESOLVED_STAGE_ID = "resolved";
 
+  public static final String NEW_TRANSITION_ID = "new";
   public static final String ASSIGN_TRANSITION_ID = "assign";
   public static final String REASSIGN_TRANSITION_ID = "reassign";
 

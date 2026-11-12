@@ -5125,31 +5125,17 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "bulk list derivation must also clear the pointer after resolve");
             });
 
-    client
-        .testCaseResolutionStatuses()
-        .create(
-            new CreateTestCaseResolutionStatus()
-                .withTestCaseReference(testCase.getFullyQualifiedName())
-                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
-
-    Awaitility.await("reopen restores the same incident pointer")
-        .atMost(90, TimeUnit.SECONDS)
-        .pollInterval(Duration.ofSeconds(2))
-        .untilAsserted(
-            () -> {
-              org.openmetadata.schema.tests.type.TestCaseResolutionStatus latestStatus =
-                  latestIncidentStatus(client, testCase.getFullyQualifiedName());
-              assertEquals(
-                  TestCaseResolutionStatusTypes.Ack,
-                  latestStatus.getTestCaseResolutionStatusType());
-              assertEquals(stateId, latestStatus.getStateId());
-              TestCase fetched = client.testCases().get(testCase.getId().toString(), "incidentId");
-              assertEquals(stateId, fetched.getIncidentId());
-              assertEquals(
-                  stateId,
-                  bulkListedIncidentId(client, table, testCase),
-                  "bulk list derivation must agree with the single read");
-            });
+    CreateTestCaseResolutionStatus ackAfterResolve =
+        new CreateTestCaseResolutionStatus()
+            .withTestCaseReference(testCase.getFullyQualifiedName())
+            .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack);
+    assertThrows(
+        OpenMetadataException.class,
+        () -> client.testCaseResolutionStatuses().create(ackAfterResolve),
+        "a resolved incident is final and must not accept Ack");
+    assertNull(
+        client.testCases().get(testCase.getId().toString(), "incidentId").getIncidentId(),
+        "a rejected reopen must leave the incident closed");
 
     client
         .testCaseResults()
@@ -5157,6 +5143,29 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             testCase.getFullyQualifiedName(),
             new CreateTestCaseResult()
                 .withTimestamp(System.currentTimeMillis() + 1)
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Failing again after resolution"));
+
+    final UUID reopenedIncidentId =
+        Awaitility.await("a failure after resolution opens a new incident")
+            .atMost(90, TimeUnit.SECONDS)
+            .pollInterval(Duration.ofSeconds(2))
+            .until(
+                () ->
+                    client
+                        .testCases()
+                        .get(testCase.getId().toString(), "incidentId")
+                        .getIncidentId(),
+                java.util.Objects::nonNull);
+    assertNotEquals(
+        stateId, reopenedIncidentId, "the new failure must not reuse the resolved incident");
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis() + 2)
                 .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success)
                 .withResult("Passing while incident open"));
 
@@ -5171,7 +5180,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertEquals(
                   org.openmetadata.schema.tests.type.TestCaseStatus.Success,
                   fetched.getTestCaseResult().getTestCaseStatus());
-              assertEquals(stateId, fetched.getIncidentId());
+              assertEquals(reopenedIncidentId, fetched.getIncidentId());
             });
   }
 

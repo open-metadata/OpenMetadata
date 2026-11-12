@@ -22,6 +22,7 @@ import { Node } from 'reactflow';
 import {
   AVAILABLE_OPTIONS,
   DEFAULT_QUALITY_BANDS,
+  TEST_CASE_RESOLUTION_WORKFLOW_NAME,
   WorkflowType,
 } from '../../../constants/WorkflowBuilder.constants';
 import { useWorkflowModeContext } from '../../../contexts/WorkflowModeContext';
@@ -55,6 +56,15 @@ import {
 import { FormActionButtons } from './forms/FormActionButtons';
 import { WorkflowConfigFormV1 } from './forms/WorkflowConfigFormV1';
 
+// An unset flag means on, matching the workflow definition's default.
+const resolveAutoAssignOwners = (
+  node: Node,
+  workflowDefinition: NodeConfigSidebarProps['workflowDefinition']
+): boolean =>
+  (node.data?.config as NodeConfig | undefined)?.autoAssignOwners ??
+  workflowDefinition?.config?.autoAssignOwners ??
+  true;
+
 const computeStartNodeConfig = (
   node: Node,
   workflowDefinition: NodeConfigSidebarProps['workflowDefinition'],
@@ -62,7 +72,10 @@ const computeStartNodeConfig = (
   localName: string | null,
   localDescription: string | null
 ): NodeConfig => {
-  const baseConfig = getInitialNodeConfig(node, workflowDefinition, null);
+  const baseConfig: NodeConfig = {
+    ...getInitialNodeConfig(node, workflowDefinition, null),
+    autoAssignOwners: resolveAutoAssignOwners(node, workflowDefinition),
+  };
 
   if (workflowMetadata) {
     const configWithMetadata = {
@@ -490,6 +503,10 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
       return null;
     }
 
+    const isIncidentWorkflow =
+      (workflowMetadata?.name ?? workflowDefinition?.name) ===
+      TEST_CASE_RESOLUTION_WORKFLOW_NAME;
+
     return (
       <WorkflowConfigFormV1
         addDataAssetFilter={addDataAssetFilter}
@@ -506,6 +523,7 @@ export const NodeConfigSidebar: React.FC<NodeConfigSidebarProps> = ({
         handleEventTypeChange={handleEventTypeChange}
         removeDataAssetFilter={removeDataAssetFilter}
         removeFromArray={removeFromArray}
+        showAutoAssignOwners={isIncidentWorkflow}
         updateConfig={updateConfig}
         onUpdateDataAssetFilter={updateDataAssetFilter}
       />

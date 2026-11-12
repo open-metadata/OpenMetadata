@@ -13,10 +13,10 @@ When a test case's incident status changes, a governance workflow reacts to the 
 
 **User-visible changes:**
 - Incident Thread/task created immediately on test failure (no longer deferred to Ack)
-- Auto-assign to table owner configurable (default: unassigned, matching current behavior)
+- Owner auto-assignment is a Governance Workflow setting (`autoAssignOwners`, default on). Turning it off creates incidents without an assignee, like an unowned table
 - Incident lifecycle visible in governance workflows UI
 - Users can customize by adding steps to workflow branches (e.g., notifications, Jira)
-- Re-open from Resolved to any non-Resolved status creates a new incident lifecycle
+- Resolved is final. A later test failure opens a separate incident with its own identity; an open incident (Ack or Assigned) can move back to New on the same incident
 
 **Behavior preserved:**
 - REST API surface unchanged
@@ -88,3 +88,12 @@ All process instances are short-lived in Slice 1 (no timers). OpenTask and Close
 - **EntityLifecycleEventDispatcher extension**: What's the cleanest way to add TCRS event broadcasting? Observer registration, interface, or direct handler call?
 - **Thread/task creation**: Does `openTask` create the Thread directly via `FeedRepository.create()`, or reuse `TestCaseResolutionStatusRepository.createTask()`?
 - **Signal payload**: Can signal variables carry enough context (status, FQN, stateId) to avoid a DB read in the gateway, or should each node read from DB independently?
+
+---
+
+## Superseded Decisions
+
+This change supersedes two decisions in the original proposal:
+
+- **Reopening.** Ack or Assigned on a Resolved incident is rejected. The original plan reopened the same incident. A subsequent failure creates a new incident instead.
+- **Owner auto-assignment.** The default is on, not unassigned. The setting is per workflow, and an absent value means on.

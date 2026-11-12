@@ -476,6 +476,31 @@ public final class TaskWorkflowLifecycleResolver {
     return transitions;
   }
 
+  /**
+   * Owner auto-assignment is on unless the workflow turns it off; a missing flag means on, so
+   * definitions saved before the setting existed keep assigning owners.
+   */
+  public static boolean isOwnerAutoAssignmentEnabled(WorkflowDefinition workflowDefinition) {
+    return workflowDefinition == null
+        || workflowDefinition.getConfig() == null
+        || !Boolean.FALSE.equals(workflowDefinition.getConfig().getAutoAssignOwners());
+  }
+
+  /** Owner auto-assignment for the workflow the task is bound to, resolved by name. */
+  public static boolean isOwnerAutoAssignmentEnabled(Task task) {
+    WorkflowDefinition workflowDefinition =
+        resolveBinding(task)
+            .map(TaskWorkflowBinding::workflowDefinitionRef)
+            .map(ref -> loadWorkflowDefinitionByName(ref))
+            .orElse(null);
+    return isOwnerAutoAssignmentEnabled(workflowDefinition);
+  }
+
+  private static WorkflowDefinition loadWorkflowDefinitionByName(String workflowDefinitionName) {
+    return Entity.findByNameOrNull(
+        Entity.WORKFLOW_DEFINITION, workflowDefinitionName, Include.NON_DELETED);
+  }
+
   /** An entity-event workflow whose own nodes write the entity's stage. */
   public static boolean writesItsOwnEntityStage(UUID workflowDefinitionId) {
     final WorkflowDefinition workflow = loadWorkflowDefinition(workflowDefinitionId);
@@ -577,6 +602,7 @@ public final class TaskWorkflowLifecycleResolver {
     public static final String TASK_UPDATED_BY = "taskUpdatedBy";
     public static final String TASK_REVIEWERS = "taskReviewers";
     public static final String TASK_ASSIGNEES = "taskAssignees";
+    public static final String AUTO_ASSIGN_OWNERS = "autoAssignOwners";
 
     /**
      * Set only by an ontology release review whose frozen rule is AllReviewers. CreateTask raises

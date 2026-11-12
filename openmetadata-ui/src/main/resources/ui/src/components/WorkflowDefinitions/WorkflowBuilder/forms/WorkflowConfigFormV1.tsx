@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { Toggle } from '@openmetadata/ui-core-components';
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
 import { EntityType } from '../../../../enums/entity.enum';
 import { NodeConfig } from '../../../../interface/workflow-builder-components.interface';
@@ -43,6 +45,7 @@ interface WorkflowConfigFormV1Props {
   addDataAssetFilter: (dataAsset?: string) => void;
   onUpdateDataAssetFilter: (dataAssetId: number, value: string) => void;
   removeDataAssetFilter: (dataAssetId: number) => void;
+  showAutoAssignOwners?: boolean;
 }
 
 function getEventTriggerEntityType(
@@ -70,7 +73,9 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
   addDataAssetFilter,
   onUpdateDataAssetFilter,
   removeDataAssetFilter,
+  showAutoAssignOwners = false,
 }) => {
+  const { t } = useTranslation();
   const lockCoreStartFields = !allowFullStartNodeConfiguration;
   const canEditFiltersAndPeriodicSchedule =
     allowFullStartNodeConfiguration || allowStartNodeFilterScheduleAndBatchEdit;
@@ -166,6 +171,18 @@ export const WorkflowConfigFormV1: React.FC<WorkflowConfigFormV1Props> = ({
           lockFields={lockFilterSections}
           onApprovalModeChange={(approvalMode) =>
             updateConfig('approvalMode', approvalMode)
+          }
+        />
+      )}
+
+      {showAutoAssignOwners && (
+        <Toggle
+          data-testid="auto-assign-owners-toggle"
+          hint={t('message.auto-assign-owners-help')}
+          isSelected={config.autoAssignOwners !== false}
+          label={t('label.auto-assign-owners')}
+          onChange={(isSelected: boolean) =>
+            updateConfig('autoAssignOwners', isSelected)
           }
         />
       )}

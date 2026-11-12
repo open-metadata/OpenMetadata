@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { WorkflowType } from '../../../../constants/WorkflowBuilder.constants';
@@ -283,6 +283,69 @@ describe('WorkflowConfigFormV1 OSS vs Collate start node', () => {
 
       expect(
         screen.queryByTestId('approval-mode-section-mock')
+      ).not.toBeInTheDocument();
+    });
+  });
+
+  describe('auto-assign owners', () => {
+    const incidentConfig: NodeConfig = {
+      name: 'W',
+      description: '',
+      dataAssets: ['testCase'],
+      triggerType: WorkflowType.EVENT_BASED,
+      eventType: ['Updated'],
+      dataAssetFilters: [],
+    };
+
+    const renderForm = (
+      config: NodeConfig,
+      updateConfig: jest.Mock = jest.fn(),
+      showAutoAssignOwners = true
+    ) =>
+      renderWithWorkflowMode(
+        <WorkflowConfigFormV1
+          {...baseHandlers}
+          allowFullStartNodeConfiguration
+          allowScheduledTrigger
+          allowStartNodeFilterScheduleAndBatchEdit
+          availableDataAssets={[]}
+          availableEventTypes={[]}
+          availableExcludeFields={[]}
+          config={config}
+          showAutoAssignOwners={showAutoAssignOwners}
+          updateConfig={updateConfig}
+        />
+      );
+
+    const getAutoAssignToggle = () =>
+      screen.getByRole('switch', { name: /^label\.auto-assign-owners/ });
+
+    it('is on when the workflow has no saved flag', () => {
+      renderForm(incidentConfig);
+
+      expect(getAutoAssignToggle()).toBeChecked();
+    });
+
+    it('stays off when the saved flag is false', () => {
+      renderForm({ ...incidentConfig, autoAssignOwners: false });
+
+      expect(getAutoAssignToggle()).not.toBeChecked();
+    });
+
+    it('writes the toggled value back to the config', () => {
+      const updateConfig = jest.fn();
+      renderForm({ ...incidentConfig, autoAssignOwners: true }, updateConfig);
+
+      fireEvent.click(getAutoAssignToggle());
+
+      expect(updateConfig).toHaveBeenCalledWith('autoAssignOwners', false);
+    });
+
+    it('is not shown for workflows other than the incident workflow', () => {
+      renderForm(incidentConfig, jest.fn(), false);
+
+      expect(
+        screen.queryByRole('switch', { name: /^label\.auto-assign-owners/ })
       ).not.toBeInTheDocument();
     });
   });

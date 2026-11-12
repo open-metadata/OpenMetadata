@@ -24,11 +24,11 @@ Key files in the current system:
 
 **Goals:**
 - Move incident Thread/task lifecycle into a governance workflow
-- Enable auto-assign on incident creation (configurable, default off)
+- Enable owner auto-assignment on incident creation, configurable per workflow (`autoAssignOwners`, default on)
 - Ship a default branching workflow that handles open/close
 - Introduce reusable `openTask` and `closeTask` node types
 - Extend event pipeline to broadcast TCRS events to workflows
-- Handle re-open from Resolved to any non-Resolved status
+- Keep Resolved final: a later failure opens a new incident, and Ack or Assigned on a Resolved incident is rejected
 
 **Non-Goals:**
 - Auto-close on test pass (Slice 2)
@@ -304,3 +304,36 @@ No Flowable queries needed. The two-signal pattern (`tcrs_{fqn}` for fan-out, `t
 - **Thread/task creation details**: Does `OpenTaskImpl` create the Thread directly via `FeedRepository.create()`, or does it call `TestCaseResolutionStatusRepository.createTask()`? The latter has coupled logic (severity, metrics) that may not apply.
 - **Signal payload sufficiency**: Can signal variables carry enough context (status, FQN, stateId, entityLink) to avoid a DB read in openTask/closeTask, or should each node read from DB independently for freshness?
 - **storeInternal removal scope**: How much of the `New` and `Resolved` cases can we remove vs. keep as fallback? If the dispatcher fails to fire, the old code path could serve as a safety net during rollout.
+
+---
+
+## Decision Record: Final Resolved and Owner Assignment Setting
+
+This section supersedes the conflicting parts of D5, the reopen behaviour, and the default-unassigned auto-assign design above.
+
+### Resolved is final
+
+- `TestCaseResolutionStatusRepository.storeInternal()` rejects Ack or Assigned when the latest record for the test case is Resolved. The incident does not reopen.
+- A test failure after Resolved goes through `getOrCreateIncident()`, which finds no open task and creates a new incident task with a new identity. The mirror writes a New record under the new `stateId`.
+- `TaskRepository.reopenTask()` refuses incident tasks (`TestCaseResolution`). Other task types keep their reopen behaviour.
+- The seed workflow, the `IncidentWorkflowStages` constants and the status menus agree: a resolved incident offers only New, which starts a separate incident.
+
+### An open incident can return to New
+
+- New on an open incident is routed to the task workflow as the `new` transition. Ack and Assigned both have it.
+- `AssignedStage` gains a `new` transition and an `AssignedStage -> NewStage` edge in `TestCaseResolutionTaskWorkflow.json`.
+- Returning to New clears the task's assignees. `NewStage` then recomputes assignees from the workflow's assignee configuration.
+- The bulk path accepts New on an open incident. Only an entry that changes nothing is rejected.
+- Known limitation: an instance Flowable cannot move keeps its old version, and a New request on its incident is refused until the incident moves to another stage.
+- Persisted installs get the new transition and edge from the v2.1.0 data migration (`IncidentWorkflowTransitionMigration`). Startup seeding skips existing definitions, so the seed file alone does not reach them. The migration adds only missing pieces and leaves other customisations alone.
+
+### Owner auto-assignment is a workflow setting
+
+- `autoAssignOwners` is a boolean on the workflow configuration in both schemas, with default `true`. Saved definitions that omit it mean on.
+- At incident creation, `TestCaseResolutionStatusRepository` resolves the workflow the task binds to, through `TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled`, before choosing assignees. With the flag off the incident is created without assignees and stays in New.
+- The flag also reaches the workflow itself. `triggerWorkflowManagedTask` passes it as the `autoAssignOwners` process variable, and `SetApprovalAssigneesImpl` skips owner-derived assignees while it is false. Without this, the NewStage owner fallback would assign the owners anyway.
+- The flag switches off every owner-derived assignee the workflow would add: the owner fallback under `addReviewers` and `addOwners`, including the `addOwners` the incident seed's NewStage sets. That `addOwners` is the auto-assignment itself, so a node-level setting cannot override the flag.
+- Explicit assignees, explicit reviewers and candidates are not affected.
+- The upgrade moves running workflow instances onto the latest deployed version (`ProcessMigrationService`) and refreshes the available transitions of their open incidents. An instance Flowable cannot move is logged and left on its version; a New request on its incident is then refused with a clear error.
+- The setting applies to future incidents only. Existing incidents keep their assignees.
+- The Governance Workflow builder shows the control for `TestCaseResolutionTaskWorkflow` only.

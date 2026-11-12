@@ -967,9 +967,28 @@ public class TaskRepository extends EntityRepository<Task> {
       return task;
     }
     Task original = get(null, task.getId(), getFields("*"));
+    rejectReopeningIncident(original);
     Task updated = JsonUtils.deepCopy(original, Task.class);
     updated.setStatus(TaskEntityStatus.Open);
     updated.setResolution(null);
+    return persistLifecycleChange(original, updated, user);
+  }
+
+  // A resolved incident is final: a later failure of the same test case opens a new incident task.
+  private static void rejectReopeningIncident(Task task) {
+    if (task.getType() == TaskEntityType.TestCaseResolution) {
+      throw new IllegalArgumentException(
+          String.format(
+              "Incident task %s is resolved and cannot be reopened; a new test failure opens a new incident",
+              task.getId()));
+    }
+  }
+
+  /** Replaces the task's assignees in their own write, before a stage change that depends on them. */
+  public Task replaceAssignees(Task task, List<EntityReference> assignees, String user) {
+    Task original = get(null, task.getId(), getFields("*"));
+    Task updated = JsonUtils.deepCopy(original, Task.class);
+    updated.setAssignees(assignees);
     return persistLifecycleChange(original, updated, user);
   }
 
@@ -1778,6 +1797,9 @@ public class TaskRepository extends EntityRepository<Task> {
           WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, task.getTaskFormSchemaVersion());
       variables.put(
           WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
+      variables.put(
+          WorkflowStartVariables.AUTO_ASSIGN_OWNERS,
+          TaskWorkflowLifecycleResolver.isOwnerAutoAssignmentEnabled(workflowDefinition));
 
       WorkflowHandler.getInstance()
           .triggerByKey(
@@ -2019,6 +2041,9 @@ public class TaskRepository extends EntityRepository<Task> {
 
     private void updateStatus() {
       if (recordChange("status", original.getStatus(), updated.getStatus())) {
+        if (isTerminalStatus(original.getStatus()) && !isTerminalStatus(updated.getStatus())) {
+          rejectReopeningIncident(original);
+        }
         // Only stamp a fallback Completed resolution when the task is actually moving to a
         // terminal status. Transitional statuses (Approved awaiting grant, Granted awaiting
         // revoke, ManualRevoke awaiting human action, plus the existing Open/InProgress/Pending)
