@@ -71,7 +71,8 @@ const PersonalSpaceModal: React.FC = () => {
     openProfile,
     isOpen,
     suppressHashClear,
-    clearSuppressHashClear
+    clearSuppressHashClear,
+    close
   );
 
   // A pathname change while the modal is open means a link inside it navigated
