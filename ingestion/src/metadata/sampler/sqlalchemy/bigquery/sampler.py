@@ -26,7 +26,6 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.source.database.bigquery.sharding import get_table_sharding
 from metadata.sampler.sqlalchemy.sampler import SQASampler
-from metadata.utils.bigquery_table_context import bind_connection_to_table
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
@@ -60,9 +59,6 @@ class BigQuerySampler(SQASampler):
             connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.entity.database.name)  # pyright: ignore[reportAttributeAccessIssue]
             self.connection = get_ssl_connection(connection_config)
 
-        self.connection = bind_connection_to_table(
-            self.connection, self.entity if isinstance(self.entity, Table) else None, self.ometa_client
-        )
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
 
     def build_table_orm(self, table, service_conn_config, ometa_client):

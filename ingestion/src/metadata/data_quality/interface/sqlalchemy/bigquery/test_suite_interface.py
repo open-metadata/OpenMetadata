@@ -12,7 +12,8 @@
 
 from metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface import SQATestSuiteInterface
 from metadata.ingestion.connections.session import create_and_bind_session
-from metadata.utils.bigquery_table_context import bind_connection_to_table
+from metadata.ingestion.ometa.utils import model_str
+from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.ssl_manager import get_ssl_connection
 
 
@@ -20,8 +21,13 @@ class BigQueryTestSuiteInterface(SQATestSuiteInterface):
     """Keep violations and denominator queries in the same target project."""
 
     def create_session(self):
-        self.session = create_and_bind_session(
-            bind_connection_to_table(
-                get_ssl_connection(self.service_connection_config), self.table_entity, self.ometa_client
-            )
-        )
+        if self.table_entity is None:
+            raise ValueError("BigQuery table must resolve to a target database and schema before connecting")
+        schema, database, _ = get_context_entities(entity=self.table_entity, metadata=self.ometa_client)
+        if database is None or schema is None:
+            raise ValueError("BigQuery table must resolve to a target database and schema before connecting")
+        engine = get_ssl_connection(self.service_connection_config)
+        schema_map = dict(engine.get_execution_options().get("schema_translate_map") or {})
+        schema_name = model_str(schema.name)
+        schema_map[schema_name] = f"{model_str(database.name)}.{schema_name}"
+        self.session = create_and_bind_session(engine.execution_options(schema_translate_map=schema_map))

@@ -22,9 +22,9 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.generated.schema.metadataIngestion.workflow import (
     OpenMetadataWorkflowConfig,
 )
-from metadata.generated.schema.security.credentials.gcpCredentials import GcpADC, GcpCredentialsPath
 from metadata.generated.schema.security.credentials.gcpValues import (
     GcpCredentialsValues,
+    MultipleProjectId,
     SingleProjectId,
 )
 from metadata.utils.credentials import (
@@ -82,7 +82,7 @@ def get_bigquery_client(
 
 
 def copy_service_config(config: OpenMetadataWorkflowConfig, database_name: str) -> BigQueryConnection:
-    """Select the attached database's project without changing authentication or billing.
+    """Handles multiple project id in the service config and replace it with the database name
 
     Args:
         config (OpenMetadataWorkflowConfig): openmetadata workflow config
@@ -95,7 +95,8 @@ def copy_service_config(config: OpenMetadataWorkflowConfig, database_name: str) 
         config.source.serviceConnection.root.config  # type: ignore
     )
 
-    if isinstance(config_copy.credentials.gcpConfig, (GcpCredentialsValues, GcpCredentialsPath, GcpADC)):
-        config_copy.credentials.gcpConfig.projectId = SingleProjectId(database_name)
+    if isinstance(config_copy.credentials.gcpConfig, GcpCredentialsValues):  # noqa: SIM102
+        if isinstance(config_copy.credentials.gcpConfig.projectId, MultipleProjectId):
+            config_copy.credentials.gcpConfig.projectId = SingleProjectId(database_name)
 
     return config_copy

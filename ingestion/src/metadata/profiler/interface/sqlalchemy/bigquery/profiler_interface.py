@@ -32,7 +32,6 @@ from metadata.profiler.metrics.system.bigquery.system import (
 )
 from metadata.profiler.metrics.system.system import System
 from metadata.profiler.processor.runner import QueryRunner
-from metadata.utils.bigquery_table_context import bind_connection_to_table
 from metadata.utils.logger import profiler_interface_registry_logger
 from metadata.utils.ssl_manager import get_ssl_connection
 
@@ -48,7 +47,6 @@ class BigQueryProfilerInterface(SQAProfilerInterface):
         if hasattr(connection_config.credentials.gcpConfig, "projectId") and self.table_entity.database:
             connection_config.credentials.gcpConfig.projectId = SingleProjectId(root=self.table_entity.database.name)
             self.connection = get_ssl_connection(connection_config)
-        self.connection = bind_connection_to_table(self.connection, self.table_entity, self.ometa_client)
         return super().create_session()
 
     def _compute_system_metrics(

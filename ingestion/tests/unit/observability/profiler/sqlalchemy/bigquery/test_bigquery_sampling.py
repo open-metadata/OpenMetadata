@@ -8,7 +8,6 @@ from sqlalchemy.orm import DeclarativeBase
 from sqlalchemy.sql.selectable import CTE  # noqa: TC002
 from sqlalchemy_bigquery import dialect as bigquery_dialect
 
-from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.table import Column as EntityColumn
 from metadata.generated.schema.entity.data.table import (
     ColumnName,
@@ -93,10 +92,6 @@ class SampleTest(TestCase):
     @classmethod
     @patch.object(SQASampler, "build_table_orm", return_value=User)
     def setUpClass(cls, sampler_mock) -> None:
-        cls.metadata = MagicMock()
-        cls.metadata.get_by_id.return_value = Database(
-            id=uuid4(), name="myproject", service={"id": uuid4(), "type": "databaseService"}
-        )
         cls.table_entity = Table(
             id=uuid4(),
             name="user",
@@ -145,7 +140,7 @@ class SampleTest(TestCase):
         """
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
-            ometa_client=self.metadata,
+            ometa_client=None,
             entity=self.table_entity,
             config=DatabaseSamplerConfig(
                 sample_config=SampleConfig(
@@ -183,7 +178,7 @@ class SampleTest(TestCase):
 
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
-            ometa_client=self.metadata,
+            ometa_client=None,
             entity=view_entity,
             config=DatabaseSamplerConfig(
                 sample_config=SampleConfig(
@@ -224,7 +219,7 @@ class SampleTest(TestCase):
 
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
-            ometa_client=self.metadata,
+            ometa_client=None,
             entity=view_entity,
             config=DatabaseSamplerConfig(
                 sample_config=SampleConfig(
@@ -259,7 +254,7 @@ class SampleTest(TestCase):
         """
         sampler = BigQuerySampler(
             service_connection_config=self.bq_conn,
-            ometa_client=self.metadata,
+            ometa_client=None,
             entity=self.table_entity,
             config=DatabaseSamplerConfig(
                 sample_config=SampleConfig(
@@ -297,7 +292,7 @@ class SampleTest(TestCase):
         with patch.object(SQASampler, "build_table_orm", return_value=StructUser):
             sampler = BigQuerySampler(
                 service_connection_config=self.bq_conn,
-                ometa_client=self.metadata,
+                ometa_client=None,
                 entity=self.table_entity,
                 config=DatabaseSamplerConfig(
                     sample_config=SampleConfig(

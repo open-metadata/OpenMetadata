@@ -8,212 +8,220 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""IOMETE observability must use the attached table's catalog."""
+"""IOMETE observability inherits the execution connection's catalog selection."""
 
-import subprocess
-import sys
+from copy import deepcopy
 from unittest.mock import MagicMock
 from uuid import uuid4
 
+import iomete_sqlalchemy.dbapi
 import pytest
-from sqlalchemy import create_engine, func, select, text
+from pydantic import RootModel
+from sqlalchemy import func, select, text
 
+from metadata.data_quality.runner.base_test_suite_source import BaseTestSuiteRunner
+from metadata.data_quality.source.test_suite import TestSuiteSource
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table
-from metadata.generated.schema.entity.services.connections.database.iometeConnection import IometeConnection
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
-from metadata.generated.schema.metadataIngestion.databaseServiceProfilerPipeline import DatabaseServiceProfilerPipeline
-from metadata.ingestion.source.database.iomete.connection import IometeConnection as IometeSourceConnection
-from metadata.ingestion.source.database.iomete.service_spec import ServiceSpec
-from metadata.utils.importer import import_from_module
-from metadata.utils.iomete_table_context import copy_connection_for_table
+from metadata.generated.schema.entity.services.serviceType import ServiceType
+from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
+    DatabaseServiceAutoClassificationPipeline,
+)
+from metadata.generated.schema.metadataIngestion.workflow import OpenMetadataWorkflowConfig
+from metadata.profiler.source.database.base.profiler_source import ProfilerSource
+from metadata.sampler.entity_adapters import TableAdapter
 from metadata.utils.profiler_utils import database_entities_cache
+from metadata.utils.service_spec.service_spec import (
+    import_profiler_class,
+    import_sampler_class,
+    import_test_suite_class,
+)
 
 
-@pytest.fixture
-def context():
-    database_entities_cache.clear()
-    service = DatabaseService(id=uuid4(), name="service.with.dot", serviceType="Iomete")
-    service_ref = {"id": service.id, "type": "databaseService"}
-    database = Database(id=uuid4(), name="target", service=service_ref)
-    database_ref = {"id": database.id, "type": "database", "name": "stale-decoy"}
-    schema = DatabaseSchema(id=uuid4(), name="main", database=database_ref, service=service_ref)
+class Cursor:
+    def __init__(self, statements):
+        self.statements = statements
+
+    description = (("probe_count", None, None, None, None, None, None),)
+    rowcount = -1
+
+    def execute(self, sql, params=None):
+        self.statements.append({"sql": sql, "params": params})
+
+    def fetchone(self):
+        return (1,)
+
+    def fetchall(self):
+        return [(1,)]
+
+    def close(self):
+        pass
+
+
+class Connection:
+    def __init__(self, statements):
+        self.statements = statements
+
+    def cursor(self):
+        return Cursor(self.statements)
+
+    def close(self):
+        pass
+
+    def commit(self):
+        pass
+
+    def rollback(self):
+        pass
+
+
+def fixture(ingestion_catalog):
+    label = ingestion_catalog or "default"
+    service = DatabaseService(id=uuid4(), name="warehouse", serviceType="Iomete")
+    sref = {"id": service.id, "type": "databaseService", "name": "warehouse"}
+    db = Database(id=uuid4(), name=label, service=sref)
+    dref = {"id": db.id, "type": "database", "name": label}
+    schema = DatabaseSchema(id=uuid4(), name="finance", database=dref, service=sref)
     table = Table(
         id=uuid4(),
         name="amounts",
         columns=[{"name": "amount", "dataType": "INT"}],
-        database=database_ref,
-        databaseSchema={"id": schema.id, "type": "databaseSchema"},
-        service=service_ref,
+        database=dref,
+        databaseSchema={"id": schema.id, "type": "databaseSchema", "name": "finance"},
+        service=sref,
         serviceType="Iomete",
-        fullyQualifiedName="wrong.decoy.main.amounts",
+        fullyQualifiedName=f"warehouse.{label}.finance.amounts",
     )
     metadata = MagicMock()
-    metadata.get_by_id.side_effect = lambda entity, **_: {
-        Database: database,
+    metadata.get_by_id.side_effect = lambda entity, **kwargs: {
+        Database: db,
         DatabaseSchema: schema,
         DatabaseService: service,
     }[entity]
-    yield table, database, metadata
-    database_entities_cache.clear()
+    metadata.get_profiler_config_settings.return_value = None
+    return table, db, schema, metadata
 
 
-def connection(catalog):
-    return IometeConnection(
-        hostPort="localhost:443",
-        username="user",
-        password="secret",
-        cluster="cluster",
-        dataPlane="plane",
-        catalog=catalog,
-        databaseSchema="main",
-        schemaFilterPattern={"includes": ["main"]},
+def workflow(runtime_catalog, mode):
+    connection = {
+        "type": "Iomete",
+        "hostPort": "offline.invalid:443",
+        "username": "probe",
+        "password": "offline-only",
+        "cluster": "probe_cluster",
+        "dataPlane": "probe_plane",
+        "catalog": runtime_catalog,
+    }
+    source = {
+        "type": "iomete",
+        "serviceName": "warehouse",
+        "sourceConfig": {"config": {"type": "TestSuite" if mode == "dq" else "Profiler"}},
+    }
+    if mode == "dq":
+        source["sourceConfig"]["config"]["serviceConnections"] = [
+            {"serviceName": "warehouse", "serviceConnection": {"config": connection}}
+        ]
+    else:
+        source["serviceConnection"] = {"config": connection}
+    return OpenMetadataWorkflowConfig.model_validate(
+        {
+            "source": source,
+            "processor": {"type": "orm-profiler", "config": {}},
+            "workflowConfig": {
+                "openMetadataServerConfig": {
+                    "hostPort": "http://offline.invalid:8585/api",
+                    "authProvider": "openmetadata",
+                }
+            },
+        }
     )
 
 
-def adapter(kind):
-    return import_from_module(getattr(ServiceSpec, kind + "_class"))
+def check_runtime_catalog(ingested, runtime, connects, statements):
+    database_entities_cache.clear()
+    table, db, schema, metadata = fixture(ingested)
+    config = workflow(runtime, "dq")
+    source = TestSuiteSource(config, metadata)
+    selected = source._get_table_service_connection(table)
+    assert selected.config.catalog == runtime
+    config.source.serviceConnection = RootModel(selected)
+    before = config.source.serviceConnection.root.config.model_dump()
+    runner_source = BaseTestSuiteRunner(config, metadata, table)
+    assert runner_source.service_conn_config.catalog == runtime
+    interface = runner_source.create_data_quality_interface()
+    try:
+        offset = len(connects)
+        sql_offset = len(statements)
+        logical = interface.runner.get_table_reference()
+        interface.session.execute(text(f"SELECT COUNT(*) FROM {logical} WHERE amount < :limit"), {"limit": 0}).scalar()
+        interface.session.execute(select(func.count()).select_from(interface.sampler.raw_dataset)).scalar()
+        with interface.sampler.get_client() as sampling_session:
+            sampling_session.execute(select(func.count()).select_from(interface.sampler.raw_dataset)).scalar()
+        expected = runtime or None
+        assert {c["db_kwargs"].get("adbc.flight.sql.rpc.call_header.schema") for c in connects[offset:]} == {expected}
+        assert logical == "finance.amounts"
+        assert "finance.amounts" in statements[sql_offset]["sql"]
+        assert "finance.amounts" in statements[sql_offset + 1]["sql"]
+        assert before == config.source.serviceConnection.root.config.model_dump()
+    finally:
+        interface.session.close()
+        interface.session.get_bind().dispose()
+        interface.sampler.close()
+    pconfig = workflow(runtime, "profiler")
+    profiler_source = ProfilerSource(pconfig, db, metadata, None)
+    profiler = profiler_source.create_profiler_interface(table, None, schema, db)
+    try:
+        offset = len(connects)
+        profiler.session.execute(select(func.count()).select_from(profiler.table)).scalar()
+        with profiler.sampler.get_client() as sampling_session:
+            sampling_session.execute(select(func.count()).select_from(profiler.table)).scalar()
+        assert {c["db_kwargs"].get("adbc.flight.sql.rpc.call_header.schema") for c in connects[offset:]} == {expected}
+        classification_kwargs = TableAdapter().build_sampler_kwargs(
+            pconfig, metadata, table, profiler_source.profiler_config, DatabaseServiceAutoClassificationPipeline()
+        )
+        classification_sampler = import_sampler_class(ServiceType.Database, "iomete").create(**classification_kwargs)
+        try:
+            offset_class = len(connects)
+            with classification_sampler.get_client() as sampling_session:
+                sampling_session.execute(select(func.count()).select_from(classification_sampler.raw_dataset)).scalar()
+            assert connects[offset_class]["db_kwargs"].get("adbc.flight.sql.rpc.call_header.schema") == expected
+        finally:
+            classification_sampler.close()
+    finally:
+        profiler.close()
+        profiler.sampler.close()
 
 
-@pytest.mark.parametrize("catalog", ["target", "decoy", "default", None, ""])
-@pytest.mark.parametrize("target", ["target", "default"])
-def test_catalog_copy_uses_resolved_database_and_preserves_settings(context, catalog, target):
-    table, database, metadata = context
-    database.name = type(database.name)(target)
-    original = connection(catalog)
-    before = original.model_dump()
-    copied = copy_connection_for_table(original, table, metadata)
-    assert copied.catalog == (catalog if not catalog and target == "default" else target)
-    assert original.model_dump() == before
-    assert copied.model_dump(exclude={"catalog"}) == original.model_dump(exclude={"catalog"})
-    copied.schemaFilterPattern.includes.append("other")
-    assert original.schemaFilterPattern.includes == ["main"]
-
-
-@pytest.mark.parametrize("kind", ["sampler", "test_suite", "profiler"])
 @pytest.mark.parametrize(
-    "catalog,target",
+    "ingested,runtime",
     [
-        ("target", "target"),
-        ("decoy", "target"),
-        (None, "target"),
-        ("", "target"),
-        (None, "default"),
-        ("", "default"),
+        (None, None),
+        ("", ""),
         ("default", "default"),
+        ("catalog_a", "catalog_a"),
+        ("catalog_a", "catalog_b"),
+        ("catalog_a", None),
+        (None, "catalog_b"),
+        ("default", "catalog_b"),
     ],
 )
-def test_all_observability_sessions_query_target_catalog(context, monkeypatch, kind, catalog, target):
-    table, database, metadata = context
-    database.name = type(database.name)(target)
-    engines = {name: create_engine("sqlite://") for name in ["target", "decoy"]}
-    for name, engine in engines.items():
-        with engine.begin() as conn:
-            conn.execute(text("CREATE TABLE amounts (amount INT)"))
-            values = [10, -1, 20] if name == "target" else [-1, -2] + [10] * 8
-            conn.execute(text("INSERT INTO amounts VALUES (:amount)"), [{"amount": value} for value in values])
-    observed = []
+def test_inherited_workflows_preserve_runtime_catalog(monkeypatch, ingested, runtime):
+    connects, statements = [], []
 
-    def get_engine(config):
-        observed.append(config.catalog)
-        assert IometeSourceConnection.get_connection_url(config).database == (config.catalog or None)
-        # The driver default is a real target catalog, not the metadata label "default".
-        return engines["target" if not config.catalog or config.catalog == "default" else config.catalog]
+    def connect(*args, **kwargs):
+        connects.append(deepcopy(kwargs))
+        return Connection(statements)
 
-    for module in [
-        "metadata.sampler.sqlalchemy.sampler",
-        "metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface",
-        "metadata.profiler.interface.profiler_interface",
-    ]:
-        monkeypatch.setattr(module + ".get_ssl_connection", get_engine)
-    original = connection(catalog)
-    sampler = adapter("sampler")(original, metadata, table)
-    if kind == "sampler":
-        session = sampler.get_client()
-    elif kind == "test_suite":
-        interface = adapter(kind)(original, metadata, sampler, table, validator_builder=MagicMock())
-        session = interface.session
-    else:
-        interface = adapter(kind)(original, metadata, table, DatabaseServiceProfilerPipeline(), sampler, 1)
-        session = interface.session
-    assert session.execute(select(func.count()).select_from(sampler.raw_dataset)).scalar() == 3
-    assert session.execute(text("SELECT COUNT(*) FROM amounts WHERE amount < :limit"), {"limit": 0}).scalar() == 1
-    expected = catalog if not catalog and target == "default" else target
-    assert observed == [expected] * (1 if kind == "sampler" else 2)
-    assert original.catalog == catalog
-    session.close()
-    sampler.session_factory.remove()
-    for engine in engines.values():
-        engine.dispose()
-
-
-@pytest.mark.parametrize("kind", ["sampler", "test_suite", "profiler"])
-def test_missing_database_fails_before_engine_creation(context, monkeypatch, kind):
-    table, _, metadata = context
-    table.database = None
-    engine = MagicMock(side_effect=AssertionError("source engine must not be created"))
-    for module in [
-        "metadata.sampler.sqlalchemy.sampler",
-        "metadata.data_quality.interface.sqlalchemy.sqa_test_suite_interface",
-        "metadata.profiler.interface.profiler_interface",
-    ]:
-        monkeypatch.setattr(module + ".get_ssl_connection", engine)
-    with pytest.raises(ValueError, match=r"IOMETE.*database"):
-        if kind == "sampler":
-            adapter(kind)(connection("decoy"), metadata, table)
-        elif kind == "test_suite":
-            adapter(kind)(connection("decoy"), metadata, MagicMock(), table, validator_builder=MagicMock())
-        else:
-            adapter(kind)(connection("decoy"), metadata, table, DatabaseServiceProfilerPipeline(), MagicMock(), 1)
-    engine.assert_not_called()
-
-
-def test_service_spec_selects_connector_adapters():
-    for kind, name in [
-        ("sampler", "IometeSampler"),
-        ("test_suite", "IometeTestSuiteInterface"),
-        ("profiler", "IometeProfilerInterface"),
-    ]:
-        assert adapter(kind).__name__ == name
-
-
-@pytest.mark.parametrize("missing", ["table", "reference", "lookup"])
-def test_catalog_copy_rejects_unresolved_database(context, missing):
-    table, _, metadata = context
-    if missing == "table":
-        table = None
-    elif missing == "reference":
-        table.database = None
-    else:
-        metadata.get_by_id.side_effect = None
-        metadata.get_by_id.return_value = None
-    with pytest.raises(ValueError, match=r"IOMETE.*database"):
-        copy_connection_for_table(connection("decoy"), table, metadata)
-
-
-def test_catalog_copy_resolves_id_only_database_reference(context):
-    table, database, metadata = context
-    table.database.name = None
-    copied = copy_connection_for_table(connection(None), table, metadata)
-    assert copied.catalog == database.name.root
-
-
-def test_service_spec_loads_without_optional_iomete_driver():
-    script = """
-import importlib.abc
-import sys
-
-class NoIometeDriver(importlib.abc.MetaPathFinder):
-    def find_spec(self, fullname, path=None, target=None):
-        if fullname.split(".")[0] == "iomete_sqlalchemy":
-            raise AssertionError("Optional IOMETE driver imported eagerly")
-
-sys.meta_path.insert(0, NoIometeDriver())
-from metadata.ingestion.source.database.iomete.service_spec import ServiceSpec
-from metadata.utils.importer import import_from_module
-for field in ["sampler_class", "test_suite_class", "profiler_class"]:
-    assert import_from_module(getattr(ServiceSpec, field)).__name__.startswith("Iomete")
-"""
-    result = subprocess.run([sys.executable, "-c", script], capture_output=True, text=True, check=False)
-    assert result.returncode == 0, result.stderr
+    monkeypatch.setattr(iomete_sqlalchemy.dbapi, "connect", connect)
+    try:
+        for loader, name in [
+            (import_sampler_class, "SQASampler"),
+            (import_test_suite_class, "SQATestSuiteInterface"),
+            (import_profiler_class, "SQAProfilerInterface"),
+        ]:
+            assert loader(ServiceType.Database, "iomete").__name__ == name
+        check_runtime_catalog(ingested, runtime, connects, statements)
+    finally:
+        database_entities_cache.clear()
