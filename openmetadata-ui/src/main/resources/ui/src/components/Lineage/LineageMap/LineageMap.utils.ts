@@ -286,9 +286,14 @@ interface LineageFieldPathConnection {
   nodeId: string;
 }
 
+interface LineageNodePathConnection {
+  edgeId: string;
+  nodeId: string;
+}
+
 export interface LineagePathHighlightIndex {
-  edgeIdsByNodeId: Map<string, Set<string>>;
-  adjacentNodeIdsByNodeId: Map<string, Set<string>>;
+  upstreamConnectionsByNodeId: Map<string, LineageNodePathConnection[]>;
+  downstreamConnectionsByNodeId: Map<string, LineageNodePathConnection[]>;
   incomingFieldConnectionsByFieldId: Map<string, LineageFieldPathConnection[]>;
   outgoingFieldConnectionsByFieldId: Map<string, LineageFieldPathConnection[]>;
   nodeIdsByFieldId: Map<string, Set<string>>;
@@ -336,8 +341,14 @@ export const getDrilledRootBreadcrumb = (
 export const buildLineagePathHighlightIndex = (
   edges: LineagePathEdge[]
 ): LineagePathHighlightIndex => {
-  const edgeIdsByNodeId = new Map<string, Set<string>>();
-  const adjacentNodeIdsByNodeId = new Map<string, Set<string>>();
+  const upstreamConnectionsByNodeId = new Map<
+    string,
+    LineageNodePathConnection[]
+  >();
+  const downstreamConnectionsByNodeId = new Map<
+    string,
+    LineageNodePathConnection[]
+  >();
   const incomingFieldConnectionsByFieldId = new Map<
     string,
     LineageFieldPathConnection[]
@@ -348,19 +359,27 @@ export const buildLineagePathHighlightIndex = (
   >();
   const nodeIdsByFieldId = new Map<string, Set<string>>();
 
-  edges.forEach((edge) => {
-    [
-      [edge.source, edge.target],
-      [edge.target, edge.source],
-    ].forEach(([nodeId, adjacentNodeId]) => {
-      const edgeIds = edgeIdsByNodeId.get(nodeId) ?? new Set<string>();
-      const adjacentNodeIds =
-        adjacentNodeIdsByNodeId.get(nodeId) ?? new Set<string>();
+  const addNodeConnection = (
+    connectionsByNodeId: Map<string, LineageNodePathConnection[]>,
+    nodeId: string,
+    connection: LineageNodePathConnection
+  ) => {
+    const connections = connectionsByNodeId.get(nodeId);
+    if (connections) {
+      connections.push(connection);
+    } else {
+      connectionsByNodeId.set(nodeId, [connection]);
+    }
+  };
 
-      edgeIds.add(edge.id);
-      adjacentNodeIds.add(adjacentNodeId);
-      edgeIdsByNodeId.set(nodeId, edgeIds);
-      adjacentNodeIdsByNodeId.set(nodeId, adjacentNodeIds);
+  edges.forEach((edge) => {
+    addNodeConnection(upstreamConnectionsByNodeId, edge.target, {
+      edgeId: edge.id,
+      nodeId: edge.source,
+    });
+    addNodeConnection(downstreamConnectionsByNodeId, edge.source, {
+      edgeId: edge.id,
+      nodeId: edge.target,
     });
 
     if (edge.sourceHandle && edge.targetHandle) {
@@ -399,14 +418,17 @@ export const buildLineagePathHighlightIndex = (
   });
 
   return {
-    edgeIdsByNodeId,
-    adjacentNodeIdsByNodeId,
+    upstreamConnectionsByNodeId,
+    downstreamConnectionsByNodeId,
     incomingFieldConnectionsByFieldId,
     outgoingFieldConnectionsByFieldId,
     nodeIdsByFieldId,
   };
 };
 
+// A node's path is what feeds it and what it feeds: upstream is followed only
+// through incoming edges and downstream only through outgoing ones, so a
+// sibling that feeds the same downstream node stays off the path.
 export const getConnectedLineagePathHighlight = (
   nodeId: string | undefined,
   index: LineagePathHighlightIndex
@@ -417,25 +439,33 @@ export const getConnectedLineagePathHighlight = (
 
   const edgeIds = new Set<string>();
   const nodeIds = new Set<string>([nodeId]);
-  const queue = [nodeId];
-  let queueIndex = 0;
 
-  while (queueIndex < queue.length) {
-    const currentNodeId = queue[queueIndex];
-    queueIndex += 1;
+  const traceNodes = (
+    connectionsByNodeId: Map<string, LineageNodePathConnection[]>
+  ) => {
+    const visitedNodeIds = new Set<string>([nodeId]);
+    const queue = [nodeId];
+    let queueIndex = 0;
 
-    index.edgeIdsByNodeId
-      .get(currentNodeId)
-      ?.forEach((edgeId) => edgeIds.add(edgeId));
-    index.adjacentNodeIdsByNodeId
-      .get(currentNodeId)
-      ?.forEach((adjacentNodeId) => {
-        if (!nodeIds.has(adjacentNodeId)) {
-          nodeIds.add(adjacentNodeId);
-          queue.push(adjacentNodeId);
-        }
-      });
-  }
+    while (queueIndex < queue.length) {
+      const currentNodeId = queue[queueIndex];
+      queueIndex += 1;
+
+      connectionsByNodeId
+        .get(currentNodeId)
+        ?.forEach(({ edgeId, nodeId: connectedNodeId }) => {
+          edgeIds.add(edgeId);
+          nodeIds.add(connectedNodeId);
+          if (!visitedNodeIds.has(connectedNodeId)) {
+            visitedNodeIds.add(connectedNodeId);
+            queue.push(connectedNodeId);
+          }
+        });
+    }
+  };
+
+  traceNodes(index.upstreamConnectionsByNodeId);
+  traceNodes(index.downstreamConnectionsByNodeId);
 
   return {
     edgeIds,

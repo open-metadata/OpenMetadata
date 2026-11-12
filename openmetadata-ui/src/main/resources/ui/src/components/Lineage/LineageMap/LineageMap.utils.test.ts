@@ -594,6 +594,25 @@ describe('LineageMap utils', () => {
     );
   });
 
+  it('highlights only the paths into and out of the hovered node', () => {
+    const index = buildLineagePathHighlightIndex([
+      { id: 'raw-to-dim', source: 'raw_product', target: 'dim_product' },
+      { id: 'dim-to-fact', source: 'dim_product', target: 'fact_orders' },
+      { id: 'raw-to-tmp', source: 'raw_orders', target: 'tmp_enriched' },
+      { id: 'tmp-to-fact', source: 'tmp_enriched', target: 'fact_orders' },
+      { id: 'fact-to-report', source: 'fact_orders', target: 'report' },
+    ]);
+
+    const highlight = getConnectedLineagePathHighlight('dim_product', index);
+
+    expect(highlight?.edgeIds).toEqual(
+      new Set(['raw-to-dim', 'dim-to-fact', 'fact-to-report'])
+    );
+    expect(highlight?.nodeIds).toEqual(
+      new Set(['dim_product', 'raw_product', 'fact_orders', 'report'])
+    );
+  });
+
   it('does not build a path highlight without a hovered node', () => {
     const index = buildLineagePathHighlightIndex([
       { id: 'asset-a-to-asset-b', source: 'asset-a', target: 'asset-b' },
