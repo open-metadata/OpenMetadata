@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import java.io.IOException;
@@ -25,6 +26,8 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.it.factories.ShortStackFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
@@ -44,7 +47,8 @@ import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.Entity;
 
 /**
- * Test case definitions reach Data Insights through the live {@code testCase} index, so a chart can
+ * Test case definitions reach the ordinary preview through the Data Insights alias and live charts
+ * through the {@code testCase} index, so a chart can
  * count them per table and the per-table figures agree with the Data Quality list for the same
  * tables. A table with no test case has no bucket at all, which is exactly what makes "share of
  * tables without tests" expressible.
@@ -55,12 +59,14 @@ import org.openmetadata.service.Entity;
 class DataInsightTestCaseCoverageIT {
 
   private static final Duration INDEXING_TIMEOUT = Duration.ofSeconds(120);
-  private static final long WINDOW_MS = 60_000L;
+  private static final long WINDOW_MS = Duration.ofDays(1).toMillis();
 
   private final OpenMetadataClient client = SdkClients.adminClient();
 
-  @Test
-  void perTableTestCaseCountReconcilesWithTheDataQualityList(TestNamespace ns) {
+  @ParameterizedTest
+  @ValueSource(booleans = {false, true})
+  void perTableTestCaseCountReconcilesWithTheDataQualityList(boolean live, TestNamespace ns)
+      throws IOException {
     Table covered = ShortStackFactory.table(ns);
     Table uncovered = ShortStackFactory.table(ns);
     createTableTestCase(ns, covered, "row_count_a");
@@ -68,12 +74,65 @@ class DataInsightTestCaseCoverageIT {
 
     double expected = dataQualityTotal(covered);
     Map<String, Double> countsByTable =
-        awaitCounts(testCasesByTable(List.of(covered, uncovered)), lowerCase(covered), expected);
+        awaitCounts(
+            testCasesByTable(List.of(covered, uncovered)), lowerCase(covered), expected, live);
 
+    assertEquals(2, expected);
     assertEquals(expected, countsByTable.get(lowerCase(covered)));
+    var outsideWindow =
+        Entity.getSearchRepository()
+            .getSearchClient()
+            .buildDIChart(testCasesByTable(List.of(covered)), 0L, 1L);
+    assertTrue(outsideWindow.getResults().stream().allMatch(result -> result.getCount() == 0.0));
     assertFalse(
         countsByTable.containsKey(lowerCase(uncovered)),
         "A table without test cases must have no bucket, so it is counted as uncovered");
+  }
+
+  @Test
+  void ordinaryPreviewCanAggregateTestCasesByDate(TestNamespace ns) {
+    Table table = ShortStackFactory.table(ns);
+    createTableTestCase(ns, table, "dated_row_count");
+    DataInsightCustomChart chart = testCasesByTable(List.of(table));
+    LineChart details = JsonUtils.convertValue(chart.getChartDetails(), LineChart.class);
+    details.withxAxisField("@timestamp").withSearchIndex(null);
+    chart.withChartDetails(JsonUtils.getMap(details));
+
+    await()
+        .atMost(INDEXING_TIMEOUT)
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              long end = System.currentTimeMillis();
+              var result =
+                  Entity.getSearchRepository()
+                      .getSearchClient()
+                      .buildDIChart(chart, end - WINDOW_MS, end);
+              assertEquals(
+                  1.0,
+                  result.getResults().stream()
+                      .mapToDouble(DataInsightCustomChartResult::getCount)
+                      .sum());
+            });
+  }
+
+  @Test
+  void fieldCatalogExposesTestCaseGroupingFields() {
+    List<Map<String, String>> fields =
+        Entity.getSearchRepository().getSearchClient().fetchDIChartFields();
+    for (String name :
+        List.of(
+            "originEntityFQN",
+            "testSuite.fullyQualifiedName",
+            "testDefinition.fullyQualifiedName")) {
+      assertTrue(
+          fields.stream()
+              .anyMatch(
+                  field ->
+                      Entity.TEST_CASE.equals(field.get("entityType"))
+                          && name.equals(field.get("name"))),
+          "Missing test case field: " + name);
+    }
   }
 
   private void createTableTestCase(TestNamespace ns, Table table, String name) {
@@ -86,29 +145,30 @@ class DataInsightTestCaseCoverageIT {
   }
 
   private Map<String, Double> awaitCounts(
-      DataInsightCustomChart chart, String tableKey, double expected) {
+      DataInsightCustomChart chart, String tableKey, double expected, boolean live) {
     return await()
         .atMost(INDEXING_TIMEOUT)
         .pollInterval(Duration.ofSeconds(2))
         .ignoreExceptions()
         .until(
-            () -> liveCountsByTable(chart),
+            () -> countsByTable(chart, live),
             counts -> Double.valueOf(expected).equals(counts.get(tableKey)));
   }
 
-  private Map<String, Double> liveCountsByTable(DataInsightCustomChart chart) throws IOException {
+  private Map<String, Double> countsByTable(DataInsightCustomChart chart, boolean live)
+      throws IOException {
     long end = System.currentTimeMillis();
-    return Entity.getSearchRepository()
-        .getSearchClient()
-        .buildDIChart(chart, end - WINDOW_MS, end, true)
-        .getResults()
-        .stream()
+    var searchClient = Entity.getSearchRepository().getSearchClient();
+    var result =
+        live
+            ? searchClient.buildDIChart(chart, end - WINDOW_MS, end, true)
+            : searchClient.buildDIChart(chart, end - WINDOW_MS, end);
+    return result.getResults().stream()
         .collect(
             Collectors.toMap(
                 DataInsightCustomChartResult::getTerm, DataInsightCustomChartResult::getCount));
   }
 
-  /** Live, searchIndex testCase: counts test cases per table, on a term axis because live documents have no @timestamp. */
   private static DataInsightCustomChart testCasesByTable(List<Table> tables) {
     String fqns =
         tables.stream()

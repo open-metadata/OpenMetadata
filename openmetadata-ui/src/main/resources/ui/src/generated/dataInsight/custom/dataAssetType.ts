@@ -15,8 +15,9 @@
  * DataInsightsApp and configured in `dataInsights/config.json`. Test cases, test results
  * and resolution statuses are supplied by `dataInsightAliases` in `indexMapping.json`; the
  * app must never create or delete data streams for those live-index aliases. Test case
- * documents carry no `@timestamp`, so test cases are charted in live mode (`searchIndex:
- * testCase`) rather than over a time window.
+ * documents use `updatedAt` as `@timestamp` for date-filtered charts; live mode
+ * (`searchIndex: testCase`) counts current definitions without a date restriction. These
+ * documents are not historical snapshots.
  */
 export enum DataAssetType {
     APIEndpoint = "apiEndpoint",

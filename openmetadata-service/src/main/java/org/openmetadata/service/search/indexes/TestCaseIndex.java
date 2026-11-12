@@ -74,6 +74,7 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
 
   @SneakyThrows
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
+    doc.put("@timestamp", testCase.getUpdatedAt());
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
     TestCaseResolutionStatusRepository tcrsRepo =
