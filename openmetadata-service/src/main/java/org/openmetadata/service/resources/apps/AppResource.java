@@ -1275,10 +1275,6 @@ public class AppResource extends EntityResource<App, AppRepository> {
                 searchRepository,
                 securityContext.getUserPrincipal().getName());
       }
-      // A copy: the registered app keeps the runtime properties this response must not return.
-      ApplicationHandler.getInstance()
-          .registerApplication(
-              JsonUtils.deepCopy(app, App.class), Entity.getCollectionDAO(), searchRepository);
       // We don't want to store this information
       unsetAppRuntimeProperties(app);
     }

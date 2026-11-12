@@ -368,9 +368,15 @@ public class McpServer implements McpServerProvider {
       // authenticated identity back to the MCP OAuth flow. SAML carries the MCP authorization
       // request id in RelayState ("mcp:{authRequestId}"); SamlAuthServletHandler detects it and
       // invokes this handler, which asks the user to approve the client before a code is minted.
+      // The SAML ACS is not under /mcp/, so it checks availability itself.
       org.openmetadata.service.security.auth.SamlAuthServletHandler.setMcpSamlCallbackHandler(
-          (req, resp, username, email, relayState) ->
-              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState));
+          (req, resp, username, email, relayState) -> {
+            if (McpAvailabilityFilter.isMcpAvailable()) {
+              authProvider.handleSSOCallbackWithDbState(req, resp, username, email, relayState);
+            } else {
+              McpAvailabilityFilter.refuse(resp);
+            }
+          });
       LOG.info("Registered MCP SAML callback handler for SAML SSO support");
 
       // Register MCP callback servlet unconditionally — SSO availability is checked at

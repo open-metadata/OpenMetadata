@@ -50,11 +50,15 @@ class McpAvailabilityIT extends McpTestBase {
       assertThat(deleteResponse(APP_PATH + "?hardDelete=false").statusCode()).isEqualTo(200);
       await().atMost(SWITCH_TIMEOUT).untilAsserted(this::assertMcpRefused);
     } finally {
-      putResponse("apps/restore", Map.of("id", appId), authToken);
+      // A failed restore would leave MCP off for every suite that runs after this one.
+      assertThat(putResponse("apps/restore", Map.of("id", appId), authToken).statusCode())
+          .as("restore " + McpAppConstants.MCP_APP_NAME)
+          .isEqualTo(200);
     }
     final long restoredAt = System.currentTimeMillis();
     await().atMost(SWITCH_TIMEOUT).untilAsserted(this::assertMcpAnswers);
-    // Enable registers the app again, so tool calls after it are still recorded as usage.
+    // Disable takes the app out of ApplicationContext and Enable does not put it back, so usage
+    // is only still recorded if the recorder does not depend on it.
     await()
         .atMost(SWITCH_TIMEOUT)
         .untilAsserted(() -> assertThat(usageRecordsSince(restoredAt)).isPositive());

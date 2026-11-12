@@ -214,28 +214,6 @@ public class ApplicationHandler {
     }
   }
 
-  /**
-   * Puts a restored app back in the context that uninstalling took it out of, as startup does. An
-   * app the server configuration turns off stays out, as it does at startup.
-   */
-  public void registerApplication(
-      App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
-    if (!Boolean.FALSE.equals(app.getEnabled())) {
-      try {
-        ApplicationContext.getInstance()
-            .registerApp(runAppInit(app, daoCollection, searchRepository));
-      } catch (ClassNotFoundException
-          | NoSuchMethodException
-          | InvocationTargetException
-          | InstantiationException
-          | IllegalAccessException e) {
-        LOG.error("Failed to register application {}", app.getName(), e);
-        throw AppException.byMessage(
-            app.getName(), "register", e.getMessage(), Response.Status.INTERNAL_SERVER_ERROR);
-      }
-    }
-  }
-
   public App appWithDecryptedAppConfiguration(
       App app, CollectionDAO daoCollection, SearchRepository searchRepository) {
     try {
