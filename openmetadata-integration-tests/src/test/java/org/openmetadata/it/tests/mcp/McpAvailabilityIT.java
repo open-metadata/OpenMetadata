@@ -31,7 +31,12 @@ class McpAvailabilityIT extends McpTestBase {
   private static final String CONFIG_PATH = "system/mcp/config";
   private static final String PROTECTED_RESOURCE = "/.well-known/oauth-protected-resource";
   private static final List<String> GET_ROUTES =
-      List.of(PROTECTED_RESOURCE, "/.well-known/oauth-authorization-server", "/mcp/callback");
+      List.of(
+          PROTECTED_RESOURCE,
+          PROTECTED_RESOURCE + "/mcp",
+          "/.well-known/oauth-authorization-server",
+          "/.well-known/openid-configuration",
+          "/mcp/callback");
   // Above the 30 second entity cache TTL, in case the change is read from a cached entry.
   private static final Duration SWITCH_TIMEOUT = Duration.ofSeconds(45);
 
@@ -56,7 +61,8 @@ class McpAvailabilityIT extends McpTestBase {
     final long restoredAt = System.currentTimeMillis();
     await().atMost(SWITCH_TIMEOUT).untilAsserted(this::assertMcpAnswers);
     // Disable takes the app out of ApplicationContext and Enable does not put it back, so usage
-    // is only still recorded and reported if neither side depends on it.
+    // is only still recorded and reported if neither side depends on it. Nothing GETs the app
+    // after the restore on purpose: that read would put it back in the context.
     await()
         .atMost(SWITCH_TIMEOUT)
         .untilAsserted(() -> assertThat(usageCallsSince(restoredAt)).isPositive());

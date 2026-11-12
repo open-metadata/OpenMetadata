@@ -32,11 +32,11 @@ public class McpAvailabilityFilter implements Filter {
   }
 
   /** setStatus, not sendError: the server maps a 404 error to the UI page, which would answer. */
-  static void refuse(HttpServletResponse response) {
+  public static void refuse(HttpServletResponse response) {
     response.setStatus(HttpServletResponse.SC_NOT_FOUND);
   }
 
-  static boolean isMcpAvailable() {
+  public static boolean isMcpAvailable() {
     return isEnabledInSettings() && isAppActive();
   }
 

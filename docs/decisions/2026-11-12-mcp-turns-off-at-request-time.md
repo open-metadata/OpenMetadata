@@ -24,7 +24,7 @@ kept answering, and an uninstalled app is re-seeded at the next start. Setting
 - MCP usage recording and the `/v1/mcp/usage` endpoints read the app from the repository, not
   from `ApplicationContext`. Disable runs `uninstall()`, which takes the app out of the context of
   the server that handled it, and Enable never puts it back, so a context lookup fails on that
-  server until it restarts.
+  server until something reads the app through the apps API or the server restarts.
 - The setting is read from `SecurityConfigurationManager`, in memory: the server that saved it
   follows at once, other servers when the settings watcher picks the change up
   (`watchIntervalSeconds`, 10 by default). `SettingsCache` was not used because it does not cache
@@ -35,7 +35,8 @@ kept answering, and an uninstalled app is re-seeded at the next start. Setting
 ## Consequences
 
 Disable stops MCP and Enable brings it back, with no restart. Uninstall stops MCP until the next
-start re-seeds the app. A refusal is a bare 404 status, not `sendError`, because the server maps
+start re-seeds the app; until then each refused request runs one indexed lookup, because a
+missing app is not cached for `Include.ALL`. A refusal is a bare 404 status, not `sendError`, because the server maps
 404 errors to the UI page. A deployment that disabled the app but kept using MCP, which worked
 while the app state was ignored, loses MCP on upgrade until the app is enabled. A new MCP route
 must sit under `/mcp/` or check `McpAvailabilityFilter.isMcpAvailable()` itself, or it keeps
