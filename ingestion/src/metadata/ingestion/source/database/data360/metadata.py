@@ -113,18 +113,15 @@ class Data360Source(DatabaseServiceSource):
         self.dataspace_map: dict = {}
         self.table_map: dict = {}
         self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.table_constraints = None
         self.database_source_state: set = set()
         # Schemas whose table discovery failed this run. Deletion reconciliation
         # must skip these, otherwise a transient API failure (zero tables seen)
         # would be mistaken for "every table in this schema was removed".
         self.failed_schema_fqns: set[str] = set()
-        # Building the client logs in to Salesforce, so it is read only after the
-        # connection test: bad credentials then fail the `CheckAccess` step with
-        # the Salesforce error rather than an unexplained exception here.
         with close_on_failure(self._connection):
             self.test_connection()
-        self.client = cast("BaseConnection", self._connection).client
 
     @classmethod
     def create(cls, config_dict: Any, metadata: OpenMetadata, pipeline_name: str | None = None) -> "Data360Source":

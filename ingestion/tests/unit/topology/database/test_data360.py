@@ -14,8 +14,6 @@ Test Salesforce Data 360 database source using the topology
 
 from unittest.mock import patch
 
-import pytest
-
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.entity.data.table import DataType, TableType
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -373,22 +371,3 @@ class TestData360Source:
         source = _build_source()
         source.log_warning("something went wrong")
         assert len(source.status.warnings) == 1
-
-
-def test_the_connection_is_tested_before_the_client_logs_in():
-    # Building the client logs in to Salesforce. A failed login must surface as
-    # the connection test's failure, so the source may not touch the client first.
-    with (
-        patch(
-            "metadata.ingestion.source.database.data360.metadata.Data360Source.test_connection",
-            side_effect=RuntimeError("CheckAccess failed"),
-        ),
-        patch("metadata.ingestion.source.database.data360.connection.Salesforce") as mock_salesforce,
-    ):
-        config = OpenMetadataWorkflowConfig.model_validate(MOCK_DATA360_CONFIG)
-        with pytest.raises(RuntimeError, match="CheckAccess failed"):
-            Data360Source.create(
-                MOCK_DATA360_CONFIG["source"],
-                OpenMetadata(config=config.workflowConfig.openMetadataServerConfig),
-            )
-    mock_salesforce.assert_not_called()

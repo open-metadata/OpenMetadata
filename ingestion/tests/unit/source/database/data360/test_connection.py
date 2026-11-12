@@ -16,6 +16,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
+from pydantic import ValidationError
 
 from metadata.generated.schema.entity.services.connections.database.data360Connection import (
     Data360Connection as Data360ConnectionConfig,
@@ -150,3 +151,11 @@ def test_a_failed_login_fails_the_check_access_step(owner_class, config, module)
     check_access = next(step for step in result.steps if step.name == "CheckAccess")
     assert check_access.passed is False
     assert "invalid_client" in check_access.errorLog
+
+
+@pytest.mark.parametrize("config_class", [Data360ConnectionConfig, Data360PipelineConnectionConfig])
+def test_a_config_without_a_salesforce_domain_is_rejected(config_class):
+    # Client credentials only work on the org's My Domain, so there is no usable
+    # default (ADR:2026-11-12-data360-salesforce-domain-is-a-required-my-domain).
+    with pytest.raises(ValidationError, match="salesforceDomain"):
+        config_class(consumerKey="consumer_key", consumerSecret="consumer_secret")
