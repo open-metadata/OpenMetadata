@@ -24,10 +24,7 @@ public final class DataQualityTableTotal {
   }
 
   public static long tableTotal(String q, String aggregationQuery) {
-    return tableTotal(dataQualityReport(q, aggregationQuery));
-  }
-
-  static long tableTotal(DataQualityReport report) {
+    DataQualityReport report = dataQualityReport(q, aggregationQuery);
     assertFalse(report.getData().isEmpty(), "Expected the aggregation to return a row");
     return new BigDecimal(
             report.getData().getFirst().getAdditionalProperties().get("fullyQualifiedName"))
