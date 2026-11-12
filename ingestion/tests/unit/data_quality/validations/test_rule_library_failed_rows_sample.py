@@ -19,7 +19,7 @@ from uuid import uuid4
 import pandas as pd
 import pytest
 from pandas.errors import UndefinedVariableError
-from sqlalchemy import Column, Integer, String, create_engine
+from sqlalchemy import Column, Integer, LargeBinary, String, create_engine
 from sqlalchemy.dialects.mysql.pymysql import MySQLDialect_pymysql
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 from sqlalchemy.dialects.sqlite.pysqlite import SQLiteDialect_pysqlite
@@ -59,6 +59,7 @@ from metadata.generated.schema.tests.testDefinition import (
     TestDefinition,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
+from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.processor.runner import PandasRunner, QueryRunner
 from metadata.utils.logger import Loggers
 
@@ -83,17 +84,28 @@ class Order(Base):
     status = Column(String(16))
 
 
+BinaryBase = declarative_base()
+BINARY_VALUE = b"\x89PNG\xff\x00"
+
+
+class Attachment(BinaryBase):
+    __tablename__ = "orders"
+    id = Column(Integer, primary_key=True)
+    amount = Column(Integer)
+    payload = Column(LargeBinary)
+
+
 def order_rows(total: int = TOTAL_ROWS, negative: int = NEGATIVE_ROWS) -> list[dict]:
     return [{"id": i, "amount": -i if i <= negative else i, "status": "ok"} for i in range(1, total + 1)]
 
 
-def query_runner(rows: list[dict]) -> QueryRunner:
+def query_runner(rows: list[dict], model=Order) -> QueryRunner:
     engine = create_engine("sqlite://")
-    Base.metadata.create_all(engine)
+    model.metadata.create_all(engine)
     session = sessionmaker(bind=engine)()
-    session.add_all(Order(**row) for row in rows)
+    session.add_all(model(**row) for row in rows)
     session.commit()
-    return QueryRunner(session=session, dataset=Order, raw_dataset=Order)
+    return QueryRunner(session=session, dataset=model, raw_dataset=model)
 
 
 def pandas_runner(chunks: list[pd.DataFrame]) -> PandasRunner:
@@ -256,9 +268,22 @@ class TestSQARuleLibraryFailedRowsSample:
         assert response.inspectionQuery == expression.replace("{{ table_name }}", "main.orders")
         assert "is not stored as a failed rows sample" in caplog.text
 
+    @pytest.mark.parametrize(VARIANT_PARAMS, SQA_VARIANTS)
+    def test_binary_values_are_stored_as_text(self, validator_class, entity_link, expression, entity_type):
+        # Drivers return a binary column as bytes or memoryview, which the sample's JSON cannot hold
+        rows = [{"id": 1, "amount": -1, "payload": BINARY_VALUE}, {"id": 2, "amount": 1, "payload": b"ok"}]
+
+        response = run_with_samples(
+            validator_class, query_runner(rows, Attachment), build_test_case(entity_link, expression, entity_type)
+        )
+
+        assert response.failedRowsSample is not None
+        assert response.failedRowsSample.rows == [[1, -1, HexByteString().process_result_value(BINARY_VALUE, None)]]
+        response.failedRowsSample.model_dump_json()
+
     def test_output_columns_match_the_table_case_insensitively(self):
         # SQLite reports a plain column under its declared name, so the aliases stand in for an engine
-        # such as Snowflake that reports names in upper case
+        # whose driver reports names in upper case
         response = run_with_samples(
             SQATableValidator,
             query_runner(order_rows()),
@@ -363,6 +388,18 @@ class TestPandasRuleLibraryFailedRowsSample:
         assert response.failedRowsSample is not None
         assert response.failedRowsSample.rows == [[large, -1.5]]
         assert type(response.failedRowsSample.rows[0][0]) is int
+
+    @pytest.mark.parametrize(VARIANT_PARAMS, PANDAS_VARIANTS)
+    def test_binary_values_are_stored_as_text(self, validator_class, entity_link, expression, entity_type):
+        frame = pd.DataFrame({"amount": [-1, 1], "payload": [BINARY_VALUE, b"ok"]})
+
+        response = run_with_samples(
+            validator_class, pandas_runner([frame]), build_test_case(entity_link, expression, entity_type)
+        )
+
+        assert response.failedRowsSample is not None
+        assert response.failedRowsSample.rows == [[-1, HexByteString().process_result_value(BINARY_VALUE, None)]]
+        response.failedRowsSample.model_dump_json()
 
     @pytest.mark.parametrize(VARIANT_PARAMS, PANDAS_VARIANTS)
     def test_missing_values_become_none(self, validator_class, entity_link, expression, entity_type):

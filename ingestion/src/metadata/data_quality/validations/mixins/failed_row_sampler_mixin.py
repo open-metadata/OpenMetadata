@@ -21,7 +21,9 @@ from typing import TYPE_CHECKING, Any, cast
 
 from sqlalchemy import Table, inspect, text
 from sqlalchemy.engine import Dialect
+from sqlalchemy.engine.default import DefaultDialect
 
+from metadata.profiler.orm.types.custom_hex_byte_string import HexByteString
 from metadata.profiler.processor.runner import QueryRunner
 from metadata.utils.logger import test_suite_logger
 
@@ -31,6 +33,8 @@ if TYPE_CHECKING:
 logger = test_suite_logger()
 
 FAILED_ROW_SAMPLE_SIZE = 50
+_HEX_BYTE_STRING = HexByteString()
+_DEFAULT_DIALECT = DefaultDialect()
 
 
 class PandasFailedRowSamplerMixin:
@@ -97,7 +101,8 @@ def table_columns_sample(
     """The first FAILED_ROW_SAMPLE_SIZE of `rows`, or None when an output column is not one of `table`'s
 
     The server masks a sample's PII by column name, so it refuses columns the table does not have.
-    Output such as an aggregate or an alias would be refused, so it is not kept.
+    Output under any other name, such as an aggregate or an alias to a new name, would be refused, so it is
+    not kept. An alias to another existing column is accepted and masked by that column's tags.
     See ADR:2026-11-12-rule-library-failed-rows-samples-keep-server-column-validation.
     """
     if not rows:
@@ -111,7 +116,7 @@ def table_columns_sample(
             unmatched,
         )
         return None
-    return columns, [list(row) for row in rows[:FAILED_ROW_SAMPLE_SIZE]]
+    return columns, [[_sample_value(value) for value in row] for row in rows[:FAILED_ROW_SAMPLE_SIZE]]
 
 
 def frame_sample_rows(frame: "DataFrame", columns: list[str], limit: int) -> list[list[Any]]:
@@ -123,7 +128,18 @@ def frame_sample_rows(frame: "DataFrame", columns: list[str], limit: int) -> lis
     head = frame.head(limit).reindex(columns=columns)
     values = head.astype(object).to_numpy()
     values[head.isna().to_numpy()] = None
-    return values.tolist()
+    return [[_sample_value(value) for value in row] for row in values.tolist()]
+
+
+def _sample_value(value: Any) -> Any:
+    """`value` as the sample's JSON can hold it
+
+    Drivers return binary columns as bytes or memoryview. The column samplers read those columns through
+    HexByteString, so these rows show them the same way.
+    """
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return _HEX_BYTE_STRING.process_result_value(value, _DEFAULT_DIALECT)
+    return value
 
 
 def render_literal_sql(sql: str, params: dict[str, str], dialect: Dialect) -> str:

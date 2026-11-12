@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Data Quality maintainers
-- **Guard:** `test_rule_library_failed_rows_sample.py`, `test_table_rule_library_sql_expression.py::test_aggregate_rule_output_is_not_stored_as_a_sample` (Postgres and MySQL)
+- **Guard:** `test_rule_library_failed_rows_sample.py`, `postgres/test_table_rule_library_sql_expression.py::test_aggregate_rule_output_is_not_stored_as_a_sample`, `mysql/test_table_rule_library_sql_expression.py::test_mysql_aggregate_rule_output_is_not_stored_as_a_sample`
 - **Related:** #37594, ADR:2026-10-09-failed-rows-sample-follows-failed-rows-not-status
 
 ## Context
@@ -18,8 +18,8 @@ Test Library definition is reused by every test case built on it.
 A rule-library validator keeps up to `FAILED_ROW_SAMPLE_SIZE` (50) of the rows its SQL or pandas
 expression already returned, and never runs a second query. The sample is posted with the server's
 column validation on. On SQL sources the sample is kept only when every output column matches a
-column of the table, case-insensitively, as the server's check does; aggregate or aliased output is
-not stored, and the run logs that at info level. The inspection query is the executed SQL with its
+column of the table, case-insensitively, as the server's check does; output under any other name,
+such as an aggregate or an alias to a new name, is not stored, and the run logs that at info level. The inspection query is the executed SQL with its
 bind parameters rendered as literals, and it is stored even when the sample is not. Pandas
 expressions return the frame's own columns, so they are always sampled, and they have no
 inspection query.
