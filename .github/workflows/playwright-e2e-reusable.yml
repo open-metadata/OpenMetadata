@@ -933,6 +933,10 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
           jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
             "$RUNNER_TEMP/playwright-plans/matrix.json"
+          # DO NOT MERGE: baseline run of the visual shards only.
+          jq -c '{include: [.include[] | select(.lane == "visual")]}' "$RUNNER_TEMP/playwright-plans/matrix.json" > "$RUNNER_TEMP/visual-only.json"
+          echo "matrix=$(cat "$RUNNER_TEMP/visual-only.json")" >> "$GITHUB_OUTPUT"
+          echo "shard_count=$(jq '.include | length' "$RUNNER_TEMP/visual-only.json")" >> "$GITHUB_OUTPUT"
 
       - name: Inventory existing quarantined coverage
         if: ${{ github.event_name != 'merge_group' }}
