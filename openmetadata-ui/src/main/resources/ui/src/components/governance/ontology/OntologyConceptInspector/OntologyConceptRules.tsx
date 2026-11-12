@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  Input,
+  Select,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +32,7 @@ import {
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
   InspectorList,
   InspectorRow,
@@ -32,22 +40,27 @@ import {
 import {
   axiomFormValues,
   AxiomOutcome,
-  AxiomPreview,
   collectAxiomProblems,
   previewSentence,
-  QuickRuleFields,
 } from '../OntologyAxiomEditor/OntologyAxiomEditor.parts';
 import { buildOntologyAxiomRequest } from '../OntologyAxiomEditor/OntologyAxiomEditor.utils';
 import {
   EMPTY_QUICK_RULE,
   isQuickRuleReady,
+  QuickQuantifier,
   QuickRule,
+  QuickRuleKind,
   quickRuleToForm,
+  QUICK_QUANTIFIERS,
+  QUICK_QUANTIFIER_LABELS,
+  QUICK_RULE_LABELS,
+  RoutedAxiomProblems,
   ruleNameFromSentence,
 } from '../OntologyAxiomEditor/OntologyAxiomQuickRule.utils';
 import { useOntologyAxiomValidation } from '../OntologyAxiomEditor/useOntologyAxiomValidation';
+import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
+import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
-  ConceptEmptyState,
   ConceptFormCard,
   ConceptFormHeading,
   ConceptSection,
@@ -62,6 +75,92 @@ interface OntologyConceptRulesProps {
   readonly relations: readonly OntologyModelRelation[];
   readonly onCreated?: () => void;
 }
+
+const RULE_HELP: Record<QuickRuleKind, string> = {
+  [QuickRuleKind.MustHave]: 'message.ontology-rule-must-have-short-help',
+  [QuickRuleKind.NeverAlsoBe]: 'message.ontology-rule-never-also-be-short-help',
+  [QuickRuleKind.SameAs]: 'message.ontology-rule-quick-same-as-help',
+};
+
+/** The quick rule's fields without a subject: the form is about this concept only. */
+const ConceptRuleFields = ({
+  problems,
+  references,
+  rule,
+  onChange,
+}: {
+  readonly problems: RoutedAxiomProblems['byField'];
+  readonly references: OntologyReferenceOptions;
+  readonly rule: QuickRule;
+  readonly onChange: (patch: Partial<QuickRule>) => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <>
+      <Select
+        hint={t(RULE_HELP[rule.kind])}
+        items={Object.values(QuickRuleKind).map((kind) => ({
+          id: kind,
+          label: t(QUICK_RULE_LABELS[kind]),
+        }))}
+        label={t('label.ontology-rule-type')}
+        value={rule.kind}
+        onChange={(key) =>
+          key && onChange({ kind: String(key) as QuickRuleKind })
+        }>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id} label={item.label} />
+        )}
+      </Select>
+      {rule.kind === QuickRuleKind.MustHave ? (
+        <div className="tw:grid tw:grid-cols-[1.4fr_0.6fr_2fr] tw:items-start tw:gap-3">
+          <Select
+            items={QUICK_QUANTIFIERS.map((quantifier) => ({
+              id: quantifier,
+              label: t(QUICK_QUANTIFIER_LABELS[quantifier]),
+            }))}
+            label={t('label.quantity')}
+            value={rule.quantifier}
+            onChange={(key) =>
+              key && onChange({ quantifier: String(key) as QuickQuantifier })
+            }>
+            {(item) => (
+              <Select.Item id={item.id} key={item.id} label={item.label} />
+            )}
+          </Select>
+          <Input
+            hint={problems.count}
+            isInvalid={Boolean(problems.count)}
+            label={t('label.count')}
+            type="number"
+            value={String(rule.count)}
+            onChange={(count) =>
+              onChange({ count: Math.max(0, Math.floor(Number(count) || 0)) })
+            }
+          />
+          <OntologyIriInput
+            error={problems.property}
+            label={t('label.property')}
+            options={references.properties}
+            testId="ontology-rule-property"
+            value={rule.propertyIri}
+            onChange={(propertyIri) => onChange({ propertyIri })}
+          />
+        </div>
+      ) : (
+        <OntologyIriInput
+          error={problems.other}
+          label={t('label.concept')}
+          options={references.concepts}
+          testId="ontology-rule-other"
+          value={rule.otherIri}
+          onChange={(otherIri) => onChange({ otherIri })}
+        />
+      )}
+    </>
+  );
+};
 
 /** The Constraints tab's quick rule, with the subject fixed to this concept. */
 const ConceptRuleForm = ({
@@ -134,15 +233,31 @@ const ConceptRuleForm = ({
         hint={t('message.rule-applies-to-every-concept', {
           name: getEntityName(concept),
         })}
-        title={t('label.new-entity', { entity: t('label.rule') })}
+        title={t('label.ontology-new-rule')}
       />
-      <QuickRuleFields
+      {problems.routed.byField.subject ? (
+        <Typography color="danger" role="alert" size="text-xs">
+          {problems.routed.byField.subject}
+        </Typography>
+      ) : null}
+      <ConceptRuleFields
         problems={problems.routed.byField}
         references={references}
         rule={rule}
         onChange={(patch) => setRule((current) => ({ ...current, ...patch }))}
       />
-      <AxiomPreview sentence={sentence} />
+      <Card data-testid="ontology-axiom-preview" size="sm" variant="muted">
+        <Card.Content className="tw:flex tw:flex-col tw:gap-1">
+          <Typography color="secondary" size="text-xs" weight="medium">
+            {t('label.preview')}
+          </Typography>
+          <Typography size="text-sm">
+            {isQuickRuleReady(rule)
+              ? sentence
+              : t('message.ontology-rule-preview-empty')}
+          </Typography>
+        </Card.Content>
+      </Card>
       <AxiomOutcome problems={problems} validation={validation.current} />
       <Box gap={2} justify="end">
         <Button
@@ -159,7 +274,7 @@ const ConceptRuleForm = ({
           isLoading={isSaving}
           size="sm"
           onPress={() => void save()}>
-          {t('label.add-rule')}
+          {t('label.ontology-add-rule')}
         </Button>
       </Box>
     </ConceptFormCard>
@@ -225,7 +340,11 @@ const OntologyConceptRules = ({
           ))}
         </InspectorList>
       ) : (
-        <ConceptEmptyState title={t('message.ontology-no-rules-yet')} />
+        <InlineEmptyPlaceholder
+          data-testid="ontology-concept-empty"
+          title={t('message.ontology-no-rules-yet-hint')}
+          variant="text"
+        />
       )}
     </ConceptSection>
   );

@@ -1025,7 +1025,7 @@ const OntologyDataAssetPicker = ({
           <Tabs
             selectedKey={scope}
             onSelectionChange={(key) => setScope(key as AssetScope)}>
-            <Tabs.List size="sm" type="button-border">
+            <Tabs.List size="sm" type="button-minimal">
               <Tabs.Item id="all" label={t('label.all')} />
               <Tabs.Item id="tables" label={t('label.table-plural')} />
               {!native ? (

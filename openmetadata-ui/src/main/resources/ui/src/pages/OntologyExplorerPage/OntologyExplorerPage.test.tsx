@@ -1078,11 +1078,10 @@ describe('OntologyExplorerPage', () => {
     expect(await screen.findByTestId('ontology-new-class-panel')).toBeVisible();
   });
 
-  it('opens Releases from the version chip and Changes from Publish', async () => {
+  it('opens Releases from the Releases tab and Changes from Publish', async () => {
     renderNativeStudio('?ontology=native-sales');
-    fireEvent.click(
-      await screen.findByTestId('ontology-release-history-trigger')
-    );
+    fireEvent.click(await screen.findByTestId('ontology-publication-trigger'));
+    fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'));
 
     expect(
       screen.getByTestId('ontology-publication-tab-releases')
@@ -1096,7 +1095,7 @@ describe('OntologyExplorerPage', () => {
     ).toHaveAttribute('aria-selected', 'true');
   });
 
-  it('names the version chip by the version it shows', async () => {
+  it('shows the published version on the Published switch', async () => {
     renderNativeStudio('?ontology=native-sales', {
       ...nativeOntology,
       publicationStatus: {
@@ -1109,26 +1108,13 @@ describe('OntologyExplorerPage', () => {
       },
     });
 
-    const chip = await screen.findByTestId('ontology-release-history-trigger');
-
-    expect(chip).toHaveAccessibleName(/v1\.2\.0/);
-
-    fireEvent.keyDown(document.body, { key: 'Tab' });
-    act(() => chip.focus());
-
-    expect(await screen.findByRole('tooltip')).toHaveTextContent(
-      'label.release-history'
-    );
-
-    fireEvent.click(chip);
-
     expect(
-      screen.getByTestId('ontology-publication-tab-releases')
-    ).toHaveAttribute('aria-selected', 'true');
+      await screen.findByTestId('ontology-version-published')
+    ).toHaveTextContent('v1.2.0');
   });
 
   it.each(['isOntologyLoading', 'isOntologyError'] as const)(
-    'disables the version chip while the ontology list reports %s',
+    'disables the version switch while the ontology list reports %s',
     async (flag) => {
       renderNativeStudio('?ontology=native-sales');
       mockUseOntologyStudioScopes.mockReturnValue({
@@ -1144,8 +1130,9 @@ describe('OntologyExplorerPage', () => {
       });
 
       expect(
-        await screen.findByTestId('ontology-release-history-trigger')
+        await screen.findByTestId('ontology-version-published')
       ).toBeDisabled();
+      expect(screen.getByTestId('ontology-version-draft')).toBeDisabled();
     }
   );
 
@@ -1214,12 +1201,17 @@ describe('OntologyExplorerPage', () => {
     );
   });
 
-  it('opens Releases from the version chip in AI mode', async () => {
+  it('shows no separate release-history button to an editor in AI mode', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     renderNativeStudio('?ontology=native-sales');
-    fireEvent.click(
-      await screen.findByTestId('ontology-release-history-trigger')
-    );
+    await screen.findByTestId('ontology-version-switch');
+
+    expect(
+      screen.queryByTestId('ontology-release-history-trigger')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-publication-trigger'));
+    fireEvent.click(screen.getByTestId('ontology-publication-tab-releases'));
 
     expect(
       screen.getByTestId('ontology-publication-tab-releases')

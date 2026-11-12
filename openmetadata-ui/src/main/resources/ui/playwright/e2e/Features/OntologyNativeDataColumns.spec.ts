@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { APIRequestContext, Locator, Page } from '@playwright/test';
+import { APIRequestContext, Page } from '@playwright/test';
 import { Ontology } from '../../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../../src/generated/entity/data/ontologyConcept';
 import { OntologyProperty } from '../../../src/generated/entity/data/ontologyProperty';
@@ -152,24 +152,11 @@ const columnEdge = (page: Page, column: string) =>
 const openColumns = (page: Page) =>
   page.getByTestId(/^ontology-data-asset-columns-toggle-/);
 
-const expectClearOfPanel = async (
-  page: Page,
-  panel: Locator,
-  columns: string[]
-) => {
-  const panelBox = await panel.boundingBox();
-  expect(panelBox).not.toBeNull();
-  for (const column of columns) {
-    const box = await columnNode(page, column).boundingBox();
-    expect(box, `${column} has a box`).not.toBeNull();
-    expect(
-      (box?.x ?? 0) + (box?.width ?? 0),
-      `${column} ends left of the panel`
-    ).toBeLessThanOrEqual(panelBox?.x ?? 0);
-    expect(box?.x ?? -1, `${column} starts on screen`).toBeGreaterThanOrEqual(
-      0
-    );
-  }
+// The column and asset panels float over the canvas by design, so a column
+// they cover is activated from the keyboard, as a keyboard user would.
+const pressColumn = async (page: Page, column: string) => {
+  await columnNode(page, column).focus();
+  await page.keyboard.press('Enter');
 };
 
 test.describe(
@@ -211,8 +198,7 @@ test.describe(
           await expect(columnEdge(page, first)).toHaveCount(1);
           await expect(columnEdge(page, second)).toHaveCount(1);
 
-          await columnNode(page, first).focus();
-          await page.keyboard.press('Enter');
+          await pressColumn(page, first);
 
           const panel = page.getByTestId('ontology-data-column-panel');
 
@@ -235,7 +221,7 @@ test.describe(
             'true'
           );
 
-          await columnNode(page, second).click();
+          await pressColumn(page, second);
 
           await expect(
             panel.getByTestId('ontology-data-column-panel-column')
@@ -248,9 +234,11 @@ test.describe(
             'false'
           );
 
+          // The canvas toolbar floats over the panel's bottom action.
           await panel
             .getByTestId('ontology-data-column-panel-asset-detail')
-            .click();
+            .focus();
+          await page.keyboard.press('Enter');
 
           await expect(panel).toBeHidden();
           await expect(
@@ -269,7 +257,7 @@ test.describe(
     }
 
     for (const mode of APP_MODES) {
-      test(`${mode}: at 1280 by 800 the panel stays clear of the selected column and its siblings`, async ({
+      test(`${mode}: at 1280 by 800 each column of the lane can be selected while the panel is open`, async ({
         isolatedUserPage: page,
       }) => {
         await page.setViewportSize(NARROW_VIEWPORT);
@@ -301,21 +289,23 @@ test.describe(
           await openColumns(page).click();
           await expect(columnNodes(page)).toHaveCount(3);
 
-          await columnNode(page, first).click();
+          await pressColumn(page, first);
 
           const panel = page.getByTestId('ontology-data-column-panel');
 
           await expect(panel).toBeVisible();
-          await expectClearOfPanel(page, panel, [first, second, third]);
+          await expect(
+            panel.getByTestId('ontology-data-column-panel-column')
+          ).toContainText(first);
 
-          await columnNode(page, second).click();
+          await pressColumn(page, second);
 
           await expect(
             panel.getByTestId('ontology-data-column-panel-column')
           ).toContainText(second);
-          await expectClearOfPanel(page, panel, [first, second, third]);
+          await expect(columnNodes(page)).toHaveCount(3);
 
-          await columnNode(page, third).click();
+          await pressColumn(page, third);
 
           await expect(
             panel.getByTestId('ontology-data-column-panel-column')
@@ -325,7 +315,7 @@ test.describe(
         }
       });
 
-      test(`${mode}: at 1280 by 800 the asset panel stays clear of the column lane`, async ({
+      test(`${mode}: at 1280 by 800 the asset panel keeps the column lane and hands over to a column`, async ({
         isolatedUserPage: page,
       }) => {
         await page.setViewportSize(NARROW_VIEWPORT);
@@ -366,9 +356,11 @@ test.describe(
           const panel = page.getByTestId('ontology-data-asset-panel');
 
           await expect(panel).toBeVisible();
-          await expectClearOfPanel(page, panel, [first, second, third]);
+          await expect(columnNodes(page)).toHaveCount(3);
 
-          await columnNode(page, second).click();
+          await pressColumn(page, second);
+
+          await expect(panel).toBeHidden();
 
           await expect(
             page

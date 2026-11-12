@@ -20,13 +20,13 @@ import {
 import { SidebarItem } from '../constant/sidebar';
 import { TableClass } from '../support/entity/TableClass';
 import {
-  clickIgnoringToasts,
   getApiContext,
   scrollIntoViewAndSettle,
   selectOptionWithRetry,
 } from './common';
 import { selectDropdownOption } from './destination';
 import { waitForAllLoadersToDisappear } from './entity';
+import { confirmODCSExport } from './odcsImportExport';
 import { sidebarClick } from './sidebar';
 
 // Terminal states as the backend defines them. `Queued` is intentionally NOT
@@ -744,9 +744,9 @@ export const exportContractYaml = async (
 
   if (type === 'odcs') {
     await page.getByTestId('export-odcs-contract-button').click();
-    const dialog = page.getByTestId('odcs-export-modal');
-    await expect(dialog).toBeVisible();
     if (odcsVersion) {
+      const dialog = page.getByTestId('odcs-export-modal');
+      await expect(dialog).toBeVisible();
       const selector = dialog.getByRole('button', { name: /Version/ });
       await scrollIntoViewAndSettle(selector);
       await selectOptionWithRetry(
@@ -755,7 +755,7 @@ export const exportContractYaml = async (
       );
       await expect(selector).toContainText(odcsVersion);
     }
-    await clickIgnoringToasts(dialog.getByTestId('confirm-odcs-export'));
+    await confirmODCSExport(page);
   } else {
     await page.getByTestId('export-contract-button').click();
   }

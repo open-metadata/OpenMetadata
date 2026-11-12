@@ -251,6 +251,8 @@ test.describe(
       await expect(
         page.getByTestId('ontology-publication-trigger')
       ).toBeVisible();
+      // The floating health card lists isolated terms once it is expanded.
+      await page.getByTestId('ontology-health-review').click();
       const connect = page.getByTestId(
         `ontology-connect-${fixture.concepts[0].id}`
       );

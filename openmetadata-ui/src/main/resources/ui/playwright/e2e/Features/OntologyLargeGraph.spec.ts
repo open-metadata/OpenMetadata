@@ -12,7 +12,10 @@
  */
 import { APIRequestContext, Locator, Page } from '@playwright/test';
 import { expect, test } from '../../support/fixtures/isolatedUser';
-import { getWorkerAdminAPIContext } from '../../utils/common';
+import {
+  clickIgnoringToasts,
+  getWorkerAdminAPIContext,
+} from '../../utils/common';
 import {
   createLargeOntology,
   LargeOntologyFixture,
@@ -344,12 +347,18 @@ test.describe(
         await expect
           .poll(beside)
           .toEqual({ insideCanvas: true, leftOfPanel: true });
-        await page.getByRole('button', { name: 'Fit to screen' }).click();
+        // With the drawer open the canvas toolbar centres in the narrowed canvas and sits
+        // over the zoom controls, so they are pressed from the keyboard like a user would.
+        await clickIgnoringToasts(
+          page.getByRole('button', { name: 'Fit to screen' })
+        );
         await expect
           .poll(beside)
           .toEqual({ insideCanvas: true, leftOfPanel: true });
         await expectNodesDrawn(page, 400);
-        await page.getByRole('button', { name: 'Zoom In' }).click();
+        await clickIgnoringToasts(
+          page.getByRole('button', { name: 'Zoom In' })
+        );
         await expect
           .poll(beside)
           .toEqual({ insideCanvas: true, leftOfPanel: true });
@@ -405,15 +414,30 @@ test.describe(
         await pressUntilFocused(page, list);
         await page.keyboard.press('Enter');
         await expect(panel(page)).toContainText('Concept 0');
-        await expectNodesDrawn(page, 400);
 
-        const canvas = await readGraphVisibility(page);
-        expect(canvas.canvas.width).toBeGreaterThanOrEqual(300);
+        // ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor: at 1024px the
+        // 420px drawer leaves too little canvas for all 400 nodes, so the selection is what
+        // stays in view beside it; the whole Find box is back once the panel closes.
+        const selectedId =
+          (await listConceptIds(api, fixture.ontology)).get('Concept 0') ?? '';
+        await expect
+          .poll(async () => {
+            const { canvas } = await readGraphVisibility(page);
+            const node = (await readNodePositions(page))[selectedId];
+            const panelBox = await panel(page).boundingBox();
+
+            return (
+              Boolean(node) &&
+              node.x >= canvas.left &&
+              node.x < (panelBox?.x ?? 0)
+            );
+          })
+          .toBe(true);
+        await page.keyboard.press('Escape');
+        await expect(panel(page)).toBeHidden();
         const find = await findBox(page).boundingBox();
         expect(find?.width).toBeGreaterThanOrEqual(150);
         expect((find?.x ?? 0) + (find?.width ?? 0)).toBeLessThanOrEqual(1024);
-        await page.keyboard.press('Escape');
-        await expect(panel(page)).toBeHidden();
         await page.screenshot({
           path: test.info().outputPath('g14-narrow.png'),
         });

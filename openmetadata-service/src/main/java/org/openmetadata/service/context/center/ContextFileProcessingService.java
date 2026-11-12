@@ -6,6 +6,8 @@ import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_
 import static org.openmetadata.service.jobs.Interruptions.isStopInterruption;
 
 import java.io.InputStream;
+import java.util.Collections;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -21,6 +23,7 @@ import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
+import org.openmetadata.schema.api.context.ExtractionAvailability;
 import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
@@ -29,12 +32,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.context.center.ContextProcessingEngine.ConditionalUpdateExhaustedException;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jobs.JobDAO;
-import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.util.FreshReadScope;
 import org.openmetadata.service.util.RequestEntityCache;
@@ -49,15 +52,17 @@ import org.openmetadata.service.util.RequestEntityCache;
 @Slf4j
 public class ContextFileProcessingService {
   private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
+  private static final String TEXT_QUEUE_FULL = "Text extraction queue is full.";
+  private static final String CONTENDED_TEXT =
+      "Concurrent updates prevented text extraction. Please retry later.";
   private final ContextFileRepository repository;
   private final Function<Asset, CompletableFuture<InputStream>> assetReader;
   private final Executor executor;
   private final ContextFileTextExtractor textExtractor;
   private final JobDAO jobDao;
   private final Supplier<DocumentMemoryExtractor> memoryExtractorSupplier;
-  private final Supplier<Boolean> llmEnabledSupplier;
+  private final Supplier<ExtractionAvailability> availabilitySupplier;
   private final Supplier<FileContextProcessingEngine> fileEngineSupplier;
-  private volatile FileContextProcessingEngine fileEngine;
 
   public ContextFileProcessingService(ContextFileRepository repository) {
     this(
@@ -67,7 +72,7 @@ public class ContextFileProcessingService {
         new ContextFileTextExtractor(),
         Entity.getJobDAO(),
         () -> AiProviderHolder.get().documentExtractor(),
-        LLMClientHolder::isMemoryExtractionEnabled,
+        null,
         null);
   }
 
@@ -78,7 +83,7 @@ public class ContextFileProcessingService {
       ContextFileTextExtractor textExtractor,
       JobDAO jobDao,
       Supplier<DocumentMemoryExtractor> memoryExtractorSupplier,
-      Supplier<Boolean> llmEnabledSupplier,
+      Supplier<ExtractionAvailability> availabilitySupplier,
       Supplier<FileContextProcessingEngine> fileEngineSupplier) {
     this.repository = repository;
     this.assetReader = assetReader;
@@ -86,7 +91,10 @@ public class ContextFileProcessingService {
     this.textExtractor = textExtractor;
     this.jobDao = jobDao;
     this.memoryExtractorSupplier = memoryExtractorSupplier;
-    this.llmEnabledSupplier = llmEnabledSupplier;
+    this.availabilitySupplier =
+        availabilitySupplier != null
+            ? availabilitySupplier
+            : () -> AiProviderHolder.get().extractionAvailability();
     this.fileEngineSupplier = fileEngineSupplier;
   }
 
@@ -104,11 +112,13 @@ public class ContextFileProcessingService {
   private static final Executor DEFAULT_EXECUTOR =
       createBoundedExecutor("context-file-extraction-");
 
+  // An EnumSet: a file created without a status must read as not transient, not throw.
   private static final Set<ProcessingStatus> TRANSIENT_STATUSES =
-      Set.of(
-          ProcessingStatus.Uploaded,
-          ProcessingStatus.Analyzing,
-          ProcessingStatus.ExtractingContext);
+      Collections.unmodifiableSet(
+          EnumSet.of(
+              ProcessingStatus.Uploaded,
+              ProcessingStatus.Analyzing,
+              ProcessingStatus.ExtractingContext));
 
   private static Executor createBoundedExecutor(String threadPrefix) {
     int threads = Math.max(2, Runtime.getRuntime().availableProcessors() / 2);
@@ -139,17 +149,112 @@ public class ContextFileProcessingService {
   }
 
   public void submit(UUID fileId, UUID contentId) {
+    if (!queueText(fileId, contentId)) {
+      ExtractionRequests.recordFailure(
+          CONTEXT_FILE_ENTITY, fileId, () -> applyFailure(fileId, contentId, TEXT_QUEUE_FULL));
+    }
+  }
+
+  /** Whether the text-extraction executor took the file: a full one rejects it. */
+  private boolean queueText(UUID fileId, UUID contentId) {
+    boolean queued = true;
     try {
       executor.execute(() -> process(fileId, contentId));
     } catch (RejectedExecutionException e) {
       LOG.warn(
           "Skipping text extraction for file {} because the async executor rejected it", fileId, e);
-      try {
-        applyFailure(fileId, contentId, "Text extraction queue is full. Please retry later.");
-      } catch (ConditionalUpdateExhaustedException exhausted) {
-        LOG.warn("Unable to mark rejected text extraction failed for file {}", fileId);
-      }
+      queued = false;
     }
+    return queued;
+  }
+
+  /**
+   * Starts or retries a failed or never-extracted file's extraction at the stage its snapshot lacks:
+   * text extraction when it has no text, memory extraction otherwise. The status it stamps refuses
+   * a second request until the run settles.
+   */
+  public ContextFile requestExtraction(UUID fileId) {
+    ExtractionRequests.requireAvailable(availabilitySupplier.get());
+    ContextFile requested = stampRequested(fileId);
+    UUID contentId = UUID.fromString(requested.getHeadContentId());
+    if (requested.getProcessingStatus() == ProcessingStatus.Uploaded) {
+      requireQueuedText(fileId, contentId);
+    } else {
+      requireQueuedMemories(fileId, contentId);
+    }
+    return requested;
+  }
+
+  private void requireQueuedText(UUID fileId, UUID contentId) {
+    if (!queueText(fileId, contentId)) {
+      throw ExtractionRequests.queueRefused(
+          CONTEXT_FILE_ENTITY,
+          fileId,
+          TEXT_QUEUE_FULL,
+          () -> applyFailure(fileId, contentId, TEXT_QUEUE_FULL));
+    }
+  }
+
+  /** The stamp refuses duplicates; a RUNNING job may be the failed run still finishing. */
+  private void requireQueuedMemories(UUID fileId, UUID contentId) {
+    if (!queueMemoryJob(fileId, contentId, false)) {
+      throw ExtractionRequests.queueRefused(
+          CONTEXT_FILE_ENTITY,
+          fileId,
+          ExtractionRequests.QUEUE_FAILED,
+          () -> applyFailure(fileId, contentId, ExtractionRequests.QUEUE_FAILED, false, false));
+    }
+  }
+
+  private ContextFile stampRequested(UUID fileId) {
+    ContextFile requested;
+    try {
+      requested = writeFile(fileId, this::requestedStage);
+    } catch (ConditionalUpdateExhaustedException e) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    if (requested == null) {
+      throw ExtractionRequests.changedWhileRequested();
+    }
+    return requested;
+  }
+
+  private ContextFile requestedStage(ContextFile current) {
+    ContextFileContent snapshot = requireRequestableSnapshot(current);
+    ContextFile requested = JsonUtils.deepCopy(current, ContextFile.class);
+    requested.setProcessingStatus(
+        MemoryExtractionState.hasText(snapshot.getExtractedText())
+            ? ProcessingStatus.ExtractingContext
+            : ProcessingStatus.Uploaded);
+    requested.setProcessingError(null);
+    return requested;
+  }
+
+  private ContextFileContent requireRequestableSnapshot(ContextFile file) {
+    if (TRANSIENT_STATUSES.contains(file.getProcessingStatus())) {
+      throw ExtractionRequests.alreadyRequested();
+    }
+    ContextFileContent snapshot = isRequestable(file) ? headSnapshot(file) : null;
+    if (snapshot == null) {
+      throw ExtractionRequests.notExtractable();
+    }
+    return snapshot;
+  }
+
+  private static boolean isRequestable(ContextFile file) {
+    return file.getProcessingStatus() == ProcessingStatus.Failed
+        || MemoryExtractionState.neverExtracted(file);
+  }
+
+  /** The current content snapshot, or null for a file without one, such as a chat attachment. */
+  private ContextFileContent headSnapshot(ContextFile file) {
+    ContextFileContent snapshot = null;
+    try {
+      snapshot = repository.getContentById(file.getHeadContentId());
+    } catch (EntityNotFoundException e) {
+      LOG.debug("Context file {} lost its content snapshot", file.getId(), e);
+    }
+    return snapshot;
   }
 
   /**
@@ -208,12 +313,8 @@ public class ContextFileProcessingService {
       LOG.debug("Requeued text extraction for file {} after concurrent updates", fileId);
     } catch (RejectedExecutionException e) {
       LOG.warn("Unable to requeue text extraction for file {} after concurrent updates", fileId, e);
-      try {
-        applyFailure(
-            fileId, contentId, "Concurrent updates prevented text extraction. Please retry later.");
-      } catch (ConditionalUpdateExhaustedException exhausted) {
-        LOG.warn("Unable to mark contended text extraction failed for file {}", fileId);
-      }
+      ExtractionRequests.recordFailure(
+          CONTEXT_FILE_ENTITY, fileId, () -> applyFailure(fileId, contentId, CONTENDED_TEXT));
     }
   }
 
@@ -332,6 +433,17 @@ public class ContextFileProcessingService {
   }
 
   private void submitMemoryExtraction(UUID fileId, UUID contentId, boolean retry) {
+    if (!queueMemoryJob(fileId, contentId, !retry)) {
+      ExtractionRequests.recordFailure(
+          CONTEXT_FILE_ENTITY,
+          fileId,
+          () -> applyFailure(fileId, contentId, ExtractionRequests.QUEUE_FAILED, false, false));
+    }
+  }
+
+  /** Whether the persistent queue took the file's memory job, or already holds one for it. */
+  private boolean queueMemoryJob(UUID fileId, UUID contentId, boolean includeRunning) {
+    boolean queued = true;
     try {
       ContextMemoryExtractionJobHandler.Args args =
           ContextMemoryExtractionJobHandler.Args.file(fileId, contentId);
@@ -340,20 +452,12 @@ public class ContextFileProcessingService {
           args.jobKey(),
           JsonUtils.pojoToJson(args),
           Entity.ADMIN_USER_NAME,
-          !retry);
+          includeRunning);
     } catch (RuntimeException e) {
       LOG.error("Unable to queue knowledge pill extraction for file {}", fileId, e);
-      try {
-        applyFailure(
-            fileId,
-            contentId,
-            "Unable to queue knowledge pill extraction. Please retry later.",
-            false,
-            false);
-      } catch (ConditionalUpdateExhaustedException exhausted) {
-        LOG.warn("Unable to mark rejected knowledge pill extraction failed for file {}", fileId);
-      }
+      queued = false;
     }
+    return queued;
   }
 
   void runMemoryExtraction(UUID fileId, UUID contentId) {
@@ -406,19 +510,9 @@ public class ContextFileProcessingService {
     }
   }
 
+  /** A missing provider or judge can recover between jobs; never cache its unavailable engine. */
   private FileContextProcessingEngine fileEngine() {
-    FileContextProcessingEngine engine = fileEngine;
-    if (engine == null) {
-      engine = buildFileEngine();
-    }
-    return engine;
-  }
-
-  private synchronized FileContextProcessingEngine buildFileEngine() {
-    if (fileEngine == null) {
-      fileEngine = fileEngineSupplier != null ? fileEngineSupplier.get() : defaultFileEngine();
-    }
-    return fileEngine;
+    return fileEngineSupplier != null ? fileEngineSupplier.get() : defaultFileEngine();
   }
 
   private FileContextProcessingEngine defaultFileEngine() {
@@ -495,13 +589,12 @@ public class ContextFileProcessingService {
 
   /**
    * Whether text extraction should be followed by LLM knowledge-pill extraction. The gate is a
-   * single injected supplier (in production: the LLM layer is usable AND
-   * {@code llmConfiguration.memoryExtractionEnabled}) so the status machine stays unit testable
-   * without a live configuration.
+   * single injected supplier, the active provider's availability when none is given, so the status
+   * machine stays unit testable without a live configuration.
    */
   private boolean shouldExtractContext(ProcessingStatus textStatus) {
     return textStatus == ProcessingStatus.Processed
-        && Boolean.TRUE.equals(llmEnabledSupplier.get());
+        && AiProviderHolder.isAvailable(availabilitySupplier.get());
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {
@@ -571,25 +664,30 @@ public class ContextFileProcessingService {
   }
 
   private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
+    return writeFile(fileId, updater) != null;
+  }
+
+  /** The file as {@code updater} rewrote it, or null when the file is gone or nothing was written. */
+  private ContextFile writeFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
     for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
       try (var ignored = FreshReadScope.enter()) {
         ContextFile current = getFile(fileId);
         if (current == null) {
-          return false;
+          return null;
         }
         ContextFile updated = updater.apply(current);
         if (updated == null) {
-          return false;
+          return null;
         }
         repository.updateIfCurrent(
             null, current, updated, ContextProcessingEngine.lastEditorOf(current));
-        return true;
+        return updated;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
         RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, null);
         if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
             && !waitForConditionalUpdateRetry(CONTEXT_FILE_ENTITY, fileId)) {
-          return false;
+          return null;
         }
       }
     }
