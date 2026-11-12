@@ -1350,14 +1350,28 @@ describe('OntologyConceptInspector relationship authoring', () => {
     );
   });
 
-  it('changes the type of the relationship on its row', async () => {
+  it('changes the type of the relationship in the inline form on its row', async () => {
     const onEditRelation = jest.fn().mockResolvedValue(true);
     renderAuthoring({ onEditRelation });
 
     fireEvent.click(screen.getByTestId('ontology-relation-edit'));
-    fireEvent.click(await screen.findByTestId('relation-type-isA'));
+
+    expect(screen.getByTestId('ontology-relationship-edit-form')).toBeVisible();
+    expect(
+      screen.getByTestId('ontology-relationship-edit-save')
+    ).toBeDisabled();
+
+    await chooseRelationType('isA');
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('ontology-relationship-edit-save'));
+    });
 
     await waitFor(() => expect(onEditRelation).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-relationship-edit-form')
+      ).not.toBeInTheDocument()
+    );
 
     expect(onEditRelation).toHaveBeenCalledWith(
       expect.objectContaining({ key: expect.any(String) }),
@@ -1365,7 +1379,7 @@ describe('OntologyConceptInspector relationship authoring', () => {
     );
   });
 
-  it('shows the reason in the picker and keeps the type unchanged when the edit is refused', async () => {
+  it('shows the reason inline and keeps Save off when the new type is refused', async () => {
     const onEditRelation = jest.fn().mockResolvedValue(true);
     renderAuthoring({
       checkRelationType: () => 'Customer is already a subclass of Party.',
@@ -1373,11 +1387,34 @@ describe('OntologyConceptInspector relationship authoring', () => {
     });
 
     fireEvent.click(screen.getByTestId('ontology-relation-edit'));
-    fireEvent.click(await screen.findByTestId('relation-type-isA'));
+    await chooseRelationType('isA');
+
+    expect(screen.getByTestId('ontology-relationship-issue')).toHaveTextContent(
+      'Customer is already a subclass of Party.'
+    );
+    expect(
+      screen.getByTestId('ontology-relationship-edit-save')
+    ).toBeDisabled();
+    expect(onEditRelation).not.toHaveBeenCalled();
+  });
+
+  it('closes the inline edit form on Cancel without saving', async () => {
+    const onEditRelation = jest.fn().mockResolvedValue(true);
+    renderAuthoring({ onEditRelation });
+
+    fireEvent.click(screen.getByTestId('ontology-relation-edit'));
+    await chooseRelationType('isA');
+    fireEvent.click(
+      within(screen.getByTestId('ontology-relationship-edit-form')).getByRole(
+        'button',
+        { name: 'label.cancel' }
+      )
+    );
 
     expect(
-      await screen.findByTestId('relation-check-message')
-    ).toHaveTextContent('Customer is already a subclass of Party.');
+      screen.queryByTestId('ontology-relationship-edit-form')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-relation-edit')).toBeVisible();
     expect(onEditRelation).not.toHaveBeenCalled();
   });
 

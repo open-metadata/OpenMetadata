@@ -482,6 +482,139 @@ const RelationAuthoring = ({
   );
 };
 
+const RDFS_SUBCLASS_OF = 'http://www.w3.org/2000/01/rdf-schema#subClassOf';
+const KIND_TYPE_IDS: Partial<Record<OntologyModelRelation['kind'], string>> = {
+  subClassOf: RDFS_SUBCLASS_OF,
+  disjointWith: 'http://www.w3.org/2002/07/owl#disjointWith',
+  equivalentClass: 'http://www.w3.org/2002/07/owl#equivalentClass',
+};
+
+/** The relation's current type as an offered option id, or '' when none matches. */
+const currentRelationType = (
+  relation: OntologyModelRelation,
+  groups: RelationTypeOptionGroup[]
+) => {
+  const id = relation.propertyIri ?? KIND_TYPE_IDS[relation.kind] ?? '';
+
+  return groups.some((group) =>
+    group.options.some((option) => option.id === id)
+  )
+    ? id
+    : '';
+};
+
+/**
+ * Changes an existing relationship's type inline, the same form as Add. Only
+ * the type can change; the two ends are fixed.
+ */
+const RelationEditForm = ({
+  canCreateRelationType,
+  check,
+  groups,
+  relation,
+  onClose,
+  onSave,
+}: {
+  readonly canCreateRelationType: boolean;
+  /** The reason the relation cannot take this type, or undefined. */
+  readonly check: (typeId: string) => string | undefined;
+  readonly groups: RelationTypeOptionGroup[];
+  readonly relation: OntologyModelRelation;
+  readonly onClose: () => void;
+  readonly onSave: (typeId: string) => Promise<boolean>;
+}) => {
+  const { t } = useTranslation();
+  const current = currentRelationType(relation, groups);
+  const [relationType, setRelationType] = useState(current);
+  const [isCreatingType, setIsCreatingType] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const issue = relationType ? check(relationType) : undefined;
+  const clash = useRelationClash(
+    relation.from.id,
+    relation.to.id,
+    relationType === current ? '' : relationType
+  );
+
+  const save = async () => {
+    setIsSaving(true);
+    const saved = await onSave(relationType);
+    setIsSaving(false);
+    if (saved) {
+      onClose();
+    }
+  };
+
+  if (isCreatingType) {
+    return (
+      <ConceptFormCard testId="ontology-relationship-edit-form">
+        <RelationshipTypePicker
+          canCreateType={canCreateRelationType}
+          checkRelation={check}
+          groups={groups}
+          sourceLabel={getEntityName(relation.from)}
+          targetLabel={getEntityName(relation.to)}
+          onCancel={() => setIsCreatingType(false)}
+          onSelect={(type) => {
+            setRelationType(type);
+            setIsCreatingType(false);
+          }}
+        />
+      </ConceptFormCard>
+    );
+  }
+
+  return (
+    <ConceptFormCard testId="ontology-relationship-edit-form">
+      <div className="tw:grid tw:grid-cols-2 tw:gap-3">
+        <RelationTypeSelect
+          canCreateType={canCreateRelationType}
+          groups={groups}
+          isDisabled={isSaving}
+          value={relationType}
+          onChange={setRelationType}
+          onCreateType={() => setIsCreatingType(true)}
+        />
+        <TargetConceptSelect
+          isDisabled
+          concepts={[relation.to]}
+          value={relation.to.id}
+          onChange={() => undefined}
+        />
+      </div>
+      <ConceptFormPreview>
+        {relationType
+          ? `${getEntityName(relation.from)} ${relationTypeLabel(
+              groups,
+              relationType
+            )} ${getEntityName(relation.to)}`
+          : t('message.pick-concept-to-complete-sentence')}
+      </ConceptFormPreview>
+      <RelationIssue message={issue} />
+      <RelationClash message={clash} />
+      <Box gap={2} justify="end">
+        <Button
+          color="secondary"
+          isDisabled={isSaving}
+          size="sm"
+          onPress={onClose}>
+          {t('label.cancel')}
+        </Button>
+        <Button
+          color="primary"
+          data-testid="ontology-relationship-edit-save"
+          isDisabled={
+            !relationType || relationType === current || Boolean(issue)
+          }
+          isLoading={isSaving}
+          size="sm"
+          onPress={() => void save()}>
+          {t('label.save')}
+        </Button>
+      </Box>
+    </ConceptFormCard>
+  );
+};
+
 /** A synonym that reads like a relation phrase, offered as a relationship instead. */
 const RelationSynonymWarning = ({
   editor,
@@ -624,6 +757,7 @@ const OntologyConceptInspector = ({
   const [relationPreset, setRelationPreset] = useState('');
   const [relationDraft, setRelationDraft] =
     useState<RelationDraft>(EMPTY_RELATION_DRAFT);
+  const [editingRelationKey, setEditingRelationKey] = useState<string>();
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const bindings = useOntologyConceptBindings(concept.id);
   const { hasCopied: hasCopiedIri, onCopyToClipBoard } = useClipboard(
@@ -790,6 +924,26 @@ const OntologyConceptInspector = ({
       />
     ) : null;
 
+  const renderRelationEdit = ({
+    direction,
+    relation,
+  }: (typeof conceptRelations)[number]) => (
+    <li key={`${direction}:${relation.key}`}>
+      <RelationEditForm
+        canCreateRelationType={canCreateRelationType}
+        check={(typeId) => checkRelationType?.(relation, typeId)}
+        groups={relationTypeGroups}
+        relation={relation}
+        onClose={() => setEditingRelationKey(undefined)}
+        onSave={(typeId) =>
+          onEditRelation
+            ? onEditRelation(relation, typeId)
+            : Promise.resolve(false)
+        }
+      />
+    </li>
+  );
+
   const renderRelationRow = ({
     direction,
     other,
@@ -835,12 +989,8 @@ const OntologyConceptInspector = ({
         {readsForward ? null : badge}
         {isRelationEditable(relation) && onEditRelation && onDeleteRelation ? (
           <OntologyRelationControls
-            canCreateRelationType={canCreateRelationType}
-            checkType={(typeId) => checkRelationType?.(relation, typeId)}
-            groups={relationTypeGroups}
-            relation={relation}
             onDelete={() => onDeleteRelation(relation)}
-            onEdit={(typeId) => onEditRelation(relation, typeId)}
+            onEdit={() => setEditingRelationKey(relation.key)}
           />
         ) : null}
       </li>
@@ -1271,7 +1421,11 @@ const OntologyConceptInspector = ({
         {renderRelationAuthoring()}
         {conceptRelations.length > 0 ? (
           <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
-            {conceptRelations.map(renderRelationRow)}
+            {conceptRelations.map((row) =>
+              row.relation.key === editingRelationKey
+                ? renderRelationEdit(row)
+                : renderRelationRow(row)
+            )}
           </ul>
         ) : (
           <InlineEmptyPlaceholder

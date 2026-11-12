@@ -30,6 +30,7 @@ import {
   uuid,
 } from '../../utils/common';
 import {
+  chooseInspectorRelationType,
   clickGraphNode,
   findEmptyCanvasPoint,
   openInspectorRelationChooser,
@@ -780,10 +781,11 @@ test.describe(
         await test.step('Change Subclass Of to Part Of', async () => {
           await expect(rows).toContainText('Alpha');
           await rows.getByTestId('ontology-relation-edit').click();
+          const editForm = rows.getByTestId('ontology-relationship-edit-form');
+          await expect(editForm).toBeVisible();
+          await chooseInspectorRelationType(page, editForm, PART_OF);
           await clickIgnoringToasts(
-            page
-              .getByTestId('relationship-type-picker')
-              .getByTestId(`relation-type-${PART_OF}`)
+            editForm.getByTestId('ontology-relationship-edit-save')
           );
           await expect
             .poll(async () =>
