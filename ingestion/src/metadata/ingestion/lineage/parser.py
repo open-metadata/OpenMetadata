@@ -19,15 +19,22 @@ from collections import defaultdict
 from copy import deepcopy
 from logging.config import DictConfigurator
 
+import sqlglot
 import sqlparse
 from cached_property import cached_property
 from collate_sqllineage import SQLPARSE_DIALECT
 from collate_sqllineage.core.models import Column, DataFunction, Location, SubQuery, Table
 from collate_sqllineage.core.parser.sqlfluff.analyzer import SqlFluffLineageAnalyzer
-from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
+from collate_sqllineage.core.parser.sqlglot.analyzer import (
+    DIALECT_MAP,
+    DIALECT_OVERRIDES,
+    SqlGlotLineageAnalyzer,
+)
 from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 from collate_sqllineage.exceptions import SQLLineageException
 from collate_sqllineage.runner import LineageRunner
+from sqlglot import exp
+from sqlglot.dialects.dialect import DialectType
 from sqlparse.sql import Comparison, Identifier, Parenthesis, Statement
 
 from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
@@ -64,6 +71,41 @@ logger = ingestion_logger()
 LINEAGE_PARSING_TIMEOUT = 30
 # max memory in MB that lineage parsing can consume
 LINEAGE_PARSING_MEMORY_LIMIT_MB = 100
+
+
+def _sqlglot_dialect(dialect: Dialect) -> DialectType:
+    """The sqlglot dialect the SqlGlot lineage analyzer reads `dialect` as"""
+    mapped = DIALECT_MAP.get(dialect.value, dialect.value)
+    return DIALECT_OVERRIDES.get(mapped, mapped)
+
+
+def _copies_a_column(projection: exp.Expression) -> bool:
+    """Whether a SELECT item is a bare column reference, optionally aliased"""
+    value = projection.this if isinstance(projection, exp.Alias) else projection
+    return isinstance(value, (exp.Column, exp.Dot)) and not value.is_star
+
+
+def _projections(body: exp.Expression | None) -> list[tuple[str, bool]] | None:
+    """
+    (output name, copies a column unchanged) for each item of a query's final SELECT. A set
+    operation copies a column only when every branch does at that position.
+    """
+    if isinstance(body, exp.Subquery):
+        return _projections(body.this)
+    if isinstance(body, exp.SetOperation):
+        left, right = _projections(body.left), _projections(body.right)
+        if left is None or right is None or len(left) != len(right):
+            return None
+        return [(name, copies and other) for (name, copies), (_, other) in zip(left, right, strict=True)]
+    if isinstance(body, exp.Select):
+        return [
+            (
+                "*" if projection.is_star else projection.alias_or_name.lower(),
+                _copies_a_column(projection) or projection.is_star,
+            )
+            for projection in body.expressions
+        ]
+    return None
 
 
 class LineageParser:
@@ -167,21 +209,49 @@ class LineageParser:
             return self.retrieve_tables(self.parser.source_tables)
         return []
 
+    # pylint: disable=protected-access
     @cached_property
     def has_subqueries(self) -> bool:
         """
-        Whether any column lineage in the query runs through a subquery or a CTE, which could
-        rename a column. A query the parser could not read counts as having one, so callers
-        that need there to be none stay conservative.
+        Whether the query has a subquery or a CTE, which could rename a column. This reads the
+        parser's graph rather than its column lineage: a CTE built from constants
+        (`SELECT STRUCT('x' AS email) AS customer`) has no column lineage, but it still defines
+        the name. A query the parser could not read counts as having one, so callers that need
+        there to be none stay conservative.
         """
         if self.parser is None:
             return True
         try:
-            paths = self.parser.get_column_lineage(exclude_subquery=False)
+            return any(isinstance(node, SubQuery) for node in self.parser._sql_holder.graph.nodes)
         except Exception as err:
             logger.debug("[%s] Cannot inspect the query for subqueries: %s", self.query_hash, err)
             return True
-        return any(isinstance(column.parent, SubQuery) for path in paths for column in path)
+
+    @cached_property
+    def passthrough_columns(self) -> frozenset[str]:
+        """
+        Lowercased names of the output columns the query's final SELECT copies unchanged from one
+        column: `col`, `t.col` or `struct.field`, each optionally aliased, and `*` when a star
+        copies columns under their own names. Only such a column carries its source's nested
+        fields along by name; one built by an expression (`STRUCT(...)`, a function, a CASE) may
+        place them anywhere, and the parser reports it the same way as a plain reference.
+        Empty when the query cannot be read, so callers stay conservative.
+        """
+        try:
+            statements = [
+                statement
+                for statement in sqlglot.parse(self.query, dialect=_sqlglot_dialect(self.dialect))
+                if statement is not None
+            ]
+        except Exception as err:
+            logger.debug("[%s] Cannot read the query's projections: %s", self.query_hash, err)
+            return frozenset()
+        if len(statements) != 1:
+            return frozenset()
+        statement = statements[0]
+        body = statement.expression if isinstance(statement, (exp.Create, exp.Insert)) else statement
+        projections = _projections(body) or []
+        return frozenset(name for name, copies_a_column in projections if copies_a_column)
 
     @cached_property
     def target_tables(self) -> list[Table | Location]:

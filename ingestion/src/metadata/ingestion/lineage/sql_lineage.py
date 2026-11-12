@@ -401,6 +401,7 @@ def get_column_lineage(
     to_table_raw_name: str,
     from_table_raw_name: str,
     column_lineage_map: dict,
+    passthrough_columns: frozenset[str] = frozenset(),
 ) -> list[ColumnLineage]:
     """Get column lineage
 
@@ -410,6 +411,8 @@ def get_column_lineage(
         to_table_raw_name (str): table entity raw name we link to
         from_table_raw_name (str): table entity raw name we link from
         column_lineage_map (dict): map of the column lineage
+        passthrough_columns (frozenset[str]): target columns the query copies unchanged from one
+            column (`LineageParser.passthrough_columns`); only those carry nested fields by name
 
     Returns:
         List[ColumnLineage]
@@ -433,12 +436,20 @@ def get_column_lineage(
             from_column = _find_column(from_entity.columns, from_col)
             to_column = _find_column(to_entity.columns, to_col)
             if from_column and to_column:
-                column_lineage.extend(_nested_column_lineage(from_column, to_column))
+                copied = _is_copied(to_col, from_col, passthrough_columns)
+                column_lineage.extend(_nested_column_lineage(from_column, to_column, copied))
     for key, struct_pairs in sources.items():
         if key.startswith(f"{STRUCT_FIELD_PARENT}."):
             struct_name = key.removeprefix(f"{STRUCT_FIELD_PARENT}.")
-            column_lineage.extend(_struct_field_lineage(from_entity, to_entity, struct_name, struct_pairs))
+            column_lineage.extend(
+                _struct_field_lineage(from_entity, to_entity, struct_name, struct_pairs, passthrough_columns)
+            )
     return column_lineage
+
+
+def _is_copied(to_col: str, from_col: str, passthrough_columns: frozenset[str]) -> bool:
+    """Whether the query copies `from_col` into `to_col` unchanged, by name or through a `*`"""
+    return to_col.lower() in passthrough_columns or ("*" in passthrough_columns and to_col.lower() == from_col.lower())
 
 
 def _find_column(columns: list[TableColumn] | None, name: str) -> TableColumn | None:
@@ -446,10 +457,12 @@ def _find_column(columns: list[TableColumn] | None, name: str) -> TableColumn | 
     return next((column for column in columns or [] if column.name.root.lower() == name.lower()), None)
 
 
-def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn) -> list[ColumnLineage]:
+def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn, copied: bool) -> list[ColumnLineage]:
     """
-    Lineage from one column to another, plus one edge per nested field the two share by
-    name, at any depth: selecting a STRUCT or ARRAY<STRUCT> carries every field with it.
+    Lineage from one column to another and, when the query copies the column unchanged, one
+    edge per nested field the two share by name, at any depth: selecting a STRUCT or
+    ARRAY<STRUCT> as-is carries every field with it. A column built by an expression
+    (`STRUCT(billing AS address)`) keeps only the column edge: its fields may sit anywhere.
     """
     if not from_column.fullyQualifiedName or not to_column.fullyQualifiedName:
         return []
@@ -459,9 +472,9 @@ def _nested_column_lineage(from_column: TableColumn, to_column: TableColumn) -> 
             toColumn=to_column.fullyQualifiedName,
         )
     ]
-    for from_child in from_column.children or []:
+    for from_child in from_column.children or [] if copied else []:
         if to_child := _find_column(to_column.children, from_child.name.root):
-            edges.extend(_nested_column_lineage(from_child, to_child))
+            edges.extend(_nested_column_lineage(from_child, to_child, copied))
     return edges
 
 
@@ -483,7 +496,11 @@ def _find_struct(columns: list[TableColumn], name: str) -> TableColumn | None:
 
 
 def _struct_field_lineage(
-    from_entity: Table, to_entity: Table, struct_name: str, pairs: list[tuple[str, str]]
+    from_entity: Table,
+    to_entity: Table,
+    struct_name: str,
+    pairs: list[tuple[str, str]],
+    passthrough_columns: frozenset[str],
 ) -> list[ColumnLineage]:
     """Lineage for fields read through a STRUCT path: `struct.field AS alias` or `struct.*`"""
     struct = _find_struct(from_entity.columns, struct_name)
@@ -492,13 +509,14 @@ def _struct_field_lineage(
     edges = []
     for to_col, from_col in pairs:
         if from_col == "*":
-            fields = [(field, field.name.root) for field in struct.children or []]
+            # `struct.*` copies each field under its own name.
+            fields = [(field, field.name.root, True) for field in struct.children or []]
         else:
             field = _find_column(struct.children, from_col)
-            fields = [(field, to_col)] if field else []
-        for field, target_name in fields:
+            fields = [(field, to_col, to_col.lower() in passthrough_columns)] if field else []
+        for field, target_name, copied in fields:
             if target := _find_column(to_entity.columns, target_name):
-                edges.extend(_nested_column_lineage(field, target))
+                edges.extend(_nested_column_lineage(field, target, copied))
     return edges
 
 
@@ -545,6 +563,7 @@ def _build_table_lineage(
     lineage_source: LineageSource = LineageSource.QueryLineage,
     procedure: EntityReference | None = None,
     temp_lineage_tables: list | None = None,
+    passthrough_columns: frozenset[str] = frozenset(),
 ) -> Either[LineageRequest]:
     """
     Prepare the lineage request generator
@@ -584,6 +603,7 @@ def _build_table_lineage(
             from_entity=from_entity,
             from_table_raw_name=str(from_table_raw_name),
             column_lineage_map=column_lineage_map,
+            passthrough_columns=passthrough_columns,
         )
         lineage_details = LineageDetails(sqlQuery=masked_query, source=lineage_source, pipeline=procedure)
         if temp_lineage_tables:
@@ -625,6 +645,7 @@ def _create_lineage_by_table_name(
     graph: DiGraph | None = None,
     schema_fallback: bool = False,
     to_table_entities: list[Table] | None = None,
+    passthrough_columns: frozenset[str] = frozenset(),
 ) -> Iterable[Either[LineageRequest]]:
     """
     This method is to create a lineage between two tables
@@ -684,6 +705,7 @@ def _create_lineage_by_table_name(
                     column_lineage_map=column_lineage_map,
                     lineage_source=lineage_source,
                     procedure=procedure,
+                    passthrough_columns=passthrough_columns,
                 )
 
     except Exception as exc:
@@ -786,6 +808,7 @@ def get_lineage_by_query(
         raw_column_lineage = lineage_parser.column_lineage
         column_lineage.update(populate_column_lineage_map(raw_column_lineage))
         _key_struct_field_parents(column_lineage, lineage_parser)
+        passthrough_columns = cast("frozenset[str]", lineage_parser.passthrough_columns)
 
         for intermediate_table in lineage_parser.intermediate_tables:
             for source_table in lineage_parser.source_tables:
@@ -808,6 +831,7 @@ def get_lineage_by_query(
                         schema_name=schema_name,
                         masked_query=masked_query,
                         column_lineage_map=column_lineage,
+                        passthrough_columns=passthrough_columns,
                         lineage_source=lineage_source,
                         procedure=procedure,
                         graph=graph,
@@ -823,6 +847,7 @@ def get_lineage_by_query(
                     schema_name=schema_name,
                     masked_query=masked_query,
                     column_lineage_map=column_lineage,
+                    passthrough_columns=passthrough_columns,
                     lineage_source=lineage_source,
                     schema_fallback=schema_fallback,
                     graph=graph,
@@ -850,6 +875,7 @@ def get_lineage_by_query(
                             schema_name=schema_name,
                             masked_query=masked_query,
                             column_lineage_map=column_lineage,
+                            passthrough_columns=passthrough_columns,
                             lineage_source=lineage_source,
                             procedure=procedure,
                             graph=graph,

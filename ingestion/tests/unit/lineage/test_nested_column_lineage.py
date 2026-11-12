@@ -310,7 +310,7 @@ def test_struct_path_in_a_multi_statement_query_gets_no_lineage():
         [USERS, inter, target],
     )
 
-    assert ("users.customer.email", "inter.customer.email") in edges
+    assert ("users.customer", "inter.customer") in edges
     assert not {edge for edge in edges if edge[1] == "tgt.e"}
 
 
@@ -340,7 +340,7 @@ def test_a_query_whose_subqueries_cannot_be_read_counts_as_having_them():
     unparsed = LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY)
     unparsed.parser = None
     unreadable = LineageParser("SELECT id FROM ds.users", Dialect.BIGQUERY)
-    unreadable.parser = MagicMock(get_column_lineage=MagicMock(side_effect=RuntimeError("unreadable")))
+    unreadable.parser._sql_holder = None
 
     assert unparsed.has_subqueries
     assert unreadable.has_subqueries
@@ -367,3 +367,89 @@ def test_struct_path_resolves_only_when_its_one_source_is_a_table(source, resolv
     struct_key = f"{STRUCT_FIELD_PARENT}.customer"
     assert (struct_key in column_lineage_map["<default>.v"]) is resolved
     assert ("<default>.customer" in column_lineage_map["<default>.v"]) is not resolved
+
+
+@pytest.mark.parametrize(
+    ("query", "expected"),
+    [
+        (
+            "CREATE VIEW ds.v AS WITH c AS (SELECT STRUCT('constant' AS email) AS customer FROM ds.users) "
+            "SELECT customer.email AS e FROM c",
+            set(),
+        ),
+        (
+            "CREATE VIEW ds.v AS WITH c AS (SELECT id, STRUCT('constant' AS email) AS customer FROM ds.users) "
+            "SELECT id, customer.email AS e FROM c",
+            {("users.id", "v.id")},
+        ),
+        (
+            "CREATE VIEW ds.v AS SELECT id, customer.email AS e "
+            "FROM (SELECT id, STRUCT('constant' AS email) AS customer FROM ds.users) s",
+            {("users.id", "v.id")},
+        ),
+    ],
+    ids=["cte-of-constants", "cte-of-constants-with-a-column", "subquery-of-constants"],
+)
+def test_struct_a_cte_builds_from_constants_gets_no_lineage(query, expected):
+    view = _table("v", [_column("v", "id", "INT"), _column("v", "e")])
+
+    assert _column_edges(query, [USERS, view]) == expected
+
+
+def test_struct_built_by_an_expression_keeps_only_its_column_edges():
+    users = _table("users", [_column("users", "id", "INT"), _customer("users"), _customer("users", "billing")])
+    view = _table(
+        "v",
+        [
+            _column(
+                "v",
+                "customer",
+                "STRUCT",
+                [_customer("v", "customer.address"), _column("v", "customer.email")],
+            )
+        ],
+    )
+
+    edges = _column_edges(
+        "CREATE VIEW ds.v AS SELECT STRUCT(billing AS address, customer.email AS email) AS customer FROM ds.users",
+        [users, view],
+    )
+
+    # The parser reports both sources against `customer` without saying where in it they land,
+    # so their fields are not matched by name: that would give users.billing.email -> v.customer.email.
+    assert edges == {("users.billing", "v.customer"), ("users.customer.email", "v.customer")}
+
+
+@pytest.mark.parametrize(
+    ("select", "nested"),
+    [
+        ("customer AS buyer", True),
+        ("u.customer AS buyer", True),
+        ("IFNULL(customer, customer) AS buyer", False),
+        ("TO_JSON_STRING(customer) AS buyer", False),
+    ],
+    ids=["alias", "qualified-alias", "function", "json"],
+)
+def test_nested_fields_follow_only_a_column_the_query_copies(select, nested):
+    view = _table("v", [_customer("v", "buyer")])
+
+    edges = _column_edges(f"CREATE VIEW ds.v AS SELECT {select} FROM ds.users AS u", [USERS, view])
+
+    assert ("users.customer", "v.buyer") in edges
+    assert (("users.customer.email", "v.buyer.email") in edges) is nested
+
+
+@pytest.mark.parametrize(
+    ("second_branch", "nested"),
+    [("customer FROM ds.users", True), ("IFNULL(customer, customer) FROM ds.users", False)],
+    ids=["both-copy", "one-computes"],
+)
+def test_union_copies_nested_fields_only_when_every_branch_copies_the_column(second_branch, nested):
+    view = _table("v", [_customer("v")])
+
+    edges = _column_edges(
+        f"CREATE VIEW ds.v AS SELECT customer FROM ds.users UNION ALL SELECT {second_branch}", [USERS, view]
+    )
+
+    assert ("users.customer", "v.customer") in edges
+    assert (("users.customer.email", "v.customer.email") in edges) is nested
