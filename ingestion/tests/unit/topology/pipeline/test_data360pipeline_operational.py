@@ -119,6 +119,17 @@ class TestDataTransformStatus:
             list(source.yield_data_transform_status(DataTransformDetails(name="dt1")))
         assert mock_history.call_args.kwargs["limit"] == 7
 
+    def test_a_streaming_transform_is_not_asked_for_run_history(self):
+        # Data 360 keeps no run history for streaming transforms and answers with a
+        # 404, which failed the whole metadata run.
+        source = _build_source()
+        with patch(
+            "metadata.ingestion.source.pipeline.data360pipeline.operational.get_data_transform_run_history",
+        ) as mock_history:
+            assert list(source.yield_data_transform_status(DataTransformDetails(name="dt1", type="STREAMING"))) == []
+        mock_history.assert_not_called()
+        assert not source.status.failures
+
     def test_runs_older_than_the_status_lookback_window_are_dropped(self):
         source = _build_source()
         histories = {

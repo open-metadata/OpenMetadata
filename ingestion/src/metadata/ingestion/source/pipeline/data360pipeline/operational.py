@@ -41,6 +41,7 @@ from metadata.ingestion.source.pipeline.data360pipeline.base import (
     Data360PipelineBaseSource,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.constant import (
+    STREAMING_DATA_TRANSFORM,
     ResponseConstant,
 )
 from metadata.ingestion.source.pipeline.data360pipeline.exceptions import (
@@ -130,6 +131,10 @@ class Data360PipelineStatusMixin(Data360PipelineBaseSource):
     def yield_data_transform_status(
         self, pipeline_details: DataTransformDetails
     ) -> Iterable[Either[OMetaPipelineStatus]]:
+        if pipeline_details.type == STREAMING_DATA_TRANSFORM:
+            # Data 360 answers the run-history call for a streaming transform with a 404.
+            logger.debug("Skipping %s run status: streaming transforms have no run history", pipeline_details.name)
+            return
         run_histories = get_data_transform_run_history(
             client=self.client,
             name=pipeline_details.get_name(),
