@@ -3,7 +3,7 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** Harshit Shah
-- **Guard:** `CreateTaskTest#approvalThresholdNeverExceedsTheUsersAbleToVote`
+- **Guard:** `CreateTaskTest#approvalThresholdNeverExceedsTheUsersAbleToVote`, `CreateTaskTest#changeRequestPolicyNeverRequiresMoreApprovalsThanTheUsersAbleToVote`
 - **Related:** LHV support ticket 22036
 
 ## Context
@@ -18,6 +18,10 @@ no one left to vote, and the contract could never move forward.
 assignee is a user. A list that holds a team is not capped, because any number of its members can
 vote. An empty list is not capped either. The requester's change is not counted as an approval:
 that would be self-approval under another name.
+
+A change request's `ReviewPolicy` (built by `CreateTask.reviewPolicy`) gets the same cap, so the
+only eligible reviewer's approval publishes the change rather than reading as a disagreement. The
+`allAssignees` raise stays on the task threshold only, as before.
 
 ## Consequences
 A task can always complete. The cost is that a two-approval rule becomes one independent approval
