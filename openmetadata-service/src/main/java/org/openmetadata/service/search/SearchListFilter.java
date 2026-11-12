@@ -369,7 +369,7 @@ public class SearchListFilter extends Filter<SearchListFilter> {
               FIELD_DATA_PRODUCTS_FQN, escapeJsonString(dataProductFqn)));
     }
 
-    if (testDefinition != null) {
+    if (!nullOrEmpty(testDefinition) && !testDefinition.isBlank()) {
       conditions.add(
           String.format(
               "{\"term\": {\"testDefinition.fullyQualifiedName\": \"%s\"}}",

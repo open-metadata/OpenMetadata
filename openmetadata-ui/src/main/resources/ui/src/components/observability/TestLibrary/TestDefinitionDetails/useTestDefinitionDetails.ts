@@ -11,16 +11,19 @@
  *  limitations under the License.
  */
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo } from 'react';
+import { INITIAL_PAGING_VALUE } from '../../../../constants/constants';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { TEST_SUITE_TEST_CASE_FIELDS } from '../../../../rest/queries/testSuiteQuery';
 import {
-  getListTestCaseBySearch,
-  getTestDefinitionByName,
+    getListTestCaseBySearch,
+    getTestDefinitionByName
 } from '../../../../rest/testAPI';
+import { showErrorToast } from '../../../../utils/ToastUtils';
 import {
-  NextPreviousProps,
-  PagingHandlerParams,
+    NextPreviousProps,
+    PagingHandlerParams
 } from '../../../common/NextPrevious/NextPrevious.interface';
 
 export const testDefinitionDetailsQueryKey = (fqn: string) => [
@@ -63,6 +66,18 @@ export const useTestDefinitionDetails = (fqn: string, enabled: boolean) => {
     enabled: enabled && Boolean(fqn),
     placeholderData: keepPreviousData,
   });
+
+  // A new definition starts on its first page; the route param can change
+  // while this hook stays mounted (back/forward between two definitions).
+  useEffect(() => {
+    handlePageChange(INITIAL_PAGING_VALUE);
+  }, [fqn, handlePageChange]);
+
+  useEffect(() => {
+    if (testCaseQuery.error) {
+      showErrorToast(testCaseQuery.error as AxiosError);
+    }
+  }, [testCaseQuery.error]);
 
   useEffect(() => {
     if (testCaseQuery.data) {

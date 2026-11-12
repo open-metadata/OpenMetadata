@@ -61,6 +61,16 @@ public class SearchListFilterTest {
   }
 
   @Test
+  void testBlankTestDefinitionIsIgnored() {
+    SearchListFilter searchListFilter = new SearchListFilter();
+    searchListFilter.addQueryParam("testDefinition", " ");
+    String actual = searchListFilter.getCondition(Entity.TEST_CASE);
+    String expected =
+        "{\"_source\": {\"exclude\": [\"fqnParts\",\"entityType\",\"suggest\"]},\"query\": {\"match_all\": {}}}";
+    assertEquals(expected, actual);
+  }
+
+  @Test
   void testBlankTestCaseStatusesAreIgnored() {
     SearchListFilter searchListFilter = new SearchListFilter();
     searchListFilter.addQueryParam("testCaseStatus", " , ");

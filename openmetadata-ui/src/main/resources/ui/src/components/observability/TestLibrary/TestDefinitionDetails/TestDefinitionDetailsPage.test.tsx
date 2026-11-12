@@ -10,13 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { screen } from '@testing-library/react';
+import { screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../../generated/tests/testCase';
 import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import {
-  getListTestCaseBySearch,
-  getTestDefinitionByName,
+    getListTestCaseBySearch,
+    getTestDefinitionByName
 } from '../../../../rest/testAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import TestDefinitionDetailsPage from './TestDefinitionDetailsPage';
@@ -47,6 +47,12 @@ const TEST_CASES = [
   { id: 'tc-1', name: 'orders_id_not_null' },
   { id: 'tc-2', name: 'customers_id_not_null' },
 ] as TestCase[];
+
+const mockShowErrorToast = jest.fn();
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: (error: unknown) => mockShowErrorToast(error),
+}));
 
 jest.mock('../../../../hooks/useFqn', () => ({
   useFqn: () => ({ fqn: 'columnValuesToBeNotNull' }),
@@ -160,5 +166,24 @@ describe('TestDefinitionDetailsPage', () => {
     ).not.toBeInTheDocument();
     expect(getTestDefinitionByName).not.toHaveBeenCalled();
     expect(getListTestCaseBySearch).not.toHaveBeenCalled();
+  });
+
+  it('should report a failed definition load instead of showing no data', async () => {
+    (getTestDefinitionByName as jest.Mock).mockRejectedValue({
+      response: { status: 500 },
+    });
+    renderPage();
+
+    expect(
+      await screen.findByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+  });
+
+  it('should toast a failed test case load', async () => {
+    const error = { response: { status: 500 } };
+    (getListTestCaseBySearch as jest.Mock).mockRejectedValue(error);
+    renderPage();
+
+    await waitFor(() => expect(mockShowErrorToast).toHaveBeenCalledWith(error));
   });
 });

@@ -11,22 +11,24 @@
  *  limitations under the License.
  */
 import {
-  Box,
-  Button,
-  Card,
-  PageLayout,
-  Table,
-  Typography,
+    Box,
+    Button,
+    Card,
+    PageLayout,
+    Table,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
+import { AxiosError } from 'axios';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
+import { ClientErrors } from '../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-  TestCaseParameterDefinition,
-  TestDefinition,
+    TestCaseParameterDefinition,
+    TestDefinition
 } from '../../../../generated/tests/testDefinition';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -35,6 +37,7 @@ import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterC
 import { checkPermission } from '../../../../utils/PermissionsUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import PermissionPlaceholder from '../../../common/EmptyPlaceholder/PermissionPlaceholder';
+import SomethingWentWrongPlaceholder from '../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import HeaderBreadcrumb from '../../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewerNew from '../../../common/RichTextEditor/RichTextEditorPreviewNew';
@@ -162,6 +165,7 @@ const TestDefinitionDetailsPage = () => {
   const {
     testDefinition,
     isDefinitionLoading,
+    definitionError,
     refetchDefinition,
     testCases,
     entityPermissions,
@@ -185,6 +189,17 @@ const TestDefinitionDetailsPage = () => {
 
   if (isDefinitionLoading) {
     return <Loader />;
+  }
+
+  if (
+    definitionError &&
+    (definitionError as AxiosError).response?.status !== ClientErrors.NOT_FOUND
+  ) {
+    return (
+      <div className="tw:relative tw:h-full tw:w-full tw:min-h-60">
+        <SomethingWentWrongPlaceholder />
+      </div>
+    );
   }
 
   if (!testDefinition) {
