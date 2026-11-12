@@ -1,7 +1,7 @@
 # MCP registration is operator-controlled and administrators can revoke a whole client
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (error callbacks and proxy attribution)
+- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (error callbacks and proxy attribution) · v3 2026-11-12 (administrator controls)
 - **Deciders:** Mohit Yadav
 - **Guard:** `McpClientPolicyTest`, `McpOAuthClientResourceTest`, `McpGrantRevocationSqlTest`, `McpOAuthClientIT`, `AuthorizationHandlerTest`, `UserSSOOAuthProviderTest`, `OAuthHttpStatelessServerTransportProviderTest`
 - **Related:** ADR:2026-10-23-mcp-sso-asks-consent-after-the-idp-round-trip, ADR:2026-10-29-mcp-access-tokens-are-stored-so-revoke-reaches-every-server
@@ -49,3 +49,10 @@ The redirect boundary also applies to authorization errors and pending IdP error
 Local proxies must append or overwrite the actual connecting address in `X-Forwarded-For`;
 rate limits use only the validated, canonical rightmost address. This prevents client-supplied
 prefixes or equivalent IP spellings from selecting a fresh quota.
+
+## Amendment v3 — administrator controls
+
+The administrator MCP configuration page exposes the existing server enable flag and registration
+policy, plus paginated client inventory and confirmed revocation. The transport enforces the
+enable flag on every incoming request. Disabling preserves registration and grant rows; it is
+not equivalent to revoking a client. Administrative REST endpoints remain available while disabled.

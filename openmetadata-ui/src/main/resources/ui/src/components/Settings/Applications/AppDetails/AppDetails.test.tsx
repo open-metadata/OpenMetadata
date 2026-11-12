@@ -345,6 +345,22 @@ describe('AppDetails component', () => {
     ).toBeInTheDocument();
   });
 
+  it('keeps MCP administration available when the application is disabled', async () => {
+    mockGetApplicationByName.mockReturnValueOnce({
+      ...mockApplicationData,
+      name: 'McpApplication',
+      enabled: false,
+      scheduleType: 'NoSchedule',
+      appConfiguration: undefined,
+      allowConfiguration: false,
+    });
+    await renderAppDetails();
+
+    expect(
+      screen.getByText('MockMcpApplicationConfiguration')
+    ).toBeInTheDocument();
+  });
+
   it('should hide the MCP configuration tab from non admins', async () => {
     mockIsAdminUser.mockReturnValue(false);
     mockGetApplicationByName.mockReturnValueOnce({

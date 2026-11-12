@@ -408,6 +408,17 @@ public class OAuthHttpStatelessServerTransportProvider extends HttpServletStatel
   }
 
   @Override
+  public void service(HttpServletRequest request, HttpServletResponse response)
+      throws ServletException, IOException {
+    var config = SecurityConfigurationManager.getCurrentMcpConfig();
+    if (config != null && Boolean.FALSE.equals(config.getEnabled())) {
+      response.sendError(HttpServletResponse.SC_SERVICE_UNAVAILABLE, "MCP server is disabled");
+      return;
+    }
+    super.service(request, response);
+  }
+
+  @Override
   public void doGet(HttpServletRequest request, HttpServletResponse response)
       throws ServletException, IOException {
 

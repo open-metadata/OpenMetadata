@@ -4,6 +4,18 @@ MCP sign-in asks users to consent to the requesting application. A client name i
 verify the destination host on the consent screen. Administrators can additionally control client
 registration and revoke access through the following settings and endpoints.
 
+## Admin page
+
+Open **Settings → Applications → MCP Server → Configuration** as an administrator.
+The page controls the MCP server switch and registration policy, and lists registered clients
+with their IDs, callback URLs and registration dates. Use **Revoke** on a client and confirm to
+remove its registration and all grants. Refresh and cursor navigation load the current inventory;
+client administration remains available while MCP is disabled.
+
+Disabling **Enable MCP Server** rejects new MCP transport and OAuth requests with HTTP 503;
+it preserves clients and grants. Already-running requests may finish. Re-enabling restores access
+for otherwise-valid grants. Settings propagation follows the existing security settings reload.
+
 ## Registration policy
 
 Configure these fields in the existing MCP configuration setting:

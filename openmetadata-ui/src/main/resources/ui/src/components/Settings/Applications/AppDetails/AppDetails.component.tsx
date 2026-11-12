@@ -94,15 +94,8 @@ import applicationsClassBase from './ApplicationsClassBase';
 const getShowMcpConfigTab = (
   appData: App | undefined,
   isAdminUser: boolean | undefined,
-  jsonSchema: RJSFSchema | undefined,
-  isRuntimeDisabled: boolean
-) =>
-  Boolean(
-    isMcpApplication(appData?.name) &&
-      isAdminUser &&
-      jsonSchema &&
-      !isRuntimeDisabled
-  );
+  jsonSchema: RJSFSchema | undefined
+) => Boolean(isMcpApplication(appData?.name) && isAdminUser && jsonSchema);
 
 const getShowAppConfigTab = (
   appData: App | undefined,
@@ -425,8 +418,7 @@ const AppDetails = () => {
     const showMcpConfigTab = getShowMcpConfigTab(
       appData,
       isAdminUser,
-      jsonSchema,
-      isRuntimeDisabled
+      jsonSchema
     );
     const showAppConfigTab = getShowAppConfigTab(
       appData,
