@@ -37,7 +37,7 @@ class FailedSampleValidatorMixin(ABC):
     """ABC mixin providing failed row sampling orchestration.
 
     Concrete validators must implement:
-      - fetch_failed_rows_sample() -> TableData
+      - fetch_failed_rows_sample() -> TableData, or None when there is no sample to store
       - filter() -> filter expression (dict for SQA, string for Pandas)
     """
 
@@ -45,7 +45,7 @@ class FailedSampleValidatorMixin(ABC):
         return getattr(self, "_inspection_query", None)
 
     @abstractmethod
-    def fetch_failed_rows_sample(self) -> TableData:
+    def fetch_failed_rows_sample(self) -> TableData | None:
         raise NotImplementedError
 
     def result_with_failed_samples(self, result: TestCaseResultResponse) -> None:

@@ -19,6 +19,7 @@ import pytest
 from metadata.generated.schema.api.tests.createTestDefinition import (
     CreateTestDefinitionRequest,
 )
+from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import (
@@ -148,11 +149,13 @@ class TestTableRuleLibraryPandas:
             {
                 "name": "table_rule_library_age_greater_than_35",
                 "testDefinitionName": test_def_name,
+                "computePassedFailedRowCount": True,
                 "parameterValues": [{"name": "minAge", "value": "35"}],
             },
             {
                 "name": "table_rule_library_age_greater_than_100",
                 "testDefinitionName": test_def_name,
+                "computePassedFailedRowCount": True,
                 "parameterValues": [{"name": "minAge", "value": "100"}],
             },
         ]
@@ -163,10 +166,11 @@ class TestTableRuleLibraryPandas:
         ingestion_workflow.stop()
 
     @pytest.mark.parametrize(
-        "test_case_name,expected_status",
+        "test_case_name,expected_status,expected_sample_rows",
         [
-            ("table_rule_library_age_greater_than_35", TestCaseStatus.Failed),
-            ("table_rule_library_age_greater_than_100", TestCaseStatus.Success),
+            # age > 35 matches 2 of the 3 users, which are the failed rows sample
+            ("table_rule_library_age_greater_than_35", TestCaseStatus.Failed, 2),
+            ("table_rule_library_age_greater_than_100", TestCaseStatus.Success, None),
         ],
     )
     def test_table_rule_library_pandas_expression(
@@ -176,6 +180,7 @@ class TestTableRuleLibraryPandas:
         datalake_service_name,
         test_case_name,
         expected_status,
+        expected_sample_rows,
     ):
         """Test the Table Rule Library Pandas Expression validator.
 
@@ -198,3 +203,16 @@ class TestTableRuleLibraryPandas:
         assert test_case.testCaseResult.testCaseStatus == expected_status, (
             f"Expected {expected_status}, got {test_case.testCaseResult.testCaseStatus}"
         )
+        # A pandas expression is not SQL, so there is no inspection query to show
+        assert test_case.inspectionQuery is None
+
+        failed_rows_sample = metadata.get_failed_rows_sample(test_case)
+        if expected_sample_rows is None:
+            assert failed_rows_sample is None
+            return
+        table: Table = metadata.get_by_name(Table, table_fqn, nullable=False)
+        assert failed_rows_sample is not None
+        assert [column.root for column in failed_rows_sample.columns] == [column.name.root for column in table.columns]
+        assert len(failed_rows_sample.rows) == expected_sample_rows
+        age = [column.root for column in failed_rows_sample.columns].index("age")
+        assert sorted(row[age] for row in failed_rows_sample.rows) == [39, 40]

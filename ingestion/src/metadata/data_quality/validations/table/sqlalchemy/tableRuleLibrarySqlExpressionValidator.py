@@ -16,6 +16,10 @@ from typing import TYPE_CHECKING, cast
 from jinja2.sandbox import SandboxedEnvironment
 from sqlalchemy import func, select, text
 
+from metadata.data_quality.validations.mixins.failed_row_sampler_mixin import (
+    render_literal_sql,
+    table_columns_sample,
+)
 from metadata.data_quality.validations.mixins.sqa_validator_mixin import (
     SQAValidatorMixin,
 )
@@ -61,11 +65,14 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
 
         try:
             result = self.runner._session.execute(text(compiled_sql), bind_params)
-            return len(result.fetchall())
+            rows = result.fetchall()
         except Exception as exc:
             self.runner._session.rollback()
             logger.exception(f"Error executing SQL expression: {exc}")  # noqa: TRY401
             raise exc  # noqa: TRY201
+        self._executed_sql = sql_expression
+        self._failed_rows = table_columns_sample(cast("QueryRunner", self.runner).table, list(result.keys()), rows)
+        return len(rows)
 
     def _run_row_count(self) -> int:
         """Count the rows of the unsampled, unpartitioned table, the rows the rule's SQL reads"""
@@ -75,3 +82,10 @@ class TableRuleLibrarySqlExpressionValidator(BaseValidator, SQAValidatorMixin):
         except Exception:
             runner.session.rollback()
             raise
+
+    def get_inspection_query(self) -> str | None:
+        """The SQL `_run_results` executed, with its parameters written in"""
+        compiled_sql, bind_params = self._executed_sql
+        return render_literal_sql(
+            compiled_sql, bind_params, cast("QueryRunner", self.runner).session.get_bind().dialect
+        )
