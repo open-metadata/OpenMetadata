@@ -5362,6 +5362,12 @@
                       "type": "string",
                       "default": "v2"
                     },
+                    "skipPermissionCheck": {
+                      "title": "Skip Permission Check",
+                      "description": "List every workbook and data model in the Sigma organization, not only the ones the API client's owner can access. Sends Sigma's skipPermissionCheck parameter, which is only available to the Admin account type; custom views are never listed.",
+                      "type": "boolean",
+                      "default": false
+                    },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
                       "title": "Default Dashboard Filter Pattern",
@@ -43581,6 +43587,12 @@
                       "description": "Sigma API version.",
                       "type": "string",
                       "default": "v2"
+                    },
+                    "skipPermissionCheck": {
+                      "title": "Skip Permission Check",
+                      "description": "List every workbook and data model in the Sigma organization, not only the ones the API client's owner can access. Sends Sigma's skipPermissionCheck parameter, which is only available to the Admin account type; custom views are never listed.",
+                      "type": "boolean",
+                      "default": false
                     },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",

@@ -46,6 +46,16 @@ Version of the Sigma REST API by default `v2`.
 To get to know the Sigma REST API Version visit <a href="https://help.sigmacomputing.com/reference/get-started-sigma-api#identify-your-api-request-url" target="_blank">here</a> and look into the `Token URL` section.
 $$
 
+$$section
+### Skip Permission Check $(id="skipPermissionCheck")
+
+Sigma's API lists the workbooks and data models that the owner of the client credentials can access: the ones in their **My Documents** folder and the ones shared with them, directly or through a folder or workspace. Workbooks nobody shared with that user are not ingested.
+
+Turn this on to list every workbook and data model in the organization instead. It sends Sigma's `skipPermissionCheck` parameter on the two listings, which Sigma documents as <a href="https://help.sigmacomputing.com/reference/list-workbooks" target="_blank">"Only available to Sigma admins"</a>, so the credentials' owner must have the **Admin** account type. Custom views, the private per-user views of a workbook, are never listed. The connection test uses the same listing, so it shows what Sigma answers for your credentials.
+
+A workbook that is listed this way but that the user still cannot open is skipped when its details cannot be read; when only its pages cannot be read, its dashboard is created without charts or data models. If you cannot use an Admin credential, share each workspace with the user that owns the credentials instead.
+$$
+
 ## Certification Badges
 
 When **Include Tags** is on, a workbook's certification badge (Endorsed, Warning or Deprecated) is added to its dashboard as a tag in the `SigmaBadge` classification.

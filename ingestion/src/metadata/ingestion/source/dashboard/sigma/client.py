@@ -104,11 +104,26 @@ class SigmaApiClient:
         result = AuthToken.model_validate(self.token_client.post("/auth/token", data=TOKEN_PAYLOAD))
         return result.access_token, result.expires_in
 
+    def _listing_scope(self, exclude_explorations: bool = False) -> dict[str, str] | None:
+        """
+        The admin-only org-wide listing, when the connection opts in
+        (ADR:2026-11-12-sigma-org-wide-listing-is-opt-in-and-excludes-custom-views). Sigma then lists custom
+        views too, which are private per-user views of a workbook, so the workbook listing excludes them.
+        """
+        if not self.config.skipPermissionCheck:
+            return None
+        scope = {"skipPermissionCheck": "true"}
+        if exclude_explorations:
+            scope["excludeExplorations"] = "true"
+        return scope
+
     def test_get_dashboards(self) -> list[Workbook] | None:  # noqa: RET503
         """
         method to test fetch dashboards from api
         """
-        result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
+        result = WorkBookResponseDetails.model_validate(
+            self.client.get("/workbooks", data=self._listing_scope(exclude_explorations=True))
+        )
         if result:
             return result.entries
 
@@ -117,12 +132,13 @@ class SigmaApiClient:
         method to fetch dashboards from api
         """
         workbooks = []
+        scope = self._listing_scope(exclude_explorations=True)
         try:
-            result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
+            result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks", data=scope))
             if result:
                 workbooks.extend(result.entries)
                 while result.nextPage:
-                    data = {"page": result.nextPage}
+                    data = {**(scope or {}), "page": result.nextPage}
                     result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks", data=data))
                     if result:
                         workbooks.extend(result.entries)
@@ -184,22 +200,25 @@ class SigmaApiClient:
         return []
 
     def _read_all(
-        self, path: str, response_model: type[DataModelsResponse | ElementsResponse | WorkbookLineageResponse]
+        self,
+        path: str,
+        response_model: type[DataModelsResponse | ElementsResponse | WorkbookLineageResponse],
+        scope: dict[str, str] | None = None,
     ) -> Iterator:
-        """Every entry of a paginated Sigma listing; raises when a page cannot be read"""
-        data = None
+        """Every entry of a paginated Sigma listing, with `scope` on every page; raises when a page cannot be read"""
+        data = scope
         while True:
             result = response_model.model_validate(self.client.get(path, data=data))
             yield from result.entries or []
             if not result.nextPage:
                 return
-            data = {"page": result.nextPage}
+            data = {**(scope or {}), "page": result.nextPage}
 
     def get_data_models(self) -> list[DataModel]:
         """Every Sigma Data Model"""
         data_models = []
         try:
-            data_models.extend(self._read_all("/dataModels", DataModelsResponse))
+            data_models.extend(self._read_all("/dataModels", DataModelsResponse, self._listing_scope()))
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Failed to list Sigma data models: %s", exc)

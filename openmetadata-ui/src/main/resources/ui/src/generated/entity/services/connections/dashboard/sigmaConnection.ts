@@ -45,7 +45,13 @@ export interface SigmaConnection {
     /**
      * Regex to exclude or include projects that matches the pattern.
      */
-    projectFilterPattern?:       FilterPattern;
+    projectFilterPattern?: FilterPattern;
+    /**
+     * List every workbook and data model in the Sigma organization, not only the ones the API
+     * client's owner can access. Sends Sigma's skipPermissionCheck parameter, which is only
+     * available to the Admin account type; custom views are never listed.
+     */
+    skipPermissionCheck?:        boolean;
     supportsMetadataExtraction?: boolean;
     /**
      * Service Type
