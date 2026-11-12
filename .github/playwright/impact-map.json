@@ -90,6 +90,18 @@
   ],
   "mappings": [
     {
+      "sources": [
+        "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/CoreRelationshipDAOs.java"
+      ],
+      "projects": ["chromium"],
+      "specs": [
+        "playwright/e2e/Features/ContextCenterMemories.spec.ts",
+        "playwright/e2e/Features/ContextCenterPermission.spec.ts",
+        "playwright/e2e/Pages/Entity.spec.ts",
+        "playwright/e2e/Pages/Lineage/LineageControls.spec.ts"
+      ]
+    },
+    {
       "_comment": "QueryViewer renders the topic Config, search index Settings, table dbt and View Definition tabs and the incident SQL Query tab.",
       "sources": [
         "openmetadata-ui/src/main/resources/ui/src/components/common/QueryViewer/**",
@@ -586,6 +598,8 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/search/ContextMemoryIndexMappingTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextMemoryIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryResourceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryVisibilityTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/search/security/ContextMemorySearchVisibilityTest.java",
         "openmetadata-ui/src/main/resources/ui/src/utils/ContextCenterPureUtils.test.ts",
         "openmetadata-service/src/main/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycle.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/jdbi3/ContextMemoryLifecycleTest.java",

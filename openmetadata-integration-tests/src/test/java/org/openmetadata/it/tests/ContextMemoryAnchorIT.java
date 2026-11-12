@@ -294,7 +294,7 @@ public class ContextMemoryAnchorIT {
   }
 
   @Test
-  void fileExtractedMemoriesRemainAnchoredInSearch(TestNamespace ns) {
+  void contextCenterListsExtractedMemoriesToReadersOfTheirFile(TestNamespace ns) {
     ContextFile file =
         ns.trackRoot(
             Entity.CONTEXT_FILE,
@@ -320,7 +320,7 @@ public class ContextMemoryAnchorIT {
         .ignoreExceptions()
         .untilAsserted(
             () -> assertTrue(ids(adminMemories().list(params)).contains(extracted.getId())));
-    assertFalse(ids(readerMemories.list(params)).contains(extracted.getId()));
+    assertTrue(ids(readerMemories.list(params)).contains(extracted.getId()));
   }
 
   @Test
@@ -384,7 +384,8 @@ public class ContextMemoryAnchorIT {
               assertFalse(ids(adminMemories().list(params)).contains(owned.getId()));
               assertTrue(ids(ownerMemories.list(invalidatedParams)).contains(owned.getId()));
               assertTrue(ids(adminMemories().list(invalidatedParams)).contains(owned.getId()));
-              assertFalse(ids(anchorViewer.list(invalidatedParams)).contains(owned.getId()));
+              assertEquals(owned.getId(), anchorViewer.get(owned.getId().toString()).getId());
+              assertTrue(ids(anchorViewer.list(invalidatedParams)).contains(owned.getId()));
             });
   }
 
