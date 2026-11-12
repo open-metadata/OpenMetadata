@@ -730,15 +730,22 @@ class RdfIndexAppTest {
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
       startedJob(testApp);
       testApp.execute(jobContext());
+      assertEquals(AppRunRecord.Status.STOPPED, testApp.pushedRecord.getStatus());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
 
-      when(mockRdfRepository.isEnabled()).thenReturn(false);
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(true);
+      final String failure = "RDF storage unavailable after acquiring the lock";
+      doThrow(new IllegalStateException(failure)).when(mockRdfRepository).ensureStorageReady();
       try {
         testApp.execute(jobContext());
       } finally {
-        when(mockRdfRepository.isEnabled()).thenReturn(true);
+        doNothing().when(mockRdfRepository).ensureStorageReady();
       }
 
       assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());
+      assertTrue(testApp.getJobData().getFailure().getMessage().contains(failure));
       assertEquals(RdfProjectionState.DEGRADED, projectionStateAfter(testApp.pushedRecord));
     }
 
