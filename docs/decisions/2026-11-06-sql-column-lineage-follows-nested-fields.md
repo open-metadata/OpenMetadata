@@ -16,11 +16,14 @@ qualified it (`u.customer.email` arrives as column `email` of a table `customer`
 
 ## Decision
 - A column edge whose two ends both have nested fields carries one edge per field they share by
-  name, at every depth — but only when the query copies the column unchanged: a bare reference
-  (`customer`, `t.customer AS c`, `struct.field AS f`), a `*`, or every branch of a set operation
-  doing so (`LineageParser.passthrough_columns`, read from the final SELECT). A column built by an
-  expression (`STRUCT(billing AS address)`, a function, a CASE) keeps only its column edge: the
-  parser reports it exactly like a plain reference, so matching its fields by name would guess.
+  name, at every depth — but only when the query's final SELECT copies that very source column
+  unchanged (`LineageParser.copied_columns`, read with sqlglot): a reference built only from
+  names (`customer`, `t.customer AS c`, `struct.field AS f`), a plain `*` (not one with EXCEPT,
+  REPLACE, EXCLUDE or RENAME, and not for a name another item produces), or every branch of a set
+  operation doing so. Anything else keeps only its column edge: an expression (`STRUCT(billing AS
+  address)`, a function, a subscript, a CASE), a column read from a subquery or CTE, which may
+  have built it, and an output name two items share. The parser reports all of these exactly
+  like a plain reference, so matching their fields by name would guess.
 - A field path is resolved only when nothing else could own its name: the query reads exactly
   one source and it is a table (a table-valued function or a stage may read several), has no
   intermediate table and no subquery or CTE — including one built only from constants, which no
@@ -39,5 +42,6 @@ ingests them. A lineage run adds one edge per shared nested field, so wide STRUC
 Still without field-level lineage: field paths in joins, over subqueries or CTEs, or through
 UNNEST-based array access; the fields of a STRUCT built by an expression (placing its sources
 inside it, such as `billing.email → customer.address.email`, needs expression-level analysis);
-and nested fields in multi-statement queries. Resolving field paths needs the parser to keep a
+and nested fields in multi-statement queries, MERGE and UPDATE statements, and INSERT or CREATE
+statements with a target column list. Resolving field paths needs the parser to keep a
 path's qualifier, which would be the point to revisit these conditions.

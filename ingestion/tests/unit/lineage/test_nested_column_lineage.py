@@ -26,7 +26,7 @@ from collate_sqllineage.core.models import Table as LineageTable
 
 from metadata.generated.schema.entity.data.table import Table
 from metadata.ingestion.lineage.models import Dialect
-from metadata.ingestion.lineage.parser import LineageParser
+from metadata.ingestion.lineage.parser import CopiedColumns, LineageParser
 from metadata.ingestion.lineage.sql_lineage import STRUCT_FIELD_PARENT, _key_struct_field_parents, get_lineage_by_query
 
 SERVICE = "bq"
@@ -311,6 +311,7 @@ def test_struct_path_in_a_multi_statement_query_gets_no_lineage():
     )
 
     assert ("users.customer", "inter.customer") in edges
+    assert ("users.customer.email", "inter.customer.email") not in edges
     assert not {edge for edge in edges if edge[1] == "tgt.e"}
 
 
@@ -453,3 +454,147 @@ def test_union_copies_nested_fields_only_when_every_branch_copies_the_column(sec
 
     assert ("users.customer", "v.customer") in edges
     assert (("users.customer.email", "v.customer.email") in edges) is nested
+
+
+@pytest.mark.parametrize(
+    "query",
+    [
+        "CREATE VIEW ds.v AS WITH c AS (SELECT STRUCT(billing AS address, customer.email AS email) AS customer "
+        "FROM ds.users) SELECT customer FROM c",
+        "CREATE VIEW ds.v AS SELECT customer FROM (SELECT STRUCT(billing AS address, customer.email AS email) "
+        "AS customer FROM ds.users) s",
+    ],
+    ids=["cte", "subquery"],
+)
+def test_struct_built_inside_a_cte_or_subquery_keeps_only_its_column_edges(query):
+    users = _table("users", [_column("users", "id", "INT"), _customer("users"), _customer("users", "billing")])
+    view = _table("v", [_customer("v")])
+
+    edges = _column_edges(query, [users, view])
+
+    assert ("users.billing", "v.customer") in edges
+    assert not {edge for edge in edges if edge[1].startswith("v.customer.")}
+
+
+@pytest.mark.parametrize(
+    "select",
+    [
+        "ARRAY_AGG(customer ORDER BY id DESC LIMIT 1)[OFFSET(0)].address AS address",
+        "ANY_VALUE(customer).address AS address",
+    ],
+    ids=["array-agg-offset", "any-value"],
+)
+def test_field_read_off_a_function_result_keeps_only_its_column_edge(select):
+    buyers = _table(
+        "buyers",
+        [
+            _column("buyers", "id", "INT"),
+            _column(
+                "buyers",
+                "customer",
+                "STRUCT",
+                [
+                    _column("buyers", "customer.id", "INT"),
+                    _column("buyers", "customer.address", "STRUCT", [_column("buyers", "customer.address.id", "INT")]),
+                ],
+            ),
+        ],
+    )
+    view = _table("v", [_column("v", "address", "STRUCT", [_column("v", "address.id", "INT")])])
+
+    edges = _column_edges(f"CREATE VIEW ds.v AS SELECT {select} FROM ds.buyers GROUP BY id", [buyers, view])
+
+    assert ("buyers.customer", "v.address") in edges
+    assert ("buyers.customer.id", "v.address.id") not in edges
+
+
+@pytest.mark.parametrize(
+    ("select", "copied"),
+    [("customer.address AS a", True), ("IFNULL(customer.address, customer.address) AS a", False)],
+    ids=["copied", "computed"],
+)
+def test_struct_field_path_carries_its_fields_only_when_copied(select, copied):
+    view = _table("v", [_column("v", "a", "STRUCT", [_column("v", "a.zip")])])
+
+    edges = _column_edges(f"CREATE VIEW ds.v AS SELECT {select} FROM ds.users", [USERS, view])
+
+    assert ("users.customer.address", "v.a") in edges
+    assert (("users.customer.address.zip", "v.a.zip") in edges) is copied
+
+
+@pytest.mark.parametrize(
+    ("dialect", "select", "copied_from_customer"),
+    [
+        (Dialect.BIGQUERY, "*", True),
+        (Dialect.BIGQUERY, "* REPLACE (STRUCT(billing AS address, 'x' AS email) AS customer)", False),
+        (Dialect.BIGQUERY, "* EXCEPT (billing), billing AS customer", False),
+        (Dialect.SNOWFLAKE, "* EXCLUDE (customer), billing AS customer", False),
+    ],
+    ids=["plain-star", "replace", "except", "exclude"],
+)
+def test_star_copies_nested_fields_only_for_columns_it_copies_unchanged(dialect, select, copied_from_customer):
+    users = _table("users", [_column("users", "id", "INT"), _customer("users"), _customer("users", "billing")])
+    view = _table("v", [_column("v", "id", "INT"), _customer("v")])
+
+    edges = _column_edges(f"CREATE VIEW ds.v AS SELECT {select} FROM ds.users", [users, view], dialect)
+
+    assert ("users.id", "v.id") in edges
+    assert (("users.customer.email", "v.customer.email") in edges) is copied_from_customer
+
+
+def test_two_outputs_with_the_same_name_copy_neither():
+    parser = LineageParser(
+        'CREATE VIEW v AS SELECT TO_VARIANT(billing) AS "Customer", customer AS "customer" FROM users',
+        Dialect.SNOWFLAKE,
+    )
+
+    assert not parser.copied_columns.copies("customer", "customer")
+    assert not parser.copied_columns.copies("Customer", "billing")
+
+
+def test_same_named_column_a_cte_computes_carries_no_nested_fields():
+    view = _table("v", [_customer("v")])
+
+    edges = _column_edges(
+        "CREATE VIEW ds.v AS WITH c AS (SELECT IFNULL(customer, customer) AS customer FROM ds.users) "
+        "SELECT customer FROM c",
+        [USERS, view],
+    )
+
+    assert ("users.customer", "v.customer") in edges
+    assert ("users.customer.email", "v.customer.email") not in edges
+
+
+def test_field_of_a_function_result_named_like_its_source_carries_no_nested_fields():
+    # v.customer is buyers.customer.customer, so buyers.customer.email -> v.customer.email would be wrong.
+    buyers = _table(
+        "buyers",
+        [
+            _column("buyers", "id", "INT"),
+            _column(
+                "buyers",
+                "customer",
+                "STRUCT",
+                [
+                    _column("buyers", "customer.email"),
+                    _column("buyers", "customer.customer", "STRUCT", [_column("buyers", "customer.customer.email")]),
+                ],
+            ),
+        ],
+    )
+    view = _table("v", [_column("v", "customer", "STRUCT", [_column("v", "customer.email")])])
+
+    edges = _column_edges(
+        "CREATE VIEW ds.v AS SELECT ANY_VALUE(customer).customer AS customer FROM ds.buyers GROUP BY id",
+        [buyers, view],
+    )
+
+    assert ("buyers.customer", "v.customer") in edges
+    assert ("buyers.customer.email", "v.customer.email") not in edges
+
+
+def test_star_does_not_copy_a_name_an_expression_computes():
+    copied = CopiedColumns(computed=frozenset({"customer"}), star=True)
+
+    assert not copied.copies("customer", "customer")
+    assert copied.copies("billing", "billing")
