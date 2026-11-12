@@ -140,6 +140,22 @@ export async function revealHiddenNode(
 }
 
 /**
+ * After a panel narrows the canvas: a graph that was wholly visible is fitted again so
+ * no node ends up under the panel; otherwise only a selection the panel now hides is
+ * brought back, and the rest of the view stays where the user left it.
+ */
+export function settleAfterCanvasResize(
+  graph: Graph,
+  container: HTMLElement,
+  wasWhole: boolean,
+  focusNodeId?: string | null
+): Promise<void> {
+  return wasWhole && !graphFitsViewport(graph, containerViewportSize(container))
+    ? fitViewWithMinZoom(graph)
+    : revealHiddenNode(graph, container, focusNodeId);
+}
+
+/**
  * The default view starts at the canvas origin, which is blank when a large
  * layout is centred far below it, so a graph that does not fit is fitted.
  */

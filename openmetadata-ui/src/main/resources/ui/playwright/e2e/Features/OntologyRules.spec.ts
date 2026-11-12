@@ -191,8 +191,17 @@ const saveRule = async (page: Page) => {
       response.request().method() === 'POST'
   );
   await clickIgnoringToasts(page.getByTestId('ontology-axiom-submit'));
+  const axiom = await okJson<OntologyAxiom>(await created, 'Create the rule');
+  // Save keeps the overlay drawer open on the saved rule, over the list's Add button.
+  // Close it only once it shows the saved rule, so the unsaved-changes guard has nothing to ask.
+  const drawer = page.getByTestId('ontology-definition-drawer');
+  await expect(drawer.getByRole('heading', { level: 2 })).toHaveText(
+    axiom.displayName || axiom.name
+  );
+  await drawer.getByTestId('ontology-definition-drawer-close').click();
+  await expect(drawer).toHaveCount(0);
 
-  return okJson<OntologyAxiom>(await created, 'Create the rule');
+  return axiom;
 };
 
 const fillQuickMustHave = async (
