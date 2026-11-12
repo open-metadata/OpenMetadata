@@ -193,7 +193,7 @@ class TestMySQLIamEngine:
         _IamStrategy(connection).build()
         listener = mock_listen.call_args.args[2]
 
-        existing_ssl = {"ssl_ca": "/path/to/ca.pem"}
+        existing_ssl = {"ca": "/path/to/ca.pem"}
         cparams = {"ssl": existing_ssl}
         listener(None, None, None, cparams)
         assert cparams["ssl"] == existing_ssl

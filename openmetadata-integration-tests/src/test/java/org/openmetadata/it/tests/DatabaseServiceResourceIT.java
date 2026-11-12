@@ -62,6 +62,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -251,6 +252,42 @@ public class DatabaseServiceResourceIT
     DatabaseService service = createEntity(request);
     assertNotNull(service);
     assertEquals(DatabaseServiceType.Mysql, service.getServiceType());
+  }
+
+  @Test
+  void post_mysqlServiceWithUnknownSslConfigField_400(TestNamespace ns) {
+    MysqlConnection conn =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test_user")
+            .withSslConfig(Map.of("sslMode", "require"));
+    CreateDatabaseService request =
+        new CreateDatabaseService()
+            .withName(ns.prefix("mysql_bad_ssl"))
+            .withServiceType(DatabaseServiceType.Mysql)
+            .withConnection(new DatabaseConnection().withConfig(conn));
+
+    OpenMetadataException e =
+        assertThrows(OpenMetadataException.class, () -> createEntity(request));
+    assertEquals(400, e.getStatusCode());
+    assertTrue(e.getMessage().contains("unrecognized field 'sslMode'"), e.getMessage());
+  }
+
+  @Test
+  void post_mysqlServiceWithValidSslConfig_200_OK(TestNamespace ns) {
+    MysqlConnection conn =
+        new MysqlConnection()
+            .withHostPort("localhost:3306")
+            .withUsername("test_user")
+            .withSslConfig(Map.of("caCertificate", "ca-pem"));
+
+    DatabaseService service =
+        createEntity(
+            new CreateDatabaseService()
+                .withName(ns.prefix("mysql_ssl"))
+                .withServiceType(DatabaseServiceType.Mysql)
+                .withConnection(new DatabaseConnection().withConfig(conn)));
+    assertNotNull(service.getConnection());
   }
 
   @Test
