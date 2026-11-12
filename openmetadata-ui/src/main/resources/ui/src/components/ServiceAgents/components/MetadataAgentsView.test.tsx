@@ -15,8 +15,12 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { ServiceCategory } from '../../../enums/service.enum';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { ServicesType } from '../../../interface/service.interface';
-import { getErrorPlaceHolder } from '../../../utils/IngestionUtils';
-import { Agent } from '../AgentsPage.interface';
+import {
+  getErrorPlaceHolder,
+  getLogViewerStatusFromRunStatus,
+} from '../../../utils/IngestionUtils';
+import { Agent, AgentRun } from '../AgentsPage.interface';
+import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import MetadataAgentsView from './MetadataAgentsView.component';
 
 const mockRunAgent = jest.fn();
@@ -143,8 +147,10 @@ jest.mock('../hooks/useAgentActions', () => ({
   }),
 }));
 
+const mockUseAgentLogs = jest.fn();
+
 jest.mock('../hooks/useAgentLogs', () => ({
-  useAgentLogs: () => ({ rawText: '', isLoading: false }),
+  useAgentLogs: (...args: unknown[]) => mockUseAgentLogs(...args),
 }));
 
 jest.mock('../hooks/useAgentPermissions', () => ({
@@ -186,6 +192,7 @@ jest.mock('../../../utils/ServiceUtilClassBase', () => ({
 jest.mock('../../../utils/IngestionUtils', () => ({
   getErrorPlaceHolder: jest.fn(),
   getLogViewerStatusFromAgentStatus: jest.fn(),
+  getLogViewerStatusFromRunStatus: jest.fn(),
 }));
 
 const viewWithAgents = (agents: Agent[], isLoading?: boolean) => (
@@ -220,6 +227,7 @@ const renderView = (agents: Agent[] = [baseAgent]) =>
 describe('MetadataAgentsView', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseAgentLogs.mockReturnValue({ rawText: '', isLoading: false });
     mockDeleteIngestionPipelineById.mockResolvedValue({});
     mockAirflowStatus.mockReturnValue({
       isAirflowAvailable: true,
@@ -356,6 +364,60 @@ describe('MetadataAgentsView', () => {
         agent: expect.objectContaining({ status: 'queued' }),
       })
     );
+  });
+
+  describe('logs of a selected older run', () => {
+    const olderRun: AgentRun = {
+      id: 'run-old',
+      status: 'failed',
+      startedAt: 'Nov 1 · 10:00',
+      duration: 1,
+      totals: { records: 0, filtered: 0, updated: 0, warnings: 0, errors: 1 },
+      steps: [],
+    };
+
+    const openOlderRunLogs = (agent: Agent) => {
+      renderView([agent]);
+      fireEvent.click(screen.getByTestId('dispatch-run-details'));
+      act(() => {
+        mockRunHistoryDrawer.mock.calls.at(-1)[0].onOpenLogs(agent, olderRun);
+      });
+    };
+
+    it('should describe the selected run in the modal, not the latest one', () => {
+      (getLogViewerStatusFromRunStatus as jest.Mock).mockReturnValue({
+        label: 'Failed',
+        tone: 'error',
+      });
+
+      openOlderRunLogs({ ...baseAgent, finishedAt: '2 minutes ago' });
+
+      expect(getLogViewerStatusFromRunStatus).toHaveBeenCalledWith('failed');
+      expect(LogViewerModal).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          lastRun: 'Nov 1 · 10:00',
+          status: { label: 'Failed', tone: 'error' },
+        }),
+        expect.anything()
+      );
+    });
+
+    it('should never treat a pinned run as live, even while the agent is running', () => {
+      openOlderRunLogs({
+        ...baseAgent,
+        status: 'running',
+        currentRunId: 'run-now',
+      });
+
+      expect(mockUseAgentLogs).toHaveBeenLastCalledWith(
+        'service.agent-1',
+        PipelineType.Metadata,
+        true,
+        false,
+        'run-now',
+        'run-old'
+      );
+    });
   });
 
   it('should forward the loading flag to the agent group', () => {

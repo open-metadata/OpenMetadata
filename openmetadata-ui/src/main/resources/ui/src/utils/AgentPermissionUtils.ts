@@ -17,6 +17,7 @@ import { getDerivedPermissionFlags } from './PermissionDerivation';
  * The server authorizes creating an agent against its parent service, so a user who manages the
  * service (Create or EditAll on it) can add agents without the global ingestionPipeline Create.
  * The global flag stays as an additional grant for anyone who has it today.
+ * ADR:2026-11-12-agent-add-shows-for-service-level-creators
  */
 export const canAddAgent = (
   servicePermission?: OperationPermission,
@@ -25,10 +26,11 @@ export const canAddAgent = (
   const service = servicePermission
     ? getDerivedPermissionFlags(servicePermission)
     : undefined;
+  const pipeline = ingestionPipelinePermission
+    ? getDerivedPermissionFlags(ingestionPipelinePermission)
+    : undefined;
 
   return Boolean(
-    ingestionPipelinePermission?.Create ||
-      service?.canCreate ||
-      service?.canEditAll
+    pipeline?.canCreate || service?.canCreate || service?.canEditAll
   );
 };

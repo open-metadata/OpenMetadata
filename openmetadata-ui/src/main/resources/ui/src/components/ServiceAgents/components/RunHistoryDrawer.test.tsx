@@ -233,7 +233,10 @@ describe('RunHistoryDrawer', () => {
     );
     fireEvent.click(screen.getByTestId('raw-logs-button'));
 
-    expect(onOpenLogs).toHaveBeenCalledWith(agent, 'run-middle');
+    expect(onOpenLogs).toHaveBeenCalledWith(
+      agent,
+      expect.objectContaining({ id: 'run-middle' })
+    );
   });
 
   it('should open the agent logs without a run id when the latest run is selected', () => {

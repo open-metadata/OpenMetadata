@@ -13,7 +13,10 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
+import { DEFAULT_ENTITY_PERMISSION } from '../../../../../utils/PermissionsUtils';
+import { AirflowStatusContextType } from '../../../../../context/AirflowStatusProvider/AirflowStatusProvider.interface';
+import { UsePagingInterface } from '../../../../../hooks/paging/usePaging';
+import { ServicesType } from '../../../../../interface/service.interface';
 import MetadataAgentsWidget from './MetadataAgentsWidget';
 import { MetadataAgentsWidgetProps } from './MetadataAgentsWidget.interface';
 
@@ -45,21 +48,22 @@ jest.mock('../../../../../utils/ServiceUtilClassBase', () => ({
   default: { getExtraIngestionMenuItems: jest.fn().mockReturnValue([]) },
 }));
 
-const NO_PERMISSION = Object.fromEntries(
-  Object.keys(ENTITY_PERMISSIONS).map((key) => [key, false])
-) as unknown as OperationPermission;
+const NO_PERMISSION: OperationPermission = { ...DEFAULT_ENTITY_PERMISSION };
 
-const props = {
+const props: MetadataAgentsWidgetProps = {
   serviceName: 'svc',
-  serviceDetails: {},
+  serviceDetails: {} as ServicesType,
   ingestionPipelineList: [],
-  ingestionPagingInfo: {},
+  ingestionPagingInfo: {} as UsePagingInterface,
   searchText: '',
-  airflowInformation: { isFetchingStatus: false, platform: 'Airflow' },
+  airflowInformation: {
+    isFetchingStatus: false,
+    platform: 'Airflow',
+  } as AirflowStatusContextType,
   onIngestionWorkflowsUpdate: jest.fn(),
   handleIngestionListUpdate: jest.fn(),
   onPageChange: jest.fn(),
-} as unknown as MetadataAgentsWidgetProps;
+};
 
 const renderWidget = async (
   servicePermission: Partial<OperationPermission>

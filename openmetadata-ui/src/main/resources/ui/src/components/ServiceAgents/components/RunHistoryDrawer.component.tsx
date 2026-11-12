@@ -291,8 +291,8 @@ interface RunHistoryDrawerProps {
   fetchRuns?: () => Promise<AgentRun[]>;
   permissions?: AgentActionPermissions;
   onClose: () => void;
-  // `runId` is set only when a run other than the latest is selected.
-  onOpenLogs: (agent: Agent, runId?: string) => void;
+  // `run` is set only when a run other than the latest is selected.
+  onOpenLogs: (agent: Agent, run?: AgentRun) => void;
   onRun: (agent: Agent) => void;
   agentLinkProps?: {
     href: string;
@@ -394,7 +394,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             isDisabled={isPending || isUnavailable}
             size="sm"
             onClick={() =>
-              onOpenLogs(agent, run?.id === latestRun?.id ? undefined : run?.id)
+              onOpenLogs(agent, run?.id === latestRun?.id ? undefined : run)
             }>
             {t('label.raw-logs')}
           </Button>

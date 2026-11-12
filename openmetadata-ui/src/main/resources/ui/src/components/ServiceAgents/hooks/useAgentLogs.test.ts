@@ -54,6 +54,14 @@ const renderAgentLogs = (isActive: boolean, runId?: string) =>
   );
 
 describe('useAgentLogs', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseLogStream.mockReturnValue(IDLE_STREAM);
+    mockGetLogs.mockResolvedValue({
+      data: { ingestion_task: 'polled line' },
+    });
+  });
+
   it('reads the pinned run log instead of the latest one', async () => {
     renderHook(() =>
       useAgentLogs(FQN, PipelineType.Metadata, true, false, RUN_ID, 'old-run')
@@ -64,12 +72,18 @@ describe('useAgentLogs', () => {
     );
   });
 
-  beforeEach(() => {
-    jest.clearAllMocks();
-    mockUseLogStream.mockReturnValue(IDLE_STREAM);
-    mockGetLogs.mockResolvedValue({
-      data: { ingestion_task: 'polled line' },
-    });
+  it('never streams a pinned run even when told it is active', async () => {
+    renderHook(() =>
+      useAgentLogs(FQN, PipelineType.Metadata, true, true, RUN_ID, 'old-run')
+    );
+
+    await waitFor(() =>
+      expect(mockGetLogs).toHaveBeenCalledWith(FQN, undefined, 'old-run')
+    );
+
+    expect(mockUseLogStream).toHaveBeenLastCalledWith(
+      expect.objectContaining({ enabled: false })
+    );
   });
 
   it('tails a live run over the stream and never polls the log endpoint', async () => {

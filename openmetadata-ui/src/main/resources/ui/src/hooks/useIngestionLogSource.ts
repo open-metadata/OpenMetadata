@@ -112,12 +112,15 @@ export const useIngestionLogSource = ({
     [canStream, ingestionFqn, runId]
   );
 
+  // A pinned run is a finished one: never live, whatever the caller passes.
+  const live = runActive && !pinnedRunId;
+
   // The stream stops itself once it reaches a terminal frame, so it is safe to
   // leave `enabled` on for the whole active run — it will not reconnect after
   // the run finishes.
   const stream = useLogStream({
     streamUrl,
-    enabled: canStream && runActive,
+    enabled: canStream && live,
   });
 
   const runFinishedOnStream =
@@ -125,7 +128,7 @@ export const useIngestionLogSource = ({
   const streamGaveUp = stream.streamDone && !runFinishedOnStream;
 
   const { isLive, isStreaming } = computeLiveState(
-    runActive,
+    live,
     runFinishedOnStream,
     canStream,
     streamGaveUp
