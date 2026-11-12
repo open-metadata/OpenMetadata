@@ -409,15 +409,23 @@ const NativeOntologyTreeView = ({
             if (changed) {
               const overrides = new Map(state.disclosure.overrides);
               overrides.set(changed.key, keys.has(changed.key));
+              // A backward window ends at its anchor; re-anchor on its first row
+              // so the toggled rows grow downward instead of off the top.
+              const [first] = page.placements;
+              const forwardAnchor =
+                state.direction === 'backward' && first
+                  ? nativeTreeCursorForPath(index, first.path)
+                  : state.anchor;
               setState({
                 ...state,
                 disclosure: { ...state.disclosure, overrides },
                 anchor: anchorAfterToggle(
                   index,
-                  state.anchor,
+                  forwardAnchor,
                   changed.path,
                   keys.has(changed.key)
                 ),
+                direction: 'forward',
                 reveal: undefined,
               });
             }
