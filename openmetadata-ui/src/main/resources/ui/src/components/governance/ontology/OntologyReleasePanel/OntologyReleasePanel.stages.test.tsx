@@ -334,7 +334,7 @@ it('shows the rejection reason and review task in AI mode', async () => {
 
 it.each([
   [Stage.Draft, 'label.draft'],
-  [Stage.InReview, 'label.in-review'],
+  [Stage.InReview, 'label.ontology-in-review'],
   [Stage.ChangesRequested, 'label.changes-requested'],
   [Stage.Approved, 'label.approved'],
   [Stage.Published, 'label.published'],
@@ -953,7 +953,7 @@ it('keeps the current InReview footer when an older Approved release is selected
     await screen.findByTestId('ontology-release-definition')
   ).toBeVisible();
   expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
-    'label.in-review'
+    'label.ontology-in-review'
   );
   expect(screen.getByTestId('ontology-publish-release')).toBeDisabled();
   expect(activationButton()).toBeEnabled();

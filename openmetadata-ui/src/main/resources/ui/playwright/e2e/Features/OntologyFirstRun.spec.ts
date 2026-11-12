@@ -183,6 +183,11 @@ test.describe(
         await expect(
           page.getByTestId('ontology-native-import-target')
         ).toContainText('New ontology');
+        const parsed = page.waitForResponse(
+          (response) =>
+            response.url().endsWith('/imports/preview') &&
+            response.request().method() === 'POST'
+        );
         await page
           .getByTestId('ontology-native-import-file')
           .locator('input[type="file"]')
@@ -194,17 +199,10 @@ test.describe(
         await expect(
           page.getByTestId('ontology-native-import-format')
         ).toHaveText('Turtle');
-
-        const parsed = page.waitForResponse(
-          (response) =>
-            response.url().endsWith('/imports/preview') &&
-            response.request().method() === 'POST'
-        );
-        await page.getByTestId('ontology-native-import-parse').click();
         expect((await parsed).status()).toBe(200);
         await expect(
-          page.getByTestId('ontology-native-import-count-new-concepts')
-        ).toContainText('2');
+          page.getByTestId('ontology-native-import-summary')
+        ).toContainText('2 new concepts');
         await expect(page.getByTestId('ontology-empty-state')).toBeVisible();
 
         const created = page.waitForResponse(isOntologyCreate);

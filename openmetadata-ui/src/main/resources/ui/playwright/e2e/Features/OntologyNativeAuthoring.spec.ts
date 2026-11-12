@@ -99,12 +99,8 @@ test.describe(
         await test.step('Open both scope-bound Add concept entry points', async () => {
           await page.goto('/governance/ontology?ontology=' + owner.id);
           await page.getByTestId('mode-tab-edit').click();
-          await expect(
-            page.getByTestId('ontology-canvas-add-concept')
-          ).toBeVisible();
-          await clickIgnoringToasts(
-            page.getByTestId('ontology-canvas-add-concept')
-          );
+          await expect(page.getByTestId('ontology-add-concept')).toBeVisible();
+          await clickIgnoringToasts(page.getByTestId('ontology-add-concept'));
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toBeVisible();
@@ -283,6 +279,8 @@ test.describe(
                 Math.abs(added.y - existing.y) > 38 * zoom
             ).toBe(true);
           }
+          // The concept drawer covers the header's right, publication trigger included.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
             page
@@ -518,11 +516,13 @@ test.describe(
         await page.getByTestId('ontology-add-concept').click();
         await page.getByTestId('new-class-label').fill('Remittance');
         await page.getByTestId('new-class-advanced-toggle').click();
+        await page.getByTestId('new-class-type').getByRole('button').click();
         await page.getByTestId('new-class-type-SKOS_CONCEPT').click();
         await expect(page.getByText(skosError)).toHaveCount(0);
         await pick(page, 'Subclass of', 'Payment');
         await expect(page.getByText(skosError)).toBeVisible();
         await expect(page.getByTestId('new-class-create')).toBeDisabled();
+        await page.getByTestId('new-class-type').getByRole('button').click();
         await page.getByTestId('new-class-type-OWL_CLASS').click();
         await expect(page.getByText(skosError)).toHaveCount(0);
         await expect(page.getByTestId('new-class-create')).toBeEnabled();

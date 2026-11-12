@@ -3362,6 +3362,138 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
     }
   }
 
+  @Test
+  void test_piiColumnTestCaseStaysMaskedAfterColumnSchemaDrift(TestNamespace ns) {
+    // Reproduces the schema-drift exploit: a PII-tagged column carries a column test case and
+    // results; the table is then re-ingested without that column (rename/drop), which deletes
+    // the column's tags and leaves the test case with a dangling entityLink. While the table
+    // resolves, the column path no longer does — the masking decision must fail closed for the
+    // PII-restricted reader, exactly like a hard-deleted table does, while authorized callers
+    // still see the full case.
+    OpenMetadataClient admin = SdkClients.adminClient();
+    User owner = UserTestFactory.createUser(ns, "pii_orphan_owner");
+    User reader = UserTestFactory.createUser(ns, "pii_orphan_reader");
+    OpenMetadataClient readerClient =
+        SdkClients.createClient(reader.getEmail(), reader.getEmail(), new String[] {});
+    OpenMetadataClient ownerClient =
+        SdkClients.createClient(owner.getEmail(), owner.getEmail(), new String[] {});
+
+    Table table = createTable(ns);
+    table.setColumns(
+        List.of(
+            new Column()
+                .withName("ssn")
+                .withDataType(ColumnDataType.STRING)
+                .withTags(
+                    List.of(
+                        new TagLabel()
+                            .withTagFQN(PIIMasker.SENSITIVE_PII_TAG)
+                            .withSource(TagLabel.TagSource.CLASSIFICATION))),
+            new Column().withName("email").withDataType(ColumnDataType.STRING)));
+    table.setOwners(List.of(owner.getEntityReference()));
+    admin.tables().update(table.getId().toString(), table);
+    ns.trackRoot(Entity.DATABASE_SERVICE, table.getService().getId());
+
+    TestCase testCase =
+        admin
+            .testCases()
+            .create(
+                new CreateTestCase()
+                    .withName(ns.prefix("pii_column_orphan"))
+                    .withDescription("Sensitive description")
+                    .withEntityLink(
+                        "<#E::table::" + table.getFullyQualifiedName() + "::columns::ssn>")
+                    .withTestDefinition("columnValuesToMatchRegex")
+                    .withParameterValues(
+                        List.of(
+                            new TestCaseParameterValue().withName("regex").withValue("^078-"))));
+    ns.trackRoot(Entity.TEST_CASE, testCase);
+    admin
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(TestCaseStatus.Failed)
+                .withResult("Sensitive failure")
+                .withTestResultValue(
+                    List.of(
+                        new TestResultValue().withName("actual").withValue("Sensitive measure"))));
+
+    // Sanity check: while the column still exists with its PII tag, the reader projection
+    // and results are masked the same way the existing pii-column guard asserts they are.
+    assertMaskedTestCase(
+        readerClient.testCases().get(testCase.getId().toString(), "testCaseResult"), testCase);
+    List<TestCaseResult> liveResults =
+        JsonUtils.convertObjects(
+            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+            TestCaseResult.class);
+    assertEquals(1, liveResults.size());
+    assertNull(liveResults.getFirst().getResult());
+
+    // Schema drift: the table is re-ingested with the `ssn` column dropped. This deletes the
+    // column's tags via deleteTagsByTarget (see EntityRepository.ColumnEntityUpdater), but the
+    // test case and its results survive with a dangling `entityLink`.
+    Table drifted = admin.tables().get(table.getId().toString(), "columns,tags");
+    drifted.setColumns(
+        new ArrayList<>(
+            List.of(new Column().withName("email").withDataType(ColumnDataType.STRING))));
+    admin.tables().update(drifted.getId().toString(), drifted);
+    Table persistedAfterDrift = admin.tables().get(table.getId().toString(), "columns,tags");
+    assertTrue(
+        persistedAfterDrift.getColumns().stream().noneMatch(c -> "ssn".equals(c.getName())),
+        "The `ssn` column must be gone after the schema drift");
+
+    // The PII-restricted reader still sees every read path masked — fail closed for the
+    // unresolved column path, exactly like a hard-deleted table.
+    assertMaskedTestCase(
+        readerClient.testCases().get(testCase.getId().toString(), "testCaseResult"), testCase);
+    assertMaskedTestCase(
+        readerClient.testCases().getByName(testCase.getFullyQualifiedName(), "testCaseResult"),
+        testCase);
+    List<TestCaseResult> orphanResults =
+        JsonUtils.convertObjects(
+            readerClient.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+            TestCaseResult.class);
+    assertEquals(1, orphanResults.size());
+    assertNull(orphanResults.getFirst().getResult());
+
+    TestCaseResult latest =
+        readerClient
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                getResourcePath() + "testCaseResults/search/latest",
+                null,
+                TestCaseResult.class,
+                RequestOptions.builder()
+                    .queryParam("testCaseFQN", testCase.getFullyQualifiedName())
+                    .build());
+    assertNotNull(latest);
+    assertNull(latest.getResult());
+
+    TestCase listed =
+        readLinkedTestCase(
+            readerClient, getResourcePath(), admin.tables().get(table.getId().toString(), "tags"));
+    assertMaskedTestCase(listed, testCase);
+
+    // Authorized callers (admin and owner) still see the full case and results — the stricter
+    // default only applies to PII-restricted users.
+    for (OpenMetadataClient privileged : List.of(admin, ownerClient)) {
+      TestCase visible =
+          privileged.testCases().get(testCase.getId().toString(), "testCaseResult,incidentStatus");
+      assertEquals("Sensitive description", visible.getDescription());
+      assertEquals(testCase.getParameterValues(), visible.getParameterValues());
+      assertEquals(
+          "Sensitive failure",
+          JsonUtils.convertObjects(
+                  privileged.testCaseResults().get(testCase.getFullyQualifiedName()).getData(),
+                  TestCaseResult.class)
+              .getFirst()
+              .getResult());
+    }
+  }
+
   private static void assertMaskedTestCase(TestCase masked, TestCase original) {
     assertEquals(original.getName() + " [MASKED]", masked.getName());
     assertEquals(original.getId(), masked.getId());

@@ -18,16 +18,70 @@ import {
   ConfirmPopover,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@openmetadata/ui-core-components/icons';
-import { KeyboardEvent } from 'react';
+import { LinkExternal01, XClose } from '@openmetadata/ui-core-components/icons';
+import { KeyboardEvent, ReactElement, RefObject } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssetBinding } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { getUnlinkDescription } from '../../../../utils/governance/ontology/OntologyConceptBindings.utils';
 import { OntologyNode } from '../../../OntologyExplorer/OntologyExplorer.interface';
 
+interface AssetUnlinkConfirmProps {
+  readonly assetName: string;
+  readonly binding: AssetBinding;
+  readonly children?: ReactElement;
+  readonly conceptName: string;
+  readonly isOpen?: boolean;
+  readonly triggerRef?: RefObject<Element | null>;
+  readonly onOpenChange?: (isOpen: boolean) => void;
+  readonly onUnlink: (binding: AssetBinding) => Promise<boolean>;
+  readonly onUnlinked?: () => void;
+}
+
+/** The one confirmation for unlinking an asset, from the panel or from a card's menu. */
+export const AssetUnlinkConfirm = ({
+  assetName,
+  binding,
+  children,
+  conceptName,
+  isOpen,
+  triggerRef,
+  onOpenChange,
+  onUnlink,
+  onUnlinked,
+}: AssetUnlinkConfirmProps) => {
+  const { t } = useTranslation();
+
+  return (
+    <ConfirmPopover
+      cancelText={t('label.cancel')}
+      confirmText={t('label.unlink')}
+      data-testid="ontology-unlink"
+      description={getUnlinkDescription(binding, t)}
+      isOpen={isOpen}
+      title={t('message.ontology-unlink-asset-title', {
+        asset: assetName,
+        concept: conceptName,
+      })}
+      triggerRef={triggerRef}
+      onConfirm={async () => {
+        const isUnlinked = await onUnlink(binding);
+        if (isUnlinked) {
+          onUnlinked?.();
+        }
+
+        return isUnlinked;
+      }}
+      onOpenChange={onOpenChange}>
+      {children}
+    </ConfirmPopover>
+  );
+};
+
+// Stops above the canvas's bottom toolbar so Open asset is never covered.
 const PANEL_CLASS = [
-  'tw:absolute tw:top-16 tw:right-3.5 tw:bottom-3.5 tw:z-20 tw:flex tw:w-80 tw:flex-col tw:gap-4',
+  'tw:absolute tw:top-16 tw:right-3.5 tw:bottom-20 tw:z-20 tw:flex tw:w-80 tw:flex-col tw:gap-4',
   'tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-4 tw:shadow-lg',
 ].join(' ');
 
@@ -81,6 +135,7 @@ const OntologyDataAssetPanel = ({
         <Box className="tw:min-w-0" direction="col" gap={1}>
           <Typography
             as="h3"
+            className="not-prose tw:m-0"
             data-testid="ontology-data-asset-panel-name"
             size="text-md"
             weight="semibold">
@@ -104,8 +159,8 @@ const OntologyDataAssetPanel = ({
       </Box>
       <Box align="center" gap={2} wrap="wrap">
         {asset?.type ? (
-          <Badge color="indigo" size="sm" type="pill-color">
-            {asset.type}
+          <Badge color="blue" size="sm" type="pill-color">
+            {entityUtilClassBase.getFormattedEntityType(asset.type)}
           </Badge>
         ) : null}
         {node.serviceLabel ? (
@@ -114,10 +169,23 @@ const OntologyDataAssetPanel = ({
           </Typography>
         ) : null}
       </Box>
-      <Box direction="col" gap={2}>
+      <Box
+        className="tw:border-t tw:border-secondary tw:pt-4"
+        direction="col"
+        gap={2}>
         <Typography size="text-sm" weight="semibold">
           {t('label.bound-column-count', { count: columns.length })}
         </Typography>
+        {columns.length === 0 ? (
+          <Typography
+            color="secondary"
+            data-testid="ontology-data-asset-panel-no-columns"
+            size="text-xs">
+            {t('message.ontology-asset-no-bound-columns', {
+              concept: conceptName,
+            })}
+          </Typography>
+        ) : null}
         <ul
           className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-1.5 tw:p-0"
           data-testid="ontology-data-asset-panel-columns">
@@ -151,40 +219,32 @@ const OntologyDataAssetPanel = ({
           </Button>
         ) : null}
       </Box>
-      <Box className="tw:mt-auto" gap={2}>
-        <Button
-          color="primary"
-          data-testid="ontology-data-asset-open"
-          size="sm"
-          onPress={onOpenAsset}>
-          {t('label.open-asset')}
-        </Button>
+      <Box className="tw:mt-auto" direction="col" gap={2}>
         {canUnlink && binding ? (
-          <ConfirmPopover
-            cancelText={t('label.cancel')}
-            confirmText={t('label.unlink')}
-            data-testid="ontology-unlink"
-            description={getUnlinkDescription(binding, t)}
-            title={t('message.ontology-unlink-asset-title', {
-              asset: name,
-              concept: conceptName,
-            })}
-            onConfirm={async () => {
-              const isUnlinked = await onUnlink(binding);
-              if (isUnlinked) {
-                onClose();
-              }
-
-              return isUnlinked;
-            }}>
+          <AssetUnlinkConfirm
+            assetName={name}
+            binding={binding}
+            conceptName={conceptName}
+            onUnlink={onUnlink}
+            onUnlinked={onClose}>
             <Button
+              className="tw:w-full"
               color="secondary-destructive"
               data-testid="ontology-data-asset-unlink"
               size="sm">
               {t('label.unlink')}
             </Button>
-          </ConfirmPopover>
+          </AssetUnlinkConfirm>
         ) : null}
+        <Button
+          className="tw:w-full"
+          color="primary"
+          data-testid="ontology-data-asset-open"
+          iconTrailing={LinkExternal01}
+          size="md"
+          onPress={onOpenAsset}>
+          {t('label.open-asset')}
+        </Button>
       </Box>
     </aside>
   );

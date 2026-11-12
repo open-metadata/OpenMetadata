@@ -296,4 +296,54 @@ describe('OntologyReviewPanel', () => {
       expect(await screen.findByText('Release 2 · Draft')).toBeInTheDocument();
     });
   });
+
+  it('groups changes by kind and filters them by change type in the changes view', async () => {
+    const change = (id: string, memberKind: string, changeType: string) => ({
+      entity: { id, name: id, type: 'ontologyConcept' },
+      memberKind,
+      changeType,
+    });
+    get.mockImplementation(async (url) => {
+      if (url.endsWith('/versions/0.2')) {
+        return {
+          data: {
+            ...release,
+            changeSummary: { added: 1, changed: 1, removed: 0, deprecated: 0 },
+          },
+        };
+      }
+      if (url.endsWith('/diff')) {
+        return {
+          data: {
+            data: [
+              change('Customer', 'CONCEPT', 'ADDED'),
+              change('buys', 'ASSOCIATION', 'CHANGED'),
+            ],
+            paging: { total: 2 },
+          },
+        };
+      }
+
+      throw new Error(`Unexpected request ${url}`);
+    });
+    renderWithQueryClient(<OntologyReviewPanel asChanges task={task} />);
+
+    expect(await screen.findByText('label.concept-plural')).toBeInTheDocument();
+    expect(screen.getByText('label.relationship-plural')).toBeInTheDocument();
+    expect(
+      screen.queryByText('label.submitted-definition')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-change-filter-added'));
+
+    expect(
+      screen.getByRole('button', { name: 'Customer' })
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'buys' })
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('label.relationship-plural')
+    ).not.toBeInTheDocument();
+  });
 });

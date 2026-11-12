@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Dialog, Modal, ModalOverlay } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
@@ -89,7 +90,9 @@ describe('OntologyDataAssetPicker', () => {
       />
     );
     await screen.findByText('customers');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
     await waitFor(() =>
       expect(saveAssets).toHaveBeenCalledWith([
@@ -187,7 +190,9 @@ describe('OntologyDataAssetPicker', () => {
 
     expect(screen.getByTestId('ontology-data-asset-save')).toBeDisabled();
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
     await waitFor(() => expect(onSave).toHaveBeenCalled());
@@ -221,7 +226,9 @@ describe('OntologyDataAssetPicker', () => {
     );
     await screen.findByTestId('ontology-data-asset-option-t-1');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
     expect(
@@ -400,11 +407,13 @@ describe('OntologyDataAssetPicker', () => {
       />
     );
     await screen.findByTestId('ontology-data-asset-option-t-1');
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
 
     expect(
       screen.getByTestId('ontology-data-asset-selected-count')
-    ).toHaveTextContent('label.n-selected');
+    ).toHaveTextContent('label.n-selected-lowercase');
 
     fireEvent.click(screen.getByTestId('ontology-data-asset-save'));
 
@@ -440,7 +449,9 @@ describe('OntologyDataAssetPicker', () => {
       screen.getByTestId('ontology-data-asset-option-t-1')
     ).toHaveAttribute('data-disabled');
 
-    fireEvent.click(screen.getByRole('checkbox', { name: 'label.select-all' }));
+    fireEvent.click(
+      screen.getByRole('checkbox', { name: 'label.select-all-lowercase' })
+    );
 
     expect(
       screen.getByTestId('ontology-data-asset-selected-count')
@@ -581,6 +592,106 @@ describe('OntologyDataAssetPicker', () => {
       expect(
         screen.getAllByText('message.ontology-asset-already-linked')
       ).toHaveLength(1);
+    });
+  });
+
+  describe('as the Link data dialog', () => {
+    const richHit = {
+      _source: {
+        ...hit('t-1', 'prescriptions', 'table')._source,
+        domains: [
+          { id: 'd-1', fullyQualifiedName: 'Clinical', name: 'Clinical' },
+        ],
+        owners: [{ id: 'u-1', name: 'priya', displayName: 'Priya Raman' }],
+        service: { name: 'bq_clinical', displayName: 'BigQuery' },
+        tags: [{ tagFQN: 'Tier.Tier1' }],
+      },
+    };
+    const lastFilter = () =>
+      JSON.stringify(mockSearch.mock.calls.at(-1)?.[0].queryFilter);
+    const pick = async (filter: RegExp, option: string) => {
+      fireEvent.click(screen.getByRole('button', { name: filter }));
+      fireEvent.click(await screen.findByRole('option', { name: option }));
+    };
+
+    beforeEach(() => {
+      mockSearch.mockResolvedValue({
+        hits: { hits: [richHit], total: { value: 12 } },
+      } as never);
+      render(
+        <ModalOverlay isOpen>
+          <Modal>
+            <Dialog aria-label="link" dividers="scroll" width={880}>
+              <OntologyDataAssetPicker
+                native={{
+                  assetTypes: ['table', 'topic'],
+                  concept: { name: 'Medication Record' },
+                  isDialog: true,
+                  isDisabled: false,
+                  linkedIds: [],
+                  saveAssets: jest.fn(),
+                }}
+                onCancel={jest.fn()}
+                onSave={jest.fn()}
+              />
+            </Dialog>
+          </Modal>
+        </ModalOverlay>
+      );
+    });
+
+    it('names the concept, counts the catalog, and shows each row with its source, type and tier', async () => {
+      await screen.findByText('prescriptions');
+
+      expect(screen.getByText('label.link-data-to-entity')).toBeInTheDocument();
+      expect(screen.getByTestId('ontology-data-asset-total')).toHaveTextContent(
+        'label.count-asset-in-catalog'
+      );
+      expect(screen.getByText('BigQuery')).toBeInTheDocument();
+      expect(
+        screen.getByTestId('ontology-data-asset-tier-t-1')
+      ).toHaveTextContent('Tier1');
+      expect(screen.getByTestId('ontology-data-asset-save')).toHaveTextContent(
+        'label.select-asset-plural'
+      );
+      expect(
+        screen.getByText('message.ontology-link-applies-now')
+      ).toBeInTheDocument();
+    });
+
+    it('orders the filters Service, Type, Domain, Owner', async () => {
+      await screen.findByText('prescriptions');
+
+      expect(
+        screen
+          .getAllByTestId(/^ontology-data-asset-\w+-filter$/)
+          .map((filter) => filter.dataset.testid)
+      ).toEqual([
+        'ontology-data-asset-service-filter',
+        'ontology-data-asset-type-filter',
+        'ontology-data-asset-domain-filter',
+        'ontology-data-asset-owner-filter',
+      ]);
+    });
+
+    it('narrows the search to one domain and one owner seen in the results', async () => {
+      await screen.findByText('prescriptions');
+
+      await pick(/label\.domain/, 'Clinical');
+      await waitFor(() =>
+        expect(lastFilter()).toContain(
+          '{"term":{"domains.fullyQualifiedName":"Clinical"}}'
+        )
+      );
+
+      await pick(/label\.owner/, 'Priya Raman');
+      await waitFor(() =>
+        expect(lastFilter()).toContain(
+          '{"nested":{"path":"owners","query":{"term":{"owners.id":"u-1"}},"ignore_unmapped":true}}'
+        )
+      );
+
+      expect(lastFilter()).toContain('domains.fullyQualifiedName');
     });
   });
 });

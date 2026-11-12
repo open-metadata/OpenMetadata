@@ -83,6 +83,23 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
   }
 
   @Override
+  public ODCSNormalizationResult normalizeLegacy(JsonNode source) {
+    ObjectNode compatible = ODCSImportCompatibility.normalizeObjectSchema(source);
+    if (compatible.path("team").has("members")) {
+      compatible.set("team", compatible.path("team").path("members"));
+    }
+    return ODCSImportCompatibility.projectQualityForValidation(compatible);
+  }
+
+  @Override
+  public JsonNode read(JsonNode document) {
+    ObjectNode canonical = (ObjectNode) preservationView(document);
+    ODCSImportQuality.normalize(canonical, true);
+    ODCSImportQuality.normalizeStatus(canonical);
+    return canonical;
+  }
+
+  @Override
   public JsonNode preservationView(JsonNode document) {
     ObjectNode view = document.deepCopy();
     if (view.path("team").isArray()) {
@@ -96,6 +113,7 @@ public final class ODCSV30Mapper implements ODCSVersionAdapter {
   @Override
   public JsonNode materialize(JsonNode view, DataContract contract) {
     ObjectNode document = view.deepCopy();
+    ODCSImportCompatibility.finalizeQuality(document);
     document.put("apiVersion", version);
     ODCSLegacyQuality quality = new ODCSLegacyQuality(schema, contract);
     // Preserved rules can still use the source version after the metadata overlay.

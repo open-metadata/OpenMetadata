@@ -13,6 +13,7 @@
 import {
   Box,
   Button,
+  Dialog,
   FieldProp,
   FormField,
   FormItemLabel,
@@ -22,16 +23,16 @@ import {
 } from '@openmetadata/ui-core-components';
 import { isAxiosError } from 'axios';
 import { keyBy } from 'lodash';
-import { Fragment, ReactNode, useState } from 'react';
+import { ReactNode, useState } from 'react';
 import { RegisterOptions, useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Layer } from '../../../../generated/api/data/createOntology';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { patchOntology } from '../../../../rest/ontologyAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
+import OntologyAdvancedToggle from './OntologyAdvancedToggle';
 import {
   ontologyFormFields,
   ontologyFormValues,
@@ -49,6 +50,14 @@ const AI_FIELD_ORDER = [
   'iri',
   'namespace',
 ];
+
+const DIALOG_MAIN_FIELDS = [
+  'displayName',
+  'description',
+  'owners',
+  'reviewers',
+];
+const DIALOG_ADVANCED_FIELDS = ['name', 'iri', 'namespace', 'layer'];
 
 const SettingsRow = ({
   label,
@@ -79,15 +88,22 @@ interface OntologyCreateFormProps {
   canEdit: boolean;
   ontology: Ontology;
   onSaved: (ontology: Ontology) => void;
+  /**
+   * `dialog` renders the fields stacked inside `Dialog.Content`, identifiers under a collapsed
+   * Advanced section, and Cancel / Save changes in `Dialog.Footer`.
+   */
+  layout?: 'rows' | 'dialog';
+  onCancel?: () => void;
 }
 
 const OntologyCreateForm = ({
   canEdit,
   ontology,
   onSaved,
+  layout = 'rows',
+  onCancel,
 }: OntologyCreateFormProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const owners = useUserTeamOptions();
   const reviewers = useUserTeamOptions();
   const form = useForm<OntologyFormValues>({
@@ -95,6 +111,7 @@ const OntologyCreateForm = ({
   });
   const markSaved = useOntologyDirtyForm(form.formState.isDirty);
   const [isSaving, setIsSaving] = useState(false);
+  const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
   const save = async (values: OntologyFormValues) => {
     if (!canEdit) {
       return;
@@ -145,47 +162,66 @@ const OntologyCreateForm = ({
     </FormField>
   );
 
-  const renderAiForm = () => {
-    const fields = keyBy(
-      ontologyFormFields(t, owners, reviewers, !canEdit || isSaving, true),
-      'name'
-    );
+  const fields = keyBy(
+    ontologyFormFields(t, owners, reviewers, !canEdit || isSaving, true),
+    'name'
+  );
 
+  const renderStacked = (name: string) => (
+    <Box direction="col" gap={1} key={name}>
+      {name === 'layer' ? (
+        <>
+          <FormItemLabel
+            label={fields[name].label}
+            required={fields[name].required}
+          />
+          {renderLayer(fields[name])}
+        </>
+      ) : (
+        getField(fields[name])
+      )}
+    </Box>
+  );
+
+  if (layout === 'dialog') {
     return (
       <HookForm
         data-testid="ontology-create-form"
         form={form}
         onSubmit={form.handleSubmit(save)}>
-        <Box direction="col">
-          {AI_FIELD_ORDER.map((name) => (
-            <SettingsRow
-              key={name}
-              label={fields[name].label}
-              required={fields[name].required}>
-              {name === 'layer'
-                ? renderLayer(fields[name])
-                : getField(unlabelled(fields[name]))}
-            </SettingsRow>
-          ))}
-          <Box
-            className="tw:border-t tw:border-secondary tw:pt-4"
-            justify="end">
-            <Button
-              color="primary"
-              isDisabled={!canEdit}
-              isLoading={isSaving}
-              size="sm"
-              type="submit">
-              {t('label.save')}
-            </Button>
-          </Box>
-        </Box>
+        <Dialog.Content>
+          {DIALOG_MAIN_FIELDS.map(renderStacked)}
+          <OntologyAdvancedToggle
+            controls="ontology-settings-advanced"
+            isOpen={isAdvancedOpen}
+            testId="ontology-settings-advanced-toggle"
+            onToggle={() => setIsAdvancedOpen((open) => !open)}
+          />
+          {isAdvancedOpen ? (
+            <Box direction="col" gap={4} id="ontology-settings-advanced">
+              {DIALOG_ADVANCED_FIELDS.map(renderStacked)}
+            </Box>
+          ) : null}
+        </Dialog.Content>
+        <Dialog.Footer>
+          <Button
+            color="secondary"
+            data-testid="ontology-settings-cancel"
+            isDisabled={isSaving}
+            onPress={onCancel}>
+            {t('label.cancel')}
+          </Button>
+          <Button
+            color="primary"
+            data-testid="ontology-settings-save"
+            isDisabled={!canEdit}
+            isLoading={isSaving}
+            type="submit">
+            {t('label.save-changes')}
+          </Button>
+        </Dialog.Footer>
       </HookForm>
     );
-  };
-
-  if (isAiMode) {
-    return renderAiForm();
   }
 
   return (
@@ -193,19 +229,27 @@ const OntologyCreateForm = ({
       data-testid="ontology-create-form"
       form={form}
       onSubmit={form.handleSubmit(save)}>
-      <Box direction="col" gap={4}>
-        {ontologyFormFields(
-          t,
-          owners,
-          reviewers,
-          !canEdit || isSaving,
-          true
-        ).map((field) => (
-          <Fragment key={field.name}>{getField(field)}</Fragment>
+      <Box direction="col">
+        {AI_FIELD_ORDER.map((name) => (
+          <SettingsRow
+            key={name}
+            label={fields[name].label}
+            required={fields[name].required}>
+            {name === 'layer'
+              ? renderLayer(fields[name])
+              : getField(unlabelled(fields[name]))}
+          </SettingsRow>
         ))}
-        <Button isDisabled={!canEdit} isLoading={isSaving} type="submit">
-          {t('label.save')}
-        </Button>
+        <Box className="tw:border-t tw:border-secondary tw:pt-4" justify="end">
+          <Button
+            color="primary"
+            isDisabled={!canEdit}
+            isLoading={isSaving}
+            size="sm"
+            type="submit">
+            {t('label.save')}
+          </Button>
+        </Box>
       </Box>
     </HookForm>
   );

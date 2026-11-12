@@ -50,6 +50,7 @@ import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
@@ -177,15 +178,15 @@ public abstract class ServiceEntityRepository<
   @Override
   public void prepare(T service, boolean update) {
     if (service.getConnection() != null) {
-      service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .prepareServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+      Object config =
+          SecretsManagerFactory.getSecretsManager()
+              .prepareServiceConnectionConfig(
+                  service.getConnection().getConfig(),
+                  service.getServiceType().value(),
+                  service.getName(),
+                  serviceType);
+      SecretsUtil.validateSslConfig(config, service.getServiceType().value());
+      service.getConnection().setConfig(config);
     }
   }
 
