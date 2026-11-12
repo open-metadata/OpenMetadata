@@ -282,7 +282,7 @@ public class GlossaryTermApprovedTaggingIT {
   void createManyWithDeprecatedTerm_failsThatInputOnly(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     GlossaryTerm term = deprecatedTerm(client, ns);
-    Table table = client.tables().create(tableRequest(ns, schema(ns), "create_many_dep"));
+    Table table = client.tables().create(tableRequest(ns, shortSchema(ns), "create_many_dep"));
     CreateTestCase valid = rowCountTestCase(table, ns.shortPrefix("valid_case"));
     CreateTestCase tagged =
         rowCountTestCase(table, ns.shortPrefix("tagged_case")).withTags(List.of(label(term)));
@@ -326,11 +326,12 @@ public class GlossaryTermApprovedTaggingIT {
                     term));
     deprecate(client, term);
 
-    Container loaded = client.containers().get(child.getId().toString(), "dataModel,parent");
+    Container loaded = client.containers().get(child.getId().toString(), "dataModel,parent,tags");
     loaded.setParent(parentB.getEntityReference());
     Container moved = client.containers().update(child.getId().toString(), loaded);
 
-    Container refetched = client.containers().get(moved.getId().toString(), "dataModel,parent");
+    Container refetched =
+        client.containers().get(moved.getId().toString(), "dataModel,parent,tags");
     assertEquals(parentB.getId(), refetched.getParent().getId());
     assertTrue(hasTerm(refetched.getDataModel().getColumns().get(0).getTags(), term));
   }
@@ -551,6 +552,14 @@ public class GlossaryTermApprovedTaggingIT {
     GlossaryTerm deprecated = client.glossaryTerms().update(term.getId().toString(), fetched);
     assertEquals(EntityStatus.DEPRECATED, deprecated.getEntityStatus());
     return deprecated;
+  }
+
+  // A test case's suite is named after its table, so the table's FQN has to stay short.
+  private static DatabaseSchema shortSchema(TestNamespace ns) {
+    String id = ns.uniqueShortId();
+    DatabaseService service =
+        DatabaseServiceTestFactory.createPostgresWithName("pg_%s".formatted(id), ns);
+    return DatabaseSchemaTestFactory.createSimpleWithName("s_%s".formatted(id), ns, service);
   }
 
   private static DatabaseSchema schema(TestNamespace ns) {

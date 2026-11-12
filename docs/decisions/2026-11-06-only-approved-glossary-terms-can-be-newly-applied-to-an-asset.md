@@ -4,7 +4,7 @@
 - **Revisions:** v1 2026-11-06 (initial)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `GlossaryTermApprovedTaggingIT`, `ApprovedGlossaryTermGuardTest`
-- **Related:** open-metadata/OpenMetadata#37164
+- **Related:** open-metadata/OpenMetadata#37164, open-metadata/OpenMetadata#37256
 
 ## Context
 The UI only lets a user pick Approved glossary terms when tagging an asset, and it disables
@@ -32,8 +32,11 @@ client applied the term. CSV import already rejected a non-Approved term on ever
   are not affected.
 
 ## Consequences
-- An ingestion run, a dbt model, or an automation that applies a non-Approved term now fails
-  that entity's write with a 400 instead of storing the label.
+- Bots get no exemption: an automation or ingestion write that applies a non-Approved term
+  fails that entity's write with a 400. Ingestion follows the same rule on the client side
+  instead: dbt, the only connector that applies glossary terms, skips a non-Approved term with a
+  warning and ingests the rest (open-metadata/OpenMetadata#37256). That change ships with or
+  before this one, so dbt runs do not start failing.
 - Terms are looked up once per write. Stored labels are read from `tag_usage` only when a
   non-Approved term reaches a target the loaded entity does not show holding it, so a partial
   projection cannot make a stored term look new, and writes with only Approved terms pay no
