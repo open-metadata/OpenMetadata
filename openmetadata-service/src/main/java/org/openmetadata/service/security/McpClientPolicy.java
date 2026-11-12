@@ -1,5 +1,19 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.service.security;
 
+import com.google.common.net.InetAddresses;
 import java.net.URI;
 import java.util.Collection;
 import java.util.Locale;
@@ -21,7 +35,7 @@ public final class McpClientPolicy {
           "wss",
           "mailto",
           "tel");
-  private static final Set<String> LOOPBACK_HOSTS = Set.of("localhost", "127.0.0.1", "[::1]");
+  private static final String LOCALHOST = "localhost";
   private static final String HTTPS = "https";
   private static final String HTTP = "http";
   private static final int MAX_REDIRECT_LENGTH = 2048;
@@ -60,13 +74,28 @@ public final class McpClientPolicy {
       throw new IllegalArgumentException("Redirect URI must have a valid host and port");
     }
     final String normalizedHost = host.toLowerCase(Locale.ROOT);
-    if (LOOPBACK_HOSTS.contains(normalizedHost)) {
+    if (isLoopback(normalizedHost)) {
       if (!Boolean.TRUE.equals(configuration.getAllowLoopbackRedirects())) {
         throw new IllegalArgumentException("Loopback redirects are disabled");
       }
     } else {
       validateRemoteHost(normalizedHost, scheme);
     }
+  }
+
+  private static boolean isLoopback(final String host) {
+    final String bare = host.startsWith("[") ? host.substring(1, host.length() - 1) : host;
+    if (InetAddresses.isInetAddress(bare)) {
+      return InetAddresses.forString(bare).isLoopbackAddress();
+    }
+    final String name = bare.endsWith(".") ? bare.substring(0, bare.length() - 1) : bare;
+    final String lastLabel = name.substring(name.lastIndexOf('.') + 1);
+    // Browsers interpret noncanonical numeric hosts as IP addresses; never classify them as DNS
+    // names.
+    if (lastLabel.matches("[0-9]+|0x[0-9a-f]+") || bare.contains(":")) {
+      throw new IllegalArgumentException("Redirect URI must use a canonical IP address");
+    }
+    return LOCALHOST.equals(name) || name.endsWith("." + LOCALHOST);
   }
 
   private void validateRemoteHost(final String host, final String scheme) {

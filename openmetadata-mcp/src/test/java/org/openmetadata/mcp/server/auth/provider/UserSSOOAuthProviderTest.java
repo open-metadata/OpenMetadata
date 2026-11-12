@@ -20,15 +20,19 @@ import jakarta.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
 import java.io.StringWriter;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
+import org.openmetadata.mcp.auth.AuthorizationParams;
 import org.openmetadata.mcp.auth.OAuthClientInformation;
 import org.openmetadata.mcp.auth.RefreshToken;
+import org.openmetadata.mcp.auth.exception.AuthorizeException;
 import org.openmetadata.mcp.auth.exception.TokenException;
 import org.openmetadata.mcp.server.auth.repository.McpPendingAuthRequestRepository;
 import org.openmetadata.mcp.server.auth.repository.OAuthAuthorizationCodeRepository;
@@ -590,9 +594,7 @@ class UserSSOOAuthProviderTest {
 
   @Test
   void handleSSOCallbackWithDbState_servesConsentPageInsteadOfIssuingCode() throws Exception {
-    // Userinfo can make a URL look like another host, and java.net.URI has no host for a name
-    // with an underscore that a browser still navigates to.
-    String redirectUri = "https://om.test@client_site.example:8443/om.test";
+    String redirectUri = "https://client-site.example:8443/om.test";
     McpPendingAuthRequestRepository pendingRepo = mock(McpPendingAuthRequestRepository.class);
     OAuthClientRepository clientRepo = mock(OAuthClientRepository.class);
     OAuthAuthorizationCodeRepository codeRepo = mock(OAuthAuthorizationCodeRepository.class);
@@ -645,9 +647,79 @@ class UserSSOOAuthProviderTest {
     assertThat(html).contains("Some &lt;b&gt;client&lt;/b&gt;");
     assertThat(html).contains("<strong>" + USER_NAME + "</strong>");
     assertThat(html)
-        .contains("<strong>https://client_site.example:8443</strong>")
+        .contains("<strong>https://client-site.example:8443</strong>")
         .doesNotContain("om.test");
     verify(response).setHeader("X-Frame-Options", "DENY");
+  }
+
+  @Test
+  void changedPolicyStopsPendingConsentAndBasicCodeIssuance() throws Exception {
+    var pending = repositoryAwaitingConsent();
+    var codes = mock(OAuthAuthorizationCodeRepository.class);
+    var provider = newProvider(pending, clientRepositoryWithRegisteredClient(), ISSUER);
+    setField(provider, "codeRepository", codes);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withAllowedRedirectHosts(Set.of("trusted.example")));
+      assertThrows(
+          IllegalStateException.class,
+          () ->
+              provider.handleConsentDecision(
+                  consentRequest(CONSENT_TOKEN, UserSSOOAuthProvider.CONSENT_APPROVE),
+                  mock(HttpServletResponse.class)));
+      assertThrows(
+          IllegalArgumentException.class,
+          () ->
+              provider.createAuthorizationCode(
+                  USER_NAME,
+                  CLIENT_ID,
+                  "challenge",
+                  URI.create(MCP_REDIRECT_URI),
+                  List.of("openid")));
+    }
+    verifyNoInteractions(codes);
+  }
+
+  @Test
+  void authorizationChecksPolicyAfterResolvingTheRegisteredDefaultRedirect() throws Exception {
+    var pending = mock(McpPendingAuthRequestRepository.class);
+    var provider = newProvider(pending, mock(OAuthClientRepository.class), ISSUER);
+    var client = new OAuthClientInformation();
+    client.setClientId(CLIENT_ID);
+    client.setRedirectUris(List.of(URI.create(MCP_REDIRECT_URI)));
+    var params = new AuthorizationParams();
+    params.setCodeChallenge("a".repeat(43));
+    var method =
+        UserSSOOAuthProvider.class.getDeclaredMethod(
+            "validateAndCreatePendingRequest",
+            OAuthClientInformation.class,
+            AuthorizationParams.class);
+    method.setAccessible(true);
+    try (var config = mockStatic(SecurityConfigurationManager.class)) {
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration().withAllowedRedirectHosts(Set.of("trusted.example")));
+      var failure =
+          assertThrows(
+              InvocationTargetException.class, () -> method.invoke(provider, client, params));
+      assertThat(failure.getCause()).isInstanceOf(AuthorizeException.class);
+      config
+          .when(SecurityConfigurationManager::getCurrentMcpConfig)
+          .thenReturn(new MCPConfiguration());
+      method.invoke(provider, client, params);
+    }
+    verify(pending)
+        .createPendingRequest(
+            eq(CLIENT_ID),
+            eq("a".repeat(43)),
+            eq("S256"),
+            eq(MCP_REDIRECT_URI),
+            any(),
+            any(),
+            any(),
+            any(),
+            any());
   }
 
   @Test

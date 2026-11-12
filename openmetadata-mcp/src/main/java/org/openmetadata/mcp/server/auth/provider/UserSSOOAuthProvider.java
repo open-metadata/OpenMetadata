@@ -241,8 +241,6 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
   public CompletableFuture<String> authorize(
       OAuthClientInformation client, AuthorizationParams params) throws AuthorizeException {
     try {
-      new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
-          .validateRedirect(params.getRedirectUri());
       if (currentRequest.get() == null || currentResponse.get() == null) {
         throw new AuthorizeException(
             "server_error", "Request context not set. Cannot proceed with authorization.");
@@ -300,6 +298,8 @@ public class UserSSOOAuthProvider implements OAuthAuthorizationServerProvider {
     URI validatedRedirectUri;
     try {
       validatedRedirectUri = client.validateRedirectUri(params.getRedirectUri());
+      new McpClientPolicy(SecurityConfigurationManager.getCurrentMcpConfig())
+          .validateRedirect(validatedRedirectUri);
     } catch (Exception e) {
       LOG.error(
           "Redirect URI validation failed for client {}: {}", client.getClientId(), e.getMessage());
