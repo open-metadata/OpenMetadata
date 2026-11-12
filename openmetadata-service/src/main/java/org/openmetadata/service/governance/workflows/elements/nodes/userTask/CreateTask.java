@@ -176,7 +176,8 @@ public class CreateTask implements TaskListener {
       WorkflowHandler.getInstance().setCustomTaskId(delegateTask.getId(), task.getId());
 
       // Set the thresholds as task variables for use in WorkflowHandler
-      delegateTask.setVariable("approvalThreshold", approvalThreshold);
+      delegateTask.setVariable(
+          "approvalThreshold", capApprovalThreshold(approvalThreshold, task.getAssignees()));
       delegateTask.setVariable("rejectionThreshold", rejectionThreshold);
       delegateTask.setVariable("approversList", new ArrayList<String>());
       delegateTask.setVariable("rejectersList", new ArrayList<String>());
@@ -1302,5 +1303,20 @@ public class CreateTask implements TaskListener {
           e.getMessage());
       return null;
     }
+  }
+
+  /**
+   * The threshold never exceeds the number of users able to vote. The requester is removed from
+   * the assignees to prevent self-approval, so a node requiring two approvals from an owner and a
+   * reviewer would otherwise leave the task open forever when the reviewer made the change. A list
+   * holding a team is not capped, since any number of its members can vote.
+   * ADR:2026-11-12-approval-threshold-never-exceeds-eligible-voters
+   */
+  static int capApprovalThreshold(int nodeThreshold, List<EntityReference> assignees) {
+    boolean onlyUsers =
+        assignees != null
+            && !assignees.isEmpty()
+            && assignees.stream().allMatch(assignee -> Entity.USER.equals(assignee.getType()));
+    return onlyUsers ? Math.min(nodeThreshold, assignees.size()) : nodeThreshold;
   }
 }
