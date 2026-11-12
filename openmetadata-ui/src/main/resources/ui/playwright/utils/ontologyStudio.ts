@@ -19,6 +19,10 @@ import {
   Page,
   TestInfo,
 } from '@playwright/test';
+import {
+  OntologyPackInstallJob,
+  Status as InstallJobStatus,
+} from '../../src/generated/api/data/ontologyPackInstallJob';
 import { Ontology } from '../../src/generated/entity/data/ontology';
 import { OntologyConcept } from '../../src/generated/entity/data/ontologyConcept';
 import { ACTION_TIMEOUT } from '../constant/common';
@@ -34,6 +38,43 @@ import {
   uuid,
 } from './common';
 import { waitForResponseWithStatus } from './waitHelpers';
+
+const SETTLED_INSTALL_JOB = new Set<string>([
+  InstallJobStatus.Completed,
+  InstallJobStatus.Failed,
+  InstallJobStatus.Cancelled,
+]);
+
+/**
+ * The settled job of a library install into an existing ontology: the start
+ * response when the job settles at once, otherwise the poll that sees it settle.
+ */
+export function waitForPackInstallJob(
+  page: Page,
+  ontologyId: string
+): Promise<OntologyPackInstallJob> {
+  const library = `/api/v1/ontologies/${ontologyId}/library/`;
+
+  return page
+    .waitForResponse(async (candidate) => {
+      const path = new URL(candidate.url()).pathname;
+      if (
+        !path.startsWith(library) ||
+        !(path.endsWith('/install') || path.startsWith(`${library}jobs/`))
+      ) {
+        return false;
+      }
+      if (!candidate.ok()) {
+        return true;
+      }
+      const job: OntologyPackInstallJob = await candidate.json();
+
+      return SETTLED_INSTALL_JOB.has(job.status);
+    })
+    .then((response) =>
+      okJson<OntologyPackInstallJob>(response, 'Library install job')
+    );
+}
 
 export interface GraphTermRef {
   id: string;
@@ -52,28 +93,57 @@ export async function findOntologyInScopeMenu(
   return page.getByTestId(`ontology-scope-${ontology.id}`);
 }
 
-/** The query picker lists 20 ontologies at a time; Show more reveals the rest until the fixture's row is on screen. */
+/**
+ * The release history control: a chip with the version for readers, an icon for editors whose
+ * accessible name carries the same text. Matches either by name.
+ */
+export const releaseNameContaining = (text: string) =>
+  new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
+/** The Import / export button opens a menu; this opens the Import or the Export dialog. */
+export async function openOntologyTransfer(
+  page: Page,
+  dialog: 'import' | 'export' = 'export'
+) {
+  await page.getByTestId('ontology-import-export-trigger').click();
+  await page.getByTestId(`ontology-${dialog}-menu-item`).click();
+}
+
+/** The export scope, options, preview and SHACL check sit in the dialog's collapsed Advanced section. */
+export async function openExportAdvanced(page: Page) {
+  const advanced = page.getByTestId('ontology-export-advanced');
+  if ((await advanced.getAttribute('aria-expanded')) !== 'true') {
+    await advanced.click();
+  }
+  await expect(advanced).toHaveAttribute('aria-expanded', 'true');
+}
+
+/** Opens one ontology's Import dialog and points it at a new ontology instead. */
+export async function openNewOntologyImport(
+  page: Page,
+  owner: Pick<Ontology, 'id'>
+) {
+  await page.goto(`/governance/ontology?ontology=${owner.id}`);
+  await expect(page.getByTestId('ontology-studio-shell')).toBeVisible();
+  await openOntologyTransfer(page, 'import');
+  await page.getByTestId('ontology-native-import-target').click();
+  await page.getByRole('option', { name: /new ontology/i }).click();
+}
+
+/** The ontology chooser is a searchable dropdown; typing the name shows the fixture's option. */
 export async function findOntologyInQueryPicker(
   page: Page,
-  ontology: Pick<Ontology, 'id'>
+  ontology: Pick<Ontology, 'id' | 'name' | 'displayName'>
 ) {
+  await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
+  await page
+    .getByTestId('ontology-query-picker')
+    .getByRole('combobox')
+    .fill(ontology.displayName ?? ontology.name);
   const option = page.getByTestId(
     `ontology-query-picker-option-${ontology.id}`
   );
-  const showMore = page.getByTestId('ontology-query-picker-show-more');
-  await expect(page.getByTestId('ontology-query-picker')).toBeVisible();
-  await expect
-    .poll(
-      async () => {
-        if ((await option.count()) === 0 && (await showMore.count()) > 0) {
-          await showMore.click();
-        }
-
-        return option.count();
-      },
-      { timeout: 30_000 }
-    )
-    .toBe(1);
+  await expect(option).toBeVisible();
 
   return option;
 }
@@ -232,6 +302,14 @@ export async function waitForGraphPoints(
 }
 
 /** A canvas point at least `clearance` px from every node, inside the graph area. */
+const CANVAS_OVERLAY_TEST_IDS = [
+  'ontology-conflicts-panel',
+  'ontology-health-panel',
+  'ontology-canvas-toolbar',
+  'ontology-graph-controls',
+  'ontology-graph-mode-model',
+];
+
 export async function findEmptyCanvasPoint(
   page: Page,
   clearance = 160
@@ -259,10 +337,31 @@ export async function findEmptyCanvasPoint(
     throw new Error('The graph canvas is not rendered');
   }
   const nodes = Object.values(positions);
+  // Cards and toolbars float over the canvas; a double-click there never reaches it.
+  const overlays = (
+    await Promise.all(
+      CANVAS_OVERLAY_TEST_IDS.map((id) =>
+        page
+          .getByTestId(id)
+          .boundingBox({ timeout: 1000 })
+          .catch(() => null)
+      )
+    )
+  ).filter((rect): rect is NonNullable<typeof rect> => rect !== null);
+  const isUnderOverlay = (x: number, y: number) =>
+    overlays.some(
+      (rect) =>
+        x >= rect.x - 40 &&
+        x <= rect.x + rect.width + 40 &&
+        y >= rect.y - 40 &&
+        y <= rect.y + rect.height + 40
+    );
   const candidates = [];
   for (let x = box.x + 120; x < box.x + box.width - 120; x += 40) {
     for (let y = box.y + 120; y < box.y + box.height - 120; y += 40) {
-      candidates.push({ x, y });
+      if (!isUnderOverlay(x, y)) {
+        candidates.push({ x, y });
+      }
     }
   }
   const distance = (point: { x: number; y: number }) =>

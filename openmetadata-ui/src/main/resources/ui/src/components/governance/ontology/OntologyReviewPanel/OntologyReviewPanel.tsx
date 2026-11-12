@@ -13,6 +13,7 @@
 
 import {
   Alert,
+  Badge,
   Box,
   Button,
   Typography,
@@ -20,18 +21,67 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { Task } from '../../../../generated/entity/tasks/task';
 import { getOntologyReleaseVersion } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import {
+  releaseChangeCount,
+  releaseKindCounts,
+} from '../OntologyReleasePanel/OntologyReleasePanel.utils';
 import OntologyReviewRelease from './OntologyReviewRelease';
 
 interface OntologyReviewPanelProps {
   task: Task;
+  /** Heads the panel "Changes [n]" with change filters instead of the definition name. */
+  asChanges?: boolean;
   onReadyChange?: (ready: boolean) => void;
 }
 
+const PanelHeader = ({
+  asChanges,
+  release,
+}: {
+  asChanges?: boolean;
+  release: OntologyRelease;
+}) => {
+  const { t } = useTranslation();
+
+  return asChanges ? (
+    <Box align="center" gap={2}>
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-md"
+        weight="semibold">
+        {t('label.change-plural')}
+      </Typography>
+      <Badge color="gray" size="sm" type="pill-color">
+        {releaseChangeCount(release) ?? '—'}
+      </Badge>
+    </Box>
+  ) : (
+    <>
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0"
+        size="text-md"
+        weight="semibold">
+        {t('label.submitted-definition')}
+      </Typography>
+      <Typography>
+        {getEntityName(release)} ·{' '}
+        {release.semanticVersion
+          ? 'v' + release.semanticVersion
+          : t('label.draft')}
+      </Typography>
+    </>
+  );
+};
+
 const OntologyReviewPanel = ({
   task,
+  asChanges,
   onReadyChange,
 }: OntologyReviewPanelProps) => {
   const { t } = useTranslation();
@@ -94,15 +144,11 @@ const OntologyReviewPanel = ({
 
   return (
     <Box data-testid="ontology-review-panel" direction="col" gap={3}>
-      <Typography as="h3" size="text-md" weight="semibold">
-        {t('label.submitted-definition')}
-      </Typography>
-      <Typography>
-        {getEntityName(data)} ·{' '}
-        {data.semanticVersion ? 'v' + data.semanticVersion : t('label.draft')}
-      </Typography>
+      <PanelHeader asChanges={asChanges} release={data} />
       <OntologyReviewRelease
         baseReleaseId={data.baseReleaseId}
+        counts={asChanges ? releaseKindCounts(data) : undefined}
+        filterable={asChanges}
         key={data.id}
         releaseId={data.id}
         onReadyChange={onReadyChange}

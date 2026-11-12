@@ -18,16 +18,15 @@ on:
     branches:
       - main
   pull_request:
-    types: [labeled, opened, synchronize, reopened, ready_for_review]
+    types: [opened, synchronize, reopened, ready_for_review]
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
+  pull-requests: read
 
 concurrency:
-  group: openmetadata-service-unit-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || (github.event.label.name == 'safe to test' && github.event.pull_request.head.repo.full_name != github.repository) }}
+  group: openmetadata-service-unit-tests-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: true
 
 jobs:
   # Detect whether relevant paths changed. When no Java service files
@@ -37,7 +36,7 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
+    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
     outputs:
       java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
       k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}
@@ -46,7 +45,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         if: ${{ github.event_name != 'workflow_dispatch' }}
-
+        with:
+          persist-credentials: false
       - uses: dorny/paths-filter@v4
         id: filter
         if: ${{ github.event_name != 'workflow_dispatch' }}
@@ -54,8 +54,6 @@ jobs:
           filters: |
             java:
               - '.github/workflows/openmetadata-service-unit-tests.yml'
-              - '.github/actions/ci-test-evidence/**'
-              - '.github/scripts/merge_queue_evidence.py'
               - 'openmetadata-service/**'
               - 'openmetadata-spec/**'
               - 'openmetadata-clients/**'
@@ -66,8 +64,6 @@ jobs:
               - 'bootstrap/**'
             k8s_operator:
               - 'openmetadata-k8s-operator/**'
-              - '.github/actions/ci-test-evidence/**'
-              - '.github/scripts/merge_queue_evidence.py'
             # Everything that ends up inside the server image or decides how it
             # is launched. Not 'openmetadata-service/**': the smoke test asserts
             # image properties, not application behaviour, so a Java-only change
@@ -98,6 +94,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies
@@ -168,30 +165,12 @@ jobs:
             -DfailIfNoTests=false \
             -Dsonar.skip=true
 
-      - name: Record test evidence for dequeue attribution
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: ./.github/actions/ci-test-evidence
-        with:
-          check-name: openmetadata-service-unit-tests
-          suite: openmetadata-service:static-code-analysis
-          reports: '**/target/surefire-reports/TEST-*.xml'
-
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: openmetadata-service-surefire-reports
           path: openmetadata-service/target/surefire-reports/
-
-      - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-service/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: "openmetadata-service/target/surefire-reports/TEST-*.xml"
-          check_name: "Test Report"
 
   k8s_operator-unit-tests:
     runs-on: ubuntu-latest
@@ -202,6 +181,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies
@@ -226,30 +206,12 @@ jobs:
         run: |
           mvn -B test -pl openmetadata-k8s-operator
 
-      - name: Record test evidence for dequeue attribution
-        if: ${{ always() }}
-        continue-on-error: true
-        uses: ./.github/actions/ci-test-evidence
-        with:
-          check-name: k8s_operator-unit-tests
-          suite: openmetadata-k8s-operator
-          reports: openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml
-
       - name: Upload surefire reports
         if: ${{ failure() && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
         uses: actions/upload-artifact@v7
         with:
           name: k8s-operator-surefire-reports
           path: openmetadata-k8s-operator/target/surefire-reports/
-
-      - name: Publish Test Report
-        if: ${{ always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository) && hashFiles('openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml') != '' }}
-        uses: scacap/action-surefire-report@v1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          fail_on_test_failures: true
-          report_paths: "openmetadata-k8s-operator/target/surefire-reports/TEST-*.xml"
-          check_name: "K8s Operator Test Report"
 
   # The server image is distroless: no package manager, a non-root uid, a shell
   # that exists only because busybox is deliberately kept, and the glibc
@@ -265,6 +227,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          persist-credentials: false
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Cache Maven dependencies
@@ -301,7 +264,7 @@ jobs:
 
   # Single required-check gate for branch protection.
   # `always()` so the context reports on every PR: when the workflow is legitimately
-  # skipped (draft PR / missing `safe to test` label / no relevant paths changed) this
+  # skipped (draft PR / no relevant paths changed) this
   # exits 0; otherwise every triggered job must have succeeded.
   # Set "OpenMetadata Service Unit Tests / openmetadata-service-unit-tests-status" as the sole required check for this workflow.
   openmetadata-service-unit-tests-status:
@@ -321,11 +284,10 @@ jobs:
           K8S_RESULT: ${{ needs.k8s_operator-unit-tests.result }}
           DOCKER_RESULT: ${{ needs.docker-image-smoke-test.result }}
         run: |
-          # `changes` is skipped by its own `if:` on draft PRs and on fork PRs that
-          # lack the `safe to test` label. Nothing downstream can have run, so the
-          # required check is legitimately green.
+          # `changes` is skipped by its own `if:` on draft PRs. Nothing downstream
+          # can have run, so the required check is legitimately green.
           if [[ "$CHANGES_RESULT" == "skipped" ]]; then
-            echo "Detect Changes was skipped (draft PR or missing 'safe to test' label); nothing to gate."
+            echo "Detect Changes was skipped (draft PR); nothing to gate."
             exit 0
           fi
 

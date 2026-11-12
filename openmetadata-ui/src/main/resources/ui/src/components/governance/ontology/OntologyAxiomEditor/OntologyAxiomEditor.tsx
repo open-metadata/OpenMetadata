@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Alert, HookForm } from '@openmetadata/ui-core-components';
+import { Alert, Button, HookForm } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isUndefined, omitBy, pick } from 'lodash';
@@ -21,25 +21,21 @@ import { useTranslation } from 'react-i18next';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   createOntologyAxiom,
   patchOntologyAxiom,
 } from '../../../../rest/ontologyAPI';
 import { generateUUID, getErrorText } from '../../../../utils/StringUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
+import OntologyFormFooter from '../OntologyFormFooter/OntologyFormFooter';
 import { OntologyReferenceOptions } from '../OntologyIriInput/OntologyIriInput.types';
 import {
   AdvancedRuleFields,
-  AxiomActions,
-  axiomButtonSize,
   AxiomDetailFields,
   axiomFormValues,
-  AxiomFrame,
   AxiomModeSwitch,
   AxiomOutcome,
   AxiomPreview,
-  AxiomTitle,
   collectAxiomProblems,
   previewSentence,
   QuickRuleFields,
@@ -62,7 +58,26 @@ interface OntologyAxiomEditorProps {
   axiom?: OntologyAxiom;
   canEdit: boolean;
   onSaved?: (axiom: OntologyAxiom) => void;
+  /** Closes the drawer; without one, Cancel puts the saved rule back. */
+  onCancel?: () => void;
 }
+
+/** The footer status: not run yet, passed, or failed. */
+const validationStatusKey = (valid?: boolean) => {
+  if (valid === undefined) {
+    return 'label.not-validated';
+  }
+
+  return valid ? 'label.validation-passed' : 'label.validation-failed';
+};
+
+/** A saved rule needs a change, and every rule a passing validation, before Save. */
+const isRuleSavable = (checks: {
+  canEdit: boolean;
+  isChanged: boolean;
+  isValid: boolean;
+  isQuickReady: boolean;
+}) => Object.values(checks).every(Boolean);
 
 const OntologyAxiomEditor = ({
   ontology,
@@ -70,9 +85,9 @@ const OntologyAxiomEditor = ({
   axiom,
   canEdit,
   onSaved,
+  onCancel,
 }: OntologyAxiomEditorProps) => {
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const form = useForm<OntologyAxiomFormState>({
     defaultValues: axiomFormValues(),
   });
@@ -160,15 +175,24 @@ const OntologyAxiomEditor = ({
 
   const isQuick = rule.mode === 'quick';
   const problems = collectAxiomProblems(validation.current, isQuick);
-  const isSavable =
-    canEdit &&
-    Boolean(validation.current?.report?.valid) &&
-    (!isQuick || isQuickRuleReady(rule.quick));
+  const isSavable = isRuleSavable({
+    canEdit,
+    isChanged: !axiom || form.formState.isDirty,
+    isValid: validation.current?.report?.valid === true,
+    isQuickReady: !isQuick || isQuickRuleReady(rule.quick),
+  });
+  const cancel = () => {
+    const next = axiomFormValues(axiom);
+    form.reset(next);
+    loadRule(next, Boolean(axiom));
+    clearValidation();
+  };
 
   return (
     <HookForm form={form} onSubmit={form.handleSubmit(submit)}>
-      <AxiomFrame isAiMode={isAiMode}>
-        <AxiomTitle axiom={axiom} isAiMode={isAiMode} />
+      <section
+        className="tw:flex tw:flex-col tw:gap-4.5"
+        data-testid="ontology-axiom-panel">
         <AxiomModeSwitch mode={rule.mode} onChange={rule.changeMode} />
         {rule.lossyReason ? (
           <Alert data-testid="ontology-axiom-quick-lossy" variant="warning">
@@ -195,21 +219,32 @@ const OntologyAxiomEditor = ({
         <AxiomDetailFields />
         <AxiomPreview sentence={sentence} />
         <AxiomOutcome problems={problems} validation={validation.current} />
-        <AxiomActions
-          isReady={isOntologyAxiomReady(values)}
-          isSavable={isSavable}
-          isSubmitting={form.formState.isSubmitting}
-          isValidating={validation.isValidating}
-          size={axiomButtonSize(isAiMode)}
-          onValidate={() => void validation.validate()}
-        />
         {created ? (
           <Alert
             title={created.displayName ?? created.name}
             variant="success"
           />
         ) : null}
-      </AxiomFrame>
+        <OntologyFormFooter
+          canSubmit={isSavable}
+          isDirty={form.formState.isDirty}
+          isSaving={form.formState.isSubmitting}
+          status={t(validationStatusKey(validation.current?.report?.valid))}
+          submitLabel={t('label.save')}
+          submitTestId="ontology-axiom-submit"
+          testId="ontology-axiom-footer"
+          onCancel={onCancel ?? cancel}>
+          <Button
+            color="secondary"
+            data-testid="ontology-axiom-validate"
+            isDisabled={!isOntologyAxiomReady(values)}
+            isLoading={validation.isValidating}
+            size="sm"
+            onClick={() => void validation.validate()}>
+            {t('label.validate')}
+          </Button>
+        </OntologyFormFooter>
+      </section>
     </HookForm>
   );
 };

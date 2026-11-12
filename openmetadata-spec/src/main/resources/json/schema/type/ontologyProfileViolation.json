@@ -30,6 +30,7 @@
         "UNDECLARED_CLASS",
         "INVALID_CLASS_KIND",
         "SUBCLASS_CYCLE",
+        "SUBPROPERTY_CYCLE",
         "DISJOINT_CLASH"
       ]
     }

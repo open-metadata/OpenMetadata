@@ -12,7 +12,8 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
@@ -57,10 +58,14 @@ const renderPicker = (ontologies: Ontology[]) =>
     </QueryClientProvider>
   );
 
-const countsOf = (id: string) =>
-  screen
-    .getByTestId(`ontology-query-picker-option-${id}`)
-    .querySelector('[data-testid="ontology-query-picker-counts"]');
+const optionText = async (name: string, id: string) => {
+  await userEvent
+    .setup({ advanceTimers: jest.advanceTimersByTime })
+    .type(screen.getByRole('combobox'), name);
+
+  return (await screen.findByTestId(`ontology-query-picker-option-${id}`))
+    .textContent;
+};
 
 describe('OntologyQueryPicker counts', () => {
   beforeEach(() => {
@@ -69,23 +74,18 @@ describe('OntologyQueryPicker counts', () => {
     properties.mockResolvedValue({ data: [], paging: { total: 4 } });
   });
 
-  it('requests counts only for the rows on screen and counts more rows when asked to show more', async () => {
+  it('counts the first rows, then the rows matching what the user types', async () => {
     renderPicker(Array.from({ length: 45 }, (_, index) => ontology(index)));
 
     await waitFor(() => expect(concepts).toHaveBeenCalledTimes(20));
 
     expect(properties).toHaveBeenCalledTimes(20);
-    expect(
-      screen.queryByTestId('ontology-query-picker-option-o-20')
-    ).toBeNull();
 
-    fireEvent.click(screen.getByTestId('ontology-query-picker-show-more'));
-
-    await waitFor(() => expect(concepts).toHaveBeenCalledTimes(40));
-
-    expect(
-      screen.getByTestId('ontology-query-picker-option-o-39')
-    ).toBeInTheDocument();
+    await waitFor(async () =>
+      expect(await optionText('Onto 39', 'o-39')).toContain(
+        '7 label.concept-plural · 4 label.property-plural'
+      )
+    );
   });
 
   it('shows the active release counts to a reader who may not read the working draft', async () => {
@@ -98,10 +98,10 @@ describe('OntologyQueryPicker counts', () => {
 
     renderPicker([ontology(1, 'release-1')]);
 
-    await waitFor(() =>
-      expect(countsOf('o-1')).toHaveTextContent(
-        '12 label.concept-plural · 5 label.property-plural'
-      )
+    await waitFor(() => expect(members).toHaveBeenCalledTimes(2));
+
+    expect(await optionText('Onto 1', 'o-1')).toContain(
+      '12 label.concept-plural · 5 label.property-plural'
     );
   });
 
@@ -114,7 +114,7 @@ describe('OntologyQueryPicker counts', () => {
     await waitFor(() => expect(concepts).toHaveBeenCalled());
     await waitFor(() => expect(properties).toHaveBeenCalled());
 
-    expect(countsOf('o-1')).toBeEmptyDOMElement();
+    expect(await optionText('Onto 1', 'o-1')).toBe('Onto 1');
     expect(members).not.toHaveBeenCalled();
   });
 });

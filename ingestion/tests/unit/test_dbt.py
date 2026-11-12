@@ -512,8 +512,7 @@ class DbtUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.database.dbt.metadata.DbtSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_dbt_config)
         self.dbt_source_obj = DbtSource.create(

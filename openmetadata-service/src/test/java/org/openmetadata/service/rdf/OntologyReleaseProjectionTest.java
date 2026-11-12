@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.io.ByteArrayOutputStream;
+import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -18,7 +19,9 @@ import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import org.apache.jena.rdf.model.Model;
+import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.RDFList;
+import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.apache.jena.vocabulary.DCTerms;
 import org.apache.jena.vocabulary.OWL2;
@@ -107,9 +110,43 @@ class OntologyReleaseProjectionTest {
                     .withReplacedBy(URI.create(EX + "related")),
                 property("related")
                     .withPropertyChain(List.of(URI.create(EX + "first"), URI.create(EX + "second")))
-                    .withInverse(URI.create(EX + "inverse")),
+                    .withInverse(URI.create(EX + "inverse"))
+                    .withSuperProperties(List.of(URI.create(EX + "linked"))),
+                property("linked"),
                 axiom("subclass")));
     assertNativeReimportIsNoOp(bundle, format);
+  }
+
+  @ParameterizedTest
+  @EnumSource(OntologyPropertyKind.class)
+  void retainsSuperpropertiesOfEveryKindAsOwl2DlSubPropertyAxioms(OntologyPropertyKind kind) {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                property("child")
+                    .withKind(kind)
+                    .withSuperProperties(List.of(URI.create(EX + "parent"))),
+                property("parent").withKind(kind)));
+    final Model model = new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    try {
+      assertTrue(
+          model.contains(
+              model.createResource(EX + "child"),
+              RDFS.subPropertyOf,
+              model.createResource(EX + "parent")));
+      final var ontology = OwlApiProjection.parse(model);
+      final AxiomType<?> expected =
+          switch (kind) {
+            case OBJECT -> AxiomType.SUB_OBJECT_PROPERTY;
+            case DATA -> AxiomType.SUB_DATA_PROPERTY;
+            case ANNOTATION -> AxiomType.SUB_ANNOTATION_PROPERTY_OF;
+          };
+      assertEquals(1, ontology.getAxiomCount(expected));
+      assertEquals(List.of(), OwlApiProjection.dlViolations(ontology));
+    } finally {
+      model.close();
+    }
+    assertNativeReimportIsNoOp(bundle, RdfSerializationFormat.TURTLE);
   }
 
   @Test
@@ -672,6 +709,70 @@ class OntologyReleaseProjectionTest {
     }
   }
 
+  @Test
+  void servingProjectionStatesEachStatementOnceWithoutItsSource() {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                concept("Customer").withDescription("A buyer"), property("buys"), axiom("parent")));
+    final Model served =
+        new OntologyReleaseProjection(OntologyReleaseProjection.StatementSources.OMITTED)
+            .build(bundle.release(), bundle.members());
+    final Model expected = ModelFactory.createDefaultModel();
+    RDFDataMgr.read(
+        expected,
+        new StringReader(
+            """
+            @prefix owl: <http://www.w3.org/2002/07/owl#> .
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+            @prefix dct: <http://purl.org/dc/terms/> .
+            @prefix ex: <https://example.org/model/> .
+            ex: a owl:Ontology ; rdfs:label "model" ; owl:versionIRI <%s> .
+            dct:source a owl:AnnotationProperty .
+            ex:Customer a owl:Class ; rdfs:label "Customer" ; rdfs:comment "A buyer" ;
+              rdfs:subClassOf ex:Party .
+            ex:Party a owl:Class .
+            ex:buys a owl:ObjectProperty ; rdfs:label "buys" .
+            """
+                .formatted(bundle.release().getVersionIri())),
+        null,
+        Lang.TURTLE);
+    try {
+      assertTrue(
+          served.isIsomorphicWith(expected),
+          () ->
+              "unexpected "
+                  + served.difference(expected).listStatements().toList()
+                  + " missing "
+                  + expected.difference(served).listStatements().toList());
+    } finally {
+      served.close();
+      expected.close();
+    }
+  }
+
+  @Test
+  void exportProjectionIsTheServingProjectionWithOneSourceAxiomPerStatement() {
+    final Bundle bundle =
+        bundle(
+            List.of(
+                concept("Customer").withDescription("A buyer"), property("buys"), axiom("parent")));
+    final Model exported =
+        new OntologyReleaseProjection().build(bundle.release(), bundle.members());
+    final Model served =
+        new OntologyReleaseProjection(OntologyReleaseProjection.StatementSources.OMITTED)
+            .build(bundle.release(), bundle.members());
+    try {
+      final var sources = exported.listSubjectsWithProperty(RDF.type, OWL2.Axiom).toList();
+      assertEquals(7, sources.size());
+      sources.forEach(source -> exported.removeAll(source, null, null));
+      assertTrue(exported.isIsomorphicWith(served));
+    } finally {
+      exported.close();
+      served.close();
+    }
+  }
+
   @ParameterizedTest
   @EnumSource(OntologyAxiomType.class)
   void everyAxiomKindRetainsItsLogicalMeaningAndProvenance(OntologyAxiomType kind) {
@@ -760,6 +861,10 @@ class OntologyReleaseProjectionTest {
             property("first"),
             property("second")),
         List.of(property("related").withPropertyChain(List.of(related, related))),
+        List.of(
+            property("related").withPropertyChain(List.of(first, second)),
+            property("first").withSuperProperties(List.of(related)),
+            property("second")),
         List.of(property("related").withPropertyChain(List.of(related, first)), property("first")),
         List.of(property("related").withPropertyChain(List.of(first, related)), property("first")),
         List.of(

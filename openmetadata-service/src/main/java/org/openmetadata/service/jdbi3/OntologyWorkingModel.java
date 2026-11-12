@@ -29,6 +29,7 @@ import org.openmetadata.service.ontology.OntologyReferences;
 import org.openmetadata.service.ontology.OntologyReleaseManifest;
 import org.openmetadata.service.ontology.OntologyReleaseReader;
 import org.openmetadata.service.ontology.OntologyStructureValidator;
+import org.openmetadata.service.ontology.OntologyWriteClosureLimits;
 
 /** Reads only affected definitions and their semantic context under the ontology's write lock. */
 final class OntologyWorkingModel {
@@ -44,6 +45,7 @@ final class OntologyWorkingModel {
           "inverse",
           "propertyChain",
           "disjointWith",
+          "superProperties",
           "characteristics",
           "enumValues",
           "replacedBy",
@@ -53,7 +55,7 @@ final class OntologyWorkingModel {
           "propertyIri",
           "targetIri",
           "literal");
-  private static final int LIMIT = OntologyReleaseManifest.MAX_MEMBERS;
+  private static final int LIMIT = OntologyWriteClosureLimits.WORKING_MODEL_CLOSURE;
   private final CollectionDAO dao;
 
   record Change(OntologyDefinition before, OntologyDefinition after) {}

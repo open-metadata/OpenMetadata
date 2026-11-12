@@ -48,7 +48,11 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
 
   return (
     <Box direction="col" gap={2}>
-      <Typography as="h4" size="text-sm" weight="semibold">
+      <Typography
+        as="h4"
+        className="not-prose tw:m-0"
+        size="text-sm"
+        weight="semibold">
         {t('label.release-events')}
       </Typography>
       {events.isPending && (
@@ -114,7 +118,7 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
           isLoading={events.isFetchingNextPage}
           size="sm"
           onPress={() => void events.fetchNextPage()}>
-          {t('label.load-more')}
+          {t('label.load-more-lowercase')}
         </Button>
       )}
     </Box>

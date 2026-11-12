@@ -166,10 +166,10 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
   }
 
   @Override
-  public void replaceGraph(final String graph, final Model model) {
+  public void replaceGraph(final String graph, final UUID releaseId, final Model model) {
     mutate(
-        storage -> storage.replaceGraph(graph, model),
-        () -> RdfMutation.GraphReplace.capture(graph, model));
+        storage -> storage.replaceGraph(graph, releaseId, model),
+        () -> new RdfMutation.GraphReplace(graph, releaseId));
   }
 
   private static byte[] readTurtle(final InputStream input) {
