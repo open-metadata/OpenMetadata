@@ -578,13 +578,16 @@ export const addLineageViaMenu = async (
       .getByRole('button')
       .click();
     await page.locator(`[role="listbox"]:visible [data-key="${toId}"]`).click();
-    await popover
-      .getByTestId('add-lineage-column-select')
-      .getByRole('button')
-      .click();
-    await page
-      .locator(`[role="listbox"]:visible [data-key="${columnFqn}"]`)
-      .click();
+    // A metric is its own column endpoint, so there is no column to pick.
+    if (columnFqn !== get(toEntity, 'entityResponseData.fullyQualifiedName')) {
+      await popover
+        .getByTestId('add-lineage-column-select')
+        .getByRole('button')
+        .click();
+      await page
+        .locator(`[role="listbox"]:visible [data-key="${columnFqn}"]`)
+        .click();
+    }
   } else {
     // Type rows carry their search index as test id, which is
     // locale-independent where the option labels are not.
@@ -1000,7 +1003,7 @@ export const addColumnLineage = async (
   page: Page,
   fromColumnFqn: string,
   toColumnFqn: string,
-  toEntity: TableClass | DashboardDataModelClass,
+  toEntity: TableClass | DashboardDataModelClass | MetricClass,
   fromOwnerFqn?: string
 ) => {
   const fromColumn = await revealColumn(page, fromColumnFqn, fromOwnerFqn);
