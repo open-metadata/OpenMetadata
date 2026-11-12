@@ -33,6 +33,7 @@ record EntityCreationSpec(
           "extractionStats",
           "followers",
           "memoryCount",
+          "neverExtracted",
           "processingError",
           "processingStatus",
           "votes");
