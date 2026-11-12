@@ -88,7 +88,7 @@ class MicroStrategyClient:
         self._base_url = clean_uri(str(self.config.hostPort))
         # The Library web app is usually served at /MicroStrategyLibrary, but a server can run it,
         # or a second copy of it, under another name.
-        library_path = (self.config.libraryPath or DEFAULT_LIBRARY_PATH).strip("/") or DEFAULT_LIBRARY_PATH
+        library_path = (self.config.libraryPath or "").strip().strip("/") or DEFAULT_LIBRARY_PATH
         self.library_url = f"{self._base_url}/{library_path}"
         self._api_version = f"{library_path}/api"
         self._cube_sql: OrderedDict[str, str | None] = OrderedDict()

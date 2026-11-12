@@ -24,8 +24,6 @@ from urllib.parse import urlparse
 
 import pytest
 import requests
-from collate_sqllineage.core.parser.sqlglot.analyzer import SqlGlotLineageAnalyzer
-from collate_sqllineage.core.parser.sqlparse.analyzer import SqlParseLineageAnalyzer
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.entity.services.connections.dashboard.microStrategyConnection import (
@@ -389,7 +387,9 @@ class TestClient:
 
         assert server.calls[0].body == {"loginMode": 8, "applicationType": 35}
 
-    @pytest.mark.parametrize("library_path", ["MicroStrategyLibrary2", "/MicroStrategyLibrary2/"])
+    @pytest.mark.parametrize(
+        "library_path", ["MicroStrategyLibrary2", "/MicroStrategyLibrary2/", " MicroStrategyLibrary2 "]
+    )
     def test_a_custom_library_path_replaces_the_default(self, server, library_path):
         server.api = "/MicroStrategyLibrary2/api"
         client = MicroStrategyClient(_connection(libraryPath=library_path))
@@ -405,7 +405,7 @@ class TestClient:
         ):
             MicroStrategyClient(_connection())
 
-    @pytest.mark.parametrize("library_path", [None, "", "/"])
+    @pytest.mark.parametrize("library_path", [None, "", "/", "  "])
     def test_an_empty_library_path_falls_back_to_the_default(self, server, library_path):
         client = MicroStrategyClient(_connection(libraryPath=library_path))
 
@@ -434,14 +434,17 @@ class TestClient:
     def test_engine_steps_are_stripped_from_the_cube_sql(self, sql, expected):
         assert strip_engine_steps(sql) == expected
 
-    @pytest.mark.parametrize(
-        "sql, analyzer",
-        [(CUBE_SQL, SqlParseLineageAnalyzer), (strip_engine_steps(CUBE_SQL), SqlGlotLineageAnalyzer)],
-        ids=["raw", "stripped"],
-    )
-    def test_only_the_stripped_cube_sql_is_parsed_by_sqlglot(self, sql, analyzer):
-        parser = LineageParser(sql, dialect=Dialect.BIGQUERY)
-        assert isinstance(parser.parser._analyzer, analyzer)
+    def test_the_engine_steps_block_fails_parsing_until_stripped(self):
+        raw = LineageParser(CUBE_SQL, dialect=Dialect.MYSQL)
+        stripped = LineageParser(strip_engine_steps(CUBE_SQL), dialect=Dialect.MYSQL)
+
+        assert not raw.query_parsing_success
+        assert stripped.query_parsing_success
+        assert sorted(str(table) for table in stripped.source_tables) == [
+            "<default>.order_detail",
+            "tutorial_wh.lu_category",
+            "tutorial_wh.lu_item",
+        ]
 
     def test_owner_email_is_the_default_address(self, client):
         assert client.get_owner_email(OWNER_ID) == "owner@example.com"
