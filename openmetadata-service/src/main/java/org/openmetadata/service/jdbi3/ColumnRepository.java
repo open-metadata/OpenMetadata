@@ -1074,6 +1074,8 @@ public class ColumnRepository {
               totalUpdates, maxColumnUpdates));
     }
 
+    Map<String, Set<String>> previewRejections =
+        dryRun ? previewRejections(parsedRows, occurrencesByName) : Map.of();
     Map<List<String>, BulkOperationResult> resultByRow = new HashMap<>();
     for (String[] fields : parsedRows) {
       try {
@@ -1084,7 +1086,7 @@ public class ColumnRepository {
         }
 
         if (dryRun) {
-          countPreviewedRow(result, occurrences, fields);
+          countPreviewedRow(result, occurrences, rowTags(fields), previewRejections);
           continue;
         }
 
@@ -1118,17 +1120,41 @@ public class ColumnRepository {
     return result;
   }
 
+  /**
+   * The glossary terms a dry run's rows would be rejected for, per column, judged in one guard call
+   * for the whole file: one term lookup and at most one stored-label read, however many rows it
+   * has. Rows naming the same column pool their labels; each row is then judged by its own terms.
+   */
+  private Map<String, Set<String>> previewRejections(
+      List<String[]> parsedRows, Map<String, List<ColumnOccurrence>> occurrencesByName) {
+    Map<String, List<TagLabel>> tagsByColumn = new HashMap<>();
+    for (String[] fields : parsedRows) {
+      List<TagLabel> tags = rowTags(fields);
+      for (ColumnOccurrence occurrence : listOrEmpty(occurrencesByName.get(fields[0]))) {
+        tagsByColumn
+            .computeIfAbsent(occurrence.getColumnFQN(), column -> new ArrayList<>())
+            .addAll(tags);
+      }
+    }
+    return ApprovedGlossaryTermGuard.rejectedTermHashesByTarget(tagsByColumn, Map.of());
+  }
+
+  private List<TagLabel> rowTags(String[] fields) {
+    return parseTags(fields.length > 3 ? fields[3] : null, fields.length > 4 ? fields[4] : null);
+  }
+
   // The apply passes a row when any of its occurrences takes the update, so the preview does too.
-  private void countPreviewedRow(
-      CsvImportResult result, List<ColumnOccurrence> occurrences, String[] fields) {
-    List<TagLabel> tags =
-        parseTags(fields.length > 3 ? fields[3] : null, fields.length > 4 ? fields[4] : null);
-    Map<String, String> rejections =
-        ApprovedGlossaryTermGuard.rejectionsByTarget(
-            requestedTags(toColumnUpdates(occurrences, null, null, tags)), Map.of());
+  private static void countPreviewedRow(
+      CsvImportResult result,
+      List<ColumnOccurrence> occurrences,
+      List<TagLabel> tags,
+      Map<String, Set<String>> rejections) {
     boolean anyApplies =
         occurrences.stream()
-            .anyMatch(occurrence -> !rejections.containsKey(occurrence.getColumnFQN()));
+            .anyMatch(
+                occurrence ->
+                    !ApprovedGlossaryTermGuard.appliesAnyOf(
+                        tags, rejections.getOrDefault(occurrence.getColumnFQN(), Set.of())));
     if (anyApplies) {
       result.setNumberOfRowsPassed(result.getNumberOfRowsPassed() + 1);
     } else {

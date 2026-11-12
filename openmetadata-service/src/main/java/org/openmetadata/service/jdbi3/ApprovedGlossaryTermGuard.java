@@ -108,6 +108,43 @@ public final class ApprovedGlossaryTermGuard {
    */
   public static Map<String, String> rejectionsByTarget(
       Map<String, List<TagLabel>> requested, Map<String, List<TagLabel>> held) {
+    Rejected rejected = rejectedTerms(requested, held);
+    Map<String, String> rejections = new TreeMap<>();
+    rejected
+        .termHashesByTarget()
+        .forEach(
+            (target, hashes) ->
+                rejections.put(
+                    String.valueOf(target),
+                    TagLabelUtil.unapprovedTermMessage(
+                        rejected.termsByHash().get(new TreeSet<>(hashes).first()))));
+    return rejections;
+  }
+
+  /**
+   * For each target, the hashes of the terms {@code requested} applies to it that would be
+   * rejected: not Approved, and not already held there. Whether a target holds a term does not
+   * depend on who asks, so one call can judge many requests that share targets, each through
+   * {@link #appliesAnyOf}.
+   */
+  public static Map<String, Set<String>> rejectedTermHashesByTarget(
+      Map<String, List<TagLabel>> requested, Map<String, List<TagLabel>> held) {
+    return rejectedTerms(requested, held).termHashesByTarget();
+  }
+
+  /** Whether {@code tags} apply any of the terms {@code termHashes} names. */
+  public static boolean appliesAnyOf(List<TagLabel> tags, Set<String> termHashes) {
+    return !termHashes.isEmpty()
+        && TagLabelUtil.appliedGlossaryTermFqns(tags).stream()
+            .map(ApprovedGlossaryTermGuard::termHash)
+            .anyMatch(termHashes::contains);
+  }
+
+  private record Rejected(
+      Map<String, Set<String>> termHashesByTarget, Map<String, GlossaryTerm> termsByHash) {}
+
+  private static Rejected rejectedTerms(
+      Map<String, List<TagLabel>> requested, Map<String, List<TagLabel>> held) {
     Map<String, Set<String>> requestedTerms = appliedTermsByTarget(requested);
     Map<String, GlossaryTerm> unapprovedByHash =
         TagLabelUtil.unapprovedGlossaryTerms(allTerms(requestedTerms)).stream()
@@ -119,14 +156,7 @@ public final class ApprovedGlossaryTermGuard {
     if (!newlyApplied.isEmpty()) {
       dropHeld(newlyApplied, storedTermHashesByTarget(newlyApplied.keySet()));
     }
-    Map<String, String> rejections = new TreeMap<>();
-    newlyApplied.forEach(
-        (target, hashes) ->
-            rejections.put(
-                String.valueOf(target),
-                TagLabelUtil.unapprovedTermMessage(
-                    unapprovedByHash.get(new TreeSet<>(hashes).first()))));
-    return rejections;
+    return new Rejected(newlyApplied, unapprovedByHash);
   }
 
   /** An entity with its tagged inline fields, by the container path that holds them. */

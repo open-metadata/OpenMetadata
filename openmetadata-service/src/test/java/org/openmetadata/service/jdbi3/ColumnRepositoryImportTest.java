@@ -359,6 +359,41 @@ class ColumnRepositoryImportTest {
     }
   }
 
+  /**
+   * A dry run judges the whole file in one guard call: one term lookup however many rows carry
+   * terms, and rows naming the same column are still judged by their own terms.
+   */
+  @Test
+  void csvDryRunLooksTermsUpOnceAndJudgesEachRowByItsOwnTerms() {
+    doReturn(termCatalog())
+        .when(repository)
+        .searchColumns(any(), any(), any(), any(), any(), any(), any());
+    try (MockedStatic<Entity> entity = deprecatedTermHeldOn(HELD_COLUMN)) {
+      CsvImportResult result =
+          repository.importColumnsCSV(
+              null,
+              null,
+              "column,displayName,description,tags,glossaryTerms\n"
+                  + "col_d,,,,%s\n".formatted(DEPRECATED.getFullyQualifiedName())
+                  + "col_d,,,,\n"
+                  + "col_d,,,,%s".formatted(DEPRECATED.getFullyQualifiedName()),
+              true,
+              null,
+              null,
+              null,
+              null,
+              null);
+
+      assertEquals(1, result.getNumberOfRowsPassed());
+      assertEquals(2, result.getNumberOfRowsFailed());
+      entity.verify(
+          () ->
+              Entity.getEntityByNames(
+                  eq(Entity.GLOSSARY_TERM), anyList(), eq(""), eq(Include.NON_DELETED)),
+          times(1));
+    }
+  }
+
   @Test
   void searchDryRunReportsTheColumnsAnUnapprovedTermWouldBeRejectedOn() {
     doReturn(termCatalog().subList(0, 1))
