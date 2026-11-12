@@ -922,3 +922,11 @@ CREATE TABLE IF NOT EXISTS ontology_concept_binding (
 );
 CREATE INDEX IF NOT EXISTS ontology_concept_binding_asset_index ON ontology_concept_binding (assetId);
 
+-- A Context Center file's sharing as a column, so a listing counts the files everyone may see
+-- without reading each file
+-- (ADR:2026-11-03-context-center-listings-show-and-count-only-what-the-caller-may-read).
+-- STORED rewrites context_file once.
+ALTER TABLE context_file ADD COLUMN IF NOT EXISTS visibility VARCHAR(16)
+    GENERATED ALWAYS AS (json -> 'shareConfig' ->> 'visibility') STORED;
+CREATE INDEX IF NOT EXISTS idx_context_file_visibility ON context_file (visibility);
+

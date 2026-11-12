@@ -279,27 +279,13 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
   }
 
   /**
-   * How many files under {@code filter} the caller may see, counted over at most {@link
-   * ContextMemoryResource#MAX_VISIBLE_COUNT_SCAN} rows: past that it is a lower bound. Rows are
-   * read by key without their extracted text and pass the same row and sharing checks as a listed
-   * page.
+   * How many files under {@code filter} the caller may see, passing the same row and sharing checks
+   * as a listed page.
    */
   private int visibleCount(SecurityContext securityContext, ListFilter filter) {
     Fields fields = getFields(ContextFileVisibility.guardFields(null));
-    List<UUID> ids =
-        repository
-            .getDao()
-            .listKeys(filter, ContextMemoryResource.MAX_VISIBLE_COUNT_SCAN, true)
-            .stream()
-            .map(key -> UUID.fromString(key.id()))
-            .toList();
-    // The keys already follow the filter's include, so the read by id adds no condition of its own.
-    List<ContextFile> scanned = repository.getWithoutExtractedText(ids, fields, Include.ALL);
-    List<ContextFile> readable =
-        rowsMayDiffer(securityContext, fields)
-            ? rowAuthorization(fields).readable().apply(securityContext, scanned)
-            : scanned;
-    return ContextFileVisibility.filterVisible(readable, securityContext).size();
+    return repository.countVisible(
+        filter, securityContext, viewPermissionFilter, rowAuthorization(fields).operations());
   }
 
   @GET

@@ -21,10 +21,14 @@ import static org.openmetadata.service.Entity.USER;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.jdbi.v3.core.mapper.RowMapper;
+import org.jdbi.v3.core.statement.StatementContext;
 import org.jdbi.v3.sqlobject.CreateSqlObject;
 import org.jdbi.v3.sqlobject.config.RegisterRowMapper;
 import org.jdbi.v3.sqlobject.customizer.Bind;
@@ -142,6 +146,99 @@ public interface KnowledgeAssetDAOs {
           : findByIdsWithoutExtractedText(distinctIds, getCondition(include)).stream()
               .map(pair -> jsonToEntity(pair.json(), pair.id()))
               .toList();
+    }
+
+    // Counts by sharing read the `visibility` column: no value or Entity is visible to everyone a
+    // policy allows, any other value only to the file's user owners and, when Shared, the
+    // principals it names (ContextFileVisibility).
+    String OWNED_BY_CALLER =
+        "SELECT o.toId FROM entity_relationship o WHERE o.fromId = :userId "
+            + "AND o.fromEntity = 'user' AND o.toEntity = 'contextFile' AND o.relation = :owns";
+    String FOLDER_FILES =
+        "FROM entity_relationship er JOIN context_file cf ON er.toId = cf.id "
+            + "WHERE er.fromId IN (<folderIds>) AND er.fromEntity = 'folder' "
+            + "AND er.toEntity = 'contextFile' AND er.relation = :contains "
+            + "AND (cf.deleted = false OR cf.deleted IS NULL) ";
+    String FILTERED_FILES = "FROM (SELECT id, visibility FROM context_file <cond>) cf WHERE ";
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(*) "
+            + FOLDER_FILES
+            + "AND (cf.visibility IS NULL OR cf.visibility = 'Entity') GROUP BY er.fromId")
+    @RegisterRowMapper(FolderCountMapper.class)
+    List<FolderCount> countOpenFilesByFolder(
+        @BindList("folderIds") List<String> folderIds, @Bind("contains") int contains);
+
+    @SqlQuery(
+        "SELECT er.fromId, COUNT(*) "
+            + FOLDER_FILES
+            + "AND cf.visibility <> 'Entity' AND cf.id IN ("
+            + OWNED_BY_CALLER
+            + ") GROUP BY er.fromId")
+    @RegisterRowMapper(FolderCountMapper.class)
+    List<FolderCount> countOwnedRestrictedFilesByFolder(
+        @BindList("folderIds") List<String> folderIds,
+        @Bind("contains") int contains,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT er.fromId, cf.id "
+            + FOLDER_FILES
+            + "AND cf.visibility = 'Shared' AND cf.id NOT IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    @RegisterRowMapper(FolderFileMapper.class)
+    List<FolderFile> listSharedFilesNotOwnedByFolder(
+        @BindList("folderIds") List<String> folderIds,
+        @Bind("contains") int contains,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT count(*) " + FILTERED_FILES + "cf.visibility IS NULL OR cf.visibility = 'Entity'")
+    int countOpenFiles(@BindMap Map<String, ?> params, @Define("cond") String cond);
+
+    @SqlQuery(
+        "SELECT count(*) "
+            + FILTERED_FILES
+            + "cf.visibility <> 'Entity' AND cf.id IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    int countOwnedRestrictedFiles(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    @SqlQuery(
+        "SELECT cf.id "
+            + FILTERED_FILES
+            + "cf.visibility = 'Shared' AND cf.id NOT IN ("
+            + OWNED_BY_CALLER
+            + ")")
+    List<String> listSharedFilesNotOwned(
+        @BindMap Map<String, ?> params,
+        @Define("cond") String cond,
+        @Bind("userId") String userId,
+        @Bind("owns") int owns);
+
+    record FolderCount(UUID folderId, int count) {}
+
+    record FolderFile(UUID folderId, UUID fileId) {}
+
+    class FolderCountMapper implements RowMapper<FolderCount> {
+      @Override
+      public FolderCount map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new FolderCount(UUID.fromString(rs.getString(1)), rs.getInt(2));
+      }
+    }
+
+    class FolderFileMapper implements RowMapper<FolderFile> {
+      @Override
+      public FolderFile map(ResultSet rs, StatementContext ctx) throws SQLException {
+        return new FolderFile(UUID.fromString(rs.getString(1)), UUID.fromString(rs.getString(2)));
+      }
     }
 
     @ConnectionAwareSqlQuery(

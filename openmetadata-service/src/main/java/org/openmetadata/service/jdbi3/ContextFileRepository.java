@@ -5,10 +5,15 @@ import static org.openmetadata.service.jdbi3.FolderRepository.FOLDER_ENTITY;
 import static org.openmetadata.service.util.EntityUtil.entityReferenceMatch;
 import static org.openmetadata.service.util.EntityUtil.isNullOrEmptyChangeDescription;
 
+import com.google.common.collect.Lists;
+import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.RejectedExecutionException;
 import lombok.extern.slf4j.Slf4j;
@@ -18,10 +23,12 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.Folder;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -33,7 +40,13 @@ import org.openmetadata.service.cache.ListCountCache;
 import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO.OrderBy;
+import org.openmetadata.service.jdbi3.KnowledgeAssetDAOs.ContextFileDAO.FolderFile;
 import org.openmetadata.service.resources.drive.ContextFileResource;
+import org.openmetadata.service.resources.drive.ContextFileVisibility;
+import org.openmetadata.service.security.DefaultAuthorizer;
+import org.openmetadata.service.security.ViewPermissionFilter;
+import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.RowDecisionGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -51,6 +64,9 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   private final AssetRepository assetRepository;
   private final ContextFileContentRepository contentRepository;
   private final CollectionDAO.ContextFileDAO contextFileDAO;
+
+  /** Files read per query while checking which ones a caller may see. */
+  private static final int VISIBILITY_READ_BATCH = 500;
 
   public ContextFileRepository(Jdbi jdbi) {
     super(
@@ -132,6 +148,142 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
     List<ContextFile> files = contextFileDAO.findEntitiesWithoutExtractedText(ids, include);
     setFieldsInBulk(fields, files);
     return files;
+  }
+
+  /**
+   * How many live files in each of {@code folderIds} the caller may see. Without a rule that could
+   * refuse a file the listing allowed, files are counted by their sharing in SQL and only the Shared
+   * files the caller does not own are read; with one, every file is checked.
+   */
+  public Map<UUID, Integer> countVisibleByFolder(
+      List<UUID> folderIds,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    List<String> ids = folderIds.stream().map(UUID::toString).toList();
+    return rowsMayDiffer(securityContext, operations)
+        ? countCheckedByFolder(ids, securityContext, rowCheck, operations)
+        : countSharedByFolder(ids, securityContext);
+  }
+
+  /** As {@link #countVisibleByFolder}, over the files {@code filter} lists. */
+  public int countVisible(
+      ListFilter filter,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    if (rowsMayDiffer(securityContext, operations)) {
+      List<UUID> ids =
+          contextFileDAO.listKeys(filter, Integer.MAX_VALUE, true).stream()
+              .map(key -> UUID.fromString(key.id()))
+              .toList();
+      // The keys already follow the filter's include, so the read by id adds no condition.
+      return visibleIds(ids, Include.ALL, securityContext, rowCheck, operations).size();
+    }
+    String cond = filter.getConditionForEntity(contextFileDAO.getTableName());
+    Map<String, String> params = filter.getQueryParams();
+    String userId = callerId(securityContext);
+    int owns = Relationship.OWNS.ordinal();
+    List<UUID> shared =
+        contextFileDAO.listSharedFilesNotOwned(params, cond, userId, owns).stream()
+            .map(UUID::fromString)
+            .toList();
+    return contextFileDAO.countOpenFiles(params, cond)
+        + contextFileDAO.countOwnedRestrictedFiles(params, cond, userId, owns)
+        + sharedWithCaller(shared, Include.ALL, securityContext).size();
+  }
+
+  private Map<UUID, Integer> countSharedByFolder(
+      List<String> folderIds, SecurityContext securityContext) {
+    int contains = Relationship.CONTAINS.ordinal();
+    int owns = Relationship.OWNS.ordinal();
+    String userId = callerId(securityContext);
+    Map<UUID, Integer> counts = new HashMap<>();
+    contextFileDAO
+        .countOpenFilesByFolder(folderIds, contains)
+        .forEach(count -> counts.merge(count.folderId(), count.count(), Integer::sum));
+    contextFileDAO
+        .countOwnedRestrictedFilesByFolder(folderIds, contains, userId, owns)
+        .forEach(count -> counts.merge(count.folderId(), count.count(), Integer::sum));
+    List<FolderFile> shared =
+        contextFileDAO.listSharedFilesNotOwnedByFolder(folderIds, contains, userId, owns);
+    Set<UUID> visible =
+        sharedWithCaller(
+            shared.stream().map(FolderFile::fileId).toList(), Include.ALL, securityContext);
+    shared.stream()
+        .filter(file -> visible.contains(file.fileId()))
+        .forEach(file -> counts.merge(file.folderId(), 1, Integer::sum));
+    return counts;
+  }
+
+  private Map<UUID, Integer> countCheckedByFolder(
+      List<String> folderIds,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    List<CollectionDAO.EntityRelationshipObject> edges =
+        daoCollection
+            .relationshipDAO()
+            .findToBatch(
+                folderIds, Relationship.CONTAINS.ordinal(), FOLDER_ENTITY, CONTEXT_FILE_ENTITY);
+    List<UUID> fileIds =
+        edges.stream().map(edge -> UUID.fromString(edge.getToId())).distinct().toList();
+    Set<UUID> visible =
+        visibleIds(fileIds, Include.NON_DELETED, securityContext, rowCheck, operations);
+    Map<UUID, Integer> counts = new HashMap<>();
+    edges.stream()
+        .filter(edge -> visible.contains(UUID.fromString(edge.getToId())))
+        .forEach(edge -> counts.merge(UUID.fromString(edge.getFromId()), 1, Integer::sum));
+    return counts;
+  }
+
+  /** Of {@code fileIds}, the ones the caller may read: the listing's row check, then sharing. */
+  private Set<UUID> visibleIds(
+      List<UUID> fileIds,
+      Include include,
+      SecurityContext securityContext,
+      ViewPermissionFilter rowCheck,
+      List<MetadataOperation> operations) {
+    EntityUtil.Fields fields =
+        ResourceContext.authorizationFields(
+            this, getFields(ContextFileVisibility.guardFields(null)));
+    Set<UUID> visible = new HashSet<>();
+    for (List<UUID> batch : Lists.partition(fileIds, VISIBILITY_READ_BATCH)) {
+      List<ContextFile> readable =
+          rowCheck.retainPermitted(
+              securityContext,
+              CONTEXT_FILE_ENTITY,
+              this,
+              getWithoutExtractedText(batch, fields, include),
+              operations);
+      ContextFileVisibility.filterVisible(readable, securityContext)
+          .forEach(file -> visible.add(file.getId()));
+    }
+    return visible;
+  }
+
+  /** Of the Shared files {@code fileIds}, the ones whose sharing names the caller. */
+  private Set<UUID> sharedWithCaller(
+      List<UUID> fileIds, Include include, SecurityContext securityContext) {
+    Set<UUID> visible = new HashSet<>();
+    for (List<UUID> batch : Lists.partition(fileIds, VISIBILITY_READ_BATCH)) {
+      ContextFileVisibility.filterVisible(
+              contextFileDAO.findEntitiesWithoutExtractedText(batch, include), securityContext)
+          .forEach(file -> visible.add(file.getId()));
+    }
+    return visible;
+  }
+
+  private static boolean rowsMayDiffer(
+      SecurityContext securityContext, List<MetadataOperation> operations) {
+    return RowDecisionGate.mayDiffer(
+        DefaultAuthorizer.getSubjectContext(securityContext), CONTEXT_FILE_ENTITY, operations);
+  }
+
+  /** The caller's user id, or an id no relationship holds when the caller is not a user. */
+  private static String callerId(SecurityContext securityContext) {
+    User user = DefaultAuthorizer.getSubjectContext(securityContext).user();
+    return user == null || user.getId() == null ? "" : user.getId().toString();
   }
 
   @Override

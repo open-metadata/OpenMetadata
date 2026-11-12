@@ -1,8 +1,6 @@
 package org.openmetadata.service.jdbi3;
 
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -201,47 +199,6 @@ public class FolderRepository extends EntityRepository<Folder> {
         .stream()
         .sorted(Comparator.comparing(ContextFile::getName))
         .toList();
-  }
-
-  /**
-   * The live files directly in each folder, at most {@code maxFiles} of them, read in one batch with
-   * {@code fields} and without their extracted text. Files past the bound are left out.
-   */
-  public Map<UUID, List<ContextFile>> childFilesByFolder(
-      List<Folder> folders, EntityUtil.Fields fields, int maxFiles) {
-    List<CollectionDAO.EntityRelationshipObject> edges =
-        daoCollection
-            .relationshipDAO()
-            .findToBatch(
-                entityListToStrings(folders),
-                Relationship.CONTAINS.ordinal(),
-                FOLDER_ENTITY,
-                ContextFileRepository.CONTEXT_FILE_ENTITY);
-    if (edges.isEmpty()) {
-      return Map.of();
-    }
-    List<UUID> fileIds =
-        edges.stream()
-            .map(edge -> UUID.fromString(edge.getToId()))
-            .distinct()
-            .limit(maxFiles)
-            .toList();
-    ContextFileRepository fileRepo =
-        (ContextFileRepository)
-            Entity.getEntityRepository(ContextFileRepository.CONTEXT_FILE_ENTITY);
-    Map<UUID, ContextFile> files =
-        fileRepo.getWithoutExtractedText(fileIds, fields, Include.NON_DELETED).stream()
-            .collect(Collectors.toMap(ContextFile::getId, file -> file));
-    Map<UUID, List<ContextFile>> byFolder = new HashMap<>();
-    for (CollectionDAO.EntityRelationshipObject edge : edges) {
-      ContextFile file = files.get(UUID.fromString(edge.getToId()));
-      if (file != null) {
-        byFolder
-            .computeIfAbsent(UUID.fromString(edge.getFromId()), id -> new ArrayList<>())
-            .add(file);
-      }
-    }
-    return byFolder;
   }
 
   public class FolderUpdater extends EntityUpdater {

@@ -5,6 +5,7 @@
 - **Deciders:** Pere Miquel Brull
 - **Guard:** `ContextMemoryVisibilityTest`, `ContextMemorySearchVisibilityTest`,
   `ContextMemoryResourceTest`, `ContextFileIT.testListingCountsOnlyFilesTheCallerMaySee`,
+  `ContextFileIT.testCountsAgreeWithTheListingForEverySharing`,
   `ListRowAuthorizationIT.aFileListingOrderedByUpdateTimeLeavesOutAndDoesNotCountRowsADenyRuleRefuses`
 - **Related:** ADR:2026-10-15-search-admits-a-subjects-own-pending-memories-on-request;
   ADR:2026-10-15-a-memory-cites-its-supporting-queries-and-their-retirement-holds-it-for-review;
@@ -54,14 +55,22 @@ count-only call (`limit=0`) and on any page that hid none itself.
 
 The plain file listing (`/v1/contextCenter/drive/files`) reports its `paging.total` by the same
 rule as the plain memory list: it stands only when the page shows every counted row, and otherwise
-the files the caller may see are recounted over at most `MAX_VISIBLE_COUNT_SCAN` rows, never less
-than the page. The recount reads the rows by key, without their extracted text, and applies the
-listing's row check and the file sharing rules; the caller's teams and domains are resolved once
-per list.
+the files the caller may see are recounted, never less than the page. A folder's `childrenCount`,
+which the Documents page shows as the folder's badge, counts the same files. Both counts are exact:
+files have no scan bound.
+
+- `context_file.visibility` is a stored column generated from `shareConfig.visibility`, with an
+  index (2.1.0 migration). A file whose visibility is unset or `Entity` is visible to everyone a
+  policy allows; any other value only to its user owners and, when `Shared`, the principals it
+  names (`ContextFileVisibility`).
+- For a caller no rule could refuse a file the listing allowed (`RowDecisionGate`), the count is
+  SQL over that column: the open files, plus the restricted files the caller owns (the `OWNS`
+  relationship), plus the `Shared` files they do not own whose `sharedWith` names them, the only
+  files read, without their extracted text.
+- For a caller a rule could refuse (a deny rule or a conditional allow), every file in scope is
+  read in batches and passes the listing's row check and the sharing rules. Policy conditions are
+  evaluated by the policy engine, never in SQL, so this cost grows with the folder for those
+  callers only.
+
 The listing ordered by update time (`orderBy`) applies the same row check to its page, so the page
 and its total agree; it does not refill, and its cursors are sealed when rows are checked.
-
-A folder's `childrenCount`, which the Documents page shows as the folder's badge, counts the same
-files: for anyone but an admin, the files of every folder in the response are read in one batch,
-without their extracted text and at most `MAX_VISIBLE_COUNT_SCAN` of them, and counted after the
-same row check and sharing rules. Past that bound a folder's count is a lower bound.

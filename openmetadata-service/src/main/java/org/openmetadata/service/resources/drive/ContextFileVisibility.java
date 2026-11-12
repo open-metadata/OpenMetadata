@@ -72,7 +72,10 @@ public final class ContextFileVisibility {
     return visibleTo(callerName(securityContext), isAdmin(securityContext));
   }
 
-  /** Whether everyone may read the file: nothing restricts it, or its visibility is Entity. */
+  /**
+   * Whether everyone may read the file: nothing restricts it, or its visibility is Entity. The
+   * counts in {@code ContextFileDAO} apply the same rule to the {@code visibility} column.
+   */
   public static boolean isOrgWide(ContextFile file) {
     MemoryShareConfig share = file.getShareConfig();
     return share == null

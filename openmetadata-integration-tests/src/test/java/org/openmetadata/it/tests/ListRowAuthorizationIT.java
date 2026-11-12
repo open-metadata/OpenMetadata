@@ -134,6 +134,11 @@ public class ListRowAuthorizationIT {
             "/v1/contextCenter/drive/files?orderBy=DESC&limit=10&folderId=" + folder.getId());
     assertEquals(List.of(visible.getName()), names(ordered));
     assertEquals(1, ordered.path("paging").path("total").asInt(), ordered.toString());
+    JsonNode badge =
+        list(
+            restricted,
+            "/v1/contextCenter/drive/folders/" + folder.getId() + "?fields=childrenCount");
+    assertEquals(1, badge.path("childrenCount").asInt(), badge.toString());
   }
 
   @Test
