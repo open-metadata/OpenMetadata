@@ -12,25 +12,25 @@
  */
 
 import {
-  Box,
-  Button,
-  ButtonGroup,
-  ButtonGroupItem,
-  Checkbox,
-  Input,
-  Select,
-  Typography,
+    Box,
+    Button,
+    ButtonGroup,
+    ButtonGroupItem,
+    Checkbox,
+    Input,
+    Select,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  ConceptPropertyInput,
-  ObjectPropertyInput,
+    ConceptPropertyInput,
+    ObjectPropertyInput
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
-  DataPropertyInput,
-  StudioDatatype,
-  STUDIO_DATATYPES,
+    DataPropertyInput,
+    StudioDatatype,
+    STUDIO_DATATYPES
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';

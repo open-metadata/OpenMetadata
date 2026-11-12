@@ -11,60 +11,60 @@
  *  limitations under the License.
  */
 import {
-  act,
-  fireEvent,
-  screen,
-  waitFor,
-  within,
+    act,
+    fireEvent,
+    screen,
+    waitFor,
+    within
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import {
-  Code,
-  OntologyProfileReport,
-  Severity,
+    Code,
+    OntologyProfileReport,
+    Severity
 } from '../../../../generated/api/data/ontologyProfileReport';
 import { UpdateOntologyConceptBinding } from '../../../../generated/api/data/updateOntologyConceptBinding';
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import {
-  AxiomType,
-  ExpressionKind,
-  OntologyAxiom,
-  Provenance,
+    AxiomType,
+    ExpressionKind,
+    OntologyAxiom,
+    Provenance
 } from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConceptType } from '../../../../generated/entity/data/ontologyConcept';
 import {
-  Kind,
-  OntologyProperty,
+    Kind,
+    OntologyProperty
 } from '../../../../generated/entity/data/ontologyProperty';
 import { PaletteKey } from '../../../../generated/entity/data/relationshipType';
 import {
-  AssetType,
-  OntologyConceptBindingsResponse,
-  State,
+    AssetType,
+    OntologyConceptBindingsResponse,
+    State
 } from '../../../../generated/type/ontologyConceptBindingsResponse';
 import { OntologyDefinitionStatus } from '../../../../generated/type/ontologyDefinitionStatus';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { BindingSnapshot } from '../../../../interface/governance/ontology/ontologyConceptBindings.types';
 import APIClient from '../../../../rest/axiosClient';
 import {
-  createOntologyAxiom,
-  deleteOntologyConceptBinding,
-  generateOntologyConceptQuery,
-  getOntologyConceptBindings,
-  putOntologyConceptBinding,
-  validateOntologyAxiom,
+    createOntologyAxiom,
+    deleteOntologyConceptBinding,
+    generateOntologyConceptQuery,
+    getOntologyConceptBindings,
+    putOntologyConceptBinding,
+    validateOntologyAxiom
 } from '../../../../rest/ontologyAPI';
 import { getEntityPermissionById } from '../../../../rest/permissionAPI';
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import {
-  getModelRelations,
-  OntologyModelRelation,
-  OntologyStudioModel,
+    getModelRelations,
+    OntologyModelRelation,
+    OntologyStudioModel
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import {
-  RelationWarningCheck,
-  RelationWarningContext,
+    RelationWarningCheck,
+    RelationWarningContext
 } from '../../../OntologyExplorer/RelationWarning.context';
 import { useOntologyConceptEditor } from '../OntologyConceptEditor/OntologyConceptEditor';
 import OntologyConceptInspector from './OntologyConceptInspector';

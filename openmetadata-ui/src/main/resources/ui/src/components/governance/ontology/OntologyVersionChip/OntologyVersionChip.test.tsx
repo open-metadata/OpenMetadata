@@ -14,8 +14,8 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 import {
-  useEnUsTranslations,
-  useKeyEchoTranslations,
+    useEnUsTranslations,
+    useKeyEchoTranslations
 } from '../../../../test/unit/enUsTranslation';
 import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePanel.constants';
 import OntologyVersionChip from './OntologyVersionChip';

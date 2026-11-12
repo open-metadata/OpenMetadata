@@ -11,17 +11,17 @@
  *  limitations under the License.
  */
 import {
-  Badge,
-  Box,
-  Button,
-  ButtonUtility,
-  Card,
-  Typography,
+    Badge,
+    Box,
+    Button,
+    ButtonUtility,
+    Card,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  ArrowRight,
-  Plus,
-  XClose,
+    ArrowRight,
+    Plus,
+    XClose
 } from '@openmetadata/ui-core-components/icons';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';

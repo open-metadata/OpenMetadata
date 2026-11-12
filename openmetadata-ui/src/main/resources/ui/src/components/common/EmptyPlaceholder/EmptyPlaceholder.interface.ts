@@ -12,9 +12,9 @@
  */
 
 import {
-  EmptyPlaceholderAction,
-  EmptyPlaceholderFeature,
-  EmptyPlaceholderProps,
+    EmptyPlaceholderAction,
+    EmptyPlaceholderFeature,
+    EmptyPlaceholderProps
 } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 

@@ -12,11 +12,11 @@
  */
 
 import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    Card,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronUp } from '@openmetadata/ui-core-components/icons';
 import { useState } from 'react';

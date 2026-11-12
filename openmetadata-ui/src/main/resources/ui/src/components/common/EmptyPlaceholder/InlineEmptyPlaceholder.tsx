@@ -29,7 +29,8 @@ const InlineEmptyPlaceholder = ({
   variant === 'text' ? (
     <Typography
       as="p"
-      className="tw:m-0 tw:text-tertiary"
+      className="tw:m-0"
+      color="secondary"
       data-testid={dataTestId}
       size="text-sm">
       {title}

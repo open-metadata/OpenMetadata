@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 import {
-  Badge,
-  Box,
-  Button,
-  Typography,
+    Badge,
+    Box,
+    Button,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import {
-  OntologyPublicationStatus,
-  Stage,
+    OntologyPublicationStatus,
+    Stage
 } from '../../../../generated/type/ontologyPublicationStatus';
 import { RELEASE_STAGE_LABELS } from '../OntologyReleasePanel/OntologyReleasePanel.constants';
 

@@ -12,71 +12,71 @@
  */
 
 import {
-  Badge,
-  BadgeWithDot,
-  Box,
-  Button,
-  ButtonUtility,
-  Dropdown,
-  ProgressBarBase,
-  Select,
-  Tooltip,
-  Typography,
+    Badge,
+    BadgeWithDot,
+    Box,
+    Button,
+    ButtonUtility,
+    Dropdown,
+    ProgressBarBase,
+    Select,
+    Tooltip,
+    Typography
 } from '@openmetadata/ui-core-components';
 import {
-  AlertCircle,
-  ArrowRight,
-  BookClosed,
-  Check,
-  ChevronDown,
-  ChevronRight,
-  Copy01,
-  Edit01,
-  InfoCircle,
-  Trash01,
-  XClose,
+    AlertCircle,
+    ArrowRight,
+    BookClosed,
+    Check,
+    ChevronDown,
+    ChevronRight,
+    Copy01,
+    Edit01,
+    InfoCircle,
+    Trash01,
+    XClose
 } from '@openmetadata/ui-core-components/icons';
 import { uniqBy } from 'lodash';
 import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  OntologyConcept,
-  OntologyConceptType,
+    OntologyConcept,
+    OntologyConceptType
 } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
-  ConceptPropertyInput,
-  getInverseRelationLabel,
-  getRelationPhrase,
+    ConceptPropertyInput,
+    getInverseRelationLabel,
+    getRelationPhrase
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
-  getBindableConceptProperties,
-  getConceptAncestors,
-  getConceptPropertyRows,
-  getConceptRelationRows,
-  getModelRelationLabel,
-  getPropertyLabel,
-  humanizeName,
-  OntologyModelRelation,
-  OntologyStudioModel,
+    getBindableConceptProperties,
+    getConceptAncestors,
+    getConceptPropertyRows,
+    getConceptRelationRows,
+    getModelRelationLabel,
+    getPropertyLabel,
+    humanizeName,
+    OntologyModelRelation,
+    OntologyStudioModel
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
-  InspectorList,
-  InspectorRow,
+    InspectorList,
+    InspectorRow
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
 import {
-  ConceptEditorFields,
-  ConceptEditorFooter,
-  ConceptEditorMappings,
-  ConceptEditorProvider,
-  OntologyConceptEditorState,
+    ConceptEditorFields,
+    ConceptEditorFooter,
+    ConceptEditorMappings,
+    ConceptEditorProvider,
+    OntologyConceptEditorState
 } from '../OntologyConceptEditor/OntologyConceptEditor';
 import { CONCEPT_TYPE_LABELS } from '../OntologyConceptEditor/OntologyConceptEditor.utils';
 import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
@@ -84,18 +84,18 @@ import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptAssets from './OntologyConceptAssets';
 import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
 import {
-  countFilledSections,
-  getCompletenessCounts,
-  shortenIri,
+    countFilledSections,
+    getCompletenessCounts,
+    shortenIri
 } from './OntologyConceptInspector.utils';
 import OntologyConceptLiveData, {
-  LiveDataBindingState,
+    LiveDataBindingState
 } from './OntologyConceptLiveData';
 import OntologyConceptRules from './OntologyConceptRules';
 import {
-  ConceptFormCard,
-  ConceptFormPreview,
-  ConceptSection,
+    ConceptFormCard,
+    ConceptFormPreview,
+    ConceptSection
 } from './OntologyConceptSection';
 import OntologyPropertyAuthoring from './OntologyPropertyAuthoring';
 import OntologyPropertyBindings from './OntologyPropertyBindings';

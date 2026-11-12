@@ -11,19 +11,19 @@
  *  limitations under the License.
  */
 import {
-  FieldProp,
-  FieldTypes,
-  FormSelectItem,
-  HelperTextType,
+    FieldProp,
+    FieldTypes,
+    FormSelectItem,
+    HelperTextType
 } from '@openmetadata/ui-core-components';
 import { compare, Operation } from 'fast-json-patch';
 import { pick } from 'lodash';
 import type { useTranslation } from 'react-i18next';
 import { ENTITY_NAME_REGEX } from '../../../../constants/regex.constants';
 import {
-  ConceptMappingType,
-  CreateOntologyConcept,
-  OntologyConceptType,
+    ConceptMappingType,
+    CreateOntologyConcept,
+    OntologyConceptType
 } from '../../../../generated/api/data/createOntologyConcept';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import { isAbsoluteOntologyIri } from '../../../../utils/governance/ontology/OntologyAuthoring.utils';

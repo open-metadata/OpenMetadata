@@ -12,30 +12,30 @@
  */
 
 import {
-  Alert,
-  Box,
-  Button,
-  Card,
-  Checkbox,
-  Dialog,
-  Input,
-  Modal,
-  ModalOverlay,
-  Typography,
+    Alert,
+    Box,
+    Button,
+    Card,
+    Checkbox,
+    Dialog,
+    Input,
+    Modal,
+    ModalOverlay,
+    Typography
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
 import { isAxiosError } from 'axios';
 import {
-  ComponentProps,
-  KeyboardEvent,
-  lazy,
-  Suspense,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
+    ComponentProps,
+    KeyboardEvent,
+    lazy,
+    Suspense,
+    useCallback,
+    useContext,
+    useEffect,
+    useMemo,
+    useRef,
+    useState
 } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
@@ -46,62 +46,62 @@ import { OntologyProfileViolation } from '../../../../generated/api/data/ontolog
 import { Ontology } from '../../../../generated/entity/data/ontology';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
 import {
-  PaletteKey,
-  RelationshipType,
+    PaletteKey,
+    RelationshipType
 } from '../../../../generated/entity/data/relationshipType';
 import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import {
-  useOntologyStudioModel,
-  WORKING_CONCEPT_FIELDS,
+    useOntologyStudioModel,
+    WORKING_CONCEPT_FIELDS
 } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { useBulkEntityPermissions } from '../../../../hooks/useEntityPermissions/useBulkEntityPermissions';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import {
-  createOntologyAxiom,
-  createOntologyProperty,
-  createRelationshipType,
-  getOntologyConcept,
-  getOntologyWorkingValidation,
-  listRelationshipTypes,
-  patchOntologyAxiom,
-  patchOntologyProperty,
-  patchRelationshipType,
-  restoreOntologyDefinition,
-  softDeleteOntologyDefinition,
+    createOntologyAxiom,
+    createOntologyProperty,
+    createRelationshipType,
+    getOntologyConcept,
+    getOntologyWorkingValidation,
+    listRelationshipTypes,
+    patchOntologyAxiom,
+    patchOntologyProperty,
+    patchRelationshipType,
+    restoreOntologyDefinition,
+    softDeleteOntologyDefinition
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
-  buildInverseBackLink,
-  buildNativeRelationCatalog,
-  buildNativeRelationGroups,
-  buildObjectPropertyRequest,
-  ConceptPropertyInput,
-  findNativeRelationTypeByLabel,
-  findNativeRelationTypeByPhrase,
-  MAX_RELATIONSHIP_TYPE_PAGES,
-  NativeRelationStep,
-  NativeRelationType,
-  planNativeProperties,
-  planNativeRelation,
-  planRelationshipType,
-  RelationshipTypeDraft,
-  RelationshipTypePlan,
-  toNativeRelationType,
+    buildInverseBackLink,
+    buildNativeRelationCatalog,
+    buildNativeRelationGroups,
+    buildObjectPropertyRequest,
+    ConceptPropertyInput,
+    findNativeRelationTypeByLabel,
+    findNativeRelationTypeByPhrase,
+    MAX_RELATIONSHIP_TYPE_PAGES,
+    NativeRelationStep,
+    NativeRelationType,
+    planNativeProperties,
+    planNativeRelation,
+    planRelationshipType,
+    RelationshipTypeDraft,
+    RelationshipTypePlan,
+    toNativeRelationType
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { listAllPages } from '../../../../utils/governance/ontology/OntologyPaging.utils';
 import {
-  checkNativeRelation,
-  describeRelationIssue,
+    checkNativeRelation,
+    describeRelationIssue
 } from '../../../../utils/governance/ontology/OntologyRelationCheck.utils';
 import { findRelationClash } from '../../../../utils/governance/ontology/OntologyRelationClash.utils';
 import {
-  buildDataPropertyRequest,
-  buildOntologyStudioGraph,
-  buildReusePropertyPatch,
-  getBindableConceptProperties,
-  OntologyModelRelation,
-  OntologyStudioModel,
+    buildDataPropertyRequest,
+    buildOntologyStudioGraph,
+    buildReusePropertyPatch,
+    getBindableConceptProperties,
+    OntologyModelRelation,
+    OntologyStudioModel
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivation';
@@ -110,30 +110,30 @@ import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import OntologyControlButtons from '../../../OntologyExplorer/OntologyControlButtons';
 import {
-  LayoutType,
-  RELATION_COLORS,
+    LayoutType,
+    RELATION_COLORS
 } from '../../../OntologyExplorer/OntologyExplorer.constants';
 import {
-  OntologyGraphData,
-  OntologyGraphHandle,
+    OntologyGraphData,
+    OntologyGraphHandle
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
 import OntologyHealthPanel from '../../../OntologyExplorer/OntologyHealthPanel';
 import {
-  buildNativeTreeIndex,
-  buildOntologyTreeMetrics,
-  getOntologyHealthSummary,
+    buildNativeTreeIndex,
+    buildOntologyTreeMetrics,
+    getOntologyHealthSummary
 } from '../../../OntologyExplorer/OntologyStudio.utils';
 import OntologyTreeView from '../../../OntologyExplorer/OntologyTreeView';
 import { NEW_RELATION_TYPE_PREFIX } from '../../../OntologyExplorer/RelationshipTypePicker.constants';
 import {
-  RelationWarningCheck,
-  RelationWarningContext,
+    RelationWarningCheck,
+    RelationWarningContext
 } from '../../../OntologyExplorer/RelationWarning.context';
 import { rankConceptMatches } from '../../../OntologyExplorer/utils/conceptSearch';
 import {
-  buildConflictHighlight,
-  conflictEdgeKey,
-  ConflictHighlight,
+    buildConflictHighlight,
+    conflictEdgeKey,
+    ConflictHighlight
 } from '../../../OntologyExplorer/utils/conflictHighlight';
 import { computeGraphSearchHighlight } from '../../../OntologyExplorer/utils/graphSearchHighlight';
 import { buildStudioGraphScope } from '../../../OntologyExplorer/utils/studioFocusedGraph';
@@ -145,7 +145,7 @@ import OntologyNativeDataMode from '../OntologyGraphView/OntologyNativeDataMode'
 import OntologyNewClassPanel from '../OntologyNewClassPanel/OntologyNewClassPanel';
 import { placeNewClass } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import OntologyRelationDetail, {
-  OntologyRelationStatus,
+    OntologyRelationStatus
 } from '../OntologyRelationControls/OntologyRelationDetail';
 import OntologyConceptSearch from './OntologyConceptSearch';
 import OntologyConflictsPanel from './OntologyConflictsPanel';
@@ -153,8 +153,8 @@ import OntologyGraphModeTabs from './OntologyGraphModeTabs';
 import OntologyGraphNodeList from './OntologyGraphNodeList';
 import { useOntologyGraphSearchSlot } from './OntologyGraphSearchSlot.context';
 import {
-  AI_GRAPH_BACKDROP_CLASS,
-  AI_GRAPH_CONTROLS_CLASS,
+    AI_GRAPH_BACKDROP_CLASS,
+    AI_GRAPH_CONTROLS_CLASS
 } from './OntologyGraphView.constants';
 
 const OntologyGraphG6 = lazy(
