@@ -44,6 +44,10 @@ export interface SettingsHashState {
   params: Record<string, string>;
 }
 
+export interface SetHashOptions {
+  push?: boolean;
+}
+
 const EMPTY_PARAMS: Record<string, string> = {};
 const EMPTY_STATE: SettingsHashState = {
   tab: null,
@@ -243,7 +247,7 @@ export const useSettingsHash = () => {
   // A `<Link>`/`navigate()` to a settings hash from outside the modal (a
   // mode-aware settings link, `getSettingsLink`) pushes a new entry on the same
   // pathname, which neither effect above sees. Adopt the live hash on every
-  // push; `setHash`/`clearHash` replace, so in-modal navigation never echoes.
+  // push; a `setHash` push adopts the hash it already wrote, so it never echoes.
   // Skip the mount run: the push that brought the page here is not a settings
   // link, and its (often empty) hash would wipe the deep link the mount sync kept.
   const didMountPushRef = useRef(false);
@@ -264,11 +268,15 @@ export const useSettingsHash = () => {
 
   // pathname/search are read from `globalThis.location` at call time (mirroring
   // useTableFilters) so these callbacks stay referentially stable.
+  // Replaces by default, so redirects and param updates never leave an entry
+  // that Back would land on; `push` is for a view the user opened, so Back
+  // returns to the one before it.
   const setHash = useCallback(
     (
       tab: string,
       subPath?: string,
-      params?: Record<string, string | undefined>
+      params?: Record<string, string | undefined>,
+      options?: SetHashOptions
     ) => {
       const next = buildHash(tab, subPath, params);
 
@@ -280,7 +288,7 @@ export const useSettingsHash = () => {
             search: locationRef.current.search,
             hash: next.slice(1),
           },
-          { replace: true }
+          { replace: !options?.push }
         );
       }
     },
@@ -443,16 +451,18 @@ export const useSettingsHashSync = (
 ) => {
   const { state, clearHash } = useSettingsHash();
   const wasOpenRef = useRef(isOpen);
-  const prevTabRef = useRef<string | null>(null);
+  const view = state.tab && `${state.tab}/${state.subPath}`;
+  const prevViewRef = useRef<string | null>(null);
 
-  // Only auto-open when the hash itself changes (deep link or refresh),
-  // not when isOpen flips (which would fight the close path).
+  // Only auto-open when the hash itself changes (deep link, refresh, or Back
+  // out of the fullscreen persona customizer to a view the modal shows), not
+  // when isOpen flips (which would fight the close path).
   useEffect(() => {
-    if (state.tab && state.tab !== prevTabRef.current && !isOpen) {
+    if (view && view !== prevViewRef.current && !isOpen) {
       openModal('profile');
     }
-    prevTabRef.current = state.tab;
-  }, [state.tab, isOpen, openModal]);
+    prevViewRef.current = view;
+  }, [view, isOpen, openModal]);
 
   // Clear hash only when modal transitions from open → closed (not on mount).
   // Skip when suppressHashClear is set (fullscreen customize overlay took over).
