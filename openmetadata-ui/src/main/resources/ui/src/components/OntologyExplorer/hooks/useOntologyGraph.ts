@@ -105,8 +105,8 @@ import {
 import { STUDIO_EDIT_PORT_OUTER_OFFSET } from '../utils/studioEditPortStyles';
 import { calculateStudioNodePositions } from '../utils/studioGraphLayout';
 import {
+  anchorViewportToTopLeft,
   containerViewportSize,
-  graphFitsViewport,
   revealHiddenNode,
   settleStudioViewport,
 } from '../utils/studioViewport';
@@ -2278,27 +2278,29 @@ export function useOntologyGraph({
         if (!container.offsetWidth || !container.offsetHeight) {
           return;
         }
-        const wasWhole = studioMode && graphFitsViewport(graph, previousSize);
+        const sizeBefore = previousSize;
         graphRef.current.resize(
           containerRef.current.offsetWidth,
           containerRef.current.offsetHeight
         );
         previousSize = containerViewportSize(container);
+        if (studioMode) {
+          // A panel opening beside the canvas narrows it from the right; keep the
+          // left edge still so what the user was looking at does not slide away.
+          anchorViewportToTopLeft(graph, sizeBefore, previousSize);
+        }
         // Resizing moves every node on screen without a transform event, so the
         // published client positions would go stale and clicks would miss.
         writeGraphSnapshot();
         scheduleTransformWork();
         if (studioMode && !renderCancelled) {
-          // Opening the concept panel narrows the canvas: a graph that was
-          // fully visible is fitted again, otherwise the selection is kept in
-          // view beside the panel.
-          const settle =
-            wasWhole && !graphFitsViewport(graph, previousSize)
-              ? fitViewWithMinZoom(graph)
-              : revealHiddenNode(graph, container, focusNodeIdRef.current);
-          settle.then(writeGraphSnapshot).catch(() => {
-            // the graph may be destroyed while the panel animates
-          });
+          // Opening a panel narrows the canvas from the right. The view stays
+          // anchored, so only a selection the panel now hides is brought back.
+          revealHiddenNode(graph, container, focusNodeIdRef.current)
+            .then(writeGraphSnapshot)
+            .catch(() => {
+              // the graph may be destroyed while the panel animates
+            });
         }
       }
     });

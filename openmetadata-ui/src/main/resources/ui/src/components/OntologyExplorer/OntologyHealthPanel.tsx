@@ -166,7 +166,10 @@ const OntologyHealthPanel = ({
 
   const renderTitleRow = () => (
     <div className="tw:flex tw:items-center tw:gap-2">
-      <Typography className="tw:text-primary" size="text-sm" weight="semibold">
+      <Typography
+        className="tw:whitespace-nowrap tw:text-primary"
+        size="text-sm"
+        weight="semibold">
         {t('label.ontology-health')}
       </Typography>
       <Badge
@@ -195,34 +198,48 @@ const OntologyHealthPanel = ({
     </div>
   );
 
-  const renderIsolatedSummary = () => (
-    <div className="tw:flex tw:items-center tw:gap-2">
-      {isAiMode && hasIsolated ? (
-        <span
-          aria-hidden="true"
-          className="tw:size-2 tw:shrink-0 tw:rounded-xs tw:bg-utility-warning-300"
-        />
-      ) : null}
-      <Typography className="tw:flex-1" size="text-xs">
-        <span
-          className="tw:font-semibold tw:text-primary"
-          data-testid="ontology-isolated-count">
-          {isolatedCount}
-        </span>{' '}
-        {t('label.isolated-term-plural').toLocaleLowerCase()}
-      </Typography>
-      {hasIsolated ? (
-        <Button
-          color="link-color"
-          data-testid="ontology-health-review"
-          iconTrailing={ChevronRight}
-          size="xs"
-          onPress={() => setView('open')}>
-          {t('label.review')}
-        </Button>
-      ) : null}
-    </div>
-  );
+  const renderIsolatedSummary = () => {
+    if (!hasIsolated) {
+      // Expanded, the list already says every term is connected.
+      return isOpen ? null : (
+        <Typography
+          className="tw:text-success-primary"
+          data-testid="ontology-health-all-connected"
+          size="text-sm">
+          {t('message.all-ontology-terms-connected')}
+        </Typography>
+      );
+    }
+
+    return (
+      <div className="tw:flex tw:items-center tw:gap-2">
+        {isAiMode && hasIsolated ? (
+          <span
+            aria-hidden="true"
+            className="tw:size-2 tw:shrink-0 tw:rounded-xs tw:bg-utility-warning-300"
+          />
+        ) : null}
+        <Typography className="tw:flex-1" size="text-xs">
+          <span
+            className="tw:font-semibold tw:text-primary"
+            data-testid="ontology-isolated-count">
+            {isolatedCount}
+          </span>{' '}
+          {t('label.isolated-term-plural').toLocaleLowerCase()}
+        </Typography>
+        {hasIsolated ? (
+          <Button
+            color="link-color"
+            data-testid="ontology-health-review"
+            iconTrailing={ChevronRight}
+            size="xs"
+            onPress={() => setView('open')}>
+            {t('label.review')}
+          </Button>
+        ) : null}
+      </div>
+    );
+  };
 
   const renderIsolatedTerm = (term: OntologyNode) => (
     <li

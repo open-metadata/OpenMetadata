@@ -33,8 +33,21 @@ public final class ODCSMetadataOverlay {
 
   public static JsonNode apply(
       DataContract contract, JsonNode nativeDocument, Set<String> managedNames) {
+    return apply(contract, nativeDocument, managedNames, contract.getOdcsPreservedFields());
+  }
+
+  static JsonNode applyVersioned(DataContract contract, JsonNode nativeDocument) {
+    return apply(
+        contract,
+        nativeDocument,
+        Set.of(),
+        ODCSVersionMetadata.canonicalPayload(contract.getOdcsPreservedFields()));
+  }
+
+  private static JsonNode apply(
+      DataContract contract, JsonNode nativeDocument, Set<String> managedNames, JsonNode payload) {
     JsonNode legacy = legacyMetadata(contract, nativeDocument);
-    JsonNode restored = ODCSPreservedFields.restore(contract.getOdcsPreservedFields(), legacy);
+    JsonNode restored = ODCSPreservedFields.restore(payload, legacy);
     Set<String> owned = new HashSet<>(managedNames);
     owned.addAll(ODCSPreservedFields.nativeCustomPropertyNames(contract.getOdcsPreservedFields()));
     return withNativeCustomProperties(restored, contract.getExtension(), owned);
