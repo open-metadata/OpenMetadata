@@ -1085,12 +1085,19 @@ def test_a_table_found_in_two_configured_services_is_not_linked(sigma_over_http,
 
 
 @pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
-def test_no_table_is_linked_without_db_service_prefixes(sigma_over_http, routes, sql):
-    source, calls = sigma_over_http
+def test_without_db_service_prefixes_a_table_found_in_one_service_is_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "CUSTOMERS")]
 
-    assert lineage_sources(source, routes, [], [warehouse_table("wh_a", "ORDERS")], sql) == []
-    # Nothing could be linked, so nothing is read
-    assert calls["GET", "/v2/workbooks/wb-1/queries"] == 0
+    assert lineage_sources(source, routes, [], catalog, sql) == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_without_db_service_prefixes_a_table_found_in_two_services_is_not_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "ORDERS")]
+
+    assert lineage_sources(source, routes, [], catalog, sql) == []
 
 
 def test_a_table_matching_twice_in_one_service_is_not_linked(sigma_over_http, routes):
