@@ -17,10 +17,18 @@ import org.openmetadata.service.rdf.RdfWriteMode;
  */
 public interface RdfStorageInterface extends AutoCloseable {
 
+  /** Makes the stored projection of the entity equal {@code entityModel}, writing only what differs. */
+  default RdfEntityWriteResult storeEntity(String entityType, UUID entityId, Model entityModel) {
+    return storeEntity(entityType, entityId, entityModel, RdfEntityWriteStrategy.DIFFERENCE);
+  }
+
   /**
-   * Store an entity model in the RDF store
+   * Makes the stored projection of the entity equal {@code entityModel}. The result tells callers
+   * whether the graph may have changed, so a write that found nothing to change can leave derived
+   * state, such as materialized inferences, alone.
    */
-  void storeEntity(String entityType, UUID entityId, Model entityModel);
+  RdfEntityWriteResult storeEntity(
+      String entityType, UUID entityId, Model entityModel, RdfEntityWriteStrategy strategy);
 
   /**
    * Maximum JVM heap of the remote storage server in bytes, when the backend exposes it (Fuseki

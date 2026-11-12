@@ -424,6 +424,21 @@ hundred kilobytes, so a nightly ingestion that changes tens of thousands of enti
 gigabytes. Only compaction returns that space, and it needs free space about the size of the live
 data to copy it into.
 
+Live entity writes therefore send only what changed. The writer reads what Fuseki holds for the
+entity, deletes the triples the new projection no longer has and inserts the ones it adds; an update
+that changes nothing in the projection, such as an ingestion re-sending unchanged metadata, sends no
+write at all. After sending a difference the writer reads the
+projection back; if a write queued ahead of it in Fuseki, such as a request OpenMetadata stopped
+waiting for, committed in between, it replaces the projection whole. Two other cases replace it
+whole too: an entity stored before list cells had stable names, once; and a change larger than the
+projection, such as a rename. Reindexing and journal replay are unchanged. Triples earlier releases
+left behind, such as list cells no entity points to any more, stay until a successful
+`recreateIndex: true` run rebuilds the graph
+(ADR:2026-11-03-live-rdf-entity-writes-send-only-the-changed-triples). Watch
+`rdf.fuseki.entity.writes` by `outcome` (`unchanged`, `changed_triples`, `replaced`, `corrected`)
+and `rdf.fuseki.payload.bytes{operation=storeEntity}` to see what live writes cost; `corrected`
+counts writes another write interfered with, which only happens while Fuseki is timing out.
+
 OpenMetadata compacts the serving dataset itself:
 
 - **On a schedule.** One server compacts every `RDF_COMPACTION_INTERVAL_HOURS`, while the RDF
@@ -617,6 +632,16 @@ OM_TOKEN=<admin-or-bot-jwt> ./scripts/rdf-reindex-benchmark.sh
 # mixes them in rather than generating uniformly narrow ones.
 OM_TOKEN=<jwt> SEED_TABLES=100000 SEED_WIDE_EVERY=100 SEED_WIDE_COLUMNS=500 \
   ./scripts/rdf-reindex-benchmark.sh
+
+# Compare what live updates of wide tables cost when each write replaces the projection
+# and when it sends only the difference: dataset growth per write, update requests,
+# payload and write outcomes, for unchanged, one-tag and description updates. Point it
+# at an idle openmetadata/fuseki dataset; it clears the knowledge graph and compacts.
+# It reads the dataset directory's size with `du` in FUSEKI_CONTAINER (or set
+# DISK_USAGE_COMMAND to any command that prints the size in KB).
+FUSEKI_ENDPOINT=http://localhost:3030/openmetadata FUSEKI_PASSWORD=<admin> \
+  FUSEKI_CONTAINER=<fuseki container> \
+  TABLES=200 COLUMNS=300 ROUNDS=5 bash ./scripts/rdf-live-update-benchmark.sh
 ```
 
 Measure before tuning: the defaults in this document are sized for a co-located

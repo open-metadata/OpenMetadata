@@ -7,6 +7,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -23,6 +24,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.auth.JWTAuthMechanism;
 import org.openmetadata.schema.auth.JWTTokenExpiry;
 import org.openmetadata.schema.entity.Bot;
+import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.entity.teams.Team;
@@ -247,6 +249,24 @@ public class BotImpersonationIT {
     assertTrue(
         adminDenied.getMessage().contains("not authorized to impersonate"),
         "Error should state the target is not allowed: " + adminDenied.getMessage());
+  }
+
+  @Test
+  void test_nonAdminRole_deniesBotTarget(TestNamespace ns) {
+    User botUser = createBotUser(ns, "nabot");
+    createBot(ns.prefix("imp_nabot_bot"), botUser, true);
+    swapImpersonationRole(botUser, BOT_NON_ADMIN_IMPERSONATION_ROLE);
+    String botToken = generateBotToken(botUser);
+
+    OpenMetadataClient asIngestionBot = impersonationClient(botToken, "ingestion-bot");
+    Exception botDenied =
+        assertThrows(
+            Exception.class,
+            () -> asIngestionBot.users().getByName("ingestion-bot"),
+            "BotNonAdminImpersonationPolicy must deny impersonating bots");
+    assertTrue(
+        botDenied.getMessage().contains("not authorized to impersonate"),
+        "Error should state the target is not allowed: " + botDenied.getMessage());
   }
 
   @Test
@@ -773,6 +793,34 @@ public class BotImpersonationIT {
           denied.getMessage().contains("identity endpoint"),
           call.method() + " must be blocked as an identity endpoint: " + denied.getMessage());
     }
+  }
+
+  @Test
+  void test_impersonation_cannotWritePoliciesOrRoles(TestNamespace ns) {
+    OpenMetadataClient asAdmin = grantedBotImpersonating(ns, "rbacwrite", "admin");
+    Policy policy = SdkClients.adminClient().policies().getByName("BotNonAdminImpersonationPolicy");
+    Role role = SdkClients.adminClient().roles().getByName(BOT_NON_ADMIN_IMPERSONATION_ROLE);
+    JsonNode describe =
+        JsonUtils.readTree("[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"edited\"}]");
+
+    List<IdentityCall> calls =
+        List.of(
+            new IdentityCall(HttpMethod.PATCH, "/v1/policies/" + policy.getId(), describe),
+            new IdentityCall(HttpMethod.PATCH, "/v1/roles/" + role.getId(), describe));
+    for (IdentityCall call : calls) {
+      ForbiddenException denied =
+          assertThrows(
+              ForbiddenException.class,
+              () ->
+                  asAdmin.getHttpClient().executeForString(call.method(), call.path(), call.body()),
+              call.method() + " " + call.path() + " must be refused while impersonating");
+      assertTrue(
+          denied.getMessage().contains("identity endpoint"),
+          call.path() + " must be blocked as an identity endpoint: " + denied.getMessage());
+    }
+    assertEquals(
+        policy.getDescription(),
+        SdkClients.adminClient().policies().get(policy.getId().toString()).getDescription());
   }
 
   private static String importUsers(

@@ -93,6 +93,7 @@ import org.openmetadata.service.apps.bundles.insights.DataInsightsApp;
 import org.openmetadata.service.apps.bundles.searchIndex.SearchIndexEntityTypes;
 import org.openmetadata.service.apps.bundles.searchIndex.SlackWebApiClient;
 import org.openmetadata.service.apps.scheduler.AppScheduler;
+import org.openmetadata.service.cache.CacheConfig;
 import org.openmetadata.service.clients.pipeline.PipelineServiceClientFactory;
 import org.openmetadata.service.events.AuditExcludeFilterFactory;
 import org.openmetadata.service.events.AuditOnlyFilterFactory;
@@ -139,6 +140,8 @@ import org.openmetadata.service.secrets.SecretsManagerFactory;
 import org.openmetadata.service.secrets.SecretsManagerUpdateService;
 import org.openmetadata.service.security.auth.SecurityConfigurationManager;
 import org.openmetadata.service.security.jwt.JWTTokenGenerator;
+import org.openmetadata.service.security.session.JdbcSessionStore;
+import org.openmetadata.service.security.session.SessionService;
 import org.openmetadata.service.util.dbtune.AutoTuner;
 import org.openmetadata.service.util.dbtune.DbTuneDiagnosis;
 import org.openmetadata.service.util.dbtune.DbTuneReport;
@@ -1174,12 +1177,24 @@ public class OpenMetadataOperations implements Callable<Integer> {
       String inputPwd = new String(password);
       updateUserWithHashedPwd(updatedUser, inputPwd);
       UserUtil.addOrUpdateUser(updatedUser);
+      userRepository.endSignIns(updatedUser, databaseSessionService());
       LOG.info("Password updated successfully.");
       return 0;
     } catch (Exception e) {
       LOG.error("Failed to reset user password.", e);
       return 1;
     }
+  }
+
+  /** Sessions kept in Redis are out of this command's reach; the server's own sweep ends them. */
+  private SessionService databaseSessionService() {
+    CacheConfig cacheConfig = config.getCacheConfig();
+    if (cacheConfig != null && cacheConfig.provider == CacheConfig.Provider.redis) {
+      LOG.warn("Sessions are stored in Redis, so the user's live sessions end when they expire.");
+      return null;
+    }
+    return new SessionService(
+        SecurityConfigurationManager.getCurrentAuthConfig(), new JdbcSessionStore());
   }
 
   @Command(

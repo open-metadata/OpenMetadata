@@ -259,6 +259,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
 
     // delete the user's all password reset token as well , since already updated
     tokenRepository.deleteTokenByUserAndType(storedUser.getId(), PASSWORD_RESET.toString());
+    userRepository.endSignIns(storedUser);
 
     // Update user about Password Change
     try {
@@ -315,6 +316,7 @@ public class BasicAuthenticator implements AuthenticatorHandler {
         userRepository.createOrUpdate(uriInfo, storedUser, storedUser.getName());
     // remove login/details from cache
     LoginAttemptCache.getInstance().recordSuccessfulLogin(userName);
+    userRepository.endSignIns(storedUser);
 
     // in case admin updates , send email to user
     if (request.getRequestType() == USER && getSmtpSettings().getEnableSmtpServer()) {
@@ -431,13 +433,14 @@ public class BasicAuthenticator implements AuthenticatorHandler {
           PASSWORD_RESET_TOKEN_EXPIRED,
           "Expired token. Please login again : " + storedRefreshToken.getToken().toString());
     }
-    // TODO: currently allow single login from a place, later multiple login can be added
-    // just delete the existing token
-    tokenRepository.deleteToken(requestRefreshToken);
-    // we use rotating refresh token , generate new token
+    // A refresh token is used once: it is replaced by the new one in one statement, so a token
+    // deleted while this request ran, by a concurrent refresh or by a password change ending the
+    // user's sign-ins, leaves nothing to replace and no new token is issued
+    // (ADR:2026-11-03-a-password-change-ends-the-users-sign-ins).
     RefreshToken newRefreshToken = TokenUtil.getRefreshToken(currentUserId, UUID.randomUUID());
-    // save Refresh Token in Database
-    tokenRepository.insertToken(newRefreshToken);
+    if (!tokenRepository.replaceToken(requestRefreshToken, newRefreshToken)) {
+      throw new AuthenticationException("Refresh token is no longer valid. Please login again.");
+    }
     return newRefreshToken;
   }
 

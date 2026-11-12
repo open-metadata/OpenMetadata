@@ -12,39 +12,47 @@
 PowerBI Models
 """
 
-from typing import List, Optional  # noqa: UP035
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 
 class AuthToken(BaseModel):
     access_token: str
-    refresh_token: Optional[str] = None  # noqa: UP045
+    refresh_token: str | None = None
     token_type: str
-    expires_in: Optional[int] = 0  # noqa: UP045
+    expires_in: int | None = 0
 
 
 class Workbook(BaseModel):
     workbookId: str  # noqa: N815
-    name: Optional[str] = None  # noqa: UP045
-    ownerId: Optional[str] = None  # noqa: N815, UP045
+    name: str | None = None
+    ownerId: str | None = None  # noqa: N815
 
 
 class WorkbookDetails(BaseModel):
     workbookId: str  # noqa: N815
-    name: Optional[str] = None  # noqa: UP045
-    createdAt: str  # noqa: N815
+    name: str | None = None
+    createdAt: datetime  # noqa: N815
+    updatedAt: datetime | None = None  # noqa: N815
     url: str
-    path: Optional[str] = None  # noqa: UP045
-    ownerId: Optional[str] = None  # noqa: N815, UP045
-    isArchived: bool  # noqa: N815
-    description: Optional[str] = None  # noqa: UP045
+    path: str | None = None
+    latestVersion: int | float | None = None  # noqa: N815
+    ownerId: str | None = None  # noqa: N815
+    isArchived: bool | None = None  # noqa: N815
+    description: str | None = None
+    # Not in the workbook response: Sigma returns the badge on the workbook's /files entry.
+    badge: str | None = None
+    # Not in Sigma's response: filled once by SigmaSource.get_dashboard_details for the chart and data model stages.
+    elements: list["Elements"] = []
+    # Read from the workbook's lineage on first use, then reused by every lineage step of the workbook.
+    lineage: list["WorkbookLineageEntry"] | None = None
 
 
 class WorkBookResponseDetails(BaseModel):
-    entries: Optional[List[Workbook]] = []  # noqa: UP006, UP045
-    total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    entries: list[Workbook] | None = []
+    total: int | None = None
+    nextPage: str | None = None  # noqa: N815
 
 
 class OwnerDetails(BaseModel):
@@ -57,22 +65,30 @@ class WorkBookPage(BaseModel):
 
 
 class WorkBookPageResponse(BaseModel):
-    entries: Optional[List[WorkBookPage]] = []  # noqa: UP006, UP045
-    total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    entries: list[WorkBookPage] | None = []
+    total: int | None = None
+    nextPage: str | None = None  # noqa: N815
 
 
 class Elements(BaseModel):
     elementId: str  # noqa: N815
-    name: Optional[str] = None  # noqa: UP045
-    vizualizationType: Optional[str] = None  # noqa: N815, UP045
-    columns: Optional[List[str]] = []  # noqa: UP006, UP045
+    name: str | None = None
+    type: str | None = Field(default=None)
+    vizualizationType: str | None = None  # noqa: N815
+    columns: list[str] | None = []
+
+    @property
+    def is_data_element(self) -> bool:
+        """Whether the element supports data models and lineage."""
+        if self.type is not None:
+            return self.type in ("table", "pivot-table", "visualization")
+        return bool(self.vizualizationType)
 
 
 class ElementsResponse(BaseModel):
-    entries: Optional[List[Elements]] = []  # noqa: UP006, UP045
-    total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    entries: list[Elements] | None = []
+    total: int | None = None
+    nextPage: str | None = None  # noqa: N815
 
 
 class EdgeSource(BaseModel):
@@ -94,20 +110,21 @@ class EdgeSource(BaseModel):
 class Dependency(BaseModel):
     nodeId: str  # noqa: N815
     type: str
-    name: Optional[str]  # noqa: UP045
-    elementId: Optional[str]  # noqa: N815, UP045
+    name: str | None = None
+    elementId: str | None = None  # noqa: N815
 
 
 class EdgeSourceResponse(BaseModel):
-    edges: Optional[List[EdgeSource]] = []  # noqa: UP006, UP045
-    dependencies: Optional[dict] = {}  # noqa: UP045
+    edges: list[EdgeSource] | None = []
+    dependencies: dict[str, Dependency] = {}
 
 
 class NodeDetails(BaseModel):
     id: str
-    name: Optional[str]  # noqa: UP045
+    name: str | None
     node_type: str = Field(alias="type")
-    path: Optional[str] = ""  # noqa: UP045
+    path: str | None = ""
+    badge: str | None = None
 
     @property
     def node_schema(self):
@@ -122,14 +139,42 @@ class NodeDetails(BaseModel):
         return None
 
 
+class DataModel(BaseModel):
+    dataModelId: str  # noqa: N815
+    name: str | None = None
+    url: str | None = None
+    ownerId: str | None = None  # noqa: N815
+
+
+class DataModelsResponse(BaseModel):
+    entries: list[DataModel] = []
+    nextPage: str | None = None  # noqa: N815
+
+
+class Connection(BaseModel):
+    type: str
+
+
+class WorkbookLineageEntry(BaseModel):
+    connectionId: str | None = None  # noqa: N815
+    elementId: str | None = None  # noqa: N815
+    dataSourceIds: list[str] | None = None  # noqa: N815
+    dataModelId: str | None = None  # noqa: N815
+
+
+class WorkbookLineageResponse(BaseModel):
+    entries: list[WorkbookLineageEntry] = []
+    nextPage: str | None = None  # noqa: N815
+
+
 class WorkbookQuery(BaseModel):
     elementId: str  # noqa: N815
-    name: Optional[str]  # noqa: UP045
-    sql: Optional[str] = None  # noqa: UP045
-    error: Optional[str] = None  # noqa: UP045
+    name: str | None = None
+    sql: str | None = None
+    error: str | None = None
 
 
 class WorkbookQueriesResponse(BaseModel):
-    entries: Optional[List[WorkbookQuery]] = []  # noqa: UP006, UP045
-    total: int
-    nextPage: Optional[str] = None  # noqa: N815, UP045
+    entries: list[WorkbookQuery] | None = []
+    total: int | None = None
+    nextPage: str | None = None  # noqa: N815

@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.net.URI;
 import java.util.List;
@@ -30,6 +31,7 @@ import org.openmetadata.it.factories.DatabaseServiceTestFactory;
 import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.CreateBot;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreatePipeline;
@@ -37,11 +39,15 @@ import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.JWTAuthMechanism;
+import org.openmetadata.schema.auth.JWTTokenExpiry;
+import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.services.DatabaseService;
 import org.openmetadata.schema.entity.services.PipelineService;
+import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -52,11 +58,14 @@ import org.openmetadata.schema.type.Profile;
 import org.openmetadata.schema.type.api.BulkAssets;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.exceptions.ForbiddenException;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Integration tests for Team entity operations.
@@ -2051,6 +2060,125 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     assertNotNull(result, "Request with omitted assets must not NPE");
     assertEquals(0, result.getNumberOfRowsProcessed());
     assertEquals(0, result.getNumberOfRowsPassed());
+  }
+
+  /**
+   * Members hold a team's default roles and policies, so a bot impersonating the team's owner may
+   * not change them, though it may edit the team otherwise; the owner may, directly.
+   */
+  @Test
+  void test_impersonatedOwner_cannotChangeDefaultRolesOrPolicies(TestNamespace ns) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String ownerName = "grantowner" + ns.shortPrefix();
+    String ownerEmail = ownerName + "@test.openmetadata.org";
+    User owner =
+        ns.trackRoot(
+            Entity.USER,
+            admin.users().create(new CreateUser().withName(ownerName).withEmail(ownerEmail)));
+    Team team =
+        ns.trackRoot(
+            Entity.TEAM,
+            admin
+                .teams()
+                .create(
+                    new CreateTeam()
+                        .withName(ns.prefix("grantTeam"))
+                        .withTeamType(TeamType.GROUP)
+                        .withOwners(List.of(owner.getEntityReference()))));
+    String addRole =
+        "[{\"op\":\"add\",\"path\":\"/defaultRoles/-\",\"value\":{\"id\":\""
+            + dataStewardRole().getId()
+            + "\",\"type\":\"role\"}}]";
+    Bot bot = createImpersonatingBot(ns);
+    try {
+      OpenMetadataClient asOwner = impersonating(bot, ownerName);
+      ForbiddenException patchRefused =
+          assertThrows(
+              ForbiddenException.class,
+              () -> patchTeam(asOwner, team, addRole),
+              "an impersonated PATCH must not add a default role");
+      assertTrue(
+          patchRefused.getMessage().contains("default roles or policies"),
+          patchRefused.getMessage());
+      CreateTeam withPolicy =
+          new CreateTeam()
+              .withName(team.getName())
+              .withTeamType(TeamType.GROUP)
+              .withPolicies(List.of(admin.policies().getByName("DataConsumerPolicy").getId()));
+      ForbiddenException putRefused =
+          assertThrows(
+              ForbiddenException.class,
+              () ->
+                  asOwner.getHttpClient().executeForString(HttpMethod.PUT, "/v1/teams", withPolicy),
+              "an impersonated PUT must not attach a policy");
+      assertTrue(
+          putRefused.getMessage().contains("default roles or policies"), putRefused.getMessage());
+      patchTeam(
+          asOwner, team, "[{\"op\":\"add\",\"path\":\"/description\",\"value\":\"impersonated\"}]");
+
+      Team stored = admin.teams().get(team.getId().toString(), "defaultRoles,policies");
+      assertTrue(nullOrEmpty(stored.getDefaultRoles()), "no default role may be added");
+      assertTrue(nullOrEmpty(stored.getPolicies()), "no policy may be attached");
+      assertEquals("impersonated", stored.getDescription());
+
+      patchTeam(SdkClients.createClient(ownerName, ownerEmail, new String[] {}), team, addRole);
+      assertTrue(
+          admin.teams().get(team.getId().toString(), "defaultRoles").getDefaultRoles().stream()
+              .anyMatch(role -> role.getId().equals(dataStewardRole().getId())),
+          "the owner may add the default role directly");
+    } finally {
+      admin
+          .getHttpClient()
+          .executeForString(
+              HttpMethod.DELETE, "/v1/bots/" + bot.getId() + "?hardDelete=true", null);
+    }
+  }
+
+  private static void patchTeam(OpenMetadataClient client, Team team, String patch) {
+    client
+        .getHttpClient()
+        .executeForString(HttpMethod.PATCH, "/v1/teams/" + team.getId(), JsonUtils.readTree(patch));
+  }
+
+  /** A bot allowed to impersonate users; its bot user is removed with it. */
+  private static Bot createImpersonatingBot(TestNamespace ns) {
+    String botName = "grantbot" + ns.shortPrefix();
+    User botUser =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser()
+                    .withName(botName)
+                    .withEmail(botName + "@test.com")
+                    .withIsBot(true)
+                    .withAuthenticationMechanism(
+                        new AuthenticationMechanism()
+                            .withAuthType(AuthenticationMechanism.AuthType.JWT)
+                            .withConfig(
+                                new JWTAuthMechanism()
+                                    .withJWTTokenExpiry(JWTTokenExpiry.Unlimited))));
+    ns.trackRoot(Entity.USER, botUser);
+    return SdkClients.adminClient()
+        .bots()
+        .create(
+            new CreateBot()
+                .withName(botName)
+                .withBotUser(botUser.getName())
+                .withAllowImpersonation(true));
+  }
+
+  private static OpenMetadataClient impersonating(Bot bot, String userName) {
+    String token =
+        SdkClients.adminClient()
+            .users()
+            .generateToken(bot.getBotUser().getId(), JWTTokenExpiry.Seven)
+            .getJWTToken();
+    return new OpenMetadataClient(
+        OpenMetadataConfig.builder()
+            .serverUrl(SdkClients.baseUrl())
+            .accessToken(token)
+            .header("X-Impersonate-User", userName)
+            .build());
   }
 
   private Team createTeam(TestNamespace ns, String suffix) {

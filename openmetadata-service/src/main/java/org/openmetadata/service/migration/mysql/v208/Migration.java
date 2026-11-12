@@ -20,6 +20,7 @@ import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.ConnectionSecretsEncryptionMigration;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
+import org.openmetadata.service.migration.utils.v208.EntityExtensionCollationAlignment;
 import org.openmetadata.service.migration.utils.v208.LifeCycleCreatedSentinelMigration;
 import org.openmetadata.service.migration.utils.v208.McpGrantUserNameIndexes;
 import org.openmetadata.service.migration.utils.v208.MigrationUtil;
@@ -33,6 +34,11 @@ public class Migration extends MigrationProcessImpl {
 
   @Override
   public void runDataMigration() {
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        EntityExtensionCollationAlignment.STEP_NAME,
+        () -> EntityExtensionCollationAlignment.alignOnMySql(handle));
     runOnce(
         migrationDAO,
         getVersion(),
@@ -53,6 +59,11 @@ public class Migration extends MigrationProcessImpl {
         getVersion(),
         MigrationUtil.NEGATED_LIST_ENTITY_RULES_STEP,
         MigrationUtil::rewriteEntityRules);
+    runOnce(
+        migrationDAO,
+        getVersion(),
+        MigrationUtil.DENY_BOT_USERS_STEP,
+        () -> MigrationUtil.addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(collectionDAO));
     // `migrate` runs data migrations before it starts Flowable, and this step deploys workflows.
     runOnce(
         migrationDAO,

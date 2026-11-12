@@ -108,6 +108,7 @@ import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.Timer;
 import jakarta.json.JsonPatch;
+import jakarta.json.JsonValue;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.core.Response.Status;
@@ -4465,6 +4466,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
         impersonatedBy);
   }
 
+  private static boolean replacesWholeDocument(JsonPatch patch) {
+    return patch.toJsonArray().stream()
+        .anyMatch(
+            operation ->
+                operation.getValueType() == JsonValue.ValueType.OBJECT
+                    && "".equals(operation.asJsonObject().getString("path", null)));
+  }
+
   /**
    * The patched entity as the rules see it: its own owners and domains plus the ones it inherits
    * now. The patched copy still carries the inherited refs of the original, which may be stale, so
@@ -4536,6 +4545,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       ChangeSource changeSource,
       boolean useOptimisticLocking,
       String impersonatedBy) {
+    // A patch to the document root replaces the whole entity, skipping the per-field checks below.
+    // It is refused: a client edits fields (ADR:2026-11-03-input-parsing-is-bounded).
+    if (replacesWholeDocument(patch)) {
+      throw new IllegalArgumentException(
+          "A JSON Patch operation on the document root (\"path\": \"\") is not allowed");
+    }
     T updated;
     try (var ignored = phase("patchApplyJson")) {
       updated = JsonUtils.applyPatch(original, patch, entityClass);
@@ -5095,19 +5110,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
                       if (shouldCleanupFqnDependents()) {
                         daoCollection
                             .fieldRelationshipDAO()
-                            .deleteAllByPrefix(entityInterface.getFullyQualifiedName());
+                            .deleteAllByPrefix(entityInterface.getFullyQualifiedName(), entityType);
                       }
 
                       // Delete all the extensions of entity
                       daoCollection.entityExtensionDAO().deleteAll(id);
 
-                      if (shouldCleanupFqnDependents()) {
+                      if (shouldCleanupFqnDependents() && supportsTags) {
                         daoCollection
                             .tagUsageDAO()
                             .deleteTagLabelsByTargetPrefix(entityInterface.getFullyQualifiedName());
-                        daoCollection
-                            .tagUsageDAO()
-                            .deleteTagLabelsByFqn(entityInterface.getFullyQualifiedName());
                       }
                       // Delete all the usage data
                       daoCollection.usageDAO().delete(id);
@@ -5163,8 +5175,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
    */
   protected void lockRowsForDelete(List<T> entities) {}
 
+  /**
+   * Whether a hard delete removes the FQN-keyed rows under this entity: its field relationships,
+   * and for a taggable type the tag labels of it and its nested parts. Those rows are keyed by FQN
+   * alone, which is unique only within a type, so only types that carry such rows run the delete,
+   * and tag labels, whose table records no type, are removed only for taggable types
+   * (ADR:2026-11-03-a-hard-delete-removes-only-rows-of-the-deleted-entity).
+   */
   protected boolean shouldCleanupFqnDependents() {
-    return true;
+    return supportsTags;
   }
 
   /**
@@ -6053,8 +6072,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
             .map(entity -> entity.getId().toString())
             .toList();
 
+    // Batch-delete only the entities' own custom-property rows (jsonSchema "customFieldSchema") in
+    // one statement per chunk. deleteAllBatch() would delete EVERY entity_extension row for the id
+    // -- including columnExtension rows -- so a bulk import update of a table that carries
+    // table-level extension would silently wipe its column-level custom properties.
     if (!entityIds.isEmpty()) {
-      daoCollection.entityExtensionDAO().deleteAllBatch(entityIds);
+      daoCollection.entityExtensionDAO().deleteByJsonSchemaBatch(entityIds, "customFieldSchema");
     }
   }
 
@@ -6611,6 +6634,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Restore moves the row from deleted=true to deleted=false, changing the listing total.
       ListCountCache.invalidate(entityType);
       response = new PutResponse<>(Status.OK, updated, ENTITY_RESTORED);
+      postRestore(updated);
     } catch (EntityNotFoundException e) {
       // Entity exists (verified above) but is not in DELETED state — already restored.
       LOG.info("Entity already restored or not in deleted state {} {}", entityType, id);
@@ -6621,6 +6645,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     restoreAdditionalChildren(id, updatedBy);
     return response;
   }
+
+  /** Runs after an entity is restored from a soft delete. */
+  protected void postRestore(T entity) {}
 
   @Transaction
   protected void restoreChildren(UUID id, String updatedBy) {
@@ -7161,9 +7188,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       try (var ignored = phase("bulkHardDeleteFqnDependents")) {
         for (T entity : entities) {
           String fqn = entity.getFullyQualifiedName();
-          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn);
-          daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
-          daoCollection.tagUsageDAO().deleteTagLabelsByFqn(fqn);
+          daoCollection.fieldRelationshipDAO().deleteAllByPrefix(fqn, entityType);
+          if (supportsTags) {
+            daoCollection.tagUsageDAO().deleteTagLabelsByTargetPrefix(fqn);
+          }
         }
       }
     }

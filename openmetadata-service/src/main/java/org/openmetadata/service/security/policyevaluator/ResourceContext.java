@@ -319,11 +319,13 @@ public class ResourceContext<T extends EntityInterface> implements ResourceConte
   }
 
   private Include resolveInclude() {
-    if (operation == ResourceContextInterface.Operation.PATCH
-        || operation == ResourceContextInterface.Operation.PUT) {
+    if (operation == ResourceContextInterface.Operation.PATCH) {
       return Include.NON_DELETED;
     }
-    if (operation == ResourceContextInterface.Operation.DELETE) {
+    // A PUT finds the entity it writes with Include.ALL and restores it when soft-deleted, so the
+    // decision has to see that entity too; without it every condition is evaluated against none.
+    if (operation == ResourceContextInterface.Operation.PUT
+        || operation == ResourceContextInterface.Operation.DELETE) {
       return Include.ALL;
     }
     return include != null ? include : Include.ALL;

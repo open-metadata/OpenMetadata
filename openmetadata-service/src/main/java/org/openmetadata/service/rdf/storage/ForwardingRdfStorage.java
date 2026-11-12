@@ -27,8 +27,9 @@ public abstract class ForwardingRdfStorage implements RdfStorageInterface {
   protected abstract RdfStorageInterface delegate();
 
   @Override
-  public void storeEntity(String type, UUID id, Model model) {
-    delegate().storeEntity(type, id, model);
+  public RdfEntityWriteResult storeEntity(
+      String type, UUID id, Model model, RdfEntityWriteStrategy strategy) {
+    return delegate().storeEntity(type, id, model, strategy);
   }
 
   @Override

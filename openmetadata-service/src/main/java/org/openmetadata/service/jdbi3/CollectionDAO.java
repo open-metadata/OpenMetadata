@@ -24,7 +24,7 @@ import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.QUERY;
 import static org.openmetadata.service.Entity.TEAM;
 import static org.openmetadata.service.Entity.USER;
-import static org.openmetadata.service.jdbi3.ListFilter.escapeApostrophe;
+import static org.openmetadata.service.jdbi3.ListFilter.escapeLikeBindValue;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
@@ -1034,15 +1034,7 @@ public interface CollectionDAO {
      * in the JSON document so column FQNs follow their container. {@code WHERE fqnHash LIKE
      * 'oldHash.%'} restricts the update to descendants — the moved row itself updates via the
      * standard {@code storeEntity} path after {@code setFullyQualifiedName} runs in memory.
-     *
-     * <p><b>On SQL interpolation:</b> mirrors the pre-existing {@link EntityDAO#updateFqn}
-     * pattern — values are spliced into the SQL via {@link String#format} because the
-     * connection-aware {@code @SqlUpdate} dispatcher takes the full statement as a single
-     * {@code <mySqlUpdate>}/{@code <postgresUpdate>} bind. The values come from server-side
-     * code (the FQN computed by {@code setFullyQualifiedName}, not user-supplied input), and
-     * {@link ListFilter#escapeApostrophe} handles the only SQL meta-character that can appear
-     * in a validated entity name. If a future code path lets arbitrary strings reach this
-     * method, swap to a parameterised form with {@code @Bind} parameters.
+     * Container names are user input, so like {@link EntityDAO#updateFqn} the prefixes are bound.
      */
     @Override
     default void updateFqn(String oldPrefix, String newPrefix) {
@@ -1051,32 +1043,34 @@ public interface CollectionDAO {
       }
       String oldHash = FullyQualifiedName.buildHash(oldPrefix);
       String newHash = FullyQualifiedName.buildHash(newPrefix);
-      String mySqlUpdate =
-          String.format(
-              "UPDATE %s SET json = CAST(REPLACE(CAST(json AS CHAR), "
-                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.') AS JSON), "
-                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                  + "WHERE fqnHash LIKE '%s.%%'",
-              getTableName(),
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              oldHash,
-              newHash,
-              oldHash);
-      String postgresUpdate =
-          String.format(
-              "UPDATE %s SET json = REPLACE(json::text, "
-                  + "'\"fullyQualifiedName\": \"%s.', '\"fullyQualifiedName\": \"%s.')::jsonb, "
-                  + "fqnHash = REPLACE(fqnHash, '%s.', '%s.') "
-                  + "WHERE fqnHash LIKE '%s.%%'",
-              getTableName(),
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              oldHash,
-              newHash,
-              oldHash);
-      updateFqnInternal(mySqlUpdate, postgresUpdate);
+      updateDescendantFqnsInternal(
+          EntityDAO.jsonFqnPrefix(oldPrefix),
+          EntityDAO.jsonFqnPrefix(newPrefix),
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE storage_container_entity SET json = "
+                + "CAST(REPLACE(CAST(json AS CHAR), :oldJsonPrefix, :newJsonPrefix) AS JSON), "
+                + "fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+                + "WHERE fqnHash LIKE :oldHashLike",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE storage_container_entity SET json = "
+                + "REPLACE(json::text, :oldJsonPrefix, :newJsonPrefix)::jsonb, "
+                + "fqnHash = REPLACE(fqnHash, :oldHashPrefix, :newHashPrefix) "
+                + "WHERE fqnHash LIKE :oldHashLike",
+        connectionType = POSTGRES)
+    void updateDescendantFqnsInternal(
+        @Bind("oldJsonPrefix") String oldJsonPrefix,
+        @Bind("newJsonPrefix") String newJsonPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
 
     /**
      * Cheap descendant count used by the PATCH re-parent guard (#24294) to short-circuit
@@ -1826,6 +1820,19 @@ public interface CollectionDAO {
 
     default void deleteAllBatch(List<String> ids) {
       EntityDAO.updateInChunks(ids, this::deleteAllBatchInternal);
+    }
+
+    @SqlUpdate("DELETE FROM entity_extension WHERE id IN (<ids>) AND jsonSchema = :jsonSchema")
+    void deleteByJsonSchemaBatchInternal(
+        @BindList("ids") List<String> ids, @Bind("jsonSchema") String jsonSchema);
+
+    /**
+     * Batch-delete only the rows of a given jsonSchema for the ids -- one statement per chunk. Used
+     * to clear an entity's own custom-property rows ("customFieldSchema") without touching its
+     * columnExtension or version rows the way deleteAllBatch() would.
+     */
+    default void deleteByJsonSchemaBatch(List<String> ids, String jsonSchema) {
+      EntityDAO.updateInChunks(ids, chunk -> deleteByJsonSchemaBatchInternal(chunk, jsonSchema));
     }
   }
 
@@ -5246,17 +5253,28 @@ public interface CollectionDAO {
         @Bind("otherType") String otherType,
         @Bind("relation") int relation);
 
-    default void deleteAllByPrefix(String fqn) {
+    /**
+     * Deletes the rows under {@code fqn}, an FQN of {@code entityType}. Custom property definitions
+     * are rows of type {@code type} under an entity type's name, so only deleting that type removes
+     * them; an entity of another type that shares the name leaves them alone.
+     */
+    default void deleteAllByPrefix(String fqn, String entityType) {
       String prefix = String.format("%s%s%%", FullyQualifiedName.buildHash(fqn), Entity.SEPARATOR);
-      String condition = "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)";
+      String typeCondition =
+          Entity.TYPE.equals(entityType)
+              ? " AND fromType = :typeRow AND toType = :typeRow"
+              : " AND fromType <> :typeRow AND toType <> :typeRow";
+      String condition =
+          "WHERE (toFQNHash LIKE :prefix OR fromFQNHash LIKE :prefix)" + typeCondition;
       Map<String, String> bindMap = new HashMap<>();
       bindMap.put("prefix", prefix);
+      bindMap.put("typeRow", Entity.TYPE);
       deleteAllByPrefixInternal(condition, bindMap);
     }
 
     default void deleteAllByPrefixes(List<String> threadIds) {
       for (String threadId : threadIds) {
-        deleteAllByPrefix(threadId);
+        deleteAllByPrefix(threadId, Entity.THREAD);
       }
     }
 
@@ -5294,20 +5312,29 @@ public interface CollectionDAO {
         @Bind("newToFQNHash") String newToFQNHash);
 
     default void renameByToFQNPrefix(String oldToFQNPrefix, String newToFQNPrefix) {
-      String update =
-          String.format(
-              "UPDATE field_relationship SET toFQN  = REPLACE(toFQN, '%s.', '%s.') , toFQNHash  = REPLACE(toFQNHash, '%s.', '%s.') where fromtype = 'THREAD' AND relation='3' AND  toFQN like '%s.%%' and toFQNHash like '%s.%%' ",
-              escapeApostrophe(oldToFQNPrefix),
-              escapeApostrophe(newToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(newToFQNPrefix),
-              escapeApostrophe(oldToFQNPrefix),
-              FullyQualifiedName.buildHash(oldToFQNPrefix));
-      renameByToFQNPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldToFQNPrefix);
+      String newHash = FullyQualifiedName.buildHash(newToFQNPrefix);
+      renameByToFQNPrefixInternal(
+          oldToFQNPrefix + Entity.SEPARATOR,
+          newToFQNPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          escapeLikeBindValue(oldToFQNPrefix) + Entity.SEPARATOR + "%",
+          oldHash + Entity.SEPARATOR + "%");
     }
 
-    @SqlUpdate("<update>")
-    void renameByToFQNPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE field_relationship SET toFQN = REPLACE(toFQN, :oldPrefix, :newPrefix), "
+            + "toFQNHash = REPLACE(toFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE fromtype = 'THREAD' AND relation = '3' "
+            + "AND toFQN LIKE :oldPrefixLike AND toFQNHash LIKE :oldHashLike")
+    void renameByToFQNPrefixInternal(
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldPrefixLike") String oldPrefixLike,
+        @Bind("oldHashLike") String oldHashLike);
 
     class FromFieldMapper implements RowMapper<Triple<String, String, String>> {
       @Override
@@ -7254,14 +7281,6 @@ public interface CollectionDAO {
     void deleteTagLabels(@Bind("source") int source, @BindFQN("tagFQNHash") String tagFQNHash);
 
     @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash ORDER BY tagFQN",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "DELETE FROM tag_usage where tagFQNHash = :tagFQNHash",
-        connectionType = POSTGRES)
-    void deleteTagLabelsByFqn(@BindFQN("tagFQNHash") String tagFQNHash);
-
-    @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM tag_usage where targetFQNHash = :targetFQNHash OR targetFQNHash LIKE :concatTargetFQNHash ORDER BY tagFQN",
         connectionType = MYSQL)
@@ -7302,28 +7321,26 @@ public interface CollectionDAO {
 
     /** Update all the tagFQN starting with oldPrefix to start with newPrefix due to tag or glossary name change */
     default void updateTagPrefix(int source, String oldPrefix, String newPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, '%s.', '%s.'), tagFQNHash = REPLACE(tagFQNHash, '%s.', '%s.') WHERE source = %s AND tagFQNHash LIKE '%s.%%'",
-              escapeApostrophe(oldPrefix),
-              escapeApostrophe(newPrefix),
-              FullyQualifiedName.buildHash(oldPrefix),
-              FullyQualifiedName.buildHash(newPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldPrefix));
-      updateTagPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldPrefix);
+      String newHash = FullyQualifiedName.buildHash(newPrefix);
+      updateTagPrefixInternal(
+          source,
+          oldPrefix + Entity.SEPARATOR,
+          newPrefix + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
 
     default void updateTargetFQNHashPrefix(
         int source, String oldTargetFQNHashPrefix, String newTargetFQNHashPrefix) {
-      String update =
-          String.format(
-              "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, '%s.', '%s.') WHERE source = %s AND targetFQNHash LIKE '%s.%%'",
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix),
-              FullyQualifiedName.buildHash(newTargetFQNHashPrefix),
-              source,
-              FullyQualifiedName.buildHash(oldTargetFQNHashPrefix));
-      updateTagPrefixInternal(update);
+      String oldHash = FullyQualifiedName.buildHash(oldTargetFQNHashPrefix);
+      String newHash = FullyQualifiedName.buildHash(newTargetFQNHashPrefix);
+      updateTargetFQNHashPrefixInternal(
+          source,
+          oldHash + Entity.SEPARATOR,
+          newHash + Entity.SEPARATOR,
+          oldHash + Entity.SEPARATOR + "%");
     }
 
     default void rename(int source, String oldFQN, String newFQN) {
@@ -7356,8 +7373,26 @@ public interface CollectionDAO {
         @BindFQN("oldTargetFQNHash") String oldTargetFQNHash,
         @BindFQN("newTargetFQNHash") String newTargetFQNHash);
 
-    @SqlUpdate("<update>")
-    void updateTagPrefixInternal(@Define("update") String update);
+    @SqlUpdate(
+        "UPDATE tag_usage SET tagFQN = REPLACE(tagFQN, :oldPrefix, :newPrefix), "
+            + "tagFQNHash = REPLACE(tagFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE source = :source AND tagFQNHash LIKE :oldHashLike")
+    void updateTagPrefixInternal(
+        @Bind("source") int source,
+        @Bind("oldPrefix") String oldPrefix,
+        @Bind("newPrefix") String newPrefix,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
+
+    @SqlUpdate(
+        "UPDATE tag_usage SET targetFQNHash = REPLACE(targetFQNHash, :oldHashPrefix, :newHashPrefix) "
+            + "WHERE source = :source AND targetFQNHash LIKE :oldHashLike")
+    void updateTargetFQNHashPrefixInternal(
+        @Bind("source") int source,
+        @Bind("oldHashPrefix") String oldHashPrefix,
+        @Bind("newHashPrefix") String newHashPrefix,
+        @Bind("oldHashLike") String oldHashLike);
 
     @SqlQuery("select targetFQNHash FROM tag_usage where tagFQNHash = :tagFQNHash")
     @RegisterRowMapper(TagLabelMapper.class)
@@ -11535,13 +11570,14 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     void insert(@BindJson("json") String json);
 
+    /** The number of rows changed: 0 once the token was replaced or deleted. */
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = :json WHERE token = :token",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value = "UPDATE user_tokens SET json = (:json :: jsonb) WHERE token = :token",
         connectionType = POSTGRES)
-    void update(@Bind("token") String token, @BindJson("json") String json);
+    int update(@Bind("token") String token, @BindJson("json") String json);
 
     @SqlUpdate(value = "DELETE from user_tokens WHERE token = :token")
     void delete(@Bind("token") String token);
@@ -15165,27 +15201,32 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND entityType = :entityType "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutfqnhash = :aboutFqnHash "
+                + "AND entitytype = :entityType "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = POSTGRES)
     List<String> listByAbout(
         @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("entityType") String entityType,
         @Bind("after") long after,
         @Bind("limit") int limit);
 
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutFqnHash = :aboutFqnHash "
+                + "AND entityType = :entityType "
                 + "AND JSON_OVERLAPS(domains, :domainJson) "
                 + "AND timestamp >= :after ORDER BY timestamp DESC, id DESC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT json FROM activity_stream WHERE aboutfqnhash = :aboutFqnHash "
+                + "AND entitytype = :entityType "
                 + "AND EXISTS ("
                 + "SELECT 1 FROM jsonb_array_elements_text(domains) AS domain_id "
                 + "WHERE domain_id IN (<domainIds>)) "
@@ -15193,6 +15234,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     List<String> listByAboutAndDomains(
         @Bind("aboutFqnHash") String aboutFqnHash,
+        @Bind("entityType") String entityType,
         @Bind("domainJson") String domainJson,
         @BindList("domainIds") List<String> domainIds,
         @Bind("after") long after,

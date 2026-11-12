@@ -30,7 +30,8 @@ public class QLeverStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void storeEntity(String entityType, UUID entityId, Model entityModel) {
+  public RdfEntityWriteResult storeEntity(
+      String entityType, UUID entityId, Model entityModel, RdfEntityWriteStrategy strategy) {
     throw new UnsupportedOperationException("QLever storage not yet implemented");
   }
 

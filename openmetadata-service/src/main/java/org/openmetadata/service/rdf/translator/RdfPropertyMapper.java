@@ -6,7 +6,9 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -14,6 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
+import org.apache.jena.rdf.model.RDFNode;
 import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.sys.JenaSystem;
 import org.apache.jena.vocabulary.RDF;
@@ -24,6 +27,7 @@ import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -104,10 +108,8 @@ public class RdfPropertyMapper {
           // Source provenance (translator only, not a hook)
           DCT_NS + "source",
           OM_NS + "sourceUrl",
-          // Structured sub-resources attached to the entity — the entity's
-          // direct triple pointing at the blank node must be deleted so the
-          // new model's blank node replaces it. The blank node subtree itself
-          // becomes orphaned; that's a separate (out-of-scope) GC concern.
+          // Structured sub-resources attached to the entity: the entity's link to each must be
+          // replaced when the sub-resource changes or disappears.
           OM_NS + "hasLifeCycle",
           OM_NS + "hasCertification",
           OM_NS + "hasExtension",
@@ -1131,20 +1133,7 @@ public class RdfPropertyMapper {
       Property property = createProperty(propertyId, model);
 
       if ("@list".equals(container)) {
-        // Create RDF list
-        org.apache.jena.rdf.model.RDFList list = model.createList();
-        for (JsonNode item : value) {
-          if (item.isTextual()) {
-            list = list.with(model.createLiteral(item.asText()));
-          } else if (item.isObject() && item.has("id")) {
-            // Entity reference in list
-            String refUri =
-                baseUri + "entity/" + item.get("type").asText() + "/" + item.get("id").asText();
-            list = list.with(model.createResource(refUri));
-          }
-        }
-        resource.addProperty(property, list);
-
+        resource.addProperty(property, listOf(resource, property, listItems(value, model), model));
       } else {
         // @set or default - add multiple values
         for (JsonNode item : value) {
@@ -1156,6 +1145,40 @@ public class RdfPropertyMapper {
         }
       }
     }
+  }
+
+  private List<RDFNode> listItems(JsonNode value, Model model) {
+    List<RDFNode> items = new ArrayList<>();
+    for (JsonNode item : value) {
+      if (item.isTextual()) {
+        items.add(model.createLiteral(item.asText()));
+      } else if (item.isObject() && item.has("id")) {
+        items.add(
+            model.createResource(
+                baseUri + "entity/" + item.get("type").asText() + "/" + item.get("id").asText()));
+      }
+    }
+    return items;
+  }
+
+  /**
+   * Builds the RDF list from named cells instead of blank nodes. Every projection of the same list
+   * names the same cells, so a live write can compare them with what the store holds, and a write
+   * that replaces or drops the list can find its cells and delete them
+   * ({@link RdfOwnedResources#ownedTriplesPattern()}).
+   */
+  private static RDFNode listOf(
+      Resource owner, Property property, List<RDFNode> items, Model model) {
+    RDFNode rest = RDF.nil;
+    for (int index = items.size() - 1; index >= 0; index--) {
+      Resource cell =
+          model.createResource(
+              RdfOwnedResources.listCellIri(owner.getURI(), property.getURI(), index));
+      cell.addProperty(RDF.first, items.get(index));
+      cell.addProperty(RDF.rest, rest);
+      rest = cell;
+    }
+    return rest;
   }
 
   private void addTypedProperty(
@@ -1280,9 +1303,6 @@ public class RdfPropertyMapper {
 
   private Resource createTypeResource(String entityType, Model model) {
     String curieOrUri = getRdfType(entityType);
-    if (curieOrUri == null || curieOrUri.isEmpty()) {
-      return model.createResource();
-    }
     if (curieOrUri.startsWith("http://") || curieOrUri.startsWith("https://")) {
       return model.createResource(curieOrUri);
     }

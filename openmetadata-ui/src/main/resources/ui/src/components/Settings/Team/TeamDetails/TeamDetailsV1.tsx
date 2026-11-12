@@ -936,11 +936,16 @@ const TeamDetailsV1 = ({
     [currentTeam, entityPermissions, addPolicy, isTeamDeleted]
   );
 
-  const teamActionButton = useMemo(
-    () =>
-      !isOrganization &&
-      !isUndefined(currentUser) &&
-      isGroupType &&
+  const teamActionButton = useMemo(() => {
+    const isMembershipTeam =
+      !isOrganization && !isUndefined(currentUser) && isGroupType;
+    // Only admins join or leave a team that is not joinable, as the server enforces.
+    const canChangeOwnMembership =
+      Boolean(currentTeam.isJoinable) || isAdminUser;
+    const canManageTeamMembership = isMembershipTeam && canChangeOwnMembership;
+
+    return (
+      canManageTeamMembership &&
       (isAlreadyJoinedTeam ? (
         <Button
           ghost
@@ -954,22 +959,21 @@ const TeamDetailsV1 = ({
           {t('label.leave-team')}
         </Button>
       ) : (
-        (Boolean(currentTeam.isJoinable) || isAdminUser) && (
-          <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
-            {t('label.join-team')}
-          </Button>
-        )
-      )),
-
-    [
-      currentUser,
-      isAlreadyJoinedTeam,
-      isGroupType,
-      isAdminUser,
-      joinTeam,
-      deleteUserHandler,
-    ]
-  );
+        <Button data-testid="join-teams" type="primary" onClick={joinTeam}>
+          {t('label.join-team')}
+        </Button>
+      ))
+    );
+  }, [
+    currentUser,
+    currentTeam.isJoinable,
+    isAlreadyJoinedTeam,
+    isGroupType,
+    isAdminUser,
+    isOrganization,
+    joinTeam,
+    deleteUserHandler,
+  ]);
 
   const editDescriptionPermission = useMemo(
     () =>

@@ -757,7 +757,7 @@ public class FeedRepository {
     dao.relationshipDAO().deleteAll(id, Entity.THREAD);
 
     // Delete all the field relationships to other entities
-    dao.fieldRelationshipDAO().deleteAllByPrefix(id.toString());
+    dao.fieldRelationshipDAO().deleteAllByPrefix(id.toString(), Entity.THREAD);
 
     // Finally, delete the thread
     dao.feedDAO().delete(getLegacyThreadTableName(), id);

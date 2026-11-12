@@ -1217,6 +1217,59 @@ public class PolicyResourceIT extends BaseEntityIT<Policy, CreatePolicy> {
     assertEquals(condition, getEntity(policyId).getRules().get(0).getCondition());
   }
 
+  /**
+   * A soft-deleted team or role drops out of every membership, so the condition naming it matches
+   * nothing while it is deleted without being rewritten, and applies again once it is restored.
+   */
+  @Test
+  void test_softDeletedTeamAndRoleLeavePolicyConditionAsWrittenThroughRestore(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateTeam createTeam = new CreateTeam();
+    createTeam.setName(ns.prefix("SoftDeleteTeam"));
+    createTeam.setDescription("Team that will be soft deleted and restored");
+    createTeam.setTeamType(CreateTeam.TeamType.GROUP);
+    Team team = client.teams().create(createTeam);
+
+    Policy helperPolicy =
+        createEntity(
+            new CreatePolicy()
+                .withName(ns.prefix("helperPolicyForSoftDelete"))
+                .withRules(
+                    List.of(
+                        new Rule()
+                            .withName("helperRule")
+                            .withResources(List.of(ALL_RESOURCES))
+                            .withOperations(List.of(MetadataOperation.VIEW_ALL))
+                            .withEffect(Effect.ALLOW)))
+                .withDescription("Helper policy for role creation"));
+    Role role =
+        client
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("SoftDeleteRole"))
+                    .withPolicies(List.of(helperPolicy.getFullyQualifiedName()))
+                    .withDescription("Role that will be soft deleted and restored"));
+
+    String condition =
+        "inAnyTeam("
+            + spelLiteral(team.getName())
+            + ") || hasAnyRole("
+            + spelLiteral(role.getName())
+            + ")";
+    String policyId =
+        createEntity(conditionPolicy(ns, "softDeleteTeamAndRole", condition)).getId().toString();
+
+    client.teams().delete(team.getId().toString(), Map.of("recursive", "true"));
+    client.roles().delete(role.getId().toString());
+    assertEquals(condition, getEntity(policyId).getRules().get(0).getCondition());
+
+    client.teams().restore(team.getId());
+    client.roles().restore(role.getId());
+    assertEquals(condition, getEntity(policyId).getRules().get(0).getCondition());
+  }
+
   /** A tag name with punctuation stays one argument of the condition through later renames. */
   @Test
   void test_tagNameWithPunctuationStaysOneArgumentThroughLaterRenames(TestNamespace ns) {

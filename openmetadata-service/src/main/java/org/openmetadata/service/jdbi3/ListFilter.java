@@ -1177,31 +1177,17 @@ public class ListFilter extends Filter<ListFilter> {
   }
 
   /**
-   * Escape a string for use as the <em>replacement</em> argument to MySQL's
-   * {@code REGEXP_REPLACE}. Two layers of escaping are needed:
-   * <ol>
-   *   <li>Regex replacement layer: {@code REGEXP_REPLACE} treats {@code \} as the start of a
-   *       backreference / escape sequence (e.g. {@code \1} resolves to capture group 1).
-   *       Each literal backslash in the input needs to become {@code \\} for the regex
-   *       engine to emit a single {@code \}.</li>
-   *   <li>SQL string-literal layer: the regex-escaped value is then embedded inside a
-   *       single-quoted SQL string, so each remaining {@code \} doubles again
-   *       ({@code \\} → {@code \\\\}) and apostrophes double ({@code '} → {@code ''}).</li>
-   * </ol>
-   * Net effect: one input backslash → four backslashes in the SQL statement text, which
-   * the SQL parser folds to two backslashes for the regex engine, which the regex engine
-   * folds to one literal backslash in the replacement output. Apostrophes just double
-   * once (regex replacement doesn't reserve apostrophes, only the SQL layer does).
+   * Escapes a name for the replacement argument of a {@code REGEXP_REPLACE} rendered into MySQL
+   * statement text: backslashes double for the regex layer, then backslashes and apostrophes
+   * double again for the string literal.
    *
-   * <p>Compose with {@link #escapeApostrophe} rather than {@link #escapeBackslashAndApostrophe}
-   * for the second pass — applying {@code escapeBackslashAndApostrophe} twice would
-   * re-escape the apostrophes we already doubled.
+   * @deprecated the server's own statements bind these values
+   *     (ADR:2026-11-03-dao-statements-bind-every-value); kept for extensions that still render
+   *     them, until they move to bound parameters.
    */
+  @Deprecated(forRemoval = true)
   public static String escapeForMySqlRegexReplacement(String name) {
-    // Step 1: double backslashes for the regex replacement layer.
-    String regexEscaped = name.replace("\\", "\\\\");
-    // Step 2: double backslashes (again) + apostrophes for the SQL string-literal layer.
-    return escapeBackslashAndApostrophe(regexEscaped);
+    return escapeBackslashAndApostrophe(name.replace("\\", "\\\\"));
   }
 
   /**

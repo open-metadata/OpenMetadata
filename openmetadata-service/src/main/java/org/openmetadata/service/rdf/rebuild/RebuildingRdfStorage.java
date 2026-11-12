@@ -20,12 +20,15 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 import java.util.function.Supplier;
 import org.apache.jena.rdf.model.Model;
 import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.CompactionResult;
 import org.openmetadata.service.rdf.storage.ForwardingRdfStorage;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteResult;
+import org.openmetadata.service.rdf.storage.RdfEntityWriteStrategy;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 
 /** Captures live mutations or fences a fixed rebuild generation before touching Fuseki. */
@@ -58,11 +61,18 @@ final class RebuildingRdfStorage extends ForwardingRdfStorage {
     }
   }
 
+  /**
+   * The journal keeps the full projection, never the difference: the rebuild dataset is projected
+   * on its own, so only the projection makes it match what the serving dataset should hold.
+   */
   @Override
-  public void storeEntity(final String type, final UUID id, final Model model) {
+  public RdfEntityWriteResult storeEntity(
+      final String type, final UUID id, final Model model, final RdfEntityWriteStrategy strategy) {
+    final AtomicReference<RdfEntityWriteResult> result = new AtomicReference<>();
     mutate(
-        storage -> storage.storeEntity(type, id, model),
+        storage -> result.set(storage.storeEntity(type, id, model, strategy)),
         () -> RdfMutation.EntityWrite.capture(type, id, model));
+    return result.get();
   }
 
   @Override

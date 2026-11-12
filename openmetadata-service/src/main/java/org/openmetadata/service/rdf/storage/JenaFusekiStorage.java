@@ -56,9 +56,6 @@ import org.apache.jena.query.ResultSet;
 import org.apache.jena.query.ResultSetFormatter;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
-import org.apache.jena.rdf.model.RDFNode;
-import org.apache.jena.rdf.model.Resource;
-import org.apache.jena.rdf.model.StmtIterator;
 import org.apache.jena.rdfconnection.RDFConnection;
 import org.apache.jena.rdfconnection.RDFConnectionFuseki;
 import org.apache.jena.riot.RDFDataMgr;
@@ -69,10 +66,8 @@ import org.apache.jena.web.HttpSC;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.monitoring.OntologyMetrics;
-import org.openmetadata.service.rdf.RdfOwnedResources;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.RdfWriteMode;
-import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 /**
  * Apache Jena Fuseki implementation of RDF storage.
@@ -81,7 +76,7 @@ import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 @Slf4j
 public class JenaFusekiStorage implements RdfStorageInterface {
 
-  private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
+  static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
   private static final String METADATA_GRAPH = "https://open-metadata.org/graph/metadata";
   private static final String GRAPH_TRIPLE_COUNT_QUERY =
       "SELECT (COUNT(*) as ?count) WHERE { GRAPH ?graph { ?s ?p ?o } }";
@@ -121,6 +116,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private static final String METRIC_FUSEKI_TIMEOUTS = "rdf.fuseki.timeouts";
   private static final String METRIC_FUSEKI_PAYLOAD_BYTES = "rdf.fuseki.payload.bytes";
   private static final String METRIC_FUSEKI_WRITER_WAIT = "rdf.fuseki.writer.wait";
+  private static final String METRIC_ENTITY_WRITES = "rdf.fuseki.entity.writes";
+  private static final String METRIC_ENTITY_TRIPLES = "rdf.fuseki.entity.triples";
+  private static final String TAG_CHANGE = "change";
+  private static final String OPERATION_STORE_ENTITY = "storeEntity";
+  private static final String OPERATION_READ_ENTITY = "storeEntityRead";
   private static final String TAG_OPERATION = "operation";
   private static final String TAG_OUTCOME = "outcome";
   private static final String REQUEST_OUTCOME_SUCCESS = "success";
@@ -805,7 +805,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     return false;
   }
 
-  private static boolean isTimeoutError(Throwable t) {
+  static boolean isTimeoutError(Throwable t) {
     Throwable cause = t;
     while (cause != null) {
       if (cause instanceof TimeoutException
@@ -982,93 +982,6 @@ public class JenaFusekiStorage implements RdfStorageInterface {
             info.serverBaseUrl(), builder -> authenticated(builder, info.userInfo()));
   }
 
-  // Union the translator's static "always managed" predicates with whatever
-  // predicates the current model actually emits for this entity. The static
-  // set covers shrink-to-empty cases (e.g. all tags removed -> current model
-  // no longer emits om:hasTag, but we still need to clean up the old triples).
-  // The dynamic walk covers translator-only predicates introduced via the
-  // JSON-LD context that aren't in the static set. CRITICAL: exclude
-  // RELATIONSHIP_HOOK_PREDICATES from the dynamic-walk result. Callers like
-  // RdfRepository.addRelationship load the existing entity model from Fuseki
-  // (which includes hook-managed predicates like om:owns / om:contains) and
-  // pass it here; without this exclusion the dynamic walk would pull those
-  // hook predicates into the DELETE scope and the subsequent INSERT would
-  // overwrite them with a possibly-stale snapshot, opening a lost-update
-  // race window with concurrent async relationship writes.
-  private static Set<String> collectTranslatorPredicates(String entityUri, Model entityModel) {
-    Set<String> predicates =
-        new LinkedHashSet<>(RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES);
-    Resource entityResource = entityModel.createResource(entityUri);
-    StmtIterator stmts = entityModel.listStatements(entityResource, null, (RDFNode) null);
-    while (stmts.hasNext()) {
-      String predicateUri = stmts.next().getPredicate().getURI();
-      if (RdfRepository.RELATIONSHIP_HOOK_PREDICATES.contains(predicateUri)) {
-        continue;
-      }
-      predicates.add(predicateUri);
-    }
-    // Defensive belt-and-braces in case a future change adds a hook predicate
-    // to the static set: filter the static set the same way.
-    predicates.removeAll(RdfRepository.RELATIONSHIP_HOOK_PREDICATES);
-    return predicates;
-  }
-
-  private static String buildPredicateScopedDelete(String entityUri, Set<String> predicates) {
-    // ONE operation, not two. Everything this must remove is expressed as a single filter:
-    //
-    //   !isIRI(?o)      literal-/blank-node-valued triples, whatever the predicate. Predicates
-    //                   that emit literals (description, displayName, name, ...) may SHRINK TO
-    //                   EMPTY between writes - the new translator output simply omits the triple -
-    //                   and the old literal would persist unless swept here.
-    //   ?p IN (...)     URI-valued triples for predicates the translator owns, so its fresh output
-    //                   replaces the prior values. Hook-managed URI predicates, including
-    //                   om:upstream, om:downstream, om:owns and om:contains, survive.
-    //
-    // The two used to be separate DELETE...WHERE operations chained with ';'. They cannot be:
-    // Fuseki rejects an update request carrying more than one WHERE-bearing operation with
-    // "400 Bad Request" (logged server-side as "Bad request: null") whenever arq:updateTimeout
-    // is configured, because the timeout controller governs a single execution per request.
-    // Operations without a WHERE (INSERT DATA) are unaffected and may still be chained.
-    // Merging is exactly equivalent - !isIRI(?o) || (isIRI(?o) && ?p IN (P)) reduces to
-    // !isIRI(?o) || ?p IN (P) - and it scans the entity's triples once instead of twice.
-    return buildPredicateScopedDelete(Set.of(entityUri), predicates);
-  }
-
-  private static String buildPredicateScopedDelete(Set<String> entityUris, Set<String> predicates) {
-    if (entityUris.isEmpty()) {
-      return "";
-    }
-    String filter =
-        predicates.isEmpty() ? "!isIRI(?o)" : "!isIRI(?o) || ?p IN (" + iriList(predicates) + ")";
-    return String.format(
-        "DELETE { GRAPH <%1$s> { ?subject ?p ?o } } WHERE { GRAPH <%1$s> { "
-            + "VALUES ?entity { %2$s } "
-            + "{ ?entity ?p ?o . BIND(?entity AS ?subject) FILTER(%3$s) } UNION { %4$s } } }",
-        KNOWLEDGE_GRAPH, iriValues(entityUris), filter, RdfOwnedResources.ownedTriplesPattern());
-  }
-
-  private static String iriList(Set<String> predicates) {
-    StringBuilder list = new StringBuilder();
-    for (String predicate : predicates) {
-      if (!list.isEmpty()) {
-        list.append(", ");
-      }
-      list.append('<').append(predicate).append('>');
-    }
-    return list.toString();
-  }
-
-  private static String iriValues(Iterable<String> iris) {
-    StringBuilder values = new StringBuilder();
-    for (String iri : iris) {
-      if (!values.isEmpty()) {
-        values.append(' ');
-      }
-      values.append('<').append(iri).append('>');
-    }
-    return values.toString();
-  }
-
   static String buildEntityUpsertUpdate(String entityUri, Model entityModel) {
     return buildEntityUpsertUpdate(entityUri, entityModel, RdfWriteMode.RECONCILE);
   }
@@ -1079,8 +992,9 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     if (writeMode == RdfWriteMode.INSERT_ONLY) {
       return triples.isBlank() ? "" : buildInsertData(triples);
     }
-    Set<String> predicatesToDelete = collectTranslatorPredicates(entityUri, entityModel);
-    String deleteQuery = buildPredicateScopedDelete(entityUri, predicatesToDelete);
+    Set<String> predicatesToDelete =
+        RdfEntityScope.translatorPredicates(entityUri, entityModel.getGraph());
+    String deleteQuery = RdfEntityScope.deleteUpdate(Set.of(entityUri), predicatesToDelete);
     if (triples.isBlank()) {
       return deleteQuery;
     }
@@ -1197,13 +1111,14 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     for (EntityWriteRequest req : requests) {
       String entityUri = baseUri + "entity/" + req.entityType() + "/" + req.entityId();
       entityUris.add(entityUri);
-      predicatesToDelete.addAll(collectTranslatorPredicates(entityUri, req.model()));
+      predicatesToDelete.addAll(
+          RdfEntityScope.translatorPredicates(entityUri, req.model().getGraph()));
       combinedModel.add(req.model());
     }
     String triples = serializeModel(combinedModel);
     combinedModel.close();
     StringBuilder combined =
-        new StringBuilder(buildPredicateScopedDelete(entityUris, predicatesToDelete));
+        new StringBuilder(RdfEntityScope.deleteUpdate(entityUris, predicatesToDelete));
     if (!triples.isBlank()) {
       if (!combined.isEmpty()) {
         combined.append(";\n");
@@ -1364,37 +1279,62 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     return result;
   }
 
+  /**
+   * {@link RdfEntityScope} defines the triples the write replaces and why relationship and lineage
+   * edges survive it; {@link RdfEntityWritePlanner} decides what it sends.
+   */
   @Override
-  public void storeEntity(String entityType, UUID entityId, Model entityModel) {
-    throwIfCircuitOpen("storeEntity");
-    String entityUri = baseUri + "entity/" + entityType + "/" + entityId;
-    // Scope the DELETE to predicates the translator owns. The previous
-    // FILTER(!isIRI(?o)) preserved EVERY URI object, which let stale
-    // translator-emitted triples (old om:hasOwner, removed om:hasTag, etc.)
-    // accumulate across updates because no hook ever cleans them up — owner /
-    // tag / glossary-term URIs aren't in entity_relationship. Predicate
-    // scoping lets the translator's fresh output replace the prior values,
-    // while hook-managed predicates (om:upstream/om:downstream, om:hasLineageDetails,
-    // om:owns / om:contains / …) are untouched so relationship and lineage
-    // state survives a metadata-only update.
-    //
-    // The set we delete is the union of:
-    //  - RdfPropertyMapper.TRANSLATOR_MANAGED_DIRECT_PREDICATES (covers the
-    //    shrink-to-empty case where a field is now absent and the new model
-    //    no longer emits its predicate), and
-    //  - the predicates the current model actually emits for <entityUri>
-    //    (covers translator-only predicates introduced via the JSON-LD
-    //    context that aren't in the static set).
-    String upsertQuery = buildEntityUpsertUpdate(entityUri, entityModel);
+  public RdfEntityWriteResult storeEntity(
+      String entityType, UUID entityId, Model entityModel, RdfEntityWriteStrategy strategy) {
+    throwIfCircuitOpen(OPERATION_STORE_ENTITY);
+    String entityUri = buildEntityUri(entityType, entityId.toString());
     try {
-      UpdateRequest request = UpdateFactory.create(upsertQuery);
-      runWriteWithRetry(() -> connection.update(request), "storeEntity");
-      LOG.debug("Stored entity {} in graph {}", entityId, KNOWLEDGE_GRAPH);
+      final RdfEntityWriteResult result =
+          new RdfEntityWritePlanner(this::readForEntityWrite)
+              .write(entityUri, entityModel, strategy, this::sendEntityUpdate);
+      if (!result.changesGraph()) {
+        // Nothing was sent, so the write's read is its only proof Fuseki answers.
+        recordSuccess();
+      }
+      recordEntityWrite(result);
+      LOG.debug("Stored entity {} in graph {}: {}", entityId, KNOWLEDGE_GRAPH, result);
+      return result;
     } catch (Exception e) {
       rethrowIfHeldBack(e);
       LOG.error("Failed to store entity in Fuseki", e);
       throw new RuntimeException("Failed to store entity in RDF", e);
     }
+  }
+
+  private Model readForEntityWrite(String query) {
+    Query parsed = QueryFactory.create(query);
+    try {
+      return runWithTimeout(
+          () -> {
+            try (QueryExecution execution = connection.query(parsed)) {
+              return execution.execConstruct();
+            }
+          },
+          OPERATION_READ_ENTITY);
+    } catch (RuntimeException failure) {
+      if (isCircuitBreakerFailure(failure)) {
+        recordFailure();
+      }
+      throw failure;
+    }
+  }
+
+  private void sendEntityUpdate(String update) {
+    Metrics.summary(METRIC_FUSEKI_PAYLOAD_BYTES, TAG_OPERATION, OPERATION_STORE_ENTITY)
+        .record(Utf8.encodedLength(update));
+    UpdateRequest request = UpdateFactory.create(update);
+    runWriteWithRetry(() -> connection.update(request), OPERATION_STORE_ENTITY);
+  }
+
+  private static void recordEntityWrite(RdfEntityWriteResult result) {
+    Metrics.counter(METRIC_ENTITY_WRITES, TAG_OUTCOME, result.outcome().tag()).increment();
+    Metrics.summary(METRIC_ENTITY_TRIPLES, TAG_CHANGE, "deleted").record(result.deletedTriples());
+    Metrics.summary(METRIC_ENTITY_TRIPLES, TAG_CHANGE, "inserted").record(result.insertedTriples());
   }
 
   @Override

@@ -59,6 +59,7 @@ import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
+import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.Team;
@@ -1282,8 +1283,13 @@ public class UserRepository extends EntityRepository<User> {
       if (!processRecord || SubjectContext.getSubjectContext(importedBy).isAdmin()) {
         return;
       }
-      if (Boolean.TRUE.equals(user.getIsAdmin())) {
+      if (Boolean.TRUE.equals(user.getIsAdmin()) || isStoredAdmin(user)) {
         importFailure(printer, privilegedFieldRequiresAdmin(5, "isAdmin"), csvRecord);
+        processRecord = false;
+        return;
+      }
+      if (Boolean.TRUE.equals(user.getIsBot()) || isStoredBot(user)) {
+        importFailure(printer, privilegedFieldRequiresAdmin(6, "isBot"), csvRecord);
         processRecord = false;
         return;
       }
@@ -1291,6 +1297,16 @@ public class UserRepository extends EntityRepository<User> {
         importFailure(printer, privilegedFieldRequiresAdmin(7, ROLES_FIELD), csvRecord);
         processRecord = false;
       }
+    }
+
+    private static boolean isStoredAdmin(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsAdmin());
+    }
+
+    private static boolean isStoredBot(User user) {
+      User stored = ((UserRepository) Entity.getEntityRepository(USER)).findMatchForImport(user);
+      return stored != null && Boolean.TRUE.equals(stored.getIsBot());
     }
 
     public static String privilegedFieldRequiresAdmin(int field, String fieldName) {
@@ -1423,23 +1439,43 @@ public class UserRepository extends EntityRepository<User> {
   }
 
   /**
+   * Ends the sign-ins made with a user's previous password: refresh tokens, live sessions and MCP
+   * grants. Personal access tokens and bot tokens are credentials of their own and stay
+   * (ADR:2026-11-03-a-password-change-ends-the-users-sign-ins).
+   */
+  public void endSignIns(User user) {
+    endSignIns(user, AuthServeletHandlerRegistry.getSessionService());
+  }
+
+  /** For callers outside the server, such as the ops CLI, which build their own session service. */
+  public void endSignIns(User user, SessionService sessionService) {
+    Entity.getTokenRepository()
+        .deleteTokenByUserAndType(user.getId(), TokenType.REFRESH_TOKEN.toString());
+    daoCollection.oauthRefreshTokenDAO().revokeAllGrantsOfUser(user.getName());
+    revokeLiveSessions(user, sessionService);
+  }
+
+  /**
    * Soft delete is the normal off-boarding action in the UI, so it has to cut live access too — the
    * user's existing session-bound tokens keep working until natural expiry (7 days by default)
    * otherwise. Revocation notifies the WebSocket/cross-pod listeners, so peer pods drop the user's
    * sockets as well.
    */
   private void revokeLiveSessions(User entity) {
-    SessionService sessionService = AuthServeletHandlerRegistry.getSessionService();
+    revokeLiveSessions(entity, AuthServeletHandlerRegistry.getSessionService());
+  }
+
+  private void revokeLiveSessions(User entity, SessionService sessionService) {
     if (sessionService == null || entity.getId() == null) {
       return;
     }
     try {
       int revoked = sessionService.revokeSessionsForUser(entity.getId().toString());
       if (revoked > 0) {
-        LOG.info("Revoked {} session(s) for deleted user {}", revoked, entity.getName());
+        LOG.info("Revoked {} session(s) for user {}", revoked, entity.getName());
       }
     } catch (Exception e) {
-      LOG.error("Failed to revoke sessions for deleted user {}", entity.getName(), e);
+      LOG.error("Failed to revoke sessions for user {}", entity.getName(), e);
     }
   }
 

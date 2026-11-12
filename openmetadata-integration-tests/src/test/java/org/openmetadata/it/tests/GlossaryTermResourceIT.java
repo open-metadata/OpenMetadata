@@ -4359,6 +4359,44 @@ public class GlossaryTermResourceIT extends BaseEntityIT<GlossaryTerm, CreateGlo
     awaitGlossaryTagAssetSearchable(client, mapper, newFqn, tableId);
   }
 
+  @Test
+  void test_renameTermWithQuotesAndBackslashes_movesItsChildrenAndTheirTags(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Glossary glossary =
+        client
+            .glossaries()
+            .create(
+                new CreateGlossary()
+                    .withName(ns.shortPrefix("quoted_g"))
+                    .withDescription("Glossary for renames of names with quotes and backslashes"));
+    GlossaryTerm parent =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix("o") + "\\'\\'brien 100%_off")
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withDescription("Parent whose name has quotes, backslashes and wildcards"));
+    GlossaryTerm child =
+        createEntity(
+            new CreateGlossaryTerm()
+                .withName(ns.shortPrefix("child"))
+                .withGlossary(glossary.getFullyQualifiedName())
+                .withParent(parent.getFullyQualifiedName())
+                .withDescription("Child that follows the rename"));
+    Table table = createTableTaggedWithTerm(ns, child, "quoted_asset");
+
+    GlossaryTerm toRename = client.glossaryTerms().get(parent.getId().toString(), "tags");
+    toRename.setName(ns.shortPrefix("renamed") + " it's fine");
+    GlossaryTerm renamed = patchEntity(parent.getId().toString(), toRename);
+
+    String childFqn = renamed.getFullyQualifiedName() + "." + child.getName();
+    assertEquals(
+        childFqn, client.glossaryTerms().get(child.getId().toString()).getFullyQualifiedName());
+    assertEquals(child.getId(), client.glossaryTerms().getByName(childFqn).getId());
+    assertTrue(
+        tableHasTag(client, table.getId(), childFqn),
+        "The table's label for the child term must follow the rename");
+  }
+
   private void awaitTableGlossaryTag(
       OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedGlossaryFqn) {
     Awaitility.await("table search doc carries glossary tag " + expectedGlossaryFqn)

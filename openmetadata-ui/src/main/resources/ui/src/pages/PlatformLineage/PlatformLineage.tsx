@@ -25,16 +25,15 @@ import QueryString from 'qs';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as DownloadIcon } from '../../assets/svg/ic-download.svg';
 import { ReactComponent as SettingsOutlined } from '../../assets/svg/ic-settings-gear.svg';
 import Loader from '../../components/common/Loader/Loader';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { AssetsUnion } from '../../components/DataAssets/AssetsSelectionModal/AssetSelectionModal.interface';
-import { useEntityExportModalProvider } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import EntitySuggestionOption from '../../components/Entity/EntityLineage/EntitySuggestionOption/EntitySuggestionOption.component';
 import LineageConfigModal from '../../components/Entity/EntityLineage/LineageConfigModal';
 import Lineage from '../../components/Lineage/Lineage.component';
+import LineageExportButton from '../../components/Lineage/LineageExportButton/LineageExportButton';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
@@ -42,10 +41,6 @@ import {
   FULLSCREEN_QUERY_PARAM_KEY,
   PAGE_SIZE_BASE,
 } from '../../constants/constants';
-import {
-  ExportTypes,
-  LINEAGE_EXPORT_SELECTOR,
-} from '../../constants/Export.constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { PAGE_HEADERS } from '../../constants/PageHeaders.constant';
 import LineageProvider from '../../context/LineageProvider/LineageProvider';
@@ -63,8 +58,6 @@ import { useLineageStore } from '../../hooks/useLineageStore';
 import { getEntityPermissionByFqn } from '../../rest/permissionAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { getEntityAPIfromSource } from '../../utils/Assets/AssetsUtils';
-import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
-import { getViewportForLineageExport } from '../../utils/EntityLineageLayoutUtils';
 import { getLineageEntityExclusionFilter } from '../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getOperationPermissions } from '../../utils/PermissionsUtils';
@@ -97,7 +90,6 @@ const PlatformLineage = () => {
   const setLineageConfig = useLineageStore((state) => state.setLineageConfig);
   const [permissions, setPermissions] = useState<OperationPermission>();
   const [dialogVisible, setDialogVisible] = useState(false);
-  const { showModal } = useEntityExportModalProvider();
 
   const queryParams = useMemo(() => {
     return QueryString.parse(location.search, {
@@ -197,17 +189,6 @@ const PlatformLineage = () => {
     }
   }, [decodedFqn, entityType]);
 
-  const handleExport = useCallback(() => {
-    showModal({
-      name: `${t('label.lineage')}_${getCurrentISODate()}`,
-      exportTypes: [ExportTypes.PNG],
-      title: t('label.lineage'),
-      documentSelector: LINEAGE_EXPORT_SELECTOR,
-      viewport: getViewportForLineageExport([], LINEAGE_EXPORT_SELECTOR),
-      onExport: async () => '',
-    });
-  }, []);
-
   useEffect(() => {
     init();
   }, [init]);
@@ -244,19 +225,9 @@ const PlatformLineage = () => {
           onSearch={debouncedSearch}
         />
         <div className="d-flex gap-2">
-          <Tooltip
-            placement="top"
-            title={t('label.export-as-type', {
-              type: t('label.png-uppercase'),
-            })}>
-            <TooltipTrigger>
-              <ButtonUtility
-                data-testid="export-button"
-                icon={DownloadIcon}
-                onClick={handleExport}
-              />
-            </TooltipTrigger>
-          </Tooltip>
+          {/* Rendered inside <LineageProvider> through platformHeader, so it
+              exports the graph the provider holds. */}
+          <LineageExportButton />
           <ButtonUtility
             data-testid="lineage-config"
             icon={SettingsOutlined}
@@ -292,7 +263,6 @@ const PlatformLineage = () => {
     defaultValue,
     debouncedSearch,
     isSearchLoading,
-    handleExport,
     navigate,
     queryParams,
   ]);
@@ -323,8 +293,8 @@ const PlatformLineage = () => {
         // `/lineage` with no entity is the platform-wide view; the focused
         // variant names the entity it is centred on.
         decodedFqn
-          ? t('label.entity-lineage', {
-              entity: getEntityName(selectedEntity) || decodedFqn,
+          ? t('label.platform-type-lineage', {
+              platformType: getEntityName(selectedEntity) || decodedFqn,
             })
           : t('label.lineage')
       }>

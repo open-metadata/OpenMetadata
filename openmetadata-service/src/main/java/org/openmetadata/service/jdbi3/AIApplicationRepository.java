@@ -24,6 +24,8 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 @Slf4j
 @Repository
 public class AIApplicationRepository extends EntityRepository<AIApplication> {
+  private static final String FIELD_MCP_SERVERS = "mcpServers";
+  private static final String FIELD_PRIMARY_MODEL = "primaryModel";
   private static final String APPLICATION_UPDATE_FIELDS =
       "modelConfigurations,tools,dataSources,reviewers";
   private static final String APPLICATION_PATCH_FIELDS =
@@ -106,11 +108,7 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
                   original.getModelConfigurations(),
                   updated.getModelConfigurations(),
                   true));
-      compareAndUpdate(
-          "primaryModel",
-          () ->
-              recordChange(
-                  "primaryModel", original.getPrimaryModel(), updated.getPrimaryModel(), true));
+      updateModelReferences();
       compareAndUpdate(
           "promptTemplates",
           () ->
@@ -204,6 +202,22 @@ public class AIApplicationRepository extends EntityRepository<AIApplication> {
           () ->
               recordChange(
                   "documentation", original.getDocumentation(), updated.getDocumentation()));
+    }
+
+    private void updateModelReferences() {
+      compareAndUpdate(
+          FIELD_PRIMARY_MODEL,
+          () ->
+              recordChange(
+                  FIELD_PRIMARY_MODEL,
+                  original.getPrimaryModel(),
+                  updated.getPrimaryModel(),
+                  true));
+      compareAndUpdate(
+          FIELD_MCP_SERVERS,
+          () ->
+              recordChange(
+                  FIELD_MCP_SERVERS, original.getMcpServers(), updated.getMcpServers(), true));
     }
   }
 }

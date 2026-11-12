@@ -29,17 +29,22 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.exception.JsonParsingException;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.util.EntityUtil;
@@ -63,6 +68,10 @@ public final class MigrationUtil {
   public static final String NEGATED_LIST_WORKFLOW_STEP = "negatedListRulesInWorkflows";
   public static final String NEGATED_LIST_DATA_CONTRACT_STEP = "negatedListRulesInDataContracts";
   public static final String NEGATED_LIST_ENTITY_RULES_STEP = "negatedListRulesInEntityRules";
+  public static final String DENY_BOT_USERS_STEP = "denyBotTargetsInBotNonAdminImpersonationPolicy";
+  private static final String BOT_NON_ADMIN_IMPERSONATION_POLICY = "BotNonAdminImpersonationPolicy";
+  static final String DENY_ADMIN_USERS_RULE_NAME = "BotNonAdminImpersonationPolicy-DenyAdminUsers";
+  static final String DENY_BOT_USERS_RULE_NAME = "BotNonAdminImpersonationPolicy-DenyBotUsers";
   private static final int BATCH_SIZE = 1_000;
   private static final String CHECK_CONDITION = "checkEntityAttributesTask";
   private static final String EVENT_TRIGGER = "eventBasedEntity";
@@ -371,5 +380,50 @@ public final class MigrationUtil {
       }
     }
     return parsed;
+  }
+
+  /**
+   * Add the bot-target deny rule of the seed to a stored BotNonAdminImpersonationPolicy. Seed loading
+   * never updates an existing policy, and this policy shipped without the rule.
+   */
+  public static void addDenyBotUsersRuleToBotNonAdminImpersonationPolicy(
+      CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy =
+          repository.findByName(BOT_NON_ADMIN_IMPERSONATION_POLICY, Include.NON_DELETED);
+      if (addDenyBotUsersRule(policy)) {
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} to {}", DENY_BOT_USERS_RULE_NAME, BOT_NON_ADMIN_IMPERSONATION_POLICY);
+      }
+    } catch (EntityNotFoundException exception) {
+      LOG.warn("{} not found, skipping its bot-target rule", BOT_NON_ADMIN_IMPERSONATION_POLICY);
+    }
+  }
+
+  /**
+   * Returns whether the rule was added. A policy that no longer carries the admin-target deny rule
+   * was loosened on purpose by an admin, so it is left as it is.
+   */
+  static boolean addDenyBotUsersRule(Policy policy) {
+    List<Rule> rules = policy.getRules();
+    if (rules == null
+        || rules.stream().noneMatch(rule -> DENY_ADMIN_USERS_RULE_NAME.equals(rule.getName()))
+        || rules.stream().anyMatch(rule -> DENY_BOT_USERS_RULE_NAME.equals(rule.getName()))) {
+      return false;
+    }
+    rules.add(
+        new Rule()
+            .withName(DENY_BOT_USERS_RULE_NAME)
+            .withDescription(
+                "Deny impersonating bots. System and application bots can edit policies and roles,"
+                    + " this policy included.")
+            .withResources(List.of(Entity.USER))
+            .withOperations(List.of(MetadataOperation.IMPERSONATE))
+            .withEffect(Rule.Effect.DENY)
+            .withCondition("isBotUser()"));
+    return true;
   }
 }

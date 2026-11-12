@@ -56,7 +56,7 @@ jobs:
   #      `excluded_tags` collects every spec, so wrong-provider tests fail
   #      loudly rather than silently not running.
   sso-login:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment: test
     timeout-minutes: 45
     strategy:
