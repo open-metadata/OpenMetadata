@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { load } from 'js-yaml';
 import { ACTION_TIMEOUT } from '../../constant/common';
 import {
   generateODCSContract,
@@ -1911,12 +1912,17 @@ version: "1.0.0"`;
       const fsModule = await import('fs');
       const exportedYaml = fsModule.readFileSync(tempPath, 'utf-8');
 
-      // Verify updated SLA values
-      expect(exportedYaml).toContain('slaProperties');
-      expect(exportedYaml).toContain('freshness');
-      expect(exportedYaml).toContain('"48"');
-      expect(exportedYaml).toContain('latency');
-      expect(exportedYaml).toContain('"4"');
+      // Verify updated SLA values; ODCS v3.1.0 exports whole-number SLA values as numbers
+      const exported = load(exportedYaml) as {
+        slaProperties?: { property: string; value: unknown }[];
+      };
+
+      expect(exported.slaProperties).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ property: 'freshness', value: 48 }),
+          expect.objectContaining({ property: 'latency', value: 4 }),
+        ])
+      );
 
       // Cleanup
       fsModule.unlinkSync(tempPath);
