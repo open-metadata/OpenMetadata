@@ -29,6 +29,10 @@ import merge_queue_metrics as mq
 MAX_LOG_BYTES = 2 * 1024 * 1024
 CAUSES = {"failure", "timed_out"}
 PASSING = {None, "success", "neutral", "skipped"}
+NOT_REQUIRED = (
+    "No required check failed — the entry may have timed out, or been dequeued "
+    "while a required check was still pending."
+)
 RUN_URL = re.compile(r"^(.*/actions/runs/\d+)/job/\d+$")
 # Test steps print application HTTP errors, so only other steps are read for symptoms.
 TEST_STEP = re.compile(r"\btests\b|pytest", re.IGNORECASE)
@@ -176,9 +180,34 @@ def run_line(
         ], diagnosis.Diagnosis("Unknown — failing job details are unavailable.")
 
 
+def blocked(
+    repo: str, branch: str, checks: list[dict], token: str
+) -> tuple[str, set[str]]:
+    try:
+        rules = mq.rest(f"/repos/{repo}/rules/branches/{branch}", token)
+        required = {
+            check["context"]
+            for rule in rules
+            if rule["type"] == "required_status_checks"
+            for check in rule["parameters"]["required_status_checks"]
+        }
+        names = dict.fromkeys(
+            label(check) for check in checks if check["name"] in required
+        )
+        return (
+            f"Required queue gate: {', '.join(names)}" if names else NOT_REQUIRED
+        ), required
+    except Exception as exc:
+        print(
+            f"::warning::Could not read required checks: {type(exc).__name__}",
+            file=sys.stderr,
+        )
+        return "Required queue checks could not be read.", set()
+
+
 def details(
     args: argparse.Namespace, token: str
-) -> tuple[str, list[list], list[diagnosis.Diagnosis]]:
+) -> tuple[str, list[list], list[diagnosis.Diagnosis | None]]:
     """A summary line, and one entry per failed job or external check."""
     if not args.sha:
         return (
@@ -200,16 +229,26 @@ def details(
                 [],
                 [],
             )
-        runs, external = defaultdict(list), []
+        runs = defaultdict(list)
         for check in checks:
             # Checks API reports (e.g. "Unit Test Report") belong to no job.
             if match := RUN_URL.match(check["html_url"]):
                 runs[match[1]].append(check)
-            else:
-                external.append([(label(check), check["html_url"])])
         evidence = diagnosis.Evidence(args.repo, args.branch, args.created, token)
+        summary, required = blocked(args.repo, args.branch, checks, token)
         results = []
         for url, group in runs.items():
+            if not any(
+                check["name"] in required and check["conclusion"] in CAUSES
+                for check in group
+            ):
+                parts = ["Other checks: "]
+                for check in group:
+                    if len(parts) > 1:
+                        parts.append(", ")
+                    parts.append((label(check), check["html_url"]))
+                results.append((parts, None))
+                continue
             causes = [
                 check
                 for check in group
@@ -226,9 +265,22 @@ def details(
                 results.append(
                     run_line(args.repo, url, [cause, *others], evidence, args.sha)
                 )
+        results += [
+            (
+                [(label(check), check["html_url"])],
+                diagnosis.Diagnosis(
+                    "Unknown — required check has no comparable Actions job."
+                )
+                if check["name"] in required
+                else None,
+            )
+            for check in checks
+            if not RUN_URL.match(check["html_url"])
+        ]
+        results.sort(key=lambda result: result[1] is None)
         return (
-            "",
-            [entry for entry, _ in results] + external,
+            summary,
+            [entry for entry, _ in results],
             [comparison for _, comparison in results],
         )
     except Exception as exc:
@@ -264,20 +316,17 @@ def report(
 ) -> tuple[str, str]:
     """The PR comment in Markdown and the same report in Slack mrkdwn."""
     summary, entries, comparisons = details(args, token)
+    attributed = [comparison for comparison in comparisons if comparison is not None]
     server = os.environ.get("GITHUB_SERVER_URL", "https://github.com")
     title = f"the {args.queue} — `{args.reason}`"
-    main_failure = any(comparison.main for comparison in comparisons)
-    pr_failure = (
-        bool(comparisons)
-        and len(entries) == len(comparisons)
-        and all(
-            comparison.pr and len(comparison.pr) == len(comparison.failures)
-            for comparison in comparisons
-        )
+    main_failure = any(comparison.main for comparison in attributed)
+    pr_failure = bool(attributed) and all(
+        comparison.pr and len(comparison.pr) == len(comparison.failures)
+        for comparison in attributed
     )
     icon = "🚨" if main_failure else "🔵" if pr_failure else "⚠️"
     rows = []
-    if len(comparisons) != 1:
+    if len(attributed) != 1:
         assessment = (
             "Main failures confirmed; see each workflow below."
             if main_failure
@@ -287,7 +336,7 @@ def report(
         )
         rows.append([f"PR vs. main: {assessment}"])
     for index, entry in enumerate(entries):
-        if index < len(comparisons):
+        if index < len(comparisons) and comparisons[index] is not None:
             comparison = comparisons[index]
             line = [f"PR vs. main: {comparison.comparison}"]
             if comparison.baseline_url:
@@ -320,7 +369,7 @@ def report(
     if summary:
         rows.append([summary])
     shown_tests = {
-        test.name for comparison in comparisons for test in comparison.failures
+        test.name for comparison in attributed for test in comparison.failures
     }
     annotation_tests = list(
         dict.fromkeys(test for test in tests if test not in shown_tests)

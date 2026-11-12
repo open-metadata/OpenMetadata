@@ -1,7 +1,7 @@
 # Dequeue alerts compare main before attributing failures
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-12 (initial)
+- **Revisions:** v1 2026-11-12 (initial) · v2 2026-11-12 (required gates and bounded baseline lookup)
 - **Deciders:** Pere Miquel Brull
 - **Guard:** reviewer
 - **Related:** ADR:2026-11-09-dequeue-alerts-separate-observed-causes-from-attribution
@@ -58,6 +58,19 @@ Each report archive and its selected uncompressed contents are bounded to 16 MiB
 to recover resolved dependency revisions are bounded to 64 MiB. Downloads do not forward the
 GitHub token to redirected storage hosts. Artifacts are read without extracting or executing them.
 API and baseline caches hold at most 128 entries each; the larger parsed snapshots hold at most 16.
+
+## Amendment — preserve queue cause and bound optional diagnosis
+
+Show the required queue gate separately from test attribution. Optional failures cannot drive the
+alert icon or receive a queue RCA. If no required check has a completed failure, preserve the
+pending-check/timeout explanation; an unreadable rules lookup leaves attribution unknown.
+
+An unreadable historical run or job is excluded individually and cannot erase other valid baseline
+evidence. Conflicting readable evidence still remains unknown. Optional diagnosis shares a 90-second
+budget and at most eight uncached snapshots across the alert. Requests use at most 20 seconds or the
+remaining budget, whichever is smaller, with checks between streaming reads and pagination calls.
+An in-flight socket read retains its timeout. API reads make one bounded attempt. Exhaustion leaves
+comparison or introducing-commit attribution explicitly unknown and preserves the alert.
 
 ## Consequences
 

@@ -9,13 +9,13 @@ import io
 import json
 import re
 import sys
+import time
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
 from functools import lru_cache
 
-import merge_queue_metrics as mq
 from playwright_flaky_report import pick_results
 
 MAX_REPORT_BYTES = 16 * 1024 * 1024
@@ -24,7 +24,14 @@ MAX_HISTORY_COMMITS = 20
 MAX_BASELINE_RUNS = 10
 MAX_CACHED_READS = 128
 MAX_CACHED_SNAPSHOTS = 16
+MAX_ENRICHMENT_SECONDS = 90
+MAX_REQUEST_SECONDS = 20
+MAX_SNAPSHOTS = 8
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+
+
+class BudgetExceeded(TimeoutError):
+    """Optional diagnosis must leave time to publish the alert."""
 
 
 @dataclass(frozen=True)
@@ -188,15 +195,23 @@ def junit_tests(data: bytes) -> dict[str, Test]:
     return tests
 
 
-def download(path: str, limit: int, token: str) -> bytes:
+def download(path: str, limit: int, token: str, timeout: float = 60) -> bytes:
     request = urllib.request.Request(f"https://api.github.com/{path}")
     # Artifact and log endpoints redirect to storage; never forward the GitHub token.
     request.add_unredirected_header("Authorization", f"Bearer {token}")
-    with urllib.request.urlopen(request, timeout=60) as response:
-        data = response.read(limit + 1)
+    deadline = time.monotonic() + timeout
+    data = bytearray()
+    with urllib.request.urlopen(request, timeout=timeout) as response:
+        while len(data) <= limit:
+            if time.monotonic() >= deadline:
+                raise TimeoutError("CI evidence download budget exhausted")
+            chunk = response.read1(min(65536, limit + 1 - len(data)))
+            if not chunk:
+                break
+            data.extend(chunk)
     if len(data) > limit:
         raise ValueError("CI evidence exceeds its size limit")
-    return data
+    return bytes(data)
 
 
 def checkout_revisions(logs: str) -> tuple:
@@ -261,10 +276,43 @@ def artifact_matches(name: str, job: dict) -> bool:
 class Evidence:
     def __init__(self, repo: str, branch: str, created: str, token: str):
         self.repo, self.branch, self.created, self.token = repo, branch, created, token
+        self.deadline = time.monotonic() + MAX_ENRICHMENT_SECONDS
+        self.snapshots = 0
+
+    def remaining(self) -> float:
+        seconds = self.deadline - time.monotonic()
+        if seconds <= 0:
+            raise BudgetExceeded("Diagnosis time budget exhausted")
+        return seconds
+
+    def read(self, path: str, limit: int) -> bytes:
+        try:
+            data = download(
+                path, limit, self.token, min(MAX_REQUEST_SECONDS, self.remaining())
+            )
+        except TimeoutError:
+            self.remaining()
+            raise
+        self.remaining()
+        return data
 
     @lru_cache(maxsize=MAX_CACHED_READS)
     def api(self, path: str):
-        return mq.rest(f"/repos/{self.repo}/{path}", self.token)
+        return json.loads(self.read(f"repos/{self.repo}/{path}", MAX_REPORT_BYTES))
+
+    def items(self, path: str, key: str) -> list[dict]:
+        items = []
+        separator = "&" if "?" in path else "?"
+        for page in range(1, 11):
+            self.remaining()
+            payload = self.api(f"{path}{separator}per_page=100&page={page}")
+            batch = payload[key]
+            items.extend(batch)
+            if len(batch) < 100 or len(items) >= payload.get(
+                "total_count", float("inf")
+            ):
+                return items
+        raise ValueError("CI evidence pagination exceeded its limit")
 
     def workflow_environment(self, run: dict) -> tuple:
         revisions = {run["head_sha"]}
@@ -291,14 +339,17 @@ class Evidence:
 
     @lru_cache(maxsize=MAX_CACHED_SNAPSHOTS)
     def snapshot(self, run_id: int, job_id: int) -> Snapshot | None:
+        self.remaining()
+        if self.snapshots >= MAX_SNAPSHOTS:
+            raise BudgetExceeded("Diagnosis snapshot budget exhausted")
+        self.snapshots += 1
         run = self.api(f"actions/runs/{run_id}")
         job = self.api(f"actions/jobs/{job_id}")
         if run["run_attempt"] != 1 or job["run_id"] != run_id:
             return None
-        logs = download(
+        logs = self.read(
             f"repos/{self.repo}/actions/jobs/{job_id}/logs",
             MAX_JOB_LOG_BYTES,
-            self.token,
         ).decode("utf-8", errors="replace")
         revisions = dict(checkout_revisions(logs))
         if revisions.get("OpenMetadata") != run["head_sha"]:
@@ -306,10 +357,9 @@ class Evidence:
         versions = set(re.findall(r"\bpython-version:\s*['\"]?(\d+\.\d+)\b", logs))
         if len(versions) == 1:
             job = {**job, "python_version": next(iter(versions))}
-        artifacts = mq.paginated_items(
-            f"/repos/{self.repo}/actions/runs/{run_id}/artifacts",
+        artifacts = self.items(
+            f"actions/runs/{run_id}/artifacts",
             "artifacts",
-            self.token,
         )
         matching = [
             artifact
@@ -340,10 +390,9 @@ class Evidence:
                 continue
             if artifact["size_in_bytes"] > MAX_REPORT_BYTES:
                 raise ValueError("CI report archive is too large")
-            archive = download(
+            archive = self.read(
                 f"repos/{self.repo}/actions/artifacts/{artifact['id']}/zip",
                 MAX_REPORT_BYTES,
-                self.token,
             )
             with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
                 reports = [
@@ -422,6 +471,8 @@ class Evidence:
             raise ValueError("Invalid workflow path")
         try:
             definitions = self.workflow_environment(run)
+        except BudgetExceeded:
+            raise
         except Exception as exc:
             print(
                 f"::warning::Could not verify workflow definitions: {type(exc).__name__}",
@@ -440,6 +491,7 @@ class Evidence:
 
     @lru_cache(maxsize=MAX_CACHED_READS)
     def baselines(self, workflow_id: int, sha: str, name: str) -> tuple[Snapshot, ...]:
+        self.remaining()
         payload = self.api(
             f"actions/workflows/{workflow_id}/runs?head_sha={sha}&status=completed&per_page={MAX_BASELINE_RUNS}"
         )
@@ -458,18 +510,32 @@ class Evidence:
                 or run["created_at"] > self.created
             ):
                 continue
-            jobs = mq.paginated_items(
-                f"/repos/{self.repo}/actions/runs/{run['id']}/jobs?filter=all",
-                "jobs",
-                self.token,
-            )
+            try:
+                jobs = self.items(f"actions/runs/{run['id']}/jobs?filter=all", "jobs")
+            except BudgetExceeded:
+                raise
+            except Exception as exc:
+                print(
+                    f"::warning::Could not read baseline run {run['id']}: {type(exc).__name__}",
+                    file=sys.stderr,
+                )
+                continue
             for job in jobs:
                 if (
                     job["name"] == name
                     and job["conclusion"] in {"success", "failure"}
                     and job["completed_at"] <= self.created
                 ):
-                    snapshot = self.snapshot(run["id"], job["id"])
+                    try:
+                        snapshot = self.snapshot(run["id"], job["id"])
+                    except BudgetExceeded:
+                        raise
+                    except Exception as exc:
+                        print(
+                            f"::warning::Could not read baseline job {job['id']}: {type(exc).__name__}",
+                            file=sys.stderr,
+                        )
+                        continue
                     if snapshot:
                         snapshots.append(snapshot)
         return tuple(snapshots)
@@ -479,7 +545,8 @@ class Evidence:
     ) -> tuple[str, str]:
         current = base
         for _ in range(MAX_HISTORY_COMMITS):
-            commit = self.api(f"commits/{current}")
+            self.remaining()
+            commit = self.api(f"git/commits/{current}")
             if not commit["parents"]:
                 break
             parent = commit["parents"][0]["sha"]
@@ -540,6 +607,8 @@ class Evidence:
             baselines = self.baselines(
                 candidate.run["workflow_id"], base, candidate.job["name"]
             )
+        except BudgetExceeded:
+            return Diagnosis("Unknown — diagnosis search budget exhausted.", failures)
         except Exception as exc:
             print(
                 f"::warning::Could not read main comparison evidence: {type(exc).__name__}",
@@ -581,6 +650,10 @@ class Evidence:
         for failure in main:
             try:
                 introductions.append(self.introduction(candidate, base, failure))
+            except BudgetExceeded:
+                introductions.append(
+                    ("", "not established — diagnosis search budget exhausted")
+                )
             except Exception as exc:
                 print(
                     f"::warning::Could not locate the introducing commit: {type(exc).__name__}",
