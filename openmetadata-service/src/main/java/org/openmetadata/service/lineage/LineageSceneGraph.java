@@ -48,6 +48,7 @@ import java.util.Set;
 import org.openmetadata.schema.api.lineage.EsLineageData;
 import org.openmetadata.schema.api.lineage.LineageBand;
 import org.openmetadata.schema.api.lineage.LineageLens;
+import org.openmetadata.schema.api.lineage.LineageLevelKind;
 import org.openmetadata.schema.api.lineage.LineageSceneEdge;
 import org.openmetadata.schema.api.lineage.LineageSceneNode;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
@@ -167,7 +168,7 @@ final class LineageSceneGraph {
         .withEntityType(ref.entityType())
         .withLevelKind(ref.kind())
         .withBand(nodeBand(ref.kind(), band))
-        .withServiceType(firstNonBlank(ref.serviceType(), asset.serviceType()))
+        .withServiceType(serviceType(ref, asset))
         .withLabel(ref.label())
         .withDisplayName(stringValue(ref.sourceEntity(), "displayName"))
         .withParentId(parentId(ref, asset))
@@ -181,6 +182,14 @@ final class LineageSceneGraph {
         .withIsGhost(isGhost)
         .withCertification(certification(asset.self().sourceEntity()))
         .withSourceEntity(ref.sourceEntity());
+  }
+
+  // A domain or data product spans services, so the asset that drew its card says nothing
+  // about its type; without this the card reads, e.g., "CustomDatabase · data product".
+  private static String serviceType(Ref ref, SceneAsset asset) {
+    return ref.kind() == LineageLevelKind.DOMAIN || ref.kind() == LineageLevelKind.DATA_PRODUCT
+        ? null
+        : firstNonBlank(ref.serviceType(), asset.serviceType());
   }
 
   private void mergeNodeCounts(LineageSceneNode node, Ref ref, SceneAsset asset) {

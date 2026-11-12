@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -305,6 +306,23 @@ class LineageSceneResolverTest {
         nodeByFqn(dataProductScene, dataProductFqn)
             .getCounts()
             .get(LineageLevelKind.TABLE.value()));
+  }
+
+  @Test
+  void domainAndDataProductCardsTakeNoServiceTypeFromTheirAssets() {
+    for (LineageLens lens : List.of(LineageLens.DOMAIN, LineageLens.DATA_PRODUCT)) {
+      Map<String, Object> orders = table(ORDERS, SNOWFLAKE_SERVICE, List.of("id"));
+      orders.put("domains", List.of(ref(Entity.DOMAIN, "analytics", "analytics")));
+      orders.put("dataProducts", List.of(ref(Entity.DATA_PRODUCT, "customer360", "customer360")));
+
+      LineageScene scene =
+          RESOLVER.resolveScene(
+              null, null, lens, LineageBand.LAYER, result(List.of(orders), List.of()), 200);
+
+      LineageSceneNode card =
+          nodeByFqn(scene, lens == LineageLens.DOMAIN ? "analytics" : "customer360");
+      assertNull(card.getServiceType(), lens.value());
+    }
   }
 
   @Test
