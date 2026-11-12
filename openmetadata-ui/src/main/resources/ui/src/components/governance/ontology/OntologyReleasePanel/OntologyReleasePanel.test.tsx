@@ -198,7 +198,18 @@ const workingDiffPage = (after?: string) => {
               iri: 'https://example.org/fin#FundsTransfer',
               parents: ['Payment', 'Transaction'],
               propertyCount: groupedPropertyCount,
-              changes: [],
+              changes: [
+                {
+                  changeType: 'ADDED',
+                  entity: {
+                    id: 'funds-transfer-id',
+                    name: 'FundsTransfer',
+                    type: 'ontologyConcept',
+                  },
+                  memberKind: 'CONCEPT',
+                  ontologyId: ontology.id,
+                },
+              ],
               changeType: 'ADDED',
             },
           ]
@@ -570,7 +581,9 @@ describe('OntologyReleasePanel', () => {
     await renderPanel(true, 'changes');
 
     expect(await screen.findByText(/Customer/)).toBeVisible();
-    expect(screen.getByText('1 label.pending-changes')).toBeVisible();
+    expect(screen.getByTestId('ontology-change-counts')).toHaveTextContent(
+      'message.ontology-change-total: message.native-concept-count'
+    );
 
     await waitFor(() =>
       expect(
@@ -778,7 +791,9 @@ describe('OntologyReleasePanel', () => {
     fireEvent.click(screen.getByTestId('ontology-working-next'));
 
     expect(await screen.findByText(/Account/)).toBeVisible();
-    expect(screen.getByText('2 label.pending-changes')).toBeVisible();
+    expect(screen.getByTestId('ontology-change-counts')).toHaveTextContent(
+      'message.ontology-change-total'
+    );
     expect(screen.queryByText(/Customer/)).not.toBeInTheDocument();
   });
 
@@ -1094,7 +1109,7 @@ describe('OntologyReleasePanel', () => {
       ]);
       expect(taskAttempts).toBe(taskWasCreated ? 1 : 2);
       expect(screen.getByTestId('ontology-release-stage')).toHaveTextContent(
-        'label.in-review'
+        'label.ontology-in-review'
       );
       expect(screen.getByRole('link', { name: 'TASK-00042' })).toHaveAttribute(
         'href',
@@ -1707,7 +1722,9 @@ describe('OntologyReleasePanel', () => {
     expect(
       screen.getAllByTestId('ontology-working-concept-group')
     ).toHaveLength(1);
-    expect(screen.getByText('Changed classes: 1')).toBeVisible();
+    expect(screen.getByTestId('ontology-change-counts')).toHaveTextContent(
+      /^1 change: 1 concept$/
+    );
     expect(screen.queryByText('Concept')).not.toBeInTheDocument();
   });
 
@@ -1733,7 +1750,7 @@ describe('OntologyReleasePanel', () => {
 
     const groups = await screen.findByTestId('ontology-change-groups');
 
-    expect(groups).toHaveTextContent('label.ontology-member-concept');
+    expect(groups).toHaveTextContent('label.concept-plural');
     expect(groups).toHaveTextContent('Customer');
     expect(groups).toHaveTextContent('label.added');
 
@@ -1814,10 +1831,12 @@ describe('OntologyReleasePanel', () => {
     expect(
       screen.getAllByTestId('ontology-working-concept-group')
     ).toHaveLength(1);
-    expect(screen.getByText('Changed classes: 1')).toBeVisible();
+    expect(screen.getByTestId('ontology-change-counts')).toHaveTextContent(
+      /^1 change: 1 concept$/
+    );
   });
 
-  it('counts changed classes, not member changes, in the AI footer of a grouped working diff', async () => {
+  it('counts the same changes in the AI footer as in the summary, with one row per changed class', async () => {
     (useIsAiMode as jest.Mock).mockReturnValue(true);
     useEnUsTranslations();
     const defaultGet = get.getMockImplementation();
@@ -1922,13 +1941,19 @@ describe('OntologyReleasePanel', () => {
     );
     await renderPanel(true, 'changes');
 
-    await screen.findByText('Changed classes: 2');
+    expect(
+      await screen.findByTestId('ontology-change-counts')
+    ).toHaveTextContent(/^7 changes: 1 concept, 3 properties, 3 rules$/);
+    expect(
+      screen.getAllByTestId('ontology-working-concept-group')
+    ).toHaveLength(2);
+
     const preview = await screen.findByTestId('ontology-version-preview');
 
     await waitFor(() => expect(preview).toHaveTextContent('v1.2.3 → v1.3.0'));
 
     expect(preview.parentElement?.textContent).toBe(
-      'v1.2.3 → v1.3.0 · Changed classes: 2'
+      'v1.2.3 → v1.3.0 · 7 changes'
     );
   });
 
@@ -2266,7 +2291,7 @@ describe('reviewing what changed (G7)', () => {
 
     expect(
       await screen.findByTestId('ontology-change-counts')
-    ).toHaveTextContent(/^2 changes · 1 concept · 1 property$/);
+    ).toHaveTextContent(/^2 changes: 1 concept, 1 property$/);
   });
 
   it('filters by kind of change and searches, with counts on each filter', async () => {

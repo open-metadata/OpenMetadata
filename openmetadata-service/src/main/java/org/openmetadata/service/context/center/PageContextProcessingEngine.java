@@ -1,9 +1,12 @@
 package org.openmetadata.service.context.center;
 
+import static org.openmetadata.service.jobs.Interruptions.isStopInterruption;
+
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.codec.digest.DigestUtils;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
@@ -98,13 +101,29 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     } catch (ConditionalUpdateExhaustedException e) {
       schedule(pageId);
     } catch (RuntimeException e) {
-      LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
+      recordFailure(pageId, e);
+      throw e;
+    }
+  }
+
+  /**
+   * A run a server stop cuts short keeps its status, and rethrowing keeps its job from completing,
+   * so the stale-job reaper requeues the job to resume it.
+   */
+  private void recordFailure(UUID pageId, RuntimeException failure) {
+    if (isStopInterruption(failure)) {
+      LOG.info(
+          "Knowledge pill extraction for page {} was cut short by a server stop; recovery resumes"
+              + " it: {}",
+          pageId,
+          ExceptionUtils.getRootCauseMessage(failure));
+    } else {
+      LOG.error("Knowledge pill extraction failed for page {}", pageId, failure);
       try {
-        stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+        stampStatus(pageId, PageProcessingStatus.Failed, failure.getMessage());
       } catch (ConditionalUpdateExhaustedException exhausted) {
         schedule(pageId);
       }
-      throw e;
     }
   }
 

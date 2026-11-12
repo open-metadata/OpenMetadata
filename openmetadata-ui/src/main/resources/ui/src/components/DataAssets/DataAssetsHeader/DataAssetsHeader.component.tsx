@@ -327,24 +327,25 @@ export const DataAssetsHeader = ({
     }
 
     return (
-      <Tooltip placement="right" title={t('label.check-upstream-failure')}>
-        <TooltipTrigger
-          aria-label={t('label.check-upstream-failure')}
-          onPress={() =>
-            navigate({
-              pathname: getEntityDetailsPath(
-                entityType,
-                dataAsset?.fullyQualifiedName ?? '',
-                EntityTabs.LINEAGE
-              ),
-              search: QueryString.stringify({
-                layers: [LineageLayer.DataObservability],
-              }),
-            })
-          }>
-          <Alerts className="tw:text-fg-error-primary" size={24} />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary-destructive"
+        icon={Alerts}
+        size="lg"
+        tooltip={t('label.check-upstream-failure')}
+        tooltipPlacement="right"
+        onClick={() =>
+          navigate({
+            pathname: getEntityDetailsPath(
+              entityType,
+              dataAsset?.fullyQualifiedName ?? '',
+              EntityTabs.LINEAGE
+            ),
+            search: QueryString.stringify({
+              layers: [LineageLayer.DataObservability],
+            }),
+          })
+        }
+      />
     );
   }, [dqFailureCount, isDqAlertSupported, dataAsset, entityType, navigate, t]);
 

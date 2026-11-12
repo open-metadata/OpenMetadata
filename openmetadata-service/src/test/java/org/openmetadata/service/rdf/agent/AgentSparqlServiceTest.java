@@ -18,6 +18,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -169,7 +170,7 @@ class AgentSparqlServiceTest {
     when(repository.getConfig()).thenReturn(new RdfConfiguration());
     final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
     final AppRunRecord run = new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS);
-    when(runStore.listAppExtensionByName("RdfIndexApp", 1, 0, "status"))
+    when(runStore.listAppExtensionByName(eq("RdfIndexApp"), anyInt(), eq(0), eq("status")))
         .thenReturn(List.of(JsonUtils.pojoToJson(run)));
     final CollectionDAO dao = mock(CollectionDAO.class);
     when(dao.appExtensionTimeSeriesDao()).thenReturn(runStore);
