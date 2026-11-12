@@ -19,6 +19,7 @@ import * as apiEndpointsAPI from '../rest/apiEndpointsAPI';
 import * as databaseAPI from '../rest/databaseAPI';
 import * as glossaryAPI from '../rest/glossaryAPI';
 import * as knowledgeCenterAPI from '../rest/knowledgeCenterAPI';
+import * as searchIndexAPI from '../rest/SearchIndexAPI';
 import * as serviceAPI from '../rest/serviceAPI';
 import * as tableAPI from '../rest/tableAPI';
 import * as testAPI from '../rest/testAPI';
@@ -28,6 +29,7 @@ jest.mock('../rest/tableAPI');
 jest.mock('../rest/databaseAPI');
 jest.mock('../rest/glossaryAPI');
 jest.mock('../rest/knowledgeCenterAPI');
+jest.mock('../rest/SearchIndexAPI');
 jest.mock('../rest/serviceAPI');
 jest.mock('../rest/alertsAPI');
 jest.mock('../rest/apiCollectionsAPI');
@@ -277,6 +279,27 @@ describe('EntityByFqnUtils', () => {
         }
       );
       expect(result).toEqual(mockPageData);
+    });
+
+    it('should fetch SEARCH_INDEX entity forwarding the requested fields', async () => {
+      const mockSearchIndexData = { id: '1', name: 'test-index' };
+      (
+        searchIndexAPI.getSearchIndexDetailsByFQN as jest.Mock
+      ).mockResolvedValue(mockSearchIndexData);
+
+      const result = await getEntityByFqnUtil(
+        EntityType.SEARCH_INDEX,
+        mockFqn,
+        mockFields
+      );
+
+      expect(searchIndexAPI.getSearchIndexDetailsByFQN).toHaveBeenCalledWith(
+        mockFqn,
+        {
+          fields: mockFields,
+        }
+      );
+      expect(result).toEqual(mockSearchIndexData);
     });
 
     it('should return null for unknown entity type', async () => {

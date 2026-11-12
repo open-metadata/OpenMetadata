@@ -181,7 +181,10 @@ const entityByFqnHandlerEntries: [string, EntityByFqnHandler][] = [
   [EntityType.USER, (fqn) => getUserByName(fqn)],
   [EntityType.TEST_SUITE, (fqn) => getTestSuiteByName(fqn)],
   [EntityType.KPI, (fqn) => getKPIByName(fqn)],
-  [EntityType.SEARCH_INDEX, (fqn) => getSearchIndexDetailsByFQN(fqn)],
+  [
+    EntityType.SEARCH_INDEX,
+    (fqn, fields) => getSearchIndexDetailsByFQN(fqn, { fields }),
+  ],
   [
     EntityType.APP_MARKET_PLACE_DEFINITION,
     (fqn) => getMarketPlaceApplicationByFqn(fqn),
