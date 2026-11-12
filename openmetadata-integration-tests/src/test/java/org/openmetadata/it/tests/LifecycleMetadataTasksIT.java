@@ -7,6 +7,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -260,6 +262,37 @@ class LifecycleMetadataTasksIT {
     }
   }
 
+  /** A domain and a classification can share an FQN, and so share their tasks' about FQN. */
+  @Test
+  void deletingAnAssetLeavesTheTasksOfAnotherAssetWithItsNameOpen(TestNamespace namespace) {
+    final Domain domain = createDomain(namespace);
+    final Classification asset = createClassification(domain.getName());
+    final String workflow = createWorkflow(namespace, descriptionOnly());
+    try {
+      service().reconcile(domain, descriptionOnly(), workflow, DRAFT_NODE);
+      service().reconcile(asset, descriptionOnly(), workflow, DRAFT_NODE);
+      softDelete(asset);
+
+      assertEquals(WorkflowStatus.FINISHED, run(workflow, asset));
+
+      assertEquals("Cancelled", taskAbout(asset).get("status").asText());
+      assertEquals("Open", taskAbout(domain).get("status").asText());
+    } finally {
+      execute(
+          HttpMethod.DELETE,
+          CLASSIFICATIONS + "/" + asset.getId() + "?hardDelete=true&recursive=true",
+          null);
+      cleanup(domain, workflow);
+    }
+  }
+
+  private static JsonNode taskAbout(final EntityInterface<?> asset) {
+    return StreamSupport.stream(tasks(asset).spliterator(), false)
+        .filter(task -> asset.getId().toString().equals(task.at("/about/id").asText()))
+        .findFirst()
+        .orElseThrow();
+  }
+
   /** Runs the workflow for the asset as its trigger starts it, and says how the run ended. */
   private static WorkflowStatus run(final String workflow, final EntityInterface<?> asset) {
     awaitDeployed(workflow);
@@ -299,24 +332,36 @@ class LifecycleMetadataTasksIT {
                     .asBoolean());
   }
 
-  /** Whether the task's change was recorded as an event, which subscriptions and alerts read. */
+  /**
+   * Whether the task's change was recorded as an event, which subscriptions and alerts read. Every
+   * concurrent test writes task events too, so the pages are followed to the end.
+   */
   private static boolean hasUpdateEvent(final String taskId, final long since) {
-    final JsonNode events =
-        execute(
-                HttpMethod.GET,
-                "/v1/events?entityUpdated=" + Entity.TASK + "&limit=1000&timestamp=" + since,
-                null)
-            .path("data");
-    return StreamSupport.stream(events.spliterator(), false)
-        .anyMatch(event -> taskId.equals(event.path("entityId").asText()));
+    boolean found = false;
+    String cursor = "";
+    do {
+      final JsonNode page =
+          execute(
+              HttpMethod.GET,
+              "/v1/events?entityUpdated=%s&limit=1000&timestamp=%d%s"
+                  .formatted(Entity.TASK, since, cursor),
+              null);
+      found =
+          StreamSupport.stream(page.path("data").spliterator(), false)
+              .anyMatch(event -> taskId.equals(event.path("entityId").asText()));
+      final String after = page.at("/paging/after").asText("");
+      cursor = after.isEmpty() ? "" : "&after=" + URLEncoder.encode(after, StandardCharsets.UTF_8);
+    } while (!found && !cursor.isEmpty());
+    return found;
   }
 
   private static Classification createClassification(TestNamespace namespace) {
+    return createClassification(namespace.prefix("deletedAsset"));
+  }
+
+  private static Classification createClassification(String name) {
     final JsonNode created =
-        execute(
-            HttpMethod.POST,
-            CLASSIFICATIONS,
-            Map.of("name", namespace.prefix("deletedAsset"), "description", ""));
+        execute(HttpMethod.POST, CLASSIFICATIONS, Map.of("name", name, "description", ""));
     return JsonUtils.convertValue(
         execute(
             HttpMethod.PATCH,

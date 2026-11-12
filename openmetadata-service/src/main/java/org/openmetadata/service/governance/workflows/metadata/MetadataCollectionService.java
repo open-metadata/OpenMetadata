@@ -157,9 +157,7 @@ public final class MetadataCollectionService {
    * can no longer be resubmitted there, so it closes.
    */
   public void closeRevisionsOutside(final EntityInterface<?> entity, final String stage) {
-    repository
-        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
-        .stream()
+    openTasksOf(entity).stream()
         .filter(task -> isRevisionOutside(task, stage))
         .forEach(task -> finish(task, false));
   }
@@ -170,13 +168,13 @@ public final class MetadataCollectionService {
    * task while fields are still missing.
    */
   public void closeTasksOfDeletedAsset(final EntityInterface<?> entity) {
-    final List<Task> open =
-        repository.listOpenTasksByEntityAndType(
-            entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS);
-    LOG.info(
-        "[MetadataCompletion] {} is deleted: cancelling its {} open tasks",
-        entity.getFullyQualifiedName(),
-        open.size());
+    final List<Task> open = openTasksOf(entity);
+    if (!open.isEmpty()) {
+      LOG.info(
+          "[MetadataCompletion] {} is deleted: cancelling its {} open tasks",
+          entity.getFullyQualifiedName(),
+          open.size());
+    }
     // resolveTask re-reads the task and never refuses one another server closed meanwhile, so a
     // lost race writes one more version instead of failing the run.
     open.forEach(task -> resolve(task, TaskResolutionType.Cancelled, ASSET_DELETED));
@@ -282,12 +280,27 @@ public final class MetadataCollectionService {
    * next time any of its stages is reconciled.
    */
   private void closeTasksOfOtherStages(final EntityInterface<?> entity, final UUID current) {
-    repository
-        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
-        .stream()
+    openTasksOf(entity).stream()
         .filter(task -> !current.equals(task.getId()))
         .filter(task -> !isInStage(entity, stageOf(task)))
         .forEach(task -> finish(task, false));
+  }
+
+  /**
+   * The asset's own open tasks. They are found by FQN, which assets of different types can share (a
+   * domain and a classification can both be "Finance"), so only the tasks about this asset's id are
+   * kept.
+   */
+  private List<Task> openTasksOf(final EntityInterface<?> entity) {
+    return repository
+        .listOpenTasksByEntityAndType(entity.getFullyQualifiedName(), TASK_TYPE, MAX_STALE_TASKS)
+        .stream()
+        .filter(task -> isAbout(task, entity))
+        .toList();
+  }
+
+  private static boolean isAbout(final Task task, final EntityInterface<?> entity) {
+    return task.getAbout() != null && entity.getId().equals(task.getAbout().getId());
   }
 
   private static EntityStatus stageOf(final Task task) {

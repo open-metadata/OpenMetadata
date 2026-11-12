@@ -1,8 +1,8 @@
 # A lifecycle stage asks for its missing metadata in one task
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-12 (a soft-deleted asset closes its tasks;
-  Re-check completes a task of one)
+- **Revisions:** v1 2026-10-15 (initial) · v2 2026-11-12 (the collect node closes a soft-deleted
+  asset's tasks; Re-check completes a task of one)
 - **Deciders:** Ram Narayan Balaji
 - **Guard:** `LifecycleMetadataTasksIT`, `CollectMetadataTaskTest`, `MetadataCollectionServiceTest`
 - **Related:** open-metadata/OpenMetadata#34694; open-metadata/OpenMetadata#36025;
@@ -62,7 +62,7 @@ nor its payload. An asset missing four fields produced four such tasks.
 
 ## Amendment
 
-v2 (2026-11-12): a soft-deleted asset is skipped, never failed.
+v2 (2026-11-12): the collect node skips a soft-deleted asset instead of failing on it.
 
 - A collect node that runs for a soft-deleted asset cancels every open Metadata Completion task of
   that asset, collection and Revise and resubmit alike, of every stage and workflow, with the
@@ -70,12 +70,20 @@ v2 (2026-11-12): a soft-deleted asset is skipped, never failed.
   most 50 per run, the bound that already applies to tasks of stages the asset left; a later run
   cancels the rest. Before, the node loaded only live assets, so a deleted one failed the run on
   every periodic batch that selected it and left its tasks open.
+- A task belongs to the asset its `about` names by id. Tasks are found by the asset's FQN, which
+  assets of different types can share (a domain and a classification can both be `Finance`), so
+  each close of these tasks (a deleted asset's, a stage the asset left, a revision outside the
+  stage it moved to) keeps only the tasks about that asset.
 - Re-check on a task of a soft-deleted asset completes it: a deleted asset asks for nothing.
-- Restoring the asset needs no rule of its own: the next run reopens the same task, with its
-  history, while fields are still missing (§2). A hard delete keeps its own path: it cancels the
-  asset's workflow instances and deletes its tasks.
+- Restoring the asset needs no rule of its own: the next run reopens the same collection task,
+  with its history, while fields are still missing (§2). A cancelled Revise and resubmit task
+  stays closed until the stage's approval is rejected again. A hard delete keeps its own path: it
+  cancels the asset's workflow instances and deletes its tasks.
 - Soft delete and restore start no event-based workflow, so under an event-based lifecycle the
   tasks close on Re-check or on the next run that reaches the asset; there is no delete hook.
 - Resolving a task does not refuse one that another server closed in the meantime: the
   cancellation is written over that close, as one more version and change event, and the run
   still completes.
+- Known follow-up: only the collect node skips a deleted asset. A stage's move node sets the stage
+  through a patch that loads live assets only, so a run that reaches it for a deleted asset still
+  fails there.
