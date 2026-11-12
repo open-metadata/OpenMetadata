@@ -47,8 +47,23 @@ from information_schema.tables where engine in ['MaterializedView', 'View']
 """
 )
 
-DORIS_PARTITION_DETAILS = textwrap.dedent(
+# information_schema.partitions has one row per partition, or a single UNPARTITIONED row for a table
+# without partition columns. A table whose partitions are yet to be created has no row, nor has a view.
+DORIS_GET_PARTITIONS = textwrap.dedent(
     """
-SHOW PARTITIONS FROM {table_name}
+SELECT t.TABLE_NAME, t.ENGINE, p.PARTITION_METHOD, p.PARTITION_EXPRESSION
+FROM information_schema.tables t
+LEFT JOIN (
+    SELECT DISTINCT TABLE_NAME, PARTITION_METHOD, PARTITION_EXPRESSION
+    FROM information_schema.partitions
+    WHERE TABLE_SCHEMA = :schema
+) p ON p.TABLE_NAME = t.TABLE_NAME
+WHERE t.TABLE_SCHEMA = :schema
+    """
+)
+
+DORIS_SHOW_CREATE_TABLE = textwrap.dedent(
+    """
+SHOW CREATE TABLE {table_name}
     """
 )
