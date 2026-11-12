@@ -14,19 +14,24 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowRight, Plus } from '@openmetadata/ui-core-components/icons';
+import {
+  ArrowRight,
+  Plus,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 
 interface ConceptSectionProps {
   readonly addLabel?: string;
   readonly addTestId?: string;
   readonly children: ReactNode;
-  readonly count: number;
+  /** Left out for a section that is a single value, like the description. */
+  readonly count?: number;
   readonly testId?: string;
   readonly title: string;
   readonly onAdd?: () => void;
@@ -55,9 +60,11 @@ export const ConceptSection = ({
           weight="semibold">
           {title}
         </Typography>
-        <Badge color="gray" size="sm" type="pill-color">
-          {count}
-        </Badge>
+        {count === undefined ? null : (
+          <Badge color="gray" size="sm" type="pill-color">
+            {count}
+          </Badge>
+        )}
         {onAdd ? (
           <Button
             className="tw:ml-auto"
@@ -75,7 +82,10 @@ export const ConceptSection = ({
   );
 };
 
-/** The design's small grey "nothing here yet" box, drawn by the shared no-data placeholder. */
+/**
+ * The design's small grey "nothing here yet" box: a left-aligned line and hint inside a section,
+ * not a page-level empty state, so it does not use the centred placeholder.
+ */
 export const ConceptEmptyState = ({
   hint,
   title,
@@ -83,27 +93,52 @@ export const ConceptEmptyState = ({
   readonly hint?: string;
   readonly title: string;
 }) => (
-  <div className="tw:relative tw:h-20 tw:rounded-lg tw:bg-secondary_alt">
-    <NoDataPlaceholder
-      data-testid="ontology-concept-empty"
-      description={hint}
-      gap={1}
-      icon={false}
-      title={title}
-    />
+  <div
+    className="tw:flex tw:flex-col tw:rounded-lg tw:bg-secondary_alt tw:px-4 tw:py-3.5"
+    data-testid="ontology-concept-empty">
+    <Typography size="text-sm">{title}</Typography>
+    {hint ? (
+      <Typography color="secondary" size="text-xs">
+        {hint}
+      </Typography>
+    ) : null}
   </div>
 );
 
-/** An inline add form: a brand-bordered card with a soft focus halo, so it reads as the active input. */
+/** A section with nothing in it yet, as one plain line of text. */
+export const ConceptEmptyText = ({
+  children,
+}: {
+  readonly children: string;
+}) => (
+  <Typography
+    as="p"
+    className="tw:m-0 tw:text-tertiary"
+    data-testid="ontology-concept-empty"
+    size="text-sm">
+    {children}
+  </Typography>
+);
+
+/**
+ * An inline add form: a brand-bordered card with a soft focus halo, so it reads as the active
+ * input. The plain tone is the design's grey card, used where the form has its own title and close.
+ */
 export const ConceptFormCard = ({
   children,
   testId,
+  tone = 'brand',
 }: {
   readonly children: ReactNode;
   readonly testId?: string;
+  readonly tone?: 'brand' | 'plain';
 }) => (
   <Card
-    className="tw:border-brand tw:outline-4 tw:outline-utility-brand-100"
+    className={
+      tone === 'brand'
+        ? 'tw:border-brand tw:outline-4 tw:outline-utility-brand-100'
+        : undefined
+    }
     data-testid={testId}
     size="sm">
     <Card.Content className="tw:flex tw:flex-col tw:gap-4 tw:p-4">
@@ -115,21 +150,38 @@ export const ConceptFormCard = ({
 export const ConceptFormHeading = ({
   hint,
   title,
+  onClose,
 }: {
   readonly hint?: string;
   readonly title: string;
-}) => (
-  <Box direction="col">
-    <Typography size="text-sm" weight="semibold">
-      {title}
-    </Typography>
-    {hint ? (
-      <Typography color="secondary" size="text-sm">
-        {hint}
-      </Typography>
-    ) : null}
-  </Box>
-);
+  readonly onClose?: () => void;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box align="start" gap={2}>
+      <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        <Typography size="text-sm" weight="semibold">
+          {title}
+        </Typography>
+        {hint ? (
+          <Typography color="secondary" size="text-sm">
+            {hint}
+          </Typography>
+        ) : null}
+      </Box>
+      {onClose ? (
+        <ButtonUtility
+          color="tertiary"
+          icon={XClose}
+          size="xs"
+          tooltip={t('label.close')}
+          onClick={onClose}
+        />
+      ) : null}
+    </Box>
+  );
+};
 
 export const ConceptFormPreview = ({
   children,

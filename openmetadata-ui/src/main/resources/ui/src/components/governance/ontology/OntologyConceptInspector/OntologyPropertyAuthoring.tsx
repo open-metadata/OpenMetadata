@@ -14,6 +14,8 @@
 import {
   Box,
   Button,
+  ButtonGroup,
+  ButtonGroupItem,
   Checkbox,
   Input,
   Select,
@@ -27,7 +29,6 @@ import {
 } from '../../../../utils/governance/ontology/OntologyNativeRelation.utils';
 import {
   DataPropertyInput,
-  humanizeName,
   StudioDatatype,
   STUDIO_DATATYPES,
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
@@ -100,39 +101,120 @@ const draftToInput = (draft: PropertyDraft): ConceptPropertyInput =>
     ? objectInput(draft)
     : dataInput(draft);
 
-const ToggleGroup = <T extends string>({
-  ariaLabel,
+const KindPicker = ({
   isDisabled,
-  items,
-  selected,
-  testIdPrefix,
+  kind,
   onSelect,
 }: {
-  ariaLabel: string;
   isDisabled: boolean;
-  items: ReadonlyArray<{ id: T; label: string }>;
-  selected: T;
-  testIdPrefix: string;
-  onSelect: (id: T) => void;
-}) => (
-  <div
-    aria-label={ariaLabel}
-    className="tw:flex tw:flex-wrap tw:gap-1.5"
-    role="group">
-    {items.map(({ id, label }) => (
-      <Button
-        aria-pressed={selected === id}
-        color={selected === id ? 'primary' : 'secondary'}
-        data-testid={`${testIdPrefix}-${id}`}
+  kind: PropertyKind;
+  onSelect: (kind: PropertyKind) => void;
+}) => {
+  const { t } = useTranslation();
+  // Annotation hides behind More, as in the design, until it is asked for or chosen.
+  const [showsAnnotation, setShowsAnnotation] = useState(kind === 'annotation');
+
+  return (
+    <Box direction="col" gap={2}>
+      <Typography color="secondary" size="text-sm" weight="medium">
+        {t('label.type')}
+      </Typography>
+      <ButtonGroup
+        disallowEmptySelection
+        aria-label={t('label.type')}
         isDisabled={isDisabled}
-        key={id}
-        size="xs"
-        onPress={() => onSelect(id)}>
-        {label}
-      </Button>
-    ))}
-  </div>
-);
+        selectedKeys={[kind]}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const [next] = [...keys];
+          if (next === 'more') {
+            setShowsAnnotation(true);
+          } else if (next) {
+            onSelect(next as PropertyKind);
+          }
+        }}>
+        <ButtonGroupItem
+          data-testid="ontology-property-kind-object"
+          id="object">
+          {t('label.object')}
+        </ButtonGroupItem>
+        <ButtonGroupItem data-testid="ontology-property-kind-data" id="data">
+          {t('label.data')}
+        </ButtonGroupItem>
+        {showsAnnotation ? (
+          <ButtonGroupItem
+            data-testid="ontology-property-kind-annotation"
+            id="annotation">
+            {t('label.annotation')}
+          </ButtonGroupItem>
+        ) : (
+          <ButtonGroupItem data-testid="ontology-property-kind-more" id="more">
+            {t('label.more')}
+          </ButtonGroupItem>
+        )}
+      </ButtonGroup>
+    </Box>
+  );
+};
+
+const RangeField = ({
+  concepts,
+  draft,
+  isSaving,
+  onChange,
+}: {
+  concepts: ReadonlyArray<OntologyIriOption>;
+  draft: PropertyDraft;
+  isSaving: boolean;
+  onChange: (patch: Partial<PropertyDraft>) => void;
+}) => {
+  const { t } = useTranslation();
+
+  if (draft.kind === 'annotation') {
+    return (
+      <Box direction="col" gap={2}>
+        <Typography color="secondary" size="text-sm" weight="medium">
+          {t('label.range')}
+        </Typography>
+        <Typography className="tw:py-2 tw:text-tertiary" size="text-sm">
+          {t('message.ontology-annotation-no-range')}
+        </Typography>
+      </Box>
+    );
+  }
+
+  return draft.kind === 'object' ? (
+    <Select
+      isDisabled={isSaving}
+      items={concepts.map(({ iri, label }) => ({ id: iri, label }))}
+      label={t('label.range')}
+      placeholder={t('label.choose-concept')}
+      size="sm"
+      value={draft.rangeIri || null}
+      onChange={(key) => onChange({ rangeIri: String(key ?? '') })}>
+      {(item) => <Select.Item id={item.id} key={item.id} label={item.label} />}
+    </Select>
+  ) : (
+    <Select
+      isDisabled={isSaving}
+      items={STUDIO_DATATYPES.map((id) => ({ id, label: id }))}
+      label={t('label.range')}
+      size="sm"
+      value={draft.datatype}
+      onChange={(key) =>
+        key && onChange({ datatype: String(key) as StudioDatatype })
+      }>
+      {(item) => (
+        <Select.Item
+          data-testid={`ontology-property-type-${item.id}`}
+          id={item.id}
+          key={item.id}
+          label={item.label}
+        />
+      )}
+    </Select>
+  );
+};
 
 const NewPropertyFields = ({
   concepts,
@@ -150,71 +232,48 @@ const NewPropertyFields = ({
 
   return (
     <>
-      <ToggleGroup
-        ariaLabel={t('label.type')}
-        isDisabled={isSaving}
-        items={[
-          { id: 'object', label: t('label.object') },
-          { id: 'data', label: t('label.data') },
-          { id: 'annotation', label: t('label.annotation') },
-        ]}
-        selected={draft.kind}
-        testIdPrefix="ontology-property-kind"
-        onSelect={(kind) => onChange({ kind })}
-      />
       <Input
         inputDataTestId="ontology-property-name"
         isDisabled={isSaving}
-        label={t('label.name')}
+        label={`${t('label.name')} · ${t(
+          'message.ontology-property-name-hint'
+        )}`}
+        placeholder={t('message.ontology-property-name-placeholder')}
         size="sm"
         value={draft.name}
         onChange={(name) => onChange({ name })}
       />
-      {draft.kind === 'object' ? (
-        <Select
+      <div className="tw:grid tw:grid-cols-2 tw:items-start tw:gap-3">
+        <KindPicker
           isDisabled={isSaving}
-          items={concepts.map(({ iri, label }) => ({ id: iri, label }))}
-          label={t('label.range')}
-          placeholder={t('label.choose-concept')}
+          kind={draft.kind}
+          onSelect={(kind) => onChange({ kind })}
+        />
+        <RangeField
+          concepts={concepts}
+          draft={draft}
+          isSaving={isSaving}
+          onChange={onChange}
+        />
+      </div>
+      {isData && draft.datatype === 'enum' ? (
+        <Input
+          inputDataTestId="ontology-property-enum-values"
+          isDisabled={isSaving}
+          label={t('label.enum-value-plural')}
           size="sm"
-          value={draft.rangeIri || null}
-          onChange={(key) => onChange({ rangeIri: String(key ?? '') })}>
-          {(item) => (
-            <Select.Item id={item.id} key={item.id} label={item.label} />
-          )}
-        </Select>
+          value={draft.enumValues}
+          onChange={(enumValues) => onChange({ enumValues })}
+        />
       ) : null}
       {isData ? (
-        <>
-          <Typography color="secondary" size="text-xs" weight="semibold">
-            {t('label.data-type')}
-          </Typography>
-          <ToggleGroup
-            ariaLabel={t('label.data-type')}
-            isDisabled={isSaving}
-            items={STUDIO_DATATYPES.map((id) => ({ id, label: id }))}
-            selected={draft.datatype}
-            testIdPrefix="ontology-property-type"
-            onSelect={(datatype) => onChange({ datatype })}
-          />
-          {draft.datatype === 'enum' ? (
-            <Input
-              inputDataTestId="ontology-property-enum-values"
-              isDisabled={isSaving}
-              label={t('label.enum-value-plural')}
-              size="sm"
-              value={draft.enumValues}
-              onChange={(enumValues) => onChange({ enumValues })}
-            />
-          ) : null}
-          <Checkbox
-            data-testid="ontology-property-identifier"
-            isDisabled={isSaving}
-            isSelected={draft.isIdentifier}
-            label={t('label.identifier')}
-            onChange={(isIdentifier) => onChange({ isIdentifier })}
-          />
-        </>
+        <Checkbox
+          data-testid="ontology-property-identifier"
+          isDisabled={isSaving}
+          isSelected={draft.isIdentifier}
+          label={t('label.identifier')}
+          onChange={(isIdentifier) => onChange({ isIdentifier })}
+        />
       ) : null}
     </>
   );
@@ -222,12 +281,14 @@ const NewPropertyFields = ({
 
 const PropertyFields = ({
   concepts,
+  domainLabel,
   draft,
   isSaving,
   reusable,
   onChange,
 }: {
   concepts: ReadonlyArray<OntologyIriOption>;
+  domainLabel: string;
   draft: PropertyDraft;
   isSaving: boolean;
   reusable: ReadonlyArray<OntologyIriOption>;
@@ -238,19 +299,6 @@ const PropertyFields = ({
 
   return (
     <>
-      <ToggleGroup
-        ariaLabel={t('label.property')}
-        isDisabled={isSaving}
-        items={[
-          { id: 'new', label: t('label.new') },
-          { id: 'existing', label: t('label.existing') },
-        ]}
-        selected={isReusing ? 'existing' : 'new'}
-        testIdPrefix="ontology-property-source"
-        onSelect={(source) =>
-          onChange({ reuseIri: source === 'existing' ? '' : undefined })
-        }
-      />
       {isReusing ? (
         <OntologyIriInput
           label={t('label.property')}
@@ -267,6 +315,30 @@ const PropertyFields = ({
           onChange={onChange}
         />
       )}
+      <Box align="center" gap={2} justify="between">
+        <Typography color="secondary" size="text-sm">
+          {t('label.ontology-domain-classes')}:{' '}
+          <Typography as="span" size="text-sm" weight="semibold">
+            {domainLabel}
+          </Typography>
+        </Typography>
+        <Button
+          color="link-color"
+          data-testid={
+            isReusing
+              ? 'ontology-property-source-new'
+              : 'ontology-property-source-existing'
+          }
+          isDisabled={isSaving}
+          size="sm"
+          onPress={() => onChange({ reuseIri: isReusing ? undefined : '' })}>
+          {t(
+            isReusing
+              ? 'label.ontology-create-new-property'
+              : 'label.ontology-use-existing-property'
+          )}
+        </Button>
+      </Box>
     </>
   );
 };
@@ -300,24 +372,45 @@ const PropertyActions = ({
         isLoading={isSaving}
         size="sm"
         onPress={onSubmit}>
-        {t('label.add-entity', { entity: t('label.property') })}
+        {t('label.ontology-add-property')}
       </Button>
     </Box>
   );
 };
 
-const PropertyPreview = ({ draft }: { draft: PropertyDraft }) => {
+const PropertyPreview = ({
+  concepts,
+  domainLabel,
+  draft,
+}: {
+  concepts: ReadonlyArray<OntologyIriOption>;
+  domainLabel: string;
+  draft: PropertyDraft;
+}) => {
   const { t } = useTranslation();
-  if (!draft.name.trim() || draft.reuseIri !== undefined) {
+  if (draft.reuseIri !== undefined) {
     return null;
   }
+  const name = draft.name.trim();
+  const target = concepts.find(({ iri }) => iri === draft.rangeIri)?.label;
+  let sentence = t('message.ontology-property-preview-empty');
+  if (name && draft.kind === 'annotation') {
+    sentence = t('message.ontology-property-preview-annotation', { name });
+  } else if (name && draft.kind === 'data') {
+    sentence = t('message.ontology-property-preview-data', {
+      concept: domainLabel,
+      datatype: draft.datatype,
+      name,
+    });
+  } else if (name && target) {
+    sentence = t('message.ontology-property-preview-object', {
+      concept: domainLabel,
+      name,
+      target,
+    });
+  }
 
-  return (
-    <ConceptFormPreview>
-      {humanizeName(draft.name)} ·{' '}
-      {draft.kind === 'data' ? draft.datatype : t(`label.${draft.kind}`)}
-    </ConceptFormPreview>
-  );
+  return <ConceptFormPreview>{sentence}</ConceptFormPreview>;
 };
 
 interface OntologyPropertyAuthoringProps {
@@ -326,6 +419,8 @@ interface OntologyPropertyAuthoringProps {
   readonly reusable: ReadonlyArray<OntologyIriOption>;
   /** Concepts an object property can link to. */
   readonly concepts?: ReadonlyArray<OntologyIriOption>;
+  /** The concept the new property is declared on. */
+  readonly domainLabel: string;
   readonly onClose: () => void;
   readonly onSave: (input: ConceptPropertyInput) => Promise<boolean>;
 }
@@ -335,6 +430,7 @@ const OntologyPropertyAuthoring = ({
   isOpen,
   reusable,
   concepts = [],
+  domainLabel,
   onClose,
   onSave,
 }: OntologyPropertyAuthoringProps) => {
@@ -359,6 +455,7 @@ const OntologyPropertyAuthoring = ({
   const fields = (
     <PropertyFields
       concepts={concepts}
+      domainLabel={domainLabel}
       draft={draft}
       isSaving={isSaving}
       reusable={reusable}
@@ -377,7 +474,11 @@ const OntologyPropertyAuthoring = ({
   return (
     <ConceptFormCard testId="ontology-property-form">
       {fields}
-      <PropertyPreview draft={draft} />
+      <PropertyPreview
+        concepts={concepts}
+        domainLabel={domainLabel}
+        draft={draft}
+      />
       {actions}
     </ConceptFormCard>
   );

@@ -650,6 +650,8 @@ describe('OntologyConceptInspector view rail', () => {
         </MemoryRouter>
       );
 
+      fireEvent.click(screen.getByTestId('ontology-concept-advanced-toggle'));
+
       expect(
         screen.getByTestId('ontology-concept-lifecycle')
       ).toHaveTextContent(label);
@@ -885,6 +887,55 @@ describe('OntologyConceptInspector in AI mode', () => {
     );
   });
 
+  it('counts the five design sections towards completeness', async () => {
+    renderAiInspector();
+    await within(
+      await screen.findByTestId('ontology-native-assets')
+    ).findByRole('link', { name: 'customers' });
+    const progress = within(
+      screen.getByTestId('ontology-concept-completeness')
+    ).getByRole('progressbar');
+
+    // A relationship, a property and an asset; no description, no mapping.
+    expect(progress).toHaveAttribute('aria-valuenow', '3');
+    expect(progress).toHaveAttribute('aria-valuemax', '5');
+  });
+
+  it('shows the type by name and offers Add for a missing description', async () => {
+    const handlers = renderAiInspector();
+
+    expect(
+      await screen.findByTestId('ontology-concept-type')
+    ).toHaveTextContent('label.class-owl');
+    expect(
+      screen.getByTestId('ontology-concept-description')
+    ).toHaveTextContent('message.no-description-yet');
+
+    fireEvent.click(screen.getByTestId('ontology-concept-add-description'));
+
+    expect(handlers.onEdit).toHaveBeenCalledTimes(1);
+  });
+
+  it('lists the name, IRI and status read-only under Advanced', async () => {
+    renderAiInspector();
+    fireEvent.click(
+      await screen.findByTestId('ontology-concept-advanced-toggle')
+    );
+    const advanced = screen.getByTestId('ontology-concept-advanced');
+
+    expect(
+      within(advanced).getByTestId('ontology-concept-name')
+    ).toHaveTextContent('Customer');
+    expect(
+      within(advanced).getByTestId('ontology-concept-full-iri')
+    ).toHaveTextContent('urn:sales:Customer');
+    expect(
+      within(advanced).getByTestId('ontology-concept-lifecycle')
+    ).toHaveTextContent('label.unavailable');
+    expect(advanced).toHaveTextContent('message.ontology-generated-read-only');
+    expect(within(advanced).queryByRole('textbox')).not.toBeInTheDocument();
+  });
+
   it('keeps the header, section controls and bindings working', async () => {
     const handlers = renderAiInspector();
     const assets = await screen.findByTestId('ontology-native-assets');
@@ -940,11 +991,16 @@ describe('OntologyConceptInspector in AI mode', () => {
 
     expect(within(form).getByTestId('ontology-property-name')).toBeVisible();
     expect(within(form).getByTestId('ontology-property-submit')).toBeVisible();
+    expect(form).toHaveTextContent('message.ontology-property-preview-empty');
 
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'loyaltyTier' },
     });
-    fireEvent.click(screen.getByTestId('ontology-property-type-enum'));
+
+    expect(form).toHaveTextContent('message.ontology-property-preview-data');
+
+    fireEvent.click(screen.getByRole('button', { name: /label.range/ }));
+    fireEvent.click(await screen.findByTestId('ontology-property-type-enum'));
     fireEvent.change(screen.getByTestId('ontology-property-enum-values'), {
       target: { value: 'gold, silver' },
     });
@@ -976,11 +1032,20 @@ describe('OntologyConceptInspector in AI mode', () => {
     await screen.findByTestId('ontology-native-assets');
 
     fireEvent.click(screen.getByTestId('ontology-add-property'));
+
+    expect(
+      screen.queryByTestId('ontology-property-kind-annotation')
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('ontology-property-kind-more'));
     fireEvent.click(screen.getByTestId('ontology-property-kind-annotation'));
 
     expect(
-      screen.queryByTestId('ontology-property-type-string')
+      screen.queryByRole('button', { name: /label.range/ })
     ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-property-form')).toHaveTextContent(
+      'message.ontology-annotation-no-range'
+    );
 
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'reviewNote' },
@@ -1422,6 +1487,87 @@ describe('OntologyConceptInspector relationship authoring', () => {
         </MemoryRouter>
       );
 
+    it('adds a mapping through its own card and leaves it out again on Cancel', async () => {
+      renderEditable({});
+
+      fireEvent.click(await screen.findByTestId('ontology-add-mapping'));
+      const card = screen.getByTestId('ontology-concept-mapping');
+
+      expect(card).toHaveTextContent('label.ontology-new-mapping');
+      expect(
+        within(card).getByTestId('ontology-mapping-submit')
+      ).toBeDisabled();
+      expect(
+        screen.queryByTestId('ontology-add-mapping')
+      ).not.toBeInTheDocument();
+
+      fireEvent.click(
+        within(card).getByRole('button', { name: 'label.cancel' })
+      );
+
+      expect(
+        screen.queryByTestId('ontology-concept-mapping')
+      ).not.toBeInTheDocument();
+      expect(screen.getByTestId('concept-save')).toBeDisabled();
+
+      fireEvent.click(screen.getByTestId('ontology-add-mapping'));
+      fireEvent.change(
+        within(screen.getByTestId('ontology-concept-mapping')).getByRole(
+          'combobox',
+          { name: /^label\.concept-iri/ }
+        ),
+        { target: { value: 'https://example.org/Client' } }
+      );
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('ontology-mapping-submit'));
+      });
+
+      await waitFor(() =>
+        expect(
+          screen.queryByTestId('ontology-concept-mapping')
+        ).not.toBeInTheDocument()
+      );
+
+      expect(
+        screen.getByTestId('ontology-concept-mapping-row')
+      ).toHaveTextContent('https://example.org/Client');
+      expect(screen.getByTestId('concept-save')).toBeEnabled();
+    });
+
+    it('does not accept a mapping whose concept IRI is not absolute', async () => {
+      renderEditable({});
+
+      fireEvent.click(await screen.findByTestId('ontology-add-mapping'));
+      const card = screen.getByTestId('ontology-concept-mapping');
+      fireEvent.change(
+        within(card).getByRole('combobox', { name: /^label\.concept-iri/ }),
+        { target: { value: 'relative/concept' } }
+      );
+      await act(async () => {
+        fireEvent.click(within(card).getByTestId('ontology-mapping-submit'));
+      });
+
+      expect(
+        await within(card).findByText('message.invalid-concept-iri')
+      ).toBeVisible();
+      expect(
+        screen.queryByTestId('ontology-concept-mapping-row')
+      ).not.toBeInTheDocument();
+    });
+
+    it('previews a rule only once it is complete', async () => {
+      renderEditable({});
+
+      fireEvent.click(await screen.findByTestId('ontology-add-rule'));
+
+      expect(screen.getByTestId('ontology-axiom-preview')).toHaveTextContent(
+        'message.ontology-rule-preview-empty'
+      );
+      expect(screen.getByTestId('ontology-rule-form')).toHaveTextContent(
+        'message.ontology-rule-must-have-short-help'
+      );
+    });
+
     it('turns a relation-like synonym into a relationship form with its type chosen', async () => {
       const findRelationType = jest.fn().mockReturnValue('isA');
       renderEditable({
@@ -1478,12 +1624,12 @@ describe('OntologyConceptInspector relationship authoring', () => {
       const form = screen.getByTestId('ontology-rule-form');
 
       expect(form).toHaveTextContent(
-        'label.new-entitymessage.rule-applies-to-every-concept'
+        'label.ontology-new-rulemessage.rule-applies-to-every-concept'
       );
       expect(within(form).getByTestId('ontology-rule-submit')).toBeDisabled();
 
       fireEvent.click(
-        within(form).getAllByRole('button', { name: /label.rule/ })[0]
+        within(form).getByRole('button', { name: /label.ontology-rule-type/ })
       );
       fireEvent.click(
         await screen.findByRole('option', {

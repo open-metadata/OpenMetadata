@@ -777,7 +777,8 @@ test.describe(
         await test.step('Data property with a data type', async () => {
           const form = await openForm();
           await form.getByTestId('ontology-property-name').fill('email');
-          await form.getByTestId('ontology-property-type-string').click();
+          await form.getByRole('button', { name: /Range/ }).click();
+          await page.getByTestId('ontology-property-type-string').click();
           await clickIgnoringToasts(
             form.getByTestId('ontology-property-submit')
           );
@@ -786,6 +787,7 @@ test.describe(
 
         await test.step('Annotation property', async () => {
           const form = await openForm();
+          await form.getByTestId('ontology-property-kind-more').click();
           await form.getByTestId('ontology-property-kind-annotation').click();
           await form.getByTestId('ontology-property-name').fill('internalNote');
           await clickIgnoringToasts(

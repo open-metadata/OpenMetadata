@@ -1541,7 +1541,6 @@ const OntologyGraphView = ({
 
               return concept ? getEntityName(concept) : undefined;
             }}
-            hasResult={Boolean(conflictsQuery.data)}
             isChecking={conflictsQuery.isFetching}
             isFailed={conflictsQuery.isError}
             violations={conflictViolations}

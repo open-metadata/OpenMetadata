@@ -309,11 +309,11 @@ const OntologyConceptAssets = ({
 
   const renderAiSection = () => (
     <ConceptSection
-      addLabel={t('label.link-entity', { entity: t('label.asset') })}
+      addLabel={t('label.ontology-link-asset')}
       addTestId="ontology-native-link-assets"
       count={assets.length}
       testId="ontology-native-assets"
-      title={t('label.data-asset-plural')}
+      title={t('label.ontology-data-assets')}
       onAdd={
         canLink && !isPickerOpen ? () => setIsPickerOpen(true) : undefined
       }>
@@ -321,10 +321,8 @@ const OntologyConceptAssets = ({
       {renderStatus()}
       {assets.length === 0 && bindings.isSuccess ? (
         <ConceptEmptyState
-          hint={t('message.ontology-current-catalog-links')}
-          title={t('label.no-entity', {
-            entity: t('label.data-asset-plural'),
-          })}
+          hint={t('message.ontology-data-assets-empty-hint')}
+          title={t('message.ontology-no-data-assets-yet')}
         />
       ) : (
         <Typography className="tw:text-tertiary" size="text-xs">

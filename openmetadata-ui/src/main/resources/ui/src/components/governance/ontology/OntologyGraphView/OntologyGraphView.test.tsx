@@ -1166,7 +1166,10 @@ describe('OntologyGraphView', () => {
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'customerNumber' },
     });
-    fireEvent.click(screen.getByTestId('ontology-property-type-integer'));
+    fireEvent.click(screen.getByRole('button', { name: /label.range/ }));
+    fireEvent.click(
+      await screen.findByTestId('ontology-property-type-integer')
+    );
     fireEvent.click(screen.getByTestId('ontology-property-identifier'));
     await act(async () => {
       fireEvent.click(screen.getByTestId('ontology-property-submit'));
@@ -2285,8 +2288,8 @@ describe('OntologyGraphView', () => {
     fireEvent.click(screen.getByTestId('ontology-concept-advanced-toggle'));
 
     expect(
-      await screen.findByRole('textbox', { name: 'label.name' })
-    ).toHaveValue('Customer');
+      await screen.findByTestId('ontology-concept-name')
+    ).toHaveTextContent('Customer');
 
     rerender(
       <OntologyGraphView
@@ -3002,6 +3005,18 @@ describe('OntologyGraphView', () => {
   });
 
   it('floats the conflicts and health cards over the canvas so the graph keeps its width', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
     render(
       <MemoryRouter>
         <OntologyGraphView
@@ -3016,7 +3031,7 @@ describe('OntologyGraphView', () => {
     expect(
       screen.queryByTestId('ontology-graph-sidebar')
     ).not.toBeInTheDocument();
-    expect(screen.getByTestId('ontology-conflicts-panel')).toHaveClass(
+    expect(await screen.findByTestId('ontology-conflicts-panel')).toHaveClass(
       'tw:absolute'
     );
     expect(screen.getByTestId('ontology-health-panel')).toHaveClass(
@@ -3024,7 +3039,7 @@ describe('OntologyGraphView', () => {
     );
   });
 
-  it('never calls the draft clean before validation answers', async () => {
+  it('shows no conflicts card while validation is still running', async () => {
     (getOntologyWorkingValidation as jest.Mock).mockReturnValue(
       new Promise(() => undefined)
     );
@@ -3038,11 +3053,31 @@ describe('OntologyGraphView', () => {
       </MemoryRouter>
     );
     await screen.findByTestId('native-ontology-graph');
-    fireEvent.click(screen.getByTestId('ontology-conflicts-toggle'));
 
     expect(
-      screen.queryByText('message.ontology-validate-all-clean')
+      screen.queryByTestId('ontology-conflicts-panel')
     ).not.toBeInTheDocument();
+  });
+
+  it('shows no conflicts card once validation finds nothing to resolve', async () => {
+    render(
+      <MemoryRouter>
+        <OntologyGraphView
+          ontology={ontology}
+          surface="graph"
+          onRequestGraphSurface={jest.fn()}
+        />
+      </MemoryRouter>
+    );
+    await screen.findByTestId('native-ontology-graph');
+    await waitFor(() =>
+      expect(getOntologyWorkingValidation).toHaveBeenCalled()
+    );
+
+    expect(
+      screen.queryByTestId('ontology-conflicts-panel')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
   });
 
   it('asks to delete a concept inside its panel rather than over the page', async () => {
@@ -3092,6 +3127,18 @@ describe('OntologyGraphView', () => {
   });
 
   it('keeps the conflicts and health cards on the Tree surface', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.DisjointClash,
+          conceptIds: ['concept-customer', 'concept-party'],
+          message: 'Customer is disjoint with its ancestor Party',
+          path: '/expressions',
+          severity: Severity.Error,
+        },
+      ],
+    });
     render(
       <MemoryRouter>
         <OntologyGraphView
@@ -3392,7 +3439,10 @@ describe('OntologyGraphView', () => {
     fireEvent.change(screen.getByTestId('ontology-property-name'), {
       target: { value: 'customerNumber' },
     });
-    fireEvent.click(screen.getByTestId('ontology-property-type-integer'));
+    fireEvent.click(screen.getByRole('button', { name: /label.range/ }));
+    fireEvent.click(
+      await screen.findByTestId('ontology-property-type-integer')
+    );
     await act(async () => {
       fireEvent.click(screen.getByTestId('ontology-property-submit'));
     });
