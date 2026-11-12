@@ -5205,6 +5205,7 @@
     "intake-form-created-successfully": "受付フォームが正常に作成されました",
     "intake-form-custom-properties-help": "フォームに含めるカスタムプロパティを選択し、入力を必須にするフィールドを指定します。カスタムプロパティのカタログは「設定 → カスタムプロパティ」で管理します。",
     "intake-form-deleted-successfully": "受付フォームが正常に削除されました",
+    "intake-form-deprecated": "インテークフォームは非推奨となり、次のリリースで削除されます。代わりに Playbooks とライフサイクルワークフローを使用して必須フィールドを適用してください。",
     "intake-form-description-placeholder": "任意 — この受付フォームが適用するガバナンスポリシーを説明します",
     "intake-form-enabled-help": "無効にすると、受付フォームは保存されますが、API 層では適用されません。",
     "intake-form-native-fields-help": "スキーマ必須フィールド（名前、説明など）は常に適用され、ここには表示されません。この受付フォームはスキーマレベルで任意のフィールドのみを必須に昇格できます。",

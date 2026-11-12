@@ -5205,6 +5205,7 @@
     "intake-form-created-successfully": "Intake form created successfully",
     "intake-form-custom-properties-help": "Välj vilka anpassade egenskaper som ska ingå i formuläret och markera sedan de fält som måste fyllas i. Hantera katalogen med anpassade egenskaper under Inställningar → Anpassade egenskaper.",
     "intake-form-deleted-successfully": "Intake form deleted successfully",
+    "intake-form-deprecated": "Intagsformulär är föråldrade och tas bort i nästa version. Använd i stället Playbooks och livscykelarbetsflöden för att kräva obligatoriska fält.",
     "intake-form-description-placeholder": "Optional — explain the governance policy this intake form enforces",
     "intake-form-enabled-help": "When disabled, the intake form is saved but not enforced at the API layer.",
     "intake-form-native-fields-help": "Schema-required fields (name, description, etc.) are always enforced and are not shown here. Only fields that are optional at the schema level can be promoted by this intake form.",

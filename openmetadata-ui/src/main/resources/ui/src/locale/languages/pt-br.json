@@ -5205,6 +5205,7 @@
     "intake-form-created-successfully": "Formulário de entrada criado com sucesso",
     "intake-form-custom-properties-help": "Escolha quais propriedades personalizadas serão incluídas no formulário e, em seguida, marque os campos que devem ser preenchidos. Gerencie o catálogo de propriedades personalizadas em Configurações → Propriedades personalizadas.",
     "intake-form-deleted-successfully": "Formulário de entrada excluído com sucesso",
+    "intake-form-deprecated": "Os formulários de entrada estão obsoletos e serão removidos na próxima versão. Use Playbooks e fluxos de trabalho de ciclo de vida para exigir os campos obrigatórios.",
     "intake-form-description-placeholder": "Opcional — explique a política de governança que este formulário de entrada aplica",
     "intake-form-enabled-help": "Quando desativado, o formulário de entrada é salvo, mas não é aplicado na camada da API.",
     "intake-form-native-fields-help": "Campos obrigatórios do esquema (nome, descrição etc.) são sempre aplicados e não são exibidos aqui. Apenas campos opcionais no nível do esquema podem ser promovidos por este formulário de entrada.",

@@ -5205,6 +5205,7 @@
     "intake-form-created-successfully": "Intake form created successfully",
     "intake-form-custom-properties-help": "Choose which custom properties to include in the form, then mark the fields that must be completed. Manage the catalog of custom properties in Settings → Custom Properties.",
     "intake-form-deleted-successfully": "Intake form deleted successfully",
+    "intake-form-deprecated": "Intake forms are deprecated and will be removed in the next release. Use Playbooks and Lifecycle workflows to enforce required fields instead.",
     "intake-form-description-placeholder": "Optional — explain the governance policy this intake form enforces",
     "intake-form-enabled-help": "When disabled, the intake form is saved but not enforced at the API layer.",
     "intake-form-native-fields-help": "Schema-required fields (name, description, etc.) are always enforced and are not shown here. Only fields that are optional at the schema level can be promoted by this intake form.",
