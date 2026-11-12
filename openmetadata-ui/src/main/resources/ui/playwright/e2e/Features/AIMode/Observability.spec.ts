@@ -53,6 +53,7 @@ test.describe('AI mode Observability', () => {
   test('should open a test definition from its name and list its test cases', async ({
     page,
   }) => {
+    await redirectToAiModeHomePage(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass();
     const { definition, testCase } = await createTestDefinitionWithTestCase(

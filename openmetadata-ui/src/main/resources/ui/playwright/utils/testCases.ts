@@ -1111,7 +1111,10 @@ export const openTestDefinitionDetailsFromLibrary = async (
   await page.getByRole('link', { name: definitionFqn, exact: true }).click();
   await testCasesResponse;
 
-  await expect(page).toHaveURL(new RegExp(`${libraryPath}/${definitionFqn}$`));
+  // The page records its pagination in the query string (`?currentPage=1`).
+  await expect(page).toHaveURL(
+    new RegExp(`${libraryPath}/${definitionFqn}(\\?|$)`)
+  );
   await expect(page.getByTestId('test-definition-overview')).toContainText(
     'Playwright test definition details'
   );

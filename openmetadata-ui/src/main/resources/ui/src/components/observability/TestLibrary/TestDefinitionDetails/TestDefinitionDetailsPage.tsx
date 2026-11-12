@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import {
-    Box,
-    Button,
-    Card,
-    PageLayout,
-    Table,
-    Typography
+  Box,
+  Button,
+  Card,
+  PageLayout,
+  Table,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Edit01 } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
@@ -27,8 +27,8 @@ import { ClientErrors } from '../../../../enums/Axios.enum';
 import { ResourceEntity } from '../../../../enums/permissions.enum';
 import { Operation } from '../../../../generated/entity/policies/policy';
 import {
-    TestCaseParameterDefinition,
-    TestDefinition
+  TestCaseParameterDefinition,
+  TestDefinition,
 } from '../../../../generated/tests/testDefinition';
 import { useEntityPermissions } from '../../../../hooks/useEntityPermissions/useEntityPermissions';
 import { useFqn } from '../../../../hooks/useFqn';
@@ -47,8 +47,16 @@ import { getObservabilityRootBreadcrumb } from '../../observabilityBreadcrumb.ut
 import ObservabilityPageShell from '../../ObservabilityPageShell/ObservabilityPageShell';
 import { useTestDefinitionDetails } from './useTestDefinitionDetails';
 
-const DetailItem = ({ label, value }: { label: string; value?: string }) => (
-  <Box direction="col" gap={1}>
+const DetailItem = ({
+  className,
+  label,
+  value,
+}: {
+  className?: string;
+  label: string;
+  value?: string;
+}) => (
+  <Box className={className} direction="col" gap={1}>
     <Typography as="dt" color="secondary" size="text-xs" weight="medium">
       {label}
     </Typography>
@@ -81,7 +89,7 @@ const TestDefinitionOverview = ({
           <RichTextEditorPreviewerNew
             markdown={testDefinition.description ?? ''}
           />
-          <dl className="tw:m-0 tw:grid tw:grid-cols-2 tw:gap-4 tw:md:grid-cols-5">
+          <dl className="tw:m-0 tw:grid tw:grid-cols-2 tw:gap-4 tw:md:grid-cols-4">
             <DetailItem
               label={t('label.entity-type')}
               value={testDefinition.entityType}
@@ -95,12 +103,13 @@ const TestDefinitionOverview = ({
               value={testDefinition.dataQualityDimension}
             />
             <DetailItem
-              label={t('label.supported-data-type-plural')}
-              value={testDefinition.supportedDataTypes?.join(', ')}
-            />
-            <DetailItem
               label={t('label.provider')}
               value={testDefinition.provider}
+            />
+            <DetailItem
+              className="tw:col-span-full"
+              label={t('label.supported-data-type-plural')}
+              value={testDefinition.supportedDataTypes?.join(', ')}
             />
           </dl>
           {Boolean(testDefinition.parameterDefinition?.length) && (
