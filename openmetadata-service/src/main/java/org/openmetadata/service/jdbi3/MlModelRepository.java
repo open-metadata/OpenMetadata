@@ -34,6 +34,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.MlModel;
 import org.openmetadata.schema.entity.services.MlModelService;
@@ -628,5 +629,18 @@ public class MlModelRepository extends EntityRepository<MlModel> {
         }
       }
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(MlModel mlModel) {
+    return Map.of(
+        "mlFeatures",
+        listOrEmpty(mlModel.getMlFeatures()).stream()
+            .map(
+                feature ->
+                    ApprovedGlossaryTermGuard.TaggedField.of(
+                        feature.getName(), feature.getFullyQualifiedName(), feature.getTags()))
+            .toList());
   }
 }

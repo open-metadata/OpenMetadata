@@ -115,6 +115,7 @@ import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.resources.glossary.GlossaryTermResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.resources.tags.TagLabelUtil;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch;
 import org.openmetadata.service.search.InheritedFieldEntitySearch.InheritedFieldQuery;
@@ -1100,6 +1101,8 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
             null, term.getGlossary().getFullyQualifiedName(), glossaryRepository.getFields("tags"));
     // Check if the tags are mutually exclusive for the glossary
     checkMutuallyExclusive(glossary.getTags());
+    // This endpoint only applies the term, so a term that is not Approved is refused outright.
+    TagLabelUtil.checkGlossaryTermsApproved(Set.of(term.getFullyQualifiedName()));
 
     BulkOperationResult result = new BulkOperationResult().withDryRun(dryRun);
     List<BulkResponse> failures = new ArrayList<>();

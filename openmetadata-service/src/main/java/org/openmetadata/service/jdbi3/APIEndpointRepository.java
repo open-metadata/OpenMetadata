@@ -42,6 +42,7 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.APICollection;
 import org.openmetadata.schema.entity.data.APIEndpoint;
@@ -816,5 +817,20 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
           origField.getDataTypeDisplay(),
           updatedField.getDataTypeDisplay());
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(
+      APIEndpoint endpoint) {
+    return Map.of(
+        "requestSchema.schemaFields",
+        endpoint.getRequestSchema() == null
+            ? List.of()
+            : listOrEmpty(endpoint.getRequestSchema().getSchemaFields()),
+        "responseSchema.schemaFields",
+        endpoint.getResponseSchema() == null
+            ? List.of()
+            : listOrEmpty(endpoint.getResponseSchema().getSchemaFields()));
   }
 }

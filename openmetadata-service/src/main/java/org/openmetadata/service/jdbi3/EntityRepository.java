@@ -5308,10 +5308,29 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createNewEntityFlush(T entity) {
+    checkAppliedGlossaryTermsApproved(entity);
     flushInOneTransaction(() -> createNewEntityFlushBody(entity));
     try (var ignored = phase("createSetInheritedFields")) {
       setInheritedFields(entity, new Fields(allowedFields));
     }
+  }
+
+  final void checkAppliedGlossaryTermsApproved(T entity) {
+    ApprovedGlossaryTermGuard.checkApplied(glossaryTagsByTarget(entity));
+  }
+
+  /** Labels on the entity and its tagged inline fields, keyed by target FQN. */
+  final Map<String, List<TagLabel>> glossaryTagsByTarget(T entity) {
+    return ApprovedGlossaryTermGuard.tagsByTarget(entity, taggedFieldContainers(entity));
+  }
+
+  /**
+   * The inline fields that carry their own tags, by the container path that holds them. An entity
+   * without tagged inline fields has none; a repository whose entity has them (columns, schema
+   * fields, tasks, features) overrides this, or the approved-term guard would not see their labels.
+   */
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(T entity) {
+    return Map.of();
   }
 
   private void createNewEntityFlushBody(T entity) {
@@ -5564,6 +5583,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   private void createManyEntitiesFlush(List<T> entities) {
+    entities.forEach(this::checkAppliedGlossaryTermsApproved);
     for (int start = 0; start < entities.size(); start += BULK_CREATE_TXN_CHUNK_SIZE) {
       int end = Math.min(start + BULK_CREATE_TXN_CHUNK_SIZE, entities.size());
       List<T> chunk = entities.subList(start, end);
@@ -9080,6 +9100,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * transaction so it re-applies on each replay.
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
+      checkNewlyAppliedGlossaryTermsApproved();
       UpdaterSnapshot snapshot = snapshotUpdaterState();
       flushInOneTransaction(
           () -> {
@@ -9091,6 +9112,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
           invalidateCachesAfterStore();
         }
       }
+    }
+
+    // Runs before any write, and before consolidation rebases `original` onto the pre-session
+    // version, so the baseline is the stored entity this request changes.
+    private void checkNewlyAppliedGlossaryTermsApproved() {
+      ApprovedGlossaryTermGuard.checkNewlyApplied(
+          ApprovedGlossaryTermGuard.tagsByStoredTarget(
+              new ApprovedGlossaryTermGuard.TaggedEntity(updated, taggedFieldContainers(updated)),
+              new ApprovedGlossaryTermGuard.TaggedEntity(
+                  original, taggedFieldContainers(original))),
+          glossaryTagsByTarget(original));
     }
 
     private UpdaterSnapshot snapshotUpdaterState() {
@@ -9289,6 +9321,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
      */
     @Transaction
     public final void updateWithDeferredStore() {
+      checkNewlyAppliedGlossaryTermsApproved();
       changeDescription = new ChangeDescription();
       try (var ignored = phase("entityUpdateDiffDeferred")) {
         updateInternal();

@@ -52,6 +52,7 @@ import org.apache.commons.lang3.tuple.Triple;
 import org.jdbi.v3.core.statement.PreparedBatch;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.FieldInterface;
 import org.openmetadata.schema.api.feed.ResolveTask;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.PipelineStatus;
@@ -2714,5 +2715,18 @@ public class PipelineRepository extends EntityRepository<Pipeline> {
           "Failed to get impacted assets FQNs for pipeline '{}': {}", pipelineFqn, e.getMessage());
       return Collections.emptyList();
     }
+  }
+
+  // The approved-glossary-term guard reads the tags of these inline fields.
+  @Override
+  protected Map<String, List<? extends FieldInterface>> taggedFieldContainers(Pipeline pipeline) {
+    return Map.of(
+        "tasks",
+        listOrEmpty(pipeline.getTasks()).stream()
+            .map(
+                task ->
+                    ApprovedGlossaryTermGuard.TaggedField.of(
+                        task.getName(), task.getFullyQualifiedName(), task.getTags()))
+            .toList());
   }
 }
