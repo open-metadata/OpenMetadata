@@ -24,6 +24,7 @@ import { Link } from 'react-router-dom';
 import { BREADCRUMB_SEPARATOR } from '../../../constants/constants';
 import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkeleton.component';
 import './title-breadcrumb.less';
+import { CUSTOM_SEPARATOR_CLASS } from './TitleBreadcrumb.constants';
 import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
@@ -86,9 +87,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         {noLink &&
           index < titleLinks.length - 1 &&
           (useCustomArrow ? (
-            <span className="custom-separator">
-              <ChevronRight />
-            </span>
+            <ChevronRight className={CUSTOM_SEPARATOR_CLASS} />
           ) : (
             <span className="text-xss text-grey-muted">{'>'}</span>
           ))}
@@ -132,9 +131,7 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     {useCustomArrow ? (
-                      <span className="custom-separator">
-                        <ChevronRight />
-                      </span>
+                      <ChevronRight className={CUSTOM_SEPARATOR_CLASS} />
                     ) : (
                       <span className="text-sm font-regular p-x-xs text-grey-muted">
                         {BREADCRUMB_SEPARATOR}
