@@ -652,7 +652,7 @@ test.describe(
 
         await openDialog(author, ontology);
         await expect(author.getByTestId('ontology-change-counts')).toHaveText(
-          '1 change · 1 concept'
+          '1 change: 1 concept'
         );
       } finally {
         await cleanUp(api, [ontology]);

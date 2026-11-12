@@ -26,6 +26,7 @@ import {
   AuthenticationMechanism,
   User,
 } from '../../src/generated/entity/teams/user';
+import { OntologyProfileReport } from '../../src/generated/api/data/ontologyProfileReport';
 import { ValidationResponse } from '../../src/generated/system/validationResponse';
 import activity from '../fixtures/visual/activity.json';
 import customProperties from '../fixtures/visual/custom-properties.json';
@@ -55,6 +56,28 @@ export interface VisualEntity {
 }
 
 export const VISUAL_ENTITIES: VisualEntity[] = entities;
+
+/** The fixture FinanceOntology draft: Customer places Order. */
+const ONTOLOGY_DRAFT_RDF_XML = `<?xml version="1.0" encoding="UTF-8"?>
+<rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+         xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#"
+         xmlns:owl="http://www.w3.org/2002/07/owl#">
+  <owl:Ontology rdf:about="https://example.com/finance#">
+    <rdfs:label>Finance ontology</rdfs:label>
+  </owl:Ontology>
+  <owl:Class rdf:about="https://example.com/finance#Customer">
+    <rdfs:label>Customer</rdfs:label>
+  </owl:Class>
+  <owl:Class rdf:about="https://example.com/finance#Order">
+    <rdfs:label>Order</rdfs:label>
+  </owl:Class>
+  <owl:ObjectProperty rdf:about="https://example.com/finance#placesOrder">
+    <rdfs:label>places order</rdfs:label>
+    <rdfs:domain rdf:resource="https://example.com/finance#Customer"/>
+    <rdfs:range rdf:resource="https://example.com/finance#Order"/>
+  </owl:ObjectProperty>
+</rdf:RDF>
+`;
 export type VisualDataState =
   | 'populated'
   | 'empty'
@@ -645,6 +668,26 @@ export const installVisualData = async (
           modified: 0,
           deleted: 0,
         },
+      });
+
+      return;
+    }
+    if (/^ontologies\/[^/]+\/working\/validation$/.test(path)) {
+      // The fixture draft passes every OWL 2 DL profile check.
+      await route.fulfill({
+        json: { valid: true, violations: [] } satisfies OntologyProfileReport,
+      });
+
+      return;
+    }
+    if (
+      /^ontologies\/[^/]+\/export$/.test(path) &&
+      url.searchParams.get('format') === 'rdfxml'
+    ) {
+      // The export dialog previews the unpublished draft in its default RDF/XML format.
+      await route.fulfill({
+        contentType: 'application/rdf+xml',
+        body: ONTOLOGY_DRAFT_RDF_XML,
       });
 
       return;

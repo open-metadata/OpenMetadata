@@ -279,6 +279,8 @@ test.describe(
                 Math.abs(added.y - existing.y) > 38 * zoom
             ).toBe(true);
           }
+          // The concept drawer covers the header's right, publication trigger included.
+          await page.getByTestId('ontology-concept-close').click();
           await page.getByTestId('ontology-publication-trigger').click();
           await expect(
             page

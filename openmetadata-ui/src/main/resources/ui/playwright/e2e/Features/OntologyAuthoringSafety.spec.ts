@@ -333,8 +333,9 @@ test.describe(
               body: await page.screenshot(),
               contentType: 'image/png',
             });
+            // The constraint drawer overlays the right of the tab row; Overview stays clear of it.
             await page
-              .getByRole('tab', { name: 'Settings', exact: true })
+              .getByRole('tab', { name: 'Overview', exact: true })
               .click();
             await page
               .getByRole('dialog')
