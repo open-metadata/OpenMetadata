@@ -17,6 +17,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -334,12 +335,13 @@ const CommentBar = ({
         value={comment}
         onChange={setComment}
       />
-      <Button
+      <ButtonUtility
         aria-label={t('label.send')}
-        color="secondary"
+        color="primary"
         data-testid="ontology-task-comment-send"
-        iconLeading={Send01}
+        icon={Send01}
         isDisabled={disabled}
+        size="xl"
         onPress={() => void send()}
       />
     </div>

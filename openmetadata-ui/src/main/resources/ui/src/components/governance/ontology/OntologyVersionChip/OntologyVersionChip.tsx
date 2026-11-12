@@ -14,6 +14,7 @@ import {
   Badge,
   Box,
   Button,
+  ButtonUtility,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ClockRewind } from '@openmetadata/ui-core-components/icons';
@@ -171,13 +172,13 @@ const OntologyVersionChip = ({
         version={version}
         onVersionChange={onVersionChange}
       />
-      <Button
+      <ButtonUtility
         aria-label={`${t('label.release-history')}: ${parts.join(' · ')}`}
         color="secondary"
         data-testid="ontology-release-history-trigger"
-        iconLeading={ClockRewind}
+        icon={ClockRewind}
         isDisabled={isDisabled}
-        size="sm"
+        size="lg"
         tooltip={`${t('label.release-history')} · ${parts.join(' · ')}`}
         onPress={onPress}
       />

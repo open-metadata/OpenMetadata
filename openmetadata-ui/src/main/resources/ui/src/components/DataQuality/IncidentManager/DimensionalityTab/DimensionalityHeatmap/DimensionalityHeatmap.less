@@ -134,99 +134,50 @@
     }
   }
 
+  // A fade over the scrolled-off columns; only the button inside takes the
+  // pointer, so the cells under the fade stay hoverable.
   &__scroll-indicator {
     position: absolute;
     top: 0;
     bottom: 0;
     width: 60px;
-    cursor: pointer;
+    display: flex;
+    align-items: center;
     z-index: var(--om-z-1);
-    pointer-events: auto;
-    border: none;
-    padding: 0;
-    font: inherit;
-    background: transparent;
+    pointer-events: none;
+
+    > * {
+      pointer-events: auto;
+    }
 
     &--left {
       left: 0;
+      justify-content: flex-start;
+      padding-left: calc(var(--tw-spacing) * 2);
       background: linear-gradient(
         to left,
-        var(--om-legacy-color-255-255-255-0) 0%,
-        var(--om-legacy-color-255-255-255-0-8) 20%,
-        var(--om-legacy-color-255-255-255-0-95) 40%,
-        @white 60%
+        transparent 0%,
+        color-mix(in srgb, var(--tw-background-color-surface) 80%, transparent)
+          20%,
+        color-mix(in srgb, var(--tw-background-color-surface) 95%, transparent)
+          40%,
+        var(--tw-background-color-surface) 60%
       );
-
-      &::after {
-        content: '';
-        position: absolute;
-        left: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 30px;
-        height: 30px;
-        background-color: var(--tw-color-bg-primary);
-        border-radius: 50%;
-        box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-15);
-        transition: all var(--om-duration-200) ease;
-      }
-
-      &:hover::after {
-        box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-2);
-        transform: translateY(-50%) scale(1.05);
-      }
-
-      svg {
-        position: absolute;
-        left: 16px;
-        top: 50%;
-        transform: translateY(-50%) rotate(180deg);
-        width: 14px;
-        height: 14px;
-        color: @grey-7;
-        z-index: var(--om-z-1);
-      }
     }
 
     &--right {
       right: 0;
+      justify-content: flex-end;
+      padding-right: calc(var(--tw-spacing) * 2);
       background: linear-gradient(
         to right,
-        var(--om-legacy-color-255-255-255-0) 0%,
-        var(--om-legacy-color-255-255-255-0-8) 20%,
-        var(--om-legacy-color-255-255-255-0-95) 40%,
-        @white 60%
+        transparent 0%,
+        color-mix(in srgb, var(--tw-background-color-surface) 80%, transparent)
+          20%,
+        color-mix(in srgb, var(--tw-background-color-surface) 95%, transparent)
+          40%,
+        var(--tw-background-color-surface) 60%
       );
-
-      &::after {
-        content: '';
-        position: absolute;
-        right: 8px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 30px;
-        height: 30px;
-        background-color: var(--tw-color-bg-primary);
-        border-radius: 50%;
-        box-shadow: 0 2px 8px var(--om-legacy-color-0-0-0-0-15);
-        transition: all var(--om-duration-200) ease;
-      }
-
-      &:hover::after {
-        box-shadow: 0 4px 12px var(--om-legacy-color-0-0-0-0-2);
-        transform: translateY(-50%) scale(1.05);
-      }
-
-      svg {
-        position: absolute;
-        right: 16px;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 14px;
-        height: 14px;
-        color: @grey-7;
-        z-index: var(--om-z-1);
-      }
     }
   }
 
