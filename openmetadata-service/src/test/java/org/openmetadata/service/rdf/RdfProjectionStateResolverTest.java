@@ -179,9 +179,9 @@ class RdfProjectionStateResolverTest {
 
   @Test
   void aSuccessfulRunThatFoundRdfOffIsSkippedLikeAFlaggedFailure() {
-    givenRuns(unchangedRun(MARK + 1), run(AppRunRecord.Status.COMPLETED, MARK + 1));
+    givenRuns(unchangedRun(MARK + 1), run(AppRunRecord.Status.FAILED, MARK + 1));
 
-    assertEquals(RdfProjectionState.READY, markedResolver.resolve());
+    assertEquals(RdfProjectionState.DEGRADED, markedResolver.resolve());
   }
 
   @Test
@@ -204,31 +204,10 @@ class RdfProjectionStateResolverTest {
   }
 
   @Test
-  void readyWhenTheNewestProjectingRunStartedAfterRdfWasLastOff() {
-    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK + 1));
-
-    assertEquals(RdfProjectionState.READY, markedResolver.resolve());
-  }
-
-  @Test
-  void degradedWhenTheNewestProjectingRunStartedBeforeRdfWasLastOff() {
+  void theStateNeverReadsWhenRdfWasLastOff() {
     givenRuns(run(AppRunRecord.Status.SUCCESS, MARK - 1));
 
-    assertEquals(RdfProjectionState.DEGRADED, markedResolver.resolve());
-  }
-
-  @Test
-  void aRunThatStartedBeforeTheMarkStaysDegradedBehindFlaggedRunsAfterIt() {
-    givenRuns(unchangedRun(MARK + 5), run(AppRunRecord.Status.SUCCESS, MARK - 1));
-
-    assertEquals(RdfProjectionState.DEGRADED, markedResolver.resolve());
-  }
-
-  @Test
-  void aRunInFlightStillReportsRebuildingBeforeTheMark() {
-    givenRuns(run(AppRunRecord.Status.RUNNING, MARK - 1));
-
-    assertEquals(RdfProjectionState.REBUILDING, markedResolver.resolve());
+    assertEquals(RdfProjectionState.READY, resolverWithMark(failingMark()).resolve());
   }
 
   @Test
@@ -237,21 +216,14 @@ class RdfProjectionStateResolverTest {
         new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS).withTimestamp(MARK + 1);
     givenRuns(JsonUtils.pojoToJson(run));
 
-    assertEquals(RdfProjectionState.READY, markedResolver.resolve());
+    assertTrue(markedResolver.hasProjectedSinceRdfWasOff());
   }
 
   @Test
-  void degradedWhenTheMarkCannotBeRead() {
-    givenRuns(run(AppRunRecord.Status.SUCCESS, MARK + 1));
+  void aRunWithNeitherTimeIsOlderThanAnyMark() {
+    givenRuns(JsonUtils.pojoToJson(new AppRunRecord().withStatus(AppRunRecord.Status.SUCCESS)));
 
-    assertEquals(RdfProjectionState.DEGRADED, resolverWithMark(failingMark()).resolve());
-  }
-
-  @Test
-  void theMarkIsNotReadWhenTheStateIsNotReady() {
-    givenRuns(run(AppRunRecord.Status.FAILED, MARK - 1));
-
-    assertEquals(RdfProjectionState.DEGRADED, resolverWithMark(failingMark()).resolve());
+    assertFalse(markedResolver.hasProjectedSinceRdfWasOff());
   }
 
   @Test

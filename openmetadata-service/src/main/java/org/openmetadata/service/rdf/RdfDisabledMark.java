@@ -26,7 +26,7 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 public final class RdfDisabledMark {
   private RdfDisabledMark() {}
 
-  /** Never throws: the mark only decides whether a start-up index run is queued later. */
+  /** Never throws: a server with RDF off must still start when the mark cannot be written. */
   public static void recordIfDisabled(final RdfConfiguration config, final Jdbi jdbi) {
     recordIfDisabled(config, new RdfLiveWriteStore(jdbi, Clock.systemUTC()));
   }
@@ -37,8 +37,9 @@ public final class RdfDisabledMark {
         store.recordRdfDisabled();
       } catch (RuntimeException exception) {
         LOG.warn(
-            "Could not record that RDF is disabled; enabling it later will not queue a start-up "
-                + "index run, so run RdfIndexApp once after enabling it",
+            "Could not record that RDF is disabled; enabling it later will neither report the "
+                + "graph as out of date nor queue a start-up index run, so run RdfIndexApp with "
+                + "Recreate once after enabling it",
             exception);
       }
     }

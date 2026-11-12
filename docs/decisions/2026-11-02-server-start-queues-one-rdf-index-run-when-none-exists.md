@@ -67,9 +67,13 @@ after any off period.
   run is still not retried at every restart; the paragraph above on a failed first run holds.
 - **A run that finds RDF off does not count.** It is recorded as a `SUCCESS` and flagged on its
   success context (ADR:2026-11-06-an-rdf-index-run-that-ends-before-indexing-leaves-the-projection-state-alone).
-- **The state is not `READY` until such a run completes.** The resolver reports `DEGRADED` while
-  the newest projecting run started before `rdfDisabledAt`, and `DEGRADED` when the mark cannot be
-  read. `REBUILDING` while a run is in flight is unchanged.
+- **A start with RDF off degrades the projection like a lost write.** The statement that writes
+  `rdfDisabledAt` also raises `failureVersion`, so `/v1/rdf/status` reports `DEGRADED` through the
+  existing health check, and only a completed rebuild of the entire projection that started
+  afterwards repairs it. `REBUILDING` while a run is in flight is unchanged. The time is the
+  trigger's key only. Deciding the state by comparing it with a run's start time was rejected: any
+  successful run after the mark, a partial or non-recreate one included, would read as `READY`
+  over a graph that still misses the changes, and two servers' clocks would decide the state.
 - **Only a running server writes the mark, from `OpenMetadataApplication.run`, decided from
   `rdfConfiguration.enabled`.** `OpenMetadataOperations` (the ops CLI) loads app seed data through
   `CollectionRegistry.loadSeedData` and never initializes `RdfRepository`; a mark written from
@@ -78,13 +82,18 @@ after any off period.
   not live in `initializeCoreSearchInfrastructure`, which Collate overrides. A failure to write it
   only logs a warning that names the consequence.
 
-**Exception to "no full reindex at deploy time".** A start with RDF on now queues a full rebuild
-(`recreateIndex: true`) after any start with RDF off, not only on a new install. That is the one
-case where the graph is known to be out of date, and the alternative is to serve it as current.
+**Exception to "no full reindex at deploy time".** A start with RDF on now queues a run after any
+start with RDF off, not only on a new install. That is the one case where the graph is known to be
+out of date, and the alternative is to serve it as current. The run uses the app's stored
+configuration, which is a full rebuild (`recreateIndex: true`, all entity types) unless an admin
+changed it. Where it is not a full rebuild the state stays `DEGRADED` until one is run; the
+trigger does not override the configuration an admin chose.
 
 **Known gaps, not closed here:**
 - An install that is upgraded and has RDF enabled in the same deploy never starts the new build
   with RDF off, so it records no mark and behaves as before: no run is queued, and the state is
   `DEGRADED` only when its newest record is an old failed one, until the weekly run.
 - During a rolling restart an old server with RDF off can take writes after the new server has
-  queued the rebuild. Those writes are missed until the next rebuild.
+  queued the rebuild. Those writes are missed until the next rebuild. The scheduler is shared, so
+  the old server can also pick up the queued run and complete it with nothing indexed; the state
+  then stays `DEGRADED` until the weekly run.

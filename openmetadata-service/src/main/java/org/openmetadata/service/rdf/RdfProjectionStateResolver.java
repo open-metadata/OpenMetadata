@@ -65,9 +65,7 @@ public final class RdfProjectionStateResolver {
   /** Resolves the state from the server's own run store; the production wiring. */
   public static RdfProjectionState resolveConfigured() {
     return new RdfProjectionStateResolver(
-            Entity.getCollectionDAO().appExtensionTimeSeriesDao(),
-            RdfProjectionHealth::isDegraded,
-            RdfProjectionHealth::rdfDisabledAt)
+            Entity.getCollectionDAO().appExtensionTimeSeriesDao(), RdfProjectionHealth::isDegraded)
         .resolve();
   }
 
@@ -78,7 +76,9 @@ public final class RdfProjectionStateResolver {
 
   /**
    * True when a run that touched the projection started at or after the last time a server started
-   * with RDF off, so the graph has been built since changes stopped reaching it. A failure to read
+   * with RDF off, so a rebuild has been attempted since changes stopped reaching the graph. This
+   * decides only whether start-up queues a run; whether the graph is current is the health row's
+   * call, which an RDF-off start degrades until the entire projection is rebuilt. A failure to read
    * the mark propagates: the caller decides what an unknown answer means.
    */
   public boolean hasProjectedSinceRdfWasOff() {
@@ -128,26 +128,9 @@ public final class RdfProjectionStateResolver {
   }
 
   private RdfProjectionState applyRuntimeHealth(final ProjectingRun run) {
-    return run.state() == RdfProjectionState.READY && isUnreliable(run)
+    return run.state() == RdfProjectionState.READY && isDegraded.getAsBoolean()
         ? RdfProjectionState.DEGRADED
         : run.state();
-  }
-
-  private boolean isUnreliable(final ProjectingRun run) {
-    return isDegraded.getAsBoolean() || predatesRdfDisabledMark(run);
-  }
-
-  private boolean predatesRdfDisabledMark(final ProjectingRun run) {
-    boolean predates;
-    try {
-      predates = run.startedAt() < rdfDisabledAt.getAsLong();
-    } catch (RuntimeException exception) {
-      LOG.warn(
-          "Cannot read when RDF was last disabled; reporting the projection as degraded",
-          exception);
-      predates = true;
-    }
-    return predates;
   }
 
   /** Empty for a run that left the projection unchanged. */

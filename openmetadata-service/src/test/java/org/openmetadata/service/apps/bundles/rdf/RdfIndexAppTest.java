@@ -139,8 +139,8 @@ class RdfIndexAppTest {
             .withStartTime(RDF_DISABLED_AT - 1));
   }
 
-  /** What /rdf/status reports once RDF is on again, with the pushed run and optionally an older one. */
-  private static RdfProjectionState projectionStateAfterRdfWasOff(
+  /** Reads the run history once RDF is on again: the pushed run and optionally an older one. */
+  private static RdfProjectionStateResolver resolverAfterRdfWasOff(
       final AppRunRecord pushed, final String olderRun) {
     final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
     final List<String> history =
@@ -149,7 +149,7 @@ class RdfIndexAppTest {
             : List.of(JsonUtils.pojoToJson(pushed), olderRun);
     when(runStore.listAppExtensionByName(eq("RdfIndexApp"), anyInt(), eq(0), eq("status")))
         .thenReturn(history);
-    return new RdfProjectionStateResolver(runStore, () -> false, () -> RDF_DISABLED_AT).resolve();
+    return new RdfProjectionStateResolver(runStore, () -> false, () -> RDF_DISABLED_AT);
   }
 
   @AfterEach
@@ -226,10 +226,11 @@ class RdfIndexAppTest {
                 .get("projectionUnchanged"));
         assertEquals(
             RdfProjectionState.REBUILDING,
-            projectionStateAfterRdfWasOff(testApp.pushedRecord, null));
-        assertEquals(
-            RdfProjectionState.DEGRADED,
-            projectionStateAfterRdfWasOff(testApp.pushedRecord, completedRunBeforeTheMark()));
+            resolverAfterRdfWasOff(testApp.pushedRecord, null).resolve());
+        assertFalse(
+            resolverAfterRdfWasOff(testApp.pushedRecord, completedRunBeforeTheMark())
+                .hasProjectedSinceRdfWasOff(),
+            "a run that found RDF off must not stop the start-up rebuild");
       } finally {
         rdfRepositoryMockedStatic
             .when(RdfRepository::getInstanceOrNull)

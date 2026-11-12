@@ -403,10 +403,11 @@ weekly schedule. Custom schedules and applications with scheduling disabled are 
 **Turning RDF on.** Every server that starts with RDF off records the time in
 `rdf_projection_health.rdfDisabledAt` (the 2.1.0 migration adds the column), because changes made
 in that time never reach the graph. A server that starts with RDF on queues one `RdfIndexApp`
-rebuild unless a run has started since that time, and `/v1/rdf/status` does not report `READY`
-until a run that started after it completes. A run on a server with RDF off indexes nothing and
-does not count. This is the one case where a start queues a full reindex, apart from the first
-install. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
+rebuild unless a run has started since that time. The same start raises `failureVersion`, so
+`/v1/rdf/status` reports `DEGRADED` until a full Recreate that started after it completes. A run
+on a server with RDF off indexes nothing and does not count. This is the one case where a start
+queues a full reindex, apart from the first install. See
+ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
 
 
 ## Blue/green rebuilds

@@ -47,8 +47,10 @@ public final class RdfLiveWriteStore {
       "UPDATE rdf_projection_health SET lastCompactedAt = ? WHERE id = 'active' "
           + "AND lastCompactedAt = 0";
   private static final String RECORD_RDF_DISABLED =
-      "UPDATE rdf_projection_health SET rdfDisabledAt = GREATEST(rdfDisabledAt, ?) "
-          + "WHERE id = 'active'";
+      "UPDATE rdf_projection_health SET rdfDisabledAt = GREATEST(rdfDisabledAt, ?), "
+          + "failureVersion = failureVersion + 1, lastError = ?, updatedAt = ? WHERE id = 'active'";
+  private static final String RDF_DISABLED_REASON =
+      "A server started with RDF disabled; changes made since then are not in the graph";
   private static final String RDF_DISABLED_AT =
       "SELECT rdfDisabledAt FROM rdf_projection_health WHERE id = 'active'";
   private static final String LAST_COMPACTION =
@@ -368,12 +370,16 @@ public final class RdfLiveWriteStore {
 
   /**
    * Records that a server started with RDF off. Changes made from now on never reach the graph, so
-   * no index run that started earlier can vouch for it. The highest value wins, so servers that
-   * start at different times, or with different clocks, never move it back.
+   * the projection is degraded like any other lost write: only a rebuild of the entire projection
+   * that starts afterwards repairs it. The time is kept as well, for the start-up run that queues
+   * that rebuild; the highest value wins, so servers that start at different times, or with
+   * different clocks, never move it back.
    */
   public void recordRdfDisabled() {
+    final long now = clock.millis();
     final int updated =
-        jdbi.withHandle(handle -> handle.execute(RECORD_RDF_DISABLED, clock.millis()));
+        jdbi.withHandle(
+            handle -> handle.execute(RECORD_RDF_DISABLED, now, RDF_DISABLED_REASON, now));
     if (updated != 1) {
       throw new IllegalStateException("RDF projection health row is missing");
     }
