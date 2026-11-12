@@ -574,7 +574,7 @@ jobs:
         run: mvn -DskipTests package -pl openmetadata-ui -am
 
       - name: Upload the regular UI bundle
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: playwright-visual-ui
           overwrite: true
