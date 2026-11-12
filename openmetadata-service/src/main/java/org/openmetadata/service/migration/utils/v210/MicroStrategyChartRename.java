@@ -31,6 +31,7 @@ import org.openmetadata.schema.entity.services.DashboardService;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -245,18 +246,31 @@ public final class MicroStrategyChartRename {
     String oldFqn = chart.getFullyQualifiedName();
     chart.setName(name);
     chart.setFullyQualifiedName(FullyQualifiedName.add(service.getFullyQualifiedName(), name));
-    collectionDAO.tagUsageDAO().updateTargetFQNHash(oldFqn, chart.getFullyQualifiedName());
-    collectionDAO.fieldRelationshipDAO().renameByToFQN(oldFqn, chart.getFullyQualifiedName());
-    Entity.getConversationRepository().updateEntityReference(chart.getEntityReference(), oldFqn);
-    // The chart row goes last: until it is renamed, a failed run finds the chart under its old
-    // name and the next run finishes the rename.
-    collectionDAO.chartDAO().update(chart);
+    // runOnce records the step even when a chart fails, so a chart is renamed with its tags and
+    // threads in one transaction or not at all.
+    Entity.getJdbi()
+        .useTransaction(handle -> rename(handle.attach(CollectionDAO.class), chart, oldFqn));
     EntityRepository.invalidateCacheForEntity(CHART, chart.getId(), oldFqn);
     EntityRepository.invalidateCacheForEntity(
         DASHBOARD, dashboard.getId(), dashboard.getFullyQualifiedName());
     reindex(chart.getEntityReference());
     reindex(dashboard.getEntityReference());
     return 1;
+  }
+
+  private static void rename(final CollectionDAO dao, final Chart chart, final String oldFqn) {
+    String newFqn = chart.getFullyQualifiedName();
+    dao.tagUsageDAO().updateTargetFQNHash(oldFqn, newFqn);
+    dao.fieldRelationshipDAO().renameByToFQN(oldFqn, newFqn);
+    dao.conversationDAO()
+        .updateEntityReference(
+            CHART,
+            chart.getId().toString(),
+            oldFqn,
+            newFqn,
+            FullyQualifiedName.buildHash(newFqn),
+            JsonUtils.pojoToJson(chart.getEntityReference()));
+    dao.chartDAO().update(chart);
   }
 
   private static boolean exists(
