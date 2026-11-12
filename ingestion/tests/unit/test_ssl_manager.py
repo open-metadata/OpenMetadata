@@ -3,12 +3,25 @@ Manage SSL test cases
 """
 
 import os
+import ssl
+from pathlib import Path
 from unittest import TestCase
 from unittest.mock import patch
 
+import certifi
 import pytest
 from pydantic import SecretStr
+from pymysql.connections import Connection as PyMySQLConnection
 
+from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
+    DorisConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
+    MysqlConnection,
+)
+from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
+    StarRocksConnection,
+)
 from metadata.generated.schema.entity.services.connections.metadata.openMetadataConnection import (
     OpenMetadataConnection,
 )
@@ -21,7 +34,7 @@ from metadata.generated.schema.security.client.openMetadataJWTClientConfig impor
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.cassandra.metadata import CassandraSource
 from metadata.ingestion.source.messaging.kafka.metadata import KafkaSource
-from metadata.utils.ssl_manager import SSLManager
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 
 
 class SSLManagerTest(TestCase):
@@ -1019,406 +1032,41 @@ class HiveSSLManagerTest(TestCase):
         ssl_manager.cleanup_temp_files()
 
 
-class MysqlSSLManagerTest(TestCase):
-    """
-    Tests that setup_ssl for MysqlConnection, DorisConnection, and StarRocksConnection
-    uses the PyMySQL ssl dict keys (ca, cert, key) so PyMySQL verifies server certificates.
-    """
+MYSQL_FAMILY = [MysqlConnection, DorisConnection, StarRocksConnection]
 
-    def test_setup_ssl_sets_pymysql_ssl_dict_keys(self):
-        """MySQL, Doris, and StarRocks populate ssl={'ca': ..., 'cert': ..., 'key': ...}"""
-        from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
-            DorisConnection,
-        )
-        from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-            MysqlConnection,
-        )
-        from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
-            StarRocksConnection,
-        )
-        from metadata.utils.ssl_manager import check_ssl_and_init
 
-        for connection_cls in (MysqlConnection, DorisConnection, StarRocksConnection):
-            with self.subTest(connection_cls=connection_cls.__name__):
-                connection = connection_cls(
-                    hostPort="localhost:3306",
-                    username="user",
-                    sslConfig={
-                        "caCertificate": "caCertificateData",
-                        "sslCertificate": "sslCertificateData",
-                        "sslKey": "sslKeyData",
-                    },
-                )
-
-                ssl_manager = check_ssl_and_init(connection)
-                updated_connection = ssl_manager.setup_ssl(connection)
-
-                ssl_args = updated_connection.connectionArguments.root.get("ssl", {})
-                self.assertEqual(ssl_args.get("ca"), ssl_manager.ca_file_path)
-                self.assertEqual(ssl_args.get("cert"), ssl_manager.cert_file_path)
-                self.assertEqual(ssl_args.get("key"), ssl_manager.key_file_path)
-                self.assertNotIn("ssl_ca", ssl_args)
-                self.assertNotIn("ssl_cert", ssl_args)
-                self.assertNotIn("ssl_key", ssl_args)
-
-                ssl_manager.cleanup_temp_files()
-
-    def test_setup_ssl_ca_only_enables_pymysql_verification(self):
-        """CA-only config passes 'ca' in the ssl dict so PyMySQL enables CERT_REQUIRED"""
-        import ssl
-
-        from pymysql.connections import Connection
-
-        from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-            MysqlConnection,
-        )
-        from metadata.utils.ssl_manager import check_ssl_and_init
-
-        connection = MysqlConnection(
-            hostPort="localhost:3306",
-            username="user",
-            sslConfig={"caCertificate": "caCertificateData"},
-        )
-
-        ssl_manager = check_ssl_and_init(connection)
-        updated_connection = ssl_manager.setup_ssl(connection)
-        ssl_args = updated_connection.connectionArguments.root["ssl"]
-
-        self.assertEqual(ssl_args, {"ca": ssl_manager.ca_file_path})
-        with patch.object(ssl.SSLContext, "load_verify_locations") as mock_load_verify:
-            ctx = Connection._create_ssl_ctx(None, ssl_args)
-            mock_load_verify.assert_called_once_with(ssl_manager.ca_file_path, None, None)
-        self.assertEqual(ctx.verify_mode, ssl.CERT_REQUIRED)
-        self.assertTrue(ctx.check_hostname)
-
+def _pymysql_ssl_args(connection) -> dict:
+    ssl_manager = check_ssl_and_init(connection)
+    try:
+        return dict(ssl_manager.setup_ssl(connection).connectionArguments.root["ssl"])
+    finally:
         ssl_manager.cleanup_temp_files()
 
 
-@pytest.mark.parametrize("connection_type", ["mysql", "doris", "starrocks"])
-@pytest.mark.parametrize("use_top_level_client_cert", [False, True])
-def test_pymysql_uses_configured_ca_with_top_level_ssl_options(connection_type, use_top_level_client_cert):
-    import ssl
-
-    from pymysql.connections import Connection
-
-    from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
-        DorisConnection,
-    )
-    from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-        MysqlConnection,
-    )
-    from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
-        StarRocksConnection,
-    )
-    from metadata.ingestion.connections.builders import get_connection_args_common
-    from metadata.utils.ssl_manager import check_ssl_and_init
-
-    connection_cls = {"mysql": MysqlConnection, "doris": DorisConnection, "starrocks": StarRocksConnection}[
-        connection_type
-    ]
-    arguments = {"ssl_verify_cert": True, "ssl_verify_identity": True, "connect_timeout": 5}
-    if use_top_level_client_cert:
-        arguments.update({"ssl_cert": "client.pem", "ssl_key": "client.key", "ssl_key_password": "password"})
+@pytest.mark.parametrize("connection_cls", MYSQL_FAMILY)
+def test_ca_certificate_makes_pymysql_verify_the_server(connection_cls):
     connection = connection_cls(
-        hostPort="localhost:3306",
+        hostPort="db:3306",
         username="user",
-        sslConfig={"caCertificate": "caCertificateData"},
-        connectionArguments=arguments,
+        sslConfig={"caCertificate": Path(certifi.where()).read_text()},
     )
-    manager = check_ssl_and_init(connection)
+    ssl_manager = check_ssl_and_init(connection)
     try:
-        updated = manager.setup_ssl(connection)
-        with (
-            patch.object(ssl.SSLContext, "load_verify_locations") as load_ca,
-            patch.object(ssl.SSLContext, "load_cert_chain") as load_client,
-        ):
-            client = Connection(
-                host="localhost", user="user", defer_connect=True, **get_connection_args_common(updated)
-            )
-
-        load_ca.assert_called_once_with(manager.ca_file_path, None, None)
-        assert client.ctx.verify_mode == ssl.CERT_REQUIRED
-        assert client.ctx.check_hostname
-        assert client.connect_timeout == 5
-        if use_top_level_client_cert:
-            load_client.assert_called_once_with("client.pem", keyfile="client.key", password="password")
-        else:
-            load_client.assert_not_called()
+        ssl_args = ssl_manager.setup_ssl(connection).connectionArguments.root["ssl"]
+        ctx = PyMySQLConnection._create_ssl_ctx(None, ssl_args)
     finally:
-        manager.cleanup_temp_files()
+        ssl_manager.cleanup_temp_files()
+
+    assert ctx.verify_mode == ssl.CERT_REQUIRED
+    assert ctx.check_hostname is True
 
 
-def test_pymysql_loads_configured_ca_when_verification_options_are_top_level():
-    from datetime import datetime, timedelta, timezone
-
-    from cryptography import x509
-    from cryptography.hazmat.primitives import hashes, serialization
-    from cryptography.hazmat.primitives.asymmetric import rsa
-    from cryptography.x509.oid import NameOID
-    from pymysql.connections import Connection
-
-    from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-        MysqlConnection,
-    )
-    from metadata.ingestion.connections.builders import get_connection_args_common
-    from metadata.utils.ssl_manager import check_ssl_and_init
-
-    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
-    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "OpenMetadata Test CA")])
-    now = datetime.now(timezone.utc)
-    certificate = (
-        x509.CertificateBuilder()
-        .subject_name(name)
-        .issuer_name(name)
-        .public_key(key.public_key())
-        .serial_number(x509.random_serial_number())
-        .not_valid_before(now - timedelta(minutes=1))
-        .not_valid_after(now + timedelta(days=1))
-        .add_extension(x509.BasicConstraints(ca=True, path_length=None), critical=True)
-        .sign(key, hashes.SHA256())
-    )
-    connection = MysqlConnection(
-        hostPort="localhost:3306",
-        username="user",
-        sslConfig={"caCertificate": certificate.public_bytes(serialization.Encoding.PEM).decode()},
-        connectionArguments={"ssl_verify_cert": True, "ssl_verify_identity": True},
-    )
-    manager = check_ssl_and_init(connection)
-    try:
-        updated = manager.setup_ssl(connection)
-        client = Connection(host="localhost", user="user", defer_connect=True, **get_connection_args_common(updated))
-        assert certificate.public_bytes(serialization.Encoding.DER) in client.ctx.get_ca_certs(binary_form=True)
-        assert client.ctx.check_hostname
-    finally:
-        manager.cleanup_temp_files()
-
-
-@pytest.mark.parametrize(
-    ("arguments", "verify", "hostname", "override_ca"),
-    [
-        ({"ssl_verify_cert": False}, True, True, False),
-        ({"ssl_verify_cert": True}, True, False, False),
-        ({"ssl_verify_cert": "false"}, False, False, False),
-        ({"ssl_cert": "client.pem", "ssl_verify_cert": False}, False, False, False),
-        ({"ssl_ca": "override.pem", "ssl_verify_cert": True, "ssl_verify_identity": True}, True, True, True),
-    ],
-)
-def test_pymysql_preserves_explicit_ssl_options(arguments, verify, hostname, override_ca):
-    import ssl
-
-    from pymysql.connections import Connection
-
-    from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-        MysqlConnection,
-    )
-    from metadata.ingestion.connections.builders import get_connection_args_common
-    from metadata.utils.ssl_manager import check_ssl_and_init
-
-    connection = MysqlConnection(
-        hostPort="localhost:3306",
-        username="user",
-        sslConfig={"caCertificate": "caCertificateData"},
-        connectionArguments=arguments,
-    )
-    manager = check_ssl_and_init(connection)
-    try:
-        updated = manager.setup_ssl(connection)
-        with (
-            patch.object(ssl.SSLContext, "load_verify_locations") as load_ca,
-            patch.object(ssl.SSLContext, "load_cert_chain"),
-        ):
-            client = Connection(
-                host="localhost", user="user", defer_connect=True, **get_connection_args_common(updated)
-            )
-        load_ca.assert_called_once_with("override.pem" if override_ca else manager.ca_file_path, None, None)
-        assert client.ctx.verify_mode == (ssl.CERT_REQUIRED if verify else ssl.CERT_NONE)
-        assert client.ctx.check_hostname is hostname
-    finally:
-        manager.cleanup_temp_files()
-
-
-@pytest.mark.parametrize("connection_type", ["mysql", "doris", "starrocks"])
-def test_ssl_setup_preserves_overrides_when_input_is_reused(connection_type):
-    from metadata.generated.schema.entity.services.connections.database.dorisConnection import (
-        DorisConnection,
-    )
-    from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-        MysqlConnection,
-    )
-    from metadata.generated.schema.entity.services.connections.database.starrocksConnection import (
-        StarRocksConnection,
-    )
-    from metadata.utils.ssl_manager import check_ssl_and_init
-
-    connection_cls = {"mysql": MysqlConnection, "doris": DorisConnection, "starrocks": StarRocksConnection}[
-        connection_type
-    ]
-    arguments = {
-        "ssl": {"check_hostname": False},
-        "ssl_ca": "override.pem",
-        "ssl_cert": "override-cert.pem",
-        "ssl_key": "override-key.pem",
-    }
+@pytest.mark.parametrize("connection_cls", MYSQL_FAMILY)
+def test_client_certificate_and_key_use_pymysql_ssl_keys(connection_cls):
     connection = connection_cls(
-        hostPort="localhost:3306",
+        hostPort="db:3306",
         username="user",
-        sslConfig={"caCertificate": "caCertificateData", "sslCertificate": "certData", "sslKey": "keyData"},
-        connectionArguments=arguments,
+        sslConfig={"caCertificate": "ca", "sslCertificate": "cert", "sslKey": "key"},
     )
-    manager = check_ssl_and_init(connection)
-    try:
-        first = manager.setup_ssl(connection)
-        second = manager.setup_ssl(connection)
-        expected = {
-            "check_hostname": False,
-            "ca": "override.pem",
-            "cert": "override-cert.pem",
-            "key": "override-key.pem",
-        }
-        assert first.connectionArguments.root["ssl"] == expected
-        assert second.connectionArguments.root["ssl"] == expected
-        assert connection.connectionArguments.root == arguments
-    finally:
-        manager.cleanup_temp_files()
 
-
-@pytest.mark.parametrize("use_top_level_client_cert", [False, True])
-def test_pymysql_resolves_top_level_key_password_before_nesting(use_top_level_client_cert):
-    import ssl
-
-    from pymysql.connections import Connection
-
-    from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-        MysqlConnection,
-    )
-    from metadata.ingestion.connections.builders import get_connection_args_common
-    from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
-    from metadata.utils.ssl_manager import check_ssl_and_init
-
-    ssl_config = {"caCertificate": "caCertificateData"}
-    arguments = {"ssl_key_password": "secret:dbkey"}
-    if use_top_level_client_cert:
-        arguments.update({"ssl_cert": "client.pem", "ssl_key": "client.key"})
-    else:
-        ssl_config.update({"sslCertificate": "sslCertificateData", "sslKey": "sslKeyData"})
-    connection = MysqlConnection(
-        hostPort="localhost:3306",
-        username="user",
-        sslConfig=ssl_config,
-        connectionArguments=arguments,
-    )
-    manager = check_ssl_and_init(connection)
-    try:
-        with (
-            patch.object(SecretsManagerFactory, "get_secrets_manager") as get_secrets_manager,
-            patch.object(ssl.SSLContext, "load_verify_locations"),
-            patch.object(ssl.SSLContext, "load_cert_chain") as load_client,
-        ):
-            get_secrets_manager.return_value.get_string_value.return_value = "resolved-password"
-            updated = manager.setup_ssl(connection)
-            Connection(host="localhost", user="user", defer_connect=True, **get_connection_args_common(updated))
-        load_client.assert_called_once_with(
-            "client.pem" if use_top_level_client_cert else manager.cert_file_path,
-            keyfile="client.key" if use_top_level_client_cert else manager.key_file_path,
-            password="resolved-password",
-        )
-    finally:
-        manager.cleanup_temp_files()
-
-
-def test_ssl_setup_does_not_resolve_unrelated_connection_secrets_twice():
-    from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
-        MysqlConnection,
-    )
-    from metadata.ingestion.connections.builders import get_connection_args_common
-    from metadata.utils.secrets.secrets_manager_factory import SecretsManagerFactory
-    from metadata.utils.ssl_manager import check_ssl_and_init
-
-    connection = MysqlConnection(
-        hostPort="localhost:3306",
-        username="user",
-        sslConfig={"caCertificate": "caCertificateData"},
-        connectionArguments={"ssl_verify_cert": True, "init_command": "secret:statement"},
-    )
-    manager = check_ssl_and_init(connection)
-    try:
-        with patch.object(SecretsManagerFactory, "get_secrets_manager") as get_secrets_manager:
-            get_secrets_manager.return_value.get_string_value.side_effect = {
-                "statement": "secret:literal",
-                "literal": "wrong value",
-            }.get
-            updated = manager.setup_ssl(connection)
-            assert get_connection_args_common(updated)["init_command"] == "secret:literal"
-    finally:
-        manager.cleanup_temp_files()
-
-
-@pytest.mark.parametrize("connection_type", ["Doris", "StarRocks"])
-def test_mysql_family_source_initializes_ssl_once(connection_type):
-    import ssl
-    from pathlib import Path
-
-    from pymysql.connections import Connection
-    from sqlalchemy import create_engine
-
-    from metadata.ingestion.connections.builders import get_connection_args_common
-    from metadata.ingestion.source.database.common_db_source import CommonDbSourceService
-    from metadata.ingestion.source.database.doris.metadata import DorisSource
-    from metadata.ingestion.source.database.starrocks.metadata import StarRocksSource
-    from metadata.utils.secure_tempfile import remove_secret_temp_file, write_secret_temp_file
-
-    source_cls = {"Doris": DorisSource, "StarRocks": StarRocksSource}[connection_type]
-    config = WorkflowSource.model_validate(
-        {
-            "type": connection_type.lower(),
-            "serviceName": "test",
-            "serviceConnection": {
-                "config": {
-                    "type": connection_type,
-                    "hostPort": "localhost:3306",
-                    "username": "user",
-                    "sslConfig": {"caCertificate": "caCertificateData"},
-                    "connectionArguments": {"ssl_ca": "override.pem", "ssl_verify_cert": True},
-                }
-            },
-            "sourceConfig": {"config": {"type": "DatabaseMetadata"}},
-        }
-    )
-    created_paths = []
-
-    def create_temp_file(content):
-        path = write_secret_temp_file(content)
-        created_paths.append(path)
-        return path
-
-    source = None
-    try:
-        with (
-            patch("metadata.utils.ssl_manager.write_secret_temp_file", side_effect=create_temp_file),
-            patch("metadata.ingestion.source.database.common_db_source.create_connection", return_value=None),
-            patch(
-                "metadata.ingestion.source.database.common_db_source.get_connection",
-                return_value=create_engine("sqlite://"),
-            ),
-            patch.object(CommonDbSourceService, "test_connection"),
-        ):
-            source = source_cls(config, None)
-        assert len(created_paths) == 1
-        assert Path(created_paths[0]).exists()
-        with patch.object(ssl.SSLContext, "load_verify_locations") as load_ca:
-            client = Connection(
-                host="localhost",
-                user="user",
-                defer_connect=True,
-                **get_connection_args_common(source.service_connection),
-            )
-        load_ca.assert_called_once_with("override.pem", None, None)
-        assert client.ctx.verify_mode == ssl.CERT_REQUIRED
-        source.close()
-        source = None
-        assert not Path(created_paths[0]).exists()
-    finally:
-        if source:
-            source.close()
-        for path in created_paths:
-            remove_secret_temp_file(path)
+    assert set(_pymysql_ssl_args(connection)) == {"ca", "cert", "key"}

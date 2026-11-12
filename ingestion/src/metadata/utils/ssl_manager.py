@@ -85,6 +85,41 @@ from metadata.utils.secure_tempfile import (
 
 logger = utils_logger()
 
+_PYMYSQL_SSL_OPTIONS = ("ssl_ca", "ssl_cert", "ssl_key", "ssl_verify_cert", "ssl_verify_identity")
+_PYMYSQL_SSL_PATHS = (("ssl_ca", "ca"), ("ssl_cert", "cert"), ("ssl_key", "key"))
+
+
+def _nest_pymysql_ssl_options(args: dict, ssl_args: dict) -> None:
+    """
+    Move PyMySQL's top-level SSL options into the ``ssl`` dict.
+
+    PyMySQL replaces the whole ``ssl`` dict when any top-level SSL option is truthy, which would
+    drop the sslConfig certificates. Values are resolved here because secrets are only resolved
+    for top-level connection arguments.
+    """
+    options = {
+        key: _CustomSecretStr(args[key]).get_secret_value() if isinstance(args[key], str) else args[key]
+        for key in (*_PYMYSQL_SSL_OPTIONS, "ssl_key_password")
+        if key in args
+    }
+    args.pop("ssl_key_password", None)
+    if options.get("ssl_key_password") is not None:
+        ssl_args["password"] = options["ssl_key_password"]
+    if not any(options.get(key) for key in _PYMYSQL_SSL_OPTIONS):
+        return
+    for key in _PYMYSQL_SSL_OPTIONS:
+        args.pop(key, None)
+    for top_level, nested in _PYMYSQL_SSL_PATHS:
+        if options.get(top_level) is not None:
+            ssl_args[nested] = options[top_level]
+    verify_cert = options.get("ssl_verify_cert")
+    verify_identity = options.get("ssl_verify_identity")
+    if verify_cert is not None:
+        ssl_args["verify_mode"] = verify_cert
+        ssl_args["check_hostname"] = False
+    if verify_identity is not None:
+        ssl_args["check_hostname"] = bool(verify_identity)
+
 
 class SSLManager:
     "SSL Manager to manage SSL certificates for service connections"
@@ -133,8 +168,13 @@ class SSLManager:
     @setup_ssl.register(DorisConnection)
     @setup_ssl.register(StarRocksConnection)
     def _(self, connection):
-        # Use the temporary file paths for SSL configuration
-        connection = cast(MysqlConnection | DorisConnection | StarRocksConnection, connection).model_copy(deep=True)  # noqa: TC006
+        # PyMySQL's ``ssl`` dict takes ``ca``/``cert``/``key``. The ``ssl_``-prefixed names only
+        # exist as URL query params and top-level kwargs; inside the dict they are ignored, which
+        # leaves TLS on but the server certificate unverified.
+        connection = cast(MysqlConnection | DorisConnection | StarRocksConnection, connection)  # noqa: TC006
+        # Work on a copy: top-level SSL options are moved into ``ssl`` below, and callers such as
+        # get_ssl_connection set up the same config more than once.
+        connection = connection.model_copy(deep=True)
         connection.connectionArguments = connection.connectionArguments or init_empty_connection_arguments()
         ssl_args = connection.connectionArguments.root.get("ssl", {})
         if connection.sslConfig.root.caCertificate:
@@ -143,41 +183,8 @@ class SSLManager:
             ssl_args["cert"] = self.cert_file_path
         if connection.sslConfig.root.sslKey:
             ssl_args["key"] = self.key_file_path
-
-        # PyMySQL replaces the entire ssl dict when any top-level SSL option is truthy.
-        args = connection.connectionArguments.root
-        ssl_keys = ("ssl_ca", "ssl_cert", "ssl_key", "ssl_verify_cert", "ssl_verify_identity")
-        if any(key in args for key in (*ssl_keys, "ssl_key_password")):
-            ssl_options = {
-                key: _CustomSecretStr(args[key]).get_secret_value() if isinstance(args[key], str) else args[key]
-                for key in (*ssl_keys, "ssl_key_password")
-                if key in args
-            }
-            key_password = ssl_options.get("ssl_key_password")
-            args.pop("ssl_key_password", None)
-            if key_password is not None:
-                ssl_args["password"] = key_password
-            if any(ssl_options.get(key) for key in ssl_keys):
-                for top_level, nested in (
-                    ("ssl_ca", "ca"),
-                    ("ssl_cert", "cert"),
-                    ("ssl_key", "key"),
-                ):
-                    args.pop(top_level, None)
-                    value = ssl_options.get(top_level)
-                    if value is not None:
-                        ssl_args[nested] = value
-                args.pop("ssl_verify_cert", None)
-                args.pop("ssl_verify_identity", None)
-                verify_cert = ssl_options.get("ssl_verify_cert")
-                verify_identity = ssl_options.get("ssl_verify_identity")
-                if verify_cert is not None:
-                    ssl_args["verify_mode"] = verify_cert
-                    if verify_identity is None:
-                        ssl_args["check_hostname"] = False
-                if verify_identity is not None:
-                    ssl_args["check_hostname"] = bool(verify_identity)
         connection.connectionArguments.root["ssl"] = ssl_args
+        _nest_pymysql_ssl_options(connection.connectionArguments.root, ssl_args)
         return connection
 
     @setup_ssl.register(MatillionConnection)
