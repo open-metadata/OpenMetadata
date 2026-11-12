@@ -14,7 +14,7 @@ import { Stage } from '../../../../generated/type/ontologyPublicationStatus';
 
 export const RELEASE_STAGE_LABELS: Record<Stage, string> = {
   [Stage.Draft]: 'label.draft',
-  [Stage.InReview]: 'label.in-review',
+  [Stage.InReview]: 'label.ontology-in-review',
   [Stage.ChangesRequested]: 'label.changes-requested',
   [Stage.Approved]: 'label.approved',
   [Stage.Published]: 'label.published',

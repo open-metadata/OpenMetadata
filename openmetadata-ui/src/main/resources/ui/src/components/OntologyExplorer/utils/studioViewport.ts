@@ -92,6 +92,22 @@ export function nodeViewportRect(
   );
 }
 
+/**
+ * G6 keeps the viewport centre when the canvas resizes, which shifts every node by
+ * half the change. This moves them back so the top-left corner stays put.
+ */
+export function anchorViewportToTopLeft(
+  graph: Graph,
+  before: ViewportSize,
+  after: ViewportSize
+): void {
+  const dx = (before.width - after.width) / 2;
+  const dy = (before.height - after.height) / 2;
+  if (dx || dy) {
+    void graph.translateBy([dx, dy], { duration: 0 });
+  }
+}
+
 export function graphFitsViewport(graph: Graph, size: ViewportSize): boolean {
   const rect = nodeViewportRect(graph);
 

@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
+  ArrowRight,
   ArrowUpRight,
   CheckCircle,
 } from '@openmetadata/ui-core-components/icons';
@@ -351,13 +352,19 @@ const OntologyNativeLibraryDetail = ({
         <Button
           color="primary"
           data-testid="ontology-library-native-install"
+          iconTrailing={isLocked && !isBusy ? undefined : ArrowRight}
           isDisabled={isInstallDisabled()}
           isLoading={isBusy || Boolean(target && isPermissionLoading)}
           onPress={() => void install()}>
           {isLocked && !isBusy ? t('label.retry') : t('label.install-ontology')}
         </Button>
-        <Typography color="secondary" size="text-xs">
-          {t('message.ontology-library-customize-help')}
+        <Typography
+          color="secondary"
+          data-testid="ontology-library-module-hint"
+          size="text-xs">
+          {selectedModuleIds.length
+            ? t('message.ontology-library-customize-help')
+            : t('message.ontology-library-select-module')}
         </Typography>
       </>
     );

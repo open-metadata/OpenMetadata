@@ -149,7 +149,11 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
         direction="col"
         gap={1}
         key={section}>
-        <Typography as="h5" size="text-sm" weight="semibold">
+        <Typography
+          as="h5"
+          className="not-prose tw:m-0"
+          size="text-sm"
+          weight="semibold">
           {t(`label.${section}`)} · {rows.length}
         </Typography>
         <ul className="tw:m-0 tw:list-none tw:p-0">
@@ -220,7 +224,7 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
               isLoading={diff.isFetchingNextPage}
               size="sm"
               onPress={() => void diff.fetchNextPage()}>
-              {t('label.load-more')}
+              {t('label.load-more-lowercase')}
             </Button>
           </Box>
         )}
@@ -234,7 +238,11 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
       data-testid="ontology-release-compare"
       direction="col"
       gap={3}>
-      <Typography as="h4" size="text-sm" weight="semibold">
+      <Typography
+        as="h4"
+        className="not-prose tw:m-0"
+        size="text-sm"
+        weight="semibold">
         {t('label.compare-versions')}
       </Typography>
       <Box gap={2} wrap="wrap">

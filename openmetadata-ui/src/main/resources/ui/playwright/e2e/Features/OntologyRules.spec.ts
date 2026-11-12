@@ -878,7 +878,9 @@ test.describe(
             new URL(response.url()).pathname === '/api/v1/ontologyProperties' &&
             response.request().method() === 'POST'
         );
-        await clickIgnoringToasts(editor.getByRole('button', { name: 'Save' }));
+        await clickIgnoringToasts(
+          editor.getByRole('button', { name: 'Create Property', exact: true })
+        );
         const property = await okJson<OntologyProperty>(
           await created,
           'Create the property'

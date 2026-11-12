@@ -19,6 +19,15 @@ export interface RelationTypeOption {
   label: string;
   inverseLabel?: string;
   paletteKey: PaletteKey;
+  /** A short gloss shown beside the label; the inverse is shown when absent. */
+  description?: string;
+  /** Concept ids the relation may start from and point at; empty or absent allows any. */
+  domain?: readonly string[];
+  range?: readonly string[];
+  /** "Domain → Range", shown as a warning for a relation that does not fit the chosen ends. */
+  scopeLabel?: string;
+  /** The domain or range leaves out the chosen ends; still selectable. */
+  isUnfit?: boolean;
 }
 
 export interface RelationTypeOptionGroup {
@@ -32,6 +41,9 @@ export interface RelationshipTypePickerProps {
   onSelect: (relationType: string) => void;
   sourceLabel: string;
   targetLabel: string;
+  /** Concept ids of the ends; relations whose domain or range leaves them out are flagged. */
+  sourceId?: string;
+  targetId?: string;
   onCancel?: () => void;
   className?: string;
   /** Options to offer; glossary relationship types are loaded when absent. */

@@ -131,6 +131,8 @@
         "openmetadata-ui/src/main/resources/ui/src/interface/feed.interface.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/feedsAPI.ts",
         "openmetadata-ui/src/main/resources/ui/src/rest/tasksAPI.ts",
+        "openmetadata-ui/src/main/resources/ui/src/components/Entity/Task/**",
+        "openmetadata-ui/src/main/resources/ui/src/utils/TaskNavigationUtils.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/Task.constant.ts",
         "openmetadata-ui/src/main/resources/ui/src/constants/Feeds.constants.ts",
         "openmetadata-ui/src/main/resources/ui/src/hooks/useCloseOnNavigation*",

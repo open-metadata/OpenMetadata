@@ -23,6 +23,7 @@ import static org.mockito.Mockito.when;
 import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.WebApplicationException;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
@@ -60,6 +61,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.events.consumer.ServerStopping;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
@@ -67,6 +69,7 @@ import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.llm.LLMClientHolder;
+import org.openmetadata.service.llm.LLMCompletionException;
 import org.openmetadata.service.llm.NoopCompletionClient;
 import org.openmetadata.service.util.RequestEntityCache;
 
@@ -74,6 +77,8 @@ import org.openmetadata.service.util.RequestEntityCache;
 class ContextFileProcessingServiceTest {
 
   private static final String UPLOADER = "test.user";
+  private static final String CLOSED_ASSET_SERVICE =
+      "AssetService not initialized. Please make sure ObjectStorage is configured.";
 
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
@@ -130,9 +135,10 @@ class ContextFileProcessingServiceTest {
   }
 
   @AfterEach
-  void resetAiHolders() {
+  void resetGlobalState() {
     AiProviderHolder.reset();
     LLMClientHolder.setForTesting(null);
+    ServerStopping.set(false);
   }
 
   @Test
@@ -544,6 +550,179 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
     assertEquals("provider exploded", failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+  }
+
+  @Test
+  void anInterruptedFileExtractionStaysExtractingContext() throws Exception {
+    stubTextExtraction();
+    when(fileEngine.runExtraction(fileId))
+        .thenAnswer(
+            ignored -> {
+              throw interruptedLlmCall();
+            });
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+
+    try {
+      assertThrows(
+          LLMCompletionException.class, () -> service.runMemoryExtraction(fileId, contentId));
+    } finally {
+      Thread.interrupted();
+    }
+
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.ExtractingContext,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+    verify(contentRepository, times(2))
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedContentCaptor.getAllValues().getLast().getProcessingStatus());
+  }
+
+  @Test
+  void aRealLlmFailureStillMarksFailed() throws Exception {
+    stubTextExtraction();
+    LLMCompletionException failure =
+        new LLMCompletionException(
+            "Knowledge pill extraction failed for 1 of 1 chunks",
+            new LLMCompletionException(
+                "OpenAI completion failed due to IO error", new IOException("Connection reset")));
+    when(fileEngine.runExtraction(fileId)).thenThrow(failure);
+    ContextFileProcessingService service = service(Runnable::run, () -> assetService, true);
+    service.process(fileId, contentId);
+
+    assertThrows(
+        LLMCompletionException.class, () -> service.runMemoryExtraction(fileId, contentId));
+
+    verify(repository, times(3))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    ContextFile failed = updatedFileCaptor.getAllValues().getLast();
+    assertEquals(ProcessingStatus.Failed, failed.getProcessingStatus());
+    assertEquals(failure.getMessage(), failed.getProcessingError());
+  }
+
+  /** The read ran on another thread, so only the failure's cause records the interrupt. */
+  @Test
+  void anInterruptedTextStageIsFailedAsInterruptedByAStop() {
+    file.setProcessingStatus(ProcessingStatus.Analyzing);
+    content.setProcessingStatus(ProcessingStatus.Analyzing);
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.failedFuture(
+                new IllegalStateException("Asset read interrupted", new InterruptedException())));
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verifyFailedWith(ContextFileProcessingService.INTERRUPTED_BY_STOP);
+    verifyNoMemoryJob();
+  }
+
+  @ParameterizedTest
+  @EnumSource(
+      value = ProcessingStatus.class,
+      names = {"Processed", "ExtractingContext"})
+  void aStoppedTextRunPreservesAResultAnotherRunFinished(ProcessingStatus peerStatus) {
+    AtomicReference<ContextFile> storedFile = new AtomicReference<>(file);
+    AtomicReference<ContextFileContent> storedContent = new AtomicReference<>(content);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(ignored -> storedFile.get());
+    when(contentRepository.getById(contentId)).thenAnswer(ignored -> storedContent.get());
+    when(repository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedFile.set(invocation.getArgument(2));
+              return null;
+            });
+    when(contentRepository.updateIfCurrent(isNull(), any(), any(), anyString()))
+        .thenAnswer(
+            invocation -> {
+              storedContent.set(invocation.getArgument(2));
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenAnswer(
+            ignored -> {
+              storedContent.set(
+                  JsonUtils.deepCopy(storedContent.get(), ContextFileContent.class)
+                      .withProcessingStatus(peerStatus)
+                      .withExtractedText("Peer result"));
+              storedFile.set(
+                  JsonUtils.deepCopy(storedFile.get(), ContextFile.class)
+                      .withProcessingStatus(peerStatus)
+                      .withExtractedText("Peer result"));
+              return CompletableFuture.failedFuture(new InterruptedException("Server is stopping"));
+            });
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    assertEquals(peerStatus, storedFile.get().getProcessingStatus());
+    assertEquals(peerStatus, storedContent.get().getProcessingStatus());
+    assertEquals("Peer result", storedFile.get().getExtractedText());
+    assertEquals("Peer result", storedContent.get().getExtractedText());
+  }
+
+  /** The asset service's own shutdown hook closes object storage under running text extraction. */
+  @Test
+  void theAssetServiceClosingDuringAServerStopFailsTheFileAsInterrupted() {
+    file.setProcessingStatus(ProcessingStatus.Analyzing);
+    content.setProcessingStatus(ProcessingStatus.Analyzing);
+    ServerStopping.set(true);
+
+    service(Runnable::run, closedAssetService(), true).process(fileId, contentId);
+
+    verifyFailedWith(ContextFileProcessingService.INTERRUPTED_BY_STOP);
+    verifyNoMemoryJob();
+  }
+
+  @Test
+  void theAssetServiceFailingWhileTheServerRunsStillMarksTheFileFailed() {
+    service(Runnable::run, closedAssetService()).process(fileId, contentId);
+
+    verifyFailedWith(CLOSED_ASSET_SERVICE);
+  }
+
+  /** A failure the run determines itself, rather than one it throws, keeps its own reason. */
+  @Test
+  void aGenuineTextFailureWhileTheServerStopsKeepsItsOwnMessage() {
+    ServerStopping.set(true);
+    when(assetService.read(asset)).thenReturn(CompletableFuture.completedFuture(null));
+
+    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
+
+    verifyFailedWith("Unable to read file content from object storage");
+  }
+
+  /** What {@code AssetServiceFactory.getService()} throws once its shutdown hook closed it. */
+  private static Supplier<AssetService> closedAssetService() {
+    return () -> {
+      throw new IllegalStateException(CLOSED_ASSET_SERVICE);
+    };
+  }
+
+  private void verifyNoMemoryJob() {
+    verify(jobDao, never())
+        .enqueueFileMemoryJob(anyString(), anyString(), anyString(), anyString(), anyBoolean());
+  }
+
+  private void stubTextExtraction() throws IOException {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+  }
+
+  /** Fails as the LLM clients do when a stop interrupts them: flag re-set, interrupt as cause. */
+  private static LLMCompletionException interruptedLlmCall() {
+    Thread.currentThread().interrupt();
+    return new LLMCompletionException(
+        "Knowledge pill extraction failed for 1 of 1 chunks",
+        new LLMCompletionException(
+            "OpenAI completion was interrupted", new InterruptedException()));
   }
 
   @Test
