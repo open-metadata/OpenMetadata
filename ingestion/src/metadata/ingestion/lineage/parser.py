@@ -89,55 +89,76 @@ class CopiedColumns:
     address)`, a function, a CASE) may place them anywhere, and the parser reports it exactly
     like a plain reference.
 
-    `sources` maps an output name to the source column names it copies (one per set-operation
-    branch), `computed` holds the output names something else produces, and `star` says a plain
-    `*` copies every other column under its own name.
+    `columns` maps an output name to the top-level columns it copies (`customer`, `u.customer`)
+    and `fields` to the STRUCT fields it copies (`customer.address`), one per set-operation
+    branch; `computed` holds the output names something else produces; `star` says a plain `*`
+    copies every other column under its own name.
     """
 
-    sources: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    columns: Mapping[str, frozenset[str]] = field(default_factory=dict)
+    fields: Mapping[str, frozenset[str]] = field(default_factory=dict)
     computed: frozenset[str] = frozenset()
     star: bool = False
 
-    def copies(self, to_col: str, from_col: str) -> bool:
-        """Whether the query copies `from_col` into `to_col` unchanged"""
+    def copies(self, to_col: str, from_col: str, *, struct_field: bool = False) -> bool:
+        """
+        Whether the query copies `from_col` into `to_col` unchanged: a top-level column of a
+        source table, or with `struct_field` a field read through a STRUCT path.
+        """
         target, source = to_col.lower(), from_col.lower()
-        if target in self.sources:
-            return source in self.sources[target]
-        return self.star and target not in self.computed and target == source
+        if target in self.columns or target in self.fields:
+            return source in (self.fields if struct_field else self.columns).get(target, frozenset())
+        return not struct_field and self.star and target not in self.computed and target == source
 
 
 NOTHING_COPIED = CopiedColumns()
 
-# One SELECT item: output name, the source column names it copies (None if an expression
-# builds it), and for a star whether it is a plain one (None if the item is not a star).
-_Item = tuple[str, frozenset[str] | None, bool | None]
+# One SELECT item: output name, the source names it copies (None if something else builds it),
+# whether those are STRUCT fields rather than top-level columns, and for a star whether it is a
+# plain one (None if the item is not a star).
+_Item = tuple[str, frozenset[str] | None, bool, bool | None]
 
 
-def _copied_source(value: exp.Expression) -> str | None:
+def _table_qualifiers(select: exp.Select) -> set[tuple[str, ...]]:
+    """Every way the select's tables can qualify a column: by alias, or by a suffix of their path"""
+    qualifiers = set()
+    for table in select.find_all(exp.Table):
+        path = [part.lower() for part in (table.catalog, table.db, table.name) if part]
+        qualifiers.update(tuple(path[index:]) for index in range(len(path)))
+        if table.alias:
+            qualifiers.add((table.alias.lower(),))
+    return qualifiers
+
+
+def _copied_source(value: exp.Expression, qualifiers: set[tuple[str, ...]]) -> tuple[str, bool] | None:
     """
-    The column a bare reference reads (`customer`, `u.customer`, `customer.address.zip`), by its
-    last name, or None when anything but names builds the value (a function, a subscript, a CASE).
+    What a bare reference reads, by its last name, and whether that is a STRUCT field: a column
+    qualified by nothing or by one of the select's tables (`customer`, `u.customer`) is a
+    top-level column, any other path (`customer.address`) a field. None when anything but names
+    builds the value (a function, a subscript, a CASE).
     """
     is_reference = isinstance(value, (exp.Column, exp.Dot)) and not value.is_star
     if not is_reference or any(isinstance(node, (exp.Func, exp.Bracket)) for node in value.walk()):
         return None
-    return value.name.lower()
+    qualifier = tuple(part.name.lower() for part in value.parts[:-1]) if isinstance(value, exp.Column) else None
+    return value.name.lower(), not (qualifier == () or qualifier in qualifiers)
 
 
-def _select_item(projection: exp.Expression) -> _Item:
+def _select_item(projection: exp.Expression, qualifiers: set[tuple[str, ...]]) -> _Item:
     """What one SELECT item copies; a star with EXCEPT, REPLACE, EXCLUDE or RENAME is not plain"""
     if projection.is_star:
         star = projection if isinstance(projection, exp.Star) else projection.this
-        return "*", None, not any(star.args.values())
+        return "*", None, False, not any(star.args.values())
     value = projection.this if isinstance(projection, exp.Alias) else projection
-    source = _copied_source(value)
-    return projection.alias_or_name.lower(), frozenset([source]) if source else None, None
+    copied = _copied_source(value, qualifiers)
+    name = projection.alias_or_name.lower()
+    return (name, frozenset([copied[0]]), copied[1], None) if copied else (name, None, False, None)
 
 
 def _items(body: exp.Expression | None) -> list[_Item] | None:
     """
     The items of a query's final SELECT. A set operation copies a position only when every
-    branch copies a column there; a star in a branch copies nothing.
+    branch copies the same kind of source there; a star in a branch copies nothing.
     """
     if isinstance(body, exp.Subquery):
         return _items(body.this)
@@ -145,29 +166,35 @@ def _items(body: exp.Expression | None) -> list[_Item] | None:
         left, right = _items(body.left), _items(body.right)
         if left is None or right is None or len(left) != len(right):
             return None
-        return [
-            (name, left_sources | right_sources if left_sources and right_sources else None, None)
-            for (name, left_sources, _), (_, right_sources, _) in zip(left, right, strict=True)
-        ]
+        merged: list[_Item] = []
+        for (name, left_sources, left_field, _), (_, right_sources, right_field, _) in zip(left, right, strict=True):
+            sources = (
+                left_sources | right_sources if left_sources and right_sources and left_field == right_field else None
+            )
+            merged.append((name, sources, left_field, None))
+        return merged
     if isinstance(body, exp.Select):
-        return [_select_item(projection) for projection in body.expressions]
+        qualifiers = _table_qualifiers(body)
+        return [_select_item(projection, qualifiers) for projection in body.expressions]
     return None
 
 
 def _copied_columns(items: list[_Item]) -> CopiedColumns:
     """Fold SELECT items into what they copy; two outputs with the same name copy neither"""
-    sources: dict[str, frozenset[str]] = {}
+    columns: dict[str, frozenset[str]] = {}
+    fields: dict[str, frozenset[str]] = {}
     computed: set[str] = set()
-    stars = [star for _, _, star in items if star is not None]
-    for name, item_sources, star in items:
+    stars = [star for *_, star in items if star is not None]
+    for name, sources, is_field, star in items:
         if star is not None:
             continue
-        if item_sources is None or name in sources or name in computed:
-            sources.pop(name, None)
+        if sources is None or name in columns or name in fields or name in computed:
+            columns.pop(name, None)
+            fields.pop(name, None)
             computed.add(name)
         else:
-            sources[name] = item_sources
-    return CopiedColumns(sources=sources, computed=frozenset(computed), star=bool(stars) and all(stars))
+            (fields if is_field else columns)[name] = sources
+    return CopiedColumns(columns=columns, fields=fields, computed=frozenset(computed), star=bool(stars) and all(stars))
 
 
 class LineageParser:
@@ -309,6 +336,9 @@ class LineageParser:
         if len(statements) != 1:
             return NOTHING_COPIED
         statement = statements[0]
+        if isinstance(statement.this, exp.Schema) and statement.this.expressions:
+            # A target column list (`INSERT INTO t (a, b) SELECT ...`) names the outputs by position.
+            return NOTHING_COPIED
         body = statement.expression if isinstance(statement, (exp.Create, exp.Insert)) else statement
         items = _items(body)
         return NOTHING_COPIED if items is None else _copied_columns(items)

@@ -598,3 +598,42 @@ def test_star_does_not_copy_a_name_an_expression_computes():
 
     assert not copied.copies("customer", "customer")
     assert copied.copies("billing", "billing")
+
+
+@pytest.mark.parametrize(
+    ("query", "target"),
+    [
+        ("INSERT INTO ds.tgt (billing, customer) SELECT customer, billing FROM ds.users", "tgt"),
+        ("CREATE VIEW ds.v (billing, customer) AS SELECT customer, billing FROM ds.users", "v"),
+    ],
+    ids=["insert", "create-view"],
+)
+def test_target_column_list_carries_no_nested_fields(query, target):
+    users = _table("users", [_column("users", "id", "INT"), _customer("users"), _customer("users", "billing")])
+    target_table = _table(target, [_customer(target), _customer(target, "billing")])
+
+    edges = _column_edges(query, [users, target_table])
+
+    assert edges
+    assert not {edge for edge in edges if edge[1].count(".") > 1}
+
+
+def test_star_pair_does_not_match_a_same_named_struct_field_copy():
+    # `customer.address` copies a STRUCT field; the star's (address, address) pair is the
+    # excluded top-level `address`, and must not borrow that copy.
+    users = _table(
+        "users",
+        [
+            _column("users", "id", "INT"),
+            _column("users", "address", "STRUCT", [_column("users", "address.zip")]),
+            _customer("users"),
+        ],
+    )
+    view = _table("v", [_column("v", "id", "INT"), _column("v", "address", "STRUCT", [_column("v", "address.zip")])])
+
+    edges = _column_edges(
+        "CREATE VIEW ds.v AS SELECT * EXCEPT (address), customer.address FROM ds.users", [users, view]
+    )
+
+    assert ("users.customer.address.zip", "v.address.zip") in edges
+    assert ("users.address.zip", "v.address.zip") not in edges

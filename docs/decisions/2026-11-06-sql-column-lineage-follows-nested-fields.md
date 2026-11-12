@@ -20,7 +20,9 @@ qualified it (`u.customer.email` arrives as column `email` of a table `customer`
   unchanged (`LineageParser.copied_columns`, read with sqlglot): a reference built only from
   names (`customer`, `t.customer AS c`, `struct.field AS f`), a plain `*` (not one with EXCEPT,
   REPLACE, EXCLUDE or RENAME, and not for a name another item produces), or every branch of a set
-  operation doing so. Anything else keeps only its column edge: an expression (`STRUCT(billing AS
+  operation doing so. A source table's column matches only a top-level reference (unqualified,
+  or qualified by one of the query's tables), a STRUCT field path only a field reference. Anything
+  else keeps only its column edge: an expression (`STRUCT(billing AS
   address)`, a function, a subscript, a CASE), a column read from a subquery or CTE, which may
   have built it, and an output name two items share. The parser reports all of these exactly
   like a plain reference, so matching their fields by name would guess.

@@ -513,7 +513,7 @@ def _struct_field_lineage(
             fields = [(field, field.name.root, True) for field in struct.children or []]
         else:
             field = _find_column(struct.children, from_col)
-            fields = [(field, to_col, copied_columns.copies(to_col, from_col))] if field else []
+            fields = [(field, to_col, copied_columns.copies(to_col, from_col, struct_field=True))] if field else []
         for field, target_name, copied in fields:
             if target := _find_column(to_entity.columns, target_name):
                 edges.extend(_nested_column_lineage(field, target, copied))
