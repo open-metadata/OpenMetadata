@@ -933,6 +933,10 @@ jobs:
             --github-output "$GITHUB_OUTPUT"
           jq '{shards: (.include | length), lanes: (.include | group_by(.lane) | map({lane: .[0].lane, count: length}))}' \
             "$RUNNER_TEMP/playwright-plans/matrix.json"
+          # DO NOT MERGE: visual-baseline regeneration branch keeps only the visual shards.
+          jq -c '{include: [.include[] | select(.lane == "visual")]}' "$RUNNER_TEMP/playwright-plans/matrix.json" > "$RUNNER_TEMP/visual-only.json"
+          echo "matrix=$(cat "$RUNNER_TEMP/visual-only.json")" >> "$GITHUB_OUTPUT"
+          echo "shard_count=$(jq '.include | length' "$RUNNER_TEMP/visual-only.json")" >> "$GITHUB_OUTPUT"
 
       - name: Inventory existing quarantined coverage
         if: ${{ github.event_name != 'merge_group' }}
@@ -1879,6 +1883,7 @@ jobs:
           set +e
           runner=(npx)
           if [[ "$PW_SHARD_LANE" == "visual" ]]; then
+            project_args+=(--update-snapshots=changed)
             # Baselines were captured in this image; host fonts render
             # differently. Workspace, plans and /dev/shm (seeded state links)
             # are mounted at their own paths so every absolute path resolves.
@@ -2120,6 +2125,14 @@ jobs:
           compression-level: 0
           retention-days: 5
           if-no-files-found: ignore
+
+      - name: Upload regenerated visual baselines
+        if: ${{ always() && matrix.lane == 'visual' }}
+        uses: actions/upload-artifact@v7
+        with:
+          name: visual-snapshots-${{ matrix.shardId }}
+          path: openmetadata-ui/src/main/resources/ui/playwright/e2e/VisualRegression/__snapshots__
+          retention-days: 5
 
       - name: Upload failure-only test results
         uses: actions/upload-artifact@v7
