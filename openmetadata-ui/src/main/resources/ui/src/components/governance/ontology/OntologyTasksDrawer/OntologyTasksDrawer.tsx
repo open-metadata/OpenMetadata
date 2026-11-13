@@ -72,8 +72,8 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { getOperationPermissions } from '../../../../utils/PermissionsUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
-import Loader from '../../../common/Loader/Loader';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import Loader from '../../../common/Loader/Loader';
 import {
   buildResolveBody,
   getTaskResolveActions,
