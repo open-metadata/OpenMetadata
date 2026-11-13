@@ -15,8 +15,6 @@ package org.openmetadata.service.resources.teams;
 
 import static org.openmetadata.common.utils.CommonUtil.listOf;
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
-import static org.openmetadata.schema.type.Include.ALL;
-import static org.openmetadata.service.Entity.ORGANIZATION_NAME;
 import static org.openmetadata.service.Entity.TEAM;
 
 import io.dropwizard.jersey.PATCH;
@@ -160,7 +158,8 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
   /** Covers create, PUT and every item of a bulk PUT. */
   @Override
   protected void authorizeCreateOrUpdate(SecurityContext securityContext, Team team, Team stored) {
-    authorizeGrants(securityContext, stored == null ? new Team() : stored, team);
+    TeamGrantAuthorizer.authorize(
+        authorizer, securityContext, stored == null ? new Team() : stored, team);
   }
 
   @Override
@@ -204,49 +203,18 @@ public class TeamResource extends EntityResource<Team, TeamRepository> {
 
   private void authorizePatchedGrants(
       SecurityContext securityContext, Team stored, JsonPatch patch) {
-    authorizeGrants(securityContext, stored, JsonUtils.applyPatch(stored, patch, Team.class));
+    TeamGrantAuthorizer.authorize(
+        authorizer, securityContext, stored, JsonUtils.applyPatch(stored, patch, Team.class));
   }
 
   /**
-   * Members inherit a team's roles and policies, and those of every team above it, so adding either
-   * grants access the way assigning a role to a user does: only an admin may add them. Placing a
-   * team under another one changes that team as well, so it needs the same permission as editing
-   * it directly. The organization is skipped as every user already belongs to it.
-   * ADR:2026-10-30-only-admins-add-roles-or-policies-to-a-team
-   */
-  private void authorizeGrants(SecurityContext securityContext, Team stored, Team updated) {
-    boolean addsRoleOrPolicy =
-        !addedIds(stored.getDefaultRoles(), updated.getDefaultRoles()).isEmpty()
-            || !addedIds(stored.getPolicies(), updated.getPolicies()).isEmpty();
-    if (addsRoleOrPolicy) {
-      rejectImpersonated("add roles or policies to a team");
-      authorizer.authorizeAdmin(securityContext);
-    }
-    for (UUID parentId : addedIds(stored.getParents(), updated.getParents())) {
-      if (!ORGANIZATION_NAME.equals(Entity.getEntityReferenceById(TEAM, parentId, ALL).getName())) {
-        authorizer.authorize(
-            securityContext,
-            new OperationContext(TEAM, MetadataOperation.EDIT_ALL),
-            getResourceContextById(parentId));
-      }
-    }
-  }
-
-  /**
-   * Team grants and team CSV import are not available to impersonated callers, as with user
-   * privileges in UserResource.
+   * Team CSV import is not available to impersonated callers, as with user privileges in
+   * UserResource. Team grants are refused in {@link TeamGrantAuthorizer}.
    */
   private static void rejectImpersonated(String action) {
     if (ImpersonationContext.getImpersonatedBy() != null) {
       throw new AuthorizationException("Impersonated requests cannot " + action);
     }
-  }
-
-  private static Set<UUID> addedIds(List<EntityReference> stored, List<EntityReference> updated) {
-    Set<UUID> added =
-        listOrEmpty(updated).stream().map(EntityReference::getId).collect(Collectors.toSet());
-    listOrEmpty(stored).forEach(ref -> added.remove(ref.getId()));
-    return added;
   }
 
   @Override

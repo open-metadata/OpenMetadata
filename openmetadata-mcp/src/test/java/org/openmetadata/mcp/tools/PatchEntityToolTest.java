@@ -36,9 +36,12 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -574,6 +577,62 @@ class PatchEntityToolTest {
     assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("'entityType' and 'fqn' are required");
+  }
+
+  /** A held write leaves the entity as published, so the reply must not say it was updated. */
+  @Test
+  void execute_reportsAWriteAnApprovalWorkflowHeldAsPendingApproval() {
+    @SuppressWarnings("unchecked")
+    EntityRepository<EntityInterface<?>> repository = mock(EntityRepository.class);
+    Table published =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("shop.db.sales.orders")
+            .withDescription("old")
+            .withVersion(0.2)
+            .withChangeDescription(
+                new ChangeDescription()
+                    .withFieldsUpdated(List.of(new FieldChange().withName("tags"))));
+    UUID changeRequestId = UUID.randomUUID();
+    when(repository.patch(any(), anyString(), any(), any(), any(), any(), any()))
+        .thenReturn(
+            new RestUtil.PatchResponse<>(
+                Response.Status.ACCEPTED, published, EventType.ENTITY_NO_CHANGE, changeRequestId));
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", Entity.TABLE);
+    params.put("fqn", "shop.db.sales.orders");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"new\"}]");
+    Map<String, Object> result;
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      result = new PatchEntityTool().execute(authorizer, securityContext, params);
+    }
+
+    assertThat(result)
+        .containsEntry("_operation", "pendingApproval")
+        .containsEntry("changeRequestId", changeRequestId.toString())
+        .containsEntry("description", "old")
+        .doesNotContainKey("changed");
+  }
+
+  /** As REST's identity endpoints: an impersonated call never writes what grants privileges. */
+  @ParameterizedTest
+  @ValueSource(strings = {Entity.POLICY, Entity.ROLE, Entity.BOT})
+  void execute_refusesAnImpersonatedWriteThatGrantsPrivileges(String entityType) {
+    when(securityContext.impersonatedUser()).thenReturn("ingestion-bot");
+    Map<String, Object> params = new HashMap<>();
+    params.put("entityType", entityType);
+    params.put("fqn", "target");
+    params.put("patch", "[{\"op\":\"replace\",\"path\":\"/description\",\"value\":\"x\"}]");
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      assertThatThrownBy(() -> new PatchEntityTool().execute(authorizer, securityContext, params))
+          .isInstanceOf(AuthorizationException.class)
+          .hasMessageContaining("Impersonated requests cannot write a " + entityType);
+    }
+    verifyNoInteractions(authorizer);
   }
 
   @Test

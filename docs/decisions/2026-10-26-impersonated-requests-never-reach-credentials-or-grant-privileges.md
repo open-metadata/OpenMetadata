@@ -3,14 +3,20 @@
 - **Status:** Accepted
 - **Revisions:** v1 2026-10-26 (initial) · v2 2026-10-29 (user creation and restore, and
   security configuration writes) · v3 2026-11-03 (policy and role writes; a team's default roles
-  and policies; bot targets of the restricted policy)
+  and policies; bot targets of the restricted policy) · v4 2026-11-13 (MCP tool calls apply
+  `X-Impersonate-User` and refuse the same grant writes)
 - **Deciders:** Adrià Manero
 - **Guard:** `ImpersonationRestrictionFilterTest` (pins the `@IdentityEndpoint` methods of
   `UserResource`, `SystemResource`, `ScimResource` and `TeamResource`, and every write of
   `PolicyResource` and `RoleResource`); `BotImpersonationIT`;
-  `TeamResourceIT.test_impersonatedOwner_cannotChangeDefaultRolesOrPolicies`; reviewer for new
-  endpoints
-- **Related:** PR #36231; PR #36591; ADR:2026-10-21-only-admins-change-a-users-domains
+  `TeamResourceIT.test_impersonatedOwner_cannotChangeDefaultRolesOrPolicies`;
+  `JwtFilterTest#mcpContextActsAsTheTargetABotImpersonates`;
+  `PatchEntityToolTest#execute_refusesAnImpersonatedWriteThatGrantsPrivileges`;
+  `CreateEntityToolTest#anImpersonatedCallerCannotCreateATeamWithDefaultRoles`;
+  `CreateEntityToolTest#anImpersonatedCallerCannotCreateAPolicyOrARole`;
+  `McpImpersonationTest#refusedImpersonationAnswersUnauthorized`; reviewer for new endpoints and
+  MCP write tools
+- **Related:** PR #36231; PR #36591; ADR:2026-10-21-only-admins-change-a-users-domains; #37764
 
 ## Context
 
@@ -75,3 +81,19 @@ spellings of a blocked URL reached the handler without matching the list.
   application bots can edit every policy and role, this one included, so the policy treats a bot
   target as it treats an admin target. The 2.1.0 data migration adds the rule to a stored policy
   that still carries the admin-target deny rule; a policy an admin loosened is left alone.
+
+## Amendment: MCP tool calls apply X-Impersonate-User (v4)
+
+- **An MCP call with a bot token and `X-Impersonate-User` runs as that user, by REST's rules:**
+  only a bot may ask, the target must exist, and the bot needs `allowImpersonation` and the
+  `Impersonate` operation on the target. `JwtFilter` makes the swap for both transports, so they
+  cannot drift. Before this the header was dropped and the call ran with the bot's own rights.
+  This replaces the v3 note that MCP tool calls are not impersonated requests.
+- **An impersonated MCP call refuses the writes REST refuses:** `create_entity` and
+  `patch_entity` on a policy, a role or a bot, and a new team that carries default roles or
+  policies. Users and team patches never reach MCP.
+- **The write is attributed to the impersonating bot** (`impersonatedBy`), not to the MCP
+  application's bot, so the authorizer re-checks the grant of the bot that asked. A Deny rule on
+  `impersonatedBy('McpApplicationBot')` therefore no longer matches an impersonated MCP call; it
+  is held to the asking bot's rules, as the same call over REST is.
+- **A refused swap answers -32001 (unauthorized)** with REST's message, not -32603.

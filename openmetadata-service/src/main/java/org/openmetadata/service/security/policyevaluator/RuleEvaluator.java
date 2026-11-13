@@ -660,8 +660,9 @@ public class RuleEvaluator {
   }
 
   /**
-   * Bot attribution carries a Bot entity name on the MCP path and the bot's user name on the
-   * X-Impersonate-User path, and for an application bot the two differ, so accept either.
+   * Bot attribution carries a Bot entity name on an MCP call without X-Impersonate-User and the
+   * bot's user name on any X-Impersonate-User call, REST or MCP, and for an application bot the two
+   * differ, so accept either.
    */
   private void validateBotName(String botName) {
     try {

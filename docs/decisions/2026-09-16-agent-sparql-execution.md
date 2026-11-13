@@ -3,7 +3,7 @@
 - **Status:** Accepted for a scoped first implementation (2026-09-16, review 3). Code is
   reviewed separately.
 - **Revisions:** v1 2026-09-16 (initial) · v2 2026-09-29 (§2a: default grant through Data
-  Consumer, [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231)) · v3 2026-10-13 (MCP knowledge-graph tools, #34270; reconciled with current column projection) · v4 2026-10-21 (the test profile runs the published Fuseki image) · v5 2026-11-06 (the inspector and the federation guard share one query walker)
+  Consumer, [OpenMetadata #34231](https://github.com/open-metadata/OpenMetadata/issues/34231)) · v3 2026-10-13 (MCP knowledge-graph tools, #34270; reconciled with current column projection) · v4 2026-10-21 (the test profile runs the published Fuseki image) · v5 2026-11-06 (the inspector and the federation guard share one query walker) · v6 2026-11-13 (§A4: MCP applies `X-Impersonate-User`)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** `AgentSparqlResourceIT`, `AgentSparqlServiceTest`, `AgentSparqlQueryValidatorTest`,
   `AgentSparqlQueryInspectorTest`, `AgentSparqlTransportTest`
@@ -13,7 +13,9 @@
   (MCP knowledge-graph tools — see "Amendment: MCP knowledge-graph tools"),
   ADR:2026-10-14-fuseki-image-of-record (the test profile's image),
   [OpenMetadata #33436](https://github.com/open-metadata/OpenMetadata/issues/33436)
-  (one query walker for the inspector and the federation guard — see the 2026-11-06 amendment).
+  (one query walker for the inspector and the federation guard — see the 2026-11-06 amendment),
+  [OpenMetadata #37764](https://github.com/open-metadata/OpenMetadata/issues/37764) (MCP applies
+  `X-Impersonate-User`, see the 2026-11-13 amendment).
 - **Related:** ai-platform epic #224, ai-platform #1299, ai-platform PR #1310 (design, pinned at
   `0056ceb9`); OpenMetadata #33224 (asset-level RBAC — parallel work, explicitly **not** a
   prerequisite and **not** provided here).
@@ -631,6 +633,14 @@ expression position, the inspector missed a bare `EXISTS { … }` pattern elemen
 queries with `SparqlQueryWalker`, which reaches every element and expression (#33436). The
 decision stands on its other reasons: the inspector grants no endpoint allowlist, and it reports
 `FEDERATION_NOT_ALLOWED` where the guard, ordered first, would report `QUERY_INVALID`.
+
+## Amendment: 2026-11-13, MCP applies X-Impersonate-User
+
+§A4 says the MCP transport has no `X-Impersonate-User` equivalent. That no longer holds: an MCP
+call with a bot token and the header now runs as the target, by REST's rules
+(ADR:2026-10-26-impersonated-requests-never-reach-credentials-or-grant-privileges, v4), so the
+SPARQL tools authorize it on the target's policies, as the agent endpoint does. A bot calling
+without the header is still authorized on its own policies, as §A4 describes.
 
 ## Review log
 
