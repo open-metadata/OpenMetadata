@@ -638,7 +638,10 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
       .map(([, config]) => config.params.after)
   ).toEqual(['cursor-7', undefined]);
   expect(screen.getByText(/PAGE-01/)).toBeInTheDocument();
-}, 20_000);
+  // Paging past the 40-entry cursor history takes ~90 rendered clicks: ~6s
+  // locally, over 20s on a loaded CI runner, where the timeout left the drawer
+  // mounted and failed the tests that followed.
+}, 60_000);
 
 it('does not invent a zero pending count when paging is unavailable', async () => {
   get.mockResolvedValue({ data: { data: [] } });
