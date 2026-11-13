@@ -2,7 +2,7 @@
 
 - **Status:** Accepted
 - **Revisions:** v1 2026-11-06 (initial) · v2 2026-11-12 (a run that finds RDF off is one)
-- **Deciders:** Ontology Studio program
+- **Deciders:** Chirag Madlani
 - **Guard:** `RdfProjectionStateResolverTest`, `RdfIndexAppTest` (`RunLockTests`, `AdmissionTests`, `RdfNotInitializedTests`)
 - **Related:** ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists, ADR:2026-10-28-rdf-storage-maintenance-pauses-serving-writes-and-compacts-on-a-schedule, `RdfProjectionStateResolver`, `RdfIndexApp`
 
