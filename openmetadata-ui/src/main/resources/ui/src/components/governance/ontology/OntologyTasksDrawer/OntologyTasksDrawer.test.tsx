@@ -555,6 +555,32 @@ it('says there are no tasks yet when the queue is empty', async () => {
   );
 });
 
+it('reopens on Assigned to me with an empty search after closing on Created by me', async () => {
+  renderWithQueryClient(<Harness />);
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+  fireEvent.click(
+    await screen.findByRole('tab', { name: /label.created-by-me/ })
+  );
+  fireEvent.change(
+    screen.getByRole('textbox', { name: 'label.search-tasks' }),
+    { target: { value: 'commerce' } }
+  );
+
+  expect(
+    screen.getByRole('tab', { name: /label.created-by-me/ })
+  ).toHaveAttribute('aria-selected', 'true');
+
+  fireEvent.click(screen.getByTestId('ontology-tasks-close'));
+  fireEvent.click(screen.getByTestId('ontology-tasks-trigger'));
+
+  expect(
+    await screen.findByRole('tab', { name: /label.assigned-to-me/ })
+  ).toHaveAttribute('aria-selected', 'true');
+  expect(
+    screen.getByRole('textbox', { name: 'label.search-tasks' })
+  ).toHaveValue('');
+});
+
 it('replaces after-only queue pages and resets the cursor when changing tabs', async () => {
   const read = get.getMockImplementation();
   get.mockImplementation((url, config) => {

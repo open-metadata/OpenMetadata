@@ -72,6 +72,7 @@ import { getDerivedPermissionFlags } from '../../../../utils/PermissionDerivatio
 import { getOperationPermissions } from '../../../../utils/PermissionsUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
+import Loader from '../../../common/Loader/Loader';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import {
   buildResolveBody,
@@ -445,6 +446,10 @@ const OntologyTasksDrawer = ({
     generation.current = { identity: '', value: generation.current.value + 1 };
     setReadyGeneration(undefined);
     setListOpen(false);
+    // Every open starts on the reviewer's own queue, unfiltered.
+    setView('assigned');
+    setSearch('');
+    setQueueHistory({ key: '', cursors: [undefined] });
     onTaskChange(undefined);
     taskButton.current?.focus();
   };
@@ -879,9 +884,7 @@ const OntologyTasksDrawer = ({
           {t('message.ontology-review-unavailable')}
         </Alert>
       )}
-      {queue.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
+      {queue.isPending ? <Loader size="small" /> : null}
       {renderQueueList()}
       {hasMorePages(queue.data?.paging?.after, queueCursors.length)
         ? pageControls('queue')
@@ -891,7 +894,7 @@ const OntologyTasksDrawer = ({
   const renderSelected = () =>
     detail.isPending ? (
       <div className="tw:p-6">
-        <Typography role="status">{t('label.loading')}</Typography>
+        <Loader />
       </div>
     ) : (
       selected && (
