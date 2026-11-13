@@ -440,8 +440,8 @@ test.describe(
         await bindTable(api, concept, table, linked.revision, [
           { property, column },
         ]);
-        await page.reload();
-        await page.getByTestId('ontology-graph-mode-data').click();
+        // A reload reopens the concept's drawer over the Model/Data switch.
+        await openData(page, ontology, concept);
 
         const toggle = page.getByTestId(/^ontology-data-asset-columns-toggle-/);
         await toggle.click();
@@ -704,9 +704,10 @@ test.describe(
         await bindTable(api, concept, table, 0);
         taskId = await publish(api, reviewerPage, ontology);
         await page.goto(
-          `/governance/ontology?ontology=${ontology.id}&concept=${concept.id}&version=published`
+          `/governance/ontology?ontology=${ontology.id}&version=published`
         );
         await page.getByTestId('ontology-graph-mode-data').click();
+        await pickConcept(page, concept);
 
         await assetRow(page, table).click();
         await expect(
