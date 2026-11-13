@@ -12,15 +12,17 @@
  */
 package org.openmetadata.service.rdf;
 
+import io.dropwizard.lifecycle.Managed;
 import java.time.Clock;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 
 /**
- * Records, from the configuration, that this server started with RDF off. The configuration is the
- * source because the tools that load seed data without starting a server (the ops CLI) never
- * initialize RDF, and would otherwise report a server that is not running as having it off.
+ * Records, from the configuration, that this server runs with RDF off: once when it starts and
+ * again when it stops. The configuration is the source because the tools that load seed data
+ * without starting a server (the ops CLI) never initialize RDF, and would otherwise report a server
+ * that is not running as having it off.
  */
 @Slf4j
 public final class RdfDisabledMark {
@@ -29,6 +31,24 @@ public final class RdfDisabledMark {
   /** Never throws: a server with RDF off must still start when the mark cannot be written. */
   public static void recordIfDisabled(final RdfConfiguration config, final Jdbi jdbi) {
     recordIfDisabled(config, new RdfLiveWriteStore(jdbi, Clock.systemUTC()));
+  }
+
+  /**
+   * Records the mark again when the server stops. A server with RDF off drops its writes for as
+   * long as it runs, so a rebuild that began while it was still up must not repair the projection:
+   * the mark written at start is older than that rebuild, and this one is not.
+   */
+  public static Managed atStop(final RdfConfiguration config, final Jdbi jdbi) {
+    return atStop(config, new RdfLiveWriteStore(jdbi, Clock.systemUTC()));
+  }
+
+  static Managed atStop(final RdfConfiguration config, final RdfLiveWriteStore store) {
+    return new Managed() {
+      @Override
+      public void stop() {
+        recordIfDisabled(config, store);
+      }
+    };
   }
 
   static void recordIfDisabled(final RdfConfiguration config, final RdfLiveWriteStore store) {

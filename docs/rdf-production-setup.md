@@ -400,17 +400,21 @@ thrashes the database. Two mechanisms keep them apart:
 Upgrades migrate an RDF app that still has the former exact daily default (`0 0 * * *`) to the
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
 
-**Turning RDF on.** Changes made while RDF is off never reach the graph. So every server that
-starts with RDF off records it in `rdf_projection_health`: it raises `failureVersion`, and writes
-the time to `rdfDisabledAt` (the 2.1.0 migration adds the column). Once RDF is on, `/v1/rdf/status`
+**Turning RDF on.** Changes made while RDF is off never reach the graph. So every server with RDF
+off records it in `rdf_projection_health` when it starts and again when it stops: it raises
+`failureVersion`, and writes the time to `rdfDisabledAt` (the 2.1.0 migration adds the column). Once RDF is on, `/v1/rdf/status`
 reports `DEGRADED` (or `REBUILDING` when the graph was never built) until a full Recreate that
 started after that time completes. A server that starts with RDF on queues one `RdfIndexApp` run
 unless a run has already started since that time; this is the one case where a start queues a
 full reindex, apart from the first install. A run on a server with RDF off indexes nothing and
-does not count. When RDF is turned on with a rolling restart, a server still running with RDF off
-can take writes the rebuild has already passed, or run the queued rebuild itself and index nothing;
-run a full Recreate once every server has restarted. See
-ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
+does not count.
+
+When RDF is turned on with a rolling restart, a server with RDF off is still running while the new
+server rebuilds, and can take writes the rebuild has already passed. Its stop is recorded after
+that rebuild started, so the state stays `DEGRADED` when the rebuild completes. Run a full Recreate
+once every server has restarted; otherwise the weekly run repairs it. Stopping every server before
+starting the new ones avoids the second rebuild. A server that is killed records nothing when it
+stops. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
 
 
 ## Blue/green rebuilds

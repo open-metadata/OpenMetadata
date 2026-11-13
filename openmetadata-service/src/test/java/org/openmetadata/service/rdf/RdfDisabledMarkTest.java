@@ -6,6 +6,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
+import io.dropwizard.lifecycle.Managed;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 
@@ -38,6 +39,31 @@ class RdfDisabledMarkTest {
     RdfDisabledMark.recordIfDisabled(new RdfConfiguration().withEnabled(true), store);
 
     verify(store, never()).recordRdfDisabled();
+  }
+
+  @Test
+  void stoppingAServerWithRdfOffRecordsItAgain() throws Exception {
+    final Managed atStop = RdfDisabledMark.atStop(new RdfConfiguration().withEnabled(false), store);
+
+    atStop.start();
+    verify(store, never()).recordRdfDisabled();
+
+    atStop.stop();
+    verify(store).recordRdfDisabled();
+  }
+
+  @Test
+  void stoppingAServerWithRdfOnRecordsNothing() throws Exception {
+    RdfDisabledMark.atStop(new RdfConfiguration().withEnabled(true), store).stop();
+
+    verify(store, never()).recordRdfDisabled();
+  }
+
+  @Test
+  void aStoreFailureDoesNotFailShutdown() {
+    doThrow(new IllegalStateException("database closed")).when(store).recordRdfDisabled();
+
+    assertDoesNotThrow(() -> RdfDisabledMark.atStop(null, store).stop());
   }
 
   @Test

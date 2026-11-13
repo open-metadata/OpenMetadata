@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeFalse;
 
 import com.sun.net.httpserver.HttpServer;
 import java.net.InetSocketAddress;
@@ -113,6 +114,15 @@ public class RdfLiveProjectionIT {
     if (fuseki != null) {
       fuseki.close();
     }
+  }
+
+  @Test
+  void aServerThatStartsWithRdfOffRecordsIt() {
+    assumeFalse(RdfTestUtils.isRdfEnabled(), "The suite server starts with RDF on in this lane");
+    final RdfLiveWriteStore health = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
+
+    // Nothing else writes the mark on the suite database when RDF is off.
+    assertTrue(health.rdfDisabledAt() > 0, "the suite server did not record its RDF-off start");
   }
 
   @Test

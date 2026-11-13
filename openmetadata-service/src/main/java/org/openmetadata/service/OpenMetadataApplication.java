@@ -366,10 +366,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     startupTimer.time(
         "core search infrastructure", () -> initializeCoreSearchInfrastructure(catalogConfig));
 
-    // Here, not in a helper subclasses override or in app registration, which the ops CLI also
-    // reaches without starting a server.
-    RdfDisabledMark.recordIfDisabled(catalogConfig.getRdfConfiguration(), jdbi);
-
     // as first step register all the repositories (now they can access SearchRepository)
     startupTimer.time(
         "repository initialization", () -> Entity.initializeRepositories(catalogConfig, jdbi));
@@ -400,6 +396,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Validate native migrations before anything writes settings: seeding and reconciling them
     // use columns a pending migration adds, and must not run against a schema it has not reached.
     startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
+
+    // After validation, because the mark uses a column a pending migration adds. Here, not in a
+    // helper subclasses override or in app registration, which the ops CLI also reaches without
+    // starting a server.
+    RdfDisabledMark.recordIfDisabled(catalogConfig.getRdfConfiguration(), jdbi);
 
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     startupTimer.time(
@@ -503,6 +504,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Register User Activity Tracking
     registerUserActivityTracking(environment);
 
+    // Registered before ManagedShutdown so it stops after it: hooks stop in reverse order, and the
+    // mark has to follow the last write this server makes.
+    environment
+        .lifecycle()
+        .manage(RdfDisabledMark.atStop(catalogConfig.getRdfConfiguration(), jdbi));
     environment.lifecycle().manage(new ManagedShutdown());
 
     JobHandlerRegistry registry = getJobHandlerRegistry();
