@@ -39,5 +39,5 @@ the team.
 MCP `create_entity` built teams without this check, so anyone with Create Team could hand a new
 team's members an Admin default role. The check now lives in `TeamGrantAuthorizer`, which
 `TeamResource` and `create_entity` both call, so the two cannot drift. An impersonated request is
-detected from the request's impersonated user, which on REST is set together with
-`ImpersonationContext`.
+detected from the request's impersonated user on MCP, which passes its own security context, and
+from `ImpersonationContext` on REST, where Jersey wraps the context.
