@@ -267,7 +267,6 @@ export const useWorkflowActions = ({
     handleEdgeClick: edgeManagement.handleEdgeClick,
     handleEdgeDelete: edgeManagement.handleEdgeDelete,
     handleWorkflowMetadataUpdate,
-    fixMissingEdgeLabels: edgeManagement.fixMissingEdgeLabels,
     fixInvalidEdgeConditions: edgeManagement.fixInvalidEdgeConditions,
   };
 };

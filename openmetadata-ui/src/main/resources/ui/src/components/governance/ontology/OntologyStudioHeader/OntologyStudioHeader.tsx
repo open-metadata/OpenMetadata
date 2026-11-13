@@ -63,7 +63,13 @@ const OntologyStudioHeader = <M extends string>({
   );
 
   const modeItems = modes.map((tab) => (
-    <Tabs.Item data-testid={`mode-tab-${tab.id}`} id={tab.id} key={tab.id}>
+    <Tabs.Item
+      className={({ isSelected }) =>
+        isSelected ? 'tw:font-semibold' : 'tw:font-medium'
+      }
+      data-testid={`mode-tab-${tab.id}`}
+      id={tab.id}
+      key={tab.id}>
       {tab.label}
     </Tabs.Item>
   ));
@@ -83,7 +89,12 @@ const OntologyStudioHeader = <M extends string>({
                 className="tw:w-auto"
                 selectedKey={mode}
                 onSelectionChange={handleSelectionChange}>
-                <Tabs.List aria-label={t('label.mode')} type="underline">
+                {/* Same tab strip as the Data Quality header. */}
+                <Tabs.List
+                  aria-label={t('label.mode')}
+                  className="tw:mt-2 tw:gap-6 tw:before:hidden"
+                  size="sm"
+                  type="underline">
                   {modeItems}
                 </Tabs.List>
               </Tabs>
@@ -104,7 +115,7 @@ const OntologyStudioHeader = <M extends string>({
                     ellipsis
                     as="h1"
                     className="not-prose tw:m-0 tw:min-w-0"
-                    size="text-md"
+                    size="text-xl"
                     weight="semibold">
                     {t('label.ontology-studio')}
                   </Typography>

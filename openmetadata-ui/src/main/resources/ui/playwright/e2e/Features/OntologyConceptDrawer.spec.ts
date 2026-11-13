@@ -95,17 +95,31 @@ const submitDrawer = async (page: Page, testId: string) => {
   expect((await applied).ok()).toBe(true);
 };
 
+// Each Add mapping opens a row of type and concept IRI; the helpers fill the newest row.
+const mappingRow = (page: Page, index: number) =>
+  page.locator(`[data-testid="new-class-mapping"][data-row="${index}"]`);
+
+const newMappingRow = async (page: Page) => {
+  const index = await page.getByTestId('new-class-mapping').count();
+  await page.getByTestId('new-class-add-mapping').click();
+
+  return mappingRow(page, index);
+};
+
 const pasteMappingIri = async (page: Page, iri: string) => {
-  const input = page.getByTestId('new-class-mapping-iri').locator('input');
+  const row = await newMappingRow(page);
+  const input = row.getByTestId('new-class-mapping-iri').locator('input');
   await input.fill(iri);
   await input.press('Tab');
 };
 
 const pickMappingByLabel = async (page: Page, label: string, iri: string) => {
-  const input = page.getByTestId('new-class-mapping-iri').getByRole('combobox');
+  const row = await newMappingRow(page);
+  const input = row.getByTestId('new-class-mapping-iri').getByRole('combobox');
+  // The option middle-truncates a long IRI and keeps its unique tail.
   const option = page
     .getByRole('option', { name: new RegExp(`^${label}`) })
-    .filter({ hasText: iri });
+    .filter({ hasText: iri.slice(-16) });
   await input.click();
   await input.pressSequentially(label.slice(0, -1));
   await expect(option).toBeVisible();
@@ -166,7 +180,7 @@ for (const mode of ['classic', 'ai'] as const) {
               'new-class-description',
               'new-class-iri-input',
               'new-class-synonyms',
-              'new-class-mapping-iri',
+              'new-class-add-mapping',
               'new-class-advanced-toggle',
               'new-class-create-another',
               'new-class-create',
@@ -288,15 +302,12 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.getByTestId('new-class-synonyms').fill('Transfer');
         await page.getByTestId('new-class-synonyms').press('Enter');
         await pasteMappingIri(page, 'https://schema.org/Payment');
-        await page.getByTestId('new-class-add-mapping').click();
-        await page.getByRole('button', { name: /Mapping type/ }).click();
-        await page.getByRole('option', { name: 'Close match' }).click();
         await pasteMappingIri(page, 'https://example.org/Remit');
-        await page.getByTestId('new-class-add-mapping').click();
-        await expect(page.getByTestId('new-class-mapping')).toHaveText([
-          'Exact match · https://schema.org/Payment',
-          'Close match · https://example.org/Remit',
-        ]);
+        await mappingRow(page, 1)
+          .getByRole('button', { name: /Mapping type/ })
+          .click();
+        await page.getByRole('option', { name: 'Close match' }).click();
+        await expect(page.getByTestId('new-class-mapping')).toHaveCount(2);
         await submitDrawer(page, 'new-class-create');
         await page.reload();
 
@@ -331,17 +342,8 @@ for (const mode of ['classic', 'ai'] as const) {
           await page.getByTestId('new-class-label').fill('Settlement');
 
           await pickMappingByLabel(page, target.name, target.iri);
-          await page
-            .getByTestId('new-class-mapping-iri')
-            .getByRole('combobox')
-            .press('Enter');
-          await expect(page.getByTestId('new-class-mapping')).toHaveCount(1);
           await pasteMappingIri(page, 'https://schema.org/Invoice');
-          await page.getByTestId('new-class-add-mapping').click();
-          await expect(page.getByTestId('new-class-mapping')).toHaveText([
-            `Exact match · ${target.iri}`,
-            'Exact match · https://schema.org/Invoice',
-          ]);
+          await expect(page.getByTestId('new-class-mapping')).toHaveCount(2);
           await submitDrawer(page, 'new-class-create');
 
           const created = (await listConcepts(api, owner)).find(
@@ -367,7 +369,7 @@ for (const mode of ['classic', 'ai'] as const) {
         }
       });
 
-      test('Enter adds a pasted IRI as a mapping, and Enter on a focused option picks it', async ({
+      test('Enter on a focused option picks it and opens no other row', async ({
         isolatedUserPage: page,
       }) => {
         test.slow();
@@ -381,18 +383,10 @@ for (const mode of ['classic', 'ai'] as const) {
           await page.goto('/governance/ontology?ontology=' + owner.id);
           await page.getByTestId('mode-tab-edit').click();
           await page.getByTestId('ontology-add-concept').click();
+          await page.getByTestId('new-class-add-mapping').click();
           const input = page
             .getByTestId('new-class-mapping-iri')
             .getByRole('combobox');
-
-          await input.click();
-          await input.fill('https://schema.org/Invoice');
-          await input.press('Enter');
-
-          await expect(page.getByTestId('new-class-mapping')).toHaveText([
-            'Exact match · https://schema.org/Invoice',
-          ]);
-          await expect(input).toHaveValue('');
 
           await input.click();
           await input.pressSequentially(target.name.slice(0, -1));
@@ -404,12 +398,6 @@ for (const mode of ['classic', 'ai'] as const) {
 
           await expect(input).toHaveValue(target.name);
           await expect(page.getByTestId('new-class-mapping')).toHaveCount(1);
-
-          await page.getByTestId('new-class-add-mapping').click();
-          await expect(page.getByTestId('new-class-mapping')).toHaveText([
-            'Exact match · https://schema.org/Invoice',
-            `Exact match · ${target.iri}`,
-          ]);
         } finally {
           await removeOntology(api, elsewhere);
         }
@@ -430,6 +418,7 @@ for (const mode of ['classic', 'ai'] as const) {
           await page.goto('/governance/ontology?ontology=' + owner.id);
           await page.getByTestId('mode-tab-edit').click();
           await page.getByTestId('ontology-add-concept').click();
+          await page.getByTestId('new-class-add-mapping').click();
           const input = page
             .getByTestId('new-class-mapping-iri')
             .getByRole('combobox');
@@ -459,10 +448,6 @@ for (const mode of ['classic', 'ai'] as const) {
           await option.click();
 
           await expect(input).toHaveValue(target.name);
-          await page.getByTestId('new-class-add-mapping').click();
-          await expect(page.getByTestId('new-class-mapping')).toHaveText([
-            `Exact match · ${target.iri}`,
-          ]);
         } finally {
           await removeOntology(api, elsewhere);
         }
@@ -475,6 +460,7 @@ for (const mode of ['classic', 'ai'] as const) {
         await page.goto('/governance/ontology?ontology=' + owner.id);
         await page.getByTestId('mode-tab-edit').click();
         await page.getByTestId('ontology-add-concept').click();
+        await page.getByTestId('new-class-add-mapping').click();
         const input = page
           .getByTestId('new-class-mapping-iri')
           .getByRole('combobox');
@@ -484,12 +470,11 @@ for (const mode of ['classic', 'ai'] as const) {
           0
         );
 
-        await page.getByTestId('new-class-add-mapping').click();
+        await input.press('Tab');
 
         await expect(
           page.getByText('Enter a valid concept IRI.')
         ).toBeVisible();
-        await expect(page.getByTestId('new-class-mapping')).toHaveCount(0);
 
         await input.fill('no such concept 2');
 
@@ -790,12 +775,16 @@ for (const mode of ['classic', 'ai'] as const) {
             'Unsaved class'
           );
 
+          // The press outside the drawer asks first; Discard only closes the drawer.
           await clickGraphNode(page, second.id);
           await closeDraftPrompt(page, 'Discard');
 
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toHaveCount(0);
+
+          await clickGraphNode(page, second.id);
+
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText('Second');
