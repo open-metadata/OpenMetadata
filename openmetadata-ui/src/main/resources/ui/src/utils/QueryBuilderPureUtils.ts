@@ -19,6 +19,7 @@ import type {
 import { isBoolean, isEmpty, isObject, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
+import type { EsRegexp } from '../interface/queryFilter.interface';
 import type {
   EsBoolQuery,
   EsExistsQuery,
@@ -193,7 +194,7 @@ export const getCommonFieldProperties = (
       properties: {
         field,
         operator,
-        value: isUndefined(value) ? [] : [value.replaceAll(/(^\*)|(\*$)/g, '')],
+        value: isUndefined(value) ? [] : [value],
         valueSrc: isUndefined(value) ? [] : ['value'],
         operatorOptions: null,
         valueType: isUndefined(value) ? [] : ['text'],
@@ -354,6 +355,9 @@ const matchExists: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
+const stripWildcards = (value: unknown): string =>
+  String(value ?? '').replace(/^\*|\*$/g, '');
+
 const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
   if (isUndefined((curr as EsWildCard).wildcard)) {
     return undefined;
@@ -363,7 +367,7 @@ const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
     parentPath,
     Object.keys((curr as EsWildCard).wildcard)[0],
     'like',
-    Object.values((curr as EsWildCard).wildcard)[0]?.value
+    stripWildcards(Object.values((curr as EsWildCard).wildcard)[0]?.value)
   );
 };
 
@@ -376,7 +380,22 @@ const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
     parentPath,
     Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
     'not_like',
-    Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]?.value
+    stripWildcards(
+      Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]?.value
+    )
+  );
+};
+
+const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) => {
+  if (isUndefined((curr as EsRegexp).regexp)) {
+    return undefined;
+  }
+
+  return getCommonFieldProperties(
+    parentPath,
+    Object.keys((curr as EsRegexp).regexp)[0],
+    'regexp',
+    Object.values((curr as EsRegexp).regexp)[0]?.value
   );
 };
 
@@ -715,9 +734,6 @@ const readRange = (
   };
 };
 
-const stripWildcards = (value: unknown): string =>
-  String(value ?? '').replace(/^\*|\*$/g, '');
-
 // A multiselect holds its choices in a single value slot, so it nests.
 const toRuleValue = (
   fieldType: string | undefined,
@@ -863,6 +879,7 @@ const QUERY_FILTER_BRANCH_HANDLERS: QueryFilterBranchHandler[] = [
   matchExists,
   matchWildcard,
   matchMustNotWildcard,
+  matchRegexp,
   matchBoolMust,
 ];
 

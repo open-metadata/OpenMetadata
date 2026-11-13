@@ -148,6 +148,31 @@ describe('getJsonTreePropertyFromQueryFilter – multi-value negated select', ()
   });
 });
 
+describe('getJsonTreePropertyFromQueryFilter – text pattern rules', () => {
+  it.each([
+    [
+      'regexp',
+      { regexp: { 'name.keyword': { value: '.*orders.*' } } },
+      ['.*orders.*'],
+    ],
+    [
+      'like',
+      { wildcard: { 'name.keyword': { value: '*orders*' } } },
+      ['orders'],
+    ],
+  ])('reloads a %s rule with the typed value', (operator, clause, value) => {
+    const rule = Object.values(
+      getJsonTreePropertyFromQueryFilter([], [clause as QueryFieldInterface])
+    )[0] as { properties: { field: string; operator: string; value: unknown } };
+
+    expect(rule.properties).toMatchObject({
+      field: 'name.keyword',
+      operator,
+      value,
+    });
+  });
+});
+
 // The backend stores `queryFilter` as a free-form JSON object and embeds the
 // DSL `query` node verbatim — it never requires `bool.must`. Rules created via
 // the REST API (which never populates `filterJsonTree`) use `should`, `filter`,
