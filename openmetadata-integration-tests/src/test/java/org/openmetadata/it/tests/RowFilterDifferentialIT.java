@@ -66,10 +66,12 @@ import org.slf4j.LoggerFactory;
  * a rule refuses.
  *
  * <p>The count of a listing covers every row of the type, so a row another class creates between
- * two reads would change it. The class is {@code @Isolated}: JUnit runs no other test class beside
- * it, and the fixture is built once for all cases.
+ * two reads would change it, and the {@link Scenario#OWNER_ALLOWED} cases edit seeded policies that
+ * every user holds. The class is {@code @Isolated}: JUnit runs no other test class beside it, and
+ * the fixture is built once for all cases.
  */
-@Isolated("Compares a listing's total with every row of the type, which other classes would change")
+@Isolated(
+    "Compares totals with every row of a type, and edits the seeded policies every user holds")
 public class RowFilterDifferentialIT {
   private static final Logger LOG = LoggerFactory.getLogger(RowFilterDifferentialIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
@@ -88,11 +90,18 @@ public class RowFilterDifferentialIT {
           Entity.USER + "/" + Scenario.DOMAIN,
           Entity.DOMAIN + "/" + Scenario.OWNER,
           Entity.DOMAIN + "/" + Scenario.TEAM_MEMBER,
-          Entity.DOMAIN + "/" + Scenario.TEAM_OUTSIDER);
+          Entity.DOMAIN + "/" + Scenario.TEAM_OUTSIDER,
+          Entity.DOMAIN + "/" + Scenario.NO_OWNER,
+          Entity.DOMAIN + "/" + Scenario.OWNER_ALLOWED);
 
   /** A user owns itself, and a team's rules refuse only rows a team owns, so no user row is refused. */
   private static final Set<String> NOTHING_TO_REFUSE =
-      Set.of(Entity.USER + "/" + Scenario.TEAM_OUTSIDER);
+      Set.of(Entity.USER + "/" + Scenario.TEAM_OUTSIDER, Entity.USER + "/" + Scenario.NO_OWNER);
+
+  private static final String ORGANIZATION_POLICY = "OrganizationPolicy";
+  private static final String ORGANIZATION_VIEW_RULE = "OrganizationPolicy-ViewAll-Rule";
+  private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
+  private static final String DATA_CONSUMER_VIEW_RULE = "DataConsumerPolicy-EditRule";
 
   private static final Map<String, String> COLLECTIONS =
       Map.ofEntries(
@@ -123,12 +132,20 @@ public class RowFilterDifferentialIT {
           Map.entry(Entity.USER, "/v1/users"),
           Map.entry(Entity.DOMAIN, "/v1/domains"));
 
-  /** The three conditions the cases exercise, and the caller each one is checked as. */
+  /**
+   * The conditions the cases exercise, each checked as its own caller. Every caller but one holds
+   * the seeded grants and is refused the rows a deny rule with the condition names. The {@link
+   * #OWNER_ALLOWED} caller holds no role, and its cases withdraw the seeded rules that let every
+   * user view every row, so the seeded owner rule, an allow with the condition, is its only view
+   * grant.
+   */
   enum Scenario {
     OWNER("!isOwner()"),
     DOMAIN("!hasDomain()"),
     TEAM_MEMBER("!matchTeam()"),
-    TEAM_OUTSIDER("!matchTeam()");
+    TEAM_OUTSIDER("!matchTeam()"),
+    NO_OWNER("noOwner()"),
+    OWNER_ALLOWED("isOwner()");
 
     private final String condition;
 
@@ -259,6 +276,30 @@ public class RowFilterDifferentialIT {
   @MethodSource("cases")
   void aListingNamesExactlyTheRowsItsItemEndpointReads(String type, Scenario rule)
       throws Exception {
+    if (rule == Scenario.OWNER_ALLOWED) {
+      withTheOwnerRuleAsTheOnlyViewGrant(() -> compareListingWithItemReads(type, rule));
+    } else {
+      compareListingWithItemReads(type, rule);
+    }
+  }
+
+  /**
+   * A listing is decided by its rows, so under the seeded owner rule alone a caller who owns
+   * nothing gets an empty page and a total of 0, where a check on the type alone would refuse it.
+   */
+  @Test
+  void aCallerWhoOwnsNothingGetsAnEmptyListingRatherThanARefusal() throws Exception {
+    withTheOwnerRuleAsTheOnlyViewGrant(
+        () -> {
+          JsonNode page =
+              get(fixture.nobody.client(), pageUrl(COLLECTIONS.get(Entity.TABLE), PAGE_SIZE, null));
+
+          assertEquals(0, page.path("data").size());
+          assertEquals(0, page.path("paging").path("total").asInt(-1));
+        });
+  }
+
+  private static void compareListingWithItemReads(String type, Scenario rule) throws Exception {
     assertTrue(fixture.rowsByType.containsKey(type), "no fixture for declared type " + type);
     assertFalse(fixture.rowsByType.get(type).isEmpty(), "no rows in the fixture of " + type);
     Caller caller = fixture.callers.get(rule);
@@ -289,6 +330,51 @@ public class RowFilterDifferentialIT {
     if (!NOTHING_TO_REFUSE.contains(type + "/" + rule)) {
       assertFalse(mineRefused.isEmpty(), type + " has no row the " + rule + " caller is refused");
     }
+  }
+
+  /**
+   * Runs {@code body} while the two seeded rules that let every user view every row are removed:
+   * the Organization's ViewAll rule and the Data Consumer rule of its default role. The seeded owner
+   * rule is then the only view grant of a user without roles. The class is {@code @Isolated}, so no
+   * other test reads the policies while they are edited, and each rule is put back.
+   */
+  private static void withTheOwnerRuleAsTheOnlyViewGrant(ThrowingRunnable body) throws Exception {
+    Rule organizationView = removeRule(ORGANIZATION_POLICY, ORGANIZATION_VIEW_RULE);
+    try {
+      Rule consumerView = removeRule(DATA_CONSUMER_POLICY, DATA_CONSUMER_VIEW_RULE);
+      try {
+        body.run();
+      } finally {
+        restoreRule(DATA_CONSUMER_POLICY, consumerView);
+      }
+    } finally {
+      restoreRule(ORGANIZATION_POLICY, organizationView);
+    }
+  }
+
+  private static Rule removeRule(String policyName, String ruleName) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy = admin.policies().getByName(policyName, "rules");
+    Rule rule =
+        policy.getRules().stream()
+            .filter(candidate -> ruleName.equals(candidate.getName()))
+            .findFirst()
+            .orElseThrow(() -> new AssertionError(ruleName + " must be seeded"));
+    policy.getRules().remove(rule);
+    admin.policies().update(policy.getId(), policy);
+    return rule;
+  }
+
+  private static void restoreRule(String policyName, Rule rule) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    Policy policy = admin.policies().getByName(policyName, "rules");
+    policy.getRules().add(rule);
+    admin.policies().update(policy.getId(), policy);
+  }
+
+  @FunctionalInterface
+  private interface ThrowingRunnable {
+    void run() throws Exception;
   }
 
   private static Set<String> mine(String type, Set<String> fqns) {
@@ -413,6 +499,8 @@ public class RowFilterDifferentialIT {
     private Ref group;
     private Ref groupMember;
     private Ref otherUser;
+    private Ref leaver;
+    private Caller nobody;
     private String domain;
     private String subDomain;
     private String otherDomain;
@@ -434,6 +522,7 @@ public class RowFilterDifferentialIT {
       callerUser = user("owner", List.of(callerTeam.id()), null, role(Scenario.OWNER));
       groupMember = user("groupMember", List.of(group.id()), null, null);
       otherUser = user("other", List.of(), null, null);
+      leaver = user("leaver", List.of(group.id()), domain, null);
       profiles = profiles();
       callers.put(Scenario.OWNER, caller(callerUser));
       callers.put(
@@ -441,6 +530,12 @@ public class RowFilterDifferentialIT {
       callers.put(
           Scenario.TEAM_MEMBER, caller(user("teamMember", List.of(group.id()), null, null)));
       callers.put(Scenario.TEAM_OUTSIDER, caller(user("outsider", List.of(), null, null)));
+      callers.put(
+          Scenario.NO_OWNER,
+          caller(user("noOwnerCaller", List.of(), null, role(Scenario.NO_OWNER))));
+      callers.put(
+          Scenario.OWNER_ALLOWED, caller(user("allowed", List.of(callerTeam.id()), null, null)));
+      nobody = caller(user("nobody", List.of(), null, null));
       rootTypes();
       databaseChain();
       siblingServices();
@@ -495,6 +590,26 @@ public class RowFilterDifferentialIT {
       List<Row> schemas = children(SCHEMA, databases);
       children(TABLE, schemas);
       children(STORED_PROCEDURE, schemas);
+      schemaOfALeaver(databases.get(1));
+    }
+
+    /**
+     * A schema whose only owner is soft-deleted, so its database's owners reach the rows under it
+     * that have none of their own, as an unowned schema's would.
+     */
+    private void schemaOfALeaver(Row database) {
+      Row schema = child(SCHEMA, "of_leaver", database, new Own(leaver.json(), null));
+      record(Entity.DATABASE_SCHEMA, schema);
+      record(Entity.TABLE, child(TABLE, "under_leaver", schema, null));
+      record(Entity.TABLE, child(TABLE, "owned_by_leaver", schema, new Own(leaver.json(), null)));
+      record(Entity.STORED_PROCEDURE, child(STORED_PROCEDURE, "under_leaver", schema, null));
+    }
+
+    /** An API collection whose only owner is soft-deleted, so the endpoint under it has no owner. */
+    private void collectionOfALeaver(Row service) {
+      Row collection = child(API_COLLECTION, "of_leaver", service, new Own(leaver.json(), null));
+      record(Entity.API_COLLECTION, collection);
+      record(Entity.API_ENDPOINT, child(API_ENDPOINT, "under_leaver", collection, null));
     }
 
     private void siblingServices() {
@@ -540,6 +655,7 @@ public class RowFilterDifferentialIT {
               k -> created(APIServiceTestFactory.createRest(ns)),
               "/v1/services/apiServices");
       children(API_ENDPOINT, children(API_COLLECTION, apiServices));
+      collectionOfALeaver(apiServices.get(0));
     }
 
     private void users() {
@@ -548,7 +664,6 @@ public class RowFilterDifferentialIT {
             k % 3 == 0 ? List.of(group.id()) : k % 3 == 1 ? List.of(callerTeam.id()) : List.of();
         user("profile" + k, teams, profiles.get(k).domain(), null);
       }
-      Ref leaver = user("leaver", List.of(group.id()), domain, null);
       admin.users().delete(leaver.id());
     }
 

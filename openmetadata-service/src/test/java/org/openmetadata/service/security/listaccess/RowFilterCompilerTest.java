@@ -42,6 +42,8 @@ class RowFilterCompilerTest {
   private static final String TEAM_NAME = "engineering";
   private static final String DOMAIN = "Finance";
   private static final List<MetadataOperation> VIEW = List.of(MetadataOperation.VIEW_BASIC);
+  private static final List<MetadataOperation> VIEW_BASIC_AND_USAGE =
+      List.of(MetadataOperation.VIEW_BASIC, MetadataOperation.VIEW_USAGE);
 
   private static final RowStorage SCHEMA =
       new RowStorage(
@@ -141,6 +143,51 @@ class RowFilterCompilerTest {
     RowFilter rows = compile(member(glossaryOnly), List.of());
 
     assertEquals(RowFilter.NO_ROWS, rows);
+  }
+
+  @Test
+  void aConditionalAllowLeavesOnlyTheRowsItsConditionHolds() {
+    RowFilter rows = compile(member(allow("ownerView", "isOwner()")), List.of());
+
+    assertEquals(where(REVIEWER, new OwnedBy(Set.of(USER, TEAM))), rows);
+    assertTrue(rows.exact());
+  }
+
+  @Test
+  void aConditionalAllowBesideADenyLeavesTheRowsTheAllowHoldsAndTheDenyLetsThrough() {
+    RowFilter rows =
+        compile(
+            member(allow("ownerView", "isOwner()"), deny("domainOnly", "!hasDomain()")), List.of());
+
+    assertEquals(
+        where(
+            REVIEWER,
+            new And(
+                List.of(
+                    RowPredicate.or(new NoDomain(), new InDomains(Set.of(DOMAIN))),
+                    new OwnedBy(Set.of(USER, TEAM))))),
+        rows);
+    assertTrue(rows.exact());
+  }
+
+  @Test
+  void aListingThatNeedsAnOperationNoRuleAllowsIsRefusedEveryRow() {
+    CompiledRule basicOnly = rule("basic", Rule.Effect.ALLOW, MetadataOperation.VIEW_BASIC, null);
+
+    assertEquals(RowFilter.NO_ROWS, compileNeeding(member(basicOnly), VIEW_BASIC_AND_USAGE));
+  }
+
+  @Test
+  void aListingThatNeedsTwoOperationsKeepsOnlyTheRowsBothOfThemAllow() {
+    Caller caller =
+        member(
+            rule("basic", Rule.Effect.ALLOW, MetadataOperation.VIEW_BASIC, null),
+            rule("usage", Rule.Effect.ALLOW, MetadataOperation.VIEW_USAGE, "isOwner()"));
+
+    RowFilter rows = compileNeeding(caller, VIEW_BASIC_AND_USAGE);
+
+    assertEquals(where(REVIEWER, new OwnedBy(Set.of(USER, TEAM))), rows);
+    assertTrue(rows.exact());
   }
 
   @Test
@@ -306,6 +353,11 @@ class RowFilterCompilerTest {
   private static RowFilter compile(Caller caller, List<TeamDenies> teamDenies) {
     return new RowFilterCompiler(caller, TEAMS, teamDenies)
         .compile(new ListTarget(Entity.TABLE, VIEW, TABLE));
+  }
+
+  private static RowFilter compileNeeding(Caller caller, List<MetadataOperation> operations) {
+    return new RowFilterCompiler(caller, TEAMS, List.of())
+        .compile(new ListTarget(Entity.TABLE, operations, TABLE));
   }
 
   private static RowFilter where(RowPredicate... any) {

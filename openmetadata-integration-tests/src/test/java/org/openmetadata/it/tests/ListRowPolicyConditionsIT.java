@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URLEncoder;
@@ -24,6 +25,7 @@ import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.CreateContainer;
+import org.openmetadata.schema.api.data.CreateDataContract;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -320,6 +322,49 @@ public class ListRowPolicyConditionsIT {
             });
   }
 
+  /**
+   * A listing through a parent is authorized on that parent before any row is read, so a schema
+   * the caller's rules refuse answers 403 although it holds a table the caller owns and may read.
+   */
+  @Test
+  void aListingThroughASchemaTheRulesRefuseIsRefusedThoughItHoldsATableTheCallerOwns(
+      TestNamespace ns) throws Exception {
+    Role role =
+        denyRole(ns, "notOwner", List.of(Entity.DATABASE_SCHEMA, Entity.TABLE), "!isOwner()");
+    Member caller = member(ns, "schemaOwner", List.of(role.getId()), List.of(), List.of());
+    Database database = database(ns, "unownedDb", List.of());
+    DatabaseSchema unowned = schema(database, "unowned", List.of(), List.of());
+    DatabaseSchema owned = schema(database, "owned", List.of(caller.reference()), List.of());
+    Table ownedInUnowned =
+        table(unowned, "a_owned_by_caller", List.of(caller.reference()), List.of());
+    table(owned, "b_inherits_owner", List.of(), List.of());
+
+    assertThrows(ForbiddenException.class, () -> listTables(caller, unowned));
+    assertTrue(canRead(caller, ownedInUnowned));
+    assertEquals(List.of("b_inherits_owner"), listTables(caller, owned).names());
+  }
+
+  /**
+   * SQL does not compute the owners of a data contract, so a listing by name checks each row after
+   * the query: a caller under an owner rule gets the contracts they own rather than a 403.
+   */
+  @Test
+  void aSearchListingReturnsOnlyTheDataContractsTheCallerOwns(TestNamespace ns) throws Exception {
+    Role role = denyRole(ns, "notContractOwner", Entity.DATA_CONTRACT, "!isOwner()");
+    Member caller = member(ns, "contractOwner", List.of(role.getId()), List.of(), List.of());
+    Member other = member(ns, "contractOther", List.of(), List.of(), List.of());
+    DatabaseSchema schema =
+        schema(database(ns, "contractDb", List.of()), "contracts", List.of(), List.of());
+    String token = "lrpdc" + UUID.randomUUID().toString().substring(0, 8);
+    dataContract(table(schema, "a", List.of(), List.of()), token + "_a_owned", caller);
+    dataContract(table(schema, "b", List.of(), List.of()), token + "_b_other", other);
+    dataContract(table(schema, "c", List.of(), List.of()), token + "_c_unowned", null);
+
+    Listing found = list(caller, "/v1/dataContracts/search?limit=50&q=" + token);
+
+    assertEquals(List.of(token + "_a_owned"), found.names());
+  }
+
   private static OwnedTables ownedTables(TestNamespace ns) {
     Team team = team(ns, "owners", CreateTeam.TeamType.GROUP, null);
     Role role = denyRole(ns, "notOwner", Entity.TABLE, "!isOwner()");
@@ -341,6 +386,11 @@ public class ListRowPolicyConditionsIT {
   }
 
   private static Role denyRole(TestNamespace ns, String name, String resource, String condition) {
+    return denyRole(ns, name, List.of(resource), condition);
+  }
+
+  private static Role denyRole(
+      TestNamespace ns, String name, List<String> resources, String condition) {
     OpenMetadataClient admin = SdkClients.adminClient();
     Policy policy =
         ns.trackRoot(
@@ -351,7 +401,7 @@ public class ListRowPolicyConditionsIT {
                     new CreatePolicy()
                         .withName(ns.prefix(name))
                         .withDescription("Hides the rows the condition refuses")
-                        .withRules(List.of(deny(resource, condition)))));
+                        .withRules(List.of(deny(resources, condition)))));
     return ns.trackRoot(
         Entity.ROLE,
         admin
@@ -379,7 +429,7 @@ public class ListRowPolicyConditionsIT {
                     new CreatePolicy()
                         .withName(ns.prefix("teamOnly"))
                         .withDescription("Hides rows owned outside the team")
-                        .withRules(List.of(deny(resource, "!matchTeam()")))));
+                        .withRules(List.of(deny(List.of(resource), "!matchTeam()")))));
     admin
         .teams()
         .patch(
@@ -389,10 +439,10 @@ public class ListRowPolicyConditionsIT {
                     .formatted(policy.getId())));
   }
 
-  private static Rule deny(String resource, String condition) {
+  private static Rule deny(List<String> resources, String condition) {
     return new Rule()
         .withName("deny")
-        .withResources(List.of(resource))
+        .withResources(resources)
         .withOperations(List.of(MetadataOperation.ALL))
         .withEffect(Rule.Effect.DENY)
         .withCondition(condition);
@@ -483,6 +533,16 @@ public class ListRowPolicyConditionsIT {
                 .withService(service.getFullyQualifiedName())
                 .withParent(parent == null ? null : parent.getEntityReference())
                 .withOwners(owners));
+  }
+
+  private static void dataContract(Table table, String name, Member owner) {
+    SdkClients.adminClient()
+        .dataContracts()
+        .create(
+            new CreateDataContract()
+                .withName(name)
+                .withEntity(table.getEntityReference())
+                .withOwners(owner == null ? List.of() : List.of(owner.reference())));
   }
 
   /** The names of {@code tables} the caller's GET returns, in listing order. */

@@ -59,8 +59,9 @@ conditional allow such as `ViewAll` with `isOwner()` answers 403 to the whole li
   query, with no authorization per row. It returns full pages and exact totals.
 - For an exact plan, the SQL is the authorization. A wrong `RowStorages` entry or translation
   returns wrong rows with no check behind it. `RowFilterDifferentialIT` lists every declared type
-  under owner, domain and team rules and compares each listing with the item reads, on MySQL and
-  PostgreSQL. A type added to `RowStorages` needs fixtures there.
+  under owner, domain, team and no-owner deny rules, and with the seeded owner rule as the only
+  view grant, and compares each listing with the item reads, on MySQL and PostgreSQL. A type added
+  to `RowStorages` needs fixtures there.
 - A scoped count runs its correlated conditions on every page, uncached. Each team that holds a deny
   policy adds an owner subquery. Their cost was not measured.
 - An `Authorizer` that does not override `listScope` checks every row of every page.
