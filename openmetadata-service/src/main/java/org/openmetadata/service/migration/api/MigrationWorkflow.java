@@ -598,14 +598,14 @@ public class MigrationWorkflow {
     }
   }
 
-  private void runStepAndAddStatus(
-      List<String> row, MigrationProcess.MigrationProcessCallback process) {
+  // --force goes on past a failed step, except one that says going on would lose data.
+  void runStepAndAddStatus(List<String> row, MigrationProcess.MigrationProcessCallback process) {
     try {
       process.call();
       row.add(SUCCESS_MSG);
     } catch (Exception e) {
       row.add(FAILED_MSG + e.getMessage());
-      if (!forceMigrations) {
+      if (!forceMigrations || e instanceof MigrationHaltException) {
         throw e;
       }
     }

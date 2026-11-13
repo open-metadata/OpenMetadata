@@ -90,12 +90,12 @@ class AlertDiagnosticsStatusTest {
   }
 
   @Test
-  void aFailedSendReadsFailedWithItsReasonButNotAsAnUnusableConfiguration() {
+  void aSendWaitingForARetryKeepsItsStatusAndIsNotAnUnusableConfiguration() {
     SubscriptionDestination usable = signedWith("a key entered in the clear");
     EventSubscription alert = alertWith(usable);
     SubscriptionStatus failedSend =
         new SubscriptionStatus()
-            .withStatus(SubscriptionStatus.Status.FAILED)
+            .withStatus(SubscriptionStatus.Status.AWAITING_RETRY)
             .withLastFailedReason("Webhook failed with status: 503");
     health.put(
         alert.getId(),
@@ -103,7 +103,7 @@ class AlertDiagnosticsStatusTest {
 
     SubscriptionStatus read = statusOf(AlertDiagnostics.destinationsWithStatus(alert).getFirst());
 
-    assertEquals(SubscriptionStatus.Status.FAILED, read.getStatus());
+    assertEquals(SubscriptionStatus.Status.AWAITING_RETRY, read.getStatus());
     assertEquals("Webhook failed with status: 503", read.getLastFailedReason());
     assertNull(read.getConfigurationUnusable());
   }

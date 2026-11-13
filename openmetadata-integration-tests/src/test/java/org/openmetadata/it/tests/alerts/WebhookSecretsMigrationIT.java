@@ -12,6 +12,7 @@ import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSW
 import com.fasterxml.jackson.databind.JsonNode;
 import com.macasaet.fernet.Key;
 import jakarta.ws.rs.BadRequestException;
+import java.io.File;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +30,7 @@ import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.teams.Team;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EventType;
@@ -45,7 +47,10 @@ import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.api.MigrationHaltException;
+import org.openmetadata.service.migration.api.MigrationProcess;
 import org.openmetadata.service.migration.utils.DataMigrationStep;
+import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 import org.openmetadata.service.secrets.BoundCiphertext;
 
@@ -227,9 +232,10 @@ class WebhookSecretsMigrationIT {
   }
 
   /**
-   * Run with Fernet keys that open none of the credentials earlier releases stored, the alert step
-   * stops the upgrade before it writes anything, the profile step after it does not run, and
-   * neither records its marker; with the right keys the same run goes through.
+   * Run with Fernet keys that open none of the credentials earlier releases stored, the 2.1.0 data
+   * migration stops before any of its steps writes: alert, profile and authentication settings
+   * rows are left as they were and no step is recorded. With the right keys the webhook steps go
+   * through.
    */
   @Test
   void anUpgradeWithKeysThatOpenNoEarlierCredentialStopsAndRunsAgainOnceTheKeyIsRight(
@@ -264,7 +270,8 @@ class WebhookSecretsMigrationIT {
         Entity.TEAM, team.getId(), team.getFullyQualifiedName());
     String alertRow = alertRow(alert.getId());
     String teamRow = teamDAO.findById(teamDAO.getTableName(), team.getId(), "");
-    String version = "2.1.0-webhook-it-" + ns.shortPrefix();
+    String authenticationRow = authenticationSettings();
+    String version = "2.1.0-webhookit" + ns.shortPrefix();
     String configuredKeys =
         Fernet.getInstance().getCachedKeys().stream()
             .map(Key::serialise)
@@ -272,12 +279,13 @@ class WebhookSecretsMigrationIT {
 
     try {
       Fernet.getInstance().setFernetKey(Key.generateKey().serialise());
-      assertThrows(IllegalStateException.class, () -> runWebhookSteps(version));
+      assertThrows(MigrationHaltException.class, () -> runTheDataMigration(version));
       Fernet.getInstance().setFernetKey(configuredKeys);
 
       assertEquals(alertRow, alertRow(alert.getId()), "the alert row is left as it was");
       assertEquals(teamRow, teamDAO.findById(teamDAO.getTableName(), team.getId(), ""));
-      assertEquals(0, markersOf(version), "neither step is recorded as applied");
+      assertEquals(authenticationRow, authenticationSettings());
+      assertEquals(0, markersOf(version), "no step is recorded as applied");
 
       runWebhookSteps(version);
 
@@ -369,12 +377,49 @@ class WebhookSecretsMigrationIT {
     return Map.of("endpoint", "https://hooks.example.com/" + path, "authType", authType);
   }
 
-  // The webhook steps as the 2.1.0 migration runs them, under a version of their own.
+  // The 2.1.0 data migration of this engine, as `migrate` runs it, under a version of its own.
+  private static void runTheDataMigration(String version) {
+    Jdbi jdbi = TestSuiteBootstrap.getJdbi();
+    MigrationFile file =
+        new MigrationFile(
+            new File(System.getProperty("java.io.tmpdir"), version),
+            jdbi.onDemand(MigrationDAO.class),
+            dialect(),
+            null,
+            false);
+    jdbi.useHandle(
+        handle -> {
+          MigrationProcess migration = migrationOf(file);
+          migration.initialize(handle, jdbi);
+          migration.runDataMigration();
+        });
+  }
+
+  private static MigrationProcess migrationOf(MigrationFile file) {
+    try {
+      return (MigrationProcess)
+          Class.forName(file.getMigrationProcessClassName())
+              .getConstructor(MigrationFile.class)
+              .newInstance(file);
+    } catch (ReflectiveOperationException e) {
+      throw new AssertionError("No migration class for " + file.version, e);
+    }
+  }
+
+  private static String authenticationSettings() {
+    return Entity.getCollectionDAO()
+        .systemDAO()
+        .getConfigJsonWithKey(SettingsType.AUTHENTICATION_CONFIGURATION.value());
+  }
+
+  // The webhook steps as the 2.1.0 migration runs them, after its key check.
   private static void runWebhookSteps(String version) {
     MigrationDAO migrationDAO = TestSuiteBootstrap.getJdbi().onDemand(MigrationDAO.class);
     TestSuiteBootstrap.getJdbi()
         .useHandle(
             handle -> {
+              WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                  migrationDAO, version, handle, dialect());
               DataMigrationStep.runOnce(
                   migrationDAO,
                   version,

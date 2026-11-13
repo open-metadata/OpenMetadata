@@ -148,6 +148,25 @@ class IngestionPipelineMigrationEntryPointTest {
       authenticationSecretsMigration.verify(
           () ->
               AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
+      // The Fernet key check comes before every step, so a stop leaves nothing written with the
+      // wrong keys: not the authentication secrets, nor anything else.
+      InOrder keyCheckFirst =
+          inOrder(
+              WebhookSecretsMigration.class,
+              DeltaLakeRetirementMigration.class,
+              AuthenticationSecretsEncryptionMigration.class);
+      keyCheckFirst.verify(
+          webhookSecretsMigration,
+          () ->
+              WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                  any(), any(), eq(handle), eq(connectionType)));
+      keyCheckFirst.verify(
+          deltaLakeRetirement,
+          () -> DeltaLakeRetirementMigration.retireDeltaLakeServices(any(), any(), any()));
+      keyCheckFirst.verify(
+          authenticationSecretsMigration,
+          () ->
+              AuthenticationSecretsEncryptionMigration.encryptAuthenticationSecrets(collectionDAO));
       // 2.1.0 databases skip 2.0.8's data migration, so 2.1.0 repairs containment too.
       containmentRepair.verify(
           () -> DataProductDomainContainmentRepair.repairAll(handle, collectionDAO));

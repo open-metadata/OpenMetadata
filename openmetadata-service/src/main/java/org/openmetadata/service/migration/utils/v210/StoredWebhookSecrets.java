@@ -48,6 +48,7 @@ import org.bouncycastle.crypto.digests.SHA256Digest;
 import org.bouncycastle.crypto.generators.HKDFBytesGenerator;
 import org.bouncycastle.crypto.params.HKDFParameters;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.migration.api.MigrationHaltException;
 
 /**
  * The webhook secret rules of release 2.1, frozen for its data step: which fields of a webhook
@@ -140,11 +141,10 @@ final class StoredWebhookSecrets {
    * Binds, in place, the destinations of a stored alert and masks its change descriptions. Legacy
    * ciphertext is carried over at the fields releases before 2.1 encrypted, wherever else the same
    * value is stored: each copy is bound to the destination that holds it. Any other value stays as
-   * stored, opens for no destination, and is entered again before the destination sends. What it
-   * finds to carry over is counted in {@code carried}. Returns whether it changed.
+   * stored, opens for no destination, and is entered again before the destination sends. Returns
+   * whether it changed.
    */
-  boolean bindAlert(JsonNode alert, CarriedCredentials carried) {
-    countCarriedCredentials(alert, carried);
+  boolean bindAlert(JsonNode alert) {
     JsonNode before = alert.deepCopy();
     for (JsonNode destination : alert.path(DESTINATIONS)) {
       if (destination instanceof ObjectNode stored) {
@@ -172,7 +172,8 @@ final class StoredWebhookSecrets {
     return !entity.equals(before);
   }
 
-  private void countCarriedCredentials(JsonNode alert, CarriedCredentials carried) {
+  /** Counts in {@code carried} the credentials of a stored alert the step would carry over. */
+  void countCarriedCredentials(JsonNode alert, CarriedCredentials carried) {
     String label = "'" + alert.path("name").asText() + "' (" + alert.path("id").asText() + ")";
     for (JsonNode destination : alert.path(DESTINATIONS)) {
       JsonNode config = destination.path("config");
@@ -319,7 +320,7 @@ final class StoredWebhookSecrets {
    * The credentials releases before 2.1 stored encrypted that the step found, and whether they open
    * with the configured Fernet keys. When some exist and none opens, the server runs with keys other
    * than the ones that wrote them, and binding the rest with those keys would be a step the right
-   * keys could not undo, so the step stops before it writes anything.
+   * keys could not undo, so the upgrade stops before it writes anything.
    */
   static final class CarriedCredentials {
     private static final int ALERTS_NAMED = 20;
@@ -348,7 +349,7 @@ final class StoredWebhookSecrets {
      */
     void requireAnyOpened(boolean keepUnopened) {
       if (opened == 0 && !alertsNotOpened.isEmpty() && !keepUnopened) {
-        throw new IllegalStateException(
+        throw new MigrationHaltException(
             NONE_OPENS.formatted(namedAlerts(), WebhookSecretsMigration.KEEP_UNOPENED_ENV));
       }
     }
