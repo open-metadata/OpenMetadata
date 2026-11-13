@@ -57,6 +57,10 @@ Applies to UI `*.{ts,tsx}`. Consumed via the bare package name
   The host must be `tw:relative` (the placeholder is absolutely positioned). Keep the default icon
   (no `assets/svg` icons) and never wrap `title`/`description` in a `Tooltip`: its trigger is
   `w-max`, so the copy stops wrapping.
+- **Clear a controlled prop with `null`, never `undefined`.** `selectedKey={x ?? undefined}` flips a React
+  Aria component to uncontrolled and can loop until "Maximum update depth exceeded". Enforced by
+  `openmetadata-ui-patterns/no-undefined-controlled-prop`
+  (ADR:2026-11-13-react-aria-controlled-props-are-cleared-with-null-not-undefined).
 - **Legacy**: Ant Design components remain in existing code but should be replaced with
   `openmetadata-ui-core-components` equivalents when refactoring. For forms, do not use the legacy
   Ant Design `getField`/`generateFormFields` (see `frontend-react.md` → Forms).
