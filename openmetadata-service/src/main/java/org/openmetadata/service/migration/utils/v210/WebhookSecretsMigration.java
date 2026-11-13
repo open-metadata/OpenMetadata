@@ -42,6 +42,8 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
 public final class WebhookSecretsMigration {
   public static final String PROFILE_STEP_NAME = "bindProfileWebhookSecrets";
   public static final String ALERT_STEP_NAME = "bindAlertDestinationSecrets";
+  // An operator's choice to upgrade although no webhook credential stored before 2.1 opens.
+  static final String KEEP_UNOPENED_ENV = "MIGRATION_KEEP_UNREADABLE_WEBHOOK_CREDENTIALS";
   private static final int PAGE_SIZE = 500;
   private static final String USER = "user";
   private static final String TEAM = "team";
@@ -66,9 +68,20 @@ public final class WebhookSecretsMigration {
   /**
    * Binds the alert destinations. Every row is rewritten in memory first: when the credentials
    * releases before 2.1 stored encrypted exist and none of them opens with the configured keys, it
-   * stops before anything is written ({@link StoredWebhookSecrets.CarriedCredentials}).
+   * stops before anything is written ({@link StoredWebhookSecrets.CarriedCredentials}), unless the
+   * environment variable {@value #KEEP_UNOPENED_ENV} is {@code true}.
    */
   public static void bindAlertDestinationSecrets(Handle handle, ConnectionType connectionType) {
+    bindAlertDestinationSecrets(
+        handle, connectionType, Boolean.parseBoolean(System.getenv(KEEP_UNOPENED_ENV)));
+  }
+
+  /**
+   * As {@link #bindAlertDestinationSecrets(Handle, ConnectionType)}; {@code keepUnopened} lets the
+   * step go on when none of those credentials opens, leaving them as stored.
+   */
+  static void bindAlertDestinationSecrets(
+      Handle handle, ConnectionType connectionType, boolean keepUnopened) {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
@@ -76,7 +89,7 @@ public final class WebhookSecretsMigration {
           new StoredWebhookSecrets.CarriedCredentials();
       List<Rewrite> alerts =
           rewritesById(handle, sql, ALERT_TABLE, row -> secrets.bindAlert(row, carried));
-      carried.requireAnyOpened();
+      carried.requireAnyOpened(keepUnopened);
       write(handle, sql, ALERT_TABLE, alerts);
       rewriteVersions(handle, sql, ALERT_TABLE, ALERT, StoredWebhookSecrets::maskAlert);
       rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);

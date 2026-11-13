@@ -328,7 +328,8 @@ final class StoredWebhookSecrets {
             + " before 2.1, held by the alerts %s. Set FERNET_KEY to the key the previous release"
             + " used (a comma-separated list of keys is accepted) and run migrate again. If these"
             + " values could not be used before the upgrade either, enter them again or remove them"
-            + " before upgrading, and this check passes.";
+            + " before upgrading, or set %s=true and run migrate again: they then stay as stored,"
+            + " their alerts show them as values to enter again, and they are entered again there.";
 
     private final Set<String> alertsNotOpened = new LinkedHashSet<>();
     private int opened;
@@ -341,10 +342,14 @@ final class StoredWebhookSecrets {
       }
     }
 
-    /** Throws when credentials were found and none of them opens. */
-    void requireAnyOpened() {
-      if (opened == 0 && !alertsNotOpened.isEmpty()) {
-        throw new IllegalStateException(NONE_OPENS.formatted(namedAlerts()));
+    /**
+     * Throws when credentials were found and none of them opens, unless the operator chose to
+     * keep them as stored, to be entered again from their alerts.
+     */
+    void requireAnyOpened(boolean keepUnopened) {
+      if (opened == 0 && !alertsNotOpened.isEmpty() && !keepUnopened) {
+        throw new IllegalStateException(
+            NONE_OPENS.formatted(namedAlerts(), WebhookSecretsMigration.KEEP_UNOPENED_ENV));
       }
     }
 
