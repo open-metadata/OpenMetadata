@@ -47,7 +47,7 @@ the tables (`table`). Sigma does not document how a name containing `/` or `]` i
     connector follows `${field}` within a view). A name matching no column of the element, such as a control, adds
     nothing.
   - `[Source/Column]` is looked up by exact name among the nodes with an edge into the element's own sheet node. With
-    exactly one such node, a table gives its one column of that name (compared normalized, as labels are), and another
+    exactly one such node, a table (or a Sigma dataset on one) gives its one column of that name (compared normalized, as labels are), and another
     element gives that element's column, traced the same way (each element once). Restricting the lookup to the element's direct sources
     tells an element apart from the table it is named after, and ignores elements of the same name elsewhere in the
     workbook.

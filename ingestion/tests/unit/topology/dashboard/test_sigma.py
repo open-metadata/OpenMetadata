@@ -2530,6 +2530,7 @@ COSTS_WITH_TOTAL = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
         ("[COSTS/Co/st] * 2", None),
         ("[COSTS/Cost]", ["COST"]),
         ("[COSTS/Customer/Cost]", None),
+        ("[ORDERS/Customer/Total]", None),
         # A plain copy of a source not found is matched by name, as before
         ("[ORDERS/Total]", ["TOTAL"]),
     ],
@@ -2541,6 +2542,7 @@ COSTS_WITH_TOTAL = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
         "relationship",
         "renamed-copy",
         "copy-through-a-relationship",
+        "copy-through-a-relationship-of-a-source-not-read",
         "copy-of-unknown-source",
     ],
 )
@@ -2592,6 +2594,15 @@ PREP_READS_MARGINS = {
         (THROUGH_PREP, "[Prep/Total]", {"elPrep": {"Total": "1"}}, None),
         (THROUGH_PREP, "[Prep/Customer/Cost]", {"elPrep": PREP}, None),
         (TWO_SOURCES_NAMED_COSTS, "[COSTS/Cost]", {"elCosts": {"Cost": "[COSTS/Cost]"}}, None),
+        (
+            {
+                "dependencies": {**THROUGH_PREP["dependencies"], "COSTS": {**COSTS_NODE, "type": "dataset"}},
+                "edges": [edge("COSTS", "Margins")],
+            },
+            "[COSTS/Cost] * 2",
+            {},
+            ["COST"],
+        ),
     ],
     ids=[
         "calculated-column-of-another-element",
@@ -2602,6 +2613,7 @@ PREP_READS_MARGINS = {
         "copy-of-a-constant-in-another-element",
         "copy-through-a-relationship-of-another-element",
         "copy-from-two-sources-of-that-name",
+        "column-of-a-dataset",
     ],
 )
 def test_a_calculated_column_follows_the_element_it_reads(lineage_source, graph, formula, other_elements, total):

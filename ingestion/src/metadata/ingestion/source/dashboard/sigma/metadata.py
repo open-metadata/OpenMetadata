@@ -154,11 +154,12 @@ def _formula_sources(
     """
     For each column of an element: the sources its [Source/Column] references name, and the columns of its own
     element its [Column] references read (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-a-calculated-column-takes-its-lineage-only-from-its-formula).
-    A source is the one node of that exact name the element reads directly in its lineage graph: a table gives its
-    one column of that name, another element that element's column, traced the same way and once per element. A
-    name matching no source or several, a relationship ([Element/Relationship/Column]) or an escape adds nothing.
-    A column whose reference names a source it reads directly is keyed even when it gets nothing, so it is not matched
-    by name.
+    A source is the one node of that exact name the element reads directly in its lineage graph: a table (or a dataset
+    on one) gives its one column of that name, another element that element's column, traced the same way and once
+    per element. A name matching no source or several, a relationship ([Element/Relationship/Column]) or an escape
+    adds nothing.
+    A column whose reference names any node the element reads directly is keyed even when it gets nothing, so it is
+    not matched by name.
     """
     traced_elements = {} if traced_elements is None else traced_elements
     own = {key for key, node in graph.dependencies.items() if node.type == "sheet" and node.elementId == element_id}
@@ -178,7 +179,9 @@ def _formula_sources(
                 read.setdefault(column, []).append(name)
             elif "/" in source_column or len(nodes) != 1:
                 continue
-            elif nodes[0].type == "table" and (table := tables.get(EdgeSource(source=nodes[0].nodeId).node_id or "")):
+            elif nodes[0].type in ("table", "dataset") and (
+                table := tables.get(EdgeSource(source=nodes[0].nodeId).node_id or "")
+            ):
                 sources.setdefault(column, [])
                 matches = [
                     found.fullyQualifiedName
