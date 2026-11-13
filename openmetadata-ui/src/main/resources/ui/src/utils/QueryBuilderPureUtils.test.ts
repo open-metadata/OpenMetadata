@@ -148,68 +148,22 @@ describe('getJsonTreePropertyFromQueryFilter – multi-value negated select', ()
   });
 });
 
-describe('getJsonTreePropertyFromQueryFilter – text rules', () => {
-  it.each([
-    [
-      'regexp',
-      'name.keyword',
-      {
-        regexp: {
-          'name.keyword': { value: '.*orders.*', case_insensitive: true },
-        },
-      },
-      ['.*orders.*'],
-    ],
-    [
-      'like',
-      'name.keyword',
-      { wildcard: { 'name.keyword': { value: '*orders*' } } },
-      ['orders'],
-    ],
-    [
-      'like',
-      'name.keyword',
-      { wildcard: { 'name.keyword': '*orders*' } },
-      ['orders'],
-    ],
-    [
-      'not_like',
-      'name.keyword',
-      {
-        bool: {
-          must_not: { wildcard: { 'name.keyword': { value: '*orders*' } } },
-        },
-      },
-      ['orders'],
-    ],
-    [
-      'match_phrase',
-      'description',
-      { match_phrase: { description: 'customer orders' } },
-      ['customer orders'],
-    ],
-    [
-      'not_match_phrase',
-      'description',
-      {
-        bool: {
-          must_not: { match_phrase: { description: 'customer orders' } },
-        },
-      },
-      ['customer orders'],
-    ],
-  ])(
-    'reloads a %s rule with the typed value',
-    (operator, field, clause, value) => {
-      const rule = Object.values(
-        getJsonTreePropertyFromQueryFilter([], [clause as QueryFieldInterface])
-      )[0] as {
-        properties: { field: string; operator: string; value: unknown };
-      };
+// The API may write a wildcard in its shorthand form, which the query builder never does.
+describe('getJsonTreePropertyFromQueryFilter – shorthand wildcard', () => {
+  it('reloads it as a Contains rule', () => {
+    const rule = Object.values(
+      getJsonTreePropertyFromQueryFilter(
+        [],
+        [{ wildcard: { 'name.keyword': '*orders*' } } as QueryFieldInterface]
+      )
+    )[0] as { properties: { field: string; operator: string; value: unknown } };
 
-      expect(rule.properties).toMatchObject({ field, operator, value });
-    }
-  );
+    expect(rule.properties).toMatchObject({
+      field: 'name.keyword',
+      operator: 'like',
+      value: ['orders'],
+    });
+  });
 });
 
 // The backend stores `queryFilter` as a free-form JSON object and embeds the

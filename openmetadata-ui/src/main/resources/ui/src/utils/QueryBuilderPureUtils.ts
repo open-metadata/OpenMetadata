@@ -365,6 +365,11 @@ const matchExists: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
+type UnknownRecord = Record<string, unknown>;
+
+const firstEntry = (value: unknown): [string, unknown] | undefined =>
+  Object.entries((value ?? {}) as UnknownRecord)[0];
+
 const stripWildcards = (value: unknown): string =>
   String(value ?? '').replace(/^\*|\*$/g, '');
 
@@ -372,11 +377,11 @@ const stripWildcards = (value: unknown): string =>
 // other ES form stays unread, so isQueryFilterFullyRepresentable keeps flagging the filter.
 const getStringValueRule = (
   parentPath: Array<string>,
-  clause: Record<string, unknown> | undefined,
+  clause: UnknownRecord | undefined,
   operator: string,
   readValue: (body: unknown) => unknown
 ) => {
-  const [field, body] = Object.entries(clause ?? {})[0] ?? [];
+  const [field, body] = firstEntry(clause) ?? [];
   const value = readValue(body);
 
   return field && isString(value)
@@ -389,7 +394,7 @@ const getStringValueRule = (
 // the next save.
 const readWildcardValue = (body: unknown) => {
   const { value, ...rest } = isObject(body)
-    ? (body as Record<string, unknown>)
+    ? (body as UnknownRecord)
     : { value: body };
 
   return isString(value) && isEmpty(rest) && /^\*.*\*$/.test(value)
@@ -404,7 +409,7 @@ const readRegexpValue = (body: unknown) => {
     value,
     case_insensitive: caseInsensitive,
     ...rest
-  } = isObject(body) ? (body as Record<string, unknown>) : {};
+  } = isObject(body) ? (body as UnknownRecord) : {};
 
   return caseInsensitive === true && isEmpty(rest) ? value : undefined;
 };
@@ -520,8 +525,6 @@ interface CustomPropertyClause {
   negated: boolean;
 }
 
-type UnknownRecord = Record<string, unknown>;
-
 const asClauseArray = (value: unknown): UnknownRecord[] => {
   if (Array.isArray(value)) {
     return value as UnknownRecord[];
@@ -529,9 +532,6 @@ const asClauseArray = (value: unknown): UnknownRecord[] => {
 
   return isUndefined(value) ? [] : [value as UnknownRecord];
 };
-
-const firstEntry = (value: unknown): [string, unknown] | undefined =>
-  Object.entries((value ?? {}) as UnknownRecord)[0];
 
 const toValueField = (key: string): string =>
   key.startsWith(CUSTOM_PROPERTY_VALUE_PREFIX)
