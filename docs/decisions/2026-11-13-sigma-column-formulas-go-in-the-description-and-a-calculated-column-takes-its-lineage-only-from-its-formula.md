@@ -39,7 +39,8 @@ the tables (`table`). Sigma does not document how a name containing `/` or `]` i
 
 - A column's Sigma formula is written to its description as ``**Formula:** `<formula>` ``, for workbook element columns
   and Sigma Data Model element columns. A formula that only names a source column (`[ORDERS/Amount]`, as every column
-  read straight from a table has) is not written, as its lineage already shows it. A column whose name its element holds
+  read straight from a table has) is not written, as its lineage already shows it; a three-part reference names a
+  relationship and is written. A column whose name its element holds
   twice gets none, as the rows cannot be told apart; a failed `/columns` read writes none.
 - For an element without SQL, a column takes the sources its formula names:
   - `[Column]` gives the sources of that column of the same element, directly or through other columns (as the Looker
@@ -52,10 +53,10 @@ the tables (`table`). Sigma does not document how a name containing `/` or `]` i
     workbook.
   - A name matching no source or several, a reference with more than one `/` (a relationship, or a column name
     holding `/`), a formula holding an escape, and a source of any other type add nothing.
-- A calculated column (a formula that is more than one source reference) takes its sources only from its formula, and
-  is never matched by name: an untraced one gets no column lineage. A column that only copies a source column is
-  matched by name only when its reference names no source the element reads, as every column was before formulas
-  were read; one whose source is found but holds no such column gets none.
+- A calculated column (a formula that is more than one two-part `[Source/Column]` reference) takes its sources only
+  from its formula, and is never matched by name: an untraced one gets no column lineage. A column that only copies a
+  source column is matched by name only when its reference names no node the element reads directly, as every column
+  was before formulas were read; one whose source is ambiguous, or found without such a column, gets none.
 - Column lineage is drawn only when every source of the element was found. Edges stay one per source table, each
   carrying that table's columns.
 

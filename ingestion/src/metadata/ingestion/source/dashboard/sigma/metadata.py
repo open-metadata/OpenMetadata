@@ -134,8 +134,8 @@ def _access_details(moment: datetime | None) -> AccessDetails | None:
 
 _BRACKET_REFERENCE = re.compile(r"\[([^\[\]]+)\]")
 _STRING_LITERAL = re.compile(r'"[^"]*"')
-# A formula that only names the source column it is read from, as [ORDERS/Amount]
-_SOURCE_REFERENCE = re.compile(r"\s*\[[^\[\]/]+/[^\[\]]+\]\s*")
+# A formula that only names the source column it is read from, as [ORDERS/Amount]; a third part names a relationship
+_SOURCE_REFERENCE = re.compile(r"\s*\[[^\[\]/]+/[^\[\]/]+\]\s*")
 
 
 def _references(formula: str) -> list[str]:
@@ -157,7 +157,8 @@ def _formula_sources(
     A source is the one node of that exact name the element reads directly in its lineage graph: a table gives its
     one column of that name, another element that element's column, traced the same way and once per element. A
     name matching no source or several, a relationship ([Element/Relationship/Column]) or an escape adds nothing.
-    A column whose reference names a source is keyed even when it gets nothing, so it is not matched by name.
+    A column whose reference names a source it reads directly is keyed even when it gets nothing, so it is not matched
+    by name.
     """
     traced_elements = {} if traced_elements is None else traced_elements
     own = {key for key, node in graph.dependencies.items() if node.type == "sheet" and node.elementId == element_id}
@@ -171,6 +172,8 @@ def _formula_sources(
         for reference in _references(formula):
             name, _, source_column = reference.partition("/")
             nodes = list(direct.get(name, {}).values())
+            if source_column and nodes:
+                sources.setdefault(column, [])
             if not source_column:
                 read.setdefault(column, []).append(name)
             elif "/" in source_column or len(nodes) != 1:

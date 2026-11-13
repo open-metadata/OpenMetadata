@@ -1839,10 +1839,12 @@ def test_column_formulas_are_not_read_when_data_models_are_off(sigma_over_http):
 
 def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigma_data_models):
     source, _ = sigma_over_http
+    sigma_data_models["GET", "/v2/dataModels/dm-1/elements"]["entries"][1]["columns"].append("City")
     sigma_data_models["GET", "/v2/dataModels/dm-1/columns"]["entries"] = [
         sigma_column("dmEl1", "Order Id", "[ORDERS/Order Id]"),
         sigma_column("dmEl1", "Amount", "Round([ORDERS/Amount], 2)"),
         sigma_column("dmEl2", "Customer Id", "[Order Id]"),
+        sigma_column("dmEl2", "City", "[ORDERS/Customer/City]"),
     ]
 
     [data_model] = bulk_data_models(source)
@@ -1855,6 +1857,7 @@ def test_a_sigma_data_model_column_shows_its_sigma_formula(sigma_over_http, sigm
         ("Orders", "Order Id"): None,
         ("Orders", "Amount"): "**Formula:** `Round([ORDERS/Amount], 2)`",
         ("Customers", "Customer Id"): "**Formula:** `[Order Id]`",
+        ("Customers", "City"): "**Formula:** `[ORDERS/Customer/City]`",
     }
 
 
@@ -2526,6 +2529,7 @@ COSTS_WITH_TOTAL = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
         # Three parts name a relationship, even when they read together as a column of the table
         ("[COSTS/Co/st] * 2", None),
         ("[COSTS/Cost]", ["COST"]),
+        ("[COSTS/Customer/Cost]", None),
         # A plain copy of a source not found is matched by name, as before
         ("[ORDERS/Total]", ["TOTAL"]),
     ],
@@ -2536,6 +2540,7 @@ COSTS_WITH_TOTAL = sales_table("COSTS", ["COST", "MRP", "TOTAL"])
         "source-not-read",
         "relationship",
         "renamed-copy",
+        "copy-through-a-relationship",
         "copy-of-unknown-source",
     ],
 )
@@ -2585,6 +2590,8 @@ PREP_READS_MARGINS = {
         (TWO_SOURCES_NAMED_COSTS, "[COSTS/Cost] * 2", {"elCosts": {"Cost": "[COSTS/Cost]"}}, None),
         (PREP_READS_MARGINS, "[Prep/Margin] * 2", {"elPrep": {"Margin": "[Margins/Total]"}}, None),
         (THROUGH_PREP, "[Prep/Total]", {"elPrep": {"Total": "1"}}, None),
+        (THROUGH_PREP, "[Prep/Customer/Cost]", {"elPrep": PREP}, None),
+        (TWO_SOURCES_NAMED_COSTS, "[COSTS/Cost]", {"elCosts": {"Cost": "[COSTS/Cost]"}}, None),
     ],
     ids=[
         "calculated-column-of-another-element",
@@ -2593,6 +2600,8 @@ PREP_READS_MARGINS = {
         "two-sources-of-that-name",
         "elements-reading-each-other",
         "copy-of-a-constant-in-another-element",
+        "copy-through-a-relationship-of-another-element",
+        "copy-from-two-sources-of-that-name",
     ],
 )
 def test_a_calculated_column_follows_the_element_it_reads(lineage_source, graph, formula, other_elements, total):
