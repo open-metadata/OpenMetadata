@@ -11,23 +11,49 @@
  *  limitations under the License.
  */
 
+import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import type { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 
-/**
- * The open reviews the Studio banner may announce: those the caller votes on,
- * then those the caller requested, once each.
- */
-export const getOpenReviews = (
-  ...lists: (OntologyReleaseReview[] | undefined)[]
+// ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
+export const CURSOR_HISTORY_LIMIT = 40;
+
+/** The bump between two semantic versions; a first release counts from 0.0.0. */
+export const releaseBump = (
+  base: string | undefined,
+  version: string | undefined
 ) => {
-  const seen = new Set<string>();
+  if (!version) {
+    return undefined;
+  }
+  const [major, minor] = (base ?? '0.0.0').split('.');
+  const [nextMajor, nextMinor] = version.split('.');
+  if (major !== nextMajor) {
+    return VersionBump.Major;
+  }
 
-  return lists
-    .flatMap((list) => list ?? [])
-    .filter((review) => {
-      const duplicate = seen.has(review.task.id);
-      seen.add(review.task.id);
+  return minor === nextMinor ? VersionBump.Patch : VersionBump.Minor;
+};
 
-      return !duplicate;
-    });
+/** Paging controls only help once there is a page to move to or back from. */
+export const hasMorePages = (after: string | undefined, pagesSeen: number) =>
+  Boolean(after) || pagesSeen > 1;
+
+/** The loaded reviews whose title, task id, ontology or requester matches the search. */
+export const filterReviews = (
+  reviews: OntologyReleaseReview[],
+  search: string
+) => {
+  const needle = search.trim().toLowerCase();
+  if (!needle) {
+    return reviews;
+  }
+
+  return reviews.filter((review) =>
+    [
+      review.task.displayName,
+      review.taskId,
+      review.ontology.displayName ?? review.ontology.name,
+      review.requester?.displayName ?? review.requester?.name,
+    ].some((value) => value?.toLowerCase().includes(needle))
+  );
 };

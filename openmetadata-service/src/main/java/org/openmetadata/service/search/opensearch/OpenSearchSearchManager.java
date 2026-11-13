@@ -36,6 +36,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -73,6 +74,7 @@ import org.openmetadata.service.search.SearchResultListMapper;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.SearchUtils;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
 import org.openmetadata.service.search.lineage.SearchLineagePermissionFilter;
 import org.openmetadata.service.search.nlq.NLQService;
@@ -99,9 +101,13 @@ import os.org.opensearch.client.opensearch._types.SortMode;
 import os.org.opensearch.client.opensearch._types.SortOrder;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregate;
 import os.org.opensearch.client.opensearch._types.aggregations.Aggregation;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregate;
+import os.org.opensearch.client.opensearch._types.aggregations.CompositeAggregationSource;
 import os.org.opensearch.client.opensearch._types.aggregations.StringTermsBucket;
 import os.org.opensearch.client.opensearch._types.mapping.Property;
+import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
+import os.org.opensearch.client.opensearch._types.query_dsl.TextQueryType;
 import os.org.opensearch.client.opensearch.core.SearchRequest;
 import os.org.opensearch.client.opensearch.core.SearchResponse;
 import os.org.opensearch.client.opensearch.core.search.Hit;
@@ -590,10 +596,85 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       }
     }
 
-    applyContextMemoryVisibility(
-        subjectContext, requestBuilder, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    OMQueryBuilder memoryVisibility =
+        ContextMemorySearchVisibility.isMemoryListingIndex(index)
+            ? contextMemoryVisibility.buildListingVisibilityFilter(
+                subjectContext,
+                statuses,
+                matchingListingAnchors(index, requestBuilder, subjectContext, statuses))
+            : contextMemoryVisibility.buildVisibilityFilter(
+                subjectContext, statuses, ContextMemoryAnchorPins.ofQueryFilters(filter));
+    applyContextMemoryVisibility(subjectContext, requestBuilder, memoryVisibility);
 
     return doListWithOffset(limit, offset, index, searchSortFilter, requestBuilder);
+  }
+
+  Set<String> matchingListingAnchors(
+      String index,
+      OpenSearchRequestBuilder listing,
+      SubjectContext subject,
+      List<ContextMemoryStatus> statuses)
+      throws IOException {
+    Set<String> anchors = Set.of();
+    if (contextMemoryVisibility.needsListingAnchorAccess(subject, statuses)) {
+      OpenSearchRequestBuilder candidates =
+          new OpenSearchRequestBuilder()
+              .query(listing.query())
+              .size(0)
+              .timeout("30s")
+              .contextMemoryVisibilityResolved()
+              .filter(
+                  ((OpenSearchQueryBuilder)
+                          contextMemoryVisibility.buildListingAnchorCandidateFilter(statuses))
+                      .buildV2());
+      if (listing.postFilter() != null) {
+        candidates.filter(listing.postFilter());
+      }
+      anchors = matchingMemoryAnchorIds(index, candidates);
+    }
+    return anchors;
+  }
+
+  Set<String> matchingMemoryAnchorIds(String index, OpenSearchRequestBuilder candidates)
+      throws IOException {
+    Set<String> anchors = new LinkedHashSet<>();
+    Map<String, FieldValue> after = Map.of();
+    do {
+      CompositeAggregate page = memoryAnchorPage(index, candidates, after);
+      page.buckets()
+          .array()
+          .forEach(
+              bucket ->
+                  anchors.add(bucket.key().get(ContextMemoryIndex.FIELD_ANCHOR_ID).stringValue()));
+      after = page.afterKey();
+    } while (after != null && !after.isEmpty());
+    return anchors;
+  }
+
+  private CompositeAggregate memoryAnchorPage(
+      String index, OpenSearchRequestBuilder candidates, Map<String, FieldValue> after)
+      throws IOException {
+    var source =
+        CompositeAggregationSource.of(
+            s -> s.terms(t -> t.field(ContextMemoryIndex.FIELD_ANCHOR_ID)));
+    candidates.aggregation(
+        ContextMemoryIndex.FIELD_ANCHOR_ID,
+        Aggregation.of(
+            a ->
+                a.composite(
+                    c -> {
+                      c.sources(List.of(Map.of(ContextMemoryIndex.FIELD_ANCHOR_ID, source)))
+                          .size(ContextMemorySearchVisibility.LISTING_ANCHOR_PAGE_SIZE);
+                      if (!after.isEmpty()) {
+                        c.after(after);
+                      }
+                      return c;
+                    })));
+    SearchResponse<JsonData> response = client.search(candidates.build(index), JsonData.class);
+    if (response.timedOut() || response.shards().failed() > 0) {
+      throw new IOException("Incomplete memory anchor listing for " + index);
+    }
+    return response.aggregations().get(ContextMemoryIndex.FIELD_ANCHOR_ID).composite();
   }
 
   @Override
@@ -1079,12 +1160,15 @@ public class OpenSearchSearchManager implements SearchManagementClient {
     if (nullOrEmpty(queryFilter) || EMPTY_JSON_OBJECT.equals(queryFilter)) {
       return;
     }
-    String queryDsl = QueryFilterShape.requireQueryDsl(queryFilter);
-    String encodedQuery = Base64.getEncoder().encodeToString(queryDsl.getBytes(UTF_8));
-    Query filterQuery = Query.of(q -> q.wrapper(w -> w.query(encodedQuery)));
+    Query filterQuery = wrapped(QueryFilterShape.requireQueryDsl(queryFilter));
     Query existingQuery = requestBuilder.query();
     requestBuilder.query(
         existingQuery == null ? filterQuery : filteredBy(existingQuery, filterQuery));
+  }
+
+  private static Query wrapped(String queryDsl) {
+    String encodedQuery = Base64.getEncoder().encodeToString(queryDsl.getBytes(UTF_8));
+    return Query.of(q -> q.wrapper(w -> w.query(encodedQuery)));
   }
 
   private static Query filteredBy(Query existingQuery, Query filterQuery) {
@@ -1209,6 +1293,13 @@ public class OpenSearchSearchManager implements SearchManagementClient {
       Collection<String> pinnedAnchorIds) {
     OMQueryBuilder visibilityBuilder =
         contextMemoryVisibility.buildVisibilityFilter(subjectContext, statuses, pinnedAnchorIds);
+    applyContextMemoryVisibility(subjectContext, requestBuilder, visibilityBuilder);
+  }
+
+  private void applyContextMemoryVisibility(
+      SubjectContext subjectContext,
+      OpenSearchRequestBuilder requestBuilder,
+      OMQueryBuilder visibilityBuilder) {
     if (visibilityBuilder != null) {
       requestBuilder.filter(((OpenSearchQueryBuilder) visibilityBuilder).buildV2());
     }
@@ -1589,46 +1680,76 @@ public class OpenSearchSearchManager implements SearchManagementClient {
         SettingsCache.getSetting(SettingsType.SEARCH_SETTINGS, SearchSettings.class);
     OpenSearchRequestBuilder requestBuilder =
         buildSearchRequestBuilder(request, subjectContext, searchSettings, clusterAlias);
+    return completeResults(requestBuilder.build(request.getIndex()), request.getIndex());
+  }
 
+  @Override
+  public SearchResultListMapper searchSimilarContextMemories(
+      String text, String filterJson, int size) throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("OpenSearch client is not available");
+    }
+    String index = Entity.getSearchRepository().getIndexOrAliasName(Entity.CONTEXT_MEMORY);
+    // The caller's filter decides which memories qualify, so the org-wide-only default stays off.
+    OpenSearchRequestBuilder requestBuilder =
+        new OpenSearchRequestBuilder()
+            .query(sharedTermsQuery(text))
+            .filter(wrapped(QueryFilterShape.requireQueryDsl(filterJson)))
+            .fetchSource(ContextMemoryIndex.SIMILARITY_RESULT_FIELDS.toArray(String[]::new), null)
+            .size(size)
+            .timeout("30s")
+            .contextMemoryVisibilityResolved();
+    return completeResults(requestBuilder.build(index), index);
+  }
+
+  private static Query sharedTermsQuery(String text) {
+    return Query.of(
+        q ->
+            q.multiMatch(
+                m ->
+                    m.query(text)
+                        .fields(ContextMemoryIndex.SIMILARITY_FIELDS)
+                        .type(TextQueryType.CrossFields)
+                        .operator(Operator.Or)
+                        .minimumShouldMatch(ContextMemoryIndex.SIMILARITY_MINIMUM_SHOULD_MATCH)));
+  }
+
+  /** A response missing hits, timed out or with a failed shard, fails instead of reading short. */
+  private SearchResultListMapper completeResults(SearchRequest searchRequest, String index)
+      throws IOException {
     try {
-      SearchRequest searchRequest = requestBuilder.build(request.getIndex());
-      SearchResponse<JsonData> response =
-          searchForCompleteExportResponse(searchRequest, request.getIndex());
-
-      if (response.timedOut() || response.shards().failed() > 0) {
-        throw new IOException("Incomplete search export for " + request.getIndex());
-      }
-
-      List<Map<String, Object>> results = new ArrayList<>();
-      Object[] lastHitSortValues = null;
-
-      if (response.hits().hits() != null && !response.hits().hits().isEmpty()) {
-        List<Hit<JsonData>> hits = response.hits().hits();
-        for (Hit<JsonData> hit : hits) {
-          if (hit.source() != null) {
-            results.add(OsUtils.jsonDataToMap(hit.source()));
-          }
-        }
-        Hit<JsonData> lastHit = hits.getLast();
-        if (lastHit.sort() != null && !lastHit.sort().isEmpty()) {
-          lastHitSortValues =
-              lastHit.sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
-        }
-      }
-
-      long totalHits = 0;
-      if (response.hits().total() != null) {
-        totalHits = response.hits().total().value();
-      }
-
-      return new SearchResultListMapper(results, totalHits, lastHitSortValues);
+      return toResultList(searchForCompleteExportResponse(searchRequest, index));
     } catch (OpenSearchException e) {
       if (e.status() == 404) {
-        throw SearchEngineErrors.indexNotFound(request.getIndex());
+        throw SearchEngineErrors.indexNotFound(index);
       } else {
         throw buildSearchException(e);
       }
     }
+  }
+
+  private static SearchResultListMapper toResultList(SearchResponse<JsonData> response) {
+    List<Hit<JsonData>> hits = listOrEmpty(response.hits().hits());
+    long totalHits = response.hits().total() == null ? 0 : response.hits().total().value();
+    return new SearchResultListMapper(sourcesOf(hits), totalHits, lastSortValues(hits));
+  }
+
+  private static List<Map<String, Object>> sourcesOf(List<Hit<JsonData>> hits) {
+    List<Map<String, Object>> results = new ArrayList<>();
+    for (Hit<JsonData> hit : hits) {
+      if (hit.source() != null) {
+        results.add(OsUtils.jsonDataToMap(hit.source()));
+      }
+    }
+    return results;
+  }
+
+  private static Object[] lastSortValues(List<Hit<JsonData>> hits) {
+    Object[] values = null;
+    if (!hits.isEmpty() && !nullOrEmpty(hits.getLast().sort())) {
+      values = hits.getLast().sort().stream().map(fv -> fv == null ? null : fv._get()).toArray();
+    }
+    return values;
   }
 
   private SearchResponse<JsonData> searchForCompleteExportResponse(

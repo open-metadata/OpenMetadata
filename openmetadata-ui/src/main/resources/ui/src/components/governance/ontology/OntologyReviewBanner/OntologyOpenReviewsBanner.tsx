@@ -10,84 +10,62 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
-import {
-  Alert,
-  Box,
-  Button,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getReviewStatusMessage } from './OntologyReviewBanner.utils';
-
-// Beyond this many open reviews the banner shows a count and a link instead.
-export const OPEN_REVIEW_LINE_LIMIT = 3;
+import OntologyReviewPill from './OntologyReviewPill';
 
 type Props = {
+  /** The open reviews waiting on the viewer's vote. */
   reviews: OntologyReleaseReview[];
   onOpenTask: (taskId: string) => void;
   onOpenList: () => void;
+  onDismiss?: () => void;
 };
 
 /**
- * All ontologies has no single review to announce, so each open review is
- * named with its ontology rather than shown as if it belonged to the view.
+ * One pill for the reviews waiting on the viewer: who asked when there is one,
+ * otherwise how many, with Review opening the Tasks list.
  */
 const OntologyOpenReviewsBanner = ({
   reviews,
   onOpenTask,
   onOpenList,
+  onDismiss,
 }: Props) => {
   const { t } = useTranslation();
-  if (!reviews.length) {
+  const [only] = reviews;
+  if (!only) {
     return null;
   }
-  const listed = reviews.length <= OPEN_REVIEW_LINE_LIMIT;
+  const isSingle = reviews.length === 1;
 
   return (
-    <Alert data-testid="ontology-open-reviews-banner" variant="brand">
-      <Box direction="col" gap={2}>
-        {listed ? (
-          reviews.map((review) => {
-            const status = getReviewStatusMessage(review);
-
-            return (
-              <Box
-                align="center"
-                gap={3}
-                justify="between"
-                key={review.task.id}
-                wrap="wrap">
-                <Typography>
-                  {getEntityName(review.ontology)} ·{' '}
-                  {t(status.key, status.values)} ·{' '}
-                  {review.taskId ?? review.task.id}
-                </Typography>
-                <Button
-                  color="secondary"
-                  size="sm"
-                  onPress={() => onOpenTask(review.task.id)}>
-                  {t('label.view-task')}
-                </Button>
-              </Box>
-            );
-          })
-        ) : (
-          <Box align="center" gap={3} justify="between" wrap="wrap">
-            <Typography>
-              {t('message.ontology-review-open-count', {
-                count: reviews.length,
-              })}
-            </Typography>
-            <Button color="secondary" size="sm" onPress={onOpenList}>
-              {t('label.view-all')}
-            </Button>
-          </Box>
-        )}
-      </Box>
-    </Alert>
+    <OntologyReviewPill
+      action={
+        <Button
+          pill
+          color="secondary-warning-outline"
+          size="sm"
+          onPress={() => (isSingle ? onOpenTask(only.task.id) : onOpenList())}>
+          {t('label.review')}
+        </Button>
+      }
+      testId="ontology-open-reviews-banner"
+      title={
+        isSingle
+          ? t('message.ontology-review-asked-you', {
+              requester: getEntityName(only.requester),
+              version: getEntityName(only.ontology),
+            })
+          : t('message.ontology-review-waiting-count', {
+              count: reviews.length,
+            })
+      }
+      tone="warning"
+      onDismiss={onDismiss}
+    />
   );
 };
 

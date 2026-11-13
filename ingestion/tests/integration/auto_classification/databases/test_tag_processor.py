@@ -1,29 +1,14 @@
-import uuid
 from copy import deepcopy
 
 import pytest
 from dirty_equals import Contains, HasAttributes, IsInstance
 
 from _openmetadata_testutils.ometa import int_admin_ometa
-from metadata.generated.schema.api.services.createDatabaseService import (
-    CreateDatabaseServiceRequest,
-)
 from metadata.generated.schema.entity.classification.tag import Tag
-from metadata.generated.schema.entity.services.connections.database.common.basicAuth import (
-    BasicAuth,
-)
-from metadata.generated.schema.entity.services.connections.database.postgresConnection import (
-    PostgresConnection,
-)
 from metadata.generated.schema.entity.services.databaseService import (
-    DatabaseConnection,
     DatabaseService,
-    DatabaseServiceType,
 )
 from metadata.generated.schema.entity.teams.user import AuthenticationMechanism, User
-from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
-    DatabaseMetadataConfigType,
-)
 from metadata.generated.schema.type.classificationLanguages import ClassificationLanguage
 from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.predefinedRecognizer import Name
@@ -31,50 +16,6 @@ from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.workflow.classification import AutoClassificationWorkflow
 from metadata.workflow.metadata import MetadataWorkflow
-
-
-@pytest.fixture(scope="module")
-def create_service_request(postgres_container: PostgresConnection):
-    return CreateDatabaseServiceRequest(
-        name=f"docker_test_postgres_{uuid.uuid4().hex[:8]}",
-        serviceType=DatabaseServiceType.Postgres,
-        connection=DatabaseConnection(
-            config=PostgresConnection(
-                username=postgres_container.username,
-                authType=BasicAuth(password=postgres_container.password),
-                hostPort=postgres_container.get_container_host_ip()
-                + ":"
-                + str(postgres_container.get_exposed_port(postgres_container.port)),
-                database=postgres_container.dbname,
-            )
-        ),
-    )
-
-
-@pytest.fixture(scope="module")
-def ingestion_config(db_service, metadata, workflow_config, sink_config):
-    return {
-        "source": {
-            "type": db_service.connection.config.type.value.lower(),
-            "serviceName": db_service.fullyQualifiedName.root,
-            "sourceConfig": {
-                "config": {
-                    "type": DatabaseMetadataConfigType.DatabaseMetadata.value,
-                    "tableFilterPattern": FilterPattern(
-                        includes=["^(example_table|card_prefix_cases|identifier_en|identifier_es|identifier_it)$"]
-                    ),
-                }
-            },
-            "serviceConnection": db_service.connection.model_dump(),
-        },
-        "sink": sink_config,
-        "workflowConfig": workflow_config,
-    }
-
-
-@pytest.fixture(scope="module")
-def load_metadata(run_workflow, ingestion_config) -> MetadataWorkflow:
-    return run_workflow(MetadataWorkflow, ingestion_config)
 
 
 @pytest.fixture(scope="module")

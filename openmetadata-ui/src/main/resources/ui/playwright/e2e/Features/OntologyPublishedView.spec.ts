@@ -275,7 +275,7 @@ test.describe(
         await expectSelected(owner.page, 'mode-tab-edit');
         await expect(owner.page).toHaveURL(/mode=edit/);
         await expect(owner.page).not.toHaveURL(/version=/);
-        const editor = owner.page.getByTestId('ontology-concept-authoring');
+        const editor = owner.page.getByTestId('ontology-concept-editor');
         await expect(editor).toBeVisible();
         await expect
           .poll(() =>
@@ -349,7 +349,9 @@ test.describe(
         await expect(page.getByText(DRAFT_WORDING)).toBeVisible();
         await expect(page.getByTestId('mode-tab-edit')).toBeVisible();
 
+        // The version switch sits outside the drawer, so pressing it closes Alpha's drawer.
         await page.getByTestId('ontology-version-published').click();
+        await openConceptInTree(page, fixture.alpha);
 
         await expect(page.getByText(RELEASED_WORDING)).toBeVisible();
         await expect(page.getByText(DRAFT_WORDING)).toHaveCount(0);
@@ -358,6 +360,7 @@ test.describe(
         await page.screenshot({ path: 'test-results/g15-switch.png' });
 
         await page.getByTestId('ontology-version-draft').click();
+        await openConceptInTree(page, fixture.alpha);
 
         await expect(page.getByText(DRAFT_WORDING)).toBeVisible();
         await expect(page.getByTestId('mode-tab-edit')).toBeVisible();

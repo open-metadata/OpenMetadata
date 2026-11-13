@@ -22,10 +22,17 @@ import { Copy01, XClose } from '@openmetadata/ui-core-components/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CONTEXT_FILE_ENTITY_TYPE } from '../../../constants/ContextCenter.constants';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
+import {
+  extractFileMemories,
+  getContextFileById,
+} from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
+import { getFileExtractionAction } from '../../../utils/discovery/context-center/memoryExtraction.utils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
+import MemoryExtractionButton from '../../discovery/context-center/MemoryExtractionButton/MemoryExtractionButton';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import {
@@ -48,6 +55,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   file,
   url,
   onClose,
+  onFileRefreshed,
 }) => {
   const { t } = useTranslation();
 
@@ -122,11 +130,17 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             <Typography className="tw:text-quaternary" size="text-sm">
               {t('label.status')}
             </Typography>
-            <DocumentStatusBadge
-              error={file.processingError}
-              stats={file.extractionStats}
-              status={file.processingStatus}
-            />
+            <Box align="center" gap={2}>
+              <DocumentStatusBadge file={file} />
+              <MemoryExtractionButton<ContextFile>
+                action={getFileExtractionAction(file)}
+                documentId={file.id}
+                owners={file.owners}
+                reload={() => getContextFileById(file.id)}
+                request={() => extractFileMemories(file.id)}
+                onUpdate={(refreshed) => onFileRefreshed?.(refreshed)}
+              />
+            </Box>
           </Box>
           {folderName && (
             <MetaRow label={t('label.folder')} value={folderName} />

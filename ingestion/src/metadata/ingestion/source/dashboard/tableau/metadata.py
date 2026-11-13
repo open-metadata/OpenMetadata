@@ -13,7 +13,6 @@ Tableau source module
 """
 
 # pylint: disable=too-many-lines
-import re
 import traceback
 from collections import defaultdict
 from collections.abc import Iterable
@@ -117,6 +116,7 @@ from metadata.utils.helpers import (
     clean_uri,
     get_database_name_for_lineage,
     get_standard_chart_type,
+    normalize_column_name,
 )
 from metadata.utils.logger import ingestion_logger
 
@@ -140,18 +140,6 @@ LENGTH_REQUIRED_DATA_TYPES = {
 # limit that doesn't exist. 0 still satisfies the server's non-null check and
 # matches what Superset reports for the same unknown-length case.
 DEFAULT_DATA_LENGTH = 0
-# Tableau titles database column names when it builds fields (`order_date` becomes
-# `Order Date`), so separators and casing carry no meaning when comparing the two.
-# `\w` is Unicode-aware, and `_` is listed explicitly because `\w` matches it: a name made
-# only of non-ASCII letters must normalize to itself rather than to an empty string, or a
-# CJK column would never collapse onto the field mirroring it.
-NON_ALPHANUMERIC = re.compile(r"[\W_]")
-
-
-def normalize_column_name(name: str) -> str:
-    """Strip separators and casing so a Tableau field name can be compared to the physical
-    column it wraps (``Order Date`` vs ``order_date``)."""
-    return NON_ALPHANUMERIC.sub("", name.casefold())
 
 
 class TableauSource(DashboardServiceSource):

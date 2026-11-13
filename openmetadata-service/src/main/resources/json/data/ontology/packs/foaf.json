@@ -1,0 +1,31 @@
+{
+  "abbreviation": "FOAF",
+  "attribution": "FOAF Vocabulary Specification 0.99 (Paddington Edition, 14 January 2014), Dan Brickley and Libby Miller. Licensed under CC BY 1.0. Redistributed without changes.",
+  "bundled": true,
+  "description": "The Friend of a Friend vocabulary for people, groups, accounts and documents, published verbatim as RDF/XML.",
+  "id": "foaf",
+  "industry": "cross-industry",
+  "layer": "L1",
+  "license": "CC BY 1.0",
+  "licenseUrl": "http://creativecommons.org/licenses/by/1.0/",
+  "modules": [
+    {
+      "conceptCount": 14,
+      "dependencies": [],
+      "description": "Persons, agents, groups, organizations, accounts, documents and images.",
+      "format": "rdfxml",
+      "id": "foaf",
+      "name": "FOAF vocabulary",
+      "relationshipCount": 20,
+      "resourcePath": "rdf/ontology-packs/foaf/foaf.rdf",
+      "selectedByDefault": true,
+      "sha256": "3d859b5d92a2c3d041545d014fa826f682ca06d056af8c7b31e32d930abf2bc5",
+      "sourceUrl": "https://xmlns.com/foaf/spec/index.rdf"
+    }
+  ],
+  "name": "FOAF",
+  "publisher": "Dan Brickley and Libby Miller",
+  "sourceUrl": "http://xmlns.com/foaf/spec/",
+  "standard": "Friend of a Friend (FOAF) vocabulary",
+  "version": "0.99"
+}

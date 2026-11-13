@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/api/context/extractionAvailability.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ExtractionAvailability",
+  "description": "Whether memories can be extracted from Context Center documents and articles now, and why not when they cannot.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.context.ExtractionAvailability",
+  "properties": {
+    "available": {
+      "description": "True when memories can be extracted now.",
+      "type": "boolean"
+    },
+    "reason": {
+      "description": "Why memories cannot be extracted, present only when available is false. ExtractionDisabled: the LLM or memory extraction is turned off. ProviderDisabled: the AI provider that extracts memories is turned off. ProviderUnavailable: the AI provider that extracts memories is unavailable.",
+      "type": "string",
+      "enum": ["ExtractionDisabled", "ProviderDisabled", "ProviderUnavailable"],
+      "javaEnums": [
+        { "name": "ExtractionDisabled" },
+        { "name": "ProviderDisabled" },
+        { "name": "ProviderUnavailable" }
+      ]
+    }
+  },
+  "required": ["available"],
+  "additionalProperties": false
+}

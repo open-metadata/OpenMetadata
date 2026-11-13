@@ -255,9 +255,7 @@ public class SecretsManagerNullSecretIT {
                     .withStartDate(Date.from(Instant.parse("2024-01-01T00:00:00Z"))));
     IngestionPipeline pipeline = SdkClients.adminClient().ingestionPipelines().create(request);
     ns.trackRoot(Entity.INGESTION_PIPELINE, pipeline);
-    String entryId =
-        entitySecretRoot("pipeline", pipelineName)
-            + "/sourceconfig/config/dbtconfigsource/dbthttpheaders/additionalproperties/authorization";
+    String entryId = dbtHeaderId(pipeline.getId());
     assertEquals(PASSWORD, vault.getSecretsMap().get(entryId));
 
     config.setDbtHttpHeaders(null);
@@ -284,7 +282,7 @@ public class SecretsManagerNullSecretIT {
                     service,
                     pipelineName,
                     Map.of("Authorization", PASSWORD, "User", "secret:" + userId)));
-    String entryId = dbtHeaderId(pipelineName);
+    String entryId = dbtHeaderId(pipeline.getId());
     assertEquals(PASSWORD, vault.getSecretsMap().get(entryId));
 
     if (cascade) {
@@ -351,22 +349,28 @@ public class SecretsManagerNullSecretIT {
     IngestionPipeline updated = JsonUtils.deepCopy(original, IngestionPipeline.class);
     updated.setSourceConfig(dbtRequest(service, name, Map.of()).getSourceConfig());
     List<Runnable> delayed = deferUpdate(repository, original, updated);
-    assertEquals(PASSWORD, vault.getSecretsMap().get(dbtHeaderId(name)));
+    String entryId = dbtHeaderId(created.getId());
+    assertEquals(PASSWORD, vault.getSecretsMap().get(entryId));
 
     SdkClients.adminClient()
         .ingestionPipelines()
         .delete(created.getId().toString(), Map.of("hardDelete", "true"));
-    assertFalse(vault.getSecretsMap().containsKey(dbtHeaderId(name)));
+    assertFalse(vault.getSecretsMap().containsKey(entryId));
     updated.setSourceConfig(
         dbtRequest(service, name, Map.of("Authorization", "stale")).getSourceConfig());
     assertThrows(EntityNotFoundException.class, () -> repository.storeEntity(updated, true));
+    String currentEntryId = entryId;
     if (recreate) {
-      SdkClients.adminClient()
-          .ingestionPipelines()
-          .create(dbtRequest(service, name, Map.of("Authorization", "replacement")));
+      IngestionPipeline replacement =
+          SdkClients.adminClient()
+              .ingestionPipelines()
+              .create(dbtRequest(service, name, Map.of("Authorization", "replacement")));
+      ns.trackRoot(Entity.INGESTION_PIPELINE, replacement);
+      currentEntryId = dbtHeaderId(replacement.getId());
     }
     PostCommitActionQueue.run(delayed);
-    assertEquals(recreate ? "replacement" : null, vault.getSecretsMap().get(dbtHeaderId(name)));
+    assertFalse(vault.getSecretsMap().containsKey(entryId));
+    assertEquals(recreate ? "replacement" : null, vault.getSecretsMap().get(currentEntryId));
   }
 
   private static <T extends EntityInterface<?>> List<Runnable> deferUpdate(
@@ -491,8 +495,8 @@ public class SecretsManagerNullSecretIT {
             new AirflowConfig().withStartDate(Date.from(Instant.parse("2024-01-01T00:00:00Z"))));
   }
 
-  private static String dbtHeaderId(String name) {
-    return entitySecretRoot("pipeline", name)
+  private static String dbtHeaderId(UUID pipelineId) {
+    return entitySecretRoot("pipeline", pipelineId.toString())
         + "/sourceconfig/config/dbtconfigsource/dbthttpheaders/additionalproperties/authorization";
   }
 
@@ -796,6 +800,68 @@ public class SecretsManagerNullSecretIT {
     assertTrue(Fernet.isTokenized(proposed.getPassword()));
     assertEquals("proposed-password", Fernet.getInstance().decrypt(proposed.getPassword()));
     assertFalse(JsonUtils.pojoToJson(response).contains("proposed-password"));
+  }
+
+  /** A PUT that omits the connection keeps the stored one and its vault secrets (#29494). */
+  @Test
+  void aPutWithoutAConnectionKeepsTheStoredConnectionAndItsSecrets(TestNamespace ns) {
+    String serviceName = ns.prefix("put_without_connection");
+    CreateDatabaseService request = request(serviceName);
+    DatabaseService original = SdkClients.adminClient().databaseServices().create(request);
+    ns.trackRoot(Entity.DATABASE_SERVICE, original);
+    request.withDescription("described without a connection").setConnection(null);
+
+    DatabaseService updated = put(request);
+
+    assertTrue(
+        updated.getChangeDescription().getFieldsUpdated().stream()
+            .noneMatch(field -> "connection".equals(field.getName())));
+    assertEquals(PASSWORD, vault.getSecretsMap().get(secretId(serviceName, "password")));
+    assertEquals(PRIVATE_KEY, vault.getSecretsMap().get(secretId(serviceName, "privatekey")));
+    DatabaseService stored =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                DATABASE_SERVICES_PATH + "/" + original.getId(),
+                null,
+                DatabaseService.class);
+    assertEquals("test-account", connectionOf(stored).getAccount());
+    assertEquals("described without a connection", stored.getDescription());
+  }
+
+  /** The approval gate must not stage a PUT that omits the connection as clearing it. */
+  @Test
+  void aHeldPutWithoutAConnectionStagesNoConnectionChange(TestNamespace ns) {
+    CreateDatabaseService request = request(ns.prefix("held_put_without_connection"));
+    DatabaseService original = SdkClients.adminClient().databaseServices().create(request);
+    ns.trackRoot(Entity.DATABASE_SERVICE, original);
+    ChangeRequestITSupport.deployHookWorkflowFor(
+        ns,
+        Entity.DATABASE_SERVICE,
+        "\"description\"",
+        "",
+        ChangeRequestITSupport.filterScopedTo(
+            Entity.DATABASE_SERVICE, original.getFullyQualifiedName()));
+    request.withDescription("proposed description").setConnection(null);
+
+    DatabaseService held = put(request);
+
+    assertEquals(original.getVersion(), held.getVersion());
+    ChangeRequest pending = ChangeRequestITSupport.onlyPendingRequest(original.getId());
+    List<String> stagedFields =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET, "/v1/changeRequests/" + pending.getId(), null, ChangeRequest.class)
+            .getActiveRevision()
+            .getOps()
+            .stream()
+            .map(MutationOp::getField)
+            .toList();
+    assertTrue(stagedFields.contains("description"), stagedFields.toString());
+    assertFalse(stagedFields.contains("connection"), stagedFields.toString());
+    assertFalse(stagedFields.contains("serviceAttributes"), stagedFields.toString());
   }
 
   private static CreateDatabaseService request(String serviceName) {

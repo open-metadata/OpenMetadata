@@ -95,7 +95,7 @@ public class APIServiceResource
   @Override
   protected List<MetadataOperation> getEntitySpecificOperations() {
     addViewOperation("pipelines", MetadataOperation.VIEW_BASIC);
-    return null;
+    return super.getEntitySpecificOperations();
   }
 
   public static class APIServiceList extends ResultList<ApiService> {

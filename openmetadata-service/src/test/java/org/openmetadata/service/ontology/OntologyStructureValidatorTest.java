@@ -252,6 +252,150 @@ class OntologyStructureValidatorTest {
   }
 
   @Test
+  void superpropertiesMustBeDeclaredPropertiesOfTheSameKind() {
+    final var child = property(PROPERTY, OntologyPropertyKind.OBJECT);
+    final var parent = property(URI.create("urn:parent"), OntologyPropertyKind.OBJECT);
+    child.setSuperProperties(List.of(parent.getIri()));
+    assertEquals(List.of("UNDECLARED_PROPERTY /superProperties"), violations(child));
+    assertEquals(List.of(), violations(child, parent));
+    assertEquals(
+        List.of("ILLEGAL_PUNNING /superProperties"),
+        violations(child, parent.withKind(OntologyPropertyKind.DATA)));
+    final var note =
+        property(URI.create("urn:note"), OntologyPropertyKind.ANNOTATION)
+            .withSuperProperties(List.of(URI.create(RDFS.comment.getURI())));
+    assertEquals(List.of(), violations(note));
+    final var top =
+        property(URI.create("urn:top"), OntologyPropertyKind.OBJECT)
+            .withSuperProperties(List.of(URI.create(OWL2.topObjectProperty.getURI())));
+    assertEquals(List.of(), violations(top));
+  }
+
+  @Test
+  void superpropertyLinksAllowSeveralParentsButNotACycle() {
+    final var first = property(URI.create("urn:first"), OntologyPropertyKind.DATA);
+    final var second = property(URI.create("urn:second"), OntologyPropertyKind.DATA);
+    final var third = property(URI.create("urn:third"), OntologyPropertyKind.DATA);
+    final var leaf = property(URI.create("urn:leaf"), OntologyPropertyKind.DATA);
+    first.setSuperProperties(List.of(second.getIri(), third.getIri()));
+    assertEquals(List.of(), violations(first, second, third, leaf));
+    second.setSuperProperties(List.of(third.getIri()));
+    third.setSuperProperties(List.of(first.getIri()));
+    leaf.setSuperProperties(List.of(first.getIri()));
+    assertEquals(
+        List.of(
+            "SUBPROPERTY_CYCLE /superProperties",
+            "SUBPROPERTY_CYCLE /superProperties",
+            "SUBPROPERTY_CYCLE /superProperties"),
+        violations(first, second, third, leaf));
+    assertEquals(
+        List.of(
+            "Superproperty links must not form a cycle: urn:first",
+            "Superproperty links must not form a cycle: urn:second",
+            "Superproperty links must not form a cycle: urn:third"),
+        messages(first, second, third, leaf));
+  }
+
+  @Test
+  void aCompositeSubpropertyMakesEverySuperpropertyAboveItNonSimple() {
+    final var transitive =
+        property(PROPERTY, OntologyPropertyKind.OBJECT)
+            .withCharacteristics(Set.of(RelationshipCharacteristic.TRANSITIVE))
+            .withSuperProperties(List.of(URI.create("urn:parent")));
+    final var parent =
+        property(URI.create("urn:parent"), OntologyPropertyKind.OBJECT)
+            .withSuperProperties(List.of(URI.create("urn:grandparent")))
+            .withInverse(INVERSE);
+    final var inverse = property(INVERSE, OntologyPropertyKind.OBJECT).withInverse(parent.getIri());
+    final var grandparent =
+        property(URI.create("urn:grandparent"), OntologyPropertyKind.OBJECT)
+            .withCharacteristics(Set.of(RelationshipCharacteristic.FUNCTIONAL));
+    final var subject = concept("Subject").withIri(URI.create("urn:subject"));
+    assertEquals(
+        List.of(
+            "NON_SIMPLE_CARDINALITY /expressions/0/propertyIri",
+            "NON_SIMPLE_PROPERTY /characteristics",
+            "NON_SIMPLE_PROPERTY /superProperties",
+            "NON_SIMPLE_PROPERTY /superProperties"),
+        sortedViolations(subject, transitive, parent, inverse, grandparent, cardinality(INVERSE)));
+    // The subproperty and its parent each name the ancestor they make non-simple; the parent's
+    // inverse has no superproperty link of its own to blame.
+    assertEquals(
+        List.of(
+            "A non-simple object property cannot be functional, inverse-functional, asymmetric, irreflexive or disjoint",
+            "A non-simple object property cannot specialize a functional, inverse-functional, asymmetric, irreflexive or disjoint property: urn:grandparent",
+            "A non-simple object property cannot specialize a functional, inverse-functional, asymmetric, irreflexive or disjoint property: urn:grandparent"),
+        messages(transitive, parent, inverse, grandparent));
+    transitive.setCharacteristics(Set.of());
+    assertEquals(List.of(), violations(subject, transitive, parent, inverse, grandparent));
+  }
+
+  @Test
+  void editingOnlyTheSubpropertyRefusesASimpleOnlyAncestorItWouldMakeNonSimple() {
+    final var chained =
+        property(PROPERTY, OntologyPropertyKind.OBJECT)
+            .withPropertyChain(List.of(URI.create("urn:first"), URI.create("urn:second")))
+            .withSuperProperties(List.of(URI.create("urn:parent")));
+    final var parent =
+        property(URI.create("urn:parent"), OntologyPropertyKind.OBJECT)
+            .withDisjointWith(List.of(URI.create("urn:other")));
+    final var other = property(URI.create("urn:other"), OntologyPropertyKind.OBJECT);
+    final var first = property(URI.create("urn:first"), OntologyPropertyKind.OBJECT);
+    final var second = property(URI.create("urn:second"), OntologyPropertyKind.OBJECT);
+    final List<OntologyDefinition> model = List.of(chained, parent, other, first, second);
+    final var thrown =
+        assertThrows(
+            OntologyValidationException.class,
+            () -> OntologyStructureValidator.requireValidWorking(model, Set.of(chained.getId())));
+    assertEquals(1, thrown.getError().getViolationCount());
+    assertTrue(thrown.getMessage().contains("urn:parent"), thrown.getMessage());
+    parent.setDisjointWith(List.of());
+    OntologyStructureValidator.requireValidWorking(model, Set.of(chained.getId()));
+  }
+
+  /**
+   * OWL 2 DL puts every chain element below the chain's superproperty and forbids placing a
+   * property below one of its own subproperties; superproperty links alone never break the order.
+   */
+  @Test
+  void aChainMustNotPlaceAPropertyBelowItsOwnSubproperty() {
+    var first = property(URI.create("urn:first"), OntologyPropertyKind.OBJECT);
+    var second = property(URI.create("urn:second"), OntologyPropertyKind.OBJECT);
+    var composed =
+        property(PROPERTY, OntologyPropertyKind.OBJECT)
+            .withPropertyChain(List.of(first.getIri(), second.getIri()));
+    first.setSuperProperties(List.of(PROPERTY));
+    assertEquals(List.of(), violations(first, second, composed));
+    first.setSuperProperties(List.of());
+    composed.setSuperProperties(List.of(first.getIri()));
+    assertEquals(
+        List.of("PROPERTY_CHAIN_REGULARITY /propertyChain"), violations(first, second, composed));
+    composed.setSuperProperties(List.of());
+    var inverse = property(INVERSE, OntologyPropertyKind.OBJECT).withInverse(PROPERTY);
+    composed.setInverse(INVERSE);
+    second.setSuperProperties(List.of(INVERSE));
+    assertEquals(List.of(), violations(first, second, composed, inverse));
+    second.setSuperProperties(List.of());
+    inverse.setSuperProperties(List.of(second.getIri()));
+    assertEquals(
+        List.of(
+            "PROPERTY_CHAIN_REGULARITY /propertyChain",
+            "PROPERTY_CHAIN_REGULARITY /superProperties"),
+        sortedViolations(first, second, composed, inverse));
+  }
+
+  @Test
+  void superpropertyLinksThroughAnInverseAreNotAChainCycle() {
+    var left = property(URI.create("urn:left"), OntologyPropertyKind.OBJECT).withInverse(INVERSE);
+    var inverse = property(INVERSE, OntologyPropertyKind.OBJECT).withInverse(left.getIri());
+    var right =
+        property(URI.create("urn:right"), OntologyPropertyKind.OBJECT)
+            .withSuperProperties(List.of(INVERSE));
+    left.setSuperProperties(List.of(right.getIri()));
+    assertEquals(List.of(), violations(left, inverse, right));
+  }
+
+  @Test
   void chainElementsStaySimpleWhileTheirSuperpropertyDoesNot() {
     var first = property(URI.create("urn:first"), OntologyPropertyKind.OBJECT);
     var second = property(URI.create("urn:second"), OntologyPropertyKind.OBJECT);
@@ -657,6 +801,19 @@ class OntologyStructureValidatorTest {
   private static List<String> violations(OntologyDefinition... definitions) {
     return validate(definitions).getViolations().stream()
         .map(issue -> issue.getViolation().getCode() + " " + issue.getViolation().getPath())
+        .toList();
+  }
+
+  /** Sorted, because the report orders members by their generated ids. */
+  private static List<String> sortedViolations(OntologyDefinition... definitions) {
+    return violations(definitions).stream().sorted().toList();
+  }
+
+  /** Sorted, because the report orders members by their generated ids. */
+  private static List<String> messages(OntologyDefinition... definitions) {
+    return validate(definitions).getViolations().stream()
+        .map(issue -> issue.getViolation().getMessage())
+        .sorted()
         .toList();
   }
 

@@ -10,10 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tabs, Typography } from '@openmetadata/ui-core-components';
-import classNames from 'classnames';
+import { Tabs } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
-import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { OntologyStudioTab } from '../OntologyStudioHeader/OntologyStudioHeader.types';
 
 interface OntologyStudioSubBarProps<S extends string> {
@@ -33,27 +31,11 @@ const OntologyStudioSubBar = <S extends string>({
   children,
   trailing,
 }: OntologyStudioSubBarProps<S>) => {
-  const isAiMode = useIsAiMode();
-
   return (
     <nav
       aria-label={caption}
-      className={classNames(
-        'tw:flex tw:shrink-0 tw:items-center tw:overflow-x-auto tw:border-b tw:border-secondary tw:bg-surface',
-        isAiMode
-          ? 'tw:h-15.5 tw:gap-3.5 tw:pr-3.5 tw:pl-4.5'
-          : 'tw:h-11.5 tw:gap-3 tw:px-4.5'
-      )}
+      className="tw:flex tw:h-15.5 tw:shrink-0 tw:items-center tw:gap-3.5 tw:overflow-x-auto tw:border-b tw:border-secondary tw:bg-surface tw:pr-3.5 tw:pl-4.5"
       data-testid="ontology-studio-subbar">
-      {isAiMode ? null : (
-        <Typography
-          className="tw:shrink-0 tw:tracking-wider tw:uppercase"
-          color="secondary"
-          size="text-xs"
-          weight="semibold">
-          {caption}
-        </Typography>
-      )}
       {surfaces.length > 0 ? (
         <Tabs
           className="tw:w-auto tw:shrink-0"
@@ -64,10 +46,7 @@ const OntologyStudioSubBar = <S extends string>({
               onSurfaceChange(nextSurface);
             }
           }}>
-          <Tabs.List
-            aria-label={caption}
-            size="sm"
-            type={isAiMode ? 'button-border' : 'button-brand'}>
+          <Tabs.List aria-label={caption} size="sm" type="button-border">
             {surfaces.map((tab) => (
               <Tabs.Item
                 data-testid={`submode-tab-${tab.id}`}

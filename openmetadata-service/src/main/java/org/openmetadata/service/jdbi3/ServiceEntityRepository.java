@@ -20,9 +20,11 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -50,6 +52,7 @@ import org.openmetadata.service.secrets.SecretMapOwnership;
 import org.openmetadata.service.secrets.SecretsManager;
 import org.openmetadata.service.secrets.SecretsManager.SecretInventory;
 import org.openmetadata.service.secrets.SecretsManagerFactory;
+import org.openmetadata.service.secrets.SecretsUtil;
 import org.openmetadata.service.secrets.masker.EntityMaskerFactory;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
 import org.openmetadata.service.security.policyevaluator.ServiceAttributeResolver;
@@ -62,6 +65,8 @@ public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
   private static final String PIPELINES_FIELD = "pipelines";
+  private static final String CONNECTION_FIELD = "connection";
+  private static final String SERVICE_ATTRIBUTES_FIELD = "serviceAttributes";
 
   @Getter private final Class<S> serviceConnectionClass;
   @Getter private final ServiceType serviceType;
@@ -107,6 +112,17 @@ public abstract class ServiceEntityRepository<
               Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
     }
     return descriptors;
+  }
+
+  // The updater keeps both when a PUT leaves them out, so the approval gate must not stage that
+  // PUT as clearing them
+  // (ADR:2026-11-13-a-put-that-omits-a-service-connection-keeps-the-stored-one).
+  @Override
+  public Set<String> getFieldsKeptByPut() {
+    Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
+    kept.add(CONNECTION_FIELD);
+    kept.add(SERVICE_ATTRIBUTES_FIELD);
+    return Set.copyOf(kept);
   }
 
   @Override
@@ -177,15 +193,15 @@ public abstract class ServiceEntityRepository<
   @Override
   public void prepare(T service, boolean update) {
     if (service.getConnection() != null) {
-      service
-          .getConnection()
-          .setConfig(
-              SecretsManagerFactory.getSecretsManager()
-                  .prepareServiceConnectionConfig(
-                      service.getConnection().getConfig(),
-                      service.getServiceType().value(),
-                      service.getName(),
-                      serviceType));
+      Object config =
+          SecretsManagerFactory.getSecretsManager()
+              .prepareServiceConnectionConfig(
+                  service.getConnection().getConfig(),
+                  service.getServiceType().value(),
+                  service.getName(),
+                  serviceType);
+      SecretsUtil.validateSslConfig(config, service.getServiceType().value());
+      service.getConnection().setConfig(config);
     }
   }
 
@@ -491,9 +507,9 @@ public abstract class ServiceEntityRepository<
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("connection", this::updateConnection);
+      compareAndUpdate(CONNECTION_FIELD, this::updateConnection);
       compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
-      compareAndUpdate("serviceAttributes", this::updateServiceAttributes);
+      compareAndUpdate(SERVICE_ATTRIBUTES_FIELD, this::updateServiceAttributes);
     }
 
     /**
@@ -512,6 +528,15 @@ public abstract class ServiceEntityRepository<
     }
 
     private void updateConnection() {
+      // A PUT that omits the connection keeps the stored one; only a PATCH clears it. Omitting it
+      // would otherwise delete the credentials, vault entries included
+      // (ADR:2026-11-13-a-put-that-omits-a-service-connection-keeps-the-stored-one).
+      if (operation == Operation.PUT
+          && updated.getConnection() == null
+          && original.getConnection() != null) {
+        keepStoredConnection();
+        return;
+      }
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
       if (!CommonUtil.nullOrEmpty(updatedConn)) {
@@ -544,6 +569,15 @@ public abstract class ServiceEntityRepository<
       }
     }
 
+    /**
+     * Each generated service types its own connection setter, so the stored connection is copied
+     * onto the update in place through its JSON form.
+     */
+    private void keepStoredConnection() {
+      JsonUtils.overwriteFromTokenBuffer(
+          updated, JsonUtils.toTokenBuffer(new StoredConnection(original.getConnection())));
+    }
+
     private void updateIngestionRunner() {
       UUID originalAgentId =
           original.getIngestionRunner() != null ? original.getIngestionRunner().getId() : null;
@@ -563,4 +597,7 @@ public abstract class ServiceEntityRepository<
       }
     }
   }
+
+  /** The {@code connection} field alone, to overwrite it on a service in place. */
+  private record StoredConnection(ServiceConnectionEntityInterface connection) {}
 }

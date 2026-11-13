@@ -297,7 +297,7 @@ class OntologyReleaseValidationTest {
       final OntologyConceptBindingService bindings,
       final BooleanSupplier materializedInference) {
     final OntologyReleaseDAO dao = mock(OntologyReleaseDAO.class);
-    when(dao.listMembers(any(UUID.class), anyString(), anyString(), eq(100)))
+    when(dao.listMembers(any(UUID.class), anyString(), anyString(), eq(1_000)))
         .thenAnswer(
             invocation -> {
               final String kind = invocation.getArgument(1);
@@ -308,7 +308,7 @@ class OntologyReleaseValidationTest {
                       member ->
                           after.isEmpty() || member.getMemberId().toString().compareTo(after) > 0)
                   .sorted(Comparator.comparing(member -> member.getMemberId().toString()))
-                  .limit(100)
+                  .limit(invocation.<Integer>getArgument(3))
                   .toList();
             });
     final CollectionDAO collection = mock(CollectionDAO.class);

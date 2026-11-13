@@ -331,6 +331,7 @@ class SecretMapEntriesExternalStoreTest {
     DbtHttpHeaders httpHeaders = new DbtHttpHeaders();
     headers.forEach(httpHeaders::setAdditionalProperty);
     return new IngestionPipeline()
+        .withId(owner)
         .withName(SERVICE)
         .withPipelineType(PipelineType.DBT)
         .withSourceConfig(

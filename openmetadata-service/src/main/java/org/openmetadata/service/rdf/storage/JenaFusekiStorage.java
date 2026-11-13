@@ -6,10 +6,12 @@ import com.google.common.base.Throwables;
 import com.google.common.base.Utf8;
 import io.micrometer.core.instrument.Metrics;
 import java.io.ByteArrayOutputStream;
+import java.io.EOFException;
 import java.io.IOException;
 import java.io.StringWriter;
 import java.io.UncheckedIOException;
 import java.net.ConnectException;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.net.URI;
 import java.net.URLEncoder;
@@ -47,6 +49,7 @@ import java.util.function.LongConsumer;
 import java.util.function.Supplier;
 import java.util.function.UnaryOperator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.apache.jena.atlas.web.HttpException;
 import org.apache.jena.query.ParameterizedSparqlString;
 import org.apache.jena.query.Query;
@@ -155,6 +158,7 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   private final long writeRetryMaxBackoffMs;
   private final int maxUpdatePayloadBytes;
   private final int maxAppendPayloadBytes;
+  private final int graphReplaceChunkBytes;
   private final boolean streamingAppendEnabled;
   private final boolean gzipRequests;
   private final HttpClient streamingHttpClient;
@@ -203,6 +207,10 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     this.writeRetryMaxBackoffMs = resolveWriteRetryMaxBackoffMs(config);
     this.maxUpdatePayloadBytes = RdfStorageInterface.resolveMaxUpdatePayloadBytes(config);
     this.maxAppendPayloadBytes = RdfStorageInterface.resolveMaxAppendPayloadBytes(config);
+    this.graphReplaceChunkBytes =
+        config.getGraphReplaceChunkBytes() != null
+            ? config.getGraphReplaceChunkBytes()
+            : ChunkedGraphReplace.DEFAULT_CHUNK_BYTES;
     this.streamingAppendEnabled =
         config.getStreamingAppendEnabled() == null || config.getStreamingAppendEnabled();
     this.gzipRequests = Boolean.TRUE.equals(config.getGzipRequests());
@@ -1540,6 +1548,26 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     }
   }
 
+  /**
+   * Only an unreachable or unavailable Fuseki counts toward the breaker: callers bring their own
+   * queries and deadlines, and one slow query must not short-circuit every other RDF read.
+   */
+  @Override
+  public void readQuery(
+      final Query query, final long timeoutMillis, final Consumer<QueryExecution> reader) {
+    throwIfCircuitOpen("readQuery");
+    try (QueryExecution execution =
+        connection.newQuery().query(query).timeout(timeoutMillis, TimeUnit.MILLISECONDS).build()) {
+      reader.accept(execution);
+      recordSuccess();
+    } catch (RuntimeException exception) {
+      if (isUnavailableFailure(exception)) {
+        recordFailure();
+      }
+      throw exception;
+    }
+  }
+
   private String doExecuteSparqlQuery(String sparqlQuery, String format) {
     Query query = QueryFactory.create(sparqlQuery);
 
@@ -1634,12 +1662,31 @@ public class JenaFusekiStorage implements RdfStorageInterface {
    * short only abandons a clear that still completes; the request timeout of a single entity write
    * is the wrong limit. It neither consults nor feeds the circuit breaker: a long maintenance
    * request says nothing about whether Fuseki can serve entity writes.
+   *
+   * <p>One that Fuseki drops before answering is sent once more, within what is left of the same
+   * budget (ADR:2026-11-13-a-dropped-rdf-maintenance-clear-is-resent-once-within-its-budget).
    */
   @Override
   public void executeMaintenanceUpdate(final String sparqlUpdate, final Duration timeout) {
     final UpdateRequest request = UpdateFactory.create(sparqlUpdate);
-    runWriteWithTimeout(
-        () -> connection.update(request), "maintenanceUpdate", Math.max(1, timeout.toMillis()));
+    final long budgetMillis = Math.max(1, timeout.toMillis());
+    final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(budgetMillis);
+    try {
+      runWriteWithTimeout(() -> connection.update(request), "maintenanceUpdate", budgetMillis);
+    } catch (RuntimeException failure) {
+      final long remainingMillis = TimeUnit.NANOSECONDS.toMillis(deadlineNanos - System.nanoTime());
+      if (!isDroppedConnection(failure) || remainingMillis <= 0) {
+        throw failure;
+      }
+      LOG.warn("Fuseki closed the connection before answering a maintenance update; resending it");
+      runWriteWithTimeout(() -> connection.update(request), "maintenanceUpdate", remainingMillis);
+    }
+  }
+
+  /** The connection closed under the request: read as EOF, or a reset when the close races it. */
+  static boolean isDroppedConnection(final Throwable failure) {
+    return ExceptionUtils.indexOfType(failure, EOFException.class) != -1
+        || ExceptionUtils.indexOfType(failure, SocketException.class) != -1;
   }
 
   @Override
@@ -1674,11 +1721,11 @@ public class JenaFusekiStorage implements RdfStorageInterface {
   }
 
   @Override
-  public void replaceGraph(final String graphUri, final Model model) {
+  public void replaceGraph(final String graphUri, final UUID releaseId, final Model model) {
     throwIfCircuitOpen("replaceGraph");
     final String graph = requireAbsoluteGraphUri(graphUri).toString();
     try {
-      runWriteWithRetry(() -> connection.put(graph, model), "replaceGraph");
+      new ChunkedGraphReplace(new FusekiGraphStore(), graphReplaceChunkBytes).replace(graph, model);
       recordSuccess();
     } catch (RuntimeException failure) {
       if (isCircuitBreakerFailure(failure)) {
@@ -1905,6 +1952,23 @@ public class JenaFusekiStorage implements RdfStorageInterface {
     if (connection != null) {
       connection.close();
       LOG.info("Closed connection to Fuseki server");
+    }
+  }
+
+  private final class FusekiGraphStore implements ChunkedGraphReplace.GraphStore {
+    @Override
+    public void put(final String graph, final Model content) {
+      runWriteWithRetry(() -> connection.put(graph, content), "replaceGraph");
+    }
+
+    @Override
+    public void update(final String sparqlUpdate) {
+      runWriteWithRetry(() -> connection.update(sparqlUpdate), "replaceGraphSwap");
+    }
+
+    @Override
+    public List<String> graphs() {
+      return getAllGraphs();
     }
   }
 }

@@ -14,6 +14,10 @@ REST Auth & Client for Sigma
 
 import traceback
 from base64 import b64encode
+from collections import Counter
+from collections.abc import Callable, Iterator
+
+from cachetools import LRUCache
 
 from metadata.generated.schema.entity.services.connections.dashboard.sigmaConnection import (
     SigmaConnection,
@@ -22,6 +26,12 @@ from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
+    ColumnsResponse,
+    Connection,
+    ConnectionPath,
+    DataModel,
+    DataModelsResponse,
+    EdgeSource,
     EdgeSourceResponse,
     Elements,
     ElementsResponse,
@@ -29,6 +39,8 @@ from metadata.ingestion.source.dashboard.sigma.models import (
     OwnerDetails,
     Workbook,
     WorkbookDetails,
+    WorkbookLineageEntry,
+    WorkbookLineageResponse,
     WorkBookPageResponse,
     WorkbookQueriesResponse,
     WorkBookResponseDetails,
@@ -45,6 +57,42 @@ HEADERS = {
 }
 
 TOKEN_PAYLOAD = {"grant_type": "client_credentials"}
+
+
+def _reached_from_element(response: EdgeSourceResponse, element_id: str) -> set[str]:
+    """Every node the element's own sheet node reads from, directly or through other nodes, following edges back"""
+    sources_of: dict[str | None, list[str]] = {}
+    for edge in response.edges or []:
+        sources_of.setdefault(edge.target, []).append(edge.source)
+    reached = {
+        key for key, node in response.dependencies.items() if node.type == "sheet" and node.elementId == element_id
+    }
+    pending = list(reached)
+    while pending:
+        for source in sources_of.get(pending.pop(), []):
+            if source not in reached:
+                reached.add(source)
+                pending.append(source)
+    return reached
+
+
+def _source_node_ids(response: EdgeSourceResponse, keep: Callable[[str], bool]) -> list[str]:
+    """
+    The /files ids of the response's tables that `keep` accepts: edge sources that are not `dependencies` keys, and
+    `dependencies` entries typed table or dataset
+    """
+    node_ids = [
+        node_id
+        for edge in response.edges or []
+        if keep(edge.source) and (node_id := edge.node_id) and edge.source not in response.dependencies
+    ]
+    # Sigma keys the element's upstream tables in `dependencies`, so their edges start at a key
+    node_ids += [
+        node_id
+        for key, node in response.dependencies.items()
+        if keep(key) and node.type in ("table", "dataset") and (node_id := EdgeSource(source=node.nodeId).node_id)
+    ]
+    return node_ids
 
 
 class SigmaApiClient:
@@ -81,6 +129,12 @@ class SigmaApiClient:
         )
 
         self.client = TrackedREST(client_config, source_name="sigma")
+        # Successful reads only: a failed read stays retryable for the next workbook or element.
+        self._owner_cache: LRUCache[str, OwnerDetails] = LRUCache(maxsize=512)
+        self._file_cache: LRUCache[str, NodeDetails] = LRUCache(maxsize=512)
+        # A failed read is cached as unknown for the run.
+        self._connection_types: LRUCache[str, str | None] = LRUCache(maxsize=512)
+        self._connection_paths: LRUCache[str, list[str] | None] = LRUCache(maxsize=512)
 
     def get_auth_token(self) -> tuple[str, int]:
         """
@@ -91,12 +145,26 @@ class SigmaApiClient:
         result = AuthToken.model_validate(self.token_client.post("/auth/token", data=TOKEN_PAYLOAD))
         return result.access_token, result.expires_in
 
+    def _listing_scope(self, exclude_explorations: bool = False) -> dict[str, str] | None:
+        """
+        The admin-only org-wide listing, when the connection opts in
+        (ADR:2026-11-12-sigma-org-wide-listing-is-opt-in-and-excludes-custom-views). Sigma then lists custom
+        views too, which are private per-user views of a workbook, so the workbook listing excludes them.
+        """
+        if not self.config.listAllAssets:
+            return None
+        scope = {"skipPermissionCheck": "true"}
+        if exclude_explorations:
+            scope["excludeExplorations"] = "true"
+        return scope
+
     def test_get_dashboards(self) -> list[Workbook] | None:  # noqa: RET503
         """
         method to test fetch dashboards from api
         """
-        result = self.client.get("/workbooks")
-        result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
+        result = WorkBookResponseDetails.model_validate(
+            self.client.get("/workbooks", data=self._listing_scope(exclude_explorations=True))
+        )
         if result:
             return result.entries
 
@@ -105,13 +173,13 @@ class SigmaApiClient:
         method to fetch dashboards from api
         """
         workbooks = []
+        scope = self._listing_scope(exclude_explorations=True)
         try:
-            result = self.client.get("/workbooks")
-            result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks"))
+            result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks", data=scope))
             if result:
                 workbooks.extend(result.entries)
                 while result.nextPage:
-                    data = {"page": int(result.nextPage)}
+                    data = {**(scope or {}), "page": result.nextPage}
                     result = WorkBookResponseDetails.model_validate(self.client.get("/workbooks", data=data))
                     if result:
                         workbooks.extend(result.entries)
@@ -133,43 +201,160 @@ class SigmaApiClient:
             logger.error(f"Error fetching Dashboard details for for workbook {workbook_id}: {exc}")
         return None
 
+    def get_badge(self, workbook_id: str) -> str | None:
+        """
+        The workbook's certification badge, read from its /files entry, whose inode id is the workbook id
+        """
+        try:
+            return NodeDetails.model_validate(self.client.get(f"/files/{workbook_id}")).badge
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the badge of workbook %s: %s", workbook_id, exc)
+        return None
+
+    def get_connection_type(self, connection_id: str) -> str | None:
+        """
+        The type of a Sigma connection, such as "snowflake" or "bigQuery", read once per connection. A failed
+        read is cached as unknown, so it is not retried for every workbook on that connection.
+        """
+        if connection_id not in self._connection_types:
+            try:
+                self._connection_types[connection_id] = Connection.model_validate(
+                    self.client.get(f"/connections/{connection_id}")
+                ).type
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to read Sigma connection %s: %s", connection_id, exc)
+                self._connection_types[connection_id] = None
+        return self._connection_types[connection_id]
+
+    def get_connection_path(self, inode_id: str) -> list[str] | None:
+        """
+        A warehouse table's path in its Sigma connection, read once per table. A failed read is cached as unknown:
+        Sigma answers an error for an inode that is not a table.
+        """
+        if inode_id not in self._connection_paths:
+            try:
+                self._connection_paths[inode_id] = ConnectionPath.model_validate(
+                    self.client.get(f"/connections/paths/{inode_id}")
+                ).path
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to read the Sigma connection path of %s: %s", inode_id, exc)
+                self._connection_paths[inode_id] = None
+        return self._connection_paths[inode_id]
+
+    def get_workbook_lineage(self, workbook_id: str) -> list[WorkbookLineageEntry]:
+        """
+        The workbook's lineage rows. Empty when the read fails, so a partial read never looks like a workbook on a
+        single connection or misses a data model it reads.
+        """
+        try:
+            return list(self._read_all(f"/workbooks/{workbook_id}/lineage", WorkbookLineageResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the lineage of workbook %s: %s", workbook_id, exc)
+        return []
+
+    def get_data_model_lineage(self, data_model_id: str) -> list[WorkbookLineageEntry]:
+        """The lineage rows of a Sigma Data Model, shaped as a workbook's. Empty when the read fails"""
+        try:
+            return list(self._read_all(f"/dataModels/{data_model_id}/lineage", WorkbookLineageResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the lineage of data model %s: %s", data_model_id, exc)
+        return []
+
+    def get_file(self, node_id: str) -> NodeDetails | None:
+        """The /files entry of a table or other Sigma document, read once per run"""
+        if node_id not in self._file_cache:
+            try:
+                self._file_cache[node_id] = NodeDetails.model_validate(self.client.get(f"/files/{node_id}"))
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to fetch node details for %s: %s", node_id, exc)
+                return None
+        return self._file_cache[node_id]
+
+    def get_column_formulas(self, path: str) -> dict[str, dict[str, str]]:
+        """
+        Each element's non-empty column formulas by column name, from a /columns listing of a workbook or data
+        model. A name an element holds twice is left out, as its formula cannot be told apart. Empty when any
+        page fails to read, so a partial listing never stands for the whole.
+        """
+        try:
+            columns = list(self._read_all(path, ColumnsResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the column formulas of %s: %s", path, exc)
+            return {}
+        names = Counter((column.elementId, column.name) for column in columns)
+        formulas: dict[str, dict[str, str]] = {}
+        for column in columns:
+            if column.formula and names[column.elementId, column.name] == 1:
+                formulas.setdefault(column.elementId, {})[column.name] = column.formula
+        return formulas
+
+    def _read_all(
+        self,
+        path: str,
+        response_model: type[ColumnsResponse | DataModelsResponse | ElementsResponse | WorkbookLineageResponse],
+        scope: dict[str, str] | None = None,
+    ) -> Iterator:
+        """Every entry of a paginated Sigma listing, with `scope` on every page; raises when a page cannot be read"""
+        data = scope
+        while True:
+            result = response_model.model_validate(self.client.get(path, data=data))
+            yield from result.entries or []
+            if not result.nextPage:
+                return
+            data = {**(scope or {}), "page": result.nextPage}
+
+    def get_data_models(self) -> list[DataModel]:
+        """Every Sigma Data Model"""
+        data_models = []
+        try:
+            data_models.extend(self._read_all("/dataModels", DataModelsResponse, self._listing_scope()))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to list Sigma data models: %s", exc)
+        return data_models
+
+    def get_data_model_elements(self, data_model_id: str) -> list[Elements] | None:
+        """The elements of a Sigma Data Model, or None when they could not all be read"""
+        try:
+            return list(self._read_all(f"/dataModels/{data_model_id}/elements", ElementsResponse))
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to fetch the elements of data model %s: %s", data_model_id, exc)
+        return None
+
     def get_owner_detail(self, owner_id: str) -> OwnerDetails | None:
         """
         method to fetch dashboard owner details from api
         """
+        if owner_id in self._owner_cache:
+            return self._owner_cache[owner_id]
         try:
             result = OwnerDetails.model_validate(self.client.get(f"/members/{owner_id}"))
             if result:
+                self._owner_cache[owner_id] = result
                 return result
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch owner details for owner {owner_id}: {exc}")
         return None
 
-    def get_page_elements(self, workbook_id: str, page_id: str) -> list[Elements] | None:
+    def get_page_elements(self, workbook_id: str, page_id: str) -> list[Elements]:
         """
         method to fetch dashboards page elements from api
         """
         elements = []
         try:
-            result = ElementsResponse.model_validate(
-                self.client.get(f"/workbooks/{workbook_id}/pages/{page_id}/elements")
-            )
-            if result:
-                elements.extend(result.entries)
-                while result.nextPage:
-                    data = {"page": int(result.nextPage)}
-                    result = ElementsResponse.model_validate(
-                        self.client.get(
-                            f"/workbooks/{workbook_id}/pages/{page_id}/elements",
-                            data=data,
-                        )
-                    )
-                    if result:
-                        elements.extend(result.entries)
+            elements.extend(self._read_all(f"/workbooks/{workbook_id}/pages/{page_id}/elements", ElementsResponse))
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Failed to fetch page elements for workbook {workbook_id}: {exc}")
+            logger.warning("Failed to fetch page elements for workbook %s: %s", workbook_id, exc)
         return elements
 
     def get_chart_details(self, workbook_id: str) -> list[Elements] | None:
@@ -189,7 +374,7 @@ class SigmaApiClient:
                 pages = WorkBookPageResponse.model_validate(
                     self.client.get(
                         f"/workbooks/{workbook_id}/pages",
-                        data={"page": int(pages.nextPage)},
+                        data={"page": pages.nextPage},
                     )
                 )
                 if not pages.entries:
@@ -214,7 +399,7 @@ class SigmaApiClient:
             if result:
                 queries.extend(result.entries)
                 while result.nextPage:
-                    data = {"page": int(result.nextPage)}
+                    data = {"page": result.nextPage}
                     result = WorkbookQueriesResponse.model_validate(
                         self.client.get(f"/workbooks/{workbook_id}/queries", data=data)
                     )
@@ -226,34 +411,35 @@ class SigmaApiClient:
             logger.warning(f"Failed to fetch queries for workbook {workbook_id}: {exc}")
         return None
 
-    def get_lineage_details(self, workbook_id: str, element_id: str) -> list[NodeDetails] | None:
+    def get_lineage_details(
+        self, workbook_id: str, element_id: str
+    ) -> tuple[list[NodeDetails], bool, EdgeSourceResponse] | None:
         """
-        method to fetch dashboards lineage details from api
+        Fetch an element's source tables, whether every source was read as a table (a source that failed to read, or
+        is not a table, could hold columns the returned tables do not), and the element's lineage graph
         """
         try:
             source_nodes = []
+            all_sources_read = True
             edges_response = EdgeSourceResponse.model_validate(
                 self.client.get(f"/workbooks/{workbook_id}/lineage/elements/{element_id}")
             )
 
-            for edge in edges_response.edges:
-                if not edge.node_id:
-                    continue
+            # Only the tables the element reaches. With no sheet node for the element, or no table reached from it,
+            # the edges do not connect the way the walk reads them, so every table is kept as before rather than
+            # dropping the element's lineage.
+            reached = _reached_from_element(edges_response, element_id)
+            node_ids = _source_node_ids(edges_response, reached.__contains__) or _source_node_ids(
+                edges_response, lambda _: True
+            )
+            for node_id in node_ids:
+                node_details = self.get_file(node_id)
+                if node_details and node_details.node_type in ["table", "dataset"]:
+                    source_nodes.append(node_details.model_copy(update={"nodeId": node_id}))
+                else:
+                    all_sources_read = False
 
-                if edge.source in edges_response.dependencies:
-                    continue
-
-                try:
-                    node_details = NodeDetails.model_validate(self.client.get(f"/files/{edge.node_id}"))
-
-                    if node_details.node_type in ["table", "dataset"]:
-                        source_nodes.append(node_details)
-                except Exception as node_exc:
-                    logger.debug(traceback.format_exc())
-                    logger.warning(f"Failed to fetch node details for {edge.node_id}: {node_exc}")
-                    continue
-
-            return source_nodes if source_nodes else None  # noqa: TRY300
+            return (source_nodes, all_sources_read, edges_response) if source_nodes else None  # noqa: TRY300
         except Exception as exc:  # pylint: disable=broad-except
             logger.debug(traceback.format_exc())
             logger.warning(f"Failed to fetch lineage details for workbook {workbook_id}, element {element_id}: {exc}")

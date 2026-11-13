@@ -455,6 +455,19 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     }
   });
 
+  // Hard-deleting the glossary and classification also strips their labels
+  // from the shared dim_customer columns when a test fails mid-way.
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await performAdminLogin(browser);
+
+    try {
+      await glossary.delete(apiContext);
+      await testClassification.delete(apiContext);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test('Glossary term should be consistent for search', async ({
     dataConsumerPage: page,
   }) => {
@@ -550,6 +563,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
   test('Tags term should be consistent for search', async ({
     dataConsumerPage: page,
   }) => {
+    const columnName = 'shop_id';
+    const columnFqn = `sample_data.ecommerce_db.shopify.dim_customer.${columnName}`;
+    const rowSelector = `[data-row-key="${columnFqn}"] [data-testid*="classification-tags"]`;
+
+    const columnSearchUrl =
+      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*';
+
     const columnsResponse = page.waitForResponse(
       '/api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns?*fields=tags*&include=all*'
     );
@@ -562,9 +582,13 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await columnsResponse;
     await waitForAllLoadersToDisappear(page);
 
-    // Check if add button exists and is visible
-    const rowSelector =
-      '[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid*="classification-tags"]';
+    // Searching first finds the row whatever the column page size or sort order.
+    const searchResponse = page.waitForResponse(columnSearchUrl);
+    await page
+      .getByTestId('search-bar-container')
+      .getByTestId('searchbar')
+      .fill(columnName);
+    await searchResponse;
 
     const addButton = page.locator(`${rowSelector} [data-testid="add-tag"]`);
     const editButton = page.locator(
@@ -602,18 +626,11 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
         .getByTestId(`tag-${testTag.responseData.fullyQualifiedName}`)
     ).toBeVisible();
 
+    // The search is kept in the URL, so the reload re-runs it.
+    const reloadSearchResponse = page.waitForResponse(columnSearchUrl);
     await page.reload({ waitUntil: 'domcontentloaded' });
-    // Wait for page to be fully loaded
+    await reloadSearchResponse;
     await waitForAllLoadersToDisappear(page);
-    const getRequest = page.waitForResponse(
-      'api/v1/tables/name/sample_data.ecommerce_db.shopify.dim_customer/columns/*'
-    );
-    await page
-      .getByTestId('search-bar-container')
-      .getByTestId('searchbar')
-      .fill('shop_id');
-
-    await getRequest;
 
     await expect(
       page
@@ -624,7 +641,7 @@ test.describe('Tags and glossary terms should be consistent for search ', () => 
     await openClassificationTagPicker(
       page,
       page.locator(
-        `[data-row-key="sample_data.ecommerce_db.shopify.dim_customer.shop_id"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
+        `[data-row-key="${columnFqn}"] [data-testid="classification-tags-0"] [data-testid="edit-button"]`
       )
     );
 

@@ -1,7 +1,8 @@
 # System announcements are managed by admins in Settings › Notifications › Announcements
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-12 (initial) · v2 2026-10-14 (users see only critical ones, as the Home banner)
+- **Revisions:** v1 2026-10-12 (initial) · v2 2026-10-14 (users see only critical ones, as the Home banner) ·
+  v3 2026-11-06 (users see every type: criticals in the banner, the rest in the rail)
 - **Deciders:** Shrabanti Paul
 - **Guard:** `GlobalSettingsClassBase.test.ts` (Announcements card admin-only),
   `NotificationLanding.test.tsx` (native Announcements card), `useSystemAnnouncements.test.tsx`
@@ -40,6 +41,10 @@ manage system announcements needs a server change first (`authorizeSystemAnnounc
 a permission-based `isProtected` here and an amendment to this record.
 
 ## Amendment (v2, 2026-10-14)
+
+> The first and third bullets are superseded by v3: non-critical system announcements now reach
+> users too.
+
 - Users see a system announcement only when it is **Critical and Active**, and only on Home, as
   the top banner (`CriticalAnnouncements`). Other types stay admin-only bookkeeping in Settings.
   Several live criticals share the banner slot as a carousel moved only by the user; it wraps at
@@ -52,3 +57,17 @@ a permission-based `isProtected` here and an amendment to this record.
 - Dismissal stays per user and browser-local, as the rail's already was, but each Home surface
   keeps its own list (`DismissedAnnouncementsScope`): each prunes against what it shows, and a
   shared list would let the rail prune the banner's dismissals away.
+
+## Amendment (v3, 2026-11-06)
+- Users see **every** live system announcement on Home, whatever its type: an admin who publishes
+  a Notice or a Custom one from Settings expects the organization to see it. Criticals keep the
+  top banner; every other type shows as a card in the announcements rail, which now reads
+  without the `system` filter and leaves out only the system criticals (`isCriticalSystemAnnouncement`),
+  so none appears twice on the page.
+- The "View all" dialog mirrors the rail: every live announcement but the system criticals, which
+  the banner alone owns, dismissals included (each surface keeps its own dismissal scope). Its
+  badge is the server's `paging.total` less the banner's live criticals, read from the banner's
+  own cached query (`rest/queries/criticalAnnouncementsQuery.ts`).
+- The carousels that show one announcement at a time — the critical banner and the announcement
+  banner on data asset, domain, data product, Data Marketplace and service pages — draw core
+  `PaginationDot` (`size="sm"`) under them, one dot per announcement, and a dot jumps there. The rail shows several cards at once, so it pages by its arrows alone.
