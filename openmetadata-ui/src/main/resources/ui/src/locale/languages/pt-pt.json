@@ -3487,6 +3487,7 @@
     "show-log-plural": "Mostrar Logs",
     "show-meta-details": "Mostrar detalhes meta",
     "show-more": "Mostrar mais",
+    "show-more-count": "Mostrar mais {{shown}}/{{total}}",
     "show-more-entity": "Mostrar Mais {{entity}}",
     "show-more-lowercase": "Mostrar mais",
     "show-nested": "Mostrar Aninhados",

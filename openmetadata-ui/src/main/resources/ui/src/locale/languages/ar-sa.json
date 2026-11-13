@@ -3487,6 +3487,7 @@
     "show-log-plural": "إظهار السجلات",
     "show-meta-details": "إظهار تفاصيل الميتا",
     "show-more": "إظهار المزيد",
+    "show-more-count": "إظهار المزيد {{shown}}/{{total}}",
     "show-more-entity": "إظهار المزيد من {{entity}}",
     "show-more-lowercase": "إظهار المزيد",
     "show-nested": "إظهار المتداخل",

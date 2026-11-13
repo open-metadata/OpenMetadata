@@ -3487,6 +3487,7 @@
     "show-log-plural": "Показать логи",
     "show-meta-details": "Показать мета-данные",
     "show-more": "Показать больше",
+    "show-more-count": "Показать больше {{shown}}/{{total}}",
     "show-more-entity": "Показать больше элементов \"{{entity}}\"",
     "show-more-lowercase": "показать больше",
     "show-nested": "Показать вложенные",
