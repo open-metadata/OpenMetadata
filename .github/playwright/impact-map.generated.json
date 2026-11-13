@@ -13149,6 +13149,14 @@
     },
     {
       "sources": [
+        "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyProfileReport.ts"
+      ],
+      "specs": [
+        "playwright/e2e/Features/OntologyRules.spec.ts"
+      ]
+    },
+    {
+      "sources": [
         "openmetadata-ui/src/main/resources/ui/src/generated/api/data/ontologyReleaseDiff.ts"
       ],
       "specs": [
