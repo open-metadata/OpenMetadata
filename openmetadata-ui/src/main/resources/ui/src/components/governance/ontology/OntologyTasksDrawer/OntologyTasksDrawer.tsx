@@ -81,7 +81,11 @@ import {
 import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
-import { filterReviews, hasMorePages } from './OntologyTasksDrawer.utils';
+import {
+  CURSOR_HISTORY_LIMIT,
+  filterReviews,
+  hasMorePages,
+} from './OntologyTasksDrawer.utils';
 import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
@@ -106,7 +110,6 @@ type Detail = {
 
 // ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
 const PAGE_SIZE = 25;
-const CURSOR_HISTORY_LIMIT = 40;
 const BANNER_LIMIT = 100;
 
 // The trim keeps page 1 first, so Previous can still walk back to it.

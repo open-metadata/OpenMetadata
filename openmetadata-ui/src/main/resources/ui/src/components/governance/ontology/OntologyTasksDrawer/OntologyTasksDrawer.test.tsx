@@ -69,6 +69,12 @@ jest.mock('../../../common/CommentComposer/CommentComposer', () => {
   };
 });
 
+// Paging past the real 40-cursor history takes ~90 renders, too slow under CI coverage.
+jest.mock('./OntologyTasksDrawer.utils', () => ({
+  ...jest.requireActual('./OntologyTasksDrawer.utils'),
+  CURSOR_HISTORY_LIMIT: 5,
+}));
+
 jest.mock('../../../../utils/ToastUtils', () => ({
   ...jest.requireActual('../../../../utils/ToastUtils'),
   showSuccessToast: jest.fn(),
@@ -658,7 +664,7 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
       return Promise.resolve({
         data: {
           data: [{ ...review, taskId: label(page) }],
-          paging: { total: 45 * 25, after: 'cursor-' + (page + 1) },
+          paging: { total: 8 * 25, after: 'cursor-' + (page + 1) },
         },
       });
     }
@@ -676,7 +682,7 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
 
   expect(await screen.findByText(/PAGE-01/)).toBeInTheDocument();
 
-  for (let page = 2; page <= 45; page++) {
+  for (let page = 2; page <= 8; page++) {
     fireEvent.click(pageButton('label.next'));
 
     expect(
@@ -685,7 +691,7 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
   }
 
   let presses = 0;
-  while (presses < 50 && isEnabled(pageButton('label.previous'))) {
+  while (presses < 10 && isEnabled(pageButton('label.previous'))) {
     fireEvent.click(pageButton('label.previous'));
     presses++;
     await waitFor(() => expect(pageButton('label.next')).toBeEnabled());
@@ -700,9 +706,9 @@ it('returns to page 1 with Previous after paging past the kept cursor history', 
       )
       .slice(-2)
       .map(([, config]) => config.params.after)
-  ).toEqual(['cursor-7', undefined]);
+  ).toEqual(['cursor-5', undefined]);
   expect(screen.getByText(/PAGE-01/)).toBeInTheDocument();
-}, 20_000);
+});
 
 it('does not invent a zero pending count when paging is unavailable', async () => {
   get.mockResolvedValue({ data: { data: [] } });
