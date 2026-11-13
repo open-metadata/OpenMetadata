@@ -16,7 +16,7 @@ import type {
   OldJsonItem,
   OldJsonTree,
 } from '@react-awesome-query-builder/ui';
-import { isBoolean, isEmpty, isObject, isUndefined } from 'lodash';
+import { isBoolean, isEmpty, isObject, isString, isUndefined } from 'lodash';
 import { EntityReferenceFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import type {
@@ -389,44 +389,45 @@ const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
   );
 };
 
-const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr as EsRegexp).regexp)) {
-    return undefined;
-  }
+// Claims the clause only when it holds the string value the UI writes; any other ES form
+// stays unread, so isQueryFilterFullyRepresentable keeps flagging the filter.
+const getStringValueRule = (
+  parentPath: Array<string>,
+  clause: Record<string, unknown> | undefined,
+  operator: string,
+  readValue: (body: unknown) => unknown
+) => {
+  const [field, body] = Object.entries(clause ?? {})[0] ?? [];
+  const value = readValue(body);
 
-  return getCommonFieldProperties(
+  return field && isString(value)
+    ? getCommonFieldProperties(parentPath, field, operator, value)
+    : undefined;
+};
+
+const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
     parentPath,
-    Object.keys((curr as EsRegexp).regexp)[0],
+    (curr as EsRegexp).regexp,
     'regexp',
-    Object.values((curr as EsRegexp).regexp)[0]?.value
+    (body) => (body as { value?: unknown })?.value
   );
-};
 
-const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr as EsMatchPhrase).match_phrase)) {
-    return undefined;
-  }
-
-  return getCommonFieldProperties(
+const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
     parentPath,
-    Object.keys((curr as EsMatchPhrase).match_phrase)[0],
+    (curr as EsMatchPhrase).match_phrase,
     'match_phrase',
-    Object.values((curr as EsMatchPhrase).match_phrase)[0]
+    (body) => body
   );
-};
 
-const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr.bool?.must_not as EsMatchPhrase)?.match_phrase)) {
-    return undefined;
-  }
-
-  return getCommonFieldProperties(
+const matchMustNotPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
     parentPath,
-    Object.keys((curr.bool?.must_not as EsMatchPhrase)?.match_phrase)[0],
+    (curr.bool?.must_not as EsMatchPhrase)?.match_phrase,
     'not_match_phrase',
-    Object.values((curr.bool?.must_not as EsMatchPhrase)?.match_phrase)[0]
+    (body) => body
   );
-};
 
 // AND-ed `must_not` terms on one field are a `Not in` rule: read them back as the
 // row the user filled, not one `!=` row per value.

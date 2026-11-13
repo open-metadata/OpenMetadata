@@ -466,6 +466,38 @@ describe('isQueryFilterFullyRepresentable', () => {
       { query: { terms: { 'tier.tagFQN': ['Tier.Tier1'] } } },
     ],
     ['an empty query', { query: {} }],
+    [
+      'a shorthand regexp clause',
+      { query: { bool: { filter: [{ regexp: { name: '.*orders.*' } }] } } },
+    ],
+    [
+      'a match_phrase clause in query form',
+      {
+        query: {
+          bool: {
+            filter: [{ match_phrase: { description: { query: 'orders' } } }],
+          },
+        },
+      },
+    ],
+    [
+      'a negated match_phrase clause in query form',
+      {
+        query: {
+          bool: {
+            filter: [
+              {
+                bool: {
+                  must_not: {
+                    match_phrase: { description: { query: 'orders' } },
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
   ])('is false for %s', (_, filter) => {
     expect(
       isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)
