@@ -44,6 +44,7 @@ import {
   createArticleViaApi,
   createMemoryViaApi,
   deleteArticleByFqn,
+  expectMemoryExtractionOff,
   expectMemoryExtractionOffTooltip,
   getArticleFqnFromUrl,
   getLoggedInUser,
@@ -57,7 +58,6 @@ import {
   readDraftStore,
   scrollHierarchyToNode,
   scrollListingToCard,
-  skipUnlessMemoryExtractionOff,
   verifyArticleSearch,
   waitForArticleInFollows,
   waitForArticleSavedAndHierarchyReloaded,
@@ -1257,60 +1257,63 @@ test.describe('Context Center Articles', () => {
     }
   });
 
-  test('an article written while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing', async ({
-    page,
-    browser,
-    dataConsumerPage,
-  }) => {
-    test.slow();
-    const { apiContext, afterAction } = await createNewPage(browser);
-    const articleName = `cc_not_extracted_article_${uuid()}`;
-    try {
-      await skipUnlessMemoryExtractionOff(apiContext);
-      const article = await createArticleViaApi(apiContext, {
-        name: articleName,
-        displayName: `Not extracted ${uuid()}`,
-      });
-      const { neverExtracted } = await okJson<{ neverExtracted?: boolean }>(
-        await apiContext.get(
-          `/api/v1/contextCenter/pages/name/${encodeURIComponent(
-            article.fullyQualifiedName
-          )}`,
-          { params: { fields: 'neverExtracted' } }
-        ),
-        `Read whether ${article.fullyQualifiedName} was extracted`
-      );
-
-      expect(neverExtracted).toBe(true);
-
-      await navigateToArticle(page, article.fullyQualifiedName);
-      const panel = page.getByTestId('knowledge-page-right-panel');
-      await expect(panel.getByTestId('article-status-badge')).toHaveText(
-        'Not processed'
-      );
-      const extract = panel.getByTestId('memory-extraction-btn');
-      await expect(extract).toHaveText('Extract');
-      await expect(extract).toBeDisabled();
-      await expectMemoryExtractionOffTooltip(page);
-
-      await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
-      const consumerPanel = dataConsumerPage.getByTestId(
-        'knowledge-page-right-panel'
-      );
-      await expect(
-        consumerPanel.getByTestId('article-status-badge')
-      ).toHaveText('Not processed');
-      await expect(
-        consumerPanel.getByTestId('memory-extraction-btn')
-      ).toHaveCount(0);
-    } finally {
+  // A Collate server runs with memory extraction on, so these states exist only on OSS.
+  if (process.env.PLAYWRIGHT_IS_OSS) {
+    test('an article written while extraction is off offers an admin Extract, disabled with the reason, and offers a data consumer nothing', async ({
+      page,
+      browser,
+      dataConsumerPage,
+    }) => {
+      test.slow();
+      const { apiContext, afterAction } = await createNewPage(browser);
+      const articleName = `cc_not_extracted_article_${uuid()}`;
       try {
-        await deleteArticleByFqn(apiContext, articleName);
+        await expectMemoryExtractionOff(apiContext);
+        const article = await createArticleViaApi(apiContext, {
+          name: articleName,
+          displayName: `Not extracted ${uuid()}`,
+        });
+        const { neverExtracted } = await okJson<{ neverExtracted?: boolean }>(
+          await apiContext.get(
+            `/api/v1/contextCenter/pages/name/${encodeURIComponent(
+              article.fullyQualifiedName
+            )}`,
+            { params: { fields: 'neverExtracted' } }
+          ),
+          `Read whether ${article.fullyQualifiedName} was extracted`
+        );
+
+        expect(neverExtracted).toBe(true);
+
+        await navigateToArticle(page, article.fullyQualifiedName);
+        const panel = page.getByTestId('knowledge-page-right-panel');
+        await expect(panel.getByTestId('article-status-badge')).toHaveText(
+          'Not processed'
+        );
+        const extract = panel.getByTestId('memory-extraction-btn');
+        await expect(extract).toHaveText('Extract');
+        await expect(extract).toBeDisabled();
+        await expectMemoryExtractionOffTooltip(page);
+
+        await navigateToArticle(dataConsumerPage, article.fullyQualifiedName);
+        const consumerPanel = dataConsumerPage.getByTestId(
+          'knowledge-page-right-panel'
+        );
+        await expect(
+          consumerPanel.getByTestId('article-status-badge')
+        ).toHaveText('Not processed');
+        await expect(
+          consumerPanel.getByTestId('memory-extraction-btn')
+        ).toHaveCount(0);
       } finally {
-        await afterAction();
+        try {
+          await deleteArticleByFqn(apiContext, articleName);
+        } finally {
+          await afterAction();
+        }
       }
-    }
-  });
+    });
+  }
 
   test('Article detail layout, drawer, activity tab, and version page work', async ({
     page,

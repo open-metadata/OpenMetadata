@@ -18,7 +18,6 @@ import {
   Page,
   Request,
   Response,
-  test,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
 import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
@@ -224,12 +223,10 @@ export const expectMemoryExtractionOffTooltip = async (page: Page) => {
 };
 
 /**
- * The OSS e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
- * leaves an upload or a new article Not processed and refuses an Extract or Retry with
- * ExtractionDisabled. A Collate server runs with it on, where none of that occurs, so a test that
- * relies on it skips there.
+ * The e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
+ * leaves an upload or a new article Not processed. A spec that relies on that says so first.
  */
-export const skipUnlessMemoryExtractionOff = async (
+export const expectMemoryExtractionOff = async (
   apiContext: APIRequestContext
 ) => {
   const availability = await okJson<{ available: boolean; reason?: string }>(
@@ -237,13 +234,10 @@ export const skipUnlessMemoryExtractionOff = async (
     'Read whether memory extraction is available'
   );
 
-  // eslint-disable-next-line playwright/no-skipped-test -- the off states exist only on a server with extraction off
-  test.skip(
-    availability.available,
-    'Needs a server with memory extraction off'
-  );
-
-  expect(availability.reason).toBe('ExtractionDisabled');
+  expect(
+    availability,
+    'This spec needs a server with memory extraction off'
+  ).toEqual({ available: false, reason: 'ExtractionDisabled' });
 };
 
 /**
