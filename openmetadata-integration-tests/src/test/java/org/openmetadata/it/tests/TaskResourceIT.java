@@ -2654,9 +2654,9 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             () ->
                 SdkClients.adminClient()
                     .tasks()
-                    .create(tagTaskRequest(ns, "unknown-field", table, "columns.no_such_column")));
-    assertTrue(
-        unknownField.getMessage().contains("is not a tagged field"), unknownField.getMessage());
+                    .create(
+                        tagTaskRequest(ns, "unknown-field", table, "columns.no_such_column.tags")));
+    assertTrue(unknownField.getMessage().contains("names no field"), unknownField.getMessage());
 
     Task task =
         SdkClients.adminClient()
@@ -2678,8 +2678,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                     .resolve(
                         task.getId().toString(),
                         new ResolveTask().withResolutionType(TaskResolutionType.Approved)));
-    assertTrue(
-        removedField.getMessage().contains("is not a tagged field"), removedField.getMessage());
+    assertTrue(removedField.getMessage().contains("names no field"), removedField.getMessage());
     assertEquals(
         TaskEntityStatus.Open,
         SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());

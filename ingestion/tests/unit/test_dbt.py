@@ -24,6 +24,7 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
@@ -35,6 +36,7 @@ from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.type import entityReference
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -73,7 +75,7 @@ from metadata.ingestion.source.database.dbt.dbt_utils import (
 from metadata.ingestion.source.database.dbt.metadata import DbtSource
 from metadata.ingestion.source.database.dbt.models import DbtFiles, DbtObjects, UpstreamNode
 from metadata.utils.logger import ingestion_logger, set_loggers_level
-from metadata.utils.tag_utils import get_tag_labels
+from metadata.utils.tag_utils import get_tag_label, get_tag_labels
 from metadata.utils.time_utils import datetime_to_timestamp
 
 logger = ingestion_logger()
@@ -1558,6 +1560,56 @@ class DbtUnitTest(TestCase):
         columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
         assert len(columns) == 1
         assert columns[0].tags == []
+
+    def _glossary_terms_by_status(self):
+        """FQN -> GlossaryTerm for every status and for no status, plus one FQN the server does not know"""
+        terms = {
+            f"Gloss.{name}": GlossaryTerm(
+                id=uuid.uuid4(),
+                name=name,
+                fullyQualifiedName=f"Gloss.{name}",
+                description="term",
+                glossary=EntityReference(id=uuid.uuid4(), type="glossary"),
+                entityStatus=status,
+            )
+            for name, status in [*((status.name, status) for status in EntityStatus), ("NoStatus", None)]
+        }
+        return terms, [*terms, "Gloss.Missing"]
+
+    def _glossary_labels(self, tags):
+        return [tag.tagFQN.root for tag in tags if tag.source == TagSource.Glossary]
+
+    def test_dbt_table_meta_glossary_applies_only_approved_terms(self):
+        terms, fqns = self._glossary_terms_by_status()
+        get_tag_label.cache_clear()
+        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
+            result = self.dbt_source_obj.process_dbt_meta(
+                manifest_meta={"openmetadata": {"glossary": fqns}},
+                table_fqn="svc.db.schema.table",
+            )
+        get_tag_label.cache_clear()
+
+        assert self._glossary_labels(result) == ["Gloss.Approved"]
+
+    def test_dbt_column_meta_glossary_applies_only_approved_terms(self):
+        terms, fqns = self._glossary_terms_by_status()
+        manifest_column = SimpleNamespace(
+            name="col",
+            tags=[],
+            meta={"openmetadata": {"glossary": fqns}},
+            description="kept",
+            data_type="varchar",
+        )
+        get_tag_label.cache_clear()
+        with patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=lambda entity, fqn: terms.get(fqn)):
+            columns = self.dbt_source_obj.parse_data_model_columns(
+                manifest_node=SimpleNamespace(columns={"col": manifest_column}), catalog_node=None
+            )
+        get_tag_label.cache_clear()
+
+        assert len(columns) == 1
+        assert columns[0].description.root == "kept"
+        assert self._glossary_labels(columns[0].tags) == ["Gloss.Approved"]
 
     @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
     def test_parse_data_model_columns_skips_split_when_include_tags_false(self, mock_fqn):

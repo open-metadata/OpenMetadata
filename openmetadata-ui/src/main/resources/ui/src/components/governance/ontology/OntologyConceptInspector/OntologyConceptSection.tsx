@@ -23,7 +23,7 @@ import {
   Plus,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { ReactNode } from 'react';
+import { ReactNode, Ref } from 'react';
 import { useTranslation } from 'react-i18next';
 
 interface ConceptSectionProps {
@@ -32,6 +32,7 @@ interface ConceptSectionProps {
   readonly children: ReactNode;
   /** Left out for a section that is a single value, like the description. */
   readonly count?: number;
+  readonly sectionRef?: Ref<HTMLElement>;
   readonly testId?: string;
   readonly title: string;
   readonly onAdd?: () => void;
@@ -42,6 +43,7 @@ export const ConceptSection = ({
   addTestId,
   children,
   count,
+  sectionRef,
   testId,
   title,
   onAdd,
@@ -51,7 +53,8 @@ export const ConceptSection = ({
   return (
     <section
       className="tw:flex tw:flex-col tw:gap-3 tw:py-5"
-      data-testid={testId}>
+      data-testid={testId}
+      ref={sectionRef}>
       <Box align="center" className="tw:min-h-7" gap={2}>
         <Typography
           aria-level={3}

@@ -15,10 +15,9 @@ import {
   Badge,
   Box,
   Button,
-  ButtonGroup,
-  ButtonGroupItem,
   Divider,
   Input,
+  Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { ArrowLeft, Search } from '@openmetadata/ui-core-components/icons';
@@ -36,6 +35,7 @@ import { useOntologyPublication } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import Loader from '../../../common/Loader/Loader';
 import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
 import OntologyReleaseCompare from './OntologyReleaseCompare';
 import OntologyReleaseExport from './OntologyReleaseExport';
@@ -222,26 +222,25 @@ const AiHistoryToolbar = ({
 
   return (
     <Box align="center" gap={3} wrap="wrap">
-      <ButtonGroup
-        disallowEmptySelection
-        aria-label={t('label.status')}
-        selectedKeys={[filter]}
-        size="sm"
-        onSelectionChange={(keys) => {
-          const [next] = [...keys];
-          if (next) {
-            onFilter(next as HistoryStatusFilter);
-          }
-        }}>
-        {HISTORY_STATUS_FILTERS.map((option) => (
-          <ButtonGroupItem
-            data-testid={`ontology-release-filter-${option}`}
-            id={option}
-            key={option}>
-            {t(statusLabel(option))} · {counts[option]}
-          </ButtonGroupItem>
-        ))}
-      </ButtonGroup>
+      {/* The same segmented control as the Changes filter and the dialog's tabs. */}
+      <Tabs
+        className="tw:w-fit"
+        selectedKey={filter}
+        onSelectionChange={(key) => onFilter(key as HistoryStatusFilter)}>
+        <Tabs.List
+          aria-label={t('label.status')}
+          size="sm"
+          type="button-border">
+          {HISTORY_STATUS_FILTERS.map((option) => (
+            <Tabs.Item
+              data-testid={`ontology-release-filter-${option}`}
+              id={option}
+              key={option}>
+              {t(statusLabel(option))} · {counts[option]}
+            </Tabs.Item>
+          ))}
+        </Tabs.List>
+      </Tabs>
       <Input
         aria-label={t('label.search-entity', {
           entity: t('label.release-plural'),
@@ -316,7 +315,7 @@ type HistoryQuery = OntologyReleaseHistoryProps['history'];
 const HistoryLoadStatus = ({ history }: { history: HistoryQuery }) => {
   const { t } = useTranslation();
   if (history.isPending) {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+    return <Loader size="small" />;
   }
 
   return history.isError ? (

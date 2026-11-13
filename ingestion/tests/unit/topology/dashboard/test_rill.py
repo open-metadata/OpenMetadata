@@ -10,7 +10,9 @@
 #  limitations under the License.
 """Tests for the Rill dashboard connector."""
 
+import re
 from collections.abc import Sequence
+from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import MagicMock, call, patch
 from uuid import uuid4
@@ -30,6 +32,10 @@ from metadata.generated.schema.entity.data.dashboardDataModel import (
 from metadata.generated.schema.entity.data.table import DataType, Table
 from metadata.generated.schema.entity.services.connections.dashboard.rillConnection import (
     RillConnection,
+)
+from metadata.generated.schema.metadataIngestion.parserconfig.queryParserConfig import (
+    QueryParserConfig,
+    QueryParserType,
 )
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.filterPattern import FilterPattern
@@ -443,6 +449,21 @@ def errors(results) -> list[str]:
 
 
 class TestRillClient:
+    def test_connection_round_trips_default_filter_patterns(self):
+        patterns = {
+            "dashboardFilterPattern": {"includes": ["^my_dashboard$"]},
+            "chartFilterPattern": {"excludes": ["^draft"]},
+            "dataModelFilterPattern": {"includes": ["^my_model$"]},
+            "projectFilterPattern": {"excludes": ["^sandbox$"]},
+        }
+
+        connection = RillConnection.model_validate({"hostPort": "http://localhost:9009", **patterns})
+        serialized = connection.model_dump(mode="json", by_alias=True, exclude_none=True)
+
+        for name, pattern in patterns.items():
+            for operation, values in pattern.items():
+                assert serialized[name][operation] == values
+
     def test_service_spec_registers_source_and_connection(self):
         assert ServiceSpec.metadata_source_class == "metadata.ingestion.source.dashboard.rill.metadata.RillSource"
         assert ServiceSpec.connection_class == "metadata.ingestion.source.dashboard.rill.connection.RillConnection"
@@ -666,6 +687,64 @@ class TestRillSource:
         )
         assert requests[0].description.root == "Average time to merge."
         assert requests[1].description is None
+
+    @pytest.mark.parametrize(
+        "display_name,title,inline,expected",
+        [
+            (" Explicit name ", "Widget title", True, "Explicit name"),
+            (None, " Total events ", True, "Total events"),
+            (" ", "Total events", True, "Total events"),
+            (None, " ", True, "Line chart (widget 1)"),
+            (None, None, True, "Line chart (widget 1)"),
+            (None, 42, True, "Line chart (widget 1)"),
+            (None, None, False, "my_component"),
+        ],
+    )
+    def test_canvas_chart_display_names_preserve_component_identity(self, display_name, title, inline, expected):
+        name = "my_canvas--component-0-0" if inline else "my_component"
+        component = {
+            "meta": {"name": {"kind": COMPONENT_KIND, "name": name}},
+            "component": {
+                "spec": {
+                    "displayName": display_name,
+                    "renderer": "line_chart",
+                    "rendererProperties": {"title": title},
+                }
+            },
+        }
+        canvas = RillResource.model_validate(
+            {
+                "meta": {"name": {"kind": "rill.runtime.v1.Canvas", "name": "my_canvas"}},
+                "canvas": {
+                    "spec": {
+                        "rows": [
+                            {
+                                "tabGroup": {
+                                    "name": "my_tabs",
+                                    "tabs": [
+                                        {
+                                            "name": "my_tab",
+                                            "rows": [{"items": [{"component": name, "definedInCanvas": inline}]}],
+                                        }
+                                    ],
+                                }
+                            }
+                        ]
+                    }
+                },
+            }
+        )
+        source = make_source("http://localhost:9009", catalog=[component])
+
+        results = list(source.yield_dashboard_chart(canvas))
+
+        assert errors(results) == []
+        assert len(results) == 1
+        assert results[0].right.name.root == name
+        assert results[0].right.displayName == expected
+
+        source.source_config.chartFilterPattern = FilterPattern(excludes=[f"^{re.escape(expected)}$"])
+        assert list(source.yield_dashboard_chart(canvas)) == []
 
     def test_list_datamodels_caches_models_and_metrics_views(self):
         source = make_source("http://localhost:9009")
@@ -1073,6 +1152,76 @@ class TestRillSource:
         list(source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
 
         source.metadata.search_in_any_service.assert_not_called()
+
+    @pytest.mark.parametrize("parser_type", list(QueryParserType))
+    @pytest.mark.parametrize("sql", ["SELECT * FROM my_schema.MY_TABLE", "SELECT * FROM MY_TABLE"])
+    @pytest.mark.parametrize("model_name", ["my_table", "MY_TABLE", "my_table_model"])
+    def test_external_table_lineage_survives_model_name_collisions(self, sql, model_name, parser_type):
+        resource = deepcopy(EXTERNAL_MODEL_RESOURCE)
+        resource["meta"]["name"]["name"] = model_name
+        resource["meta"]["refs"] = [{"kind": "rill.runtime.v1.Connector", "name": "source_db"}]
+        resource["model"]["spec"]["inputConnector"] = "source_db"
+        resource["model"]["spec"]["inputProperties"]["sql"] = sql
+        model = make_model(model_name)
+        table = make_table("my_service.my_database.my_schema.MY_TABLE")
+        source = make_source("http://localhost:9009", catalog=[resource], entities=[model])
+        source.source_config.queryParserConfig = QueryParserConfig(type=parser_type)
+        source.source_config.lineageInformation = SimpleNamespace(dbServicePrefixes=["my_service"])
+        source.metadata.search_in_any_service.return_value = [table]
+
+        results = list(source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
+
+        assert errors(results) == []
+        assert lineage_edges(results) == [(table.fullyQualifiedName.root, model.fullyQualifiedName.root)]
+
+    def test_external_metrics_view_table_is_not_an_unrelated_rill_model(self):
+        resource = deepcopy(EXTERNAL_METRICS_VIEW_RESOURCE)
+        resource["metricsView"]["state"]["validSpec"]["table"] = "pull_requests"
+        metrics_view = make_datamodel("auction_metrics")
+        table = make_table("my_service.my_database.rill_data.pull_requests")
+        source = make_source(
+            "http://localhost:9009",
+            catalog=[resource, MODEL_RESOURCE, RAW_MODEL_RESOURCE],
+            entities=[metrics_view, make_model("pull_requests"), make_model("raw_pull_requests")],
+        )
+        source.source_config.lineageInformation = SimpleNamespace(dbServicePrefixes=["my_service"])
+        source.metadata.search_in_any_service.return_value = [table]
+
+        results = list(source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
+
+        assert errors(results) == []
+        assert (table.fullyQualifiedName.root, metrics_view.fullyQualifiedName.root) in lineage_edges(results)
+
+    @pytest.mark.parametrize("parser_type", list(QueryParserType))
+    @pytest.mark.parametrize("table_ref", ["RAW_PULL_REQUESTS", "main.RAW_PULL_REQUESTS"])
+    def test_internal_model_refs_resolve_case_insensitively(self, table_ref, parser_type):
+        resource = deepcopy(MODEL_RESOURCE)
+        resource["meta"]["refs"][0]["name"] = "RAW_PULL_REQUESTS"
+        resource["model"]["spec"]["inputProperties"]["sql"] = f"SELECT * FROM {table_ref}"
+        model, upstream = make_model("pull_requests"), make_model("raw_pull_requests")
+        source = make_source(
+            "http://localhost:9009", catalog=[resource, RAW_MODEL_RESOURCE], entities=[model, upstream]
+        )
+        source.source_config.queryParserConfig = QueryParserConfig(type=parser_type)
+        source.source_config.lineageInformation = SimpleNamespace(dbServicePrefixes=["my_service"])
+
+        results = list(source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
+
+        assert errors(results) == []
+        assert lineage_edges(results) == [(upstream.fullyQualifiedName.root, model.fullyQualifiedName.root)]
+
+    def test_filtered_internal_model_never_becomes_a_physical_table(self):
+        model = make_model("pull_requests")
+        source = make_source("http://localhost:9009", catalog=[MODEL_RESOURCE, RAW_MODEL_RESOURCE], entities=[model])
+        source.source_config.dataModelFilterPattern = FilterPattern(excludes=["^raw_pull_requests_model$"])
+        source.metadata.search_in_any_service.return_value = [
+            make_table("my_service.my_db.my_schema.raw_pull_requests")
+        ]
+
+        results = list(source.yield_bulk_datamodel(_DATAMODEL_LINEAGE_SENTINEL))
+
+        assert errors(results) == []
+        assert lineage_edges(results) == []
 
     def test_rill_renderers_map_to_standard_chart_types(self):
         expected_types = {

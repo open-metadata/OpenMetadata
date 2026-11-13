@@ -31,6 +31,7 @@ import {
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import Loader from '../../../common/Loader/Loader';
 
 interface OntologyDeleteDialogProps {
   readonly ontology: Ontology;
@@ -99,7 +100,9 @@ const OntologyDeleteDialog = ({
             <li>{`${t('label.release-plural')}: ${counts.data.releases}`}</li>
           </>
         ) : (
-          <li>{t('label.loading')}</li>
+          <li>
+            <Loader size="x-small" />
+          </li>
         )}
       </ul>
     );

@@ -156,14 +156,17 @@ const OntologyColumnBindingEditor = ({
   const renderColumns = () => (
     <>
       {columns.isError ? (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button
+              color="link-color"
+              size="xs"
+              onPress={() => void columns.refetch()}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('message.temporary-error-try-reloading')}
-          <Button
-            color="link-color"
-            size="xs"
-            onPress={() => void columns.refetch()}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       ) : (
         <Select

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Button, Typography } from '@openmetadata/ui-core-components';
+import { Button } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import {
   EntityStatus,
@@ -19,18 +19,12 @@ import {
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { releaseChangeCount } from '../OntologyReleasePanel/OntologyReleasePanel.utils';
-import {
-  getReviewStatusMessage,
-  NO_REVIEWER_ASSIGNED_KEY,
-} from './OntologyReviewBanner.utils';
 import OntologyReviewPill from './OntologyReviewPill';
 
 type Props = {
   onDismiss?: () => void;
   review: OntologyReleaseReview;
   release: OntologyRelease;
-  viewerName: string;
   viewerId?: string;
   onOpenTask: (taskId: string) => void;
 };
@@ -52,6 +46,7 @@ const DecisionBanner = ({
     <OntologyReviewPill
       action={
         <Button
+          pill
           color="secondary"
           size="sm"
           onPress={() => onOpenTask(review.task.id)}>
@@ -83,74 +78,44 @@ const isDecided = (review: Props['review']) =>
   (review.status === EntityStatus.Approved ||
     review.status === EntityStatus.Rejected);
 
+type Translate = ReturnType<typeof useTranslation>['t'];
+
+const versionText = (release: Props['release'], t: Translate) =>
+  release.semanticVersion ? 'v' + release.semanticVersion : t('label.draft');
+
 const PendingBanner = ({
   review,
   release,
-  viewerName,
-  isRequester,
   onOpenTask,
   onDismiss,
-}: Pick<
-  Props,
-  'review' | 'release' | 'viewerName' | 'onOpenTask' | 'onDismiss'
-> & {
-  isRequester: boolean;
-}) => {
+}: Pick<Props, 'review' | 'release' | 'onOpenTask' | 'onDismiss'>) => {
   const { t } = useTranslation();
-  const status = getReviewStatusMessage(
-    review,
-    Boolean(release.reviewers?.length)
-  );
-  const hasNoReviewerLeft =
-    isRequester &&
-    !review.callerCanVote &&
-    status.key === NO_REVIEWER_ASSIGNED_KEY;
 
   return (
     <OntologyReviewPill
       action={
         <Button
-          color="secondary"
+          pill
+          color="secondary-warning-outline"
           size="sm"
           onPress={() => onOpenTask(review.task.id)}>
-          {t(review.callerCanVote ? 'label.review-now' : 'label.view-task')}
+          {t('label.review')}
         </Button>
       }
-      detail={[
-        getEntityName(review.ontology),
-        release.semanticVersion
-          ? 'v' + release.semanticVersion
-          : t('label.draft'),
-        `${releaseChangeCount(release) ?? t('label.unavailable')} ${t(
-          'label.change-plural'
-        )}`,
-        getEntityName(review.requester),
-        review.taskId ?? review.task.id,
-      ].join(' · ')}
       testId="ontology-review-banner"
-      title={
-        review.callerCanVote
-          ? t('message.ontology-review-waiting-for-you', { name: viewerName })
-          : t(status.key, status.values)
-      }
-      tone={review.callerCanVote ? 'warning' : 'brand'}
-      onDismiss={onDismiss}>
-      {hasNoReviewerLeft && (
-        <Typography
-          color="secondary"
-          data-testid="ontology-review-withdraw-hint"
-          size="text-xs">
-          {t('message.ontology-review-no-reviewer-withdraw-hint')}
-        </Typography>
-      )}
-    </OntologyReviewPill>
+      title={t('message.ontology-review-asked-you', {
+        requester: getEntityName(review.requester),
+        version: versionText(release, t),
+      })}
+      tone="warning"
+      onDismiss={onDismiss}
+    />
   );
 };
 
 const OntologyReviewBanner = ({
   review,
   release,
-  viewerName,
   viewerId,
   onOpenTask,
   onDismiss,
@@ -166,19 +131,15 @@ const OntologyReviewBanner = ({
       />
     );
   }
-  if (
-    review.status !== EntityStatus.InReview ||
-    (!review.callerCanVote && !isRequester)
-  ) {
+  // Only a review waiting on the viewer's vote is announced while it is open.
+  if (review.status !== EntityStatus.InReview || !review.callerCanVote) {
     return null;
   }
 
   return (
     <PendingBanner
-      isRequester={isRequester}
       release={release}
       review={review}
-      viewerName={viewerName}
       onDismiss={onDismiss}
       onOpenTask={onOpenTask}
     />
