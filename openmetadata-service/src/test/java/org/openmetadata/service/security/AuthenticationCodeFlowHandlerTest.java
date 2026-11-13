@@ -263,6 +263,45 @@ class AuthenticationCodeFlowHandlerTest {
     }
   }
 
+  @Test
+  void unusableClientAuthentication_namesOnlyTheMethodsTheServerCannotPerform() {
+    assertTrue(AuthenticationCodeFlowHandler.unusableClientAuthentication(null).isEmpty());
+    for (OidcClientConfig.ClientAuthenticationMethod method :
+        OidcClientConfig.ClientAuthenticationMethod.values()) {
+      boolean isUsable =
+          method == OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_BASIC
+              || method == OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_POST;
+      Optional<String> reason =
+          AuthenticationCodeFlowHandler.unusableClientAuthentication(
+              new OidcClientConfig().withClientAuthenticationMethod(method));
+      assertEquals(isUsable, reason.isEmpty(), method.value());
+      reason.ifPresent(text -> assertTrue(text.contains(method.value()), text));
+    }
+  }
+
+  @Test
+  void validateConfig_refusesAClientAuthenticationMethodTheServerCannotPerform() {
+    AuthenticationConfiguration authConfig =
+        new AuthenticationConfiguration()
+            .withOidcConfiguration(
+                new OidcClientConfig()
+                    .withId("om-client")
+                    .withSecret("om-secret")
+                    .withCallbackUrl(TEST_SERVER_URL + "/callback")
+                    .withServerUrl(TEST_SERVER_URL)
+                    .withClientAuthenticationMethod(
+                        OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_JWT));
+
+    IllegalArgumentException refused =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                AuthenticationCodeFlowHandler.validateConfig(
+                    authConfig, new AuthorizerConfiguration()));
+
+    assertTrue(refused.getMessage().contains("client_secret_jwt"), refused.getMessage());
+  }
+
   private AuthenticationCodeFlowHandler handlerAnsweringProviderError(
       String loginRedirectUri, String error) throws Exception {
     UserSession pendingSession =

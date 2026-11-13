@@ -23,6 +23,7 @@ import java.net.http.HttpResponse;
 import java.util.Map;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -31,11 +32,15 @@ import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.sso.MockHttp;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.config.SecurityConfigSwap;
+import org.openmetadata.it.sso.config.SecurityConfigSwap.Answer;
 import org.openmetadata.it.sso.config.SsoConfigs;
 import org.openmetadata.it.sso.config.SsoServer;
 import org.openmetadata.it.util.OssTestServer;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.system.SecurityValidationResponse;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.security.saml.MockSamlIdp;
 
 /**
@@ -132,6 +137,34 @@ class SsoSamlLoginIT {
     HttpResponse<String> acs = postToAcs(browser, response, login.relayState());
 
     assertEquals(401, acs.statusCode(), acs.body());
+  }
+
+  @Test
+  @DisplayName("SA-11 signing the service provider's metadata without its keys is refused at save")
+  void signingTheMetadataWithoutKeysIsRefusedAtSave() {
+    SecurityConfiguration candidate = securityConfig.baselineCopy();
+    candidate
+        .getAuthenticationConfiguration()
+        .getSamlConfiguration()
+        .getSecurity()
+        .withSignSpMetadata(true);
+    try {
+      Answer put = SecurityConfigSwap.attemptPut(candidate);
+      assertEquals(400, put.status(), "saved without keys: " + put.body());
+      Answer patch =
+          SecurityConfigSwap.attemptPatch(
+              "[{\"op\":\"add\",\"path\":\"/authenticationConfiguration/samlConfiguration"
+                  + "/security/signSpMetadata\",\"value\":true}]");
+      assertEquals(400, patch.status(), "patched in without keys: " + patch.body());
+      Answer validate = SecurityConfigSwap.attemptValidate(candidate);
+      assertEquals(200, validate.status(), validate.body());
+      assertEquals(
+          SecurityValidationResponse.Status.FAILED,
+          JsonUtils.readValue(validate.body(), SecurityValidationResponse.class).getStatus(),
+          validate.body());
+    } finally {
+      securityConfig.restoreBaseline();
+    }
   }
 
   private static PendingSamlLogin startLogin(SsoBrowser browser) {

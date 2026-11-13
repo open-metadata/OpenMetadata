@@ -37,6 +37,7 @@ import org.openmetadata.it.sso.MockResponseGate;
 import org.openmetadata.it.sso.browser.SsoBrowser;
 import org.openmetadata.it.sso.browser.SsoNavigation;
 import org.openmetadata.it.sso.config.SecurityConfigSwap;
+import org.openmetadata.it.sso.config.SecurityConfigSwap.Answer;
 import org.openmetadata.it.sso.config.SsoConfigs;
 import org.openmetadata.it.sso.config.SsoServer;
 import org.openmetadata.it.sso.oidc.MockOidcIdentity;
@@ -51,6 +52,7 @@ import org.openmetadata.schema.configuration.SecurityConfiguration;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OidcClientConfig.ClientAuthenticationMethod;
+import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.service.security.session.SessionStatus;
@@ -75,6 +77,8 @@ class SsoOidcConfidentialLoginIT {
   private static final String PROVIDER_REFUSED = "provider_refused";
   private static final String TOKEN_EXCHANGE_FAILED = "token_exchange_failed";
   private static final String ACCOUNT_NOT_ALLOWED = "account_not_allowed";
+  private static final String CLIENT_AUTHENTICATION_PATH =
+      "/authenticationConfiguration/oidcConfiguration/clientAuthenticationMethod";
 
   private static MockOidcProvider provider;
   private static SecurityConfigSwap securityConfig;
@@ -305,6 +309,41 @@ class SsoOidcConfidentialLoginIT {
           assertLoginEndsOnSignIn(browser, login(browser), ACCOUNT_NOT_ALLOWED);
         });
     assertNoAccountFor(stranger);
+  }
+
+  @Test
+  @DisplayName("OC-15 a client authentication method the server cannot use is refused at save")
+  void unusableClientAuthenticationMethodIsRefusedAtSave(TestNamespace ns) {
+    for (ClientAuthenticationMethod unusable :
+        List.of(
+            ClientAuthenticationMethod.CLIENT_SECRET_JWT,
+            ClientAuthenticationMethod.PRIVATE_KEY_JWT)) {
+      SecurityConfiguration candidate = securityConfig.baselineCopy();
+      oidcOf(candidate).withClientAuthenticationMethod(unusable);
+      try {
+        Answer put = SecurityConfigSwap.attemptPut(candidate);
+        assertEquals(400, put.status(), unusable + " was saved: " + put.body());
+        Answer patch =
+            SecurityConfigSwap.attemptPatch(
+                "[{\"op\":\"add\",\"path\":\""
+                    + CLIENT_AUTHENTICATION_PATH
+                    + "\",\"value\":\""
+                    + unusable.value()
+                    + "\"}]");
+        assertEquals(400, patch.status(), unusable + " was patched in: " + patch.body());
+        Answer validate = SecurityConfigSwap.attemptValidate(candidate);
+        assertEquals(200, validate.status(), validate.body());
+        assertEquals(
+            SecurityValidationResponse.Status.FAILED,
+            JsonUtils.readValue(validate.body(), SecurityValidationResponse.class).getStatus(),
+            unusable + " passed validation: " + validate.body());
+      } finally {
+        securityConfig.restoreBaseline();
+      }
+    }
+
+    signInAs(ns, "unchanged");
+    idTokenFrom(login(new SsoBrowser()));
   }
 
   @Test

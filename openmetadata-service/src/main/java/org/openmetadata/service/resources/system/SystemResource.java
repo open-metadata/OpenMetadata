@@ -64,6 +64,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
@@ -81,6 +82,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.AdoptDeploymentConfigRequest;
+import org.openmetadata.schema.system.FieldError;
 import org.openmetadata.schema.system.SecurityValidationResponse;
 import org.openmetadata.schema.system.SettingSource;
 import org.openmetadata.schema.system.SettingsSourceResponse;
@@ -108,6 +110,7 @@ import org.openmetadata.service.cache.CacheProvider;
 import org.openmetadata.service.config.source.LocalSettingsRefresher;
 import org.openmetadata.service.config.source.SettingsSecrets;
 import org.openmetadata.service.config.source.SettingsSourceService;
+import org.openmetadata.service.exception.AuthenticationException;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.exception.SettingsManagedByEnvironmentException;
 import org.openmetadata.service.exception.SystemSettingsException;
@@ -1218,10 +1221,12 @@ public class SystemResource {
     authorizer.authorizeAdmin(securityContext);
 
     try {
-      preserveMaskedSecuritySecrets(securityConfig, currentSecurityConfiguration());
+      SecurityConfiguration previous = currentSecurityConfiguration();
+      preserveMaskedSecuritySecrets(securityConfig, previous);
       systemRepository.assertSecurityConfigurationWritable(securityConfig);
       AuthenticationConfiguration authConfig = securityConfig.getAuthenticationConfiguration();
       validateConfigurationOfActiveProvider(securityConfig);
+      requireApplicable(securityConfig);
 
       // Refresh publicKeyUrls from discovery for OIDC confidential clients before saving
       systemRepository.syncPublicKeyUrlsFromDiscovery(authConfig);
@@ -1243,16 +1248,14 @@ public class SystemResource {
       SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
       SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
 
-      // Reload entire security system
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      applyStoredSecurityConfiguration(previous);
 
       return Response.ok(getSecurityConfig(securityContext)).build();
     } catch (BadRequestException | SettingsManagedByEnvironmentException e) {
-      // Raised before anything is written: by validateConfigurationOfActiveProvider, or because the
-      // deployment configuration owns the setting. Rethrow so the mapper answers 400/409 rather
-      // than letting the catch below report a server failure. Keep the types narrow, so a failure
-      // from the writes below still surfaces as a 5xx instead of blaming the payload after the
-      // configuration was already persisted.
+      // Raised before anything is written (validation, or a setting the deployment configuration
+      // owns), or after a configuration the server could not apply was put back. Rethrow so the
+      // mapper answers 400/409 rather than letting the catch below report a server failure. Keep
+      // the types narrow, so a failure of the writes themselves still surfaces as a 5xx.
       throw e;
     } catch (Exception e) {
       LOG.error("Failed to update security configuration", e);
@@ -1263,6 +1266,46 @@ public class SystemResource {
   private void validateConfigurationOfActiveProvider(SecurityConfiguration securityConfig) {
     ActiveProviderValidator.validate(
         securityConfig, securityConfig.getAuthenticationConfiguration());
+  }
+
+  /** The checks a save without the full validation still makes: no network is involved. */
+  private void requireApplicable(SecurityConfiguration securityConfig) {
+    FieldError error = systemRepository.applicabilityError(securityConfig);
+    if (error != null) {
+      throw new BadRequestException(
+          String.format(
+              "Invalid security configuration: %s: %s", error.getField(), error.getError()));
+    }
+  }
+
+  /**
+   * Switches the security system to the configuration just stored. One this server cannot apply,
+   * such as a directory that refuses the bind or a keystore it cannot read, is put back to
+   * {@code previous} and refused with the reason, so no server runs it, now or at its next start
+   * (ADR:2026-11-12-a-security-configuration-save-applies-in-full-or-is-refused).
+   */
+  private void applyStoredSecurityConfiguration(SecurityConfiguration previous) {
+    try {
+      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+    } catch (AuthenticationException notApplied) {
+      restoreSecurityConfiguration(previous);
+      throw new BadRequestException(
+          "The security configuration could not be applied, so it was not saved: "
+              + ExceptionUtils.getRootCauseMessage(notApplied));
+    }
+  }
+
+  private void restoreSecurityConfiguration(SecurityConfiguration configuration) {
+    systemRepository.createOrUpdate(
+        new Settings()
+            .withConfigType(AUTHENTICATION_CONFIGURATION)
+            .withConfigValue(configuration.getAuthenticationConfiguration()));
+    systemRepository.createOrUpdate(
+        new Settings()
+            .withConfigType(AUTHORIZER_CONFIGURATION)
+            .withConfigValue(configuration.getAuthorizerConfiguration()));
+    SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
+    SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
   }
 
   @PATCH
@@ -1339,7 +1382,7 @@ public class SystemResource {
       SettingsCache.invalidateSettings(AUTHENTICATION_CONFIGURATION.toString());
       SettingsCache.invalidateSettings(AUTHORIZER_CONFIGURATION.toString());
 
-      SecurityConfigurationManager.getInstance().reloadSecuritySystem();
+      applyStoredSecurityConfiguration(currentConfig);
       return Response.noContent().build();
     } catch (PreconditionFailedException e) {
       // Another server, the CLI or an administration job changed the configuration since it was

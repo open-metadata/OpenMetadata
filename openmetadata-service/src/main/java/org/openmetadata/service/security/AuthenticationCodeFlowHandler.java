@@ -128,6 +128,12 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           ClientAuthenticationMethod.PRIVATE_KEY_JWT,
           ClientAuthenticationMethod.NONE);
 
+  private static final Set<OidcClientConfig.ClientAuthenticationMethod>
+      USABLE_CLIENT_AUTHENTICATION =
+          Set.of(
+              OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_BASIC,
+              OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_POST);
+
   // OIDC spec error codes meaning "silent auth not possible; interactive login required"
   private static final Set<String> SILENT_AUTH_ERRORS =
       Set.of(
@@ -1190,6 +1196,25 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
     return clientAuthenticationMechanism;
   }
 
+  /**
+   * Why this server cannot authenticate with the client authentication method {@code clientConfig}
+   * names, if it cannot. It never signs a client assertion, so client_secret_jwt and private_key_jwt
+   * would build a client that cannot redeem any code.
+   */
+  public static Optional<String> unusableClientAuthentication(OidcClientConfig clientConfig) {
+    OidcClientConfig.ClientAuthenticationMethod method =
+        clientConfig == null ? null : clientConfig.getClientAuthenticationMethod();
+    boolean isUsable = method == null || USABLE_CLIENT_AUTHENTICATION.contains(method);
+    return isUsable
+        ? Optional.empty()
+        : Optional.of(
+            String.format(
+                "Client authentication method '%s' is not supported; use %s or %s",
+                method.value(),
+                OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_BASIC.value(),
+                OidcClientConfig.ClientAuthenticationMethod.CLIENT_SECRET_POST.value()));
+  }
+
   private static ClientAuthenticationMethod getPreferredAuthenticationMethod(
       OidcConfiguration config) {
     ClientAuthenticationMethod configurationMethod = config.getClientAuthenticationMethod();
@@ -1695,6 +1720,11 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       CommonHelper.assertNotBlank("ServerUrl", authConfig.getOidcConfiguration().getServerUrl());
       validatePrincipalClaimsMapping(
           SecurityUtil.buildPrincipalClaimsMapping(authConfig.getJwtPrincipalClaimsMapping()));
+      Optional<String> unusableMethod =
+          unusableClientAuthentication(authConfig.getOidcConfiguration());
+      if (unusableMethod.isPresent()) {
+        throw new IllegalArgumentException(unusableMethod.get());
+      }
 
       OidcClient validationClient = buildOidcClient(authConfig.getOidcConfiguration());
       validationClient.setCallbackUrl(authConfig.getOidcConfiguration().getCallbackUrl());
@@ -1716,6 +1746,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       if (providerMetadata.getTokenEndpointURI() == null) {
         throw new IllegalArgumentException("Token endpoint not found in provider metadata");
       }
+      // What the login handler builds from the same configuration, so a method the provider does
+      // not offer is refused here instead of leaving the server unable to sign anyone in.
+      getClientAuthentication(validationClient.getConfiguration());
 
     } catch (Exception e) {
       throw new IllegalArgumentException(
