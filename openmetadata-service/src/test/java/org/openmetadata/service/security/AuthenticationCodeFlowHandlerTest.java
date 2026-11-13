@@ -212,28 +212,74 @@ class AuthenticationCodeFlowHandlerTest {
   }
 
   @Test
-  void handleCallback_nonSilentAuthError_writesErrorResponse() throws Exception {
-    UserSession pendingSession =
-        UserSession.builder().id("pending-session").state("state-abc").build();
-    when(sessionService.getPendingSession(request, response))
-        .thenReturn(Optional.of(pendingSession));
-    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
-    when(request.getParameterMap())
-        .thenReturn(
-            Map.of(
-                "state", new String[] {"state-abc"},
-                "error", new String[] {"server_error"}));
-
+  void handleCallback_providerRefusal_returnsToSignInWithTheReason() throws Exception {
     AuthenticationCodeFlowHandler handler =
-        createHandlerWithMockedInternals(sessionService, oidcClient);
-    setField(handler, "serverUrl", TEST_SERVER_URL);
+        handlerAnsweringProviderError(TEST_SERVER_URL + "/auth/callback", "access_denied");
+
+    handler.handleCallback(request, response);
+
+    verify(response).sendRedirect(TEST_SERVER_URL + "/signin?error=provider_refused");
+    verify(response, never()).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+    assertTrue(captureOutputStream.getCapturedOutput().isEmpty(), "no detail in the response");
+  }
+
+  @Test
+  void handleCallback_failedMcpSignIn_keepsTheErrorStatusItsCallbackReads() throws Exception {
+    AuthenticationCodeFlowHandler handler =
+        handlerAnsweringProviderError(TEST_SERVER_URL + MCP_CALLBACK, "server_error");
 
     handler.handleCallback(request, response);
 
     verify(response).setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-    String body = captureOutputStream.getCapturedOutput();
-    assertTrue(body.contains("Bad authentication response"));
     verify(response, never()).sendRedirect(anyString());
+  }
+
+  @Test
+  void handleCallback_refusedCodeExchange_returnsToSignInWithTheReason() throws Exception {
+    try (FakeOidcProvider provider = FakeOidcProvider.start()) {
+      provider.rejectTokenRequests(401, "invalid_client", "client authentication failed");
+      AuthenticationCodeFlowHandler handler =
+          new AuthenticationCodeFlowHandler(
+              FakeOidcProvider.securityConfigFor(provider.confidentialClient())
+                  .getAuthenticationConfiguration(),
+              new AuthorizerConfiguration(),
+              sessionService);
+      UserSession pendingSession =
+          UserSession.builder()
+              .id("pending-session")
+              .state("state-abc")
+              .redirectUri("http://localhost:8585/auth/callback")
+              .build();
+      when(sessionService.getPendingSession(request, response))
+          .thenReturn(Optional.of(pendingSession));
+      when(request.getParameterMap())
+          .thenReturn(Map.of("state", new String[] {"state-abc"}, "code", new String[] {"code-1"}));
+
+      handler.handleCallback(request, response);
+
+      verify(response).sendRedirect("http://localhost:8585/signin?error=token_exchange_failed");
+      verify(sessionService, never())
+          .activatePendingSession(any(), any(), any(), any(), any(), any());
+    }
+  }
+
+  private AuthenticationCodeFlowHandler handlerAnsweringProviderError(
+      String loginRedirectUri, String error) throws Exception {
+    UserSession pendingSession =
+        UserSession.builder()
+            .id("pending-session")
+            .state("state-abc")
+            .redirectUri(loginRedirectUri)
+            .build();
+    when(sessionService.getPendingSession(request, response))
+        .thenReturn(Optional.of(pendingSession));
+    when(oidcClient.getCallbackUrl()).thenReturn(TEST_SERVER_URL + "/callback");
+    when(request.getParameterMap())
+        .thenReturn(Map.of("state", new String[] {"state-abc"}, "error", new String[] {error}));
+    AuthenticationCodeFlowHandler handler =
+        createHandlerWithMockedInternals(sessionService, oidcClient);
+    setField(handler, "serverUrl", TEST_SERVER_URL);
+    return handler;
   }
 
   @Test

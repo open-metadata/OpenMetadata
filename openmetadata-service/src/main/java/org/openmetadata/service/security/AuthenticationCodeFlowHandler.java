@@ -570,6 +570,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   // Callback
   public void handleCallback(HttpServletRequest req, HttpServletResponse resp) {
+    UserSession pendingSession = null;
     try {
       Optional<UserSession> maybePendingSession = sessionService.getPendingSession(req, resp);
       if (maybePendingSession.isEmpty()) {
@@ -580,7 +581,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
         return;
       }
-      UserSession pendingSession = maybePendingSession.get();
+      pendingSession = maybePendingSession.get();
 
       LOG.debug(
           "Performing Auth Callback For User Session: {} ",
@@ -600,9 +601,10 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
           resp.sendRedirect(deploymentUrl(SIGNIN_PATH));
           return;
         }
-        LOG.error(
-            "Bad authentication response, error={}", authenticationErrorResponse.getErrorObject());
-        throw new TechnicalException("Bad authentication response");
+        throw SignInFailure.PROVIDER_REFUSED.because(
+            "Identity provider refused the sign-in: "
+                + authenticationErrorResponse.getErrorObject(),
+            null);
       }
 
       String redirectUri = requireRedirectUriOrDefault(pendingSession.getRedirectUri());
@@ -616,12 +618,13 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
       OidcCredentials credentials = buildCredentials(successResponse);
       requireAuthorizationCode(pendingSession, credentials);
-      validateAndSendTokenRequest(pendingSession, credentials, computedCallbackUrl);
+      redeemAuthorizationCode(pendingSession, credentials, computedCallbackUrl);
 
       // pac4j 6 re-parses the serialized id token on every toIdToken() call; parse once and reuse.
       JWT idToken = credentials.toIdToken();
       if (idToken == null) {
-        throw new TechnicalException("ID token not returned by OIDC provider");
+        throw SignInFailure.TOKEN_EXCHANGE_FAILED.because(
+            "ID token not returned by OIDC provider", null);
       }
       JWTClaimsSet idTokenClaims = idToken.getJWTClaimsSet();
       Date expirationTime = idTokenClaims.getExpirationTime();
@@ -645,11 +648,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       Map<String, Object> claims = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
       claims.putAll(idTokenClaims.getClaims());
 
-      OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
-      User user =
-          identity.emailFirstFlow()
-              ? getOrCreateEmailFirstOidcUser(identity, claims)
-              : getOrCreateOidcUser(identity, claims);
+      User user = provisionedUser(claims);
       syncRolesFromProvider(user, claims);
 
       Entity.getUserRepository().updateUserLastLoginTime(user, System.currentTimeMillis());
@@ -677,6 +676,8 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       // The browser presents the provider's own ID token: its claims are the ones the principal
       // configuration names, and its expiry is the provider's.
       sendRedirectWithToken(resp, redirectUri, user, credentials.getIdToken());
+    } catch (SignInFailedException failure) {
+      endFailedSignIn(resp, pendingSession, failure);
     } catch (IllegalArgumentException e) {
       try {
         org.openmetadata.service.security.SecurityUtil.writeErrorResponse(
@@ -686,6 +687,82 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
       }
     } catch (Exception e) {
       getErrorMessage(resp, e);
+    }
+  }
+
+  /**
+   * A browser sign-in that fails for a reason the person can act on ends on the sign-in page, which
+   * tells them why from a fixed code; a raw error page is a dead end they cannot recover from. An MCP
+   * client's sign-in keeps the error status its callback reads
+   * (ADR:2026-11-12-a-failed-sso-sign-in-returns-to-the-sign-in-page).
+   */
+  private void endFailedSignIn(
+      HttpServletResponse resp, UserSession pendingSession, SignInFailedException failure) {
+    boolean isMcpSignIn =
+        pendingSession != null && isMcpRedirectUri(pendingSession.getRedirectUri());
+    if (isMcpSignIn) {
+      getErrorMessage(resp, failure);
+    } else {
+      returnToSignInPage(resp, failure);
+    }
+  }
+
+  private void returnToSignInPage(HttpServletResponse resp, SignInFailedException failure) {
+    logFailedSignIn(failure);
+    try {
+      resp.sendRedirect(signInPageExplaining(failure.failure()));
+    } catch (IOException e) {
+      LOG.error("[Auth Callback] Could not send the browser back to the sign-in page", e);
+    }
+  }
+
+  String signInPageExplaining(SignInFailure failure) {
+    return deploymentUrl(SIGNIN_PATH) + "?" + SignInFailure.QUERY_PARAMETER + "=" + failure.code();
+  }
+
+  private static void logFailedSignIn(SignInFailedException failure) {
+    String code = failure.failure().code();
+    if (failure.failure() == SignInFailure.TOKEN_EXCHANGE_FAILED) {
+      // Usually the client configuration (a wrong secret) or an outage: an administrator's to fix.
+      LOG.error(
+          "[Auth Callback] Sign-in failed ({}): {}",
+          code,
+          failure.getMessage(),
+          failure.getCause());
+    } else {
+      LOG.warn("[Auth Callback] Sign-in failed ({}): {}", code, failure.getMessage());
+    }
+  }
+
+  /**
+   * Redeems the callback's code at the provider's token endpoint. Each way that fails (a wrong
+   * client secret, an error answer, a response that is not one, a timeout) is the provider's or its
+   * configuration's, so the person signing in is told only that much and the log keeps the detail.
+   */
+  private void redeemAuthorizationCode(
+      UserSession session, OidcCredentials credentials, String callbackUrl)
+      throws URISyntaxException {
+    try {
+      validateAndSendTokenRequest(session, credentials, callbackUrl);
+    } catch (IOException | com.nimbusds.oauth2.sdk.ParseException | TechnicalException e) {
+      throw SignInFailure.TOKEN_EXCHANGE_FAILED.because(
+          "Token request failed: " + e.getMessage(), e);
+    }
+  }
+
+  /**
+   * The account the provider vouched for. A refusal here applies this deployment's rules about who
+   * may sign in (self-signup, allowed domains, verified addresses), which the person is told.
+   */
+  private User provisionedUser(Map<String, Object> claims) {
+    try {
+      OidcIdentityResolver.ResolvedOidcIdentity identity = resolveOidcIdentity(claims);
+      return identity.emailFirstFlow()
+          ? getOrCreateEmailFirstOidcUser(identity, claims)
+          : getOrCreateOidcUser(identity, claims);
+    } catch (AuthenticationException
+        | org.openmetadata.service.security.AuthenticationException refused) {
+      throw SignInFailure.ACCOUNT_NOT_ALLOWED.because(refused.getMessage(), refused);
     }
   }
 
@@ -932,7 +1009,7 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
 
   private void validateAndSendTokenRequest(
       UserSession session, OidcCredentials oidcCredentials, String computedCallbackUrl)
-      throws URISyntaxException {
+      throws URISyntaxException, IOException, com.nimbusds.oauth2.sdk.ParseException {
     LOG.debug(
         "Initiating Token Request - Session: {}, redirect_uri: {}",
         session.getId(),
@@ -1340,9 +1417,9 @@ public class AuthenticationCodeFlowHandler implements AuthServeletHandler {
         authorizerConfiguration);
   }
 
-  @SneakyThrows
   private void executeAuthorizationCodeTokenRequest(
-      UserSession session, TokenRequest request, OidcCredentials credentials) {
+      UserSession session, TokenRequest request, OidcCredentials credentials)
+      throws IOException, com.nimbusds.oauth2.sdk.ParseException {
     HTTPResponse httpResponse = executeTokenHttpRequest(client.getConfiguration(), request);
     OIDCTokenResponse tokenSuccessResponse = parseTokenResponseFromHttpResponse(httpResponse);
     populateCredentialsFromTokenResponse(tokenSuccessResponse, credentials);
