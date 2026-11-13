@@ -209,7 +209,7 @@ test.describe(
       await page.screenshot({ path: `${SCREENSHOTS}/g3-consumer-view.png` });
     });
 
-    test('a user with only OntologyReviewer cannot edit or connect but opens Tasks', async ({
+    test('a user with only OntologyReviewer cannot edit or connect and sees Tasks disabled with no tasks', async ({
       freshUserPage: { page, user },
     }) => {
       if (!fixture) {
@@ -222,8 +222,8 @@ test.describe(
       await expect(page.getByRole('button', { name: /^Connect/ })).toHaveCount(
         0
       );
-      await page.getByTestId('ontology-tasks-trigger').click();
-      await expect(page.getByRole('dialog')).toBeVisible();
+      // A fresh reviewer has no tasks, so the trigger stays visible but disabled.
+      await expect(page.getByTestId('ontology-tasks-trigger')).toBeDisabled();
       await page.screenshot({ path: `${SCREENSHOTS}/g3-reviewer-view.png` });
     });
 
@@ -305,9 +305,16 @@ test.describe(
 
       const reached = new Set<string>();
       for (let step = 0; step < 14; step++) {
-        const id = await page.evaluate(
-          () => document.activeElement?.getAttribute('data-testid') ?? ''
-        );
+        // A disabled control is reached through its Tooltip's focusable span wrapper.
+        const id = await page.evaluate(() => {
+          const active = document.activeElement;
+
+          return (
+            active?.getAttribute('data-testid') ??
+            active?.firstElementChild?.getAttribute('data-testid') ??
+            ''
+          );
+        });
         if (id) {
           reached.add(id);
         }
