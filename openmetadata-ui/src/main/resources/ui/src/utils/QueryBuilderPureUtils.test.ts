@@ -153,7 +153,11 @@ describe('getJsonTreePropertyFromQueryFilter – text rules', () => {
     [
       'regexp',
       'name.keyword',
-      { regexp: { 'name.keyword': { value: '.*orders.*' } } },
+      {
+        regexp: {
+          'name.keyword': { value: '.*orders.*', case_insensitive: true },
+        },
+      },
       ['.*orders.*'],
     ],
     [
@@ -469,6 +473,38 @@ describe('isQueryFilterFullyRepresentable', () => {
     [
       'a shorthand regexp clause',
       { query: { bool: { filter: [{ regexp: { name: '.*orders.*' } }] } } },
+    ],
+    [
+      'a case-sensitive regexp clause',
+      {
+        query: {
+          bool: { filter: [{ regexp: { name: { value: 'Orders.*' } } }] },
+        },
+      },
+    ],
+    [
+      'a regexp clause with flags',
+      {
+        query: {
+          bool: {
+            filter: [
+              {
+                regexp: {
+                  name: {
+                    value: 'Orders.*',
+                    case_insensitive: true,
+                    flags: 'ALL',
+                  },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+    [
+      'a shorthand wildcard clause',
+      { query: { bool: { filter: [{ wildcard: { name: '*orders*' } }] } } },
     ],
     [
       'a match_phrase clause in query form',

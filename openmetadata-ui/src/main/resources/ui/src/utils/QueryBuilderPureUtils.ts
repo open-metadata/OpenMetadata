@@ -361,36 +361,8 @@ const matchExists: QueryFilterBranchHandler = (curr, parentPath) => {
 const stripWildcards = (value: unknown): string =>
   String(value ?? '').replace(/^\*|\*$/g, '');
 
-const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr as EsWildCard).wildcard)) {
-    return undefined;
-  }
-
-  return getCommonFieldProperties(
-    parentPath,
-    Object.keys((curr as EsWildCard).wildcard)[0],
-    'like',
-    stripWildcards(Object.values((curr as EsWildCard).wildcard)[0]?.value)
-  );
-};
-
-const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) => {
-  if (isUndefined((curr.bool?.must_not as EsWildCard)?.wildcard)) {
-    return undefined;
-  }
-
-  return getCommonFieldProperties(
-    parentPath,
-    Object.keys((curr.bool?.must_not as EsWildCard)?.wildcard)[0],
-    'not_like',
-    stripWildcards(
-      Object.values((curr.bool?.must_not as EsWildCard)?.wildcard)[0]?.value
-    )
-  );
-};
-
-// Claims the clause only when it holds the string value the UI writes; any other ES form
-// stays unread, so isQueryFilterFullyRepresentable keeps flagging the filter.
+// Claims the clause only when readValue finds a string in the shape the UI writes; any
+// other ES form stays unread, so isQueryFilterFullyRepresentable keeps flagging the filter.
 const getStringValueRule = (
   parentPath: Array<string>,
   clause: Record<string, unknown> | undefined,
@@ -405,12 +377,47 @@ const getStringValueRule = (
     : undefined;
 };
 
+// `like` rules are saved as `{ value: '*value*' }`.
+const readWildcardValue = (body: unknown) => {
+  const value = (body as { value?: unknown })?.value;
+
+  return isString(value) ? stripWildcards(value) : undefined;
+};
+
+// Regular expression rules are saved as `{ value, case_insensitive: true }` and nothing else;
+// reading a case-sensitive or flagged regexp would widen it on the next save.
+const readRegexpValue = (body: unknown) => {
+  const {
+    value,
+    case_insensitive: caseInsensitive,
+    ...rest
+  } = isObject(body) ? (body as Record<string, unknown>) : {};
+
+  return caseInsensitive === true && isEmpty(rest) ? value : undefined;
+};
+
+const matchWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr as EsWildCard).wildcard,
+    'like',
+    readWildcardValue
+  );
+
+const matchMustNotWildcard: QueryFilterBranchHandler = (curr, parentPath) =>
+  getStringValueRule(
+    parentPath,
+    (curr.bool?.must_not as EsWildCard)?.wildcard,
+    'not_like',
+    readWildcardValue
+  );
+
 const matchRegexp: QueryFilterBranchHandler = (curr, parentPath) =>
   getStringValueRule(
     parentPath,
     (curr as EsRegexp).regexp,
     'regexp',
-    (body) => (body as { value?: unknown })?.value
+    readRegexpValue
   );
 
 const matchPhrase: QueryFilterBranchHandler = (curr, parentPath) =>
