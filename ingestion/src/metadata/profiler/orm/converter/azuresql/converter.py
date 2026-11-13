@@ -13,7 +13,7 @@
 Map Types to convert/cast azuresql related data types to relevant data types
 """
 
-from typing import Any
+from typing import Any, ClassVar
 
 import sqlalchemy
 from sqlalchemy import NVARCHAR, TEXT
@@ -34,6 +34,9 @@ class AzureSqlMapTypes(CommonMapTypes):
     """
     AzureSql type mapper
     """
+
+    # Catalog schema names are literal identifiers; dots must not become database separators.
+    quote_schema: ClassVar[bool | None] = True
 
     _TYPE_MAP_OVERRIDE = {  # noqa: RUF012
         DataType.TIMESTAMP: CustomTypes.TIMESTAMP.value,
