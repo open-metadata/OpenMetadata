@@ -182,6 +182,9 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     if (status != null) {
       filter.addQueryParam("workflowStatus", status);
     }
+    if (!ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
+      filter.addQueryParam("queryRunnerRequesterId", callerId(securityContext).toString());
+    }
     ResultList<Workflow> workflows =
         super.listInternal(
             uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
@@ -259,7 +262,9 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           String includeRelations) {
     return decryptOrNullify(
         securityContext,
-        getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations));
+        requireReadable(
+            securityContext,
+            getInternal(uriInfo, securityContext, id, fieldsParam, include, includeRelations)));
   }
 
   @GET
@@ -308,7 +313,10 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           String includeRelations) {
     return decryptOrNullify(
         securityContext,
-        getByNameInternal(uriInfo, securityContext, name, fieldsParam, include, includeRelations));
+        requireReadable(
+            securityContext,
+            getByNameInternal(
+                uriInfo, securityContext, name, fieldsParam, include, includeRelations)));
   }
 
   @GET
@@ -658,13 +666,36 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
    * requester may trigger it again. Admins and bots dispatch these on users' behalf.
    */
   private void authorizeQueryRunnerTrigger(SecurityContext securityContext, Workflow workflow) {
-    UUID callerId = DefaultAuthorizer.getSubjectContext(securityContext).user().getId();
-    boolean isRequester =
-        typedRequest(workflow) instanceof QueryRunnerRequest queryRequest
-            && callerId.equals(queryRequest.getUserId());
-    if (!isRequester) {
+    if (!isRequester(securityContext, workflow)) {
       authorizer.authorizeAdminOrBot(securityContext);
     }
+  }
+
+  /**
+   * A query runner workflow carries its requester's SQL, so only that requester, an admin or a bot
+   * may read it, as with its results. Every other workflow is readable as its policies decide.
+   */
+  private static Workflow requireReadable(SecurityContext securityContext, Workflow workflow) {
+    boolean readable =
+        workflow.getWorkflowType() != WorkflowType.QUERY_RUNNER
+            || ConnectionSecretsGuard.readsStoredSecrets(securityContext)
+            || isRequester(securityContext, workflow);
+    if (!readable) {
+      throw new AuthorizationException(
+          String.format(
+              "Query runner workflow [%s] is only available to the user who ran it",
+              workflow.getId()));
+    }
+    return workflow;
+  }
+
+  private static boolean isRequester(SecurityContext securityContext, Workflow workflow) {
+    return typedRequest(workflow) instanceof QueryRunnerRequest queryRequest
+        && callerId(securityContext).equals(queryRequest.getUserId());
+  }
+
+  private static UUID callerId(SecurityContext securityContext) {
+    return DefaultAuthorizer.getSubjectContext(securityContext).user().getId();
   }
 
   private static AuthorizationException unauthorizableTrigger(Workflow workflow, String reason) {
@@ -756,7 +787,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   @Override
   protected Optional<UnaryOperator<Workflow>> snapshotRedaction(SecurityContext securityContext) {
-    return Optional.of(workflow -> decryptOrNullify(securityContext, workflow));
+    return Optional.of(
+        workflow -> decryptOrNullify(securityContext, requireReadable(securityContext, workflow)));
   }
 
   private Workflow decryptOrNullify(SecurityContext securityContext, Workflow workflow) {

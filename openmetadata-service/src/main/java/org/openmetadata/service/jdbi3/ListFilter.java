@@ -152,6 +152,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getNotificationTemplateCondition());
     conditions.add(getApiCollectionCondition(tableName));
     conditions.add(getWorkflowDefinitionIdCondition());
+    conditions.add(getQueryRunnerRequesterCondition());
     conditions.add(getEntityLinkCondition());
     conditions.add(getEntityLinkHashCondition());
     conditions.add(getActiveCondition());
@@ -601,6 +602,24 @@ public class ListFilter extends Filter<ListFilter> {
   private String getWorkflowDefinitionIdCondition() {
     String workflowDefinitionId = queryParams.get("workflowDefinitionId");
     return workflowDefinitionId == null ? "" : "workflowDefinitionId = :workflowDefinitionId";
+  }
+
+  /**
+   * Keeps only the query runner workflows the given user ran. A query runner workflow carries its
+   * requester's SQL, so it is read by that requester alone; a run without a recorded requester is
+   * left out. Workflows of other types are untouched.
+   */
+  private String getQueryRunnerRequesterCondition() {
+    String requesterId = queryParams.get("queryRunnerRequesterId");
+    if (requesterId == null) {
+      return "";
+    }
+    String storedRequester =
+        Boolean.TRUE.equals(DatasourceConfig.getInstance().isMySQL())
+            ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.request.userId'))"
+            : "json->'request'->>'userId'";
+    return String.format(
+        "(workflowType <> 'QUERY_RUNNER' OR %s = :queryRunnerRequesterId)", storedRequester);
   }
 
   private String getEntityLinkCondition() {
