@@ -43,6 +43,8 @@ import org.openmetadata.service.util.RestUtil;
 @Repository
 public class ContextFileRepository extends EntityRepository<ContextFile> {
   public static final String CONTEXT_FILE_ENTITY = "contextFile";
+  // The folder is kept out of the stored JSON, so a patch loads it to derive the file's FQN.
+  private static final String PATCH_FIELDS = "folder";
   private static final String DUPLICATE_FILE_NAME_MESSAGE =
       "A file named '%s' already exists in this folder.";
   private static final String ARCHIVED_FILE_NAME_MESSAGE =
@@ -58,7 +60,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
         CONTEXT_FILE_ENTITY,
         ContextFile.class,
         jdbi.onDemand(CollectionDAO.class).contextFileDAO(),
-        "",
+        PATCH_FIELDS,
         "");
     supportsSearch = true;
     // NOTE: SearchIndexFactory registration handled by OpenMetadata core
