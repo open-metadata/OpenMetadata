@@ -396,7 +396,7 @@ class SigmaSource(DashboardServiceSource):
                 resolved = self._resolved_table(
                     schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name
                 )
-            if not resolved and node.node_type == "table" and self.get_db_service_prefixes():
+            if not resolved and node.node_type == "table":
                 path = self.client.get_connection_path(node.id)
                 if path and len(path) == 3 and path[2] == node.name:
                     resolved = self._resolved_table(*path)

@@ -1165,32 +1165,88 @@ def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
     assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1")[0]] == ["PETS"]
 
 
+# ORDERS is in two databases of wh_a: a display path that drops the database finds no single table
+TWO_ORDERS = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_a", "ORDERS", database="SALES")]
+SALES_ORDERS = ["wh_a.SALES.PUBLIC.ORDERS"]
+# Read as schema ORDERS: finds no table
+TABLE_IN_PATH = "Connection Root/SALES/PUBLIC/ORDERS"
+
+
 @pytest.mark.parametrize(
-    "files_path, connection_path, linked, path_reads",
+    "files_path, connection_path, catalog, prefixes, linked, path_reads",
     [
-        # The display path finds the table, so the connection path is not read
-        ("Connection Root/SALES.PUBLIC", 500, ["wh_a.SALES.PUBLIC.ORDERS"], 0),
-        # It drops the database and ORDERS is in two: the connection path names the one
-        ("Connection Root/ANALYTICS/PUBLIC", ["SALES", "PUBLIC", "ORDERS"], ["wh_a.SALES.PUBLIC.ORDERS"], 1),
-        # Another shape, another table or a failed read is not taken as [database, schema, table]
-        ("Connection Root/ANALYTICS/PUBLIC", ["PUBLIC", "ORDERS"], [], 1),
-        ("Connection Root/ANALYTICS/PUBLIC", ["SALES", "PUBLIC", "CUSTOMERS"], [], 1),
-        ("Connection Root/ANALYTICS/PUBLIC", 500, [], 1),
+        ("Connection Root/SALES.PUBLIC", 500, TWO_ORDERS, ["wh_a"], SALES_ORDERS, 0),
+        ("Connection Root/ANALYTICS/PUBLIC", ["SALES", "PUBLIC", "ORDERS"], TWO_ORDERS, ["wh_a"], SALES_ORDERS, 1),
+        (
+            "Connection Root/ANALYTICS/PUBLIC",
+            ["SALES", "PUBLIC", "ORDERS"],
+            TWO_ORDERS,
+            ["wh_a", "wh_b"],
+            SALES_ORDERS,
+            1,
+        ),
+        (TABLE_IN_PATH, ["SALES", "PUBLIC", "ORDERS"], TWO_ORDERS, ["wh_a.SALES"], SALES_ORDERS, 1),
+        (TABLE_IN_PATH, ["SALES", "PUBLIC", "ORDERS"], TWO_ORDERS, ["wh_a.ANALYTICS"], [], 1),
+        (
+            "Connection Root/MY.DB/PUBLIC",
+            ["MY.DB", "PUBLIC", "ORDERS"],
+            [warehouse_table("wh_a", "ORDERS", database='"MY.DB"')],
+            ["wh_a"],
+            ['wh_a."MY.DB".PUBLIC.ORDERS'],
+            1,
+        ),
+        (
+            "Connection Root/SALES DATA/PUBLIC/ORDERS",
+            ["SALES DATA", "PUBLIC", "ORDERS"],
+            [warehouse_table("wh_a", "ORDERS", database="SALES DATA")],
+            ["wh_a"],
+            ["wh_a.SALES DATA.PUBLIC.ORDERS"],
+            1,
+        ),
+        ("Connection Root/ANALYTICS/STAGING", ["PUBLIC", "ORDERS"], TWO_ORDERS[:1], ["wh_a"], [], 1),
+        (
+            "Connection Root/ANALYTICS/PUBLIC",
+            ["SALES", "PUBLIC", "CUSTOMERS"],
+            [*TWO_ORDERS, warehouse_table("wh_a", "CUSTOMERS", database="SALES")],
+            ["wh_a"],
+            [],
+            1,
+        ),
+        ("Connection Root/ANALYTICS/PUBLIC", 500, TWO_ORDERS, ["wh_a"], [], 1),
     ],
-    ids=["display-path", "connection-path", "two-parts", "other-table", "failed-read"],
+    ids=[
+        "display-path-finds-it",
+        "connection-path-names-the-database",
+        "read-once-across-prefixes",
+        "inside-the-prefix-database",
+        "outside-the-prefix-database",
+        "dot-in-database-name",
+        "space-in-database-name",
+        "two-parts-not-read-as-schema-and-table",
+        "other-table-in-the-path",
+        "failed-read",
+    ],
 )
 def test_the_connection_path_is_read_only_when_the_display_path_finds_no_table(
-    sigma_over_http, routes, files_path, connection_path, linked, path_reads
+    sigma_over_http, routes, files_path, connection_path, catalog, prefixes, linked, path_reads
 ):
     source, calls = sigma_over_http
     routes["GET", "/v2/files/T1"]["path"] = files_path
     routes["GET", "/v2/connections/paths/T1"] = (
         {"connectionId": "conn-1", "path": connection_path} if isinstance(connection_path, list) else connection_path
     )
-    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_a", "ORDERS", database="SALES")]
 
-    assert lineage_sources(source, routes, ["wh_a"], catalog, None) == linked
+    assert lineage_sources(source, routes, prefixes, catalog, None) == linked
     assert calls["GET", "/v2/connections/paths/T1"] == path_reads
+
+
+def test_the_connection_path_of_a_dataset_is_not_read(sigma_over_http, routes):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/files/T1"].update(type="dataset", path="Connection Root/ANALYTICS/PUBLIC")
+    routes["GET", "/v2/connections/paths/T1"] = {"connectionId": "conn-1", "path": ["SALES", "PUBLIC", "ORDERS"]}
+
+    assert lineage_sources(source, routes, ["wh_a"], TWO_ORDERS, None) == []
+    assert calls["GET", "/v2/connections/paths/T1"] == 0
 
 
 def sigma_connection(connection_id: str, connection_type: str) -> dict:

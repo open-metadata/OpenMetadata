@@ -94,6 +94,7 @@ class SigmaApiClient:
         # Successful reads only: a failed read stays retryable for the next workbook or element.
         self._owner_cache: LRUCache[str, OwnerDetails] = LRUCache(maxsize=512)
         self._file_cache: LRUCache[str, NodeDetails] = LRUCache(maxsize=512)
+        # A failed read is cached as unknown for the run.
         self._connection_types: LRUCache[str, str | None] = LRUCache(maxsize=512)
         self._connection_paths: LRUCache[str, list[str] | None] = LRUCache(maxsize=512)
 
