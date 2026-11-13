@@ -1285,11 +1285,14 @@ const OntologyGraphView = ({
 
   if ([isError, !model].every(Boolean)) {
     return (
-      <Alert variant="error">
+      <Alert
+        rightContent={
+          <Button color="secondary" size="sm" onPress={() => void refetch()}>
+            {t('label.retry')}
+          </Button>
+        }
+        variant="error">
         {t('server.entity-fetch-error', { entity: t('label.ontology') })}
-        <Button color="secondary" onPress={() => void refetch()}>
-          {t('label.retry')}
-        </Button>
       </Alert>
     );
   }

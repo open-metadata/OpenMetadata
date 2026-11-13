@@ -175,15 +175,16 @@ const OntologyDefinitionList = <
   );
   if (isError) {
     return (
-      <Alert variant="error">
-        <Box direction="col" gap={2}>
-          {t('server.entity-fetch-error', {
-            entity: pluralLabel,
-          })}
-          <Button color="secondary" onPress={onRetry}>
+      <Alert
+        rightContent={
+          <Button color="secondary" size="sm" onPress={onRetry}>
             {t('label.retry')}
           </Button>
-        </Box>
+        }
+        variant="error">
+        {t('server.entity-fetch-error', {
+          entity: pluralLabel,
+        })}
       </Alert>
     );
   }

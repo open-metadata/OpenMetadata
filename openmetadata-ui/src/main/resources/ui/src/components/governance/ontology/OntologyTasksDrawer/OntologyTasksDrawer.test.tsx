@@ -851,6 +851,34 @@ it('keeps approve available but disables combined publication when activation st
   );
 });
 
+it('disables every vote when the reviewed ontology was archived', async () => {
+  const read = get.getMockImplementation();
+  get.mockImplementation((url, config) => {
+    if (url.endsWith('/review')) {
+      return Promise.resolve({
+        data: { ...review, callerCompletesRule: true },
+      });
+    }
+    if (url.endsWith('/state')) {
+      return Promise.reject(
+        Object.assign(new Error('ontology instance not found'), {
+          isAxiosError: true,
+          response: { status: 404 },
+        })
+      );
+    }
+
+    return read?.(url, config);
+  });
+  renderWithQueryClient(<Harness initialTask="task-a" />);
+
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: 'label.approve' })).toBeDisabled()
+  );
+
+  expect(screen.queryByTestId('ontology-approve-publish')).toBeNull();
+});
+
 describe('the Studio review banner scope', () => {
   const reviewOf = (ontologyName: string, taskId: string) => ({
     ...review,

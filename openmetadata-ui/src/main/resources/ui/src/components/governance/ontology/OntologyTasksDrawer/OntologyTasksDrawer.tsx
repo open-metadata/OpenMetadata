@@ -34,6 +34,7 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Key } from 'react-aria-components';
@@ -183,6 +184,11 @@ const getBannerKey = (
   ontologyId
     ? bannerReview?.task.id
     : openReviews.map((review) => review.task.id).join();
+
+/** A transient state failure still allows a vote; a 404 means the ontology was archived. */
+const isReviewUnvotable = (detailFailed: boolean, stateError: unknown) =>
+  detailFailed ||
+  (isAxiosError(stateError) && stateError.response?.status === 404);
 
 const OntologyTasksDrawer = ({
   ontologyId,
@@ -375,6 +381,7 @@ const OntologyTasksDrawer = ({
     enabled: [isOpen, Boolean(ownerId)].every(Boolean),
     queryFn: ({ signal }) => getOntologyState(ownerId, signal),
   });
+  const isVoteBlocked = isReviewUnvotable(detail.isError, state.error);
   const permission = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ownerId },
@@ -907,7 +914,7 @@ const OntologyTasksDrawer = ({
             writeError.kind === 'activation'
           }
           activationReady={activationReady}
-          canPublish={canPublish && !detail.isError}
+          canPublish={canPublish && !isVoteBlocked}
           contentGeneration={currentGeneration}
           contentReady={contentReady}
           isPublished={state.data?.activeReleaseId === selected.release.id}
@@ -915,7 +922,7 @@ const OntologyTasksDrawer = ({
             selected.review.requester?.id === currentUser?.id ||
             selected.task.ontologyReview?.author === currentUser?.name
           }
-          isWriting={writing || detail.isError || detail.isFetching}
+          isWriting={writing || isVoteBlocked || detail.isFetching}
           key={selection}
           release={selected.release}
           review={selected.review}
@@ -960,18 +967,20 @@ const OntologyTasksDrawer = ({
       <>
         <div className="tw:flex tw:flex-col tw:gap-2 tw:px-6 tw:pt-4 tw:empty:hidden">
           {(detail.isError || state.isError || events.isError) && (
-            <Alert variant="error">
-              <Box direction="col" gap={2}>
-                {t('message.ontology-review-unavailable')}
+            <Alert
+              rightContent={
                 <Button
                   color="secondary"
                   isDisabled={writing}
+                  size="sm"
                   onPress={() => {
                     void refresh();
                   }}>
                   {t('label.retry')}
                 </Button>
-              </Box>
+              }
+              variant="error">
+              {t('message.ontology-review-unavailable')}
             </Alert>
           )}
           {writeError?.selection === selection &&

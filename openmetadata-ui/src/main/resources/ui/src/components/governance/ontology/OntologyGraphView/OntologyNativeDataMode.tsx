@@ -476,11 +476,13 @@ const OntologyNativeDataMode = ({
         <Alert
           className="tw:absolute tw:top-3.5 tw:left-1/2 tw:z-10 tw:-translate-x-1/2"
           data-testid="ontology-native-data-error"
+          rightContent={
+            <Button color="link-color" size="xs" onPress={retry}>
+              {t('label.retry')}
+            </Button>
+          }
           variant="error">
           {message}
-          <Button color="link-color" size="xs" onPress={retry}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       );
     }

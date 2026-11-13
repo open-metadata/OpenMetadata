@@ -256,14 +256,17 @@ const OntologyConceptAssets = ({
         <Typography role="status">{t('label.loading')}</Typography>
       ) : null}
       {bindings.readState === 'unavailable' ? (
-        <Alert variant="error">
+        <Alert
+          rightContent={
+            <Button
+              color="link-color"
+              size="sm"
+              onPress={() => void bindings.retryRead().catch(() => undefined)}>
+              {t('label.retry')}
+            </Button>
+          }
+          variant="error">
           {t('message.ontology-binding-read-unavailable')}
-          <Button
-            color="link-color"
-            size="sm"
-            onPress={() => void bindings.retryRead().catch(() => undefined)}>
-            {t('label.retry')}
-          </Button>
         </Alert>
       ) : null}
     </>

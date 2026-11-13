@@ -320,14 +320,17 @@ const OntologyColumnMappingStep = ({
           </Typography>
         </Box>
         {query?.isError ? (
-          <Alert variant="error">
+          <Alert
+            rightContent={
+              <Button
+                color="link-color"
+                size="xs"
+                onPress={() => void query.refetch()}>
+                {t('label.retry')}
+              </Button>
+            }
+            variant="error">
             {t('message.temporary-error-try-reloading')}
-            <Button
-              color="link-color"
-              size="xs"
-              onPress={() => void query.refetch()}>
-              {t('label.retry')}
-            </Button>
           </Alert>
         ) : null}
         {query?.data?.isTruncated ? (
