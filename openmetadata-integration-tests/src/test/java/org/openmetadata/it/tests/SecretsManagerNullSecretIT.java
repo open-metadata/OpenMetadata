@@ -802,6 +802,68 @@ public class SecretsManagerNullSecretIT {
     assertFalse(JsonUtils.pojoToJson(response).contains("proposed-password"));
   }
 
+  /** A PUT that omits the connection keeps the stored one and its vault secrets (#29494). */
+  @Test
+  void aPutWithoutAConnectionKeepsTheStoredConnectionAndItsSecrets(TestNamespace ns) {
+    String serviceName = ns.prefix("put_without_connection");
+    CreateDatabaseService request = request(serviceName);
+    DatabaseService original = SdkClients.adminClient().databaseServices().create(request);
+    ns.trackRoot(Entity.DATABASE_SERVICE, original);
+    request.withDescription("described without a connection").setConnection(null);
+
+    DatabaseService updated = put(request);
+
+    assertTrue(
+        updated.getChangeDescription().getFieldsUpdated().stream()
+            .noneMatch(field -> "connection".equals(field.getName())));
+    assertEquals(PASSWORD, vault.getSecretsMap().get(secretId(serviceName, "password")));
+    assertEquals(PRIVATE_KEY, vault.getSecretsMap().get(secretId(serviceName, "privatekey")));
+    DatabaseService stored =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET,
+                DATABASE_SERVICES_PATH + "/" + original.getId(),
+                null,
+                DatabaseService.class);
+    assertEquals("test-account", connectionOf(stored).getAccount());
+    assertEquals("described without a connection", stored.getDescription());
+  }
+
+  /** The approval gate must not stage a PUT that omits the connection as clearing it. */
+  @Test
+  void aHeldPutWithoutAConnectionStagesNoConnectionChange(TestNamespace ns) {
+    CreateDatabaseService request = request(ns.prefix("held_put_without_connection"));
+    DatabaseService original = SdkClients.adminClient().databaseServices().create(request);
+    ns.trackRoot(Entity.DATABASE_SERVICE, original);
+    ChangeRequestITSupport.deployHookWorkflowFor(
+        ns,
+        Entity.DATABASE_SERVICE,
+        "\"description\"",
+        "",
+        ChangeRequestITSupport.filterScopedTo(
+            Entity.DATABASE_SERVICE, original.getFullyQualifiedName()));
+    request.withDescription("proposed description").setConnection(null);
+
+    DatabaseService held = put(request);
+
+    assertEquals(original.getVersion(), held.getVersion());
+    ChangeRequest pending = ChangeRequestITSupport.onlyPendingRequest(original.getId());
+    List<String> stagedFields =
+        SdkClients.adminClient()
+            .getHttpClient()
+            .execute(
+                HttpMethod.GET, "/v1/changeRequests/" + pending.getId(), null, ChangeRequest.class)
+            .getActiveRevision()
+            .getOps()
+            .stream()
+            .map(MutationOp::getField)
+            .toList();
+    assertTrue(stagedFields.contains("description"), stagedFields.toString());
+    assertFalse(stagedFields.contains("connection"), stagedFields.toString());
+    assertFalse(stagedFields.contains("serviceAttributes"), stagedFields.toString());
+  }
+
   private static CreateDatabaseService request(String serviceName) {
     return new CreateDatabaseService()
         .withName(serviceName)
