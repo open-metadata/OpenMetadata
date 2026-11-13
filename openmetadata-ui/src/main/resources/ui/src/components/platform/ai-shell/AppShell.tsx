@@ -88,9 +88,8 @@ export const AppShell = ({ children }: PropsWithChildren) => {
         {/* Routed pages own the main landmark. A neutral grid cell here avoids
             nesting a second main around every PageLayout.Content. */}
         <div
-          className="assistant-content tw:my-1.5 tw:mr-1.5 tw:rounded-2xl tw:[html[data-product-tour-pending]_&]:invisible"
-          data-testid="app-shell-content"
-          data-tour-page="">
+          className="assistant-content tw:my-1.5 tw:mr-1.5 tw:rounded-2xl"
+          data-testid="app-shell-content">
           {banners.map(({ key, component: Banner }) => (
             <Banner key={key} />
           ))}

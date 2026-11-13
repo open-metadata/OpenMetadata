@@ -18,6 +18,7 @@ import {
   Tour,
   VersionBlack,
 } from '@openmetadata/ui-core-components/icons';
+import { useProductTourStore } from '../hooks/useProductTourStore';
 import documentationLinksClassBase from '../utils/DocumentationLinksClassBase';
 
 import { ROUTES } from './constants';
@@ -45,8 +46,8 @@ export const HELP_ITEMS = [
     key: HELP_ITEMS_ENUM.TOUR,
     label: 'label.tour',
     icon: Tour,
-    link: ROUTES.TOUR,
     isExternal: false,
+    handleSupportItemClick: () => useProductTourStore.getState().open(),
   },
   {
     key: HELP_ITEMS_ENUM.DOC,

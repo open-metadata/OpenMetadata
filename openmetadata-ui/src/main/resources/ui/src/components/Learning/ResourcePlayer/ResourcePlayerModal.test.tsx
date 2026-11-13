@@ -12,6 +12,7 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { StrictMode } from 'react';
 import {
   getLearningResourceById,
   LearningResource,
@@ -80,6 +81,21 @@ describe('ResourcePlayerModal', () => {
     );
 
     expect(screen.getByText('Test Resource')).toBeInTheDocument();
+  });
+
+  it('should name the dialog after the resource', () => {
+    render(
+      <ResourcePlayerModal
+        open
+        resource={createMockResource('Video')}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(screen.getByTestId('resource-player-dialog')).toHaveAttribute(
+      'aria-label',
+      'Test Resource'
+    );
   });
 
   it('should not render modal content when open is false', () => {
@@ -240,6 +256,92 @@ describe('ResourcePlayerModal', () => {
     expect(
       screen.getByText('message.unsupported-resource-type')
     ).toBeInTheDocument();
+  });
+});
+
+describe('ResourcePlayerModal for a resource that is not stored (product tour)', () => {
+  const requestFullscreen = jest.fn().mockResolvedValue(undefined);
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    HTMLElement.prototype.requestFullscreen = requestFullscreen;
+  });
+
+  afterEach(() => {
+    // jsdom has no Fullscreen API; drop the stub so other suites see none.
+    delete (HTMLElement.prototype as Partial<HTMLElement>).requestFullscreen;
+  });
+
+  it('shows the resource it is given without fetching it', () => {
+    render(
+      <ResourcePlayerModal
+        open
+        isStored={false}
+        resource={createMockResource('Storylane')}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(screen.getByTestId('storylane-tour')).toBeInTheDocument();
+    expect(getLearningResourceById).not.toHaveBeenCalled();
+  });
+
+  it('enters full screen as it opens when asked to', () => {
+    render(
+      <ResourcePlayerModal
+        isFullScreenByDefault
+        open
+        isStored={false}
+        resource={createMockResource('Storylane')}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1);
+  });
+
+  it('asks for full screen once, even when StrictMode re-runs its effects', () => {
+    render(
+      <StrictMode>
+        <ResourcePlayerModal
+          isFullScreenByDefault
+          open
+          isStored={false}
+          resource={createMockResource('Storylane')}
+          onClose={mockOnClose}
+        />
+      </StrictMode>
+    );
+
+    expect(requestFullscreen).toHaveBeenCalledTimes(1);
+  });
+
+  it('stays at the dialog size by default', () => {
+    render(
+      <ResourcePlayerModal
+        open
+        resource={createMockResource('Storylane')}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(requestFullscreen).not.toHaveBeenCalled();
+  });
+
+  it('stays at the dialog size when the browser refuses full screen', async () => {
+    requestFullscreen.mockRejectedValueOnce(new Error('not allowed'));
+    render(
+      <ResourcePlayerModal
+        isFullScreenByDefault
+        open
+        isStored={false}
+        resource={createMockResource('Storylane')}
+        onClose={mockOnClose}
+      />
+    );
+
+    expect(await screen.findByTestId('storylane-tour')).toBeInTheDocument();
+    expect(screen.getByTestId('resource-player-dialog')).toBeInTheDocument();
   });
 });
 

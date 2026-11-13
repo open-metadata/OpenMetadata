@@ -486,8 +486,7 @@ const ContextCenterDashboardPage: FC = () => {
             'tw:flex tw:flex-col tw:gap-5 tw:h-full tw:min-h-0',
             pageLayoutClassNames.content
           )}
-          data-testid="dashboard-detail-card"
-          data-tour-step="context-center">
+          data-testid="dashboard-detail-card">
           {isDashboardEmpty ? (
             <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
               <FeaturesPlaceholder

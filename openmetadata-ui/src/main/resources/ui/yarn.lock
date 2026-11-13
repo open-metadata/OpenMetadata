@@ -1540,17 +1540,6 @@
   resolved "https://registry.yarnpkg.com/@dagrejs/graphlib/-/graphlib-2.2.4.tgz#d77bfa9ff49e2307c0c6e6b8b26b5dd3c05816c4"
   integrity sha512-mepCf/e9+SKYy1d02/UkvSy6+6MoyXhVxP8lLDfA7BPE1X1d4dR0sZznmbM8/XVJ1GPM+Svnx7Xj6ZweByWUkw==
 
-"@deuex-solutions/react-tour@^1.2.6":
-  version "1.2.7"
-  resolved "https://registry.yarnpkg.com/@deuex-solutions/react-tour/-/react-tour-1.2.7.tgz#00fc14ba9ae38657b373836b99749833c55adce4"
-  integrity sha512-ZDKJ+kvcX8274ihTKsIi+eo1rMI4lbIEbjdHOo+ESSgcDB55B32FeTQNDjCDFN97nBEzC8qWkMpX8uk142onQA==
-  dependencies:
-    classnames "^2.2.6"
-    lodash "^4.17.15"
-    prop-types "^15.7.2"
-    scroll-smooth "^1.1.0"
-    scrollparent "^2.0.1"
-
 "@dual-bundle/import-meta-resolve@^4.2.1":
   version "4.2.1"
   resolved "https://registry.yarnpkg.com/@dual-bundle/import-meta-resolve/-/import-meta-resolve-4.2.1.tgz#cd0b25b3808cd9e684cd6cd549bbf8e1dcf05ee7"
@@ -11964,7 +11953,7 @@ regenerate@^1.4.2:
   resolved "https://registry.yarnpkg.com/regenerate/-/regenerate-1.4.2.tgz#b9346d8827e8f5a32f7ba29637d398b69014848a"
   integrity sha512-zrceR/XhGYU/d/opr2EKO7aRHUeiBI8qjtfHqADTwZd6Szfy16la6kqD0MIUs5z5hx6AaKa+PixpPrR289+I0A==
 
-regenerator-runtime@0.14.1, regenerator-runtime@^0.14.0:
+regenerator-runtime@^0.14.0:
   version "0.14.1"
   resolved "https://registry.yarnpkg.com/regenerator-runtime/-/regenerator-runtime-0.14.1.tgz#356ade10263f685dda125100cd862c1db895327f"
   integrity sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==
@@ -12297,16 +12286,6 @@ scheduler@^0.23.2:
   integrity sha512-UOShsPwz7NrMUqhR6t0hWjFduvOzbtv7toDH1/hIrfRNIDBnnBWd0CwJTGvTpngVlmwGCdP9/Zl/tVrDqcuYzQ==
   dependencies:
     loose-envify "^1.1.0"
-
-scroll-smooth@^1.1.0:
-  version "1.1.1"
-  resolved "https://registry.yarnpkg.com/scroll-smooth/-/scroll-smooth-1.1.1.tgz#d00dbcfaf2652251e1cbfbaca0a98fbd5fe60d4a"
-  integrity sha512-i9e/hJf0ODPEsy+AubE0zES6xdOuIvtebe5MvdSI1lB4t91k+O+8kV15CYfPN0yPH4j4hZUoKM3rVaPVcmiOoQ==
-
-scrollparent@^2.0.1:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/scrollparent/-/scrollparent-2.1.0.tgz#6cae915c953835886a6ba0d77fdc2bb1ed09076d"
-  integrity sha512-bnnvJL28/Rtz/kz2+4wpBjHzWoEzXhVg/TE8BeVGJHUqE8THNIRnDxDWMktwM+qahvlRdvlLdsQfYe+cuqfZeA==
 
 scslre@^0.3.0:
   version "0.3.0"

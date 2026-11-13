@@ -183,9 +183,7 @@ const DataQualityDashboard = ({
 
   const chartCards = DQ_DASHBOARD_SECTIONS.map((section) => (
     <Grid.Item className="export-pdf-container" key={section.key} span={24}>
-      <Card
-        className={cardClassName}
-        data-tour-step={`data-quality-${section.key}`}>
+      <Card className={cardClassName}>
         <div className={cardBodyClass}>
           <PageHeader
             data={{

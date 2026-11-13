@@ -10,12 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import productTourPagesClassBase from './ProductTourPagesClassBase';
+import { act } from '@testing-library/react';
+import { useProductTourStore } from './useProductTourStore';
 
-describe('ProductTourPagesClassBase', () => {
-  it('loads every page the Classic tour visits', async () => {
-    await expect(
-      productTourPagesClassBase.preloadPages('default')
-    ).resolves.toBeUndefined();
+describe('useProductTourStore', () => {
+  it('opens and closes the tour', () => {
+    expect(useProductTourStore.getState().isOpen).toBe(false);
+
+    act(() => useProductTourStore.getState().open());
+
+    expect(useProductTourStore.getState().isOpen).toBe(true);
+
+    act(() => useProductTourStore.getState().close());
+
+    expect(useProductTourStore.getState().isOpen).toBe(false);
   });
 });

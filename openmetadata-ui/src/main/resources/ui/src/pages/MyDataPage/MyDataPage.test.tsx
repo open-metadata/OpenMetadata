@@ -88,7 +88,6 @@ jest.mock('../../rest/userAPI', () => ({
 }));
 
 let mockIsWelcomeVisible = true;
-let mockIsTourActive = false;
 
 jest.mock('../../hooks/useWelcomeStore', () => ({
   useWelcomeStore: jest
@@ -96,19 +95,10 @@ jest.mock('../../hooks/useWelcomeStore', () => ({
     .mockImplementation(() => ({ isWelcomeVisible: mockIsWelcomeVisible })),
 }));
 
-jest.mock('../../hooks/product-tour/useProductTourStore', () => ({
-  useProductTourStore: jest
-    .fn()
-    .mockImplementation((selector: (state: { isActive: boolean }) => boolean) =>
-      selector({ isActive: mockIsTourActive })
-    ),
-}));
-
 describe('MyDataPage component', () => {
   beforeEach(() => {
     localStorage.clear();
     mockIsWelcomeVisible = true;
-    mockIsTourActive = false;
     jest.clearAllMocks();
   });
 
@@ -127,16 +117,6 @@ describe('MyDataPage component', () => {
     // awaiting the click hangs on its internal timer advance.
     userEvent.click(await screen.findByText('WelcomeScreen'));
 
-    expect(await screen.findByTestId('home-landing-page')).toBeInTheDocument();
-    expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
-  });
-
-  it('should not show the WelcomeScreen on the tour, even to a first-time user', async () => {
-    mockIsTourActive = true;
-
-    render(<MyDataPage />);
-
-    // The welcome screen would take the place of the landing page the tour highlights.
     expect(await screen.findByTestId('home-landing-page')).toBeInTheDocument();
     expect(screen.queryByText('WelcomeScreen')).not.toBeInTheDocument();
   });

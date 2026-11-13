@@ -10,49 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DEFAULT_APP_MODE } from '../constants/appMode.constants';
-import {
-  CLASSIC_TOUR_STEPS,
-  TOUR_PAGE_SELECTOR,
-} from '../constants/product-tour/classicTour.constants';
-import {
-  ProductTourDefinition,
-  ProductTourFixture,
-} from '../interface/product-tour/productTour.interface';
 
-// One function for the app's lifetime: the tour mock reloads its fixtures only
-// when the loader changes.
-const loadClassicTourFixtures = async (): Promise<ProductTourFixture[]> => {
-  const { default: fixtures } = await import(
-    '../constants/product-tour/classicTour.fixtures.json'
-  );
-
-  return fixtures as ProductTourFixture[];
-};
-
-const CLASSIC_TOUR: ProductTourDefinition = {
-  mode: DEFAULT_APP_MODE,
-  steps: CLASSIC_TOUR_STEPS,
-  loadFixtures: loadClassicTourFixtures,
-};
+// The interactive Storylane demo Help > Tour and the Welcome screen open.
+// ADR:2026-11-13-the-product-tour-is-a-storylane-demo
+export const PRODUCT_TOUR_URL =
+  'https://collate.storylane.io/demo/wbl3aevcc3ct';
 
 /**
- * The product tour Help > Tour starts. A distribution overrides it to add its
- * own pages and fixtures, or a tour for another app mode.
+ * The product tour: a Storylane demo, shown in the learning resource player.
+ * A distribution overrides it to show its own demo.
  */
 class ProductTourClassBase {
-  /**
-   * The tour for a user in `currentMode`. The tour runs in its own `mode`;
-   * when that differs, the tour switches to it and back. Called again with
-   * the tour's own mode when a reload resumes it.
-   */
-  public getTour(_currentMode: string): ProductTourDefinition {
-    return CLASSIC_TOUR;
-  }
-
-  /** What a step whose target is missing points at: the page content. */
-  public getPageSelector(): string {
-    return TOUR_PAGE_SELECTOR;
+  public getTourUrl(): string {
+    return PRODUCT_TOUR_URL;
   }
 }
 
