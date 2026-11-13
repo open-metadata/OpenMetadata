@@ -75,8 +75,23 @@ class WebhookSecretsMigrationTest {
                     handle, ConnectionType.POSTGRES));
 
     assertTrue(stopped.getMessage().contains("FERNET_KEY"), stopped.getMessage());
+    assertTrue(
+        stopped.getMessage().contains(WebhookSecretsMigration.KEEP_UNOPENED_ENV),
+        stopped.getMessage());
     assertTrue(stopped.getMessage().contains("'signed' (" + alertId + ")"), stopped.getMessage());
     verify(handle, never()).prepareBatch(anyString());
+  }
+
+  @Test
+  void continuesWhenTheOperatorChoseToKeepCredentialsThatDoNotOpen() {
+    String notOpened = writtenWithThePreviousKey("a signing key");
+    alertRows.add(alertRow(UUID.randomUUID(), "kept", notOpened));
+
+    WebhookSecretsMigration.bindAlertDestinationSecrets(handle, ConnectionType.POSTGRES, true);
+
+    List<String> written = writtenJson();
+    assertEquals(1, written.size());
+    assertTrue(written.getFirst().contains(notOpened), written.getFirst());
   }
 
   @Test

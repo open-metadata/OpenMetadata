@@ -10,11 +10,13 @@ import static org.openmetadata.schema.entity.events.SubscriptionDestination.Subs
 import static org.openmetadata.service.secrets.masker.PasswordEntityMasker.PASSWORD_MASK;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.macasaet.fernet.Key;
 import jakarta.ws.rs.BadRequestException;
 import java.net.URI;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.jdbi.v3.core.Jdbi;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +43,9 @@ import org.openmetadata.service.alerting.channel.ProfileWebhookSecrets;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.AccessControlDAOs.TeamDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.DataMigrationStep;
 import org.openmetadata.service.migration.utils.v210.WebhookSecretsMigration;
 import org.openmetadata.service.secrets.BoundCiphertext;
 
@@ -222,6 +226,69 @@ class WebhookSecretsMigrationIT {
     assertTrue(bound.stream().allMatch(SubscriptionDestination::getEnabled));
   }
 
+  /**
+   * Run with Fernet keys that open none of the credentials earlier releases stored, the alert step
+   * stops the upgrade before it writes anything, the profile step after it does not run, and
+   * neither records its marker; with the right keys the same run goes through.
+   */
+  @Test
+  void anUpgradeWithKeysThatOpenNoEarlierCredentialStopsAndRunsAgainOnceTheKeyIsRight(
+      TestNamespace ns) {
+    EventSubscription alert =
+        AlertFixtures.tableAlert(
+            ns,
+            "wrong_key",
+            null,
+            List.of(AlertFixtures.external(WEBHOOK, "https://hooks.example.com/wrong_key")));
+    alert
+        .getDestinations()
+        .getFirst()
+        .withConfig(
+            legacyConfig(
+                "wrong_key", oauth2(Fernet.getInstance().encrypt(ns.prefix("client-secret")))));
+    AlertFixtures.writeBehindTheServer(alert);
+    Team team =
+        SdkClients.adminClient()
+            .teams()
+            .create(
+                new CreateTeam()
+                    .withName(ns.prefix("wrong_key_team"))
+                    .withTeamType(CreateTeam.TeamType.GROUP));
+    TeamDAO teamDAO = Entity.getCollectionDAO().teamDAO();
+    Team storedTeam =
+        JsonUtils.readValue(teamDAO.findById(teamDAO.getTableName(), team.getId(), ""), Team.class);
+    teamDAO.update(
+        storedTeam.withProfile(
+            legacyProfile("https://hooks.example.com/" + ns.shortPrefix(), "s")));
+    EntityRepository.invalidateCacheForEntity(
+        Entity.TEAM, team.getId(), team.getFullyQualifiedName());
+    String alertRow = alertRow(alert.getId());
+    String teamRow = teamDAO.findById(teamDAO.getTableName(), team.getId(), "");
+    String version = "2.1.0-webhook-it-" + ns.shortPrefix();
+    String configuredKeys =
+        Fernet.getInstance().getCachedKeys().stream()
+            .map(Key::serialise)
+            .collect(Collectors.joining(","));
+
+    try {
+      Fernet.getInstance().setFernetKey(Key.generateKey().serialise());
+      assertThrows(IllegalStateException.class, () -> runWebhookSteps(version));
+      Fernet.getInstance().setFernetKey(configuredKeys);
+
+      assertEquals(alertRow, alertRow(alert.getId()), "the alert row is left as it was");
+      assertEquals(teamRow, teamDAO.findById(teamDAO.getTableName(), team.getId(), ""));
+      assertEquals(0, markersOf(version), "neither step is recorded as applied");
+
+      runWebhookSteps(version);
+
+      assertEquals(2, markersOf(version));
+      assertTrue(BoundCiphertext.isBound(storedValue(stored(alert), "/authType/clientSecret")));
+    } finally {
+      Fernet.getInstance().setFernetKey(configuredKeys);
+      deleteMarkersOf(version);
+    }
+  }
+
   @Test
   void aProfileWebhookHoldingCiphertextIsLeftOutUntilEnteredAgain(TestNamespace ns) {
     Team team =
@@ -300,6 +367,64 @@ class WebhookSecretsMigrationIT {
 
   private static Map<String, Object> legacyConfig(String path, Map<String, Object> authType) {
     return Map.of("endpoint", "https://hooks.example.com/" + path, "authType", authType);
+  }
+
+  // The webhook steps as the 2.1.0 migration runs them, under a version of their own.
+  private static void runWebhookSteps(String version) {
+    MigrationDAO migrationDAO = TestSuiteBootstrap.getJdbi().onDemand(MigrationDAO.class);
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle -> {
+              DataMigrationStep.runOnce(
+                  migrationDAO,
+                  version,
+                  WebhookSecretsMigration.ALERT_STEP_NAME,
+                  () -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, dialect()));
+              DataMigrationStep.runOnce(
+                  migrationDAO,
+                  version,
+                  WebhookSecretsMigration.PROFILE_STEP_NAME,
+                  () -> WebhookSecretsMigration.bindProfileWebhookSecrets(handle, dialect()));
+            });
+  }
+
+  private static int markersOf(String version) {
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT COUNT(*) FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+                    .bind("version", version)
+                    .mapTo(Integer.class)
+                    .one());
+  }
+
+  private static void deleteMarkersOf(String version) {
+    TestSuiteBootstrap.getJdbi()
+        .useHandle(
+            handle ->
+                handle
+                    .createUpdate("DELETE FROM SERVER_MIGRATION_SQL_LOGS WHERE version = :version")
+                    .bind("version", version)
+                    .execute());
+  }
+
+  private static String alertRow(UUID id) {
+    String json = dialect() == ConnectionType.MYSQL ? "CAST(json AS CHAR)" : "json::text";
+    return TestSuiteBootstrap.getJdbi()
+        .withHandle(
+            handle ->
+                handle
+                    .createQuery(
+                        "SELECT " + json + " FROM event_subscription_entity WHERE id = :id")
+                    .bind("id", id.toString())
+                    .mapTo(String.class)
+                    .one());
+  }
+
+  private static SubscriptionDestination stored(EventSubscription alert) {
+    return AlertFixtures.stored(alert.getId()).getDestinations().getFirst();
   }
 
   private static void runAlertStep() {
