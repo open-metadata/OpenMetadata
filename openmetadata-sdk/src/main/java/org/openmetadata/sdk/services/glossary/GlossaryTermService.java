@@ -165,6 +165,7 @@ public class GlossaryTermService extends EntityServiceBase<GlossaryTerm> {
         httpClient.executeForString(
             HttpMethod.GET,
             basePath + "/" + id + "/assets",
+            null,
             RequestOptions.builder()
                 .queryParam("limit", String.valueOf(limit))
                 .queryParam("offset", String.valueOf(offset))
