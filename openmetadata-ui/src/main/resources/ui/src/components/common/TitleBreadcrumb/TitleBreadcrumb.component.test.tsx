@@ -59,20 +59,6 @@ describe('Test Breadcrumb Component', () => {
     expect(breadcrumbLink).toHaveLength(3);
   });
 
-  it('should size the custom arrow to sit evenly between crumbs', () => {
-    const { container } = render(
-      <TitleBreadcrumb useCustomArrow titleLinks={links} />,
-      { wrapper: MemoryRouter }
-    );
-    const separators = container.querySelectorAll('li svg');
-
-    expect(separators).toHaveLength(2);
-
-    separators.forEach((separator) =>
-      expect(separator).toHaveClass('tw:mx-1', 'tw:size-3.5')
-    );
-  });
-
   it('Last value should not be link', () => {
     const { container } = render(<TitleBreadcrumb titleLinks={links} />, {
       wrapper: MemoryRouter,

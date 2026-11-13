@@ -26,9 +26,6 @@ import TitleBreadcrumbSkeleton from '../Skeleton/BreadCrumb/TitleBreadcrumbSkele
 import './title-breadcrumb.less';
 import { TitleBreadcrumbProps, TitleLink } from './TitleBreadcrumb.interface';
 
-const CUSTOM_SEPARATOR_CLASS =
-  'tw:mx-1 tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary';
-
 const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
   titleLinks,
   className = '',
@@ -89,7 +86,9 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
         {noLink &&
           index < titleLinks.length - 1 &&
           (useCustomArrow ? (
-            <ChevronRight className={CUSTOM_SEPARATOR_CLASS} />
+            <span className="custom-separator">
+              <ChevronRight />
+            </span>
           ) : (
             <span className="text-xss text-grey-muted">{'>'}</span>
           ))}
@@ -133,7 +132,9 @@ const TitleBreadcrumb: FunctionComponent<TitleBreadcrumbProps> = ({
                       {link.name}
                     </Link>
                     {useCustomArrow ? (
-                      <ChevronRight className={CUSTOM_SEPARATOR_CLASS} />
+                      <span className="custom-separator">
+                        <ChevronRight />
+                      </span>
                     ) : (
                       <span className="text-sm font-regular p-x-xs text-grey-muted">
                         {BREADCRUMB_SEPARATOR}
