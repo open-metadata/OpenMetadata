@@ -1188,6 +1188,15 @@ EDGE_ONLY_TABLES = {
     "dependencies": {key: TWO_BRANCHES["dependencies"][key] for key in ("sheetRevenue", "sheetCustomers")},
     "edges": [edge("inode-T1", "sheetRevenue"), edge("inode-T2", "sheetCustomers")],
 }
+# Sigma's documented response plus an unrelated branch, so the walk's answer differs from every table
+DOCUMENTED_WITH_ANOTHER_BRANCH = {
+    "dependencies": {
+        **DOCUMENTED_ELEMENT_LINEAGE["dependencies"],
+        "sheetCustomers": TWO_BRANCHES["dependencies"]["sheetCustomers"],
+        "T2": TWO_BRANCHES["dependencies"]["T2"],
+    },
+    "edges": [*DOCUMENTED_ELEMENT_LINEAGE["edges"], edge("T2", "sheetCustomers")],
+}
 
 
 @pytest.mark.parametrize(
@@ -1200,7 +1209,7 @@ EDGE_ONLY_TABLES = {
             "el-wb-1",
             ["ORDERS"],
         ),
-        (DOCUMENTED_ELEMENT_LINEAGE, "5AbJJlOiPPtgpL3cCk7GqA", ["STATIONS"]),
+        (DOCUMENTED_WITH_ANOTHER_BRANCH, "5AbJJlOiPPtgpL3cCk7GqA", ["STATIONS"]),
         # No sheet node for the element, or a walk that reaches no table: every table of the response, as before
         (TWO_BRANCHES, "el-other", ["ORDERS", "CUSTOMERS"]),
         (
