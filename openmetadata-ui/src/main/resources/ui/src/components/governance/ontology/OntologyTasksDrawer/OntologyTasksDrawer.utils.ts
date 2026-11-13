@@ -14,24 +14,8 @@
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import type { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 
-/**
- * The open reviews the Studio banner may announce: those the caller votes on,
- * then those the caller requested, once each.
- */
-export const getOpenReviews = (
-  ...lists: (OntologyReleaseReview[] | undefined)[]
-) => {
-  const seen = new Set<string>();
-
-  return lists
-    .flatMap((list) => list ?? [])
-    .filter((review) => {
-      const duplicate = seen.has(review.task.id);
-      seen.add(review.task.id);
-
-      return !duplicate;
-    });
-};
+// ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
+export const CURSOR_HISTORY_LIMIT = 40;
 
 /** The bump between two semantic versions; a first release counts from 0.0.0. */
 export const releaseBump = (

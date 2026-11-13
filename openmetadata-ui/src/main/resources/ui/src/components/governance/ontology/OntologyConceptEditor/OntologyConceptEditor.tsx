@@ -49,6 +49,7 @@ import {
 } from '../OntologyConceptInspector/OntologyConceptSection';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
+import { mappingTypeLabel } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import {
   conceptFormFields,
   conceptFormValues,
@@ -164,7 +165,7 @@ const useEditorParts = (editor: OntologyConceptEditorState) => {
       conceptIri: '',
       mappingType: {
         id: ConceptMappingType.ExactMatch,
-        label: ConceptMappingType.ExactMatch,
+        label: mappingTypeLabel(ConceptMappingType.ExactMatch),
       },
       schemeIri: '',
       source: '',

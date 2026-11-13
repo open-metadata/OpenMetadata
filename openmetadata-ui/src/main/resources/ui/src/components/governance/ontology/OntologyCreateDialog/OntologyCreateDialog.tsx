@@ -332,14 +332,17 @@ const OntologyCreateDialog = ({
               />
               {renderPeople()}
               {status.isError ? (
-                <Alert variant="error">
+                <Alert
+                  rightContent={
+                    <Button
+                      color="secondary"
+                      size="xs"
+                      onPress={() => void status.refetch()}>
+                      {t('label.retry')}
+                    </Button>
+                  }
+                  variant="error">
                   {t('message.ontology-base-uri-load-failed')}
-                  <Button
-                    color="secondary"
-                    size="xs"
-                    onPress={() => void status.refetch()}>
-                    {t('label.retry')}
-                  </Button>
                 </Alert>
               ) : null}
               <OntologyAdvancedToggle
