@@ -245,7 +245,7 @@ const OntologyConceptAssets = ({
     target?.conceptId === conceptId;
 
   const confirmUnlink = async () => {
-    if (!unlinkTarget || !canUnlink(unlinkTarget)) {
+    if (isUnlinking || !unlinkTarget || !canUnlink(unlinkTarget)) {
       return;
     }
     setIsUnlinking(true);
@@ -293,7 +293,7 @@ const OntologyConceptAssets = ({
               <Button
                 color="primary-destructive"
                 data-testid="ontology-unlink-confirm"
-                isDisabled={!canUnlink(unlinkTarget)}
+                isDisabled={isUnlinking || !canUnlink(unlinkTarget)}
                 isLoading={isUnlinking}
                 onPress={() => void confirmUnlink()}>
                 {t('label.unlink')}
