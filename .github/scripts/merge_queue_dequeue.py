@@ -33,8 +33,6 @@ NOT_REQUIRED = (
     "while a required check was still pending."
 )
 RUN_URL = re.compile(r"^(.*/actions/runs/\d+)/job/\d+$")
-# Test steps print application HTTP errors, so only other steps are read for symptoms.
-TEST_STEP = re.compile(r"\btests\b|pytest", re.IGNORECASE)
 # These jobs report upstream outcomes rather than run tests, in Collate and OpenMetadata.
 SUMMARY_CHECKS = {
     "caip-playwright-summary",
@@ -48,14 +46,6 @@ SUMMARY_CHECKS = {
     "python / Verify Expected Jobs",
     "python-tests / Verify Expected Jobs",
 }
-
-
-def failed_steps(job: dict) -> list[str]:
-    return [
-        step["name"]
-        for step in job.get("steps", [])
-        if step.get("conclusion") == "failure"
-    ]
 
 
 def failed_logs(repo: str, job: dict) -> str:
@@ -114,7 +104,8 @@ def network_failure(logs: str) -> str:
 
 def infrastructure(repo: str, job: dict) -> str:
     """A download or network error in the job's failed non-test steps, if logged."""
-    if any(TEST_STEP.search(step) for step in failed_steps(job)):
+    # Test steps print application HTTP errors, so only other steps are read.
+    if any(diagnosis.TEST_STEP.search(step) for step in diagnosis.failed_steps(job)):
         return ""
     try:
         return network_failure(failed_logs(repo, job))
@@ -124,7 +115,8 @@ def infrastructure(repo: str, job: dict) -> str:
 
 def describe(job: dict, symptom: str) -> str:
     verb = "timed out" if job["conclusion"] == "timed_out" else "failed"
-    text = f"{verb} at {', '.join(failed_steps(job)) or 'an unrecorded step'}"
+    steps = ", ".join(diagnosis.failed_steps(job)) or "an unrecorded step"
+    text = f"{verb} at {steps}"
     return f"{text}; {symptom}" if symptom else text
 
 

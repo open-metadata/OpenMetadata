@@ -99,7 +99,8 @@ jobs:
                     }
                   }
                 }
-              }' --jq '.data.repository.pullRequest.timelineItems.nodes[0]
+              }' --jq '.data.repository.pullRequest.timelineItems.nodes
+                       | select(length == ($ENV.DEQUEUE | tonumber)) | .[0]
                        | select(.reason != null)
                        | "\(.reason)\t\(.beforeCommit.oid // "")\t\(.createdAt)"' > event.tsv || true
 
@@ -120,6 +121,11 @@ jobs:
             sleep 5
           done
 
+          # A dispatch replaying an older dequeue must find it, never report another.
+          if [ "$DEQUEUE" != 1 ]; then
+            echo "::error::PR #$PR has no dequeue $DEQUEUE back from the latest (1-100)."
+            exit 1
+          fi
           echo "No RemovedFromMergeQueueEvent found for PR #$PR — nothing to report."
 
       - name: Label what the entry conflicts with

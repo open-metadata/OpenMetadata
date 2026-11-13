@@ -2,8 +2,8 @@
 
 Controls are earlier main pushes and merge-group runs of the same workflow whose queue chain
 shares no PR with the failed run. Tests are matched by name across each run's report
-artifacts, and jobs without reports by name and failed step. A run's dependency revisions
-are the ones its first submodule checkout resolved, which pin the build it tested.
+artifacts, and jobs that failed outside a test step by name and failed step. A run's
+dependency revisions are the ones its first submodule checkout resolved.
 
 ADR:2026-11-13-dequeue-alerts-compare-runs-without-the-pr
 """
@@ -20,9 +20,10 @@ import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
-from datetime import datetime
 from functools import cached_property, lru_cache
 from pathlib import PurePosixPath
+
+import merge_queue_metrics as mq
 
 MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
 MAX_LOG_BYTES = 2 * 1024 * 1024
@@ -39,6 +40,8 @@ QUEUE = re.compile(r"gh-readonly-queue/.+/pr-(\d+)-([0-9a-f]{40})")
 SHA = re.compile(r"[0-9a-f]{40}")
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
 LOCATION = re.compile(r"([\w.-]+\.(?:[cm]?[jt]sx?|py|java)):(\d+)")
+# Test steps print application HTTP errors, and their failures are in the test reports.
+TEST_STEP = re.compile(r"\btests\b|pytest", re.IGNORECASE)
 # Collate builds against these submodules' branch tips; OpenMetadata has no submodule.
 DEPENDENCIES = ("OpenMetadata", "ai-platform")
 # Steps that run open-metadata/actions/collate-submodules, which logs the revisions.
@@ -61,6 +64,7 @@ TAGS = {
     "flaky": "flaky without this PR",
     "other": "different failure without this PR",
     "none": "no comparable run without this PR",
+    "unread": "report unavailable",
 }
 
 
@@ -195,15 +199,20 @@ def report_results(archive: bytes) -> dict[str, Result]:
     return results
 
 
+def failed_steps(job: dict) -> list[str]:
+    return [
+        step["name"]
+        for step in job.get("steps", [])
+        if step.get("conclusion") == "failure"
+    ]
+
+
 def job_result(job: dict) -> Result | None:
     if job.get("conclusion") == "success":
         return Result("passed")
     if job.get("conclusion") not in {"failure", "timed_out"}:
         return None  # Skipped, cancelled or unfinished jobs are not executed evidence.
-    steps = [
-        s["name"] for s in job.get("steps", []) if s.get("conclusion") == "failure"
-    ]
-    error = ", ".join(steps) or "an unrecorded step"
+    error = ", ".join(failed_steps(job)) or "an unrecorded step"
     return Result("failed", error, f"failed at {error}")
 
 
@@ -260,24 +269,16 @@ def summarize(kinds: set[str]) -> str:
     return "infra" if kinds == {"infra"} else "unknown"
 
 
-def short(name: str) -> str:
-    return re.sub(r" \(([^,)]*)[^)]*\)", r" (\1)", name)
-
-
 def commits(count: int | None) -> str:
     return "unknown commits" if count is None else f"{count} commit{'s' * (count != 1)}"
-
-
-def when(run: dict) -> str:
-    created = datetime.fromisoformat(run["created_at"].replace("Z", "+00:00"))
-    return f"{created:%b %d %H:%M} UTC"
 
 
 class Evidence:
     def __init__(self, repo: str, branch: str, pr: int, created: str, token: str):
         self.repo, self.branch, self.pr, self.token = repo, branch, pr, token
         self.owner = repo.split("/")[0]
-        # History is read as of the dequeue, so a late or repeated report sees the same.
+        # Runs and main history are listed as of the dequeue. Artifact expiry and run
+        # completion are still read live, so a later replay can see less.
         self.created = urllib.parse.quote(created)
         self.deadline = time.monotonic() + BUDGET_SECONDS
 
@@ -338,6 +339,10 @@ class Evidence:
             branch = self.heads(run["workflow_id"]).get(match[2])
         return None
 
+    def landed(self, run: dict) -> str:
+        """The main commit a run tested: its head once that landed, else its main base."""
+        return run["head_sha"] if run["head_sha"] in self.main else self.chain(run)[1]
+
     def controls(self, failed: dict):
         """Completed earlier runs that share no queued PR with the failed run, newest first."""
         mine = (self.chain(failed) or (frozenset(),))[0] | {self.pr}
@@ -362,30 +367,33 @@ class Evidence:
         return {job["name"]: job for job in jobs}
 
     @lru_cache(maxsize=64)
-    def reports(self, run_id: int) -> tuple[frozenset[str], dict[str, Result]] | None:
-        """Every test result in the run's report artifacts, and the artifacts read."""
+    def reports(self, run_id: int) -> tuple[frozenset[str], dict[str, Result], int]:
+        """Test results from the run's report artifacts, the artifacts read, and how
+        many could not be read: expired, too large or failing to download."""
         latest = {}
         for artifact in self.items(f"actions/runs/{run_id}/artifacts", "artifacts"):
             name = ATTEMPT.sub("", artifact["name"])
-            newer = artifact["id"] > latest.get(name, {}).get("id", 0)
-            if REPORT.search(name) and not artifact["expired"] and newer:
+            if REPORT.search(name) and artifact["id"] > latest.get(name, {}).get(
+                "id", 0
+            ):
                 latest[name] = artifact
-        names, results = set(), {}
+        names, results, unread = set(), {}, 0
         for name, artifact in latest.items():
-            if artifact["size_in_bytes"] > MAX_ARCHIVE_BYTES:
-                continue
             path = f"repos/{self.repo}/actions/artifacts/{artifact['id']}/zip"
             try:
+                if artifact["expired"] or artifact["size_in_bytes"] > MAX_ARCHIVE_BYTES:
+                    raise ValueError("Report artifact is expired or too large")
                 parsed = report_results(self.read(path, MAX_ARCHIVE_BYTES))
             except BudgetExceeded:
                 raise
             except Exception as exc:
                 warn(f"Could not read report artifact {artifact['id']}", exc)
+                unread += 1
                 continue
             names.add(name)
             for test, result in parsed.items():
                 results[test] = merge(results.get(test), result)
-        return (frozenset(names), results) if names else None
+        return frozenset(names), results, unread
 
     @lru_cache(maxsize=32)
     def dependencies(self, run_id: int) -> tuple[tuple[str, str], ...] | None:
@@ -435,18 +443,26 @@ class Evidence:
             return None, []
         return compare["ahead_by"], compare["commits"]
 
-    def observe(
-        self, run: dict, keys: list[str], names: frozenset, tests: bool
-    ) -> dict:
-        if not tests:
-            jobs = self.jobs(run["id"])
-            observed = {key: job_result(jobs[key]) for key in keys if key in jobs}
-        elif (reports := self.reports(run["id"])) is None:
-            return {}
-        else:
-            # A test missing from a run that has every report the failed run has is new.
-            absent = Result("absent") if reports[0] >= names else None
-            observed = {key: reports[1].get(key, absent) for key in keys}
+    def observe(self, run: dict, keys: list[tuple[str, str]], names: frozenset) -> dict:
+        observed = {}
+        tests = [name for kind, name in keys if kind == "test"]
+        if tests:
+            found, results, _ = self.reports(run["id"])
+            # A test missing from main's own content, read in full, did not exist there.
+            complete = found >= names and self.landed(run) == run["head_sha"]
+            absent = Result("absent") if complete else None
+            if found:
+                observed |= {
+                    ("test", name): results.get(name, absent) for name in tests
+                }
+        jobs = [name for kind, name in keys if kind == "job"]
+        if jobs:
+            listed = self.jobs(run["id"])
+            observed |= {
+                ("job", name): job_result(listed[name])
+                for name in jobs
+                if name in listed
+            }
         return {
             key: result
             for key, result in observed.items()
@@ -467,32 +483,46 @@ class Evidence:
             return Verdict("unknown", (f"Unknown — the comparison evidence {reason}.",))
 
     def compare(self, run: dict, causes: list[dict], infra: dict[str, str]) -> Verdict:
-        names, results = self.reports(run["id"]) or (frozenset(), {})
+        names, results, unread = self.reports(run["id"])
         mine = {
-            test: result
-            for test, result in results.items()
+            ("test", name): result
+            for name, result in results.items()
             if result.status == "failed"
         }
-        tests = bool(mine)
-        if not tests:
-            failed = ((job["name"], job_result(job)) for job in causes)
-            mine = {name: result for name, result in failed if result and result.error}
-        if not mine:
+        reported = bool(mine)
+        for job in causes:
+            result = job_result(job)
+            tested = any(TEST_STEP.search(step) for step in failed_steps(job))
+            # A failure outside the tests, or in tests that no report names, is the job's.
+            if (
+                result
+                and result.error
+                and (job["name"] in infra or not (reported and tested))
+            ):
+                mine[("job", job["name"])] = result
+        if not mine and not unread:
             # Its upstream jobs were cancelled or skipped: nothing to attribute.
             reason = "no test or job failed besides the summary gate"
             return Verdict("gate", (f"Unknown — {reason}.",))
         # A download or network error is not a code change, so history cannot explain it.
-        outcomes = {
-            key: ("infra", None, infra[key])
+        outcomes = {("unread", ""): ("unread", None, unread)} if unread else {}
+        outcomes |= {
+            key: ("infra", None, infra[key[1]])
             for key in mine
-            if not tests and key in infra
+            if key[0] == "job" and key[1] in infra
         }
         seen = {key: [] for key in mine if key not in outcomes}
         executed, exhausted = 0, False
         try:
             for control in self.controls(run) if seen else ():
                 pending = [key for key in seen if not decided(seen[key], mine[key])]
-                observed = self.observe(control, pending, names, tests)
+                try:
+                    observed = self.observe(control, pending, names)
+                except BudgetExceeded:
+                    raise
+                except Exception as exc:
+                    warn(f"Skipped unreadable run {control['id']}", exc)
+                    continue
                 for key, result in observed.items():
                     seen[key].append((control, result))
                 executed += bool(observed)
@@ -502,24 +532,27 @@ class Evidence:
         except BudgetExceeded:
             exhausted = True
         outcomes |= {key: self.outcome(run, mine[key], seen[key]) for key in seen}
-        return self.verdict(mine, outcomes, tests, exhausted)
+        return self.verdict(mine, outcomes, exhausted)
 
     def superseded(self, seen: list) -> list:
-        """Drop merge-group results at or before a main commit whose own run passed.
+        """Drop merge-group results that a later main pass on the same dependencies explains.
 
-        Main passed there, so a merge group on that base failing is its own PR's doing.
+        Main passed at or after the commit they tested, so their failures are their own.
         """
         passes = [
-            self.main.get(control["head_sha"], len(self.main))
+            (self.main.get(control["head_sha"], len(self.main)), control)
             for control, result in seen
             if control["event"] != "merge_group" and result.status == "passed"
         ]
-        newest = min(passes, default=len(self.main))
+        if not passes:
+            return seen
+        newest, green = min(passes, key=lambda item: item[0])
         return [
             (control, result)
             for control, result in seen
             if control["event"] != "merge_group"
-            or self.main[self.chain(control)[1]] < newest
+            or self.main[self.landed(control)] < newest
+            or self.drift(green, control) != []
         ]
 
     def outcome(self, run: dict, mine: Result, seen: list) -> tuple:
@@ -541,20 +574,19 @@ class Evidence:
         before = seen[streak] if streak < len(seen) else None
         return "main", control, (seen[streak - 1][0], before)
 
-    def verdict(
-        self, mine: dict, outcomes: dict, tests: bool, exhausted: bool
-    ) -> Verdict:
+    def verdict(self, mine: dict, outcomes: dict, exhausted: bool) -> Verdict:
         groups = {}
         for key, (kind, control, detail) in outcomes.items():
             evidence = control["id"] if control else detail if kind == "infra" else None
             groups.setdefault((kind, evidence), []).append(key)
         overall = summarize({kind for kind, _ in groups})
+        total = sum(kind == "test" for kind, _ in mine)
         text = [f"{VERDICTS[overall]} — "]
         order = sorted(groups.items(), key=lambda group: list(TAGS).index(group[0][0]))
         for index, ((kind, _), keys) in enumerate(order):
             _, control, detail = outcomes[keys[0]]
             text += ["; "] if index else []
-            text += [self.count(keys, len(mine), tests), ": "]
+            text += [self.subject(keys, total, detail), ": "]
             text += self.phrase(kind, control, detail, exhausted)
         rca, explained = [], set()
         for key in mine:
@@ -569,26 +601,34 @@ class Evidence:
             result = mine[key]
             cause = (
                 result.symptom.rstrip(".")
-                if tests
-                else f"{short(key)} {result.symptom}"
+                if key[0] == "test"
+                else f"{mq.shorten_check_name(key[1])} {result.symptom}"
             )
             where = f" ({result.where})" if result.where else ""
             rca += [[f"RCA: {cause}{where}."], self.introduction(first, before)]
-        failures = tuple(mine) if tests else ()
+        failures = tuple(name for kind, name in mine if kind == "test")
         tags = (
-            tuple(TAGS[outcomes[key][0]] for key in failures) if len(groups) > 1 else ()
+            tuple(TAGS[outcomes[("test", name)][0]] for name in failures)
+            if len(groups) > 1
+            else ()
         )
         return Verdict(overall, (*text, "."), failures, tags, tuple(rca))
 
     @staticmethod
-    def count(keys: list[str], total: int, tests: bool) -> str:
-        if not tests:
-            return ", ".join(short(key) for key in keys)
-        if total == 1:
-            return "the failed test"
-        if len(keys) == total:
-            return "both failed tests" if total == 2 else f"all {total} failed tests"
-        return f"{len(keys)} of {total} failed tests"
+    def subject(keys: list[tuple[str, str]], total: int, detail) -> str:
+        if keys[0][0] == "unread":
+            return f"{detail} report artifact{'s' * (detail != 1)}"
+        tests = sum(kind == "test" for kind, _ in keys)
+        parts = [mq.shorten_check_name(name) for kind, name in keys if kind == "job"]
+        if tests == total == 1:
+            parts.insert(0, "the failed test")
+        elif tests and tests == total:
+            parts.insert(
+                0, "both failed tests" if total == 2 else f"all {total} failed tests"
+            )
+        elif tests:
+            parts.insert(0, f"{tests} of {total} failed tests")
+        return ", ".join(parts)
 
     def link(self, run: dict) -> tuple[str, str]:
         match = QUEUE.fullmatch(run["head_branch"] or "")
@@ -597,11 +637,14 @@ class Evidence:
             if match
             else f"{self.branch} {run['head_sha'][:7]}"
         )
-        return f"{label} ({when(run)})", run["html_url"]
+        created = mq.parse_ts(run["created_at"])
+        return f"{label} ({created:%b %d %H:%M} UTC)", run["html_url"]
 
     def phrase(self, kind: str, control: dict | None, detail, exhausted: bool) -> list:
         if kind == "infra":
             return [detail]
+        if kind == "unread":
+            return ["unreadable or expired, not compared"]
         if kind == "none":
             limit = "before the time limit" if exhausted else "in the recent history"
             return [f"no comparable run without this PR {limit}"]
@@ -632,7 +675,8 @@ class Evidence:
         """The changes between the last run that passed and the first that failed."""
         if before is None:
             return [
-                "Introducing change: not found — every compared run without this PR fails the same way."
+                "Introducing change: not found — every compared run without this PR "
+                "fails the same way."
             ]
         passed, result = before
         if result.status not in {"passed", "absent"}:
@@ -641,12 +685,7 @@ class Evidence:
                 self.link(failed),
                 " did not pass cleanly.",
             ]
-        start = (
-            passed["head_sha"]
-            if passed["head_sha"] in self.main
-            else self.chain(passed)[1]
-        )
-        changes = [(self.repo, start, self.chain(failed)[1])]
+        changes = [(self.repo, self.landed(passed), self.landed(failed))]
         drift = self.drift(passed, failed)
         changes += [
             (f"{self.owner}/{repo}", old, new) for repo, old, new in drift or []

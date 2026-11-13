@@ -22,22 +22,25 @@ that blocked the queue, it reads GitHub's record as of the dequeue and compares 
 earlier completed runs of the same workflow that share no queued PR with the failed run. Those are
 main pushes, schedules and dispatches, and merge groups whose queue chain excludes every PR in the
 failed run's chain. The chain is the PR of each `gh-readonly-queue/<branch>/pr-<n>-<base>` branch,
-followed through bases that are not on main. A main run that passed supersedes merge-group results
-on its commit or an older base: main was green there, so their failures are their own PRs'.
+followed through bases that are not on main. A merge group that landed tested its own main commit.
+A main run that passed supersedes merge-group results that tested its commit or an older one with
+the same dependency revisions: main was green there, so their failures are their own PRs'.
 
-Failed tests match by name across all of a run's Playwright JSON and JUnit report artifacts. A run
-whose reports name no failed test compares its failed jobs by name and failed step instead. A
-summary gate is never evidence, because it also passes when its upstream jobs skip; a run where
-only the gate failed gets its own Unknown line and does not set the alert's icon. A failed job
-whose logs show a dependency download or network error is reported as **Infrastructure**, with no
-history comparison. Two failures are the same when their failing file and first error line agree,
-with numbers ignored.
+Failed tests match by name across all of a run's Playwright JSON and JUnit report artifacts. A
+failed job is compared by name and failed step when it failed outside a test step, or when no
+readable report names a failed test. A summary gate is never evidence, because it also passes when
+its upstream jobs skip; a run where only the gate failed gets its own Unknown line and does not set
+the alert's icon. A failed job whose logs show a dependency download or network error is reported
+as **Infrastructure**, with no history comparison. Report artifacts of the failed run that are
+expired or unreadable get their own Unknown line. Two failures are the same when their failing
+file and first error line agree, with numbers ignored. A comparable run that cannot be read is
+skipped.
 
 The newest comparable run that executed a failure decides it:
 
 - the same failure: **Main** (🚨);
-- a pass, or no such test in a run that has every report the failed run has: **Likely
-  PR/merge-group error** (🔵);
+- a pass, or no such test in a run of main's own content (a main push or a landed merge group)
+  that has every report the failed run has: **Likely PR/merge-group error** (🔵);
 - a flaky or different result, or no comparable run: **Unknown** (⚠️), naming that one reason.
 
 A pass is not discounted when OpenMetadata or ai-platform changed since; the verdict names that
@@ -61,6 +64,8 @@ affected failures Unknown.
 
 The first alert after a dependency break can read as a likely PR error, with the breaking range
 named in it. A test that only flakes on main reads the same way when the newest comparable run
-passed it. Suites that run only in the queue need another merge group to have executed them. Per
-the maintainer's instruction the reporter has no automated tests; changes are verified by
-replaying recorded dequeues locally and dispatching the workflow as a dry run.
+passed it. Suites that run only in the queue need another merge group to have executed them.
+Playwright results are kept for one day, so test-level comparison reaches back about a day and
+older runs only compare jobs. Per the maintainer's instruction the reporter has no automated
+tests; changes are verified by replaying recorded dequeues locally and dispatching the workflow,
+with its `dequeue` input, as a dry run.
