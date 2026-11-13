@@ -19,8 +19,14 @@ import {
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01, XClose } from '@openmetadata/ui-core-components/icons';
+import {
+  Plus,
+  Shield01,
+  Trash01,
+  XClose,
+} from '@openmetadata/ui-core-components/icons';
 import { isAxiosError } from 'axios';
+import classNames from 'classnames';
 import { Fragment, ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
@@ -34,6 +40,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import Loader from '../../../common/Loader/Loader';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
 import { pageCount, pageOf } from './OntologyDefinitionTable.utils';
@@ -46,6 +53,8 @@ export interface DefinitionColumn<T> {
   readonly width?: string;
   /** Numbers read right-aligned. */
   readonly align?: 'end';
+  /** Names the row for assistive tech when the Name column is hidden. */
+  readonly isRowHeader?: boolean;
 }
 
 interface OntologyDefinitionListProps<T> {
@@ -60,6 +69,13 @@ interface OntologyDefinitionListProps<T> {
   onChanged?: () => void;
   /** Columns after Name. */
   columns: readonly DefinitionColumn<T>[];
+  /** Drops the Name column, for definitions whose own column already names them. */
+  hideNameColumn?: boolean;
+  rowClassName?: (item: T) => string | undefined;
+  /** A full-width row under the item when it returns content; `open` opens a row's editor. */
+  renderDetail?: (item: T, open: (item: T) => void) => ReactNode;
+  /** Buttons between the count and Add. */
+  actions?: ReactNode;
   /** Search and filters, left of the count. */
   toolbar?: ReactNode;
   /** "6 concepts" or "3 of 8", right of the filters. */
@@ -68,7 +84,10 @@ interface OntologyDefinitionListProps<T> {
   filterKey?: string;
   /** Replaces the side editor for a row, e.g. to open a concept on the graph. */
   onOpen?: (item: T) => void;
-  /** Replaces the inline editor for a new definition; `saved` is set once, to keep the new one open. */
+  /**
+   * Replaces the editor for a new definition with one that opens its own drawer; `saved` is set
+   * once, to keep the new one open.
+   */
   renderCreate?: (actions: {
     close: () => void;
     onCreated: (saved?: T) => void;
@@ -125,6 +144,10 @@ const OntologyDefinitionList = <
   onRetry,
   onChanged,
   columns,
+  hideNameColumn,
+  rowClassName,
+  renderDetail,
+  actions,
   toolbar,
   summary,
   filterKey,
@@ -153,15 +176,16 @@ const OntologyDefinitionList = <
   );
   if (isError) {
     return (
-      <Alert variant="error">
-        <Box direction="col" gap={2}>
-          {t('server.entity-fetch-error', {
-            entity: pluralLabel,
-          })}
-          <Button color="secondary" onPress={onRetry}>
+      <Alert
+        rightContent={
+          <Button color="secondary" size="sm" onPress={onRetry}>
             {t('label.retry')}
           </Button>
-        </Box>
+        }
+        variant="error">
+        {t('server.entity-fetch-error', {
+          entity: pluralLabel,
+        })}
       </Alert>
     );
   }
@@ -268,7 +292,7 @@ const OntologyDefinitionList = <
 
   const renderBlockedState = () => {
     if (definition && permission.isLoading) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     if (definition && !permission.hasViewAccess) {
       return (
@@ -284,20 +308,32 @@ const OntologyDefinitionList = <
   // Row editors open in the Studio's right slide-over, beside the list.
   const renderDrawer = (title: string, content: ReactNode) => (
     <OntologyStudioDrawer
-      placement="overlay"
-      testId="ontology-definition-drawer">
+      testId="ontology-definition-drawer"
+      // Unguarded: the drawer runs its own discard prompt first.
+      onInteractOutside={() => setSelected(undefined)}>
       <Box
         align="center"
         className="tw:shrink-0 tw:border-b tw:border-secondary tw:px-6 tw:py-4"
-        gap={2}>
-        <Box className="tw:min-w-0 tw:flex-1" direction="col">
+        gap={3}>
+        {/* The design gives a constraint a shield tile and puts its ontology under the title. */}
+        {definitionType === 'axiom' ? (
+          <span className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:shadow-xs">
+            <Shield01 aria-hidden className="tw:size-5 tw:text-fg-secondary" />
+          </span>
+        ) : null}
+        <Box
+          className={classNames(
+            'tw:min-w-0 tw:flex-1',
+            definitionType === 'axiom' && 'tw:flex-col-reverse'
+          )}
+          direction="col">
           <Typography color="secondary" size="text-sm">
             {t('label.in-entity', { entity: getEntityName(ontology) })}
           </Typography>
           <Typography
             ellipsis
             as="h2"
-            className="not-prose tw:m-0"
+            className="not-prose tw:m-0 tw:text-primary"
             size="text-lg"
             weight="semibold">
             {title}
@@ -326,10 +362,8 @@ const OntologyDefinitionList = <
       return null;
     }
     if (selected === 'new' && renderCreate) {
-      return renderDrawer(
-        t('label.add-entity', { entity: entityText }),
-        renderCreateForm(renderCreate)
-      );
+      // Wrapping it in this drawer too stacked an empty drawer over the form.
+      return renderCreateForm(renderCreate);
     }
     const blocked = renderBlockedState();
     if (blocked) {
@@ -380,30 +414,91 @@ const OntologyDefinitionList = <
   const openRow = (item: T) =>
     guard(() => (onOpen ? onOpen(item) : setSelected(item)));
 
+  const toRows = (page: readonly T[]) =>
+    page.flatMap((item) => {
+      const detail = renderDetail?.(item, openRow);
+
+      return detail
+        ? [
+            { id: item.id, item },
+            { id: `${item.id}-detail`, item, detail },
+          ]
+        : [{ id: item.id, item }];
+    });
+
+  const renderNameCell = (item: T) => (
+    <Table.Cell className={CELL_PADDING}>
+      <Box align="center" className="tw:min-w-0 tw:overflow-hidden" gap={2}>
+        {definitionType === 'concept' ? (
+          <span
+            aria-hidden
+            className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
+          />
+        ) : null}
+        <Button
+          ellipsis
+          className="tw:min-w-0 tw:max-w-full tw:overflow-hidden"
+          color="link-gray"
+          size="sm"
+          onPress={() => openRow(item)}>
+          <span className="tw:font-semibold tw:text-primary">
+            {getEntityName(item)}
+          </span>
+        </Button>
+      </Box>
+    </Table.Cell>
+  );
+
+  const renderRow = ({ id, item, detail }: ReturnType<typeof toRows>[0]) =>
+    detail ? (
+      <Table.Row className={rowClassName?.(item)} id={id}>
+        <Table.Cell
+          className={CELL_PADDING}
+          colSpan={columns.length + (hideNameColumn ? 0 : 1)}>
+          {detail}
+        </Table.Cell>
+      </Table.Row>
+    ) : (
+      <Table.Row
+        className={rowClassName?.(item)}
+        id={id}
+        onAction={() => openRow(item)}>
+        {hideNameColumn ? null : renderNameCell(item)}
+        {columns.map((column) => (
+          <Table.Cell className={columnClassName(column)} key={column.id}>
+            {column.render(item)}
+          </Table.Cell>
+        ))}
+      </Table.Row>
+    );
+
   const renderTable = (rows: readonly T[]) => (
     <TableCard.Root
       data-testid={`ontology-definition-group-${definitionType}`}
       size="sm">
       <Table aria-label={pluralLabel} className="tw:table-fixed" size="sm">
         <Table.Header>
-          <Table.Head
-            isRowHeader
-            className={`${CELL_PADDING} tw:w-44`}
-            id="name"
-            label={t('label.name')}
-          />
+          {hideNameColumn ? null : (
+            <Table.Head
+              isRowHeader
+              className={`${CELL_PADDING} tw:w-44`}
+              id="name"
+              label={t('label.name')}
+            />
+          )}
           {columns.map((column) => (
             <Table.Head
               align={column.align}
               className={columnClassName(column)}
               id={column.id}
+              isRowHeader={column.isRowHeader}
               key={column.id}
               label={column.label}
             />
           ))}
         </Table.Header>
         <Table.Body
-          items={rows}
+          items={toRows(rows)}
           renderEmptyState={() => (
             <div className="tw:m-4 tw:rounded-lg tw:bg-secondary_alt tw:p-4">
               <Typography as="p" size="text-sm" weight="medium">
@@ -411,38 +506,7 @@ const OntologyDefinitionList = <
               </Typography>
             </div>
           )}>
-          {(item) => (
-            <Table.Row id={item.id} onAction={() => openRow(item)}>
-              <Table.Cell className={CELL_PADDING}>
-                <Box
-                  align="center"
-                  className="tw:min-w-0 tw:overflow-hidden"
-                  gap={2}>
-                  {definitionType === 'concept' ? (
-                    <span
-                      aria-hidden
-                      className="tw:size-1.5 tw:shrink-0 tw:rounded-full tw:bg-fg-brand-primary"
-                    />
-                  ) : null}
-                  <Button
-                    ellipsis
-                    className="tw:min-w-0 tw:max-w-full tw:overflow-hidden"
-                    color="link-gray"
-                    size="sm"
-                    onPress={() => openRow(item)}>
-                    <span className="tw:font-semibold tw:text-primary">
-                      {getEntityName(item)}
-                    </span>
-                  </Button>
-                </Box>
-              </Table.Cell>
-              {columns.map((column) => (
-                <Table.Cell className={columnClassName(column)} key={column.id}>
-                  {column.render(item)}
-                </Table.Cell>
-              ))}
-            </Table.Row>
-          )}
+          {renderRow}
         </Table.Body>
       </Table>
       {lastPage > 0 ? (
@@ -471,6 +535,7 @@ const OntologyDefinitionList = <
             {summary}
           </Typography>
         ) : null}
+        {actions}
         {canCreate && (
           <Button
             color={definitionType === 'axiom' ? 'primary' : 'secondary'}
@@ -485,7 +550,7 @@ const OntologyDefinitionList = <
       {items ? (
         renderTable(pageOf(items, currentPage))
       ) : (
-        <Typography role="status">{t('label.loading')}</Typography>
+        <Loader size="small" />
       )}
       {renderEditor()}
     </Box>

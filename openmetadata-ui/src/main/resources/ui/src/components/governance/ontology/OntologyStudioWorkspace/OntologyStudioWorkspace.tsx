@@ -24,6 +24,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import OntologyMemoryReviewPanel from '../../../OntologyExplorer/OntologyMemoryReviewPanel';
 import OntologyAuthoringWorkspace from '../OntologyAuthoringWorkspace/OntologyAuthoringWorkspace';
 import OntologyAxiomWorkspace from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace';
+import { AxiomStatus } from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace.utils';
 import OntologyCreateForm from '../OntologyCreateForm/OntologyCreateForm';
 import OntologyGraphView, {
   OntologyModelStats,
@@ -98,6 +99,8 @@ const OntologyStudioWorkspace = ({
   const [definitionTab, setDefinitionTab] = useState<string | number>(
     'overview'
   );
+  // Set only by the Overview's Review conflicts, so a plain visit opens Constraints unfiltered.
+  const [axiomStatus, setAxiomStatus] = useState<AxiomStatus>();
   const [revision, setRevision] = useState(0);
   const { model } = useOntologyStudioModel(
     mode === 'definitions' ? ontology : undefined
@@ -140,7 +143,12 @@ const OntologyStudioWorkspace = ({
           <Tabs
             className="tw:gap-5"
             selectedKey={definitionTab}
-            onSelectionChange={(key) => guard(() => setDefinitionTab(key))}>
+            onSelectionChange={(key) =>
+              guard(() => {
+                setAxiomStatus(undefined);
+                setDefinitionTab(key);
+              })
+            }>
             {header}
             <Tabs.List aria-label={t('label.definition')} type="underline">
               <Tabs.Item id="overview">{t('label.overview')}</Tabs.Item>
@@ -169,7 +177,12 @@ const OntologyStudioWorkspace = ({
                 ontology={ontology}
                 status={publicationStatus}
                 onOpenPublication={onOpenPublication}
-                onOpenTab={(tab) => guard(() => setDefinitionTab(tab))}
+                onOpenTab={(tab, status) =>
+                  guard(() => {
+                    setAxiomStatus(status);
+                    setDefinitionTab(tab);
+                  })
+                }
               />
             </Tabs.Panel>
             <Tabs.Panel id="concept">
@@ -188,6 +201,7 @@ const OntologyStudioWorkspace = ({
             </Tabs.Panel>
             <Tabs.Panel id="axiom">
               <OntologyAxiomWorkspace
+                initialStatus={axiomStatus}
                 ontology={ontology}
                 onOpenConcept={openConcept}
                 onWorkingChange={onWorkingChange}

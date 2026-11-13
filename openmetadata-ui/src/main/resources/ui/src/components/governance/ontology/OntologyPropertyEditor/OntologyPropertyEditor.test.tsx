@@ -254,6 +254,48 @@ describe('OntologyPropertyEditor', () => {
     expect(domain.getByRole('button', { name: 'label.add' })).toBeDisabled();
   });
 
+  it('lists characteristics in the design order with what each means, and previews the link', () => {
+    render(
+      <OntologyPropertyEditor
+        canEdit
+        ontology={ontology}
+        property={{
+          ...property,
+          kind: Kind.Object,
+          name: 'treats',
+          domain: [],
+          range: ['urn:sales:Patient'],
+        }}
+        onSaved={jest.fn()}
+      />
+    );
+    const toggle = screen.getByTestId('ontology-property-advanced-toggle');
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+
+    fireEvent.click(toggle);
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
+
+    const names = screen
+      .getAllByRole('checkbox')
+      .map((box) => box.closest('label')?.textContent ?? '')
+      .filter((text) => text.includes('ontology-characteristic'));
+
+    expect(names.map((text) => text.split('message.')[0])).toEqual([
+      'label.functional',
+      'label.inverse-functional',
+      'label.symmetric',
+      'label.asymmetric',
+      'label.transitive',
+      'label.reflexive',
+      'label.irreflexive',
+    ]);
+    expect(screen.getByTestId('ontology-property-preview')).toHaveTextContent(
+      'treats → urn:sales:Patient'
+    );
+  });
+
   it('offers data types as the range of a data property', async () => {
     render(
       <OntologyPropertyEditor
@@ -602,7 +644,7 @@ describe('OntologyPropertyEditor', () => {
         target: { value: 'manages' },
       });
       fireEvent.click(
-        screen.getByRole('checkbox', { name: Characteristic.Transitive })
+        screen.getByRole('checkbox', { name: /^label\.transitive/ })
       );
       fireEvent.change(screen.getByRole('textbox', { name: 'label.inverse' }), {
         target: { value: 'urn:sales:managedBy' },
@@ -635,9 +677,8 @@ describe('OntologyPropertyEditor', () => {
           onSaved={jest.fn()}
         />
       );
-      const advanced = screen
-        .getByText('label.advanced')
-        .closest('details') as HTMLDetailsElement;
+      const toggle = screen.getByTestId('ontology-property-advanced-toggle');
+      const isOpen = () => toggle.getAttribute('aria-expanded') === 'true';
       fireEvent.change(screen.getByRole('textbox', { name: 'label.name' }), {
         target: { value: 'manages' },
       });
@@ -647,16 +688,15 @@ describe('OntologyPropertyEditor', () => {
 
       fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
-      await waitFor(() => expect(advanced.open).toBe(true));
+      await waitFor(() => expect(isOpen()).toBe(true));
 
-      advanced.open = false;
-      fireEvent(advanced, new Event('toggle'));
+      fireEvent.click(toggle);
 
-      expect(advanced.open).toBe(false);
+      expect(isOpen()).toBe(false);
 
       fireEvent.click(screen.getByRole('button', { name: SUBMIT }));
 
-      await waitFor(() => expect(advanced.open).toBe(true));
+      await waitFor(() => expect(isOpen()).toBe(true));
 
       expect(post).not.toHaveBeenCalled();
     });
@@ -681,7 +721,7 @@ describe('OntologyPropertyEditor', () => {
         screen.getByRole('textbox', { name: 'label.unit' })
       ).toBeDisabled();
       expect(
-        screen.getByRole('checkbox', { name: Characteristic.Functional })
+        screen.getByRole('checkbox', { name: /^label\.functional/ })
       ).toBeDisabled();
       expect(screen.getByRole('button', { name: SUBMIT })).toBeDisabled();
     });

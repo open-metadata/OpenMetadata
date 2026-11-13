@@ -38,6 +38,7 @@ import type { OntologyPackInstallationRecord } from '../../generated/type/ontolo
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { installOntologyPack, listOntologyPacks } from '../../rest/ontologyAPI';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 import OntologyNativeLibraryDetail, {
   OntologyNativeLibraryDetailProps,
 } from '../governance/ontology/OntologyNativeLibraryDetail/OntologyNativeLibraryDetail';
@@ -291,9 +292,7 @@ const OntologyLibrary = ({
     libraryBody = (
       <Card data-testid="ontology-library-loading" size="lg">
         <Card.Content>
-          <Typography as="p" color="secondary" size="text-sm">
-            {t('label.loading')}
-          </Typography>
+          <Loader size="small" />
         </Card.Content>
       </Card>
     );

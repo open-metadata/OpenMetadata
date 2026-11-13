@@ -265,9 +265,12 @@ test.describe(
 
               return;
             }
-            const notice = page.getByTestId('ontology-graph-focused-notice');
+            const notice = page.getByTestId('ontology-graph-too-large');
             await expect(notice).toContainText('too many to draw at once');
             await expect(notice).toContainText('2000');
+            await expect(
+              notice.getByTestId('ontology-graph-concept-picker')
+            ).toBeVisible();
             await expect(page.locator('.ontology-g6-container')).toHaveCount(0);
             await page.screenshot({
               path: test.info().outputPath('g14-sizes-2000.png'),
@@ -288,7 +291,7 @@ test.describe(
         await setAppMode(api, isolatedUser.responseData.id, 'ai');
         await openLargeOntology(page, fixture);
         await expect(
-          page.getByTestId('ontology-graph-focused-notice')
+          page.getByTestId('ontology-graph-too-large')
         ).toBeVisible();
 
         await findBox(page).fill('Concept 1000');
@@ -308,6 +311,34 @@ test.describe(
 
         await page.getByTestId('ontology-graph-open-tree').click();
         await expect(page.getByTestId('ontology-tree-view')).toBeVisible();
+      });
+    });
+
+    test('draws the neighbourhood of a concept picked from the too-large state', async ({
+      isolatedUser,
+      isolatedUserPage: page,
+    }) => {
+      test.setTimeout(180_000);
+      await withFixture(2000, async (fixture, api) => {
+        await setAppMode(api, isolatedUser.responseData.id, 'ai');
+        await openLargeOntology(page, fixture);
+        await page.getByTestId('ontology-graph-concept-picker').click();
+        await page
+          .getByTestId('ontology-graph-concept-picker-search')
+          .fill('Concept 1000');
+        await page.getByRole('option', { name: /^Concept 1000(?!\d)/ }).click();
+
+        await expect(page.getByTestId('ontology-graph-too-large')).toHaveCount(
+          0
+        );
+        await expect(
+          page.getByTestId('ontology-graph-focused-notice')
+        ).toContainText('Showing');
+        await expect
+          .poll(async () => (await readGraphVisibility(page)).visible, {
+            timeout: 15_000,
+          })
+          .toBeGreaterThan(1);
       });
     });
 
