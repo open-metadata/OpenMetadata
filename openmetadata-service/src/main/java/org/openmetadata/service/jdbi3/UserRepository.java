@@ -414,12 +414,23 @@ public class UserRepository extends EntityRepository<User> {
     return ProfileWebhookSecrets.masked(entity);
   }
 
+  /**
+   * Records a login with a single-row JSON update, the same way {@link #updateUserLastActivityTime}
+   * does. The previous implementation applied a JSON patch through the full entity update path.
+   * That path carries no useful change (lastLoginTime is excluded from change descriptions), but
+   * when the same user logged in again within the EntityUpdater session window (10 minutes), the
+   * change-consolidation step reloaded the user with every field, including {@code owns}, which
+   * costs one lookup per entity owned by the user's teams: ~2,600 queries and ~9 s per login for a
+   * user whose teams own ~300 assets, versus ~150 queries and ~1 s for the first login in a session.
+   */
+  @Transaction
   public void updateUserLastLoginTime(User orginalUser, long lastLoginTime) {
-    User updatedUser = JsonUtils.deepCopy(orginalUser, User.class);
-    JsonPatch patch =
-        JsonUtils.getJsonPatch(orginalUser, updatedUser.withLastLoginTime(lastLoginTime));
-    UserRepository userRepository = (UserRepository) Entity.getEntityRepository(USER);
-    userRepository.patch(null, orginalUser.getId(), orginalUser.getUpdatedBy(), patch);
+    String fqn = quoteName(orginalUser.getName().toLowerCase());
+    LOG.debug("Updating lastLoginTime for user: {} to: {}", orginalUser.getName(), lastLoginTime);
+    // @BindFQN hashes the fqn, so it is passed unhashed
+    daoCollection.userDAO().updateLastLoginTime(fqn, lastLoginTime);
+    // The row changed under the entity cache: drop the cached copy so reads see the new value
+    invalidateCacheForEntity(USER, orginalUser.getId(), orginalUser.getFullyQualifiedName());
 
     // Update lastActivityTime immediately on login for metrics visibility
     // This ensures user metrics show activity right after login
