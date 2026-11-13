@@ -80,11 +80,7 @@ import {
 import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
-import {
-  filterReviews,
-  getOpenReviews,
-  hasMorePages,
-} from './OntologyTasksDrawer.utils';
+import { filterReviews, hasMorePages } from './OntologyTasksDrawer.utils';
 import OntologyTaskThread from './OntologyTaskThread';
 
 type Props = {
@@ -175,15 +171,18 @@ const useQueueTotal = (
       getOntologyReleaseReviews({ view, limit: 1 }, signal),
   }).data?.paging?.total;
 
-/** Which review the banner shows: one ontology's, or the open set on All ontologies. */
+/** Which reviews the banner shows: one ontology's single review, or a set of them. */
 const getBannerKey = (
   ontologyId: string | undefined,
   bannerReview: OntologyReleaseReview | undefined,
   openReviews: OntologyReleaseReview[]
 ) =>
-  ontologyId
+  ontologyId && openReviews.length <= 1
     ? bannerReview?.task.id
     : openReviews.map((review) => review.task.id).join();
+
+const reviewsOf = (page?: { data: OntologyReleaseReview[] }) =>
+  page?.data ?? [];
 
 /** A transient state failure still allows a vote; a 404 means the ontology was archived. */
 const isReviewUnvotable = (detailFailed: boolean, stateError: unknown) =>
@@ -270,16 +269,6 @@ const OntologyTasksDrawer = ({
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews({ view: 'pending', limit: 1 }, signal),
   });
-  const created = useQuery({
-    queryKey: [...queuesKey, account, 'created-banner', ontologyId],
-    gcTime: 0,
-    retry: false,
-    queryFn: ({ signal }) =>
-      getOntologyReleaseReviews(
-        { view: 'created', ontologyId, limit: BANNER_LIMIT },
-        signal
-      ),
-  });
   const queue = useQuery({
     queryKey: [
       ...queuesKey,
@@ -310,14 +299,13 @@ const OntologyTasksDrawer = ({
     'created',
     isOpen
   );
-  const openReviews = getOpenReviews(pending.data?.data, created.data?.data);
+  // The banner announces only reviews waiting on the viewer's vote.
+  const openReviews = reviewsOf(pending.data);
   const openBannerReview = openReviews[0];
   const decided = useDecidedReview({
     account,
     ontologyId,
-    enabled: [pending.isSuccess, created.isSuccess, !openBannerReview].every(
-      Boolean
-    ),
+    enabled: [pending.isSuccess, !openBannerReview].every(Boolean),
     queuesKey,
   });
   const bannerReview = openBannerReview ?? decided;
@@ -723,7 +711,6 @@ const OntologyTasksDrawer = ({
         setListOpen(true);
         void pendingTotal.refetch();
         void pending.refetch();
-        void created.refetch();
       }}>
       {t('label.task-plural')}
     </Button>
@@ -742,7 +729,7 @@ const OntologyTasksDrawer = ({
     if (!bannerKey || dismissedBanner === bannerKey) {
       return null;
     }
-    if (!ontologyId) {
+    if (!ontologyId || openReviews.length > 1) {
       return renderOpenReviews();
     }
 

@@ -885,31 +885,26 @@ describe('the Studio review banner scope', () => {
     ontology: { id: ontologyName, name: ontologyName, type: 'ontology' },
     task: { id: 'uuid-' + taskId, type: 'task' },
     taskId,
-    callerCanVote: false,
+    callerCanVote: true,
     requester: { id: 'reviewer', name: 'reviewer', type: 'user' },
-    assignees: [
-      {
-        assignee: { id: 'alice', name: 'alice', type: 'user' },
-        status: 'Pending',
-      },
-    ],
   });
-  const serveOpenReviews = (reviews: ReturnType<typeof reviewOf>[]) => {
+  /** `pending` waits on the viewer's vote; `created` are the viewer's own open requests. */
+  const serveOpenReviews = (
+    pending: ReturnType<typeof reviewOf>[],
+    created: ReturnType<typeof reviewOf>[] = []
+  ) => {
     const read = get.getMockImplementation();
     get.mockImplementation(async (url: string, config) => {
       if (url === '/ontologies/reviews') {
-        const scoped = reviews.filter(
+        const scoped = (
+          config.params.view === 'created' ? created : pending
+        ).filter(
           (item) =>
             !config.params.ontologyId ||
             item.ontology.id === config.params.ontologyId
         );
 
-        return {
-          data: {
-            data: config.params.view === 'created' ? scoped : [],
-            paging: { total: scoped.length },
-          },
-        };
+        return { data: { data: scoped, paging: { total: scoped.length } } };
       }
       if (url.startsWith('/ontologyReleases/')) {
         return { data: { ...release, semanticVersion: '0.1.0' } };
@@ -936,10 +931,7 @@ describe('the Studio review banner scope', () => {
 
     expect(
       await screen.findByTestId('ontology-review-banner')
-    ).toHaveTextContent('Finance · v0.1.0 · ');
-    expect(screen.getByTestId('ontology-review-banner')).toHaveTextContent(
-      'TASK-2'
-    );
+    ).toHaveTextContent('reviewer asked you to review v0.1.0');
     expect(screen.queryByText(/Sales/)).not.toBeInTheDocument();
   });
 
@@ -968,10 +960,7 @@ describe('the Studio review banner scope', () => {
 
     expect(
       await screen.findByTestId('ontology-review-banner')
-    ).toHaveTextContent('Finance · v0.1.0 · ');
-    expect(screen.getByTestId('ontology-review-banner')).toHaveTextContent(
-      'TASK-LAST'
-    );
+    ).toHaveTextContent('reviewer asked you to review v0.1.0');
 
     const reviewReads = get.mock.calls
       .filter(([url]) => url === '/ontologies/reviews')
@@ -980,12 +969,44 @@ describe('the Studio review banner scope', () => {
     expect(reviewReads).toEqual(
       expect.arrayContaining([
         { view: 'pending', ontologyId: 'Finance', limit: 100 },
-        { view: 'created', ontologyId: 'Finance', limit: 100 },
       ])
     );
   });
 
-  it('lists one line per open review, naming its ontology, in All ontologies', async () => {
+  it("does not announce the viewer's own open request", async () => {
+    serveOpenReviews([], [reviewOf('Finance', 'TASK-2')]);
+    renderWithQueryClient(<Harness ontologyId="Finance" />);
+
+    await waitFor(() =>
+      expect(screen.getByTestId('ontology-tasks-trigger')).toHaveTextContent(
+        '0'
+      )
+    );
+
+    expect(
+      screen.queryByTestId('ontology-review-banner')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-open-reviews-banner')
+    ).not.toBeInTheDocument();
+  });
+
+  it('counts several reviews of the ontology in view in one pill', async () => {
+    serveOpenReviews([
+      reviewOf('Finance', 'TASK-1'),
+      reviewOf('Finance', 'TASK-2'),
+    ]);
+    renderWithQueryClient(<Harness ontologyId="Finance" />);
+
+    expect(
+      await screen.findByTestId('ontology-open-reviews-banner')
+    ).toHaveTextContent('2 reviews waiting on you');
+    expect(
+      screen.queryByTestId('ontology-review-banner')
+    ).not.toBeInTheDocument();
+  });
+
+  it('counts the reviews waiting on the viewer in All ontologies', async () => {
     serveOpenReviews([
       reviewOf('Sales', 'TASK-1'),
       reviewOf('Finance', 'TASK-2'),
@@ -994,26 +1015,19 @@ describe('the Studio review banner scope', () => {
 
     const banner = await screen.findByTestId('ontology-open-reviews-banner');
 
+    expect(banner).toHaveTextContent('2 reviews waiting on you');
     expect(
-      within(banner)
-        .getAllByText(/waiting on/)
-        .map((line) => line.textContent)
-    ).toEqual([
-      'Sales · In review · waiting on alice · TASK-1',
-      'Finance · In review · waiting on alice · TASK-2',
-    ]);
+      within(banner).getByRole('button', { name: 'Review' })
+    ).toBeInTheDocument();
   });
 
-  it('asks the viewer to review by name when the open review waits on them', async () => {
-    serveOpenReviews([{ ...reviewOf('Sales', 'TASK-1'), callerCanVote: true }]);
+  it('asks the viewer to review by name when one review waits on them', async () => {
+    serveOpenReviews([reviewOf('Sales', 'TASK-1')]);
     renderWithQueryClient(<Harness ontologyId={null} />);
 
-    const pill = await screen.findByTestId('ontology-open-review-asked');
-
-    expect(pill).toHaveTextContent('reviewer asked you to review Sales');
     expect(
-      within(pill).getByRole('button', { name: 'Review' })
-    ).toBeInTheDocument();
+      await screen.findByTestId('ontology-open-reviews-banner')
+    ).toHaveTextContent('reviewer asked you to review Sales');
   });
 });
 

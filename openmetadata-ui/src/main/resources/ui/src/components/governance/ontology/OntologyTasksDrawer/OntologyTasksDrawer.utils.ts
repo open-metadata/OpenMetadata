@@ -14,25 +14,6 @@
 import { VersionBump } from '../../../../generated/api/data/captureOntologyRelease';
 import type { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
 
-/**
- * The open reviews the Studio banner may announce: those the caller votes on,
- * then those the caller requested, once each.
- */
-export const getOpenReviews = (
-  ...lists: (OntologyReleaseReview[] | undefined)[]
-) => {
-  const seen = new Set<string>();
-
-  return lists
-    .flatMap((list) => list ?? [])
-    .filter((review) => {
-      const duplicate = seen.has(review.task.id);
-      seen.add(review.task.id);
-
-      return !duplicate;
-    });
-};
-
 /** The bump between two semantic versions; a first release counts from 0.0.0. */
 export const releaseBump = (
   base: string | undefined,
