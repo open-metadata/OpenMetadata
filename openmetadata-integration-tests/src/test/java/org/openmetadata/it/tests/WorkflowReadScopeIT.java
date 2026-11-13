@@ -12,7 +12,9 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,16 +26,25 @@ import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.policies.CreatePolicy;
 import org.openmetadata.schema.api.services.DatabaseConnection;
+import org.openmetadata.schema.api.teams.CreateRole;
+import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.automations.CreateWorkflow;
 import org.openmetadata.schema.entity.automations.QueryRunnerRequest;
 import org.openmetadata.schema.entity.automations.TestServiceConnectionRequest;
 import org.openmetadata.schema.entity.automations.Workflow;
 import org.openmetadata.schema.entity.automations.WorkflowType;
+import org.openmetadata.schema.entity.policies.Policy;
+import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.services.ServiceType;
+import org.openmetadata.schema.entity.teams.Role;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
+import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 
 /**
  * A query runner workflow carries its requester's SQL, so reading it is limited to that requester,
@@ -84,6 +95,51 @@ public class WorkflowReadScopeIT {
   }
 
   @Test
+  void aUserWhoMayWriteWorkflowsCannotRewriteOrDeleteAnotherUsersQuery(TestNamespace ns)
+      throws Exception {
+    Workflow workflow = createQueryRunnerWorkflow(ns.prefix("qr-scope-write"));
+    User editor = workflowEditor(ns);
+    String editorToken = tokenFor(editor.getEmail(), new String[] {});
+    String patch = requesterPatch(editor.getId());
+    String put = JsonUtils.pojoToJson(queryRunnerWorkflow(workflow.getName(), editor.getId()));
+
+    assertEquals(
+        403,
+        send("PATCH", byId(workflow), editorToken, patch, "application/json-patch+json")
+            .statusCode());
+    assertEquals(
+        403,
+        send("PATCH", byName(workflow), editorToken, patch, "application/json-patch+json")
+            .statusCode());
+    assertEquals(
+        403, send("PUT", WORKFLOWS_PATH, editorToken, put, "application/json").statusCode());
+    assertEquals(403, send("DELETE", byId(workflow), editorToken, null, null).statusCode());
+    assertEquals(403, send("DELETE", byName(workflow), editorToken, null, null).statusCode());
+
+    HttpResponse<String> stored = get(byId(workflow), SdkClients.getAdminToken());
+    assertEquals(200, stored.statusCode());
+    assertEquals(
+        SharedEntities.get().USER2_REF.getId().toString(),
+        JsonUtils.readTree(stored.body()).path("request").path("userId").asText());
+  }
+
+  @Test
+  void theRequesterMayStillDeleteTheirOwnQuery(TestNamespace ns) throws Exception {
+    User requester = workflowEditor(ns);
+    Workflow workflow =
+        createQueryRunnerWorkflow(ns.prefix("qr-scope-own-delete"), requester.getId());
+
+    HttpResponse<String> deleted =
+        send(
+            "DELETE",
+            byId(workflow) + "?hardDelete=true",
+            tokenFor(requester.getEmail(), new String[] {}),
+            null,
+            null);
+    assertEquals(200, deleted.statusCode(), deleted.body());
+  }
+
+  @Test
   void theRequesterListsAndReadsTheirOwnQuery(TestNamespace ns) throws Exception {
     Workflow workflow = createQueryRunnerWorkflow(ns.prefix("qr-scope-own"));
     String requesterToken = tokenFor(REQUESTER_EMAIL, new String[] {});
@@ -120,19 +176,72 @@ public class WorkflowReadScopeIT {
   }
 
   private static Workflow createQueryRunnerWorkflow(String name) {
+    return createQueryRunnerWorkflow(name, SharedEntities.get().USER2_REF.getId());
+  }
+
+  private static Workflow createQueryRunnerWorkflow(String name, UUID requesterId) {
+    return SdkClients.adminClient().workflows().create(queryRunnerWorkflow(name, requesterId));
+  }
+
+  private static CreateWorkflow queryRunnerWorkflow(String name, UUID requesterId) {
     QueryRunnerRequest request =
         new QueryRunnerRequest()
             .withConnectionType("Mysql")
             .withQuery("SELECT 'qr-scope'")
-            .withUserId(SharedEntities.get().USER2_REF.getId());
-    return SdkClients.adminClient()
-        .workflows()
-        .create(
-            new CreateWorkflow()
-                .withName(name)
-                .withDescription(name)
-                .withWorkflowType(WorkflowType.QUERY_RUNNER)
-                .withRequest(request));
+            .withUserId(requesterId);
+    return new CreateWorkflow()
+        .withName(name)
+        .withDescription(name)
+        .withWorkflowType(WorkflowType.QUERY_RUNNER)
+        .withRequest(request);
+  }
+
+  /** A user whose role may edit and delete every workflow, as an admin-granted custom role can. */
+  private static User workflowEditor(TestNamespace ns) {
+    Rule allow =
+        new Rule()
+            .withName("AllowWorkflowWrites")
+            .withEffect(Rule.Effect.ALLOW)
+            .withOperations(List.of(MetadataOperation.EDIT_ALL, MetadataOperation.DELETE))
+            .withResources(List.of(Entity.WORKFLOW));
+    Policy policy =
+        SdkClients.adminClient()
+            .policies()
+            .create(new CreatePolicy().withName(ns.prefix("wf-editor")).withRules(List.of(allow)));
+    Role role =
+        SdkClients.adminClient()
+            .roles()
+            .create(
+                new CreateRole()
+                    .withName(ns.prefix("wf-editor"))
+                    .withPolicies(List.of(policy.getFullyQualifiedName())));
+    String name = "wfedit_" + UUID.randomUUID().toString().substring(0, 8);
+    CreateUser user =
+        new CreateUser()
+            .withName(name)
+            .withEmail(name + "@test.openmetadata.org")
+            .withRoles(List.of(role.getId()));
+    return ns.trackRoot(Entity.USER, SdkClients.adminClient().users().create(user));
+  }
+
+  private static String requesterPatch(UUID userId) {
+    return "[{\"op\":\"replace\",\"path\":\"/request/userId\",\"value\":\"" + userId + "\"}]";
+  }
+
+  private static HttpResponse<String> send(
+      String method, String path, String token, String body, String contentType) throws Exception {
+    HttpRequest.Builder request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + path))
+            .header("Authorization", "Bearer " + token);
+    if (body == null) {
+      request.method(method, HttpRequest.BodyPublishers.noBody());
+    } else {
+      request
+          .header("Content-Type", contentType)
+          .method(method, HttpRequest.BodyPublishers.ofString(body));
+    }
+    return HTTP_CLIENT.send(request.build(), HttpResponse.BodyHandlers.ofString());
   }
 
   private static CreateWorkflow testConnectionWorkflow(String name) {

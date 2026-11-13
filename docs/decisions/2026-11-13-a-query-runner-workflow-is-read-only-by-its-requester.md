@@ -21,6 +21,8 @@ queries, while their results and a re-run were already limited to the requester.
   the results and trigger endpoints already give.
 - The `/history` listing leaves another user's query runner snapshots out of its page rather than
   refusing the page.
+- PATCH, PUT, DELETE and restore refuse another user's query runner workflow with 403 before the
+  write: each returns the workflow it changed, and a PATCH or PUT could rewrite the requester.
 
 ## Consequences
 A user sees only their own SQL Studio runs; admins and bots, which dispatch and clean up runs, see

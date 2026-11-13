@@ -438,6 +438,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    requireReadableStored(securityContext, id);
     Response response = patchInternal(uriInfo, securityContext, id, patch);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -470,6 +471,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
                         @ExampleObject("[{op:remove, path:/a},{op:add, path: /b, value: val}]")
                       }))
           JsonPatch patch) {
+    requireReadable(securityContext, repository.findByName(fqn, Include.ALL));
     Response response = patchInternal(uriInfo, securityContext, fqn, patch);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -495,6 +497,8 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context SecurityContext securityContext,
       @Valid CreateWorkflow create) {
     Workflow workflow = mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
+    repository.setFullyQualifiedName(workflow);
+    requireReadableIfStored(securityContext, workflow.getFullyQualifiedName());
     workflow = unmask(securityContext, workflow);
     Response response = createOrUpdate(uriInfo, securityContext, workflow);
     return Response.fromResponse(response)
@@ -522,6 +526,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Id of the Workflow", schema = @Schema(type = "UUID"))
           @PathParam("id")
           UUID id) {
+    requireReadableStored(securityContext, id);
     Response response = delete(uriInfo, securityContext, id, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -549,6 +554,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
           @PathParam("id")
           UUID id) {
 
+    requireReadableStored(securityContext, id);
     return deleteByIdAsync(uriInfo, securityContext, id, false, hardDelete);
   }
 
@@ -574,6 +580,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Parameter(description = "Name of the Workflow", schema = @Schema(type = "string"))
           @PathParam("name")
           String name) {
+    requireReadable(securityContext, repository.findByName(name, Include.ALL));
     Response response = deleteByName(uriInfo, securityContext, name, false, hardDelete);
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -599,6 +606,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
+    requireReadableStored(securityContext, restore.getId());
     Response response = restoreEntity(uriInfo, securityContext, restore.getId());
     return Response.fromResponse(response)
         .entity(decryptOrNullify(securityContext, (Workflow) response.getEntity()))
@@ -685,6 +693,21 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
               workflow.getId()));
     }
     return workflow;
+  }
+
+  /**
+   * A write returns the workflow it changed, and a PATCH or PUT could rewrite its requester, so a
+   * query runner workflow is written only by those who may read it.
+   */
+  private void requireReadableStored(SecurityContext securityContext, UUID id) {
+    requireReadable(securityContext, repository.find(id, Include.ALL));
+  }
+
+  private void requireReadableIfStored(SecurityContext securityContext, String fqn) {
+    final Workflow stored = repository.findByNameOrNull(fqn, Include.ALL);
+    if (stored != null) {
+      requireReadable(securityContext, stored);
+    }
   }
 
   private static boolean isReadable(SecurityContext securityContext, Workflow workflow) {
