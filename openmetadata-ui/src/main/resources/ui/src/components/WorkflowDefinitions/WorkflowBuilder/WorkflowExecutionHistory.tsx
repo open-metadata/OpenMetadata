@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Typography } from '@openmetadata/ui-core-components';
+import { Box, Typography } from '@openmetadata/ui-core-components';
 import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
@@ -156,7 +156,7 @@ export const WorkflowExecutionHistory: React.FC<
           const { displayLabel, statusType } = getStatusInfo(status);
 
           return (
-            <div className="tw:flex tw:flex-col tw:items-start tw:gap-1">
+            <Box align="start" direction="col" gap={1}>
               <StatusBadgeV2
                 dataTestId={`workflow-status-badge-${record.id}`}
                 label={displayLabel}
@@ -176,7 +176,7 @@ export const WorkflowExecutionHistory: React.FC<
                   </Typography>
                 );
               })}
-            </div>
+            </Box>
           );
         },
       },
