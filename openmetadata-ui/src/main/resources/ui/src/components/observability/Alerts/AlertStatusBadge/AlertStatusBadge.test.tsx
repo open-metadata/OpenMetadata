@@ -35,6 +35,7 @@ const alertWith = (status: Status, enabled = true): EventSubscription => ({
       statusDetails: {
         status,
         lastFailedReason: status === Status.Failed ? REASON : undefined,
+        configurationUnusable: status === Status.Failed ? true : undefined,
       },
     },
   ],
@@ -48,7 +49,7 @@ describe('AlertStatusBadge', () => {
       'label.failed'
     );
     expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      `label.failed: ${REASON}`
+      `label.failed. message.destination-does-not-send-until-fixed: ${REASON}`
     );
   });
 
@@ -66,6 +67,22 @@ describe('AlertStatusBadge', () => {
 
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.disabled'
+    );
+  });
+
+  it('names a failed send by its reason, not as a configuration to change', () => {
+    const alert = alertWith(Status.Failed);
+    alert.destinations[0].statusDetails = {
+      status: Status.Failed,
+      lastFailedReason: 'Webhook failed with status: 503',
+    };
+    render(<AlertStatusBadge alert={alert} />);
+
+    expect(screen.getByTestId('alert-status')).toHaveTextContent(
+      'label.failed'
+    );
+    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
+      'label.failed. label.failure-reason: Webhook failed with status: 503'
     );
   });
 });

@@ -168,7 +168,11 @@ describe('TeamsSubscription', () => {
         {...teamProps}
         subscription={{ slack: { endpoint: MASKED_PASSWORD_VALUE } }}
         subscriptionStatus={{
-          slack: { status: Status.Failed, lastFailedReason: reason },
+          slack: {
+            status: Status.Failed,
+            lastFailedReason: reason,
+            configurationUnusable: true,
+          },
         }}
       />
     );
@@ -182,7 +186,11 @@ describe('TeamsSubscription', () => {
         {...teamProps}
         subscription={{ gChat: { endpoint: MASKED_PASSWORD_VALUE } }}
         subscriptionStatus={{
-          slack: { status: Status.Failed, lastFailedReason: reason },
+          slack: {
+            status: Status.Failed,
+            lastFailedReason: reason,
+            configurationUnusable: true,
+          },
         }}
       />
     );

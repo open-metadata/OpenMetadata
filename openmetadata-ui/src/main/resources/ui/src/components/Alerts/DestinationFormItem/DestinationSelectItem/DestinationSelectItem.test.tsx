@@ -522,7 +522,11 @@ describe('DestinationSelectItem', () => {
       destinations: [
         {
           destinationType: SubscriptionType.Webhook,
-          statusDetails: { status: Status.Failed, lastFailedReason: reason },
+          statusDetails: {
+            status: Status.Failed,
+            lastFailedReason: reason,
+            configurationUnusable: true,
+          },
         },
       ],
     };
@@ -535,6 +539,22 @@ describe('DestinationSelectItem', () => {
     expect(screen.getByTestId('alert-error')).toHaveTextContent(
       `message.destination-does-not-send-until-fixed${reason}`
     );
+  });
+
+  it('says nothing more in view mode about a send that failed', () => {
+    renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
+      destinations: [
+        {
+          destinationType: SubscriptionType.Webhook,
+          statusDetails: {
+            status: Status.Failed,
+            lastFailedReason: 'Webhook failed with status: 503',
+          },
+        },
+      ],
+    });
+
+    expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
   });
 
   it('shows config field when external destination is selected', async () => {

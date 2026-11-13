@@ -149,7 +149,11 @@ describe('MembersTeamInfoWidgets', () => {
             profile: {
               subscription: { slack: { endpoint: MASKED_PASSWORD_VALUE } },
               subscriptionStatus: {
-                slack: { status: Status.Failed, lastFailedReason: reason },
+                slack: {
+                  status: Status.Failed,
+                  lastFailedReason: reason,
+                  configurationUnusable: true,
+                },
               },
             },
           } as Team

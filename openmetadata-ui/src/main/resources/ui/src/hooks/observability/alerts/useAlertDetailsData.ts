@@ -17,6 +17,7 @@ import { isUndefined, omitBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { ALERT_STATUS_FIELDS } from '../../../constants/Alerts.constants';
 import { ROUTES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -123,7 +124,7 @@ export function useAlertDetailsData({
       setAlertDetailsError(undefined);
       // statusDetails says, per destination, whether it sends and why not.
       const observabilityAlert = await getObservabilityAlertByFQN(fqn, {
-        fields: 'owners,statusDetails',
+        fields: `owners,${ALERT_STATUS_FIELDS}`,
       });
 
       setAlertDetails(observabilityAlert);

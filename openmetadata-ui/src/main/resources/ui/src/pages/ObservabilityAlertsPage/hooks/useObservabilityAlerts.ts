@@ -16,6 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
+import { ALERT_STATUS_FIELDS } from '../../../constants/Alerts.constants';
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -43,8 +44,6 @@ import {
 
 // System alert the classic Notification list always shows on its first page.
 const ACTIVITY_FEED_ALERT_NAME = 'ActivityFeedAlert';
-// Each destination's status, so the list shows an alert whose destinations do not send.
-const ALERT_LIST_FIELDS = 'statusDetails';
 
 export function useObservabilityAlerts({
   alertType = AlertType.Observability,
@@ -154,11 +153,11 @@ export function useObservabilityAlerts({
             before: requestParams?.before,
             limit: pageSize,
             alertType,
-            fields: ALERT_LIST_FIELDS,
+            fields: ALERT_STATUS_FIELDS,
           }),
           includeSystemAlerts && isFirstPage
             ? getAlertsFromName(ACTIVITY_FEED_ALERT_NAME, {
-                fields: ALERT_LIST_FIELDS,
+                fields: ALERT_STATUS_FIELDS,
               }).catch(() => undefined)
             : undefined,
         ]);

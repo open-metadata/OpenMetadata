@@ -328,7 +328,7 @@ describe('NotificationAlertDetail', () => {
 
     await waitFor(() => {
       expect(getAlertsFromName).toHaveBeenCalledWith('test-alert', {
-        fields: 'owners',
+        fields: 'owners,statusDetails',
       });
     });
   });

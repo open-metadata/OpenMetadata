@@ -129,3 +129,6 @@ export const ALERT_EMPTY_STATE_FEATURES: {
     descriptionKey: 'message.alert-stay-ahead-description',
   },
 ];
+
+// Each destination's status, so a list or a details page shows a destination that does not send.
+export const ALERT_STATUS_FIELDS = 'statusDetails';

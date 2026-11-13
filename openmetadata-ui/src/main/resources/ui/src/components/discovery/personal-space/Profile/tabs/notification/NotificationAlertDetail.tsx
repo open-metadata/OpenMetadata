@@ -37,6 +37,7 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ALERT_STATUS_FIELDS } from '../../../../../../constants/Alerts.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../../../constants/HelperTextUtil';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { AlertDetailTabs } from '../../../../../../enums/Alerts.enum';
@@ -344,7 +345,7 @@ const NotificationAlertDetail: FC<NotificationAlertDetailProps> = ({
     setIsLoading(true);
     try {
       const [alertData, diagData, eventsData] = await Promise.allSettled([
-        getAlertsFromName(fqn, { fields: 'owners' }),
+        getAlertsFromName(fqn, { fields: `owners,${ALERT_STATUS_FIELDS}` }),
         getDiagnosticInfo(fqn),
         getAlertEventsDiagnosticsInfo({ fqn, listCountOnly: true }),
       ]);

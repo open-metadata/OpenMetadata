@@ -23,22 +23,25 @@ export type AlertListStatus = Status.Active | Status.Disabled | Status.Failed;
 export interface AlertListStatusDetails {
   status: AlertListStatus;
   reasons: string[];
+  // A stored configuration does not send until it is changed, unlike a failed send.
+  isConfigurationUnusable: boolean;
 }
 
 // A destination's and a profile webhook's status share this shape, typed per generated file.
 interface ReportedStatus {
   status?: string;
   lastFailedReason?: string;
+  configurationUnusable?: boolean;
 }
 
 /**
- * Why a destination or profile webhook does not send, as the server reports it in its status:
- * only a `failed` status carries one.
+ * Why a destination or profile webhook does not send until its stored configuration is changed,
+ * as the server reports it; nothing for a send that failed.
  */
 export const getNotSendingReason = (
   statusDetails?: ReportedStatus
 ): string | undefined =>
-  statusDetails?.status === Status.Failed
+  statusDetails?.status === Status.Failed && statusDetails.configurationUnusable
     ? statusDetails.lastFailedReason
     : undefined;
 
@@ -49,22 +52,26 @@ export const getNotSendingReason = (
 export const getAlertListStatus = (
   alert: EventSubscription
 ): AlertListStatusDetails => {
-  const failed = (alert.destinations ?? []).filter(
-    (destination) => destination.statusDetails?.status === Status.Failed
-  );
+  const failed = (alert.destinations ?? [])
+    .map((destination) => destination.statusDetails)
+    .filter((statusDetails) => statusDetails?.status === Status.Failed);
 
   if (failed.length > 0) {
     return {
       status: Status.Failed,
       reasons: failed
-        .map((destination) => getNotSendingReason(destination.statusDetails))
+        .map((statusDetails) => statusDetails?.lastFailedReason)
         .filter((reason): reason is string => Boolean(reason)),
+      isConfigurationUnusable: failed.some(
+        (statusDetails) => statusDetails?.configurationUnusable
+      ),
     };
   }
 
   return {
     status: alert.enabled === false ? Status.Disabled : Status.Active,
     reasons: [],
+    isConfigurationUnusable: false,
   };
 };
 

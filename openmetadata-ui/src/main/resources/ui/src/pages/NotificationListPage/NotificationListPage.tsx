@@ -33,9 +33,13 @@ import RichTextEditorPreviewerNew from '../../components/common/RichTextEditor/R
 import Table from '../../components/common/Table/TableV2';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
+import AlertStatusBadge from '../../components/observability/Alerts/AlertStatusBadge/AlertStatusBadge';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { ALERT_EMPTY_STATE_FEATURES } from '../../constants/Alerts.constants';
+import {
+  ALERT_EMPTY_STATE_FEATURES,
+  ALERT_STATUS_FIELDS,
+} from '../../constants/Alerts.constants';
 import { NO_DATA_PLACEHOLDER } from '../../constants/constants';
 import {
   GlobalSettingOptions,
@@ -169,12 +173,14 @@ const NotificationListPage = () => {
           before: params?.before,
           limit: pageSize,
           alertType: AlertType.Notification,
+          fields: ALERT_STATUS_FIELDS,
         });
 
         if (isUndefined(params?.after)) {
           // Fetch and show the system created activity feed alert when fetching results fro page 1
           const activityFeedAlert = await getAlertsFromName(
-            'ActivityFeedAlert'
+            'ActivityFeedAlert',
+            { fields: ALERT_STATUS_FIELDS }
           );
           setAlerts([activityFeedAlert, ...data]);
         } else {
@@ -288,6 +294,15 @@ const NotificationListPage = () => {
             )
           );
         },
+      },
+      {
+        title: t('label.status').toString(),
+        dataIndex: 'destinations',
+        width: '120px',
+        key: 'status',
+        render: (_: unknown, record: EventSubscription) => (
+          <AlertStatusBadge alert={record} />
+        ),
       },
       {
         title: t('label.trigger').toString(),

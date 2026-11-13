@@ -18,6 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { getAllAlerts } from '../../../../../../rest/alertsAPI';
 import { deleteEntity } from '../../../../../../rest/miscAPI';
 import NotificationAlertsPanel from './NotificationAlertsPanel';
 
@@ -119,6 +120,18 @@ jest.mock('../../../../../../rest/alertsAPI', () => ({
         provider: 'user',
         filteringRules: { resources: ['table'] },
         description: 'A user alert',
+        destinations: [
+          {
+            type: 'Webhook',
+            category: 'External',
+            statusDetails: {
+              status: 'failed',
+              lastFailedReason:
+                "The value at '/endpoint' must be entered again",
+              configurationUnusable: true,
+            },
+          },
+        ],
       },
     ],
     paging: { total: 1 },
@@ -210,6 +223,22 @@ describe('NotificationAlertsPanel', () => {
     await waitFor(() => {
       expect(screen.getByTestId('alerts-list-table')).toBeInTheDocument();
     });
+  });
+
+  it('requests and shows the status of each alert', async () => {
+    await act(async () => {
+      render(<NotificationAlertsPanel onNavigate={mockOnNavigate} />);
+    });
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('alert-status')[1]).toHaveTextContent(
+        'label.failed'
+      );
+    });
+
+    expect(getAllAlerts).toHaveBeenCalledWith(
+      expect.objectContaining({ fields: 'statusDetails' })
+    );
   });
 
   it('should show alert names in the table', async () => {

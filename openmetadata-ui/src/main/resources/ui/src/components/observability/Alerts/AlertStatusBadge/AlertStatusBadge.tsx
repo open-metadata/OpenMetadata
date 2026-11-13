@@ -25,7 +25,10 @@ import { ALERT_STATUS_BADGE } from './AlertStatusBadge.constants';
 /** The alert's status in a list; a failed one shows why its destinations do not send on hover. */
 function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
   const { t } = useTranslation();
-  const { status, reasons } = useMemo(() => getAlertListStatus(alert), [alert]);
+  const { status, reasons, isConfigurationUnusable } = useMemo(
+    () => getAlertListStatus(alert),
+    [alert]
+  );
   const { color, labelKey } = ALERT_STATUS_BADGE[status];
   const badge = (
     <Badge color={color} data-testid="alert-status" size="sm" type="pill-color">
@@ -37,12 +40,14 @@ function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
     return badge;
   }
 
+  const title = isConfigurationUnusable
+    ? t('message.destination-does-not-send-until-fixed')
+    : t('label.failure-reason');
+
   return (
-    <Tooltip
-      description={reasons.join('\n')}
-      title={t('message.destination-does-not-send-until-fixed')}>
+    <Tooltip description={reasons.join('\n')} title={title}>
       <TooltipTrigger
-        aria-label={`${t(labelKey)}: ${reasons.join(' ')}`}
+        aria-label={`${t(labelKey)}. ${title}: ${reasons.join(' ')}`}
         data-testid="alert-status-reason">
         {badge}
       </TooltipTrigger>
