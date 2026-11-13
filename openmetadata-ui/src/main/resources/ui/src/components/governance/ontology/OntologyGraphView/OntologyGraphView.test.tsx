@@ -2976,13 +2976,20 @@ describe('OntologyGraphView', () => {
             screen.getByRole('listbox', { name: 'label.concept-plural' })
           ).getAllByRole('option');
 
+        const more = () =>
+          screen.getByTestId('ontology-graph-concept-picker-more');
+
         expect(options()).toHaveLength(20);
 
-        fireEvent.click(
-          screen.getByTestId('ontology-graph-concept-picker-more')
-        );
+        const total = more().textContent?.match(/ 20\/(\d+)$/)?.[1];
+
+        expect(more()).toHaveTextContent(`label.show-more 20/${total}`);
+        expect(Number(total)).toBeGreaterThan(40);
+
+        fireEvent.click(more());
 
         expect(options()).toHaveLength(40);
+        expect(more()).toHaveTextContent(`label.show-more 40/${total}`);
 
         fireEvent.change(
           screen.getByTestId('ontology-graph-concept-picker-search'),
