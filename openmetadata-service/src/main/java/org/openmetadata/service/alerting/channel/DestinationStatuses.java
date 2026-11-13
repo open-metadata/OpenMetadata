@@ -39,6 +39,16 @@ public final class DestinationStatuses {
         .withTimestamp(timeStamp);
   }
 
+  /**
+   * A destination whose stored configuration cannot be used to send, such as a secret to enter
+   * again: it does not send until the configuration is changed. The one place this status is built.
+   */
+  public static SubscriptionStatus configurationUnusable(String reason, long at) {
+    return buildSubscriptionStatus(
+            SubscriptionStatus.Status.FAILED, null, at, null, reason, null, at)
+        .withConfigurationUnusable(true);
+  }
+
   public static TestDestinationStatus buildTestDestinationStatus(
       TestDestinationStatus.Status status, Integer statusCode, Long timestamp) {
     return new TestDestinationStatus()

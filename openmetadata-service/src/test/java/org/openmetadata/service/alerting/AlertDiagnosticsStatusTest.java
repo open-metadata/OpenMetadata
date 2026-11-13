@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.events.SubscriptionDestination.Subscriptio
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType;
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.alerting.channel.DestinationStatuses;
 import org.openmetadata.service.events.consumer.ledger.AlertRecord;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.secrets.BoundCiphertext;
@@ -106,6 +107,25 @@ class AlertDiagnosticsStatusTest {
     assertEquals(SubscriptionStatus.Status.AWAITING_RETRY, read.getStatus());
     assertEquals("Webhook failed with status: 503", read.getLastFailedReason());
     assertNull(read.getConfigurationUnusable());
+  }
+
+  // The last tick found the secret unusable; it was entered again since, so the alert reads Active.
+  @Test
+  void aSecretEnteredAgainClearsTheUnusableStatusTheLastTickStored() {
+    SubscriptionDestination enteredAgain = signedWith("a key entered again");
+    EventSubscription alert = alertWith(enteredAgain);
+    SubscriptionStatus storedByTheTick =
+        DestinationStatuses.configurationUnusable(
+            "Not attempted: its stored configuration is not usable: enter it again", 1L);
+    health.put(
+        alert.getId(),
+        Map.of(
+            enteredAgain.getId().toString(), new DestinationHealth().withStatus(storedByTheTick)));
+
+    SubscriptionStatus read = statusOf(AlertDiagnostics.destinationsWithStatus(alert).getFirst());
+
+    assertEquals(SubscriptionStatus.Status.ACTIVE, read.getStatus());
+    assertNull(read.getLastFailedReason());
   }
 
   @Test

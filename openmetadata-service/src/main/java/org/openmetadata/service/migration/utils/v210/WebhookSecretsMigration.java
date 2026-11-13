@@ -27,6 +27,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.DataMigrationStep;
+import org.openmetadata.service.migration.utils.MigrationTableUtil;
 
 /**
  * Brings stored webhook configurations, on alert destinations and on user and team profiles, to the
@@ -51,7 +52,6 @@ public final class WebhookSecretsMigration {
   private static final String TEAM = "team";
   private static final String ALERT = "eventsubscription";
   private static final String ALERT_TABLE = "event_subscription_entity";
-  private static final String MIGRATION_LOG_TABLE = "SERVER_MIGRATION_SQL_LOGS";
 
   private WebhookSecretsMigration() {}
 
@@ -96,7 +96,8 @@ public final class WebhookSecretsMigration {
       boolean keepUnopened) {
     Sql sql = new Sql(connectionType);
     // A new database has no alert table until its first versions are migrated.
-    boolean hasAlerts = !keepUnopened && isKeyDefined() && sql.hasTable(handle, ALERT_TABLE);
+    boolean hasAlerts =
+        !keepUnopened && isKeyDefined() && MigrationTableUtil.tableExists(handle, ALERT_TABLE);
     if (hasAlerts && !isAlertStepRecorded(migrationDAO, version, handle, sql)) {
       requireKeysThatOpenStoredCredentials(handle, connectionType);
     }
@@ -105,7 +106,7 @@ public final class WebhookSecretsMigration {
   // A database still on the earliest migrations gets the migration log during this run.
   private static boolean isAlertStepRecorded(
       MigrationDAO migrationDAO, String version, Handle handle, Sql sql) {
-    return sql.hasTable(handle, MIGRATION_LOG_TABLE)
+    return MigrationTableUtil.tableExists(handle, sql.migrationLogTable())
         && DataMigrationStep.isRecorded(migrationDAO, version, ALERT_STEP_NAME);
   }
 
@@ -308,17 +309,9 @@ public final class WebhookSecretsMigration {
       return isMySql() ? ":json" : ":json::jsonb";
     }
 
-    boolean hasTable(Handle handle, String table) {
-      String schema = isMySql() ? "DATABASE()" : "current_schema()";
-      return handle
-              .createQuery(
-                  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = "
-                      + schema
-                      + " AND LOWER(table_name) = LOWER(:table)")
-              .bind("table", table)
-              .mapTo(Integer.class)
-              .one()
-          > 0;
+    // Created unquoted, so PostgreSQL keeps the name in lower case.
+    String migrationLogTable() {
+      return isMySql() ? "SERVER_MIGRATION_SQL_LOGS" : "server_migration_sql_logs";
     }
 
     String selectById(String table) {

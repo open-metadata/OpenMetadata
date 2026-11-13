@@ -176,6 +176,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
 
   @Override
   public void prepare(EventSubscription entity, boolean update) {
+    forgetStatusDetails(entity.getDestinations());
     // Sort Filters and Actions
     if (entity.getInput() != null) {
       listOrEmpty(entity.getInput().getFilters())
@@ -214,6 +215,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
             "System templates cannot be assigned to EventSubscriptions. Please use a USER template or create a custom one.");
       }
     }
+  }
+
+  // A destination's status is the server's, worked out when the alert is read: whatever a write
+  // sends for it is neither stored nor compared.
+  private static void forgetStatusDetails(List<SubscriptionDestination> destinations) {
+    listOrEmpty(destinations).forEach(destination -> destination.setStatusDetails(null));
   }
 
   // A save naming a consumer this server does not have fails here, not at every tick.
@@ -266,6 +273,7 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
       // Batch inserts can be retried after a rollback; keep the submitted values unchanged so
       // server-produced ciphertext is not mistaken for caller-supplied ciphertext on retry.
       EventSubscription stored = JsonUtils.deepCopy(entity, EventSubscription.class);
+      forgetStatusDetails(stored.getDestinations());
       stored.withDestinations(DestinationSecrets.ofANewAlert(stored.getDestinations()));
       fqns.add(entity.getFullyQualifiedName());
       jsons.add(serializeForStorage(stored));

@@ -2,6 +2,7 @@ package org.openmetadata.it.tests.alerts;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionType.WEBHOOK;
 
@@ -198,6 +199,60 @@ class WebhookSecretOwnershipIT {
           sendsTo(sends, "/hook-header").stream()
               .anyMatch(send -> header.equals(headerOf(send, "X-Legacy"))),
           sends.toString());
+    }
+  }
+
+  // A tick that found the value unusable stored that; the edit that enters it again clears it at
+  // once, before any other tick.
+  @Test
+  void enteringAValueAgainClearsTheFailureBeforeTheNextTick(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      receiver.answer("/token", "{\"access_token\":\"the-token\",\"expires_in\":3600}");
+      EventSubscription alert = legacyAlert(ns, "cleared", receiver, ns.prefix("held-elsewhere"));
+      TestSuiteBootstrap.getJdbi()
+          .useHandle(
+              handle -> WebhookSecretsMigration.bindAlertDestinationSecrets(handle, dialect()));
+      FixtureEvents.insert(FixtureEvents.tableEvents());
+      DirectTick.run(AlertFixtures.stored(alert.getId()));
+      Map<?, ?> afterTheTick = statusOf(readWithStatus(alert.getId()).get(3));
+
+      HttpResponse<String> entered =
+          patchAlert(
+              alert.getId(),
+              replace("/destinations/3/config/headers/X-Legacy", ns.prefix("header")));
+      Map<?, ?> afterTheEdit = statusOf(readWithStatus(alert.getId()).get(3));
+
+      assertEquals(failedStatus(), afterTheTick.get("status"));
+      assertEquals(Boolean.TRUE, afterTheTick.get("configurationUnusable"));
+      assertEquals(200, entered.statusCode(), entered.body());
+      assertEquals(SubscriptionStatus.Status.ACTIVE.value(), afterTheEdit.get("status"));
+    }
+  }
+
+  // A destination's status is worked out by the server when the alert is read.
+  @Test
+  void aStatusSentWithTheAlertIsNeverStored(TestNamespace ns) throws Exception {
+    try (RecordingReceiver receiver = new RecordingReceiver()) {
+      SubscriptionStatus sent =
+          new SubscriptionStatus()
+              .withStatus(SubscriptionStatus.Status.FAILED)
+              .withLastFailedReason("sent with the alert")
+              .withConfigurationUnusable(true);
+      CreateEventSubscription request =
+          alertRequest(
+              ns,
+              "status_sent",
+              List.of(
+                  AlertFixtures.external(WEBHOOK, receiver.url("/hook")).withStatusDetails(sent)));
+      UUID id = SdkClients.adminClient().eventSubscriptions().create(request).getId();
+      SubscriptionDestination created = AlertFixtures.stored(id).getDestinations().getFirst();
+
+      HttpResponse<String> put = putAlert(request.withDescription("sent again"));
+      SubscriptionDestination afterThePut = AlertFixtures.stored(id).getDestinations().getFirst();
+
+      assertNull(created.getStatusDetails());
+      assertEquals(200, put.statusCode(), put.body());
+      assertNull(afterThePut.getStatusDetails());
     }
   }
 
@@ -467,24 +522,39 @@ class WebhookSecretOwnershipIT {
 
   private static EventSubscription createAlert(
       TestNamespace ns, String name, List<SubscriptionDestination> destinations) {
+    CreateEventSubscription request = alertRequest(ns, name, destinations);
+    UUID id = SdkClients.adminClient().eventSubscriptions().create(request).getId();
+    return AlertFixtures.stored(id);
+  }
+
+  private static HttpResponse<String> putAlert(CreateEventSubscription request) throws Exception {
+    HttpRequest put =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/events/subscriptions"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(JsonUtils.pojoToJson(request)))
+            .build();
+    return HttpClient.newHttpClient().send(put, HttpResponse.BodyHandlers.ofString());
+  }
+
+  private static CreateEventSubscription alertRequest(
+      TestNamespace ns, String name, List<SubscriptionDestination> destinations) {
     ArgumentsInput onlyTheFixtureTable =
         new ArgumentsInput()
             .withName("filterByFqn")
             .withEffect(Effect.INCLUDE)
             .withArguments(
                 List.of(new Argument().withName("fqnList").withInput(List.of(TABLE_FQN))));
-    CreateEventSubscription request =
-        new CreateEventSubscription()
-            .withName(ns.prefix(name))
-            .withAlertType(AlertType.NOTIFICATION)
-            .withResources(List.of(Entity.TABLE))
-            .withInput(new AlertFilteringInput().withFilters(List.of(onlyTheFixtureTable)))
-            .withEnabled(true)
-            .withBatchSize(100)
-            .withPollInterval(ONE_DAY_SECONDS)
-            .withDestinations(destinations);
-    UUID id = SdkClients.adminClient().eventSubscriptions().create(request).getId();
-    return AlertFixtures.stored(id);
+    return new CreateEventSubscription()
+        .withName(ns.prefix(name))
+        .withAlertType(AlertType.NOTIFICATION)
+        .withResources(List.of(Entity.TABLE))
+        .withInput(new AlertFilteringInput().withFilters(List.of(onlyTheFixtureTable)))
+        .withEnabled(true)
+        .withBatchSize(100)
+        .withPollInterval(ONE_DAY_SECONDS)
+        .withDestinations(destinations);
   }
 
   private static ConnectionType dialect() {

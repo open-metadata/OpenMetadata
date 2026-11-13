@@ -14,6 +14,7 @@
 package org.openmetadata.service.events.consumer.ledger;
 
 import org.openmetadata.schema.entity.events.SubscriptionStatus;
+import org.openmetadata.service.alerting.channel.DestinationStatuses;
 
 /**
  * What one tick came to for one destination. The status an API reads has no "not attempted", so a
@@ -56,13 +57,16 @@ public record DestinationOutcome(Kind kind, Cause cause, SubscriptionStatus stat
     return new DestinationOutcome(Kind.FAILED, Cause.NONE, status);
   }
 
+  /** A stored configuration that cannot be used reads as one, so the alert shows what to change. */
   public static DestinationOutcome notAttempted(Cause cause, String why, long at) {
     SubscriptionStatus status =
-        new SubscriptionStatus()
-            .withStatus(SubscriptionStatus.Status.FAILED)
-            .withLastFailedAt(at)
-            .withLastFailedReason(notAttemptedReason(why))
-            .withTimestamp(at);
+        cause == Cause.CONFIGURATION_UNUSABLE
+            ? DestinationStatuses.configurationUnusable(notAttemptedReason(why), at)
+            : new SubscriptionStatus()
+                .withStatus(SubscriptionStatus.Status.FAILED)
+                .withLastFailedAt(at)
+                .withLastFailedReason(notAttemptedReason(why))
+                .withTimestamp(at);
     return new DestinationOutcome(Kind.NOT_ATTEMPTED, cause, status);
   }
 }
