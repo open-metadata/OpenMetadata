@@ -731,11 +731,16 @@ class RdfIndexAppTest {
       startedJob(testApp);
       testApp.execute(jobContext());
 
-      when(mockRdfRepository.isEnabled()).thenReturn(false);
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(true);
+      doThrow(new IllegalStateException("Fuseki unreachable"))
+          .when(mockRdfRepository)
+          .ensureStorageReady();
       try {
         testApp.execute(jobContext());
       } finally {
-        when(mockRdfRepository.isEnabled()).thenReturn(true);
+        doNothing().when(mockRdfRepository).ensureStorageReady();
       }
 
       assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());
