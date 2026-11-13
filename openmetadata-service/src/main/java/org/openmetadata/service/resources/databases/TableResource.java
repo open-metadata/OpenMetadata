@@ -91,6 +91,7 @@ import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ColumnFieldAccess;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -1785,7 +1786,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             id,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -1874,7 +1875,7 @@ public class TableResource extends EntityResource<Table, TableRepository> {
             fqn,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -2104,14 +2105,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
+    ResourceContext<Table> resourceContext = getResourceContextById(id);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     ResultList<Column> result =
         repository.searchTableColumnsById(
             id,
             query,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -2206,14 +2208,15 @@ public class TableResource extends EntityResource<Table, TableRepository> {
           String glossaryTerms) {
     OperationContext operationContext =
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC);
-    authorizer.authorize(securityContext, operationContext, getResourceContextByName(fqn));
+    ResourceContext<Table> resourceContext = getResourceContextByName(fqn);
+    authorizer.authorize(securityContext, operationContext, resourceContext);
     ResultList<org.openmetadata.schema.type.Column> result =
         repository.searchTableColumnsByFQN(
             fqn,
             query,
             limitParam,
             offsetParam,
-            fieldsParam,
+            readableColumnFields(securityContext, resourceContext, fieldsParam),
             include,
             sortBy,
             sortOrder,
@@ -2224,6 +2227,12 @@ public class TableResource extends EntityResource<Table, TableRepository> {
     tableColumnList.setData(result.getData());
     tableColumnList.setPaging(result.getPaging());
     return tableColumnList;
+  }
+
+  private String readableColumnFields(
+      SecurityContext securityContext, ResourceContext<Table> table, String fieldsParam) {
+    return ColumnFieldAccess.readableFields(
+        viewPermissionFilter, securityContext, table, fieldsParam);
   }
 
   private ColumnTagFilter parseColumnTagFilters(String tags, String glossaryTerms) {

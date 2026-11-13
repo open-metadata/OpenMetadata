@@ -74,6 +74,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchColumnAggregat
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.opensearch.OpenSearchColumnAggregator;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.security.ColumnFieldAccess;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.ViewPermissionFilter;
@@ -106,10 +107,12 @@ public class ColumnRepository {
   static final int MAX_SYNC_IMPORT_COLUMN_UPDATES = 200;
 
   private final Authorizer authorizer;
+  private final ViewPermissionFilter viewPermissionFilter;
   private final ColumnAggregator columnAggregator;
 
   public ColumnRepository(Authorizer authorizer, SearchClient searchClient) {
     this.authorizer = authorizer;
+    this.viewPermissionFilter = new ViewPermissionFilter(authorizer);
     if (searchClient instanceof ElasticSearchClient) {
       this.columnAggregator = new ElasticSearchColumnAggregator(searchClient.getHighLevelClient());
     } else if (searchClient instanceof OpenSearchClient) {
@@ -198,7 +201,7 @@ public class ColumnRepository {
           .enrichSingleColumnFields(
               (Table) parent,
               column,
-              fieldsParam,
+              readableTableColumnFields(securityContext, parent, fieldsParam),
               ((Table) parent).getOwners(),
               authorizer,
               securityContext);
@@ -207,6 +210,16 @@ public class ColumnRepository {
           .enrichSingleColumnFields((DashboardDataModel) parent, column, fieldsParam);
       default -> column;
     };
+  }
+
+  /** The parent was loaded with the authorization fields, so it is decided on as it stands. */
+  private String readableTableColumnFields(
+      SecurityContext securityContext, EntityInterface<?> table, String fieldsParam) {
+    return ColumnFieldAccess.readableFields(
+        viewPermissionFilter,
+        securityContext,
+        resourceContextFor(TABLE, table, Entity.getEntityRepository(TABLE)),
+        fieldsParam);
   }
 
   public FieldInterface updateChildByFQN(
