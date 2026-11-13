@@ -19,7 +19,11 @@ import {
   SubscriptionType,
   TionStatus,
 } from '../../generated/events/eventSubscription';
-import { getAlertListStatus, getNotSendingReason } from './alertStatus.utils';
+import {
+  getAlertListStatus,
+  getDestinationProblem,
+  getNotSendingReason,
+} from './alertStatus.utils';
 
 const UNUSABLE = "The value at '/authType/secretKey' must be entered again";
 const REFUSED = 'Webhook failed with status: 503';
@@ -141,4 +145,44 @@ describe('alertStatus.utils', () => {
       ).failureReasons
     ).toEqual([REFUSED, 'Connection refused']);
   });
+
+  it.each([
+    [
+      'failed, configuration unusable',
+      {
+        status: Status.Failed,
+        lastFailedReason: UNUSABLE,
+        configurationUnusable: true,
+      },
+      { kind: 'unusable', reason: UNUSABLE },
+    ],
+    [
+      'failed send',
+      { status: Status.Failed, lastFailedReason: 'Connection refused' },
+      { kind: 'sendFailed', reason: 'Connection refused' },
+    ],
+    [
+      'awaiting retry',
+      { status: Status.AwaitingRetry, lastFailedReason: REFUSED },
+      { kind: 'sendFailed', reason: REFUSED },
+    ],
+    [
+      'retry limit reached',
+      { status: Status.RetryLimitReached, lastFailedReason: REFUSED },
+      { kind: 'sendFailed', reason: REFUSED },
+    ],
+    ['active', { status: Status.Active }, undefined],
+    [
+      'disabled',
+      { status: Status.Disabled, lastFailedReason: REFUSED },
+      undefined,
+    ],
+    ['failed without a reason', { status: Status.Failed }, undefined],
+    ['without a status', undefined, undefined],
+  ])(
+    'names the problem of a destination that is %s',
+    (_, statusDetails, expected) => {
+      expect(getDestinationProblem(statusDetails)).toEqual(expected);
+    }
+  );
 });

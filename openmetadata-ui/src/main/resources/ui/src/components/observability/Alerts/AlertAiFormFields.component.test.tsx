@@ -1261,6 +1261,63 @@ describe('AlertAi form field components', () => {
     expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
   });
 
+  it('tells, on the details page, why the last send failed', () => {
+    const destination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Webhook,
+      type: SubscriptionType.Webhook,
+      statusDetails: {
+        status: Status.AwaitingRetry,
+        lastFailedReason: 'Webhook failed with status: 503',
+      },
+    } as ModifiedDestination;
+
+    render(
+      <AlertAiDestinationItem
+        isViewOnly
+        destination={destination}
+        name={0}
+        value={
+          {
+            ...baseValue,
+            destinations: [destination],
+          } as ModifiedCreateEventSubscription
+        }
+      />
+    );
+
+    expect(screen.getByTestId('alert-warning')).toHaveTextContent(
+      'label.failure-reasonWebhook failed with status: 503'
+    );
+    expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+  });
+
+  it('says nothing on the details page about a destination that sends', () => {
+    const destination = {
+      category: SubscriptionCategory.External,
+      destinationType: SubscriptionType.Webhook,
+      type: SubscriptionType.Webhook,
+      statusDetails: { status: Status.Active },
+    } as ModifiedDestination;
+
+    render(
+      <AlertAiDestinationItem
+        isViewOnly
+        destination={destination}
+        name={0}
+        value={
+          {
+            ...baseValue,
+            destinations: [destination],
+          } as ModifiedCreateEventSubscription
+        }
+      />
+    );
+
+    expect(screen.queryByTestId('alert-warning')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('alert-error')).not.toBeInTheDocument();
+  });
+
   it('renders read-only destination and type fields side by side on the details page', () => {
     const destination = {
       category: SubscriptionCategory.Admins,

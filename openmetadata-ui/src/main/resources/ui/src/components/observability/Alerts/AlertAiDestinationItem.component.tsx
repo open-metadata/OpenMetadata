@@ -37,7 +37,7 @@ import {
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
-import { getNotSendingReason } from '../../../utils/observability/alertStatus.utils';
+import { getDestinationProblem } from '../../../utils/observability/alertStatus.utils';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
 import { ALERT_AI_FORM_CLASS_NAMES } from './AlertAiFormFields.constants';
 import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
@@ -53,6 +53,7 @@ import {
   getSubscriptionItems,
   renderSelectItem,
 } from './AlertAiFormFieldsSelectUtils';
+import DestinationProblemAlert from './DestinationProblemAlert/DestinationProblemAlert';
 
 type ComboBoxProps = ComponentProps<typeof Select.ComboBox> & {
   showSearchIcon?: boolean;
@@ -382,17 +383,15 @@ const AlertAiDestinationItem = ({
   };
 
   const renderNotSending = () => {
-    const reason = isViewOnly
-      ? getNotSendingReason(destination?.statusDetails)
+    const problem = isViewOnly
+      ? getDestinationProblem(destination?.statusDetails)
       : undefined;
 
-    return reason ? (
-      <Alert
+    return problem ? (
+      <DestinationProblemAlert
         data-testid={`destination-not-sending-${name}`}
-        title={t('message.destination-does-not-send-until-fixed')}
-        variant="error">
-        {reason}
-      </Alert>
+        problem={problem}
+      />
     ) : null;
   };
 

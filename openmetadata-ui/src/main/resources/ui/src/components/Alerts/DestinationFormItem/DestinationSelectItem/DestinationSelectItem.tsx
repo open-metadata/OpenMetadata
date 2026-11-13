@@ -36,11 +36,12 @@ import {
   getSubscriptionTypeOptions,
   normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtilPure';
-import { getNotSendingReason } from '../../../../utils/observability/alertStatus.utils';
+import { getDestinationProblem } from '../../../../utils/observability/alertStatus.utils';
 import {
   checkIfDestinationIsInternal,
   getConfigFieldFromDestinationType,
 } from '../../../../utils/ObservabilityUtils';
+import DestinationProblemAlert from '../../../observability/Alerts/DestinationProblemAlert/DestinationProblemAlert';
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 import { buildGroupedOptions } from './DestinationSelectItem.utils';
@@ -115,9 +116,9 @@ function DestinationSelectItem({
       : undefined;
   }, [destinationItem, destinationsWithStatus, id]);
 
-  // What the server says when the destination, as stored, does not send.
-  const notSendingReason = isViewMode
-    ? getNotSendingReason(destinationItem.statusDetails)
+  // What the server says when the destination, as stored, is not sending.
+  const destinationProblem = isViewMode
+    ? getDestinationProblem(destinationItem.statusDetails)
     : undefined;
 
   const { statusLabel } = useMemo(
@@ -452,14 +453,12 @@ function DestinationSelectItem({
 
           {renderStatusSection()}
 
-          {notSendingReason && (
+          {destinationProblem && (
             <Grid.Item span={24}>
-              <Alert
+              <DestinationProblemAlert
                 data-testid={`destination-not-sending-${id}`}
-                title={t('message.destination-does-not-send-until-fixed')}
-                variant="error">
-                {notSendingReason}
-              </Alert>
+                problem={destinationProblem}
+              />
             </Grid.Item>
           )}
         </Grid>
