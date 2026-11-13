@@ -1,6 +1,11 @@
-"""Compare existing CI test reports with the queue's exact main base.
+"""Compare a dequeued merge group's failures with runs that do not contain its PRs.
 
-ADR:2026-11-12-dequeue-alerts-compare-main-before-attributing-failures
+Controls are earlier main pushes and merge-group runs of the same workflow whose queue chain
+shares no PR with the failed run. Tests are matched by name across each run's report
+artifacts, and jobs that failed outside a test step by name and failed step. A run's
+dependency revisions are the ones its first submodule checkout resolved.
+
+ADR:2026-11-13-dequeue-alerts-compare-runs-without-the-pr
 """
 
 from __future__ import annotations
@@ -10,80 +15,90 @@ import json
 import re
 import sys
 import time
+import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from dataclasses import dataclass
-from functools import lru_cache
+from functools import cached_property, lru_cache
+from pathlib import PurePosixPath
 
-from playwright_flaky_report import pick_results
+import merge_queue_metrics as mq
 
-MAX_REPORT_BYTES = 16 * 1024 * 1024
-MAX_JOB_LOG_BYTES = 64 * 1024 * 1024
-MAX_HISTORY_COMMITS = 20
-MAX_BASELINE_RUNS = 10
-MAX_CACHED_READS = 128
-MAX_CACHED_SNAPSHOTS = 16
-MAX_ENRICHMENT_SECONDS = 90
-MAX_REQUEST_SECONDS = 20
-MAX_SNAPSHOTS = 8
+MAX_ARCHIVE_BYTES = 16 * 1024 * 1024
+MAX_LOG_BYTES = 2 * 1024 * 1024
+MAX_CHAIN = 10
+MAX_CONTROLS = 40
+MAX_EXECUTED = 12
+BUDGET_SECONDS = 150
+REQUEST_SECONDS = 30
+SERVER = "https://github.com"
+EVENTS = ("merge_group", "push", "schedule", "workflow_dispatch")
+REPORT = re.compile(r"playwright-results-json|junit|surefire|test-results", re.I)
+ATTEMPT = re.compile(r"-a\d+(?:-retry)?$")
+QUEUE = re.compile(r"gh-readonly-queue/.+/pr-(\d+)-([0-9a-f]{40})")
+SHA = re.compile(r"[0-9a-f]{40}")
 ANSI = re.compile(r"\x1b\[[0-?]*[ -/]*[@-~]")
+LOCATION = re.compile(r"([\w.-]+\.(?:[cm]?[jt]sx?|py|java)):(\d+)")
+# Test steps print application HTTP errors, and their failures are in the test reports.
+TEST_STEP = re.compile(r"\btests\b|pytest", re.IGNORECASE)
+# Collate builds against these submodules' branch tips; OpenMetadata has no submodule.
+DEPENDENCIES = ("OpenMetadata", "ai-platform")
+# Steps that run open-metadata/actions/collate-submodules, which logs the revisions.
+CHECKOUT = re.compile(
+    r"^Checkout (?:submodules|dependencies)$|collate-submodules", re.I
+)
+PLAYWRIGHT = {"expected": "passed", "unexpected": "failed", "flaky": "flaky"}
+VERDICTS = {
+    "main": "Main",
+    "pr": "Likely PR/merge-group error",
+    "infra": "Infrastructure",
+    "unknown": "Unknown",
+}
+# Outcome kinds in display order, with the tag shown when a run's failures disagree.
+TAGS = {
+    "main": "same failure without this PR",
+    "pr": "passed without this PR",
+    "absent": "new in this merge group",
+    "infra": "infrastructure error",
+    "flaky": "flaky without this PR",
+    "other": "different failure without this PR",
+    "none": "no comparable run without this PR",
+    "unread": "report unavailable",
+    "unnamed": "failure in no report",
+}
 
 
 class BudgetExceeded(TimeoutError):
-    """Optional diagnosis must leave time to publish the alert."""
+    """Diagnosis must leave time to publish the alert."""
 
 
 @dataclass(frozen=True)
-class Test:
-    name: str
-    status: str
-    errors: tuple[str, ...] = ()
-    symptom: str = "Test assertion failed; see the linked test report."
+class Result:
+    status: str  # passed, failed, flaky, skipped or absent
+    error: str = ""
+    symptom: str = ""
+    where: str = ""
 
 
 @dataclass(frozen=True)
-class Snapshot:
-    run: dict
-    job: dict
-    tests: dict[str, Test]
-    environment: tuple
+class Verdict:
+    kind: str  # main, pr, infra, unknown, or gate when only a summary gate failed
+    text: tuple = ()  # parts: str or (label, url)
+    failures: tuple[str, ...] = ()
+    tags: tuple[str, ...] = ()
+    rca: tuple = ()  # rows of parts
 
 
-@dataclass(frozen=True)
-class Diagnosis:
-    comparison: str
-    failures: tuple[Test, ...] = ()
-    main: tuple[Test, ...] = ()
-    pr: tuple[Test, ...] = ()
-    baseline_url: str = ""
-    introductions: tuple[tuple[str, str], ...] = ()
-
-
-def normalized_error(message: str) -> str:
-    return " ".join(ANSI.sub("", message).split())
-
-
-def playwright_error(result: dict) -> str:
-    errors = result.get("errors") or [result.get("error", {})]
-    if any(not error.get("message") for error in errors):
-        return ""
-    return json.dumps(
-        sorted(
-            {
-                normalized_error(
-                    f"{error.get('stack') or error['message']} "
-                    f"{json.dumps(error.get('location') or result.get('errorLocation'), sort_keys=True)}"
-                )
-                for error in errors
-            }
-        )
-    )
+def warn(message: str, exc: Exception) -> None:
+    print(f"::warning::{message}: {type(exc).__name__}", file=sys.stderr)
 
 
 def symptom(message: str) -> str:
-    """Use fixed descriptions, never copy error messages or URLs into an alert."""
-    message = normalized_error(message)
+    """Use fixed descriptions; never copy error text or URLs into an alert."""
+    message = " ".join(ANSI.sub("", message).split())
+    if "toHaveScreenshot" in message:
+        return "A screenshot differs from its baseline."
     if "toBeGreaterThan" in message and "Timeout" in message:
         return "The expected count did not increase before the timeout."
     if "toBeVisible" in message or "locator.waitFor" in message:
@@ -93,109 +108,132 @@ def symptom(message: str) -> str:
     return "Test assertion failed; see the linked test report."
 
 
-def playwright_tests(report: dict) -> dict[str, Test]:
-    tests = {}
+def failure(message: str, location: dict | None = None) -> tuple[str, str]:
+    """A comparable failure signature, without the numbers that vary, and its place."""
+    text = ANSI.sub("", message)
+    first = next((line.strip() for line in text.splitlines() if line.strip()), "")
+    if location and location.get("file"):
+        where = f"{PurePosixPath(location['file']).name}:{location.get('line')}"
+    else:
+        match = LOCATION.search(text)
+        where = f"{match[1]}:{match[2]}" if match else ""
+    return f"{where.split(':')[0]} {re.sub(r'[0-9]+', '#', first)}".strip(), where
 
-    def collect(suites: list, parents: tuple[str, ...]) -> None:
+
+def merge(old: Result | None, new: Result) -> Result:
+    return new if old is None or old == new else Result("flaky")
+
+
+def playwright_results(report: dict) -> dict[str, Result]:
+    results = {}
+
+    def walk(suites: list, path: tuple[str, ...]) -> None:
         for suite in suites:
-            path = (*parents, suite["title"])
+            here = (*path, suite.get("title", ""))
             for spec in suite.get("specs", []):
                 for test in spec.get("tests", []):
-                    name = " › ".join((test["projectName"], *path, spec["title"]))
-                    attempts = test.get("results", [])
-                    errors = tuple(
-                        sorted(
-                            {
-                                playwright_error(result)
-                                for result in attempts
-                                if result.get("status") in {"failed", "timedOut"}
-                            }
-                        )
+                    project = test.get("projectName", "")
+                    name = " › ".join((project, *here, spec.get("title", "")))
+                    status = PLAYWRIGHT.get(test.get("status"), "skipped")
+                    error = ((test.get("results") or [{}])[-1]).get("error") or {}
+                    message = (
+                        f"{error.get('message') or ''}\n{error.get('stack') or ''}"
                     )
-                    status = {
-                        "expected": "passed",
-                        "unexpected": "failed",
-                        "skipped": "skipped",
-                        "flaky": "flaky",
-                    }[test["status"]]
-                    if status == "failed" and (
-                        len(errors) != 1
-                        or not errors[0]
-                        or any(
-                            r["status"] not in {"failed", "timedOut"} for r in attempts
-                        )
-                    ):
-                        status = "unstable"
-                    if status == "passed" and (
-                        not attempts or any(r["status"] != "passed" for r in attempts)
-                    ):
-                        status = (
-                            "expected-failure"
-                            if test.get("expectedStatus") != "passed"
-                            else "flaky"
-                        )
-                    last_error = (
-                        attempts[-1].get("error", {}).get("message", "")
-                        if attempts
-                        else ""
-                    )
-                    result = Test(name, status, errors, symptom(last_error))
-                    if name in tests and tests[name] != result:
-                        result = Test(name, "unstable", errors, result.symptom)
-                    tests[name] = result
-            collect(suite.get("suites", []), path)
+                    result = Result(status)
+                    if status == "failed":
+                        signature, where = failure(message, error.get("location"))
+                        result = Result(status, signature, symptom(message), where)
+                    results[name] = merge(results.get(name), result)
+            walk(suite.get("suites", []), here)
 
-    collect(report["suites"], ())
-    if report.get("errors"):
-        tests["Playwright suite error outside a test"] = Test(
-            "Playwright suite error outside a test", "unstable"
-        )
-    return tests
+    walk(report.get("suites", []), ())
+    return results
 
 
-def junit_tests(data: bytes) -> dict[str, Test]:
+def junit_results(data: bytes) -> dict[str, Result]:
     if b"<!DOCTYPE" in data or b"<!ENTITY" in data:
-        raise ValueError("JUnit report contains an entity declaration")
-    tests = {}
+        raise ValueError("JUnit report declares entities")
+    results = {}
     for case in ET.fromstring(data).iter("testcase"):
-        name = f"{case.attrib['classname']}#{case.attrib['name']}"
-        failures = [
-            item
-            for item in case
-            if item.tag in {"failure", "error", "rerunFailure", "rerunError"}
-        ]
-        errors = tuple(
-            sorted(
-                {
-                    normalized_error(
-                        f"{item.get('type', '')} {item.get('message', '')} {item.text or ''}"
-                    )
-                    for item in failures
-                }
-            )
+        children = {child.tag: child for child in case}
+        failed = next(
+            (children[tag] for tag in ("failure", "error") if tag in children), None
         )
-        status = "failed" if errors else "passed"
-        if case.find("skipped") is not None:
-            status = "skipped" if not errors else "unstable"
-        if (
-            len(errors) > 1
-            or errors == ("",)
-            or any(
-                not (item.get("message") or item.text or "").strip()
-                for item in failures
+        result = Result("passed")
+        if failed is not None:
+            message = (
+                f"{failed.get('type', '')} {failed.get('message') or failed.text or ''}"
             )
-        ):
-            status = "unstable"
-        if any(case.find(tag) is not None for tag in ("flakyFailure", "flakyError")):
-            status = "unstable" if errors else "flaky"
-        result = Test(name, status, errors, symptom(errors[-1]) if errors else "")
-        if name in tests and tests[name] != result:
-            result = Test(name, "unstable", errors, result.symptom)
-        tests[name] = result
-    return tests
+            signature, where = failure(message)
+            result = Result("failed", signature, symptom(message), where)
+        elif "flakyFailure" in children or "flakyError" in children:
+            result = Result("flaky")
+        elif "skipped" in children:
+            result = Result("skipped")
+        name = f"{case.get('classname', '')}#{case.get('name', '')}"
+        results[name] = merge(results.get(name), result)
+    return results
 
 
-def download(path: str, limit: int, token: str, timeout: float = 60) -> bytes:
+def report_results(archive: bytes) -> dict[str, Result]:
+    results = {}
+    with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
+        members = [
+            item
+            for item in bundle.infolist()
+            if item.filename.endswith(("results.json", ".xml"))
+        ]
+        if sum(item.file_size for item in members) > MAX_ARCHIVE_BYTES:
+            raise ValueError("Uncompressed CI reports are too large")
+        for item in members:
+            data = bundle.read(item)
+            try:
+                parsed = (
+                    playwright_results(json.loads(data))
+                    if item.filename.endswith(".json")
+                    else junit_results(data)
+                )
+            except (ET.ParseError, ValueError, KeyError, TypeError, AttributeError):
+                continue  # Not a test report.
+            for name, result in parsed.items():
+                results[name] = merge(results.get(name), result)
+    return results
+
+
+def failed_steps(job: dict) -> list[str]:
+    return [
+        step["name"]
+        for step in job.get("steps", [])
+        if step.get("conclusion") == "failure"
+    ]
+
+
+def job_result(job: dict) -> Result | None:
+    if job.get("conclusion") == "success":
+        return Result("passed")
+    if job.get("conclusion") not in {"failure", "timed_out"}:
+        return None  # Skipped, cancelled or unfinished jobs are not executed evidence.
+    error = ", ".join(failed_steps(job)) or "an unrecorded step"
+    return Result("failed", error, f"failed at {error}")
+
+
+def checkout_revisions(logs: str, repository: str) -> dict[str, str]:
+    """Dependency revisions from actions/checkout output, skipping the repository itself."""
+    revisions, synced, pending = {}, "", False
+    for raw in logs.splitlines():
+        line = re.sub(r"^\S+Z\s", "", raw).strip()
+        if "Syncing repository: " in line:
+            synced, pending = line.rsplit("/", 1)[-1], False
+        elif "[command]" in line and "git log -1 --format=%H" in line:
+            pending = True
+        elif pending and SHA.fullmatch(line):
+            if synced in DEPENDENCIES and synced != repository:
+                revisions.setdefault(synced, line)
+            pending = False
+    return revisions
+
+
+def download(path: str, limit: int, token: str, timeout: float, partial: bool) -> bytes:
     request = urllib.request.Request(f"https://api.github.com/{path}")
     # Artifact and log endpoints redirect to storage; never forward the GitHub token.
     request.add_unredirected_header("Authorization", f"Bearer {token}")
@@ -204,470 +242,509 @@ def download(path: str, limit: int, token: str, timeout: float = 60) -> bytes:
     with urllib.request.urlopen(request, timeout=timeout) as response:
         while len(data) <= limit:
             if time.monotonic() >= deadline:
-                raise TimeoutError("CI evidence download budget exhausted")
+                raise TimeoutError("CI evidence download timed out")
             chunk = response.read1(min(65536, limit + 1 - len(data)))
             if not chunk:
                 break
             data.extend(chunk)
-    if len(data) > limit:
+    if len(data) > limit and not partial:
         raise ValueError("CI evidence exceeds its size limit")
-    return bytes(data)
+    return bytes(data[:limit])
 
 
-def checkout_revisions(logs: str) -> tuple:
-    revisions, repository, awaiting_sha = {}, "", False
-    for raw in logs.splitlines():
-        line = re.sub(r"^\S+Z\s", "", raw)
-        if "Syncing repository: " in line:
-            repository = line.rsplit("/", 1)[-1]
-            awaiting_sha = False
-        if "[command]" in line and "git log -1 --format=%H" in line:
-            awaiting_sha = True
-        elif awaiting_sha and re.fullmatch(r"[0-9a-f]{40}", line):
-            if repository in {"OpenMetadata", "ai-platform"}:
-                revisions[repository] = line
-            awaiting_sha = False
-    if "OpenMetadata" not in revisions:
-        raise ValueError("Resolved dependency revisions are unavailable")
-    return tuple(sorted(revisions.items()))
+def same(result: Result, mine: Result) -> bool:
+    return result.status == "failed" and result.error == mine.error
 
 
-def artifact_matches(name: str, job: dict) -> bool:
-    matrix = re.search(r"\(([^)]+)\)$", job["name"])
-    parameters = [value.strip() for value in matrix[1].split(",")] if matrix else []
-    if name.startswith("playwright-results-json-"):
-        shard = re.sub(
-            r"-a\d+(?:-retry)?$", "", name.removeprefix("playwright-results-json-")
-        )
-        expected = (
-            "webserver"
-            if "local-webserver" in job["name"]
-            else (parameters[0] if parameters else "1")
-        )
-        return shard == expected and (
-            "playwright" in job["name"].lower()
-            or job["name"] == "caip-integration-tests"
-        )
-    if "-junit-" in name:
-        family = "unit" if "Unit Tests" in job["name"] else "integration"
-        return bool(parameters) and name.endswith(
-            f"-junit-{family}-{'-'.join(parameters)}"
-        )
-    if name in {
-        "openmetadata-service-surefire-reports",
-        "k8s-operator-surefire-reports",
-    }:
-        expected = (
-            "openmetadata-service-unit-tests"
-            if name.startswith("openmetadata-service-")
-            else "k8s_operator-unit-tests"
-        )
-        return job["name"].rsplit(" / ", 1)[-1] == expected
-    if "-test-results-" in name:
-        family = "unit" if "Unit Tests" in job["name"] else "integration"
-        if not parameters and family == "unit" and job.get("python_version"):
-            parameters = [job["python_version"]]
-        return bool(parameters) and name.endswith(
-            f"-{family}-test-results-{'-'.join(parameters)}"
-        )
-    return False
+def decided(seen: list, mine: Result) -> bool:
+    """The newest observation decides; a shared failure also needs the run before it."""
+    return any(not same(result, mine) for _, result in seen)
+
+
+def summarize(kinds: set[str]) -> str:
+    """One shared failure makes the run Main; only passes or new tests make it a PR's."""
+    if "main" in kinds:
+        return "main"
+    if kinds <= {"pr", "absent"}:
+        return "pr"
+    return "infra" if kinds == {"infra"} else "unknown"
+
+
+def commits(count: int | None) -> str:
+    return "unknown commits" if count is None else f"{count} commit{'s' * (count != 1)}"
 
 
 class Evidence:
-    def __init__(self, repo: str, branch: str, created: str, token: str):
-        self.repo, self.branch, self.created, self.token = repo, branch, created, token
-        self.deadline = time.monotonic() + MAX_ENRICHMENT_SECONDS
-        self.snapshots = 0
+    def __init__(self, repo: str, branch: str, pr: int, created: str, token: str):
+        self.repo, self.branch, self.pr, self.token = repo, branch, pr, token
+        self.owner = repo.split("/")[0]
+        # Runs and main history are listed as of the dequeue. Artifact expiry and run
+        # completion are still read live, so a later replay can see less.
+        self.created = urllib.parse.quote(created)
+        self.deadline = time.monotonic() + BUDGET_SECONDS
 
-    def remaining(self) -> float:
+    def read(self, path: str, limit: int, partial: bool = False) -> bytes:
         seconds = self.deadline - time.monotonic()
         if seconds <= 0:
             raise BudgetExceeded("Diagnosis time budget exhausted")
-        return seconds
+        return download(path, limit, self.token, min(REQUEST_SECONDS, seconds), partial)
 
-    def read(self, path: str, limit: int) -> bytes:
-        try:
-            data = download(
-                path, limit, self.token, min(MAX_REQUEST_SECONDS, self.remaining())
-            )
-        except Exception:
-            self.remaining()
-            raise
-        self.remaining()
-        return data
-
-    @lru_cache(maxsize=MAX_CACHED_READS)
-    def api(self, path: str):
-        return json.loads(self.read(f"repos/{self.repo}/{path}", MAX_REPORT_BYTES))
+    @lru_cache(maxsize=512)
+    def api(self, path: str, repo: str = ""):
+        data = self.read(f"repos/{repo or self.repo}/{path}", MAX_ARCHIVE_BYTES)
+        return json.loads(data)
 
     def items(self, path: str, key: str) -> list[dict]:
         items = []
         separator = "&" if "?" in path else "?"
         for page in range(1, 11):
-            self.remaining()
             payload = self.api(f"{path}{separator}per_page=100&page={page}")
-            batch = payload[key]
-            items.extend(batch)
-            if len(batch) < 100 or len(items) >= payload.get(
-                "total_count", float("inf")
-            ):
+            items += payload[key]
+            if len(payload[key]) < 100 or len(items) >= payload.get("total_count", 1e9):
                 return items
         raise ValueError("CI evidence pagination exceeded its limit")
 
-    def workflow_environment(self, run: dict) -> tuple:
-        revisions = {run["head_sha"]}
-        for reference in run.get("referenced_workflows", []):
-            if not reference["path"].startswith(f"{self.repo}/.github/workflows/"):
-                return ()
-            if not re.fullmatch(r"[0-9a-f]{40}", reference["sha"]):
-                return ()
-            revisions.add(reference["sha"])
-        definitions = set()
-        for revision in sorted(revisions):
-            entries = self.api(f"contents/.github?ref={revision}")
-            trees = tuple(
-                sorted(
-                    (entry["name"], entry["sha"])
-                    for entry in entries
-                    if entry["name"] in {"workflows", "actions", "scripts"}
-                )
-            )
-            if not any(name == "workflows" for name, _ in trees):
-                return ()
-            definitions.add(trees)
-        return tuple(sorted(definitions))
+    @cached_property
+    def main(self) -> dict[str, int]:
+        """Recent main commits, newest first, by position."""
+        path = f"commits?sha={self.branch}&until={self.created}&per_page=100"
+        return {commit["sha"]: index for index, commit in enumerate(self.api(path))}
 
-    @lru_cache(maxsize=MAX_CACHED_SNAPSHOTS)
-    def snapshot(self, run_id: int, job_id: int) -> Snapshot | None:
-        self.remaining()
-        if self.snapshots >= MAX_SNAPSHOTS:
-            raise BudgetExceeded("Diagnosis snapshot budget exhausted")
-        self.snapshots += 1
-        run = self.api(f"actions/runs/{run_id}")
-        job = self.api(f"actions/jobs/{job_id}")
-        if run["run_attempt"] != 1 or job["run_id"] != run_id:
-            return None
-        logs = self.read(
-            f"repos/{self.repo}/actions/jobs/{job_id}/logs",
-            MAX_JOB_LOG_BYTES,
-        ).decode("utf-8", errors="replace")
-        revisions = dict(checkout_revisions(logs))
-        if revisions.get("OpenMetadata") != run["head_sha"]:
-            raise ValueError("The job checked out a different commit")
-        versions = set(re.findall(r"\bpython-version:\s*['\"]?(\d+\.\d+)\b", logs))
-        if len(versions) == 1:
-            job = {**job, "python_version": next(iter(versions))}
-        artifacts = self.items(
-            f"actions/runs/{run_id}/artifacts",
-            "artifacts",
-        )
-        matching = [
-            artifact
-            for artifact in artifacts
-            if artifact_matches(artifact["name"], job)
-        ]
-        artifacts = pick_results(
-            [
-                artifact
-                for artifact in matching
-                if artifact["name"].startswith("playwright-results-json-")
-            ],
-            run["run_attempt"],
-        ) + [
-            artifact
-            for artifact in matching
-            if not artifact["name"].startswith("playwright-results-json-")
-        ]
-        tests, configurations = {}, []
-        for artifact in artifacts:
-            if not artifact_matches(artifact["name"], job) or artifact["expired"]:
-                continue
+    @lru_cache(maxsize=8)
+    def runs(self, workflow: int) -> tuple[dict, ...]:
+        runs = []
+        for event in EVENTS:
+            scope = "" if event == "merge_group" else f"&branch={self.branch}"
+            path = f"actions/workflows/{workflow}/runs?event={event}{scope}"
+            path += f"&created=%3C%3D{self.created}&per_page=100"
+            runs += self.api(path)["workflow_runs"]
+        return tuple(sorted(runs, key=lambda run: run["created_at"], reverse=True))
+
+    @lru_cache(maxsize=8)
+    def heads(self, workflow: int) -> dict[str, str]:
+        return {run["head_sha"]: run["head_branch"] for run in self.runs(workflow)}
+
+    def chain(self, run: dict) -> tuple[frozenset[int], str] | None:
+        """The queued PRs a run tested on top of main, and the main commit beneath them."""
+        if run["event"] != "merge_group":
+            on_main = run["head_branch"] == self.branch
+            return (frozenset(), run["head_sha"]) if on_main else None
+        prs, branch = set(), run["head_branch"]
+        for _ in range(MAX_CHAIN):
+            match = QUEUE.fullmatch(branch or "")
+            if not match:
+                return None
+            prs.add(int(match[1]))
+            if match[2] in self.main:
+                return frozenset(prs), match[2]
+            branch = self.heads(run["workflow_id"]).get(match[2])
+        return None
+
+    def landed(self, run: dict) -> str:
+        """The main commit a run tested: its head once that landed, else its main base."""
+        return run["head_sha"] if run["head_sha"] in self.main else self.chain(run)[1]
+
+    def controls(self, failed: dict):
+        """Completed earlier runs that share no queued PR with the failed run, newest first."""
+        mine = (self.chain(failed) or (frozenset(),))[0] | {self.pr}
+        scanned = 0
+        for run in self.runs(failed["workflow_id"]):
             if (
-                not job["started_at"]
-                <= artifact["created_at"]
-                <= (job["completed_at"] or self.created)
+                run["created_at"] >= failed["created_at"]
+                or run["status"] != "completed"
             ):
                 continue
-            if artifact["size_in_bytes"] > MAX_REPORT_BYTES:
-                raise ValueError("CI report archive is too large")
-            archive = self.read(
-                f"repos/{self.repo}/actions/artifacts/{artifact['id']}/zip",
-                MAX_REPORT_BYTES,
-            )
-            with zipfile.ZipFile(io.BytesIO(archive)) as bundle:
-                reports = [
-                    item
-                    for item in bundle.infolist()
-                    if item.filename == "results.json" or item.filename.endswith(".xml")
-                ]
-                if sum(item.file_size for item in reports) > MAX_REPORT_BYTES:
-                    raise ValueError("Uncompressed CI reports are too large")
-                for item in reports:
-                    data = bundle.read(item)
-                    if item.filename == "results.json":
-                        report = json.loads(data)
-                        config = report["config"]
-                        metadata = config.get("metadata") or {}
-                        recorded_sha = (metadata.get("ci") or {}).get("commitHash") or (
-                            metadata.get("gitCommit") or {}
-                        ).get("hash")
-                        if recorded_sha != run["head_sha"]:
-                            raise ValueError(
-                                "Playwright report belongs to another commit"
-                            )
-                        configuration = {
-                            key: config.get(key)
-                            for key in (
-                                "version",
-                                "workers",
-                                "fullyParallel",
-                                "globalTimeout",
-                                "maxFailures",
-                                "updateSnapshots",
-                            )
-                        }
-                        configuration["projects"] = [
-                            {
-                                key: project.get(key)
-                                for key in (
-                                    "name",
-                                    "retries",
-                                    "timeout",
-                                    "repeatEach",
-                                    "testMatch",
-                                    "testIgnore",
-                                )
-                            }
-                            for project in config["projects"]
-                        ]
-                        configurations.append(json.dumps(configuration, sort_keys=True))
-                        results = playwright_tests(report)
-                    else:
-                        results = junit_tests(data)
-                    for name, result in results.items():
-                        tests[name] = (
-                            result
-                            if name not in tests or tests[name] == result
-                            else Test(name, "unstable")
-                        )
-        if not tests:
-            return None
-        if (
-            "playwright-ci (" in job["name"]
-            or "Integration Tests (" in job["name"]
-            or any(
-                step.get("conclusion") == "success"
-                and re.search(
-                    r"(?:Download|Restore).*(?:build bundle|distribution|generated .*models|server image)",
-                    step["name"],
-                    re.IGNORECASE,
-                )
-                for step in job.get("steps", [])
-            )
-        ):
-            return Snapshot(run, job, tests, ())
-        workflow = run["path"].split("@", 1)[0]
-        if not re.fullmatch(r"\.github/workflows/[\w.-]+\.ya?ml", workflow):
-            raise ValueError("Invalid workflow path")
-        try:
-            definitions = self.workflow_environment(run)
-        except BudgetExceeded:
-            raise
-        except Exception as exc:
-            print(
-                f"::warning::Could not verify workflow definitions: {type(exc).__name__}",
-                file=sys.stderr,
-            )
-            definitions = ()
-        if not definitions:
-            return Snapshot(run, job, tests, ())
-        environment = (
-            definitions,
-            tuple(sorted(job["labels"])),
-            (),
-            tuple(sorted(configurations)),
-        )
-        return Snapshot(run, job, tests, environment)
-
-    @lru_cache(maxsize=MAX_CACHED_READS)
-    def baselines(self, workflow_id: int, sha: str, name: str) -> tuple[Snapshot, ...]:
-        self.remaining()
-        payload = self.api(
-            f"actions/workflows/{workflow_id}/runs?head_sha={sha}&status=completed&per_page={MAX_BASELINE_RUNS}"
-        )
-        if payload["total_count"] > MAX_BASELINE_RUNS:
-            raise ValueError("Too many baseline runs to compare completely")
-        snapshots = []
-        for run in payload["workflow_runs"]:
-            branch_matches = run["head_branch"] == self.branch or (
-                run["event"] == "merge_group"
-                and run["head_branch"].startswith(f"gh-readonly-queue/{self.branch}/")
-            )
-            if (
-                not branch_matches
-                or run["head_sha"] != sha
-                or run["event"] not in {"push", "workflow_dispatch", "merge_group"}
-                or run["created_at"] > self.created
-            ):
+            chain = self.chain(run)
+            if chain is None or chain[0] & mine:
                 continue
+            scanned += 1
+            if scanned > MAX_CONTROLS:
+                return
+            yield run
+
+    @lru_cache(maxsize=64)
+    def jobs(self, run_id: int) -> dict[str, dict]:
+        jobs = self.items(f"actions/runs/{run_id}/jobs?filter=latest", "jobs")
+        return {job["name"]: job for job in jobs}
+
+    @lru_cache(maxsize=64)
+    def reports(
+        self, run_id: int
+    ) -> tuple[frozenset[str], dict[str, Result], int, int]:
+        """Test results from the run's report artifacts, the artifacts read, how many
+        could not be read (expired, too large or failing to download), and how many
+        of those read name a failed test."""
+        latest = {}
+        for artifact in self.items(f"actions/runs/{run_id}/artifacts", "artifacts"):
+            name = ATTEMPT.sub("", artifact["name"])
+            if REPORT.search(name) and artifact["id"] > latest.get(name, {}).get(
+                "id", 0
+            ):
+                latest[name] = artifact
+        names, results, unread, failing = set(), {}, 0, 0
+        for name, artifact in latest.items():
+            path = f"repos/{self.repo}/actions/artifacts/{artifact['id']}/zip"
             try:
-                jobs = self.items(f"actions/runs/{run['id']}/jobs?filter=all", "jobs")
+                if artifact["expired"] or artifact["size_in_bytes"] > MAX_ARCHIVE_BYTES:
+                    raise ValueError("Report artifact is expired or too large")
+                parsed = report_results(self.read(path, MAX_ARCHIVE_BYTES))
             except BudgetExceeded:
                 raise
             except Exception as exc:
-                print(
-                    f"::warning::Could not read baseline run {run['id']}: {type(exc).__name__}",
-                    file=sys.stderr,
-                )
+                warn(f"Could not read report artifact {artifact['id']}", exc)
+                unread += 1
                 continue
-            for job in jobs:
-                if (
-                    job["name"] == name
-                    and job["conclusion"] in {"success", "failure"}
-                    and job["completed_at"] <= self.created
-                ):
-                    try:
-                        snapshot = self.snapshot(run["id"], job["id"])
-                    except BudgetExceeded:
-                        raise
-                    except Exception as exc:
-                        print(
-                            f"::warning::Could not read baseline job {job['id']}: {type(exc).__name__}",
-                            file=sys.stderr,
-                        )
-                        continue
-                    if snapshot:
-                        snapshots.append(snapshot)
-        self.remaining()
-        return tuple(snapshots)
+            names.add(name)
+            failing += any(result.status == "failed" for result in parsed.values())
+            for test, result in parsed.items():
+                results[test] = merge(results.get(test), result)
+        return frozenset(names), results, unread, failing
 
-    def introduction(
-        self, candidate: Snapshot, base: str, failure: Test
-    ) -> tuple[str, str]:
-        current = base
-        for _ in range(MAX_HISTORY_COMMITS):
-            self.remaining()
-            commit = self.api(f"git/commits/{current}")
-            if not commit["parents"]:
-                break
-            parent = commit["parents"][0]["sha"]
-            baselines = self.baselines(
-                candidate.run["workflow_id"], parent, candidate.job["name"]
-            )
-            observations = [
-                baseline.tests.get(failure.name)
-                for baseline in baselines
-                if baseline.environment == candidate.environment
-            ]
-            if observations and all(
-                test and test.status == "passed" for test in observations
-            ):
-                return current, "first matching failure after a passing parent"
-            if not observations or not all(
-                test and test.status == "failed" and test.errors == failure.errors
-                for test in observations
-            ):
-                return (
-                    "",
-                    f"not established — no consistent pass-to-fail boundary at {parent[:7]}",
-                )
-            current = parent
-        return "", f"not established within {MAX_HISTORY_COMMITS} main commits"
-
-    def diagnose(self, run_id: int, job_id: int, sha: str) -> Diagnosis:
-        candidate = self.snapshot(run_id, job_id)
-        if candidate is None:
-            return Diagnosis(
-                "Unknown — executed test reports are unavailable or the run was retried."
-            )
-        failures = tuple(
-            test
-            for test in candidate.tests.values()
-            if test.status in {"failed", "unstable"}
-        )
-        if candidate.run["head_sha"] != sha or candidate.run["event"] != "merge_group":
-            return Diagnosis("Unknown — this is not the failed queue run.", failures)
-        prefix = f"gh-readonly-queue/{self.branch}/pr-"
-        head_branch = candidate.run["head_branch"]
-        base = head_branch.rsplit("-", 1)[-1]
-        if not head_branch.startswith(prefix) or not re.fullmatch(
-            r"[0-9a-f]{40}", base
-        ):
-            return Diagnosis(
-                "Unknown — the queue's main base could not be resolved.", failures
-            )
-        # The queue branch suffix is GitHub's base SHA, not the PR head or today's main.
-        if not failures:
-            return Diagnosis("Unknown — the failing job recorded no failed tests.")
-        if not candidate.environment:
-            return Diagnosis(
-                "Unknown — the tested build or workflow revisions could not be verified.",
-                failures,
-            )
-        try:
-            baselines = self.baselines(
-                candidate.run["workflow_id"], base, candidate.job["name"]
-            )
-        except BudgetExceeded:
-            return Diagnosis("Unknown — diagnosis search budget exhausted.", failures)
-        except Exception as exc:
-            print(
-                f"::warning::Could not read main comparison evidence: {type(exc).__name__}",
-                file=sys.stderr,
-            )
-            return Diagnosis(
-                "Unknown — main comparison evidence could not be read.", failures
-            )
-        comparable = [
-            baseline
-            for baseline in baselines
-            if baseline.environment == candidate.environment
+    @lru_cache(maxsize=32)
+    def dependencies(self, run_id: int) -> tuple[tuple[str, str], ...] | None:
+        """Submodule revisions the run built against; None when they cannot be read."""
+        checkouts = [
+            job
+            for job in self.jobs(run_id).values()
+            if job.get("started_at")
+            and any(CHECKOUT.search(step["name"]) for step in job.get("steps", []))
         ]
-        if not comparable:
-            return Diagnosis(
-                f"Unknown — no executed baseline with matching dependencies, runner and workflow at main {base[:7]}.",
-                failures,
+        if not checkouts:
+            return ()
+        job = min(checkouts, key=lambda job: job["started_at"])
+        path = f"repos/{self.repo}/actions/jobs/{job['id']}/logs"
+        logs = self.read(path, MAX_LOG_BYTES, partial=True).decode("utf-8", "replace")
+        revisions = checkout_revisions(logs, self.repo.split("/")[1])
+        return tuple(sorted(revisions.items())) or None
+
+    def drift(self, before: dict, after: dict) -> list[tuple[str, str, str]] | None:
+        """Dependency revisions that differ between two runs; None when unreadable."""
+        try:
+            old, new = self.dependencies(before["id"]), self.dependencies(after["id"])
+        except Exception as exc:
+            warn("Could not read dependency revisions", exc)
+            return None
+        if old is None or new is None:
+            return None
+        old, new = dict(old), dict(new)
+        return [
+            (repo, old.get(repo, ""), new.get(repo, ""))
+            for repo in sorted(old.keys() | new.keys())
+            if old.get(repo) != new.get(repo)
+        ]
+
+    def ahead(self, repo: str, old: str, new: str) -> tuple[int | None, list]:
+        """Commits from old to new, or None when the comparison is not readable."""
+        if old == new:
+            return 0, []
+        if not old or not new:
+            return None, []
+        try:
+            compare = self.api(f"compare/{old}...{new}", repo)
+        except Exception as exc:
+            warn(f"Could not compare {repo} revisions", exc)
+            return None, []
+        if compare["status"] not in {"ahead", "identical"}:
+            return None, []
+        return compare["ahead_by"], compare["commits"]
+
+    def observe(self, run: dict, keys: list[tuple[str, str]], names: frozenset) -> dict:
+        observed = {}
+        tests = [name for kind, name in keys if kind == "test"]
+        if tests:
+            found, results, *_ = self.reports(run["id"])
+            # A test missing from main's own content, read in full, did not exist there.
+            complete = found >= names and self.landed(run) == run["head_sha"]
+            absent = Result("absent") if complete else None
+            if found:
+                observed |= {
+                    ("test", name): results.get(name, absent) for name in tests
+                }
+        jobs = [name for kind, name in keys if kind == "job"]
+        if jobs:
+            listed = self.jobs(run["id"])
+            observed |= {
+                ("job", name): job_result(listed[name])
+                for name in jobs
+                if name in listed
+            }
+        return {
+            key: result
+            for key, result in observed.items()
+            if result is not None and result.status != "skipped"
+        }
+
+    def diagnose(
+        self, run_id: int, causes: list[dict], infra: dict[str, str]
+    ) -> Verdict:
+        """Compare a failed run; ``infra`` maps a failed job to an infrastructure symptom."""
+        try:
+            return self.compare(self.api(f"actions/runs/{run_id}"), causes, infra)
+        except Exception as exc:
+            warn("Could not compare the failed run", exc)
+            reason = (
+                "ran out of time" if isinstance(exc, TimeoutError) else "is unreadable"
             )
-        main, pr = [], []
-        for failure in failures:
-            observations = [baseline.tests.get(failure.name) for baseline in comparable]
-            if failure.status != "failed":
+            return Verdict("unknown", (f"Unknown — the comparison evidence {reason}.",))
+
+    def compare(self, run: dict, causes: list[dict], infra: dict[str, str]) -> Verdict:
+        names, results, unread, failing = self.reports(run["id"])
+        mine = {
+            ("test", name): result
+            for name, result in results.items()
+            if result.status == "failed"
+        }
+        reported, silent = bool(mine), 0
+        for job in causes:
+            result = job_result(job)
+            tested = any(TEST_STEP.search(step) for step in failed_steps(job))
+            if not (result and result.error):
                 continue
-            if all(
-                test and test.status == "failed" and test.errors == failure.errors
-                for test in observations
-            ):
-                main.append(failure)
-            elif all(test and test.status == "passed" for test in observations):
-                pr.append(failure)
-        unknown = len(failures) - len(main) - len(pr)
-        if len(pr) == len(failures):
-            comparison = "Likely PR/merge-group error — the failed tests passed on the exact main base."
-        elif len(main) == len(failures):
-            comparison = "Main — the same tests fail with the same errors on the exact main base."
-        else:
-            comparison = f"Mixed/unknown — {len(pr)} PR/merge-group, {len(main)} main, {unknown} unconfirmed test failures."
-        introductions = []
-        for failure in main:
-            try:
-                introductions.append(self.introduction(candidate, base, failure))
-            except BudgetExceeded:
-                introductions.append(
-                    ("", "not established — diagnosis search budget exhausted")
-                )
-            except Exception as exc:
-                print(
-                    f"::warning::Could not locate the introducing commit: {type(exc).__name__}",
-                    file=sys.stderr,
-                )
-                introductions.append(
-                    ("", "not established — commit history evidence is unavailable")
-                )
-        return Diagnosis(
-            comparison,
-            failures,
-            tuple(main),
-            tuple(pr),
-            comparable[0].run["html_url"],
-            tuple(introductions),
+            # A failure outside the tests, or in tests that no report names, is the job's.
+            if job["name"] in infra or not (reported and tested):
+                mine[("job", job["name"])] = result
+            else:
+                silent += 1
+        # Each failed test job leaves one report; one with no failed test left none.
+        unnamed = max(0, silent - failing - unread)
+        if not mine and not unread and not unnamed:
+            # Its upstream jobs were cancelled or skipped: nothing to attribute.
+            reason = "no test or job failed besides the summary gate"
+            return Verdict("gate", (f"Unknown — {reason}.",))
+        # A download or network error is not a code change, so history cannot explain it.
+        outcomes = {
+            (kind, ""): (kind, None, count)
+            for kind, count in (("unread", unread), ("unnamed", unnamed))
+            if count
+        }
+        outcomes |= {
+            key: ("infra", None, infra[key[1]])
+            for key in mine
+            if key[0] == "job" and key[1] in infra
+        }
+        seen = {key: [] for key in mine if key not in outcomes}
+        executed, exhausted = 0, False
+        try:
+            for control in self.controls(run) if seen else ():
+                pending = [key for key in seen if not decided(seen[key], mine[key])]
+                try:
+                    observed = self.observe(control, pending, names)
+                except BudgetExceeded:
+                    raise
+                except Exception as exc:
+                    warn(f"Skipped unreadable run {control['id']}", exc)
+                    continue
+                for key, result in observed.items():
+                    seen[key].append((control, result))
+                executed += bool(observed)
+                done = all(decided(seen[key], mine[key]) for key in seen)
+                if done or executed >= MAX_EXECUTED:
+                    break
+        except BudgetExceeded:
+            exhausted = True
+        outcomes |= {key: self.outcome(run, mine[key], seen[key]) for key in seen}
+        return self.verdict(mine, outcomes, exhausted)
+
+    def superseded(self, seen: list) -> list:
+        """Drop merge-group results that a later main pass on the same dependencies explains.
+
+        Main passed at or after the commit they tested, so their failures are their own.
+        """
+        passes = [
+            (self.main.get(control["head_sha"], len(self.main)), control)
+            for control, result in seen
+            if control["event"] != "merge_group" and result.status == "passed"
+        ]
+        if not passes:
+            return seen
+        newest, green = min(passes, key=lambda item: item[0])
+        return [
+            (control, result)
+            for control, result in seen
+            if control["event"] != "merge_group"
+            or self.main[self.landed(control)] < newest
+            or self.drift(green, control) != []
+        ]
+
+    def outcome(self, run: dict, mine: Result, seen: list) -> tuple:
+        """(kind, newest evidence run, detail) for one failed test or job."""
+        seen = self.superseded(seen)
+        if not seen:
+            return "none", None, None
+        control, result = seen[0]
+        if result.status == "absent":
+            return "absent", control, None
+        if result.status == "passed":
+            # Dependency changes since the pass are shown, not weighed: they rarely cause it.
+            return "pr", control, self.drift(control, run)
+        if not same(result, mine):
+            return "flaky" if result.status == "flaky" else "other", control, None
+        streak = next(
+            (i for i, (_, r) in enumerate(seen) if not same(r, mine)), len(seen)
         )
+        before = seen[streak] if streak < len(seen) else None
+        return "main", control, (seen[streak - 1][0], before)
+
+    def verdict(self, mine: dict, outcomes: dict, exhausted: bool) -> Verdict:
+        groups = {}
+        for key, (kind, control, detail) in outcomes.items():
+            evidence = control["id"] if control else detail if kind == "infra" else None
+            groups.setdefault((kind, evidence), []).append(key)
+        overall = summarize({kind for kind, _ in groups})
+        total = sum(kind == "test" for kind, _ in mine)
+        text = [f"{VERDICTS[overall]} — "]
+        order = sorted(groups.items(), key=lambda group: list(TAGS).index(group[0][0]))
+        for index, ((kind, _), keys) in enumerate(order):
+            _, control, detail = outcomes[keys[0]]
+            text += ["; "] if index else []
+            text += [self.subject(keys, total, detail), ": "]
+            text += self.phrase(kind, control, detail, exhausted)
+        rca, explained = [], set()
+        for key in mine:
+            kind, _, detail = outcomes[key]
+            if kind != "main":
+                continue
+            first, before = detail
+            boundary = (first["id"], before and before[0]["id"])
+            if boundary in explained:
+                continue
+            explained.add(boundary)
+            result = mine[key]
+            cause = (
+                result.symptom.rstrip(".")
+                if key[0] == "test"
+                else f"{mq.shorten_check_name(key[1])} {result.symptom}"
+            )
+            where = f" ({result.where})" if result.where else ""
+            rca += [[f"RCA: {cause}{where}."], self.introduction(first, before)]
+        failures = tuple(name for kind, name in mine if kind == "test")
+        tags = (
+            tuple(TAGS[outcomes[("test", name)][0]] for name in failures)
+            if len(groups) > 1
+            else ()
+        )
+        return Verdict(overall, (*text, "."), failures, tags, tuple(rca))
+
+    @staticmethod
+    def subject(keys: list[tuple[str, str]], total: int, detail) -> str:
+        if keys[0][0] == "unread":
+            return f"{detail} report artifact{'s' * (detail != 1)}"
+        if keys[0][0] == "unnamed":
+            return f"{detail} failed test job{'s' * (detail != 1)}"
+        tests = sum(kind == "test" for kind, _ in keys)
+        parts = [mq.shorten_check_name(name) for kind, name in keys if kind == "job"]
+        if tests == total == 1:
+            parts.insert(0, "the failed test")
+        elif tests and tests == total:
+            parts.insert(
+                0, "both failed tests" if total == 2 else f"all {total} failed tests"
+            )
+        elif tests:
+            parts.insert(0, f"{tests} of {total} failed tests")
+        return ", ".join(parts)
+
+    def link(self, run: dict) -> tuple[str, str]:
+        match = QUEUE.fullmatch(run["head_branch"] or "")
+        label = (
+            f"#{match[1]}'s queue run"
+            if match
+            else f"{self.branch} {run['head_sha'][:7]}"
+        )
+        created = mq.parse_ts(run["created_at"])
+        return f"{label} ({created:%b %d %H:%M} UTC)", run["html_url"]
+
+    def phrase(self, kind: str, control: dict | None, detail, exhausted: bool) -> list:
+        if kind == "infra":
+            return [detail]
+        if kind == "unread":
+            return ["unreadable or expired, not compared"]
+        if kind == "unnamed":
+            return ["not named in any readable report, not compared"]
+        if kind == "none":
+            limit = "before the time limit" if exhausted else "in the recent history"
+            return [f"no comparable run without this PR {limit}"]
+        evidence = self.link(control)
+        if kind == "main":
+            return ["same failure without this PR in ", evidence]
+        if kind == "absent":
+            return ["new in this merge group, absent from ", evidence]
+        if kind == "flaky":
+            return ["flaky without this PR in ", evidence]
+        if kind == "other":
+            return ["a different failure without this PR in ", evidence]
+        parts = ["passed without this PR in ", evidence]
+        if detail is None:
+            return [*parts, "; its dependency revisions could not be compared"]
+        changes = [self.dependency(repo, old, new) for repo, old, new in detail]
+        for index, change in enumerate(changes):
+            parts += ["; since then "] if index == 0 else [" and "]
+            parts.append(change)
+        return [*parts, " changed"] if changes else parts
+
+    def dependency(self, repo: str, old: str, new: str) -> tuple[str, str]:
+        count = self.ahead(f"{self.owner}/{repo}", old, new)[0]
+        label = f"{repo} ({commits(count)})" if count is not None else repo
+        return label, f"{SERVER}/{self.owner}/{repo}/compare/{old}...{new}"
+
+    def introduction(self, failed: dict, before: tuple | None) -> list:
+        """The changes between the last run that passed and the first that failed."""
+        if before is None:
+            return [
+                "Introducing change: not found — every compared run without this PR "
+                "fails the same way."
+            ]
+        passed, result = before
+        if result.status not in {"passed", "absent"}:
+            return [
+                "Introducing change: not established — the run before ",
+                self.link(failed),
+                " did not pass cleanly.",
+            ]
+        changes = [(self.repo, self.landed(passed), self.landed(failed))]
+        drift = self.drift(passed, failed)
+        changes += [
+            (f"{self.owner}/{repo}", old, new) for repo, old, new in drift or []
+        ]
+        found = [
+            (repo, *self.ahead(repo, old, new), old, new) for repo, old, new in changes
+        ]
+        between = [
+            " between ",
+            self.link(passed),
+            " (passed) and ",
+            self.link(failed),
+            " (first failure)",
+        ]
+        known = drift is not None and all(count is not None for _, count, *_ in found)
+        changed = [commit for _, _, listed, *_ in found for commit in listed]
+        if known and sum(count for _, count, *_ in found) == 1 and len(changed) == 1:
+            title = changed[0]["commit"]["message"].splitlines()[0][:100]
+            commit = (changed[0]["sha"][:7], changed[0]["html_url"])
+            return [
+                "Introduced by: ",
+                commit,
+                f" {title} — the only change",
+                *between,
+                ".",
+            ]
+        if known and not changed:
+            return [
+                "No repository changed",
+                *between,
+                "; check the CI environment and external services.",
+            ]
+        ranges = [
+            (
+                f"{repo.split('/')[1]} ({commits(count)})",
+                f"{SERVER}/{repo}/compare/{old}...{new}",
+            )
+            for repo, count, _, old, new in found
+            if count != 0
+        ]
+        if drift is None:
+            ranges.append("dependency revisions could not be compared")
+        parts = ["Introduced", *between, ": "]
+        for index, change in enumerate(ranges):
+            parts += [", "] if index else []
+            parts.append(change)
+        return [*parts, "."]

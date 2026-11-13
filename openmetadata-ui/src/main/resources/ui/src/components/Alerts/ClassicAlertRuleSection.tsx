@@ -14,6 +14,7 @@
 import {
   Box,
   Button,
+  ButtonUtility,
   Grid,
   Select,
   Toggle,
@@ -218,13 +219,13 @@ export const ClassicAlertRuleSection = ({
                   </Box>
                 </Box>
                 {!isViewOnly && (
-                  <Button
+                  <ButtonUtility
                     aria-label={t('label.remove-entity', {
                       entity: copy.label,
                     })}
                     data-testid={'remove-' + prefix + '-' + ruleIndex}
-                    iconLeading={XClose}
-                    size="sm"
+                    icon={XClose}
+                    size="lg"
                     onPress={() => {
                       removeKey(ruleIndex);
                       changeRules(getRulesWithoutIndex(rules, ruleIndex));

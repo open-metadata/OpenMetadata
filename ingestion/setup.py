@@ -243,6 +243,10 @@ base_requirements = {
     "jaraco.context>=6.1.0",
     "httpx~=0.28.0",
     "urllib3>=2.8.0",  # CVE-2026-97687/97688/97689: proxy TLS configuration and streaming DoS
+    "oauthlib>=4.0.1",  # GHSA-3jp2-3mrg-2vxc: device-code grant issues a token for any device_code
+    # The fixes below need Python 3.11, so the Python 3.10 fork keeps the vulnerable releases.
+    'dnspython>=2.9.0; python_version >= "3.11"',  # GHSA-45c3-73f7-pv4m: name decompression CPU DoS
+    'filelock>=4.2.1; python_version >= "3.11"',  # GHSA-v4x8-3wr5-3wq8: ReadWriteLock follows planted symlinks
 }
 
 plugins: dict[str, set[str]] = {

@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import Loader from './Loader';
 
 describe('Test Loader Component', () => {
@@ -19,6 +19,14 @@ describe('Test Loader Component', () => {
     const { getByTestId } = render(<Loader />);
 
     expect(getByTestId('loader')).toBeInTheDocument();
+  });
+
+  it('is announced as a loading status', () => {
+    render(<Loader size="small" />);
+
+    expect(
+      screen.getByRole('status', { name: 'label.loading' })
+    ).toBeInTheDocument();
   });
 
   it('should render full screen loader component', () => {

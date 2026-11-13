@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import type { OntologyPackSample } from '../../generated/api/data/ontologyPackSample';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { getOntologyPackSample } from '../../rest/ontologyAPI';
+import Loader from '../common/Loader/Loader';
 import { layoutOntologyPackSample } from './OntologyPackSampleGraph.utils';
 
 const AI_GRAPH_CANVAS_CLASS = 'tw:rounded-lg tw:bg-secondary_alt';
@@ -72,11 +73,7 @@ const OntologyPackSampleGraph = ({
     );
   }
   if (state === 'loading') {
-    return (
-      <Typography color="secondary" size="text-sm">
-        {t('label.loading')}
-      </Typography>
-    );
+    return <Loader size="small" />;
   }
   if (state === 'error' || !sample) {
     return (

@@ -409,12 +409,15 @@ describe('OntologyAuthoringWorkspace', () => {
     routeLists({
       concepts: [
         { ...concept, description: 'A buyer' },
+        { ...concept, id: 'vip', name: 'Vip', iri: 'urn:sales:vip' },
+      ],
+      axioms: [
         {
-          ...concept,
-          id: 'vip',
-          name: 'Vip',
-          iri: 'urn:sales:vip',
-          superClasses: [concept.iri],
+          id: 'vip-is-customer',
+          name: 'VipIsCustomer',
+          axiomType: 'SUBCLASS_OF',
+          subjectIri: 'urn:sales:vip',
+          expressions: [{ kind: 'NAMED_CLASS', classIri: concept.iri }],
         },
       ],
     });

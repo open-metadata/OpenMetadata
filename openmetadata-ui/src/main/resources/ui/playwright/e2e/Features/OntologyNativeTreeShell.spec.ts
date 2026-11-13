@@ -439,6 +439,11 @@ test.describe(
           await expect(
             page.getByTestId('ontology-tree-term-' + leaf.id)
           ).toHaveCount(2);
+          // Collapse and expand before a row opens the drawer, which covers the tree's header.
+          await page.getByTestId('ontology-tree-collapse-all').click();
+          await expect(sharedRows).toHaveCount(0);
+          await page.getByTestId('ontology-tree-expand-all').click();
+          await expect(sharedRows).toHaveCount(2);
           const path = JSON.stringify([owner.id, a.id, shared.id]);
           const selectedPlacement = sharedRows
             .filter({ has: page.locator('[data-testid="tree-expand-btn"]') })
@@ -454,12 +459,9 @@ test.describe(
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText(shared.iri);
-          await page.getByTestId('ontology-tree-collapse-all').click();
-          await expect(sharedRows).toHaveCount(0);
-          await page.getByTestId('ontology-tree-expand-all').click();
-          await expect(sharedRows).toHaveCount(2);
+          // The URL keeps the Tree view; pressing its tab would close the reopened drawer.
+          await expect(page).toHaveURL(/[?&]view=tree(&|$)/);
           await page.reload();
-          await page.getByTestId('submode-tab-tree').click();
           await expect(page.getByRole('row', { selected: true })).toHaveCount(
             1
           );
@@ -538,10 +540,14 @@ test.describe(
           );
           revision = response.revision;
         }
+        // Pressing the Tree tab would close the concept's drawer, so the URL opens it in Tree.
         await page.goto(
-          '/governance/ontology?ontology=' + owner.id + '&concept=' + concept.id
+          '/governance/ontology?ontology=' +
+            owner.id +
+            '&concept=' +
+            concept.id +
+            '&view=tree'
         );
-        await page.getByTestId('submode-tab-tree').click();
         await test.step('Show the lifecycle, owner and capped asset list', async () => {
           const rail = page.getByTestId('ontology-concept-inspector');
           await rail.getByTestId('ontology-concept-advanced-toggle').click();
