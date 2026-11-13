@@ -17,6 +17,7 @@
         "dbt",
         "Deequ",
         "Soda",
+        "AWSGlue",
         "Other"
       ]
     },

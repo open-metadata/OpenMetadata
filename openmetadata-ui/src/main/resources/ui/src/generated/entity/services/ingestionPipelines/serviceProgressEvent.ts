@@ -705,6 +705,9 @@ export enum AuthProvider {
  *
  * Regex to include or exclude tables and views.
  *
+ * Regex to only include/exclude Data Quality rulesets (or ETL evaluation contexts) that
+ * match the pattern.
+ *
  * Regex to only include/exclude schemas that matches the pattern. System schemas
  * (information_schema, _statistics_, sys) are excluded by default.
  *
@@ -5533,6 +5536,7 @@ export interface AirflowConnectionObject {
      */
     sslMode?:                       SSLMode;
     supportsViewLineageExtraction?: boolean;
+    dataQualityConfig?:             GlueDataQualityConfiguration;
     /**
      * Authentication mode to connect to hive.
      *
@@ -7975,6 +7979,63 @@ export interface PurpleGCPCredentials {
      * Key Vault Name
      */
     vaultName?: string;
+}
+
+/**
+ * Configuration to ingest AWS Glue Data Quality results as OpenMetadata test cases and test
+ * case results.
+ */
+export interface GlueDataQualityConfiguration {
+    /**
+     * Table mappings for results produced by Glue ETL jobs that are not attached to a Data
+     * Catalog table.
+     */
+    etlJobMappings?: ETLJobMapping[];
+    /**
+     * Ingest AWS Glue Data Quality rules as test cases and their evaluation runs as test case
+     * results.
+     */
+    includeDataQuality?: boolean;
+    /**
+     * Only ingest Data Quality results whose run started within this number of days.
+     */
+    lookbackDays?: number;
+    /**
+     * Regex to only include/exclude Data Quality rulesets (or ETL evaluation contexts) that
+     * match the pattern.
+     */
+    rulesetFilterPattern?: FilterPattern;
+    /**
+     * Database of the target database service that holds the evaluated tables (e.g.
+     * awsdatacatalog for Athena). Only used with targetServiceName. Leave empty to search every
+     * database of that service.
+     */
+    targetDatabaseName?: string;
+    /**
+     * OpenMetadata database service holding the evaluated tables (e.g. an Athena service).
+     * Defaults to this Glue service.
+     */
+    targetServiceName?: string;
+}
+
+/**
+ * Maps Data Quality results produced by a Glue ETL job, which carry no catalog table, to an
+ * OpenMetadata table.
+ */
+export interface ETLJobMapping {
+    /**
+     * Name of the Evaluate Data Quality node in the job. Leave empty to match every node of the
+     * job.
+     */
+    evaluationContext?: string;
+    /**
+     * Name of the Glue ETL job that evaluates the ruleset.
+     */
+    jobName: string;
+    /**
+     * Fully qualified name of the OpenMetadata table the results belong to.
+     */
+    tableFQN: string;
 }
 
 /**

@@ -54,6 +54,7 @@ from metadata.generated.schema.type.basic import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
+from metadata.ingestion.models.topology import TopologyNode
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
@@ -68,11 +69,15 @@ from metadata.ingestion.source.database.column_type_parser import (
 from metadata.ingestion.source.database.custom_property_extension_mixin import (
     CustomPropertyExtensionMixin,
 )
-from metadata.ingestion.source.database.database_service import DatabaseServiceSource
+from metadata.ingestion.source.database.database_service import (
+    DatabaseServiceSource,
+    DatabaseServiceTopology,
+)
 from metadata.ingestion.source.database.external_table_lineage_mixin import (
     ExternalTableLineageMixin,
 )
 from metadata.ingestion.source.database.glue.connection import TABLE_NAME_MAX_LENGTH, GlueFilters
+from metadata.ingestion.source.database.glue.data_quality import GlueDataQualityMixin
 from metadata.ingestion.source.database.glue.models import Column as GlueColumn
 from metadata.ingestion.source.database.glue.models import (
     DatabasePage,
@@ -95,27 +100,50 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 
-class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, DatabaseServiceSource):
+class GlueServiceTopology(DatabaseServiceTopology):
+    """Data Quality test cases point at tables, so they are ingested once every table is."""
+
+    root: TopologyNode = DatabaseServiceTopology.model_fields["root"].default.model_copy(
+        update={
+            "post_process": [
+                *DatabaseServiceTopology.model_fields["root"].default.post_process,
+                "yield_glue_data_quality",
+            ]
+        }
+    )
+
+
+class GlueSource(
+    GlueDataQualityMixin,
+    ExternalTableLineageMixin,
+    CustomPropertyExtensionMixin,
+    DatabaseServiceSource,
+):
     """
     Implements the necessary methods to extract
     Database metadata from Glue Source
     """
+
+    topology = GlueServiceTopology()
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata):
         super().__init__()
         self.config = config
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
-        self.service_connection = self.config.serviceConnection.root.config
+        self.service_connection = cast("GlueConnection", self.config.serviceConnection.root.config)  # pyright: ignore[reportOptionalMemberAccess]
         self._connection = create_connection(self.service_connection)
-        # The startup test connection must probe what this pipeline ingests, not the connection's defaults.
-        cast("GlueClientConnection", self._connection).scope_to(
-            GlueFilters.of_pipeline(self.service_connection, self.source_config, self.config.serviceName)
+        self.glue_filters = GlueFilters.of_pipeline(
+            self.service_connection, self.source_config, self.config.serviceName
         )
+        # The startup test connection must probe what this pipeline ingests, not the connection's defaults.
+        cast("GlueClientConnection", self._connection).scope_to(self.glue_filters)
         self.glue = cast("BaseConnection", self._connection).client
 
         self.schema_description_map = {}
         self.schema_catalog_id_map = {}
+        # A Glue database name can repeat across catalogs; the single-value map above keeps only the last.
+        self.schema_catalog_ids: dict[str, set[str]] = {}
         self.external_location_map = {}
         self._init_custom_properties()
         with close_on_failure(self._connection):
@@ -241,6 +269,7 @@ class GlueSource(ExternalTableLineageMixin, CustomPropertyExtensionMixin, Databa
                         self.schema_description_map[schema.Name] = Markdown(schema.Description)
                     if schema.CatalogId:
                         self.schema_catalog_id_map[schema.Name] = schema.CatalogId
+                        self.schema_catalog_ids.setdefault(schema.Name, set()).add(schema.CatalogId)
                         catalog_ids_seen.add(schema.CatalogId)
                     yield schema.Name
                 except Exception as exc:

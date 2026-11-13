@@ -10203,6 +10203,122 @@
                       },
                       "additionalProperties": false
                     },
+                    "dataQualityConfig": {
+                      "title": "Data Quality Configuration",
+                      "description": "Configuration to ingest AWS Glue Data Quality results as OpenMetadata test cases and test case results.",
+                      "javaType": "org.openmetadata.schema.services.connections.database.glue.GlueDataQualityConfig",
+                      "type": "object",
+                      "definitions": {
+                        "etlJobMapping": {
+                          "title": "ETL Job Mapping",
+                          "description": "Maps Data Quality results produced by a Glue ETL job, which carry no catalog table, to an OpenMetadata table.",
+                          "type": "object",
+                          "properties": {
+                            "jobName": {
+                              "title": "Job Name",
+                              "description": "Name of the Glue ETL job that evaluates the ruleset.",
+                              "type": "string"
+                            },
+                            "evaluationContext": {
+                              "title": "Evaluation Context",
+                              "description": "Name of the Evaluate Data Quality node in the job. Leave empty to match every node of the job.",
+                              "type": "string"
+                            },
+                            "tableFQN": {
+                              "title": "Table FQN",
+                              "description": "Fully qualified name of the OpenMetadata table the results belong to.",
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "jobName",
+                            "tableFQN"
+                          ]
+                        }
+                      },
+                      "properties": {
+                        "includeDataQuality": {
+                          "title": "Include Data Quality",
+                          "description": "Ingest AWS Glue Data Quality rules as test cases and their evaluation runs as test case results.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "lookbackDays": {
+                          "title": "Lookback Days",
+                          "description": "Only ingest Data Quality results whose run started within this number of days.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "default": 7
+                        },
+                        "targetServiceName": {
+                          "title": "Target Database Service Name",
+                          "description": "OpenMetadata database service holding the evaluated tables (e.g. an Athena service). Defaults to this Glue service.",
+                          "type": "string"
+                        },
+                        "targetDatabaseName": {
+                          "title": "Target Database Name",
+                          "description": "Database of the target database service that holds the evaluated tables (e.g. awsdatacatalog for Athena). Only used with targetServiceName. Leave empty to search every database of that service.",
+                          "type": "string"
+                        },
+                        "rulesetFilterPattern": {
+                          "title": "Ruleset Filter Pattern",
+                          "description": "Regex to only include/exclude Data Quality rulesets (or ETL evaluation contexts) that match the pattern.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                          "properties": {
+                            "includes": {
+                              "description": "List of strings/regex patterns to match and include only database entities that match.",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "excludes": {
+                              "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "etlJobMappings": {
+                          "title": "ETL Job Mappings",
+                          "description": "Table mappings for results produced by Glue ETL jobs that are not attached to a Data Catalog table.",
+                          "type": "array",
+                          "items": {
+                            "title": "ETL Job Mapping",
+                            "description": "Maps Data Quality results produced by a Glue ETL job, which carry no catalog table, to an OpenMetadata table.",
+                            "type": "object",
+                            "properties": {
+                              "jobName": {
+                                "title": "Job Name",
+                                "description": "Name of the Glue ETL job that evaluates the ruleset.",
+                                "type": "string"
+                              },
+                              "evaluationContext": {
+                                "title": "Evaluation Context",
+                                "description": "Name of the Evaluate Data Quality node in the job. Leave empty to match every node of the job.",
+                                "type": "string"
+                              },
+                              "tableFQN": {
+                                "title": "Table FQN",
+                                "description": "Fully qualified name of the OpenMetadata table the results belong to.",
+                                "type": "string"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                              "jobName",
+                              "tableFQN"
+                            ]
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
                       "type": "boolean",
@@ -48585,6 +48701,122 @@
                           "type": "array",
                           "items": {
                             "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataQualityConfig": {
+                      "title": "Data Quality Configuration",
+                      "description": "Configuration to ingest AWS Glue Data Quality results as OpenMetadata test cases and test case results.",
+                      "javaType": "org.openmetadata.schema.services.connections.database.glue.GlueDataQualityConfig",
+                      "type": "object",
+                      "definitions": {
+                        "etlJobMapping": {
+                          "title": "ETL Job Mapping",
+                          "description": "Maps Data Quality results produced by a Glue ETL job, which carry no catalog table, to an OpenMetadata table.",
+                          "type": "object",
+                          "properties": {
+                            "jobName": {
+                              "title": "Job Name",
+                              "description": "Name of the Glue ETL job that evaluates the ruleset.",
+                              "type": "string"
+                            },
+                            "evaluationContext": {
+                              "title": "Evaluation Context",
+                              "description": "Name of the Evaluate Data Quality node in the job. Leave empty to match every node of the job.",
+                              "type": "string"
+                            },
+                            "tableFQN": {
+                              "title": "Table FQN",
+                              "description": "Fully qualified name of the OpenMetadata table the results belong to.",
+                              "type": "string"
+                            }
+                          },
+                          "additionalProperties": false,
+                          "required": [
+                            "jobName",
+                            "tableFQN"
+                          ]
+                        }
+                      },
+                      "properties": {
+                        "includeDataQuality": {
+                          "title": "Include Data Quality",
+                          "description": "Ingest AWS Glue Data Quality rules as test cases and their evaluation runs as test case results.",
+                          "type": "boolean",
+                          "default": false
+                        },
+                        "lookbackDays": {
+                          "title": "Lookback Days",
+                          "description": "Only ingest Data Quality results whose run started within this number of days.",
+                          "type": "integer",
+                          "minimum": 1,
+                          "default": 7
+                        },
+                        "targetServiceName": {
+                          "title": "Target Database Service Name",
+                          "description": "OpenMetadata database service holding the evaluated tables (e.g. an Athena service). Defaults to this Glue service.",
+                          "type": "string"
+                        },
+                        "targetDatabaseName": {
+                          "title": "Target Database Name",
+                          "description": "Database of the target database service that holds the evaluated tables (e.g. awsdatacatalog for Athena). Only used with targetServiceName. Leave empty to search every database of that service.",
+                          "type": "string"
+                        },
+                        "rulesetFilterPattern": {
+                          "title": "Ruleset Filter Pattern",
+                          "description": "Regex to only include/exclude Data Quality rulesets (or ETL evaluation contexts) that match the pattern.",
+                          "type": "object",
+                          "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                          "properties": {
+                            "includes": {
+                              "description": "List of strings/regex patterns to match and include only database entities that match.",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            },
+                            "excludes": {
+                              "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                              "type": "array",
+                              "items": {
+                                "type": "string"
+                              }
+                            }
+                          },
+                          "additionalProperties": false
+                        },
+                        "etlJobMappings": {
+                          "title": "ETL Job Mappings",
+                          "description": "Table mappings for results produced by Glue ETL jobs that are not attached to a Data Catalog table.",
+                          "type": "array",
+                          "items": {
+                            "title": "ETL Job Mapping",
+                            "description": "Maps Data Quality results produced by a Glue ETL job, which carry no catalog table, to an OpenMetadata table.",
+                            "type": "object",
+                            "properties": {
+                              "jobName": {
+                                "title": "Job Name",
+                                "description": "Name of the Glue ETL job that evaluates the ruleset.",
+                                "type": "string"
+                              },
+                              "evaluationContext": {
+                                "title": "Evaluation Context",
+                                "description": "Name of the Evaluate Data Quality node in the job. Leave empty to match every node of the job.",
+                                "type": "string"
+                              },
+                              "tableFQN": {
+                                "title": "Table FQN",
+                                "description": "Fully qualified name of the OpenMetadata table the results belong to.",
+                                "type": "string"
+                              }
+                            },
+                            "additionalProperties": false,
+                            "required": [
+                              "jobName",
+                              "tableFQN"
+                            ]
                           }
                         }
                       },
