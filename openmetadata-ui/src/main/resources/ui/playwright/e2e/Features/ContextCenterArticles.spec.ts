@@ -48,9 +48,7 @@ import {
   getArticleFqnFromUrl,
   getLoggedInUser,
   getMemoryStatus,
-  isMemoryExtractionOff,
   MEMORIES_API,
-  MEMORY_EXTRACTION_ON_SKIP_REASON,
   navigateToArticle,
   navigateToArticles,
   navigateToDashboard,
@@ -59,8 +57,10 @@ import {
   readDraftStore,
   scrollHierarchyToNode,
   scrollListingToCard,
+  skipUnlessMemoryExtractionOff,
   verifyArticleSearch,
   waitForArticleInFollows,
+  waitForArticleSavedAndHierarchyReloaded,
   waitForArticleSearchResponse,
   waitForArticleSettled,
   waitForDraftPersisted,
@@ -1266,11 +1266,7 @@ test.describe('Context Center Articles', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     const articleName = `cc_not_extracted_article_${uuid()}`;
     try {
-      // eslint-disable-next-line playwright/no-skipped-test -- Not processed and the off reason exist only while extraction is off
-      test.skip(
-        !(await isMemoryExtractionOff(apiContext)),
-        MEMORY_EXTRACTION_ON_SKIP_REASON
-      );
+      await skipUnlessMemoryExtractionOff(apiContext);
       const article = await createArticleViaApi(apiContext, {
         name: articleName,
         displayName: `Not extracted ${uuid()}`,
@@ -1960,8 +1956,13 @@ test.describe('Context Center Articles', () => {
 
       await test.step('Navigate to draft article A and type new content without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        const contentSaved = waitForArticleSavedAndHierarchyReloaded(
+          page,
+          draftArticleA.id
+        );
         await page.fill('.om-block-editor', newDescription);
         await waitForDraftPersisted(page, draftArticleA.id, newDescription);
+        await contentSaved;
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
@@ -2018,38 +2019,18 @@ test.describe('Context Center Articles', () => {
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {
         await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        const titleSaved = waitForArticleSavedAndHierarchyReloaded(
+          page,
+          draftArticleA.id
+        );
         await page
           .getByTestId('entity-header-display-name')
           .fill(newDisplayName);
         // The 'Unsaved' badge is the editor's own signal that the edit has been
         // registered, so it is the thing to wait on before navigating away.
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        // Saving the title reloads the hierarchy from its first page, dropping any
-        // node scrolled in from a later page before that reload lands.
-        const titleSaved = waitForResponseWithStatus(
-          page,
-          (response) =>
-            response.request().method() === 'PATCH' &&
-            new URL(response.url()).pathname ===
-              `/api/v1/contextCenter/pages/${draftArticleA.id}`,
-          200
-        );
-        const hierarchyReloaded = waitForResponseWithStatus(
-          page,
-          (response) => {
-            const url = new URL(response.url());
-
-            return (
-              url.pathname === '/api/v1/contextCenter/pages/search/hierarchy' &&
-              !url.searchParams.has('parent') &&
-              url.searchParams.get('offset') === '0'
-            );
-          },
-          200
-        );
         await page.getByRole('link', { name: 'Articles' }).click();
         await titleSaved;
-        await hierarchyReloaded;
       });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {

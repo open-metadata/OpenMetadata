@@ -18,6 +18,7 @@ import {
   Page,
   Request,
   Response,
+  test,
 } from '@playwright/test';
 import { ACTION_TIMEOUT } from '../constant/common';
 import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
@@ -28,6 +29,7 @@ import { deleteFixtureEntity, okJson } from './apiResponse';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
 import { executeSlashCommand } from './KnowledgeCenter';
+import { waitForResponseWithStatus } from './waitHelpers';
 
 // ─── Document types ───────────────────────────────────────────────────────────
 
@@ -221,26 +223,27 @@ export const expectMemoryExtractionOffTooltip = async (page: Page) => {
   await page.keyboard.press('Escape');
 };
 
-export const MEMORY_EXTRACTION_ON_SKIP_REASON =
-  'Needs a server with memory extraction off';
-
 /**
  * The OSS e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
- * leaves an upload or a new article Not processed. A Collate server runs with it on, where those
- * states never occur, so a spec that relies on them skips there.
+ * leaves an upload or a new article Not processed and refuses an Extract or Retry with
+ * ExtractionDisabled. A Collate server runs with it on, where none of that occurs, so a test that
+ * relies on it skips there.
  */
-export const isMemoryExtractionOff = async (apiContext: APIRequestContext) => {
+export const skipUnlessMemoryExtractionOff = async (
+  apiContext: APIRequestContext
+) => {
   const availability = await okJson<{ available: boolean; reason?: string }>(
     await apiContext.get(MEMORY_EXTRACTION_AVAILABILITY_API),
     'Read whether memory extraction is available'
   );
 
-  const isOff = !availability.available;
-  if (isOff) {
-    expect(availability.reason).toBe('ExtractionDisabled');
-  }
+  // eslint-disable-next-line playwright/no-skipped-test -- the off states exist only on a server with extraction off
+  test.skip(
+    availability.available,
+    'Needs a server with memory extraction off'
+  );
 
-  return isOff;
+  expect(availability.reason).toBe('ExtractionDisabled');
 };
 
 /**
@@ -913,6 +916,38 @@ export const scrollUntilResponse = async (
 
   await expect(targetLocator).toBeVisible();
 };
+
+/**
+ * Saving an article reloads the hierarchy from its first page, which drops any node scrolled in
+ * from a later page. Start this before the action that saves, and await it before scrolling.
+ */
+export const waitForArticleSavedAndHierarchyReloaded = (
+  page: Page,
+  articleId: string
+) =>
+  Promise.all([
+    waitForResponseWithStatus(
+      page,
+      (response) =>
+        response.request().method() === 'PATCH' &&
+        new URL(response.url()).pathname ===
+          `/api/v1/contextCenter/pages/${articleId}`,
+      200
+    ),
+    waitForResponseWithStatus(
+      page,
+      (response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname === '/api/v1/contextCenter/pages/search/hierarchy' &&
+          !url.searchParams.has('parent') &&
+          url.searchParams.get('offset') === '0'
+        );
+      },
+      200
+    ),
+  ]);
 
 export const scrollHierarchyToNode = async (
   page: Page,

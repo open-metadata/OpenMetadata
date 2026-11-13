@@ -46,12 +46,10 @@ import {
   getDocumentSearchInput,
   getFolderTreeItem,
   getMemoryStatus,
-  isMemoryExtractionOff,
   MEMORIES_API,
   MEMORY_EXTRACTION_AVAILABILITY_API,
   MEMORY_EXTRACTION_CANNOT_START_MESSAGE,
   MEMORY_EXTRACTION_OFF_MESSAGE,
-  MEMORY_EXTRACTION_ON_SKIP_REASON,
   navigateToDocuments,
   parseResponseJson,
   revealFolderRow,
@@ -60,6 +58,7 @@ import {
   selectDocumentByName,
   selectDocumentsBySharedTerm,
   selectFolderInSidebar,
+  skipUnlessMemoryExtractionOff,
   uploadDocument as uploadDocumentToApi,
   waitForDocumentProcessingComplete,
 } from '../../utils/ContextCenterUtil';
@@ -1247,11 +1246,7 @@ test.describe('Context Center - Documents Page', () => {
     // The upload's processing has to finish before the document reads Not processed.
     test.slow();
     const { apiContext } = documentSession;
-    // eslint-disable-next-line playwright/no-skipped-test -- Not processed and the off reason exist only while extraction is off
-    test.skip(
-      !(await isMemoryExtractionOff(apiContext)),
-      MEMORY_EXTRACTION_ON_SKIP_REASON
-    );
+    await skipUnlessMemoryExtractionOff(apiContext);
     const fileName = `not-extracted-${uuid()}.txt`;
     const document = await uploadDocument(
       apiContext,
@@ -1324,11 +1319,7 @@ test.describe('Context Center - Documents Page', () => {
     // The upload's processing has to finish before the document reads Failed.
     test.slow();
     const { apiContext } = documentSession;
-    // eslint-disable-next-line playwright/no-skipped-test -- Not processed and the off reason exist only while extraction is off
-    test.skip(
-      !(await isMemoryExtractionOff(apiContext)),
-      MEMORY_EXTRACTION_ON_SKIP_REASON
-    );
+    await skipUnlessMemoryExtractionOff(apiContext);
     // Not a PDF, so its text extraction fails.
     const fileName = `unreadable-${uuid()}.pdf`;
     const document = await uploadDocument(

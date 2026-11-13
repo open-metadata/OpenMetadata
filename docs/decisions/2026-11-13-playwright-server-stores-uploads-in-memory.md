@@ -32,4 +32,5 @@ lost when the server stops.
   being off no longer works.
 - Uploaded bytes add to the server heap for the shard's lifetime. Specs upload small files, so this
   is negligible at 1 GB. Revisit, or switch to a MinIO container, if a spec uploads large files.
-- The h2 lane (`conf/openmetadata-h2-test.yaml`) hardcodes storage off and is unaffected.
+- `conf/openmetadata-h2-test.yaml` reads the same two variables, so the h2 lane stores uploads the
+  same way.
