@@ -8,9 +8,14 @@ registration and revoke access through the following settings and endpoints.
 
 Open **Settings → Applications → MCP Server → Configuration** as an administrator.
 The Configuration tab controls the MCP server switch and registration policy. The adjacent
-Registered MCP clients tab lists registered clients
-with their IDs, callback URLs and registration dates. Use **Revoke** on a client and confirm to
-remove its registration and all grants. Refresh and cursor navigation load the current inventory;
+Registered MCP clients tab lists registered clients with their IDs, callback URLs, registration
+dates, and active access-token and refresh-token counts. These are unexpired stored grants, not
+live connections; revoked refresh tokens are excluded. Token values are never displayed.
+
+Use **Revoke tokens** to end existing access for every user of the client while keeping its
+registration. It also clears authorization codes and pending sign-ins. Users can authorize the
+client again afterward. Use **Remove client** to remove the registration and all grants. Both
+actions require confirmation. Refresh and cursor navigation load the current inventory;
 client administration remains available while MCP is disabled.
 
 Disabling **Enable MCP Server** rejects new MCP transport and OAuth requests with HTTP 503;
@@ -44,15 +49,20 @@ assuming a policy change has reached the whole cluster.
 
 Policies apply to new authorization codes, including pending sign-ins, and to OAuth error
 callbacks. A rejected callback is not offered as a redirect or return link. Existing tokens are not
-revoked by editing a host allowlist. Remove the client if its existing access must end.
+revoked by editing a host allowlist. Revoke its tokens or remove the client if its existing access must end.
 
 ## Inventory and remove a client
 
 Use an authenticated OpenMetadata administrator credential with:
 
 - `GET /api/v1/mcp/clients?limit=100`: client IDs, client names, redirect URIs and `issuedAt`
-  (epoch milliseconds). No client secrets, encrypted secrets or tokens are returned.
+  (epoch milliseconds), plus `activeAccessTokens` and `activeRefreshTokens` counts at query time.
+  No client secrets, encrypted secrets, token values or token hashes are returned.
 - For subsequent pages, pass the last returned `clientId` as `after`. Continue until a page is empty.
+- `DELETE /api/v1/mcp/clients/{clientId}/tokens`: remove all access tokens, refresh tokens,
+  authorization codes and pending sign-ins while retaining the registration. Returns 204 even
+  when the registered client has no grants; an unknown client returns 404. Other clients are
+  unaffected. Fresh user authorization is still permitted.
 - `DELETE /api/v1/mcp/clients/{clientId}`: remove the registration and revoke all its users' grants.
   Success is 204; an unknown ID is 404. Authorization codes, access and refresh tokens, and pending
   logins belonging to that client are removed. Other clients are unaffected.
