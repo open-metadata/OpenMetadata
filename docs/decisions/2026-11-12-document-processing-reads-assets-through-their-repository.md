@@ -27,11 +27,11 @@ distribution, while text extraction, memory extraction, job recovery, and stats 
 
 ## Amendment 2026-11-13
 
-Both snapshot and legacy-file cleanup delegate the resolved asset to the protected
+Both snapshot and legacy-file cleanup delegate the resolved asset to the public
 `ContextFileRepository.deleteAsset(Asset)` hook. The default implementation keeps the existing OSS
 storage deletion, metadata retention on storage failure, and deferred-cleanup behavior. Collate
 overrides the hook to retain assets referenced by chats and to delete unreferenced chat uploads
-through their original store. Content-snapshot deletion and the rest of the entity cleanup stay in
+through their original store. The chat's final-detach path uses the same hook. Content-snapshot deletion and the rest of the entity cleanup stay in
 the shared repository. The default deletion is guarded by
 `ContextFileRepositoryTest#assetMetadataIsRemovedOnlyAfterStorageDeletionSucceeds`; Collate's
 `ChatUploadExtractionIT` covers both file shapes and chat-reference states through the API.

@@ -617,7 +617,7 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   /** Collate overrides this to retain shared chat assets and select their original store. */
-  protected void deleteAsset(Asset asset) {
+  public void deleteAsset(Asset asset) {
     AssetService assetService = AssetServiceFactory.getService();
     String assetId = asset.getId();
     if (assetService != null) {
