@@ -30,6 +30,7 @@ import ch.qos.logback.core.read.ListAppender;
 import java.io.StringReader;
 import java.lang.reflect.Method;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.apache.commons.csv.CSVFormat;
 import org.apache.commons.csv.CSVRecord;
 import org.junit.jupiter.api.AfterAll;
@@ -1392,5 +1393,163 @@ class LineageRepositoryTest {
     assertEquals("etl", row.get("pipelineName"));
     assertEquals("'+SUM(1,1)", row.get("pipelineDisplayName"));
     assertEquals("'=HYPERLINK(\"http://example.com\")", row.get("pipelineDescription"));
+  }
+
+  /**
+   * Every table feeds every other, so a walk 10 hops deep reaches each table on many paths. Each
+   * table is still expanded once, and each edge comes back once per direction.
+   */
+  @Test
+  void testGetLineage_DenseGraph_ExpandsEachEntityOnce() {
+    List<UUID> tables =
+        List.of(UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID(), UUID.randomUUID());
+    Map<UUID, List<UUID>> upstreamOf = new HashMap<>();
+    tables.forEach(
+        table ->
+            upstreamOf.put(table, tables.stream().filter(other -> !other.equals(table)).toList()));
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = mockTableGraph(upstreamOf);
+
+    EntityLineage lineage =
+        new LineageRepository().get(Entity.TABLE, tables.getFirst().toString(), 10, 10);
+
+    Set<List<UUID>> everyEdge =
+        upstreamOf.entrySet().stream()
+            .flatMap(entry -> entry.getValue().stream().map(from -> List.of(from, entry.getKey())))
+            .collect(Collectors.toSet());
+    assertEquals(12, lineage.getUpstreamEdges().size());
+    assertEquals(everyEdge, edgeEnds(lineage.getUpstreamEdges()));
+    assertEquals(12, lineage.getDownstreamEdges().size());
+    assertEquals(everyEdge, edgeEnds(lineage.getDownstreamEdges()));
+    assertEquals(Set.copyOf(tables), Set.copyOf(nodeIds(lineage)));
+    int upstream = Relationship.UPSTREAM.ordinal();
+    for (UUID table : tables) {
+      verify(relationshipDAO, times(1)).findFrom(table, Entity.TABLE, upstream);
+      verify(relationshipDAO, times(1)).findTo(table, Entity.TABLE, upstream);
+    }
+  }
+
+  /**
+   * A table two hops away is also three hops away on a longer path. Expanded from that longer path,
+   * the tables two hops behind it would fall outside the depth; expanded from the short one, they
+   * do not. Both orders of the two paths are walked, since a walk that settles on whichever path it
+   * reaches first passes with one of them.
+   */
+  @Test
+  void testGetLineage_EntityOnLongAndShortPath_IsExpandedFromTheShortOne() {
+    for (boolean shortPathFirst : new boolean[] {true, false}) {
+      assertExpandedFromTheShortPath(shortPathFirst);
+    }
+  }
+
+  private void assertExpandedFromTheShortPath(boolean shortPathFirst) {
+    UUID root = UUID.randomUUID();
+    UUID onShortPath = UUID.randomUUID();
+    UUID onLongPath = UUID.randomUUID();
+    UUID furtherOnLongPath = UUID.randomUUID();
+    UUID shared = UUID.randomUUID();
+    UUID behindShared = UUID.randomUUID();
+    UUID furthest = UUID.randomUUID();
+    mockTableGraph(
+        Map.of(
+            root,
+                shortPathFirst
+                    ? List.of(onShortPath, onLongPath)
+                    : List.of(onLongPath, onShortPath),
+            onShortPath, List.of(shared),
+            onLongPath, List.of(furtherOnLongPath),
+            furtherOnLongPath, List.of(shared),
+            shared, List.of(behindShared),
+            behindShared, List.of(furthest)));
+
+    EntityLineage lineage = new LineageRepository().get(Entity.TABLE, root.toString(), 4, 0);
+
+    String order = "shortPathFirst=" + shortPathFirst;
+    assertEquals(7, lineage.getUpstreamEdges().size(), order);
+    assertEquals(
+        Set.of(
+            List.of(onShortPath, root),
+            List.of(onLongPath, root),
+            List.of(shared, onShortPath),
+            List.of(furtherOnLongPath, onLongPath),
+            List.of(shared, furtherOnLongPath),
+            List.of(behindShared, shared),
+            List.of(furthest, behindShared)),
+        edgeEnds(lineage.getUpstreamEdges()),
+        order);
+    assertTrue(lineage.getDownstreamEdges().isEmpty(), order);
+  }
+
+  /** A pipeline is walked through the edges that name it as their pipeline. */
+  @Test
+  void testGetLineage_PipelineRoot_WalksTheEdgesThatNameIt() {
+    UUID pipeline = UUID.randomUUID();
+    UUID source = UUID.randomUUID();
+    UUID target = UUID.randomUUID();
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = mockRelationships();
+    int upstream = Relationship.UPSTREAM.ordinal();
+    when(relationshipDAO.findFromPipeline(pipeline, upstream))
+        .thenReturn(tableRecords(List.of(source)));
+    when(relationshipDAO.findToPipeline(pipeline, upstream))
+        .thenReturn(tableRecords(List.of(target)));
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq(Entity.PIPELINE), eq(pipeline), any()))
+        .thenReturn(new EntityReference().withId(pipeline).withType(Entity.PIPELINE));
+
+    EntityLineage lineage = new LineageRepository().get(Entity.PIPELINE, pipeline.toString(), 1, 1);
+
+    assertEquals(Set.of(List.of(source, pipeline)), edgeEnds(lineage.getUpstreamEdges()));
+    assertEquals(Set.of(List.of(pipeline, target)), edgeEnds(lineage.getDownstreamEdges()));
+  }
+
+  private CollectionDAO.EntityRelationshipDAO mockRelationships() {
+    CollectionDAO dao = mock(CollectionDAO.class);
+    CollectionDAO.EntityRelationshipDAO relationshipDAO =
+        mock(CollectionDAO.EntityRelationshipDAO.class);
+    when(dao.relationshipDAO()).thenReturn(relationshipDAO);
+    mockedEntity.when(Entity::getCollectionDAO).thenReturn(dao);
+    mockedEntity
+        .when(() -> Entity.getEntityReferenceById(eq(Entity.TABLE), any(UUID.class), any()))
+        .thenAnswer(
+            call -> new EntityReference().withId(call.getArgument(1)).withType(Entity.TABLE));
+    return relationshipDAO;
+  }
+
+  /** Mocks a graph of tables from the tables directly upstream of each one. */
+  private CollectionDAO.EntityRelationshipDAO mockTableGraph(Map<UUID, List<UUID>> upstreamOf) {
+    CollectionDAO.EntityRelationshipDAO relationshipDAO = mockRelationships();
+    Map<UUID, List<UUID>> downstreamOf = new HashMap<>();
+    upstreamOf.forEach(
+        (table, upstreams) ->
+            upstreams.forEach(
+                from -> downstreamOf.computeIfAbsent(from, key -> new ArrayList<>()).add(table)));
+    int upstream = Relationship.UPSTREAM.ordinal();
+    when(relationshipDAO.findFrom(any(UUID.class), eq(Entity.TABLE), eq(upstream)))
+        .thenAnswer(call -> tableRecords(upstreamOf.getOrDefault(call.getArgument(0), List.of())));
+    when(relationshipDAO.findTo(any(UUID.class), eq(Entity.TABLE), eq(upstream)))
+        .thenAnswer(
+            call -> tableRecords(downstreamOf.getOrDefault(call.getArgument(0), List.of())));
+    return relationshipDAO;
+  }
+
+  private static List<CollectionDAO.EntityRelationshipRecord> tableRecords(List<UUID> ids) {
+    return ids.stream()
+        .map(
+            id ->
+                CollectionDAO.EntityRelationshipRecord.builder()
+                    .id(id)
+                    .type(Entity.TABLE)
+                    .json("{}")
+                    .build())
+        .toList();
+  }
+
+  private static Set<List<UUID>> edgeEnds(List<Edge> edges) {
+    return edges.stream()
+        .map(edge -> List.of(edge.getFromEntity(), edge.getToEntity()))
+        .collect(Collectors.toSet());
+  }
+
+  private static List<UUID> nodeIds(EntityLineage lineage) {
+    return lineage.getNodes().stream().map(EntityReference::getId).toList();
   }
 }

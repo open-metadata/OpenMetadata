@@ -210,7 +210,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
     return (
       <Grid
-        className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+        className="layout-row layout-grid tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
         rowGap="4">
         <Grid.Item
           className="layout-column"
@@ -265,13 +265,13 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                   </AccordionHeader>
                   <AccordionPanel unmountOnCollapse>
                     <Box
-                      className="layout-row tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                      className="layout-row tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
                       data-testid={`event-details-${changeEventData.id}`}
                       rowGap={4}
                       wrap="wrap">
                       <Box className="layout-column tw:block">
                         <Grid
-                          className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+                          className="layout-row layout-grid tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
                           rowGap="4">
                           {Object.entries(changeEventDataToDisplay).map(
                             ([key, value]) =>
@@ -281,7 +281,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
                                   key={key}
                                   span={key === 'reason' ? 24 : 8}>
                                   <Grid
-                                    className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-4)] tw:-mx-0.5"
+                                    className="layout-row layout-grid tw:[--layout-gutter:var(--tw-spacing)] tw:-mx-0.5"
                                     data-testid={`event-data-${key}`}
                                     rowGap="1">
                                     <Grid.Item
@@ -382,7 +382,7 @@ function AlertRecentEventsTab({ alertDetails }: AlertRecentEventsTabProps) {
 
   return (
     <Grid
-      className="layout-row layout-grid tw:[--layout-gutter:var(--om-space-16)] tw:-mx-2"
+      className="layout-row layout-grid tw:[--layout-gutter:calc(var(--tw-spacing)*4)] tw:-mx-2"
       rowGap="4">
       <Grid.Item className="layout-column" span={24}>
         <Box align="start" gap={4} justify="between">

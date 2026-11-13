@@ -309,11 +309,12 @@ public class TextDiffHelper implements HandlebarsHelper {
     return new HandlebarsHelperMetadata()
         .withName("textDiff")
         .withDescription("Generate inline text diff with add/remove markers")
-        .withCursorOffset(12)
+        .withCursorOffset(11)
         .withUsages(
             List.of(
                 new HandlebarsHelperUsage()
                     .withSyntax("{{textDiff }}")
-                    .withExample("{{textDiff entity.oldDescription entity.newDescription}}")));
+                    .withExample(
+                        "{{#with (groupEventChanges event.changeDescription) as |changes|}}{{#each changes.updates}}{{#if (eq name \"description\")}}{{textDiff oldValue newValue}}{{/if}}{{/each}}{{/with}}")));
   }
 }

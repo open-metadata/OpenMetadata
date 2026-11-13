@@ -156,6 +156,7 @@ export const RelatedMetricsForm: FC<RelatedMetricsFormProps> = ({
           </Box>
         )}
         <Input
+          autoComplete="off"
           icon={Search}
           placeholder={t('label.search-entity', {
             entity: t('label.related-metric-plural'),

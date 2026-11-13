@@ -11,10 +11,10 @@
  *  limitations under the License.
  */
 import { Box } from '@openmetadata/ui-core-components';
+import { Retry } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isEmpty } from 'lodash';
 import { FC } from 'react';
-import { ReactComponent as IconRetry } from '../../../assets/svg/ic-retry-icon.svg';
 import { AIRFLOW_HYBRID, DISABLED } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewerV1';
@@ -85,7 +85,10 @@ const AirflowMessageBanner: FC<AirflowMessageBannerProps> = ({
       data-testid="no-airflow-placeholder"
       gap={4}
       role="status">
-      <IconRetry className="align-middle" height={24} width={24} />
+      <Retry
+        className="align-middle tw:shrink-0 tw:text-utility-warning-400"
+        size={24}
+      />
       <RichTextEditorPreviewerV1
         enableSeeMoreVariant={false}
         markdown={message ?? ''}

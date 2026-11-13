@@ -444,6 +444,19 @@ class EntityUtilClassBase {
     );
   }
 
+  /**
+   * Whether getEntityLink has a route for this type, rather than its Table fallback. An ingestion
+   * pipeline is routed through its service, so without the service it has none.
+   */
+  public hasEntityLink(indexType: string): boolean {
+    return (
+      indexType === EntityType.TABLE ||
+      getOwnHandler(ENTITY_DETAILS_PATH_TYPE_MAP, indexType) !== undefined ||
+      (indexType !== EntityType.INGESTION_PIPELINE &&
+        getOwnHandler(ENTITY_LINK_HANDLERS, indexType) !== undefined)
+    );
+  }
+
   public getEntityPatchAPI(entityType: EntityType): PatchAPIFunction {
     if (!entityType) {
       throw new Error('Entity type is required');

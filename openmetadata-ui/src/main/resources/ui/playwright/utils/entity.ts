@@ -717,12 +717,18 @@ export const removeTier = async (page: Page, endpoint: string) => {
 
 // The certification picker loads 50 at a time; searching reaches any certification.
 export const searchCertification = async (page: Page, name: string) => {
-  const searchResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/search/query') &&
-      response.url().includes('index=tag&') &&
-      !response.url().includes('q=&')
-  );
+  // A previous debounced query can finish after fill(). URLSearchParams has
+  // already decoded URI encoding, leaving the query's Elasticsearch escapes.
+  const query = `*${escapeESReservedCharacters(name)}*`;
+  const searchResponse = page.waitForResponse((response) => {
+    const url = new URL(response.url());
+
+    return (
+      url.pathname === '/api/v1/search/query' &&
+      url.searchParams.get('index') === 'tag' &&
+      url.searchParams.get('q') === query
+    );
+  });
   await page
     .getByTestId('drop-down-menu')
     .getByTestId('search-input')
@@ -757,12 +763,9 @@ export const assignCertification = async (
   const hits: { _source: { fullyQualifiedName: string } }[] = (
     await searchResponse.json()
   ).hits.hits;
-  // The picker only lists tags of an enabled Certification classification; an
-  // empty result means a concurrent spec disabled it, so fail here instead of
-  // timing out on a click that can never land.
   expect(
     hits.map((hit) => hit._source.fullyQualifiedName),
-    'Certification tag missing from search — Certification classification disabled by a concurrent spec?'
+    'Certification search did not return the requested tag'
   ).toContain(certification.responseData.fullyQualifiedName);
 
   const patchRequest = page.waitForResponse(
@@ -948,11 +951,9 @@ export const updateDescriptionForChildren = async (
       page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText('No Description', { timeout: 10000 });
   } else {
+    // Compact schema rows can render plain text instead of a Markdown paragraph.
     await expect(
-      page
-        .locator(`[${rowSelector}="${rowId}"]`)
-        .getByTestId('viewer-container')
-        .getByRole('paragraph')
+      page.locator(`[${rowSelector}="${rowId}"]`).getByTestId('description')
     ).toContainText(description);
   }
 };
@@ -2678,34 +2679,40 @@ export const copyAndGetClipboardText = async (
   page: Page,
   locator: Locator
 ): Promise<string> => {
-  // Hover and click the copy button
-  await locator.hover();
-  // eslint-disable-next-line playwright/no-force-option -- copy button may be obscured by tooltip overlay after hover
-  await locator.click({ force: true });
+  // The real OS clipboard is unreliable in headless CI: writeText rejects while the
+  // page is re-rendering and the execCommand fallback then fails, so a paste-back reads ''.
+  // Capture the text the app hands to navigator.clipboard instead. Installed on the live
+  // page (not via addInitScript) so the caller's page state is kept.
+  await page.evaluate(() => {
+    const store = window as unknown as { __pwCopiedText?: string };
+    store.__pwCopiedText = '';
+    Object.defineProperty(window, 'isSecureContext', {
+      value: true,
+      configurable: true,
+    });
+    Object.defineProperty(navigator, 'clipboard', {
+      value: {
+        writeText: async (text: string) => {
+          store.__pwCopiedText = text;
+        },
+        readText: async () => store.__pwCopiedText ?? '',
+      },
+      configurable: true,
+    });
+  });
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- clipboard write completion delay
-  await page.waitForTimeout(300);
+  // No force: actionability checks retry until the button actually receives the click.
+  await locator.click();
 
-  // Read clipboard using paste method (works reliably in all environments)
-  const textareaId = '__clipboard_reader__';
+  const readCopiedText = () =>
+    page.evaluate(
+      () =>
+        (window as unknown as { __pwCopiedText?: string }).__pwCopiedText ?? ''
+    );
 
-  await page.evaluate((id) => {
-    const textarea = document.createElement('textarea');
-    textarea.id = id;
-    textarea.style.cssText = 'position:fixed;left:-9999px;top:0;';
-    document.body.appendChild(textarea);
-  }, textareaId);
+  await expect.poll(readCopiedText).not.toBe('');
 
-  await page.locator(`#${textareaId}`).focus();
-  await page.keyboard.press('ControlOrMeta+V');
-
-  const clipboardText = await page.locator(`#${textareaId}`).inputValue();
-
-  await page.evaluate((id) => {
-    document.getElementById(id)?.remove();
-  }, textareaId);
-
-  return clipboardText;
+  return readCopiedText();
 };
 
 /**

@@ -71,6 +71,8 @@
       .bar-menu-wrapper--format--button--icon {
         width: @size-mlg;
         height: @size-mlg;
+        // core icons draw edge to edge, so pad to a 16px frame inside the 20px box
+        padding: calc(var(--tw-spacing) * 0.5);
       }
     }
   }

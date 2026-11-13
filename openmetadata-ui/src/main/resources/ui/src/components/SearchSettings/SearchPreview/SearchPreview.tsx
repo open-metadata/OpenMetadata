@@ -251,6 +251,7 @@ const SearchPreview = ({
 
       <Input
         aria-label={t('message.search-for-data-assets-placeholder')}
+        autoComplete="off"
         icon={Search}
         inputDataTestId="searchbar"
         placeholder={t('message.search-for-data-assets-placeholder')}

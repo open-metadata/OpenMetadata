@@ -646,6 +646,7 @@ const AccessControlPolicyDetail: FC<AccessControlPolicyDetailProps> = ({
           data-testid="rename-policy-btn"
           icon={Edit}
           isDisabled={!canEditAll}
+          size="lg"
           tooltip={String(
             canEditAll ? t('label.rename') : t(NO_PERMISSION_FOR_ACTION)
           )}

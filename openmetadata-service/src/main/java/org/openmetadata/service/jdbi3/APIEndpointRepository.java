@@ -52,6 +52,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.apis.APIEndpointResource;
+import org.openmetadata.service.util.EntityFieldPath;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -655,8 +656,7 @@ public class APIEndpointRepository extends EntityRepository<APIEndpoint> {
           continue;
         }
 
-        String schemaFieldPrefix =
-            EntityUtil.getFieldName(fieldName, FullyQualifiedName.quoteName(updated.getName()));
+        String schemaFieldPrefix = EntityFieldPath.childKey(fieldName, updated.getName());
         updateFieldDescription(schemaFieldPrefix, stored, updated);
         updateFieldDataTypeDisplay(schemaFieldPrefix, stored, updated);
         updateFieldDisplayName(schemaFieldPrefix, stored, updated);

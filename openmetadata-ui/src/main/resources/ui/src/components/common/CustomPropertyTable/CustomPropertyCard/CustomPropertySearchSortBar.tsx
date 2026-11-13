@@ -50,6 +50,7 @@ export const CustomPropertySearchSortBar = <T extends string>({
     <Box align="center" gap={3} justify="between" wrap="wrap">
       <Input
         aria-label={searchLabel}
+        autoComplete="off"
         className="tw:w-full tw:max-w-80"
         icon={Search}
         inputDataTestId="custom-property-search"

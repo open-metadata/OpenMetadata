@@ -29,6 +29,13 @@ generateType() {
 processFile() {
     schema_file=$1
     relative_path=${schema_file#"$schema_directory/"} # Extract relative path
+    case "$schema_file" in
+        openmetadata-spec/src/main/resources/odcs/v*/schema.json)
+            local version=${schema_file%/schema.json}
+            version=${version##*/}
+            relative_path="type/datacontract/odcs/${version//./}/odcsContract.json"
+            ;;
+    esac
     output_dir="$om_ui_directory/$(dirname "$relative_path")"
 
     # Debugging output
@@ -38,11 +45,9 @@ processFile() {
 
     mkdir -p "$output_dir" # Ensure output directory exists
 
-    tmp_schema_file="$tmp_dir/$(basename "$schema_file")"
-    output_file="$output_dir/$(basename "$schema_file" .json).ts"
+    output_file="$output_dir/$(basename "$relative_path" .json).ts"
 
-    # Generate temporary schema and TypeScript file
-    generateType "$schema_file" "$output_file"
+    generateType "$prepared_schema_directory/$relative_path" "$output_file"
 }
 
 getTypes() {
@@ -65,6 +70,10 @@ if [ "$#" -eq 0 ]; then
     echo "No schema files specified. Please provide schema file paths."
     exit 1
 fi
+
+temporary_directory=$(mktemp -d) || exit 1
+trap 'rm -rf "$temporary_directory"' EXIT
+prepared_schema_directory=$(python3 openmetadata-spec/scripts/prepare_model_schemas.py --output-dir "$temporary_directory/model-schemas") || exit 1
 
 # quicktype is fetched on demand at an exact pin (ADR:2026-10-19-ts-codegen-runs-quicktype-via-npx-at-one-exact-pin);
 # keep the version identical to json2ts-generate-all.sh.

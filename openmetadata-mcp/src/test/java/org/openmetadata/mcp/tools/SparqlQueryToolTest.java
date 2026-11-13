@@ -36,6 +36,8 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.service.rdf.RdfRepository;
@@ -155,10 +157,15 @@ class SparqlQueryToolTest {
                     AUTHORIZER, SECURITY_CONTEXT, Map.of("query", "SELECT * WHERE { ?s ?p ?o }")));
   }
 
-  @Test
-  void rejectsDisallowedFederation() {
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "SELECT * WHERE { SERVICE <https://attacker.example/sparql> { ?s ?p ?o } }",
+        "SELECT * WHERE { ?s ?p ?o EXISTS { SERVICE <https://attacker.example/sparql> { ?a ?b ?c } } }",
+        "SELECT (EXISTS { SERVICE <https://attacker.example/sparql> { ?s ?p ?o } } AS ?x) WHERE { }"
+      })
+  void rejectsDisallowedFederation(String query) {
     RdfRepository repository = enabledRepository();
-    String query = "SELECT * WHERE { SERVICE <https://attacker.example/sparql> { ?s ?p ?o } }";
 
     assertThrows(
         SparqlFederationGuard.FederationDisallowedException.class,

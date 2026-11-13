@@ -88,6 +88,7 @@ export const TestCaseListTableHeader = ({
         />
         <div className="tw:w-75" data-testid="searchbar-component">
           <Input
+            autoComplete="off"
             icon={Search}
             inputDataTestId="searchbar"
             placeholder={t('label.search-entity', {

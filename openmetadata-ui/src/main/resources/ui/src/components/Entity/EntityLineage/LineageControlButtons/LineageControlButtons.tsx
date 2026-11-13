@@ -17,13 +17,15 @@ import {
   Divider,
   Typography,
 } from '@openmetadata/ui-core-components';
+import {
+  Map01,
+  Maximize02,
+  ZoomIn,
+  ZoomOut,
+} from '@openmetadata/ui-core-components/icons';
 import { FC, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactFlowInstance, useViewport } from 'reactflow';
-import { ReactComponent as FitScreenIcon } from '../../../../assets/svg/ic-fit-screen.svg';
-import { ReactComponent as MapIcon } from '../../../../assets/svg/ic-map.svg';
-import { ReactComponent as ZoomInIcon } from '../../../../assets/svg/ic-zoom-in.svg';
-import { ReactComponent as ZoomOutIcon } from '../../../../assets/svg/ic-zoom-out.svg';
 import { useLineageStore } from '../../../../hooks/useLineageStore';
 
 type IconComponent = FC<{ className?: string }>;
@@ -74,7 +76,7 @@ const LineageControlButtons: FC<{
                 : ''
             }
             data-testid="toggle-mind-map"
-            icon={MapIcon as IconComponent}
+            icon={Map01 as IconComponent}
             size="lg"
             tooltip={t('label.mind-map')}
             onClick={onToggleMiniMap}
@@ -83,7 +85,7 @@ const LineageControlButtons: FC<{
           <ButtonUtility
             aria-label={t('label.zoom-in')}
             data-testid="zoom-in"
-            icon={ZoomInIcon as IconComponent}
+            icon={ZoomIn as IconComponent}
             size="lg"
             tooltip={t('label.zoom-in')}
             onClick={handleZoomIn}
@@ -98,7 +100,7 @@ const LineageControlButtons: FC<{
           <ButtonUtility
             aria-label={t('label.zoom-out')}
             data-testid="zoom-out"
-            icon={ZoomOutIcon as IconComponent}
+            icon={ZoomOut as IconComponent}
             size="lg"
             tooltip={t('label.zoom-out')}
             onClick={handleZoomOut}
@@ -107,7 +109,7 @@ const LineageControlButtons: FC<{
           <ButtonUtility
             aria-label={t('label.fit-to-screen')}
             data-testid="fit-screen"
-            icon={FitScreenIcon as IconComponent}
+            icon={Maximize02 as IconComponent}
             size="lg"
             tooltip={t('label.fit-to-screen')}
             onClick={handleFitView}

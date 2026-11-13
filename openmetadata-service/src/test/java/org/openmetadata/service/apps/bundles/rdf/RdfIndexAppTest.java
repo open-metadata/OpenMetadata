@@ -5,6 +5,7 @@ import static org.mockito.Mockito.*;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.TRIGGER_TYPE_KEY;
 
 import java.time.Duration;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -23,12 +24,14 @@ import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CoreRelationshipDAOs.EntityRelationshipDAO;
@@ -37,7 +40,9 @@ import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO;
 import org.openmetadata.service.jdbi3.RdfInfraDAOs.RdfReindexLockDAO.RdfReindexLockRecord;
+import org.openmetadata.service.jdbi3.TimeSeriesDAOs.AppExtensionTimeSeries;
 import org.openmetadata.service.rdf.RdfProjectionHealth;
+import org.openmetadata.service.rdf.RdfProjectionStateResolver;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.rdf.rebuild.RdfDatasetManager.BuildTarget;
 import org.openmetadata.service.rdf.storage.CompactionResult;
@@ -113,6 +118,18 @@ class RdfIndexAppTest {
     }
   }
 
+  /** What /rdf/status reports when {@code pushed} is the newest run and a completed run preceded it. */
+  private static RdfProjectionState projectionStateAfter(final AppRunRecord pushed) {
+    final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
+    when(runStore.listAppExtensionByName(eq("RdfIndexApp"), anyInt(), eq(0), eq("status")))
+        .thenReturn(
+            List.of(
+                JsonUtils.pojoToJson(pushed),
+                JsonUtils.pojoToJson(
+                    new AppRunRecord().withStatus(AppRunRecord.Status.COMPLETED))));
+    return new RdfProjectionStateResolver(runStore, () -> false).resolve();
+  }
+
   @AfterEach
   void resetProjectionHealth() {
     RdfProjectionHealth.markReady();
@@ -141,6 +158,50 @@ class RdfIndexAppTest {
     lenient().doReturn(COMPACTED).when(mockRdfRepository).compact(any());
     clearInvocations(mockRdfRepository);
     rdfIndexApp = new RdfIndexApp(collectionDAO, searchRepository);
+  }
+
+  @Nested
+  @DisplayName("RDF not initialized tests")
+  class RdfNotInitializedTests {
+
+    @Test
+    @DisplayName("run completes with nothing indexed when RdfRepository was never initialized")
+    void runCompletesWhenRepositoryNotInitialized() throws Exception {
+      rdfRepositoryMockedStatic.when(RdfRepository::getInstanceOrNull).thenReturn(null);
+      rdfRepositoryMockedStatic
+          .when(RdfRepository::getInstance)
+          .thenThrow(new IllegalStateException("RdfRepository not initialized"));
+      try {
+        TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+        testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+        EventPublisherJob jobConfig =
+            new EventPublisherJob()
+                .withEntities(Set.of("table"))
+                .withStatus(EventPublisherJob.Status.STARTED);
+        var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+        jobDataField.setAccessible(true);
+        jobDataField.set(testApp, jobConfig);
+
+        JobExecutionContext context = mock(JobExecutionContext.class);
+        JobDetail jobDetail = mock(JobDetail.class);
+        lenient().when(context.getJobDetail()).thenReturn(jobDetail);
+        lenient().when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
+        lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+
+        assertDoesNotThrow(() -> testApp.execute(context));
+
+        assertEquals(EventPublisherJob.Status.COMPLETED, testApp.getJobData().getStatus());
+        assertNull(testApp.getJobData().getFailure());
+        assertTrue(testApp.pushedUpdate, "skipped run must push a final status update");
+        assertEquals(AppRunRecord.Status.COMPLETED, testApp.pushedRecord.getStatus());
+        assertNull(testApp.pushedRecord.getFailureContext());
+      } finally {
+        rdfRepositoryMockedStatic
+            .when(RdfRepository::getInstanceOrNull)
+            .thenReturn(mockRdfRepository);
+        rdfRepositoryMockedStatic.when(RdfRepository::getInstance).thenReturn(mockRdfRepository);
+      }
+    }
   }
 
   @Nested
@@ -202,6 +263,7 @@ class RdfIndexAppTest {
       assertTrue(testApp.getJobData().getFailure().getMessage().contains("deferred"));
       assertTrue(testApp.pushedUpdate, "deferred run must push a final status update");
       verify(mockRdfRepository, never()).ensureStorageReady();
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
     }
 
     @Test
@@ -628,29 +690,12 @@ class RdfIndexAppTest {
     @Test
     @DisplayName("A run that finds another run holding the lock is skipped, not failed")
     void runFindingTheLockHeldEndsStoppedNamingTheHolder() throws Exception {
-      when(reindexLockDAO.tryAcquireLock(
-              anyString(), anyString(), anyString(), anyLong(), anyLong()))
-          .thenReturn(false);
-      when(reindexLockDAO.findByKey("RDF_REINDEX_LOCK"))
-          .thenReturn(
-              new RdfReindexLockRecord(
-                  "RDF_REINDEX_LOCK", "run-9", "server-b", 1L, 1L, Long.MAX_VALUE));
+      givenLockHeldByAnotherRun();
       final TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
       testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
-      final EventPublisherJob jobConfig =
-          new EventPublisherJob()
-              .withEntities(Set.of("table"))
-              .withStatus(EventPublisherJob.Status.STARTED);
-      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
-      jobDataField.setAccessible(true);
-      jobDataField.set(testApp, jobConfig);
-      final JobExecutionContext context = mock(JobExecutionContext.class);
-      final JobDetail jobDetail = mock(JobDetail.class);
-      lenient().when(context.getJobDetail()).thenReturn(jobDetail);
-      lenient().when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
-      lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+      final EventPublisherJob jobConfig = startedJob(testApp);
 
-      testApp.execute(context);
+      testApp.execute(jobContext());
 
       assertEquals(EventPublisherJob.Status.STOPPED, jobConfig.getStatus());
       assertEquals(AppRunRecord.Status.STOPPED, testApp.pushedRecord.getStatus());
@@ -658,6 +703,80 @@ class RdfIndexAppTest {
       assertTrue(reason.contains("server 'server-b' (run run-9)"), reason);
       verify(mockRdfRepository, never()).ensureStorageReady();
       verify(reindexLockDAO, never()).releaseLock(anyString(), anyString());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
+    }
+
+    @Test
+    @DisplayName("A run that cannot take the lock fails but leaves the projection state alone")
+    void runThatCannotTakeTheLockLeavesTheProjectionStateAlone() throws Exception {
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenThrow(new IllegalStateException("lock table unavailable"));
+      final TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+      startedJob(testApp);
+
+      testApp.execute(jobContext());
+
+      assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
+    }
+
+    @Test
+    @DisplayName("A real failure after a skipped run still marks the projection degraded")
+    void realFailureAfterASkippedRunStillMarksTheProjectionDegraded() throws Exception {
+      givenLockHeldByAnotherRun();
+      final TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
+      testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
+      startedJob(testApp);
+      testApp.execute(jobContext());
+      assertEquals(AppRunRecord.Status.STOPPED, testApp.pushedRecord.getStatus());
+      assertEquals(RdfProjectionState.READY, projectionStateAfter(testApp.pushedRecord));
+
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(true);
+      final String failure = "Fuseki unreachable";
+      doThrow(new IllegalStateException(failure)).when(mockRdfRepository).ensureStorageReady();
+      try {
+        testApp.execute(jobContext());
+      } finally {
+        doNothing().when(mockRdfRepository).ensureStorageReady();
+      }
+
+      assertEquals(AppRunRecord.Status.FAILED, testApp.pushedRecord.getStatus());
+      assertTrue(testApp.getJobData().getFailure().getMessage().contains(failure));
+      assertEquals(RdfProjectionState.DEGRADED, projectionStateAfter(testApp.pushedRecord));
+    }
+
+    private void givenLockHeldByAnotherRun() {
+      when(reindexLockDAO.tryAcquireLock(
+              anyString(), anyString(), anyString(), anyLong(), anyLong()))
+          .thenReturn(false);
+      when(reindexLockDAO.findByKey("RDF_REINDEX_LOCK"))
+          .thenReturn(
+              new RdfReindexLockRecord(
+                  "RDF_REINDEX_LOCK", "run-9", "server-b", 1L, 1L, Long.MAX_VALUE));
+    }
+
+    private EventPublisherJob startedJob(final TestableRdfIndexApp testApp) throws Exception {
+      final EventPublisherJob jobConfig =
+          new EventPublisherJob()
+              .withEntities(Set.of("table"))
+              .withStatus(EventPublisherJob.Status.STARTED);
+      var jobDataField = RdfIndexApp.class.getDeclaredField("jobData");
+      jobDataField.setAccessible(true);
+      jobDataField.set(testApp, jobConfig);
+      return jobConfig;
+    }
+
+    private JobExecutionContext jobContext() {
+      final JobExecutionContext context = mock(JobExecutionContext.class);
+      final JobDetail jobDetail = mock(JobDetail.class);
+      lenient().when(context.getJobDetail()).thenReturn(jobDetail);
+      lenient().when(jobDetail.getJobDataMap()).thenReturn(new JobDataMap());
+      lenient().when(jobDetail.getKey()).thenReturn(JobKey.jobKey("rdf-index-test"));
+      return context;
     }
 
     private RdfReindexRunLock lock() {

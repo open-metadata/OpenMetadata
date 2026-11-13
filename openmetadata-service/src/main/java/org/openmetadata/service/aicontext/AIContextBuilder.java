@@ -195,6 +195,10 @@ public class AIContextBuilder {
     return buildForEntity(entity);
   }
 
+  List<EntityReference> lineageNodes() {
+    return lineage == null ? List.of() : listOrEmpty(lineage.getNodes());
+  }
+
   AIContext buildForEntity(EntityInterface<?> entity) {
     EntityLineage lineage = fetchLineage(entity);
     List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
@@ -863,7 +867,7 @@ public class AIContextBuilder {
     try {
       GlossaryTerm term =
           Entity.getEntityByName(Entity.GLOSSARY_TERM, termFqn, "", Include.NON_DELETED);
-      if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
+      if (isGovernedDefinition(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
         visible = term;
       }
     } catch (Exception e) {
@@ -882,9 +886,38 @@ public class AIContextBuilder {
         .withContent(unescapeRichText(term.getDescription()));
   }
 
-  private static boolean isApproved(GlossaryTerm term) {
-    EntityStatus status = term.getEntityStatus();
+  /**
+   * A glossary term or metric governs only once Approved; anything else is not a definition the
+   * AI may treat as governed. Other entities and a missing status pass
+   * (ADR:2026-11-03-only-approved-definitions-reach-ai-context-as-governed-knowledge).
+   */
+  static boolean isGovernedDefinition(EntityInterface<?> entity) {
+    EntityStatus status =
+        switch (entity) {
+          case GlossaryTerm term -> term.getEntityStatus();
+          case Metric metric -> metric.getEntityStatus();
+          default -> null;
+        };
     return status == null || status == EntityStatus.APPROVED;
+  }
+
+  /** A metric attached to or related to the anchor reaches its context only once Approved. */
+  static KnowledgeItem metricKnowledgeItem(Metric metric, boolean visible) {
+    return visible && isGovernedDefinition(metric)
+        ? new KnowledgeItem()
+            .withId(metric.getId())
+            .withType(KnowledgeItem.Type.METRIC)
+            .withName(metric.getName())
+            .withDisplayName(metric.getDisplayName())
+            .withFullyQualifiedName(metric.getFullyQualifiedName())
+            .withContent(metricContent(metric))
+        : null;
+  }
+
+  /** Concept context, and a metric's definition built from it, present a governed definition. */
+  static boolean hasConceptContext(EntityInterface<?> entity) {
+    return (entity instanceof GlossaryTerm || entity instanceof Metric)
+        && isGovernedDefinition(entity);
   }
 
   private List<KnowledgeItem> resolveArticles(EntityInterface<?> entity) {
@@ -1016,16 +1049,9 @@ public class AIContextBuilder {
     KnowledgeItem item = null;
     try {
       Metric metric = Entity.getEntity(ref, "", Include.NON_DELETED);
-      if (canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName())) {
-        item =
-            new KnowledgeItem()
-                .withId(metric.getId())
-                .withType(KnowledgeItem.Type.METRIC)
-                .withName(metric.getName())
-                .withDisplayName(metric.getDisplayName())
-                .withFullyQualifiedName(metric.getFullyQualifiedName())
-                .withContent(metricContent(metric));
-      }
+      item =
+          metricKnowledgeItem(
+              metric, canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName()));
     } catch (Exception e) {
       LOG.warn("AIContext: failed to fetch metric {}: {}", ref.getName(), e.getMessage());
     }
@@ -1114,7 +1140,7 @@ public class AIContextBuilder {
       resolveColumnGlossary(tableContext.getColumns(), this::loadVisibleGlossaryTerm);
       context.withTable(tableContext);
     }
-    if (entity instanceof GlossaryTerm || entity instanceof Metric) {
+    if (hasConceptContext(entity)) {
       ConceptContext concept =
           new ConceptContextBuilder(
                   new ConceptContextCatalog(

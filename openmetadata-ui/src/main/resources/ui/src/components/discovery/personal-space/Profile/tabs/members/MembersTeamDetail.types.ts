@@ -162,6 +162,7 @@ export interface UseMembersTeamHeaderParams {
   isGroupType: boolean;
   isOrgType: boolean;
   isCurrentUserMember: boolean;
+  isAdminUser: boolean;
   onEditNameValueChange: (value: string) => void;
   onStartEditName: (value: string) => void;
   onCancelEditName: () => void;

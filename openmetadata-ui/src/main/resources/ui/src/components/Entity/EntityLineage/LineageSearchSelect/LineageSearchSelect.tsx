@@ -295,6 +295,7 @@ const LineageSearchSelect = () => {
 
   return (
     <Select.ComboBox
+      allowClear
       allowsEmptyCollection
       aria-label={t('label.search-entity', {
         entity: t('label.lineage'),

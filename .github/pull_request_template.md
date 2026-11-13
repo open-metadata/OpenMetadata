@@ -71,11 +71,13 @@ List the user-visible scenarios this PR exercises. Example:
 - Files added/updated:
 
 PR checks run only the Java unit tests; the integration tests run in the merge queue and JavaUIIT /
-search-it nightly. Before requesting review, run the Java tests this PR impacts (selected from
-`.github/java-tests/impact-map.json`):
+search-it nightly. For PR creation, record focused checks and list broader checks as pending. Merge readiness
+requires the full impacted plan. Tests are selected from
+`.github/java-tests/impact-map.json`:
 
-  make java_affected                            # list the impacted unit tests + ITs and the commands
-  make java_affected_run ARGS="--update-pr"     # run them, fill the block below, post the details as a comment
+  make java_affected ARGS="--scope focused"     # select focused checks; --scope full for merge readiness
+  make java_affected_run ARGS="--scope focused" # run once if no applicable evidence exists
+  make java_affected ARGS="--publish-results"   # publish saved results without rerunning
 
 Without `gh`, drop `--update-pr`, paste `target/java-tests/local-pr-results.md` between the markers,
 and post `target/java-tests/local-pr-results-details.md` as a PR comment.

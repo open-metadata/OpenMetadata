@@ -11,13 +11,17 @@
  *  limitations under the License.
  */
 import { useQueries, useQuery } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import { useCallback, useMemo } from 'react';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { Ontology } from '../../../generated/entity/data/ontology';
+import { MemberKind } from '../../../generated/type/ontologyReleaseMember';
 import { getGlossariesList } from '../../../rest/glossaryAPI';
 import {
   listOntologies,
   listOntologyConcepts,
+  listOntologyProperties,
+  listOntologyReleaseMembers,
 } from '../../../rest/ontologyAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { listAllPages } from '../../../utils/governance/ontology/OntologyPaging.utils';
@@ -110,20 +114,65 @@ export const useOntologyStudioScopes = ({
   };
 };
 
-/** Concept totals per ontology, fetched only while the scope menu is open. */
-export const useOntologyConceptCounts = (
+const isForbidden = (error: unknown) =>
+  isAxiosError(error) && error.response?.status === 403;
+
+type CountKind = 'concept' | 'property';
+
+/**
+ * The working draft is readable only with edit rights
+ * (ADR:2026-11-03-ontology-working-draft-reads-require-edit-rights),
+ * so a refused read falls back to what the active release froze. Null means
+ * no count is known, which the caller leaves blank rather than showing 0.
+ */
+const loadDefinitionCount = async (
+  kind: CountKind,
+  ontology: Ontology,
+  signal: AbortSignal
+): Promise<number | null> => {
+  const list =
+    kind === 'concept' ? listOntologyConcepts : listOntologyProperties;
+  try {
+    const page = await list(
+      { limit: 1, ontology: ontology.fullyQualifiedName },
+      signal
+    );
+
+    return page.paging.total;
+  } catch (error) {
+    if (!isForbidden(error)) {
+      throw error;
+    }
+    const releaseId = ontology.publicationStatus?.active?.releaseId;
+    if (!releaseId) {
+      return null;
+    }
+    const members = await listOntologyReleaseMembers(
+      releaseId,
+      kind === 'concept' ? MemberKind.Concept : MemberKind.Property,
+      { limit: 1 },
+      signal
+    );
+
+    return members.paging.total;
+  }
+};
+
+const useOntologyDefinitionCounts = (
+  kind: CountKind,
   ontologies: Ontology[],
   isEnabled: boolean
 ): Record<string, number> => {
   const counts = useQueries({
     queries: ontologies.map((ontology) => ({
       enabled: isEnabled,
-      queryKey: ['ontology-studio-concept-count', ontology.id],
+      queryKey: [
+        `ontology-studio-${kind}-count`,
+        ontology.id,
+        ontology.publicationStatus?.active?.releaseId,
+      ],
       queryFn: ({ signal }: { signal: AbortSignal }) =>
-        listOntologyConcepts(
-          { limit: 1, ontology: ontology.fullyQualifiedName },
-          signal
-        ).then((page) => page.paging.total),
+        loadDefinitionCount(kind, ontology, signal),
       retry: false,
       gcTime: 30_000,
       staleTime: 30_000,
@@ -136,9 +185,21 @@ export const useOntologyConceptCounts = (
         ontologies.flatMap((ontology, index) => {
           const total = counts[index]?.data;
 
-          return total === undefined ? [] : [[ontology.id, total]];
+          return typeof total === 'number' ? [[ontology.id, total]] : [];
         })
       ),
     [counts, ontologies]
   );
 };
+
+/** Concept totals per ontology, fetched only for the rows the caller passes and only while enabled. */
+export const useOntologyConceptCounts = (
+  ontologies: Ontology[],
+  isEnabled: boolean
+) => useOntologyDefinitionCounts('concept', ontologies, isEnabled);
+
+/** Property totals per ontology id. An ontology whose count is refused or fails is left out, never shown as 0. */
+export const useOntologyPropertyCounts = (
+  ontologies: Ontology[],
+  isEnabled: boolean
+) => useOntologyDefinitionCounts('property', ontologies, isEnabled);

@@ -95,7 +95,7 @@ const validateDraft = (
 type ApplyStatus =
   | { kind: 'idle' | 'applied' | 'unchanged' }
   | { kind: 'busy'; step: 'creating' | 'reconciling' | 'leasing' | 'applying' }
-  | { kind: 'blocked'; message: string };
+  | { kind: 'blocked'; message: string; conflict?: true };
 
 const planState = (
   status: ApplyStatus,
@@ -140,6 +140,7 @@ export const useOntologyChangeSetApply = ({
     isActive:
       status.kind === 'busy' &&
       (status.step === 'leasing' || status.step === 'applying'),
+    isConsumed: status.kind === 'applied',
     resourceId: attempt.current?.draft?.id,
     resourceType: 'ontologyChangeSet',
   });
@@ -155,6 +156,19 @@ export const useOntologyChangeSetApply = ({
       running.current = false;
       outcomeUnknown.current = unknown;
       setOutcomeUnknownShown(unknown);
+      const conflictMessage =
+        isAxiosError(error) && error.response?.status === 409
+          ? error.response.data?.message
+          : undefined;
+      if (typeof conflictMessage === 'string' && conflictMessage) {
+        setStatus({
+          kind: 'blocked',
+          message: conflictMessage,
+          conflict: true,
+        });
+
+        return;
+      }
       setStatus({ kind: 'blocked', message });
       if (error) {
         showErrorToast(isAxiosError(error) ? error : message);
@@ -191,6 +205,7 @@ export const useOntologyChangeSetApply = ({
       const response = await listOntologyChangeSets({
         fields: CHANGE_SET_FIELDS,
         limit: 100,
+        ontology: plan.ontology,
         after,
       });
       const found = response.data.find((draft) => draft.name === plan.name);
@@ -235,7 +250,14 @@ export const useOntologyChangeSetApply = ({
       return created;
     } catch (error) {
       setStatus({ kind: 'busy', step: 'reconciling' });
-      const found = await recoverDraft(current.plan);
+      // A caller refused the create is refused the list too; the refusal is the answer.
+      const found = await recoverDraft(current.plan).catch((recoverError) => {
+        if (isRefusedByServer(error) && isRefusedByServer(recoverError)) {
+          return undefined;
+        }
+
+        throw recoverError;
+      });
       outcomeUnknown.current = false;
       if (found) {
         return found;
@@ -414,6 +436,15 @@ export const useOntologyChangeSetApply = ({
       }
       if (attempt.current) {
         await run(attempt.current, false);
+      }
+    },
+    // Reads refs, not render state: onApplied calls this from a render that predates the applied status.
+    reset: () => {
+      if (!running.current && completed.current) {
+        attempt.current = undefined;
+        completed.current = false;
+        outcomeUnknown.current = false;
+        setStatus({ kind: 'idle' });
       }
     },
     retry: async () => {

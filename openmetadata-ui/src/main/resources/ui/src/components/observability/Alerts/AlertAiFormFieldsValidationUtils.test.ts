@@ -13,7 +13,7 @@
 
 import { TFunction } from 'i18next';
 import { AlertType, Effect } from '../../../generated/events/eventSubscription';
-import { ModifiedCreateEventSubscription } from '../../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { ModifiedCreateEventSubscription } from '../../../utils/AlertsClassBase.interface';
 import { getValidationPath } from './AlertAiFormFieldsPureUtils';
 import { validateAlertAiForm } from './AlertAiFormFieldsValidationUtils';
 

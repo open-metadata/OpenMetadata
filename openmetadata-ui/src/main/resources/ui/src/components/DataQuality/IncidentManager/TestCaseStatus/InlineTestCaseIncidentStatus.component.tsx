@@ -521,6 +521,7 @@ const InlineTestCaseIncidentStatus = ({
         direction="col"
         gap={2}>
         <Input
+          autoComplete="off"
           data-testid="assignee-search-input"
           placeholder={t('label.search')}
           size="sm"

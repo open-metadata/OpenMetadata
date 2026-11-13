@@ -74,6 +74,11 @@ public final class LLMClientHolder {
     return enabled && memoryExtractionEnabled;
   }
 
+  /** Whether the memory extraction switch is on, even if the LLM it needs could not be built. */
+  public static boolean isMemoryExtractionSwitchedOn() {
+    return memoryExtractionEnabled;
+  }
+
   /** Test seam: inject a deterministic completion client (and force-enable) for integration tests. */
   public static synchronized void setForTesting(LLMCompletionClient client) {
     instance = client;

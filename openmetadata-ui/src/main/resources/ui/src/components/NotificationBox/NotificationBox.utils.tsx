@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { ReactComponent as IconMentions } from '../../assets/svg/ic-mentions.svg';
-import { ReactComponent as IconTask } from '../../assets/svg/ic-task.svg';
+import {
+  TextEditorMention,
+  TotalOccurrences,
+} from '@openmetadata/ui-core-components/icons';
 import { FeedFilter } from '../../enums/mydata.enum';
 import { NotificationTabsKey } from '../../enums/notification.enum';
 import i18n from '../../utils/i18next/LocalUtil';
@@ -21,12 +23,12 @@ export const tabsInfo = [
   {
     name: i18n.t('label.task-plural'),
     key: NotificationTabsKey.TASK,
-    icon: <IconTask className="tw:mr-2 tw:size-3.5 tw:shrink-0" />,
+    icon: <TotalOccurrences className="tw:mr-2 tw:shrink-0" size={14} />,
   },
   {
     name: i18n.t('label.mention-plural'),
     key: NotificationTabsKey.CONVERSATION,
-    icon: <IconMentions className="tw:mr-2 tw:size-3.5 tw:shrink-0" />,
+    icon: <TextEditorMention className="tw:mr-2 tw:shrink-0" size={14} />,
   },
 ];
 

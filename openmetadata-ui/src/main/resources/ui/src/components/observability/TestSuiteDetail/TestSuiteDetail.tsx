@@ -16,6 +16,7 @@ import {
   ButtonUtility,
   Dialog,
   DialogTrigger,
+  FeaturedIcon,
   Input,
   Modal,
   ModalOverlay,
@@ -23,13 +24,15 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy01 } from '@openmetadata/ui-core-components/icons';
+import {
+  Copy01,
+  TestSuite as TestSuiteIcon,
+} from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, toString } from 'lodash';
 import { ComponentProps, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as TestSuiteIcon } from '../../../assets/svg/icon-test-suite.svg';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { useClipboard } from '../../../hooks/useClipBoard';
@@ -413,16 +416,12 @@ const TestSuiteDetail = () => {
               gap={4}
               wrap="wrap">
               <Box align="center" className="tw:min-w-0 tw:flex-1" gap={3}>
-                <Box
-                  align="center"
-                  className={classNames(
-                    'tw:relative tw:size-9 tw:shrink-0',
-                    'tw:overflow-hidden tw:rounded-full',
-                    'tw:bg-surface tw:border tw:border-border-secondary tw:shadow-xs-skeumorphic'
-                  )}
-                  justify="center">
-                  <TestSuiteIcon className="tw:size-5" />
-                </Box>
+                <FeaturedIcon
+                  color="gray"
+                  icon={TestSuiteIcon}
+                  size="md"
+                  theme="surface"
+                />
                 <Box
                   align="center"
                   className="tw:min-w-0"

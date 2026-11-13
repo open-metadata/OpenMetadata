@@ -292,8 +292,7 @@ def _athena_config_with_catalog_id(catalog_id):
 
 class TestAthenaService(unittest.TestCase):
     @patch("metadata.ingestion.source.database.database_service.DatabaseServiceSource.test_connection")
-    def __init__(self, methodName, test_connection) -> None:  # noqa: N803
-        super().__init__(methodName)
+    def setUp(self, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_athena_config)
         self.athena_source = AthenaSource.create(
@@ -1338,12 +1337,15 @@ class TestAthenaViewsReachTheBulkPayloadOnce:
         )
 
 
-class TestAthenaPartitionedIcebergTableType:
+class TestAthenaPartitionedTableType:
     @pytest.mark.parametrize(
         ("parameters", "partitioned", "expected_type"),
         [
             ({"table_type": "ICEBERG"}, False, TableType.Iceberg),
             ({"table_type": "ICEBERG"}, True, TableType.Iceberg),
+            ({"table_type": "DELTA"}, False, TableType.DeltaLake),
+            ({"table_type": "delta", "spark.sql.sources.provider": "delta"}, True, TableType.DeltaLake),
+            ({"spark.sql.sources.provider": "delta"}, True, TableType.DeltaLake),
             ({}, True, TableType.Partitioned),
         ],
     )

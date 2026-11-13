@@ -32,6 +32,7 @@ on:
       - "bootstrap/**"
       - "docker/rdf-store/**"
       - ".github/scripts/classify_test_outcome.py"
+      - ".github/scripts/configure_docker_storage.sh"
       - ".github/workflows/integration-tests-postgres-opensearch.yml"
   # Integration tests run in the merge queue (plus main pushes and manual dispatch), not on
   # PRs: before review, `make java_affected_run` runs the ITs a PR impacts on the author's
@@ -95,6 +96,7 @@ jobs:
               - 'bootstrap/**'
               - 'docker/rdf-store/**'
               - '.github/scripts/classify_test_outcome.py'
+              - '.github/scripts/configure_docker_storage.sh'
               - '.github/workflows/integration-tests-postgres-opensearch.yml'
 
   integration-test-build:
@@ -102,7 +104,7 @@ jobs:
     needs: changes
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -202,7 +204,7 @@ jobs:
     needs: [changes, integration-test-build]
     runs-on: ubuntu-latest
     timeout-minutes: 90
-    if: ${{ needs.changes.outputs.backend == 'true' }}
+    if: ${{ github.event_name != 'pull_request' && needs.changes.outputs.backend == 'true' }}
     strategy:
       fail-fast: false
       matrix:
@@ -213,7 +215,18 @@ jobs:
           - name: retry-queue
           - name: rdf
     steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The hosted runner starts with ~86 GB free and a lane adds ~6 GB, so the ~3 minute
+      # SDK purge only runs when the script finds less space than Docker needs.
+      - name: Check Docker storage
+        id: docker-storage
+        continue-on-error: true
+        run: bash .github/scripts/configure_docker_storage.sh
       - name: Free Disk Space (Ubuntu)
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
         uses: jlumbroso/free-disk-space@main
         with:
           tool-cache: true
@@ -223,11 +236,9 @@ jobs:
           large-packages: true
           docker-images: false
           swap-storage: true
-
-      - name: Checkout
-        uses: actions/checkout@v7
-        with:
-          persist-credentials: false
+      - name: Check Docker storage after freeing disk space
+        if: ${{ steps.docker-storage.outcome == 'failure' }}
+        run: bash .github/scripts/configure_docker_storage.sh
       - name: Cache Maven dependencies
         uses: actions/cache@v6
         with:
@@ -241,13 +252,6 @@ jobs:
         with:
           java-version: '21'
           distribution: 'temurin'
-
-      - name: Install Ubuntu dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y unixodbc-dev python3-venv librdkafka-dev gcc libsasl2-dev build-essential libssl-dev libffi-dev \
-          libevent-dev jq
-          sudo make install_antlr_cli
 
       - name: Download Integration Test Runtime
         uses: actions/download-artifact@v7

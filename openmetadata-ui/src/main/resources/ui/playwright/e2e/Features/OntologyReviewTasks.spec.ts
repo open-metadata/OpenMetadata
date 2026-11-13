@@ -272,7 +272,10 @@ test.describe(
                     .getByTestId('ontology-task-detail')
                     .getByText('Approved', { exact: true })
                 ).toHaveCount(2);
-                await first.page.getByTestId('ontology-tasks-close').click();
+                // The approval toast can sit over the dialog's close button.
+                await clickIgnoringToasts(
+                  first.page.getByTestId('ontology-tasks-close')
+                );
                 await expect(
                   first.page.getByTestId('ontology-review-banner')
                 ).toHaveCount(0);

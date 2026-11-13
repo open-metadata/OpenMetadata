@@ -198,7 +198,9 @@ export const PageHeader = ({
               className="tw:ml-auto tw:shrink-0"
               direction="row"
               gap={4}>
-              {search ? <Input icon={Search} size="sm" {...search} /> : null}
+              {search ? (
+                <Input autoComplete="off" icon={Search} size="sm" {...search} />
+              ) : null}
               {actions}
             </Box>
           ) : null}

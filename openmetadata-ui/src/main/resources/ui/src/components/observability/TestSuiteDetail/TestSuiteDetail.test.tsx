@@ -175,6 +175,8 @@ jest.mock('@openmetadata/ui-core-components', () => {
     CloseButton,
     Dialog,
     DialogTrigger,
+    FeaturedIcon: jest.requireActual('@openmetadata/ui-core-components')
+      .FeaturedIcon,
     Input,
     Modal,
     ModalOverlay,

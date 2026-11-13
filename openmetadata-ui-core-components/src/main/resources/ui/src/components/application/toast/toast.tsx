@@ -14,10 +14,10 @@
 import type { FC, ReactNode } from 'react';
 import {
   AlertCircle,
-  AlertTriangle,
+  Alert,
   CheckCircle,
   InfoCircle,
-  X,
+  XClose,
 } from '../../../icons';
 import {
   Button,
@@ -45,7 +45,7 @@ const variantConfig: Record<
     showClose: true,
   },
   warning: {
-    icon: AlertTriangle,
+    icon: Alert,
     iconClass: 'tw:text-fg-warning-secondary',
     showClose: false,
   },
@@ -105,7 +105,7 @@ export const Toast = ({ toast }: ToastProps) => {
           data-testid="alert-icon-close"
           slot="close"
           onPress={() => state.close(toast.key)}>
-          <X aria-hidden="true" className="tw:size-3.5" />
+          <XClose aria-hidden="true" className="tw:size-3.5" />
         </Button>
       )}
     </AriaToast>

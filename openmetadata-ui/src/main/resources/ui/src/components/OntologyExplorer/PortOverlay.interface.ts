@@ -17,6 +17,16 @@ import { RelationTypeOptionGroup } from './RelationshipTypePicker.interface';
 export const ONTOLOGY_EDIT_CANCEL_EVENT = 'ontology-edit-cancel';
 export const ONTOLOGY_EDIT_NODE_CLICK_EVENT = 'ontology-edit-node-click';
 
+/** Pressing the + handle; the overlay decides from the pointer travel whether it is a drag. */
+export const ONTOLOGY_EDIT_PORT_DOWN_EVENT = 'ontology-edit-port-down';
+export const ONTOLOGY_EDIT_PORT_DRAG_END_EVENT = 'ontology-edit-port-drag-end';
+
+export interface OntologyEditPortDownDetail {
+  clientX: number;
+  clientY: number;
+  nodeId: string;
+}
+
 export interface OntologyEditNodeClickDetail {
   clientX: number;
   clientY: number;
@@ -38,4 +48,10 @@ export interface PortOverlayProps {
   /** Relation choices for the picker; glossary relationship types when absent. */
   relationTypeGroups?: RelationTypeOptionGroup[];
   canCreateRelationType?: boolean;
+  /** The reason a relation cannot be written, or undefined; asked before any write. */
+  checkRelation?: (
+    fromId: string,
+    toId: string,
+    relationType: string
+  ) => string | undefined;
 }

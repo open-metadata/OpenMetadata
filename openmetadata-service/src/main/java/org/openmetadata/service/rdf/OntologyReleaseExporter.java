@@ -38,6 +38,18 @@ public final class OntologyReleaseExporter {
     return render(release, reader.read(release, authorize), format, options, assetLinks);
   }
 
+  /** Writes unpublished working content; bound asset links belong to published releases only. */
+  public static String exportDraft(
+      final OntologyRelease draft,
+      final List<OntologyReleaseMember> members,
+      final OntologyExportFormat format,
+      final OntologyReleaseExportOptions options) {
+    if (options.getIncludeBoundAssets()) {
+      throw new BadRequestException("Bound asset links can only be exported with a release");
+    }
+    return render(draft, members, format, options, BoundAssetLinks.NONE);
+  }
+
   static String render(
       final OntologyRelease release,
       final List<OntologyReleaseMember> members,

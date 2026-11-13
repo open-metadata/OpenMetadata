@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 
+import { Article } from '@openmetadata/ui-core-components/icons';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import ContextKnowledgePillarCard from './ContextKnowledgePillarCard.component';
 import { PillarRecentItem } from './ContextKnowledgePillarCard.interface';
 
@@ -22,7 +22,7 @@ jest.mock('react-i18next', () => ({
 
 const baseProps = {
   cta: 'View all',
-  icon: FileIcon,
+  icon: Article,
   stat: '5',
   statSub: 'items',
   subtitle: 'subtitle',

@@ -23,7 +23,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
-  AlertTriangle,
+  Alert as AlertIcon,
   Check,
   CheckCircle,
   ChevronRight,
@@ -257,12 +257,7 @@ const AbortCard: FC<{ reason?: string; onBack: () => void }> = ({
       data-testid="import-aborted"
       variant="muted">
       <Box align="center" className="tw:p-10" direction="col" gap={4}>
-        <FeaturedIcon
-          color="error"
-          icon={AlertTriangle}
-          size="lg"
-          theme="light"
-        />
+        <FeaturedIcon color="error" icon={AlertIcon} size="lg" theme="light" />
         <Box align="center" direction="col" gap={1}>
           <Typography className="tw:text-primary" weight="semibold">
             {t('label.aborted')}

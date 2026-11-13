@@ -31,16 +31,14 @@ import {
 } from 'react';
 import type { Key } from 'react-aria-components';
 import { Trans, useTranslation } from 'react-i18next';
+import { ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH } from '../../../constants/Alerts.constants';
 import {
   SubscriptionCategory,
   SubscriptionType,
 } from '../../../generated/events/eventSubscription';
 import { normalizeDestinationConfig } from '../../../utils/Alerts/AlertsUtilPure';
 import AlertAiDestinationConfigFields from './AlertAiDestinationConfigFields.component';
-import {
-  ALERT_AI_DEFAULT_DOWNSTREAM_DEPTH,
-  ALERT_AI_FORM_CLASS_NAMES,
-} from './AlertAiFormFields.constants';
+import { ALERT_AI_FORM_CLASS_NAMES } from './AlertAiFormFields.constants';
 import { AlertAiDestinationItemProps } from './AlertAiFormFields.interface';
 import {
   getDestinationTypeUpdate,

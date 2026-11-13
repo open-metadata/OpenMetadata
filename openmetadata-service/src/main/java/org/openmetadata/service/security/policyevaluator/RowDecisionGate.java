@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.github.benmanes.caffeine.cache.Ticker;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -29,11 +30,21 @@ public final class RowDecisionGate {
   private static final int POLICY_PAGE_SIZE = 100;
   private static final int MAX_ENTRIES = 1000;
 
-  // Keyed by policy generation, so a policy or team change starts a fresh answer.
+  // Keyed by policy generation, so a policy or team change on this server starts a fresh answer.
+  // The generation is per server, so the answer also expires like the compiled policies it is read
+  // beside, and a change made on another server is seen here within the same bound.
   private static final Cache<String, Boolean> TEAM_DENY_RULE =
-      Caffeine.newBuilder().maximumSize(MAX_ENTRIES).build();
+      teamDenyRuleCache(Ticker.systemTicker());
 
   private RowDecisionGate() {}
+
+  static Cache<String, Boolean> teamDenyRuleCache(Ticker ticker) {
+    return Caffeine.newBuilder()
+        .maximumSize(MAX_ENTRIES)
+        .expireAfterWrite(SubjectCache.POLICIES_TTL)
+        .ticker(ticker)
+        .build();
+  }
 
   public static boolean mayDiffer(
       SubjectContext subject, String resource, List<MetadataOperation> operations) {

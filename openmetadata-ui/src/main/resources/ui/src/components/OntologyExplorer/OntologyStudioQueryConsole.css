@@ -44,8 +44,21 @@
   padding: 0;
 }
 
-.ontology-studio-query-editor .cm-content > .cm-line:nth-child(-n + 2) span {
-  color: var(--tw-color-utility-purple-600);
+/*
+ * The SPARQL stream parser tags keywords, ?variables and bare words (numbers too) alike, and folds
+ * <IRIs> and prefixed names into one "atom" token, so the handoff hues map onto those groups:
+ * purple keywords and variables, green IRIs, plain builtins such as "a".
+ */
+.ontology-studio-query-editor .cm-editor {
+  --cm-token-keyword: var(--tw-color-utility-purple-600);
+  --cm-token-def: var(--tw-text-color-primary);
+  --cm-token-property: var(--tw-color-utility-purple-600);
+  --cm-token-number: var(--tw-color-utility-green-700);
+  --cm-token-string: var(--tw-color-utility-orange-600);
+  --cm-token-type: var(--tw-color-utility-pink-600);
+  --cm-token-operator: var(--tw-text-color-secondary);
+  --cm-token-comment: var(--tw-text-color-quaternary);
+  --cm-token-error: var(--tw-color-utility-error-600);
 }
 
 .ontology-studio-query-editor .cm-editor.cm-focused {

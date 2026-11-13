@@ -12,13 +12,12 @@
  */
 
 import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
+import { Inbox01, InboxFilled } from '@openmetadata/ui-core-components/icons';
 import { useQuery } from '@tanstack/react-query';
 import classNames from 'classnames';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { ReactComponent as InboxIconActive } from '../../../../assets/svg/ask-collate-nav-bar/inbox-active.svg';
-import { ReactComponent as InboxIconDefault } from '../../../../assets/svg/ask-collate-nav-bar/inbox-default.svg';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { useUnreadInboxActivity } from '../../../../hooks/useUnreadInboxActivity';
 import { openTaskCountQuery } from '../openTaskCount';
@@ -83,9 +82,9 @@ const InboxIconButton: React.FC = () => {
             )
           }>
           {isActive ? (
-            <InboxIconActive height={20} width={20} />
+            <InboxFilled className="tw:text-brand-800" size={20} />
           ) : (
-            <InboxIconDefault height={20} width={20} />
+            <Inbox01 size={20} />
           )}
 
           {badgeLabel && (

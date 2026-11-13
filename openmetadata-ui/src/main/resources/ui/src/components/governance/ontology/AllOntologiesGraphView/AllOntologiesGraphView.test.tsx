@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import {
   CONCEPT_NODE_TYPE,
@@ -97,4 +97,33 @@ describe('AllOntologiesGraphView tree', () => {
       expect(screen.getAllByText('Employee').length).toBeGreaterThan(0);
     }
   );
+
+  it('keeps the health card on Tree after Graph was left in Data mode', async () => {
+    const props = {
+      graph,
+      isFetching: false,
+      models: [],
+      onEditConcept: jest.fn(),
+      onRefresh: jest.fn(),
+      onRequestGraphSurface: jest.fn(),
+      onSelectedConceptChange: jest.fn(),
+    };
+    const { rerender } = render(
+      <AllOntologiesGraphView {...props} surface="graph" />
+    );
+    fireEvent.click(screen.getByTestId('ontology-graph-mode-data'));
+    // Data mode loads lazily; let it settle before switching surface.
+    await act(async () => undefined);
+
+    expect(
+      screen.queryByTestId('ontology-health-panel')
+    ).not.toBeInTheDocument();
+
+    rerender(<AllOntologiesGraphView {...props} surface="tree" />);
+
+    expect(screen.getByTestId('ontology-health-panel')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-tree-surface')).not.toHaveClass(
+      'tw:pr-92'
+    );
+  });
 });

@@ -12,10 +12,12 @@
  */
 
 import { Button } from '@openmetadata/ui-core-components';
+import {
+  ChevronCollapseVertical,
+  ChevronSelectorVertical,
+} from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as DownUpArrowIcon } from '../../../assets/svg/ic-down-up-arrow.svg';
-import { ReactComponent as UpDownArrowIcon } from '../../../assets/svg/ic-up-down-arrow.svg';
 import { ToggleExpandButtonProps } from './ToggleExpandButton.interface';
 
 function ToggleExpandButton({
@@ -36,9 +38,9 @@ function ToggleExpandButton({
       data-testid="toggle-expand-button"
       iconLeading={
         showCollapseAllText ? (
-          <DownUpArrowIcon data-icon data-testid="collapse-icon" />
+          <ChevronCollapseVertical data-icon data-testid="collapse-icon" />
         ) : (
-          <UpDownArrowIcon data-icon data-testid="expand-icon" />
+          <ChevronSelectorVertical data-icon data-testid="expand-icon" />
         )
       }
       size="xs"

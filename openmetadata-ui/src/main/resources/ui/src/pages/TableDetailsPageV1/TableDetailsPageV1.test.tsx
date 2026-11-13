@@ -23,8 +23,13 @@ import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import { ResourceEntity } from '../../enums/permissions.enum';
 import { TableType } from '../../generated/entity/data/table';
+import {
+  Access,
+  Permission,
+} from '../../generated/entity/policies/accessControl/resourcePermission';
 import { getListTestCaseIncidentStatus } from '../../rest/incidentManagerAPI';
 import { getDataQualityLineage } from '../../rest/lineageAPI';
+import { getResourcePermission } from '../../rest/permissionAPI';
 import { getQueriesList } from '../../rest/queryAPI';
 import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { getListTestCaseBySearch } from '../../rest/testAPI';
@@ -82,6 +87,17 @@ const setMockPermissions = (
     ...getDerivedPermissionFlags(permissions, false),
   });
 };
+
+// Raw backend answer for GET /permissions/query; decides whether the Queries tab exists.
+let mockQueryResourcePermissions: Permission[] = [
+  { operation: 'ViewBasic', access: Access.Allow } as Permission,
+];
+
+jest.mock('../../rest/permissionAPI', () => ({
+  getResourcePermission: jest.fn(() =>
+    Promise.resolve({ permissions: mockQueryResourcePermissions })
+  ),
+}));
 
 jest.mock('../../hooks/useEntityPermissions/useEntityPermissions', () => ({
   useEntityPermissions: (...args: unknown[]) =>
@@ -311,6 +327,11 @@ jest.mock('../../components/common/Loader/Loader', () => ({
 }));
 
 jest.useFakeTimers();
+
+jest.mock('./TableLinkedConcepts', () => ({
+  __esModule: true,
+  default: () => null,
+}));
 
 jest.mock('../../hoc/LimitWrapper', () => {
   return jest
@@ -810,12 +831,17 @@ describe('TestDetailsPageV1 component', () => {
     const getQueriesTabProps = () =>
       (TabsLabel as unknown as jest.Mock).mock.calls
         .map(([props]) => props)
-        .filter((props) => props.id === EntityTabs.TABLE_QUERIES);
+        .filter((props) => props?.id === EntityTabs.TABLE_QUERIES);
 
     const getLatestQueriesTabProps = () => getQueriesTabProps().pop();
 
-    const renderOnSchemaTab = async () => {
-      setMockPermissions({ ViewBasic: true });
+    const renderOnSchemaTab = async (
+      tablePermissions: Partial<OperationPermission> = {
+        ViewBasic: true,
+        ViewQueries: true,
+      }
+    ) => {
+      setMockPermissions(tablePermissions);
 
       await act(async () => {
         renderWithQueryClient(
@@ -829,6 +855,74 @@ describe('TestDetailsPageV1 component', () => {
     beforeEach(() => {
       (TabsLabel as unknown as jest.Mock).mockClear();
       (getQueriesList as jest.Mock).mockClear();
+      mockQueryResourcePermissions = [
+        { operation: 'ViewBasic', access: Access.Allow } as Permission,
+      ];
+    });
+
+    const setQueryResourceAccess = (access: Record<string, Access>) => {
+      mockQueryResourcePermissions = Object.entries(access).map(
+        ([operation, value]) => ({ operation, access: value } as Permission)
+      );
+    };
+
+    it('should hold the page skeleton until the Query permission resolves', async () => {
+      (getResourcePermission as jest.Mock).mockImplementationOnce(
+        () => new Promise(() => undefined)
+      );
+
+      await renderOnSchemaTab();
+
+      expect(screen.getByText('testPermissionSkeleton')).toBeInTheDocument();
+      expect(getQueriesTabProps()).toHaveLength(0);
+      expect(getQueriesList).not.toHaveBeenCalled();
+    });
+
+    it('should hide the Queries tab and skip the count when the Query resource is denied', async () => {
+      setQueryResourceAccess({ ViewAll: Access.Allow, ViewBasic: Access.Deny });
+      (getQueriesList as jest.Mock).mockResolvedValue({ paging: { total: 7 } });
+
+      await renderOnSchemaTab();
+
+      expect(await screen.findByText('label.sample-data')).toBeInTheDocument();
+      expect(getQueriesList).not.toHaveBeenCalled();
+      expect(getQueriesTabProps()).toHaveLength(0);
+    });
+
+    it('should show the Queries tab when Query view access comes from ViewAll alone', async () => {
+      setQueryResourceAccess({ ViewAll: Access.Allow });
+      (getQueriesList as jest.Mock).mockResolvedValue({ paging: { total: 2 } });
+
+      await renderOnSchemaTab();
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 2, isLoading: false })
+        )
+      );
+    });
+
+    it('should show the Queries tab when Query view access is conditional', async () => {
+      setQueryResourceAccess({ ViewBasic: Access.ConditionalAllow });
+      (getQueriesList as jest.Mock).mockResolvedValue({ paging: { total: 3 } });
+
+      await renderOnSchemaTab();
+
+      await waitFor(() =>
+        expect(getLatestQueriesTabProps()).toEqual(
+          expect.objectContaining({ count: 3, isLoading: false })
+        )
+      );
+    });
+
+    it('should keep the Queries tab but skip the count without table ViewQueries', async () => {
+      (getQueriesList as jest.Mock).mockResolvedValue({ paging: { total: 7 } });
+
+      await renderOnSchemaTab({ ViewBasic: true, ViewQueries: false });
+
+      await waitFor(() => expect(getQueriesTabProps()).not.toHaveLength(0));
+
+      expect(getQueriesList).not.toHaveBeenCalled();
     });
 
     it('should fetch the count on mount without activating the Queries tab', async () => {

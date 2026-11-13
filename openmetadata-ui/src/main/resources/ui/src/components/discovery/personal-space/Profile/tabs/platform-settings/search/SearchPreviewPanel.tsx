@@ -181,6 +181,7 @@ const SearchPreviewPanel = ({
       </Box>
       <Input
         aria-label={t('label.search')}
+        autoComplete="off"
         icon={Search}
         inputDataTestId="search-preview-input"
         placeholder={t('message.search-for-data-assets-placeholder')}

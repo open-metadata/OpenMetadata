@@ -19,7 +19,9 @@ import {
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ApprovalBasis } from '../../../../generated/type/ontologyReleaseEvent';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
+import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
 
 const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
   const { t } = useTranslation();
@@ -46,7 +48,11 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
 
   return (
     <Box direction="col" gap={2}>
-      <Typography as="h4" size="text-sm" weight="semibold">
+      <Typography
+        as="h4"
+        className="not-prose tw:m-0"
+        size="text-sm"
+        weight="semibold">
         {t('label.release-events')}
       </Typography>
       {events.isPending && (
@@ -63,25 +69,46 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
           </Button>
         </Alert>
       )}
-      <ul className="tw:m-0 tw:list-none tw:p-0">
+      <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-3 tw:p-0">
         {events.data?.pages
           .flatMap((page) => page.data)
           .map((event) => (
-            <li key={event.id}>
-              <Typography size="text-sm">
-                {t(`label.ontology-event-${event.eventType.toLowerCase()}`)} ·{' '}
-                {event.createdBy} · {new Date(event.createdAt).toLocaleString()}
-              </Typography>
-              {event.voters?.length ? (
-                <Typography size="text-xs">
-                  {t('label.reviewer-plural')}: {event.voters.join(', ')}
+            <li data-testid="ontology-release-event" key={event.id}>
+              <Box direction="col" gap={1}>
+                <Typography size="text-sm" weight="semibold">
+                  {t(`label.ontology-event-${event.eventType.toLowerCase()}`)}
                 </Typography>
-              ) : null}
-              {event.taskId && (
-                <Link to={`/tasks/${encodeURIComponent(event.taskId)}`}>
-                  {t('label.approval')}
-                </Link>
-              )}
+                <Typography color="secondary" size="text-xs">
+                  {event.createdBy}
+                </Typography>
+                <Typography color="secondary" size="text-xs">
+                  {formatDateTimeLong(event.createdAt)}
+                </Typography>
+                {event.approvalBasis ===
+                  ApprovalBasis.NoReviewersConfigured && (
+                  <Typography size="text-xs">
+                    {t('label.published-without-review')}
+                  </Typography>
+                )}
+                {event.voters?.length ? (
+                  <Typography size="text-xs">
+                    {t('label.reviewer-plural')}: {event.voters.join(', ')}
+                  </Typography>
+                ) : null}
+                {event.resolution?.comment && (
+                  <Typography
+                    className="tw:whitespace-pre-wrap tw:break-words"
+                    data-testid="ontology-release-event-reason"
+                    size="text-xs">
+                    {t('label.reason')}: {event.resolution.comment}
+                  </Typography>
+                )}
+                {event.taskId && (
+                  <Link to={`/tasks/${encodeURIComponent(event.taskId)}`}>
+                    {t('label.approval')}
+                  </Link>
+                )}
+              </Box>
             </li>
           ))}
       </ul>
@@ -91,7 +118,7 @@ const OntologyReleaseEvents = ({ releaseId }: { releaseId: string }) => {
           isLoading={events.isFetchingNextPage}
           size="sm"
           onPress={() => void events.fetchNextPage()}>
-          {t('label.load-more')}
+          {t('label.load-more-lowercase')}
         </Button>
       )}
     </Box>
