@@ -46,6 +46,16 @@ Version of the Sigma REST API by default `v2`.
 To get to know the Sigma REST API Version visit <a href="https://help.sigmacomputing.com/reference/get-started-sigma-api#identify-your-api-request-url" target="_blank">here</a> and look into the `Token URL` section.
 $$
 
+$$section
+### List All Assets $(id="listAllAssets")
+
+Sigma's API lists the workbooks and data models that the owner of the client credentials can access: the ones in their **My Documents** folder and the ones shared with them, directly or through a folder or workspace. Workbooks nobody shared with that user are not ingested.
+
+Turn this on to ingest every workbook and data model in the organization instead. The connector then adds Sigma's `skipPermissionCheck=true` parameter to the workbook and data model listings, and `excludeExplorations=true` to the workbook listing. Sigma documents `skipPermissionCheck` as <a href="https://help.sigmacomputing.com/reference/list-workbooks" target="_blank">"Only available to Sigma admins"</a>, so the credentials' owner must have the **Admin** account type. `excludeExplorations` leaves out custom views, the private per-user views of a workbook, so they are never ingested. The connection test uses the same listing, so it shows what Sigma answers for your credentials.
+
+A workbook that is listed this way but that the user still cannot open is skipped when its details cannot be read; when only its pages cannot be read, its dashboard is created without charts or data models. If you cannot use an Admin credential, share each workspace with the user that owns the credentials instead.
+$$
+
 ## Certification Badges
 
 When **Include Tags** is on, a workbook's certification badge (Endorsed, Warning or Deprecated) is added to its dashboard as a tag in the `SigmaBadge` classification.
@@ -66,4 +76,4 @@ When **Include Custom Properties** is on, each workbook's dashboard gets a `late
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.
 
-Source tables are looked up only in the database services listed in **Database Service Prefixes**, so set it to get lineage. A table is linked only when exactly one table matches across those services; a table that matches several is left without lineage.
+Source tables are looked up in the database services listed in **Database Service Prefixes**, or in every database service when it is empty. A table is linked only when exactly one table matches across the services searched; a table that matches several, for example the same schema and table in two services, is left without lineage. Set **Database Service Prefixes** to the services Sigma reads from to resolve such tables.

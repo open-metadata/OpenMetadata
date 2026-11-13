@@ -800,7 +800,9 @@ def routes() -> dict:
 def sigma_over_http(routes):
     """
     SigmaSource with its real client; HTTP is answered from `routes` and counted per (method, path).
-    A `page` query parameter is part of the route key, and an int route answers with that error status.
+    A `page` query parameter is part of the route key, and an int route answers with that error status. Any other
+    query parameters are a sorted tuple of (name, value) pairs at the end of the key, so a request that sends them
+    is answered only by a route planned for them.
     """
     calls = Counter()
 
@@ -808,7 +810,10 @@ def sigma_over_http(routes):
         path = urlparse(str(url)).path
         calls[method, path] += 1
         page = (params or {}).get("page")
-        body = routes[(method, path, page) if page else (method, path)]
+        key = (method, path, page) if page else (method, path)
+        if query := tuple(sorted((name, value) for name, value in (params or {}).items() if name != "page")):
+            key = (*key, query)
+        body = routes[key]
         response = requests.Response()
         response.status_code = body if isinstance(body, int) else 200
         response._content = b"" if isinstance(body, int) else json.dumps(body).encode()
@@ -899,6 +904,47 @@ def test_project_filter_pattern_keeps_or_drops_by_workspace(sigma_over_http, rou
     source.source_config.projectFilterPattern = pattern
 
     assert ingested_projects(source) == kept
+
+
+ORG_WIDE_WORKBOOKS = (("excludeExplorations", "true"), ("skipPermissionCheck", "true"))
+ORG_WIDE_DATA_MODELS = (("skipPermissionCheck", "true"),)
+
+
+@pytest.fixture
+def hidden_documents(routes):
+    """A workbook and a data model the credential cannot open: Sigma lists them only on the admin-only org-wide listing"""
+    routes["GET", "/v2/workbooks", ORG_WIDE_WORKBOOKS] = {"entries": SIGMA_WORKBOOKS[:2], "nextPage": "2"}
+    routes["GET", "/v2/workbooks", "2", ORG_WIDE_WORKBOOKS] = {
+        "entries": [SIGMA_WORKBOOKS[2], sigma_workbook("wb-hidden", "member-2")],
+        "nextPage": None,
+    }
+    routes["GET", "/v2/dataModels"] = {"entries": [sigma_data_model("dm-1", "Sales Model")], "nextPage": None}
+    routes["GET", "/v2/dataModels", ORG_WIDE_DATA_MODELS] = {
+        "entries": [sigma_data_model("dm-1", "Sales Model")],
+        "nextPage": "2",
+    }
+    routes["GET", "/v2/dataModels", "2", ORG_WIDE_DATA_MODELS] = {
+        "entries": [sigma_data_model("dm-hidden", "Ops Model")],
+        "nextPage": None,
+    }
+    return routes
+
+
+def test_list_all_assets_lists_the_documents_the_credential_cannot_open(sigma_over_http, hidden_documents):
+    source, _ = sigma_over_http
+    source.client.config.listAllAssets = True
+
+    assert [w.workbookId for w in source.client.get_dashboards()] == ["wb-1", "wb-2", "wb-3", "wb-hidden"]
+    assert [w.workbookId for w in source.client.test_get_dashboards()] == ["wb-1", "wb-2"]
+    assert [m.dataModelId for m in source.client.get_data_models()] == ["dm-1", "dm-hidden"]
+
+
+def test_by_default_the_listings_send_no_scope_parameter(sigma_over_http, hidden_documents):
+    source, _ = sigma_over_http
+
+    assert [w.workbookId for w in source.client.get_dashboards()] == ["wb-1", "wb-2", "wb-3"]
+    assert [w.workbookId for w in source.client.test_get_dashboards()] == ["wb-1", "wb-2", "wb-3"]
+    assert [m.dataModelId for m in source.client.get_data_models()] == ["dm-1"]
 
 
 def test_workbook_listing_is_requested_once(sigma_over_http):
@@ -1044,12 +1090,19 @@ def test_a_table_found_in_two_configured_services_is_not_linked(sigma_over_http,
 
 
 @pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
-def test_no_table_is_linked_without_db_service_prefixes(sigma_over_http, routes, sql):
-    source, calls = sigma_over_http
+def test_without_db_service_prefixes_a_table_found_in_one_service_is_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "CUSTOMERS")]
 
-    assert lineage_sources(source, routes, [], [warehouse_table("wh_a", "ORDERS")], sql) == []
-    # Nothing could be linked, so nothing is read
-    assert calls["GET", "/v2/workbooks/wb-1/queries"] == 0
+    assert lineage_sources(source, routes, [], catalog, sql) == ["wh_a.ANALYTICS.PUBLIC.ORDERS"]
+
+
+@pytest.mark.parametrize("sql", [SIGMA_SQL, None], ids=["sql", "fallback"])
+def test_without_db_service_prefixes_a_table_found_in_two_services_is_not_linked(sigma_over_http, routes, sql):
+    source, _ = sigma_over_http
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_b", "ORDERS")]
+
+    assert lineage_sources(source, routes, [], catalog, sql) == []
 
 
 def test_a_table_matching_twice_in_one_service_is_not_linked(sigma_over_http, routes):
