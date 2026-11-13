@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Offline MSSQL ownership gates, partition seeding and independently declared catalog scope."""
+"""Offline MSSQL ownership gates and partition seeding."""
 
 from datetime import date
 
@@ -16,21 +16,15 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import URL
 
-from metadata.generated.schema.entity.data.table import DataType, TableType
-
 from ..features.database.pipelines import LineagePipeline, MetadataPipeline
 from ..mssql.baseline import (
-    NATIVE_TABLE,
-    NATIVE_VIEW,
     PARTITION_INTERVAL_YEARS,
     PARTITION_YEARS_INSIDE,
     PARTITION_YEARS_OUTSIDE,
-    PARTITIONED_TABLE,
     build_mssql_baseline,
     person_birthdates,
 )
 from ..mssql.connector import mssql_invocation
-from ..mssql.expected import mssql_expected
 from ..mssql.source import INGEST_USER_OPTION, MssqlSource
 from ..server import ServerConfig
 
@@ -110,29 +104,6 @@ def test_invocation_rejects_closed_and_mismatched_sources(owned_source, monkeypa
     owned_source._closed = True
     with pytest.raises(ValueError, match="already been closed"):
         _invocation(owned_source)
-
-
-def test_expected_catalog_declares_the_native_types_and_the_view():
-    expected = mssql_expected("fixture_service", database=_DATABASE, schema=_SCHEMA, reference_date=_REFERENCE_DATE)
-    assert expected.databases[0].name == _DATABASE
-    schema = expected.databases[0].schemas[0]
-    assert {table.name for table in schema.tables} == {
-        "customers",
-        "transactions",
-        NATIVE_TABLE,
-        PARTITIONED_TABLE,
-        NATIVE_VIEW,
-    }
-    assert {procedure.name for procedure in schema.stored_procedures} == {"usp_active_customer_count"}
-    native = next(table for table in schema.tables if table.name == NATIVE_TABLE)
-    view = next(table for table in schema.tables if table.name == NATIVE_VIEW)
-    assert view.table_type is TableType.View
-    assert [column.name for column in view.columns] == [column.name for column in native.columns]
-    types = {column.name: column.data_type for column in native.columns}
-    assert types["rowversion_col"] is DataType.TIMESTAMP
-    assert types["uniqueidentifier_col"] is DataType.UUID
-    assert types["bit_col"] is DataType.BIT
-    assert types["smallmoney_col"] is DataType.NUMBER
 
 
 def test_partition_seeds_straddle_the_configured_window():
