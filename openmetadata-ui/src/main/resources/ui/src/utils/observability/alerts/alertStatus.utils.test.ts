@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { TFunction } from 'i18next';
 import {
   AlertType,
   EventSubscription,
@@ -18,10 +19,11 @@ import {
   SubscriptionCategory,
   SubscriptionType,
   TionStatus,
-} from '../../generated/events/eventSubscription';
+} from '../../../generated/events/eventSubscription';
 import {
   getAlertListStatus,
   getDestinationProblem,
+  getDestinationProblemAlertProps,
   getNotSendingReason,
 } from './alertStatus.utils';
 
@@ -113,6 +115,57 @@ describe('alertStatus.utils', () => {
       unusableReasons: [],
       failureReasons: [],
     });
+  });
+
+  it('lists a switched-off alert as disabled, whatever its destinations last said', () => {
+    expect(
+      getAlertListStatus(
+        alertWith(
+          [{ status: Status.AwaitingRetry, lastFailedReason: REFUSED }],
+          false
+        )
+      )
+    ).toEqual({
+      status: Status.Disabled,
+      unusableReasons: [],
+      failureReasons: [],
+    });
+  });
+
+  it('does not count a switched-off destination as failing', () => {
+    const alert = alertWith([
+      { status: Status.Failed, lastFailedReason: REFUSED },
+    ]);
+    const switchedOff = {
+      ...alert,
+      destinations: alert.destinations?.map((destination) => ({
+        ...destination,
+        enabled: false,
+      })),
+    };
+
+    expect(getAlertListStatus(switchedOff)).toEqual({
+      status: Status.Active,
+      unusableReasons: [],
+      failureReasons: [],
+    });
+  });
+
+  it('shows a configuration to change and a failed send as errors, under their own titles', () => {
+    const t = ((key: string) => key) as unknown as TFunction;
+
+    expect(
+      getDestinationProblemAlertProps({ kind: 'unusable', reason: UNUSABLE }, t)
+    ).toEqual({
+      title: 'message.destination-does-not-send-until-fixed',
+      variant: 'error',
+    });
+    expect(
+      getDestinationProblemAlertProps(
+        { kind: 'sendFailed', reason: REFUSED },
+        t
+      )
+    ).toEqual({ title: 'label.failure-reason', variant: 'error' });
   });
 
   it('keeps an unusable configuration apart from a failed send', () => {

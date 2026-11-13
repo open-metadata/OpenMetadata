@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { AxiosError } from 'axios';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
@@ -243,7 +244,7 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.getByTestId('alert-actions')).toBeInTheDocument();
   });
 
-  it('shows why an alert whose destination does not send has failed', () => {
+  it('shows why an alert whose destination does not send has failed', async () => {
     renderTable({
       alerts: [
         {
@@ -266,8 +267,22 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.failed'
     );
-    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      `label.failed. message.destination-does-not-send-until-fixed: ${NOT_SENDING_REASON}`
+
+    // react-aria holds the first tooltip of a session behind a warmup and opens later ones at once,
+    // so hovering twice opens it either way.
+    const user = userEvent.setup({ advanceTimers: jest.advanceTimersByTime });
+    const settle = () =>
+      act(async () => {
+        jest.advanceTimersByTime(1000);
+      });
+    await user.hover(screen.getByTestId('alert-status'));
+    await settle();
+    await user.unhover(screen.getByTestId('alert-status'));
+    await user.hover(screen.getByTestId('alert-status'));
+    await settle();
+
+    expect(screen.getByRole('tooltip')).toHaveTextContent(
+      `message.destination-does-not-send-until-fixed${NOT_SENDING_REASON}`
     );
   });
 

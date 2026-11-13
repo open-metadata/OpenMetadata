@@ -11,11 +11,7 @@
  *  limitations under the License.
  */
 
-/** A section of the reasons an alert's destinations do not send, under its heading. */
-export interface AlertStatusReasonSection {
-  title: string;
-  reasons: string[];
-}
+import { AlertStatusReasonSection } from './AlertStatusBadge.types';
 
 /**
  * The reasons under the tooltip's title, one line each: the first section's reasons, then each

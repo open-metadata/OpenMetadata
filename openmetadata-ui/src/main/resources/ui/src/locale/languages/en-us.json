@@ -6997,7 +6997,6 @@
     "vote-recorded-waiting-for-other-approvers": "Your vote is recorded. Waiting for the other approvers.",
     "waiting-for-approval-request": "Waiting for its approval request to open.",
     "waiting-on-deciders": "Waiting on {{names}} — only assigned reviewers can approve.",
-    "webhook-does-not-send-until-fixed": "This webhook does not send until this is fixed",
     "webhook-listing-message": "The webhook allows external services to be notified of the metadata change events happening in your organization through APIs. Register callback URLs with webhook integration to receive metadata event notifications. You can add, list, update, and delete webhooks.",
     "webhook-type-listing-message": "Provide timely updates to the producers and consumers of metadata via {{webhookType}} notifications. Use {{webhookType}} webhooks to send notifications regarding the metadata change events in your organization through APIs. You can add, list, update, and delete these webhooks.",
     "welcome-screen-message": "Discover, understand and collaborate on all your data in one place.",

@@ -17,13 +17,13 @@ import { isUndefined, omitBy } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ALERT_STATUS_FIELDS } from '../../../constants/Alerts.constants';
 import { ROUTES } from '../../../constants/constants';
 import {
   GlobalSettingOptions,
   GlobalSettingsMenuCategory,
 } from '../../../constants/GlobalSettings.constants';
 import { AlertDetailTabs } from '../../../enums/Alerts.enum';
+import { TabSpecificField } from '../../../enums/entity.enum';
 import { EventsRecord } from '../../../generated/events/api/eventsRecord';
 import {
   EntityReference,
@@ -124,7 +124,7 @@ export function useAlertDetailsData({
       setAlertDetailsError(undefined);
       // statusDetails says, per destination, whether it sends and why not.
       const observabilityAlert = await getObservabilityAlertByFQN(fqn, {
-        fields: `owners,${ALERT_STATUS_FIELDS}`,
+        fields: `${TabSpecificField.OWNERS},${TabSpecificField.STATUS_DETAILS}`,
       });
 
       setAlertDetails(observabilityAlert);

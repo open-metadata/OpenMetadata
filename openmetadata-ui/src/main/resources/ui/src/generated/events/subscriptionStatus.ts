@@ -16,10 +16,9 @@
  */
 export interface SubscriptionStatus {
     /**
-     * Read only, computed when the status is read and never stored. True when the stored
-     * configuration cannot be used to send, such as a secret that must be entered again;
-     * `lastFailedReason` names it, and nothing is sent until it is changed. Absent for a
-     * failure of a send.
+     * Read only, set by the server. True when the stored configuration cannot be used to send,
+     * such as a secret that must be entered again; `lastFailedReason` names it, and nothing is
+     * sent until it is changed. Absent for a failure of a send.
      */
     configurationUnusable?: boolean;
     /**

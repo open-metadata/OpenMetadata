@@ -16,7 +16,9 @@ package org.openmetadata.service.alerting.audience;
 import java.net.URI;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.function.Function;
+import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
@@ -37,7 +39,14 @@ import org.openmetadata.service.util.URLValidator;
 @Getter
 @ToString
 public final class WebhookRecipient extends Recipient {
+  /** Null only for a saved webhook that cannot be used, which is never sent to. */
   private final Webhook webhook;
+
+  @Getter(AccessLevel.NONE)
+  private final Object owner;
+
+  @Getter(AccessLevel.NONE)
+  private final String whyUnusable;
 
   private record Identity(URI endpoint, Map<String, String> queryParams) {}
 
@@ -46,20 +55,43 @@ public final class WebhookRecipient extends Recipient {
   }
 
   public WebhookRecipient(Webhook webhook, String name) {
+    this(name, Objects.requireNonNull(webhook, "webhook cannot be null"), null, null);
+  }
+
+  private WebhookRecipient(String name, Webhook webhook, Object owner, String whyUnusable) {
     super(name);
-    this.webhook = Objects.requireNonNull(webhook, "webhook cannot be null");
+    this.webhook = webhook;
+    this.owner = owner;
+    this.whyUnusable = whyUnusable;
+  }
+
+  /**
+   * The webhook a user or a team saved, whose stored value cannot be used to send. It stays a
+   * recipient, so the send to it fails with the reason and the alert reports it; nothing is sent.
+   */
+  public static WebhookRecipient unusable(String name, Object owner, String reason) {
+    return new WebhookRecipient(name, null, Objects.requireNonNull(owner), reason);
   }
 
   /**
    * The endpoint as written, with the query parameters its configuration adds, which some
    * endpoints route by. Nothing else is normalised, so no two endpoints that get separate
-   * messages today become one.
+   * messages today become one. A webhook that cannot be used is its owner's.
    */
   @Override
   public Object identity() {
+    return webhook == null ? owner : endpointOf(webhook);
+  }
+
+  private static Identity endpointOf(Webhook webhook) {
     Map<String, String> queryParams =
         CommonUtil.nullOrEmpty(webhook.getQueryParams()) ? Map.of() : webhook.getQueryParams();
     return new Identity(webhook.getEndpoint(), Map.copyOf(queryParams));
+  }
+
+  @Override
+  public Optional<String> unusableBecause() {
+    return Optional.ofNullable(whyUnusable);
   }
 
   /**

@@ -65,10 +65,23 @@ public final class WebhookAddresses implements AddressDirectory {
         team.getProfile());
   }
 
-  // A profile webhook whose secrets do not open is left out, as one without an address.
+  // A profile webhook whose secrets do not open is never sent to. It stays a recipient that
+  // cannot be used, so the alert that targets its user or team reports it.
   private Recipient ofProfile(String name, ProfileWebhookSecrets.Holder holder, Profile profile) {
-    return WebhookRecipient.ofProfile(
-        name, ProfileWebhookSecrets.decrypted(holder, profile), onProfile);
+    Profile opened = ProfileWebhookSecrets.decrypted(holder, profile);
+    boolean leftOut = webhookOf(profile) != null && webhookOf(opened) == null;
+    return leftOut
+        ? WebhookRecipient.unusable(name, holder, unusableOn(holder.entityType()))
+        : WebhookRecipient.ofProfile(name, opened, onProfile);
+  }
+
+  private Webhook webhookOf(Profile profile) {
+    boolean hasSubscriptions = profile != null && profile.getSubscription() != null;
+    return hasSubscriptions ? onProfile.apply(profile.getSubscription()) : null;
+  }
+
+  private static String unusableOn(String entityType) {
+    return "the saved webhook value cannot be used; enter it again on the " + entityType;
   }
 
   @Override

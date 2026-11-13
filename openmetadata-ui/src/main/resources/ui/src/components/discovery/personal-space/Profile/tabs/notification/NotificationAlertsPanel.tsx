@@ -35,11 +35,13 @@ import React, {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ALERT_STATUS_FIELDS } from '../../../../../../constants/Alerts.constants';
 import { LIST_PAGE_SIZE_OPTIONS } from '../../../../../../constants/constants';
 import { usePermissionProvider } from '../../../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../../../context/PermissionProvider/PermissionProvider.interface';
-import { EntityType } from '../../../../../../enums/entity.enum';
+import {
+  EntityType,
+  TabSpecificField,
+} from '../../../../../../enums/entity.enum';
 import {
   AlertType,
   EventSubscription,
@@ -175,12 +177,12 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           limit: pageSize,
           after: pagingParam?.after,
           before: pagingParam?.before,
-          fields: ALERT_STATUS_FIELDS,
+          fields: TabSpecificField.STATUS_DETAILS,
         }),
         ...(isFirstPage
           ? [
               getAlertsFromName('ActivityFeedAlert', {
-                fields: ALERT_STATUS_FIELDS,
+                fields: TabSpecificField.STATUS_DETAILS,
               }),
             ]
           : []),
@@ -248,7 +250,7 @@ const NotificationAlertsPanel: React.FC<NotificationAlertsPanelProps> = ({
           alertType: AlertType.Notification,
           limit: pageSize,
           after: usedCursor,
-          fields: ALERT_STATUS_FIELDS,
+          fields: TabSpecificField.STATUS_DETAILS,
         });
 
         if (requestId !== fetchRequestIdRef.current) {

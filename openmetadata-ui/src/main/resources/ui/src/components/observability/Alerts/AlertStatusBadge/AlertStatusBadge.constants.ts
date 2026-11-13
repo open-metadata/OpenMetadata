@@ -12,13 +12,15 @@
  */
 
 import { Status } from '../../../../generated/events/eventSubscription';
-import { AlertListStatus } from '../../../../utils/observability/alertStatus.utils';
+import { AlertListStatus } from '../../../../utils/observability/alerts/alertStatus.utils';
+import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
 
+// Disabled reads as stopped, as other switched-off items do.
 export const ALERT_STATUS_BADGE: Record<
   AlertListStatus,
-  { color: 'error' | 'gray' | 'success'; labelKey: string }
+  { status: StatusType; labelKey: string }
 > = {
-  [Status.Active]: { color: 'success', labelKey: 'label.active' },
-  [Status.Disabled]: { color: 'gray', labelKey: 'label.disabled' },
-  [Status.Failed]: { color: 'error', labelKey: 'label.failed' },
+  [Status.Active]: { status: StatusType.Success, labelKey: 'label.active' },
+  [Status.Disabled]: { status: StatusType.Stopped, labelKey: 'label.disabled' },
+  [Status.Failed]: { status: StatusType.Failure, labelKey: 'label.failed' },
 };

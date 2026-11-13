@@ -11,16 +11,8 @@
  *  limitations under the License.
  */
 
-import { DestinationProblem } from '../../../../utils/observability/alertStatus.utils';
-
-// A configuration to change stops the destination; a failed send may recover on its own.
-export const DESTINATION_PROBLEM_ALERT: Record<
-  DestinationProblem['kind'],
-  { titleKey: string; variant: 'error' | 'warning' }
-> = {
-  unusable: {
-    titleKey: 'message.destination-does-not-send-until-fixed',
-    variant: 'error',
-  },
-  sendFailed: { titleKey: 'label.failure-reason', variant: 'warning' },
-};
+/** A section of the reasons an alert's destinations do not send, under its heading. */
+export interface AlertStatusReasonSection {
+  title: string;
+  reasons: string[];
+}

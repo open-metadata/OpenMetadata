@@ -36,12 +36,14 @@ import {
   getSubscriptionTypeOptions,
   normalizeDestinationConfig,
 } from '../../../../utils/Alerts/AlertsUtilPure';
-import { getDestinationProblem } from '../../../../utils/observability/alertStatus.utils';
+import {
+  getDestinationProblem,
+  getDestinationProblemAlertProps,
+} from '../../../../utils/observability/alerts/alertStatus.utils';
 import {
   checkIfDestinationIsInternal,
   getConfigFieldFromDestinationType,
 } from '../../../../utils/ObservabilityUtils';
-import DestinationProblemAlert from '../../../observability/Alerts/DestinationProblemAlert/DestinationProblemAlert';
 import DestinationConfigField from './DestinationConfigField/DestinationConfigField';
 import { DestinationSelectItemProps } from './DestinationSelectItem.interface';
 import { buildGroupedOptions } from './DestinationSelectItem.utils';
@@ -455,10 +457,11 @@ function DestinationSelectItem({
 
           {destinationProblem && (
             <Grid.Item span={24}>
-              <DestinationProblemAlert
+              <Alert
                 data-testid={`destination-not-sending-${id}`}
-                problem={destinationProblem}
-              />
+                {...getDestinationProblemAlertProps(destinationProblem, t)}>
+                {destinationProblem.reason}
+              </Alert>
             </Grid.Item>
           )}
         </Grid>
