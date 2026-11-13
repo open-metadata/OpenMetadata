@@ -38,7 +38,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.function.BiPredicate;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
@@ -136,17 +135,16 @@ final class StoredWebhookSecrets {
 
   /**
    * Binds, in place, the destinations of a stored alert and masks its change descriptions. Legacy
-   * ciphertext is carried over only at the fields releases before 2.1 encrypted, and only when
-   * {@code storedElsewhere} does not hold it; any other value stays as stored, opens for no
-   * destination, and is entered again before the destination sends. Returns whether it changed.
+   * ciphertext is carried over at the fields releases before 2.1 encrypted, wherever else the same
+   * value is stored: each copy is bound to the destination that holds it. Any other value stays as
+   * stored, opens for no destination, and is entered again before the destination sends. Returns
+   * whether it changed.
    */
-  boolean bindAlert(JsonNode alert, Predicate<String> storedElsewhere) {
+  boolean bindAlert(JsonNode alert) {
     JsonNode before = alert.deepCopy();
-    BiPredicate<JsonPointer, String> carriedOver =
-        (field, value) -> ENCRYPTED_BEFORE_2_1.contains(field) && !storedElsewhere.test(value);
     for (JsonNode destination : alert.path(DESTINATIONS)) {
       if (destination instanceof ObjectNode stored) {
-        bindDestination(alert.path("name").asText(), stored, carriedOver);
+        bindDestination(alert.path("name").asText(), stored);
       }
     }
     CHANGE_DESCRIPTIONS.forEach(name -> maskRecordedDestinations(alert.path(name)));
@@ -164,7 +162,7 @@ final class StoredWebhookSecrets {
     for (Map.Entry<String, JsonNode> webhook : entity.at(SUBSCRIPTIONS).properties()) {
       String owner = profileOwner(entityType, id, webhook.getKey());
       String label = "The " + webhook.getKey() + " webhook of " + entityType + " " + id;
-      bind(owner, label, webhook.getValue(), fieldsIn(webhook.getValue()), (field, value) -> false);
+      bind(owner, label, webhook.getValue(), fieldsIn(webhook.getValue()), field -> false);
     }
     CHANGE_DESCRIPTIONS.forEach(name -> maskRecordedProfile(entity.path(name)));
     return !entity.equals(before);
@@ -210,15 +208,19 @@ final class StoredWebhookSecrets {
     return open(value.substring(BOUND_PREFIX.length()), derived);
   }
 
-  private void bindDestination(
-      String alertName, ObjectNode destination, BiPredicate<JsonPointer, String> carriedOver) {
+  private void bindDestination(String alertName, ObjectNode destination) {
     if (destination.path("id").asText().isEmpty()) {
       destination.put("id", UUID.randomUUID().toString());
     }
     String id = destination.path("id").asText();
     String owner = alertDestinationOwner(UUID.fromString(id));
     String label = "Destination " + id + " of alert " + alertName;
-    bind(owner, label, destination.path("config"), destinationFields(destination), carriedOver);
+    bind(
+        owner,
+        label,
+        destination.path("config"),
+        destinationFields(destination),
+        ENCRYPTED_BEFORE_2_1::contains);
   }
 
   private void bind(
@@ -226,7 +228,7 @@ final class StoredWebhookSecrets {
       String label,
       JsonNode config,
       List<JsonPointer> fields,
-      BiPredicate<JsonPointer, String> carriedOver) {
+      Predicate<JsonPointer> carriedOver) {
     List<JsonPointer> toEnterAgain = new ArrayList<>();
     for (JsonPointer field : fields) {
       String value = config.at(field).asText();
@@ -243,10 +245,10 @@ final class StoredWebhookSecrets {
 
   // Plaintext is bound as entered; legacy ciphertext only where it is carried over.
   private Optional<String> secretToBind(
-      JsonPointer field, String value, BiPredicate<JsonPointer, String> carriedOver) {
+      JsonPointer field, String value, Predicate<JsonPointer> carriedOver) {
     Optional<String> secret = Optional.empty();
     if (isLegacyCiphertext(value)) {
-      secret = carriedOver.test(field, value) ? decryptLegacy(value) : Optional.empty();
+      secret = carriedOver.test(field) ? decryptLegacy(value) : Optional.empty();
     } else if (!value.isEmpty() && !value.startsWith(BOUND_PREFIX)) {
       secret = Optional.of(value);
     }

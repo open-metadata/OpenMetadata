@@ -16,7 +16,6 @@ package org.openmetadata.service.migration.utils.v210;
 import com.fasterxml.jackson.databind.JsonNode;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -31,9 +30,9 @@ import org.openmetadata.service.jdbi3.locator.ConnectionType;
  * webhook that holds it, and in its versions, the change descriptions recorded with them and the
  * stored change events, the mask, since nothing sends from those. Plaintext is encrypted for its
  * webhook. Ciphertext is carried over where releases before 2.1 stored it encrypted, the bearer and
- * OAuth2 credentials of an alert destination, when it is stored nowhere else ({@link
- * StoredCiphertextCopies}); any other value stays as stored and is entered again before its
- * webhook sends. Values already in that form are kept, so running it again changes nothing. The
+ * OAuth2 credentials of an alert destination, each copy for the destination that holds it; any
+ * other value stays as stored and is entered again before its webhook sends. Values already in that
+ * form are kept, so running it again changes nothing. The
  * rules it applies are frozen in {@link StoredWebhookSecrets}; a row it cannot read stops the step
  * with an error that names the row.
  */
@@ -65,12 +64,7 @@ public final class WebhookSecretsMigration {
     if (isKeyDefined()) {
       Sql sql = new Sql(connectionType);
       StoredWebhookSecrets secrets = new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys());
-      Set<String> storedElsewhere = StoredCiphertextCopies.find(handle, connectionType);
-      rewriteById(
-          handle,
-          sql,
-          "event_subscription_entity",
-          row -> secrets.bindAlert(row, storedElsewhere::contains));
+      rewriteById(handle, sql, "event_subscription_entity", secrets::bindAlert);
       rewriteVersions(
           handle, sql, "event_subscription_entity", ALERT, StoredWebhookSecrets::maskAlert);
       rewriteChangeEvents(handle, sql, List.of(ALERT), StoredWebhookSecrets::maskAlert);
@@ -144,7 +138,7 @@ public final class WebhookSecretsMigration {
   }
 
   /** The next {@code size} ids of {@code table} after {@code after}, so no table is held whole. */
-  static List<String> idPage(Handle handle, String table, String after, int size) {
+  private static List<String> idPage(Handle handle, String table, String after, int size) {
     return handle
         .createQuery("SELECT id FROM " + table + " WHERE id > :after ORDER BY id LIMIT :size")
         .bind("after", after)
