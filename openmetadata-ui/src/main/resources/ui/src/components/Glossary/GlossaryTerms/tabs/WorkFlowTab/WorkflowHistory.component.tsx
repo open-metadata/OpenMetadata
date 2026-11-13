@@ -43,6 +43,10 @@ import {
 import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
+import {
+  APPROVAL_OUTCOME_LABELS,
+  getApprovalOutcome,
+} from '../../../../../utils/WorkflowApprovalOutcomeUtils';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
 import { useGenericContext } from '../../../../Customization/GenericProvider/GenericContext';
@@ -180,25 +184,40 @@ const WorkflowHistory = memo(
     }, []);
 
     const renderTimelineItem = useCallback(
-      (item: WorkflowInstanceState) => (
-        <div
-          className="timeline-container flex gap-2 w-full relative"
-          key={item.id}>
-          <div className="relative z-10">
-            {getStatusIcon(item.status || 'RUNNING')}
-          </div>
-          <div className="horizontal-line" />
-          <div className="d-flex flex-col w-full">
-            <div className="stage-name font-medium">
-              {item.stage?.displayName ?? item.stage?.name}
+      (item: WorkflowInstanceState) => {
+        const approvalOutcome = getApprovalOutcome(item);
+
+        return (
+          <div
+            className="timeline-container flex gap-2 w-full relative"
+            key={item.id}>
+            <div className="relative z-10">
+              {getStatusIcon(item.status || 'RUNNING')}
             </div>
-            <div className="stage-time">
-              {getShortRelativeTime(item.timestamp)}
+            <div className="horizontal-line" />
+            <div className="d-flex flex-col w-full">
+              <div className="stage-name font-medium">
+                {item.stage?.displayName ?? item.stage?.name}
+              </div>
+              {approvalOutcome && (
+                <Typography
+                  as="span"
+                  color="secondary"
+                  data-testid="workflow-history-approval-outcome"
+                  size="text-xs">
+                  {t(APPROVAL_OUTCOME_LABELS[approvalOutcome.kind], {
+                    user: approvalOutcome.decidedBy,
+                  })}
+                </Typography>
+              )}
+              <div className="stage-time">
+                {getShortRelativeTime(item.timestamp)}
+              </div>
             </div>
           </div>
-        </div>
-      ),
-      [getStatusIcon]
+        );
+      },
+      [getStatusIcon, t]
     );
 
     const workflowSteps = useMemo(
