@@ -377,11 +377,16 @@ const getStringValueRule = (
     : undefined;
 };
 
-// `like` rules are saved as `{ value: '*value*' }`.
+// `like` rules are saved as `{ value: '*value*' }` and nothing else; reading a prefix or
+// case-insensitive wildcard would rewrite it as a contains match on the next save.
 const readWildcardValue = (body: unknown) => {
-  const value = (body as { value?: unknown })?.value;
+  const { value, ...rest } = isObject(body)
+    ? (body as Record<string, unknown>)
+    : {};
 
-  return isString(value) ? stripWildcards(value) : undefined;
+  return isString(value) && isEmpty(rest) && /^\*.*\*$/.test(value)
+    ? stripWildcards(value)
+    : undefined;
 };
 
 // Regular expression rules are saved as `{ value, case_insensitive: true }` and nothing else;

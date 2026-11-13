@@ -507,6 +507,30 @@ describe('isQueryFilterFullyRepresentable', () => {
       { query: { bool: { filter: [{ wildcard: { name: '*orders*' } }] } } },
     ],
     [
+      'a prefix wildcard clause',
+      {
+        query: {
+          bool: { filter: [{ wildcard: { name: { value: 'orders*' } } }] },
+        },
+      },
+    ],
+    [
+      'a case-insensitive wildcard clause',
+      {
+        query: {
+          bool: {
+            filter: [
+              {
+                wildcard: {
+                  name: { value: '*Orders*', case_insensitive: true },
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
+    [
       'a match_phrase clause in query form',
       {
         query: {
