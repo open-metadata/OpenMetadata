@@ -98,9 +98,6 @@
   },
   "mappings": {
     "properties": {
-      "@timestamp": {
-        "type": "date"
-      },
       "fingerprint": {
         "type": "keyword"
       },

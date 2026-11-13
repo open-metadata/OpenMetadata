@@ -128,15 +128,6 @@ class TestCaseIndexTest {
   }
 
   @Test
-  void testDataInsightsTimestampUsesEntityUpdateTime() {
-    TestCase testCase = createTestCaseWithDefinition().withUpdatedAt(1234567890000L);
-
-    Map<String, Object> result = new TestCaseIndex(testCase).buildSearchIndexDoc();
-
-    assertEquals(testCase.getUpdatedAt(), result.get("@timestamp"));
-  }
-
-  @Test
   void testDataQualityDimensionDoesNotFallBackToTestDefinition() {
     // Every test case carries its own dimension relationship -- inherited ones are materialised at
     // create time, backfilled for pre-2.1.0 rows and repointed when a test definition is

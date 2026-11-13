@@ -21,6 +21,15 @@
       "glossaryTags",
       "entityStatus"
     ],
+    "testCase": [
+      "entityLink",
+      "entityFQN",
+      "originEntityFQN",
+      "testSuite",
+      "testSuites",
+      "testDefinition",
+      "service"
+    ],
     "table": [
       "tableType",
       "columns",

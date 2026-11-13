@@ -15,6 +15,9 @@
         }
       ],
       "properties": {
+        "originEntityId": { "type": "keyword" },
+        "testCaseCount": { "type": "long" },
+        "hasTestCases": { "type": "integer" },
         "diRunId": { "type": "keyword" },
         "diCapturedAt": { "type": "long" },
         "updatedAt": { "type": "long" },

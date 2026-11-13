@@ -33,7 +33,7 @@ import org.openmetadata.service.search.SearchRepository;
 
 /**
  * Locks down the Data Insights aliases (di-data-assets-*) that custom Data Insights charts read for
- * data quality. These aliases point at the live {@code testCase} / {@code testCaseResolutionStatus} /
+ * data quality. These aliases point at the live {@code testCaseResolutionStatus} /
  * {@code testCaseResult} search indices; if a chart cannot resolve them it silently undercounts
  * resolved incidents.
  *
@@ -52,9 +52,9 @@ public class DataInsightAliasReconciliationIT {
     SdkClients.adminClient();
   }
 
-  /** The live indices aliased under di-data-assets-*: test case definitions and incident history. */
+  /** The live indices aliased under di-data-assets-*: test results and incident history. */
   static Stream<String> dataInsightAliasedEntities() {
-    return Stream.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE);
+    return Stream.of(Entity.TEST_CASE_RESOLUTION_STATUS, Entity.TEST_CASE_RESULT);
   }
 
   @ParameterizedTest(name = "{0}")

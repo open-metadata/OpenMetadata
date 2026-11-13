@@ -1,6 +1,6 @@
 # Test case Insights use the last update timestamp on the live-index alias
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR:2026-11-13-test-case-coverage-uses-captured-daily-snapshots
 - **Revisions:** v1 2026-11-12 (initial)
 - **Deciders:** OpenMetadata maintainers
 - **Guard:** TestCaseIndexTest, DataInsightTestCaseCoverageIT, DataAssetTypeCoverageTest, DataAssetChartScopeTest
