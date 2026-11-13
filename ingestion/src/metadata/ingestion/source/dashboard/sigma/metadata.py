@@ -338,13 +338,16 @@ class SigmaSource(DashboardServiceSource):
         with no prefix configured, resolves to none. A reference is resolved once per run, as every
         prefix's call needs the same answer.
         """
+        resolved = self._resolved_table(database, schema, table)
+        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+
+    def _resolved_table(self, database: str | None, schema: str | None, table: str | None) -> tuple[Table, str] | None:
         if not (schema and table):
             return None
         key = (database, schema, table)
         if key not in self._resolved_tables:
             self._resolved_tables[key] = self._resolve_table(database, schema, table)
-        resolved = self._resolved_tables[key]
-        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+        return self._resolved_tables[key]
 
     def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str] | None:
         """The one table the reference names across the dbServicePrefixes, with the prefix it was found under"""
@@ -382,19 +385,26 @@ class SigmaSource(DashboardServiceSource):
         db_service_prefix: str | None = None,
     ) -> Table | None:
         """
-        Get the table entity for lineage
+        The table a /files node names, read from its display path. When that finds no single table, the table's
+        connection path is read as [database, schema, table]
+        (ADR:2026-11-12-sigma-connection-path-is-read-only-when-the-display-path-finds-no-table).
         """
-        if not node.node_schema:
-            return None
-        schema_parts = node.node_schema.split(".")
         try:
-            return self._get_table_entity(
-                schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name, db_service_prefix
-            )
+            resolved = None
+            if node.node_schema:
+                schema_parts = node.node_schema.split(".")
+                resolved = self._resolved_table(
+                    schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name
+                )
+            if not resolved and node.node_type == "table" and self.get_db_service_prefixes():
+                path = self.client.get_connection_path(node.id)
+                if path and len(path) == 3 and path[2] == node.name:
+                    resolved = self._resolved_table(*path)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Error occured while finding table fqn: %s", exc)
-        return None
+            return None
+        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
 
     def _yield_lineage_from_files(
         self,

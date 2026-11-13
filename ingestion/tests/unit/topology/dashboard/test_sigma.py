@@ -1165,6 +1165,34 @@ def test_a_dataset_keyed_in_dependencies_is_read(sigma_over_http, routes):
     assert [node.name for node in source.client.get_lineage_details("wb-1", "el-wb-1")[0]] == ["PETS"]
 
 
+@pytest.mark.parametrize(
+    "files_path, connection_path, linked, path_reads",
+    [
+        # The display path finds the table, so the connection path is not read
+        ("Connection Root/SALES.PUBLIC", 500, ["wh_a.SALES.PUBLIC.ORDERS"], 0),
+        # It drops the database and ORDERS is in two: the connection path names the one
+        ("Connection Root/ANALYTICS/PUBLIC", ["SALES", "PUBLIC", "ORDERS"], ["wh_a.SALES.PUBLIC.ORDERS"], 1),
+        # Another shape, another table or a failed read is not taken as [database, schema, table]
+        ("Connection Root/ANALYTICS/PUBLIC", ["PUBLIC", "ORDERS"], [], 1),
+        ("Connection Root/ANALYTICS/PUBLIC", ["SALES", "PUBLIC", "CUSTOMERS"], [], 1),
+        ("Connection Root/ANALYTICS/PUBLIC", 500, [], 1),
+    ],
+    ids=["display-path", "connection-path", "two-parts", "other-table", "failed-read"],
+)
+def test_the_connection_path_is_read_only_when_the_display_path_finds_no_table(
+    sigma_over_http, routes, files_path, connection_path, linked, path_reads
+):
+    source, calls = sigma_over_http
+    routes["GET", "/v2/files/T1"]["path"] = files_path
+    routes["GET", "/v2/connections/paths/T1"] = (
+        {"connectionId": "conn-1", "path": connection_path} if isinstance(connection_path, list) else connection_path
+    )
+    catalog = [warehouse_table("wh_a", "ORDERS"), warehouse_table("wh_a", "ORDERS", database="SALES")]
+
+    assert lineage_sources(source, routes, ["wh_a"], catalog, None) == linked
+    assert calls["GET", "/v2/connections/paths/T1"] == path_reads
+
+
 def sigma_connection(connection_id: str, connection_type: str) -> dict:
     return {
         "organizationId": "org-1",

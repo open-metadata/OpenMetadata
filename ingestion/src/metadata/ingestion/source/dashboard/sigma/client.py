@@ -26,6 +26,7 @@ from metadata.ingestion.ometa.client import ClientConfig
 from metadata.ingestion.source.dashboard.sigma.models import (
     AuthToken,
     Connection,
+    ConnectionPath,
     DataModel,
     DataModelsResponse,
     EdgeSource,
@@ -94,6 +95,7 @@ class SigmaApiClient:
         self._owner_cache: LRUCache[str, OwnerDetails] = LRUCache(maxsize=512)
         self._file_cache: LRUCache[str, NodeDetails] = LRUCache(maxsize=512)
         self._connection_types: LRUCache[str, str | None] = LRUCache(maxsize=512)
+        self._connection_paths: LRUCache[str, list[str] | None] = LRUCache(maxsize=512)
 
     def get_auth_token(self) -> tuple[str, int]:
         """
@@ -170,6 +172,22 @@ class SigmaApiClient:
                 logger.warning("Failed to read Sigma connection %s: %s", connection_id, exc)
                 self._connection_types[connection_id] = None
         return self._connection_types[connection_id]
+
+    def get_connection_path(self, inode_id: str) -> list[str] | None:
+        """
+        A warehouse table's path in its Sigma connection, read once per table. A failed read is cached as unknown:
+        Sigma answers an error for an inode that is not a table.
+        """
+        if inode_id not in self._connection_paths:
+            try:
+                self._connection_paths[inode_id] = ConnectionPath.model_validate(
+                    self.client.get(f"/connections/paths/{inode_id}")
+                ).path
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning("Failed to read the Sigma connection path of %s: %s", inode_id, exc)
+                self._connection_paths[inode_id] = None
+        return self._connection_paths[inode_id]
 
     def get_workbook_lineage(self, workbook_id: str) -> list[WorkbookLineageEntry]:
         """

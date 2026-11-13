@@ -157,6 +157,11 @@ class Connection(BaseModel):
     type: str
 
 
+class ConnectionPath(BaseModel):
+    connectionId: str  # noqa: N815
+    path: list[str]
+
+
 class WorkbookLineageEntry(BaseModel):
     type: str | None = None
     connectionId: str | None = None  # noqa: N815

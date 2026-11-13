@@ -68,4 +68,4 @@ When **Include Custom Properties** is on, each workbook's dashboard gets a `late
 
 The Sigma connector extracts lineage by parsing SQL queries from workbooks to identify source tables. If SQL queries are unavailable, it falls back to Sigma's lineage API to retrieve metadata-based lineage information.
 
-Source tables are looked up only in the database services listed in **Database Service Prefixes**, so set it to get lineage. A table is linked only when exactly one table matches across those services; a table that matches several is left without lineage.
+Source tables are looked up only in the database services listed in **Database Service Prefixes**, so set it to get lineage. A table is linked only when exactly one table matches across those services; a table that matches several is left without lineage. When a table's Sigma path finds no single table, the connector also asks Sigma for the table's connection path (database, schema and table) and tries that.
