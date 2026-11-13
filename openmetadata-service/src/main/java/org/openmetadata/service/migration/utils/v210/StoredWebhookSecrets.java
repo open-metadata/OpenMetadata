@@ -172,17 +172,36 @@ final class StoredWebhookSecrets {
     return !entity.equals(before);
   }
 
-  /** Counts in {@code carried} the credentials of a stored alert the step would carry over. */
+  /**
+   * Counts in {@code carried} the credentials of a stored alert the step carries over: one releases
+   * before 2.1 stored, opened or not, and one a run of the step that did not finish already carried
+   * over, which opens for its destination.
+   */
   void countCarriedCredentials(JsonNode alert, CarriedCredentials carried) {
     String label = "'" + alert.path("name").asText() + "' (" + alert.path("id").asText() + ")";
     for (JsonNode destination : alert.path(DESTINATIONS)) {
-      JsonNode config = destination.path("config");
       destinationFields(destination).stream()
           .filter(ENCRYPTED_BEFORE_2_1::contains)
-          .map(field -> config.at(field).asText())
-          .filter(StoredWebhookSecrets::isLegacyCiphertext)
-          .forEach(value -> carried.count(label, decryptLegacy(value).isPresent()));
+          .forEach(field -> count(carried, label, destination, field));
     }
+  }
+
+  private void count(
+      CarriedCredentials carried, String label, JsonNode destination, JsonPointer field) {
+    String value = destination.path("config").at(field).asText();
+    if (isLegacyCiphertext(value)) {
+      carried.count(label, decryptLegacy(value).isPresent());
+    } else if (value.startsWith(BOUND_PREFIX) && opensFor(destination, field, value)) {
+      carried.count(label, true);
+    }
+  }
+
+  // A destination without an id holds nothing bound yet.
+  private boolean opensFor(JsonNode destination, JsonPointer field, String value) {
+    String id = destination.path("id").asText();
+    return !id.isEmpty()
+        && openBound(alertDestinationOwner(UUID.fromString(id)), field.toString(), value)
+            .isPresent();
   }
 
   /** Masks, in place, an alert version: its destinations and its change descriptions. */

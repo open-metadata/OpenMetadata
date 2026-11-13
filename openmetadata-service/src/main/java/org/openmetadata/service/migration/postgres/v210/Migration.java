@@ -38,6 +38,8 @@ import static org.openmetadata.service.migration.utils.v210.OntologyMigration.mi
 import static org.openmetadata.service.migration.utils.v210.SearchAggregationFieldRepair.repairFieldNamesAggregations;
 import static org.openmetadata.service.migration.utils.v210.SearchTermBoostRepair.repairTermBoostSettings;
 
+import org.jdbi.v3.core.Handle;
+import org.openmetadata.service.jdbi3.MigrationDAO;
 import org.openmetadata.service.migration.api.MigrationProcessImpl;
 import org.openmetadata.service.migration.utils.MigrationFile;
 import org.openmetadata.service.migration.utils.v208.DataProductDomainContainmentRepair;
@@ -67,13 +69,18 @@ public class Migration extends MigrationProcessImpl {
     super(migrationFile);
   }
 
+  // Runs before any pending version is migrated, earlier ones included: stops the upgrade, --force
+  // included, when the configured Fernet keys open none of the webhook credentials earlier
+  // releases stored, before any step writes with those keys.
+  @Override
+  public void preflight(Handle handle) {
+    WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+        handle.attach(MigrationDAO.class), getVersion(), handle, POSTGRES);
+  }
+
   @Override
   public void runDataMigration() {
-    // Before every step that writes with the configured Fernet keys: stops the upgrade, --force
-    // included, when they open none of the webhook credentials earlier releases stored.
-    WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
-        migrationDAO, getVersion(), handle, POSTGRES);
-    // First of the steps that write, so no later step loads an entity still typed DeltaLake:
+    // First, so no later step loads an entity still typed DeltaLake:
     // ADR:2026-10-13-a-removed-connector-is-retired-in-the-first-data-migration-step
     retireDeltaLakeServices(handle, POSTGRES, getPipelineServiceClient());
     ODCSCustomPropertiesMigration.migrate(handle, POSTGRES);

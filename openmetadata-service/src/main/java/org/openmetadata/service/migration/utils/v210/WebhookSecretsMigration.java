@@ -68,18 +68,22 @@ public final class WebhookSecretsMigration {
   }
 
   /**
-   * Stops the upgrade, before any 2.1.0 step writes with the configured Fernet keys, when webhook
-   * credentials releases before 2.1 stored encrypted exist and none of them opens with those keys
-   * ({@link StoredWebhookSecrets.CarriedCredentials}). It only reads, it runs first in the 2.1.0
-   * data migration, and {@code migrate --force} does not skip it. It is not run again once the
-   * alert step is recorded, since that step has then carried over what opened. The environment
-   * variable {@value #KEEP_UNOPENED_ENV} set to {@code true} lets the upgrade go on, leaving those
-   * values as stored. ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
+   * Stops the upgrade when webhook credentials releases before 2.1 stored encrypted exist and none
+   * of them opens with the configured Fernet keys ({@link StoredWebhookSecrets.CarriedCredentials}).
+   * It only reads, and the 2.1.0 migration runs it as its preflight, before any pending version is
+   * migrated, so no step of this or an earlier version writes with those keys first; {@code migrate
+   * --force} does not skip it. It is not run on a database without alerts yet, nor once the alert
+   * step is recorded, since that step has then carried over what opened. The environment variable
+   * {@value #KEEP_UNOPENED_ENV} set to {@code true} lets the upgrade go on, leaving those values as
+   * stored. ADR:2026-11-03-a-webhook-secret-opens-only-where-it-was-written
    */
   public static void requireKeysThatOpenStoredCredentials(
       MigrationDAO migrationDAO, String version, Handle handle, ConnectionType connectionType) {
-    boolean carriedOver = DataMigrationStep.isRecorded(migrationDAO, version, ALERT_STEP_NAME);
-    if (!carriedOver && isKeyDefined()) {
+    // A new database has no alert table until its first versions are migrated.
+    boolean hasAlerts = new Sql(connectionType).hasTable(handle, ALERT_TABLE);
+    boolean carriedOver =
+        hasAlerts && DataMigrationStep.isRecorded(migrationDAO, version, ALERT_STEP_NAME);
+    if (hasAlerts && !carriedOver && isKeyDefined()) {
       requireKeysThatOpenStoredCredentials(
           handle, connectionType, Boolean.parseBoolean(System.getenv(KEEP_UNOPENED_ENV)));
     }
@@ -97,7 +101,7 @@ public final class WebhookSecretsMigration {
             rows.forEach(
                 row ->
                     secrets.countCarriedCredentials(
-                        JsonUtils.readTree(String.valueOf(row.get("json"))), carried)));
+                        readRow(row, ALERT_TABLE + " row " + row.get("id")), carried)));
     carried.requireAnyOpened(keepUnopened);
   }
 
@@ -238,6 +242,15 @@ public final class WebhookSecretsMigration {
     LOG.info("Masked the webhook secrets of {} change events of {}", rewritten, entityTypes);
   }
 
+  private static JsonNode readRow(Map<String, Object> row, String rowName) {
+    try {
+      return JsonUtils.readTree(String.valueOf(row.get("json")));
+    } catch (RuntimeException e) {
+      throw new IllegalStateException(
+          "The webhook secrets of " + rowName + " could not be read to check the Fernet keys", e);
+    }
+  }
+
   /**
    * The row's JSON once transformed, or null when it stays as stored. A row that cannot be read or
    * rewritten stops the step, naming the row, rather than being left as it is.
@@ -273,6 +286,19 @@ public final class WebhookSecretsMigration {
 
     private String jsonValue() {
       return isMySql() ? ":json" : ":json::jsonb";
+    }
+
+    boolean hasTable(Handle handle, String table) {
+      String schema = isMySql() ? "DATABASE()" : "current_schema()";
+      return handle
+              .createQuery(
+                  "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = "
+                      + schema
+                      + " AND table_name = :table")
+              .bind("table", table)
+              .mapTo(Integer.class)
+              .one()
+          > 0;
     }
 
     String selectById(String table) {

@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.endsWith;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.RETURNS_SELF;
 import static org.mockito.Mockito.atLeastOnce;
@@ -46,6 +47,7 @@ class WebhookSecretsMigrationTest {
   private final MigrationDAO migrationDAO = mock(MigrationDAO.class);
   private final PreparedBatch batch = mock(PreparedBatch.class, RETURNS_SELF);
   private final List<Map<String, Object>> alertRows = new ArrayList<>();
+  private boolean hasAlertTable = true;
 
   @BeforeEach
   @SuppressWarnings("unchecked")
@@ -54,7 +56,10 @@ class WebhookSecretsMigrationTest {
     Query query = mock(Query.class, RETURNS_SELF);
     ResultIterable<Map<String, Object>> rows = mock(ResultIterable.class);
     ResultIterable<String> ids = mock(ResultIterable.class);
+    ResultIterable<Integer> tables = mock(ResultIterable.class);
     when(handle.createQuery(anyString())).thenReturn(query);
+    when(query.mapTo(Integer.class)).thenReturn(tables);
+    when(tables.one()).thenAnswer(invocation -> hasAlertTable ? 1 : 0);
     when(query.mapToMap()).thenReturn(rows);
     when(rows.list()).thenReturn(alertRows, List.of());
     when(query.mapTo(String.class)).thenReturn(ids);
@@ -123,12 +128,52 @@ class WebhookSecretsMigrationTest {
   @Test
   void isNotRunAgainOnceTheAlertStepIsRecorded() {
     alertRows.add(alertRow(UUID.randomUUID(), "left", writtenWithThePreviousKey("a key")));
-    when(migrationDAO.getSqlQuery(eq(VERSION), anyString())).thenReturn("-- recorded");
+    when(migrationDAO.getSqlQuery(
+            eq(VERSION), endsWith(":" + WebhookSecretsMigration.ALERT_STEP_NAME)))
+        .thenReturn("-- recorded");
 
     assertDoesNotThrow(
         () ->
             WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
                 migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  @Test
+  void isNotRunOnADatabaseWithoutAlertsYet() {
+    hasAlertTable = false;
+    alertRows.add(alertRow(UUID.randomUUID(), "unread", writtenWithThePreviousKey("a key")));
+
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  // A run of the alert step that did not finish bound some credentials; they opened.
+  @Test
+  void countsACredentialAnUnfinishedStepAlreadyCarriedOverAsOpened() {
+    alertRows.add(alertRow(UUID.randomUUID(), "unread", writtenWithThePreviousKey("a key")));
+    alertRows.add(
+        carriedOver(alertRow(UUID.randomUUID(), "bound", Fernet.getInstance().encrypt("a key"))));
+
+    assertDoesNotThrow(
+        () ->
+            WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+  }
+
+  @Test
+  void namesARowItCannotRead() {
+    alertRows.add(Map.of("id", "an-unreadable-row", "json", "{not json"));
+
+    IllegalStateException stopped =
+        assertThrows(
+            IllegalStateException.class,
+            () ->
+                WebhookSecretsMigration.requireKeysThatOpenStoredCredentials(
+                    migrationDAO, VERSION, handle, ConnectionType.POSTGRES));
+
+    assertTrue(stopped.getMessage().contains("an-unreadable-row"), stopped.getMessage());
   }
 
   @Test
@@ -156,6 +201,13 @@ class WebhookSecretsMigrationTest {
     String ciphertext = Fernet.getInstance().encrypt(secret);
     Fernet.getInstance().setFernetKey(KEY);
     return ciphertext;
+  }
+
+  // The row as the alert step leaves it once it has carried over its credential.
+  private static Map<String, Object> carriedOver(Map<String, Object> row) {
+    JsonNode alert = JsonUtils.readTree(String.valueOf(row.get("json")));
+    new StoredWebhookSecrets(Fernet.getInstance().getCachedKeys()).bindAlert(alert);
+    return Map.of("id", row.get("id"), "json", alert.toString());
   }
 
   private static Map<String, Object> alertRow(UUID id, String name, String signingKey) {
