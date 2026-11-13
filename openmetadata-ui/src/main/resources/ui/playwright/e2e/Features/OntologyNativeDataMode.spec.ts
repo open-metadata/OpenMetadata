@@ -229,12 +229,25 @@ const openData = async (
   ontology: Ontology,
   concept?: OntologyConcept
 ) => {
-  await page.goto(
-    `/governance/ontology?ontology=${ontology.id}${
-      concept ? `&concept=${concept.id}` : ''
-    }`
-  );
+  // A concept in the URL opens its drawer over the Model/Data switch, so Data is opened first and
+  // the concept is picked there, as a person reaches it.
+  await page.goto(`/governance/ontology?ontology=${ontology.id}`);
   await page.getByTestId('ontology-graph-mode-data').click();
+  if (concept) {
+    await pickConcept(page, concept);
+  }
+};
+
+const pickConcept = async (page: Page, concept: OntologyConcept) => {
+  await page.getByTestId('ontology-data-concept-picker-trigger').click();
+  await page.getByTestId(`ontology-data-concept-option-${concept.id}`).click();
+  await expect(page.getByTestId('ontology-data-concept-chip')).toContainText(
+    concept.name
+  );
+  // Picking opens the concept's drawer over the right of the canvas; Data keeps the pick once it closes.
+  const inspector = page.getByTestId('ontology-concept-inspector');
+  await inspector.getByTestId('ontology-concept-close').click();
+  await expect(inspector).toHaveCount(0);
 };
 
 const assetRow = (page: Page, table: TableClass) =>

@@ -116,9 +116,10 @@ const pasteMappingIri = async (page: Page, iri: string) => {
 const pickMappingByLabel = async (page: Page, label: string, iri: string) => {
   const row = await newMappingRow(page);
   const input = row.getByTestId('new-class-mapping-iri').getByRole('combobox');
+  // The option middle-truncates a long IRI and keeps its unique tail.
   const option = page
     .getByRole('option', { name: new RegExp(`^${label}`) })
-    .filter({ hasText: iri });
+    .filter({ hasText: iri.slice(-16) });
   await input.click();
   await input.pressSequentially(label.slice(0, -1));
   await expect(option).toBeVisible();
@@ -774,12 +775,16 @@ for (const mode of ['classic', 'ai'] as const) {
             'Unsaved class'
           );
 
+          // The press outside the drawer asks first; Discard only closes the drawer.
           await clickGraphNode(page, second.id);
           await closeDraftPrompt(page, 'Discard');
 
           await expect(
             page.getByTestId('ontology-new-class-panel')
           ).toHaveCount(0);
+
+          await clickGraphNode(page, second.id);
+
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText('Second');
