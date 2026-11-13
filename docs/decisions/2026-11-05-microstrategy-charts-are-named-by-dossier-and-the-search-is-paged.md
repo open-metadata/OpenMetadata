@@ -1,7 +1,7 @@
 # MicroStrategy charts are named by dossier, and the dossier search is paged and project-scoped
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path) · v3 2026-11-12 (charts renamed by a server migration)
+- **Revisions:** v1 2026-11-05 (initial) · v2 2026-11-12 (configurable Library path) · v3 2026-11-12 (charts renamed by a server migration) · v4 2026-11-13 (2.0 backport renames charts in 2.0.9)
 - **Deciders:** OpenMetadata ingestion maintainers
 - **Guard:** `ingestion/tests/unit/topology/dashboard/test_microstrategy.py` (`test_charts_of_different_dossiers_do_not_collide`, `test_search_is_scoped_by_the_project_header_and_paged`, `test_a_failed_project_search_keeps_every_stale_entity`, `test_a_custom_library_path_replaces_the_default`, `test_an_empty_library_path_falls_back_to_the_default`, `test_dashboard_url_uses_the_library_path`); `openmetadata-integration-tests/src/test/java/org/openmetadata/it/tests/MicroStrategyChartRenameMigrationIT.java`
 - **Related:** ADR:2026-10-30-an-empty-seen-set-deletes-the-scope-only-when-the-connector-confirms-its-listing
@@ -28,16 +28,17 @@ also asked for every result in one response (`limit=-1`).
 - When a dossier's existing dashboard or charts cannot be read from OpenMetadata, its dashboard
   and charts are left as they are and stale charts are not deleted in that run. A chart list
   built without that read would unlink them.
-- The 2.1.0 server migration (`MicroStrategyChartRename`) renames the charts already ingested, so
-  every upgrade to 2.1, from 1.x or 2.0.x, runs it. Every release since the connector was added
+- A server migration (`MicroStrategyChartRename`) renames the charts already ingested: 2.0.9 on
+  the 2.0 line and 2.1.0 on 2.1, so every upgrade to either, from 1.x or 2.0.x, runs it. Every release since the connector was added
   (1.6) named a dashboard by its dossier id and a chart `<pageKey><visualizationKey>`, so each chart
   a dashboard links becomes `<dashboardName>_<oldName>` in place and keeps its id, tags, owners,
   followers and threads. A chart the old names made shared by several dashboards is renamed for
   the one whose id sorts first and copied, with its user-added metadata, for each of the others.
   Copying it in the connector instead would keep one-off migration code in every run.
-- The migration reads charts through the repository, so it runs after the 2.1.0 conversation and
-  custom property migrations. A 2.0 backport registers it in 2.0.8, whose code matches that
-  schema; a chart already named after its dashboard is skipped, so it is safe to run twice.
+- The migration reads charts through the repository, so it runs in a version whose code matches
+  the schema: 2.0.9 on the 2.0 line, and on 2.1 after the 2.1.0 conversation and custom property
+  migrations. A chart already named after its dashboard is skipped, so a 2.0.9 install upgraded
+  to 2.1 renames nothing twice.
 - A chart request names its dashboard once that dashboard exists. A chart update without
   `dashboards` deletes the dashboard → chart relationship server-side. A new dashboard is created
   after its charts and links them itself.
@@ -80,3 +81,8 @@ putting its path in `hostPort` produced `<path>/MicroStrategyLibrary/api` and a 
 A saved connection without `libraryPath` resolves to the URLs it used before, so no migration is
 needed. A `hostPort` that still carries a Library path is not rewritten: guessing whether a trailing
 path segment is a Library app would misread servers mounted under a path of their own.
+
+## Amendment: v4 2026-11-13, the 2.0 backport renames charts in 2.0.9
+v3 said a 2.0 backport would register the chart rename in 2.0.8. 2.0.8 was released before the
+rename merged, so the backport adds it as a new 2.0.9 migration; on 2.1 it stays in 2.1.0. The
+Decision section says so.
