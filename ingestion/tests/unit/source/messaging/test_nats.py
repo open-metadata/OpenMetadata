@@ -26,6 +26,7 @@ from metadata.generated.schema.entity.data.topic import CleanupPolicy
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     NatsConnection as NatsConnectionConfig,
 )
+from metadata.generated.schema.entity.services.connections.testConnectionDefinition import TestConnectionDefinition
 from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
@@ -220,32 +221,82 @@ class TestNatsGetConnection:
     def test_get_connection_returns_owned_client(self):
         connection = NatsConnectionConfig(natsServers="nats://localhost:4222")
         nc = MagicMock()
+        nc.options = {}
+        nc.connect = AsyncMock()
         nc.drain = AsyncMock()
 
-        with patch(
-            "metadata.ingestion.source.messaging.nats.connection.nats.connect",
-            new=AsyncMock(return_value=nc),
-        ):
+        with patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc):
             client = get_connection(connection)
 
         assert client.nc is nc
         assert not client._loop.is_closed()
+        assert nc.options["max_reconnect_attempts"] == 60
         client.close()
+        assert client._loop.is_closed()
 
-    def test_get_connection_cleans_up_after_connect_failure(self):
+    def test_get_connection_cleans_up_after_connect_failure(self, tmp_path):
         connection = NatsConnectionConfig(natsServers="nats://localhost:4222")
+        nc = MagicMock()
+        nc.connect = AsyncMock(side_effect=RuntimeError("connect failed"))
+        nc.close = AsyncMock()
+        cert = tmp_path / "client.pem"
+        cert.write_text("example certificate")
+
+        def options(config, files):
+            files.append(str(cert))
+            return {}
 
         with (
-            patch(
-                "metadata.ingestion.source.messaging.nats.connection.nats.connect",
-                new=AsyncMock(side_effect=RuntimeError("connect failed")),
-            ),
-            patch("metadata.ingestion.source.messaging.nats.connection._cleanup_temp_certs") as cleanup,
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc),
+            patch("metadata.ingestion.source.messaging.nats.connection._build_connect_opts", side_effect=options),
             pytest.raises(RuntimeError, match="connect failed"),
         ):
             get_connection(connection)
+        assert not cert.exists()
 
-        cleanup.assert_called_once_with([])
+    def test_reconnect_policy_is_restored_after_bootstrap(self):
+        config = NatsConnectionConfig(
+            natsServers="nats://localhost:4222", additionalConfig={"max_reconnect_attempts": 7}
+        )
+        nc = MagicMock()
+        nc.options = {}
+        nc.drain = AsyncMock()
+
+        async def connect(**opts):
+            assert opts["max_reconnect_attempts"] == 1
+
+        nc.connect = AsyncMock(side_effect=connect)
+        with patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc):
+            client = get_connection(config)
+        try:
+            assert nc.options["max_reconnect_attempts"] == 7
+        finally:
+            client.close()
+
+    @pytest.mark.parametrize(
+        ("error", "expected_type", "message"),
+        [
+            (ConnectionRefusedError("connection refused"), ConnectionRefusedError, "connection refused"),
+            (TimeoutError(), TimeoutError, "NATS connection timed out"),
+        ],
+    )
+    def test_bootstrap_failure_preserves_underlying_error(self, error, expected_type, message):
+        import nats
+
+        config = NatsConnectionConfig(natsServers="nats://localhost:4222")
+        nc = MagicMock()
+        nc.close = AsyncMock()
+
+        async def connect(**opts):
+            await opts["error_cb"](error)
+            raise nats.errors.NoServersError()
+
+        nc.connect = AsyncMock(side_effect=connect)
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc),
+            pytest.raises(expected_type, match=message),
+        ):
+            get_connection(config)
 
 
 class TestNatsConnectionConfig:
@@ -529,6 +580,15 @@ def _stream_info(name: str, config=None, state=None) -> dict:
 
 
 class TestNatsYieldTopic:
+    @pytest.mark.parametrize("description", ["Example stream description", None, ""])
+    def test_stream_description_is_copied_to_topic(self, nats_source, description):
+        details = _make_details("my_stream", config=NatsStreamConfig(description=description))
+        records = list(nats_source.yield_topic(details))
+        assert len(records) == 1
+        assert records[0].left is None
+        actual = records[0].right.description
+        assert (actual.root if actual is not None else None) == description
+
     def test_retention_calculated_from_max_age(self, nats_source):
         max_age_ns = 86_400_000_000_000  # 24h in nanoseconds
         details = _make_details("s1", config=NatsStreamConfig(max_age=max_age_ns))
@@ -885,33 +945,115 @@ class TestNatsConnectionLifecycle:
 
         assert ServiceSpec.connection_class is not None
         assert ServiceSpec.connection_class.endswith(".NatsConnection")
-        client = MagicMock(spec=NatsClient)
-        with patch(
-            "metadata.ingestion.source.messaging.nats.connection.get_connection",
-            return_value=client,
-        ):
-            connection = OwnedNatsConnection(MagicMock())
+        nc = MagicMock()
+        nc.options = {}
+        nc.connect = AsyncMock()
+        nc.drain = AsyncMock()
+        with patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=nc):
+            connection = OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222"))
+            client = connection.client
             assert connection.client is client
-            metadata = MagicMock()
-            expected = MagicMock()
-            with patch(
-                "metadata.ingestion.source.messaging.nats.connection.test_connection",
-                return_value=expected,
-            ) as delegated_test:
-                assert connection.test_connection(metadata, timeout_seconds=7) is expected
-            delegated_test.assert_called_once_with(
-                metadata,
-                client,
-                connection.service_connection,
-                None,
-                7,
-            )
             connection.close()
-
-        client.close.assert_called_once()
+            assert client._loop.is_closed()
 
 
 class TestNatsTestConnection:
+    @pytest.fixture
+    def metadata(self):
+        definition = (
+            Path(__file__).parents[5]
+            / "openmetadata-service/src/main/resources/json/data/testConnections/messaging/nats.json"
+        )
+        metadata = MagicMock()
+        metadata.get_by_name.return_value = TestConnectionDefinition.model_validate_json(definition.read_text())
+        return metadata
+
+    @pytest.fixture
+    def sdk_client(self):
+        client = MagicMock()
+        client.is_connected = True
+        client.options = {}
+        client.connect = AsyncMock()
+        client.close = AsyncMock()
+        client.drain = AsyncMock()
+        client.request = AsyncMock(return_value=MagicMock(data=b'{"streams": []}'))
+        return client
+
+    def test_connection_failure_is_reported_by_access_gate(self, metadata, sdk_client):
+        sdk_client.connect.side_effect = RuntimeError("connection failed")
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222")) as owned,
+        ):
+            result = owned.test_connection(metadata, automation_workflow=object())
+
+        assert result.status.value == "Failed"
+        assert [step.name for step in result.steps] == ["CheckAccess", "GetTopics", "CheckSchemaKvBucket"]
+        assert [step.status.value for step in result.steps] == ["Failed", "Skipped", "Skipped"]
+        assert "connection failed" in result.steps[0].errorLog
+        assert {step.skipReason.value for step in result.steps[1:]} == {"ConnectionNotEstablished"}
+        assert metadata.patch_automation_workflow_response.call_args.args[-1].value == "Failed"
+
+    def test_access_timeout_closes_the_pending_client(self, metadata, sdk_client):
+        loops = []
+
+        async def connect(**kwargs):
+            loops.append(asyncio.get_running_loop())
+            await asyncio.Event().wait()
+
+        sdk_client.connect.side_effect = connect
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222")) as owned,
+        ):
+            result = owned.test_connection(metadata, timeout_seconds=1)
+
+        assert [step.status.value for step in result.steps] == ["Failed", "Skipped", "Skipped"]
+        assert result.steps[0].diagnosis.title == "Check timed out"
+        assert loops[0].is_closed()
+        assert not asyncio.all_tasks(loops[0])
+
+    def test_ingestion_initialization_reports_access_failure(self, metadata, sdk_client):
+        from metadata.ingestion.connections.test_connections import SourceConnectionException
+
+        sdk_client.connect.side_effect = RuntimeError("connection failed")
+        config = {
+            "type": "nats",
+            "serviceName": "my_service",
+            "serviceConnection": {"config": {"type": "Nats", "natsServers": "nats://localhost:4222"}},
+            "sourceConfig": {"config": {"type": "MessagingMetadata"}},
+        }
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            pytest.raises(SourceConnectionException, match="CheckAccess"),
+        ):
+            NatsSource.create(config, metadata)
+
+    def test_absent_bucket_is_skipped_with_successful_workflow(self, metadata, sdk_client):
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222")) as owned,
+        ):
+            result = owned.test_connection(metadata, automation_workflow=object())
+
+        assert result.status.value == "Successful"
+        assert [step.status.value for step in result.steps] == ["Passed", "Passed", "Skipped"]
+        assert result.steps[-1].skipReason.value == "NotConfigured"
+        assert result.steps[-1].errorLog is None
+        assert metadata.patch_automation_workflow_response.call_args.args[-1].value == "Successful"
+
+    def test_jetstream_failure_is_separate_from_access(self, metadata, sdk_client):
+        sdk_client.request.return_value = MagicMock(data=b'{"error": {"description": "JetStream unavailable"}}')
+        with (
+            patch("metadata.ingestion.source.messaging.nats.connection.NatsSdkClient", return_value=sdk_client),
+            OwnedNatsConnection(NatsConnectionConfig(natsServers="nats://localhost:4222")) as owned,
+        ):
+            result = owned.test_connection(metadata, automation_workflow=object())
+
+        assert [step.status.value for step in result.steps] == ["Passed", "Failed", "Skipped"]
+        assert "JetStream unavailable" in result.steps[1].errorLog
+        assert result.status.value == "Failed"
+
     def _make_client(self) -> MagicMock:
         return MagicMock(spec=NatsClient)
 
@@ -931,7 +1073,9 @@ class TestNatsTestConnection:
         client = self._make_client()
         conn = MagicMock()
         conn.schemaKvBucket = None
-        with pytest.raises(ConnectionError, match="not configured"):
+        from metadata.core.connections.test_connection.check import CheckSkippedError
+
+        with pytest.raises(CheckSkippedError, match="NotConfigured"):
             _check_schema_kv_bucket(client, conn)
         client.request.assert_not_called()
 
@@ -950,42 +1094,15 @@ class TestNatsTestConnection:
         with pytest.raises(ConnectionError, match="missing-bucket"):
             _check_schema_kv_bucket(client, conn)
 
-    def test_connection_runs_distinct_topic_and_schema_steps(self):
+    def test_connection_runs_distinct_topic_and_schema_steps(self, metadata):
         client = self._make_client()
+        client.nc = MagicMock(is_connected=True)
         client.request.side_effect = [
             {"streams": []},
             {"config": {"name": "KV_SCHEMAS"}},
         ]
-        connection = NatsConnectionConfig(
-            natsServers="nats://localhost:4222",
-            schemaKvBucket="SCHEMAS",
-        )
-        expected = MagicMock()
-
-        def execute_steps(**kwargs):
-            assert set(kwargs["test_fn"]) == {
-                "GetTopics",
-                "CheckSchemaKvBucket",
-            }
-            kwargs["test_fn"]["GetTopics"]()
-            kwargs["test_fn"]["CheckSchemaKvBucket"]()
-            return expected
-
-        with patch(
-            "metadata.ingestion.source.messaging.nats.connection.test_connection_steps",
-            side_effect=execute_steps,
-        ) as steps:
-            result = run_nats_connection_test(
-                metadata=MagicMock(),
-                client=client,
-                service_connection=connection,
-                timeout_seconds=9,
-            )
-
-        assert result is expected
-        assert steps.call_args.kwargs["service_type"] == "Nats"
-        assert steps.call_args.kwargs["timeout_seconds"] == 9
-        assert [call.args[0] for call in client.request.call_args_list] == [
-            "$JS.API.STREAM.LIST",
-            "$JS.API.STREAM.INFO.KV_SCHEMAS",
-        ]
+        connection = NatsConnectionConfig(natsServers="nats://localhost:4222", schemaKvBucket="SCHEMAS")
+        result = run_nats_connection_test(metadata=metadata, client=client, service_connection=connection)
+        assert result.status.value == "Successful"
+        assert [step.name for step in result.steps] == ["CheckAccess", "GetTopics", "CheckSchemaKvBucket"]
+        assert [step.status.value for step in result.steps] == ["Passed", "Passed", "Passed"]

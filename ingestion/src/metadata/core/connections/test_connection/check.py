@@ -19,6 +19,7 @@ from typing import TYPE_CHECKING, Protocol, TypeVar
 if TYPE_CHECKING:
     from metadata.core.connections.test_connection.classifier import ErrorPack
     from metadata.core.connections.test_connection.records import Evidence
+    from metadata.generated.schema.entity.services.connections.testConnectionResult import SkipReason
 
 _CHECK_ATTR = "__check__"
 
@@ -27,6 +28,14 @@ _Provider = TypeVar("_Provider")
 
 class DuplicateCheckError(Exception):
     """Raised when two methods on a provider claim the same step name."""
+
+
+class CheckSkippedError(Exception):
+    """A check that does not apply to the current connection configuration."""
+
+    def __init__(self, reason: SkipReason) -> None:
+        super().__init__(reason.value)
+        self.reason = reason
 
 
 class CheckError(Exception):

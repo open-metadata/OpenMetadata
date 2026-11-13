@@ -45,7 +45,10 @@ import {
   getConnectionTimeoutMessage,
   getGateDescription,
 } from '../../../../utils/TestConnectionModalUtils';
-import { partitionConnectionSteps } from '../../../../utils/TestConnectionUtils';
+import {
+  getHasOptionalStepsFailing,
+  partitionConnectionSteps,
+} from '../../../../utils/TestConnectionUtils';
 import InlineAlert from '../../InlineAlert/InlineAlert';
 import { TestConnectionModalProps } from './TestConnectionModal.interface';
 
@@ -253,15 +256,12 @@ const TestConnectionModal = ({
     () => testConnectionStep.filter((step) => step.mandatory),
     [testConnectionStep]
   );
-  const optionalSteps = useMemo(
-    () => testConnectionStep.filter((step) => !step.mandatory),
-    [testConnectionStep]
-  );
   const areRequiredStepsPassing =
     requiredSteps.length > 0 &&
     requiredSteps.every((step) => getConnectionStepResult(step)?.passed);
-  const hasOptionalFailures = optionalSteps.some(
-    (step) => getConnectionStepResult(step)?.passed === false
+  const hasOptionalFailures = getHasOptionalStepsFailing(
+    testConnectionStepResult,
+    testConnectionStep
   );
 
   const progressPercent = resolveProgressPercent(

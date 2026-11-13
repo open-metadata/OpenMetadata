@@ -22,7 +22,7 @@ from datetime import datetime
 from time import perf_counter
 from typing import TYPE_CHECKING
 
-from metadata.core.connections.test_connection.check import CheckError, collect_checks
+from metadata.core.connections.test_connection.check import CheckError, CheckSkippedError, collect_checks
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.mapper import StepResultBuilder
@@ -131,6 +131,8 @@ class TestConnectionRunner:
         try:
             evidence = self._call(method) or Evidence()
             return StepResultBuilder.passed(step, evidence, _elapsed_ms(started))
+        except CheckSkippedError as skipped:
+            return StepResultBuilder.skipped(step, skipped.reason)
         except CheckError as failure:
             return self._failed_step(step, failure.cause, failure.evidence, started)
         except Exception as error:

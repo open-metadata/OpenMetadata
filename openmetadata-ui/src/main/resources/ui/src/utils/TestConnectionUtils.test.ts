@@ -10,8 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Status,
+  TestConnectionStepResult,
+} from '../generated/entity/automations/workflow';
 import { TestConnectionStep } from '../generated/entity/services/connections/testConnectionDefinition';
-import { partitionConnectionSteps } from './TestConnectionUtils';
+import {
+  getHasOptionalStepsFailing,
+  partitionConnectionSteps,
+} from './TestConnectionUtils';
 
 const step = (name: string, category?: string): TestConnectionStep =>
   ({
@@ -20,6 +27,54 @@ const step = (name: string, category?: string): TestConnectionStep =>
     mandatory: true,
     category,
   } as TestConnectionStep);
+
+describe('getHasOptionalStepsFailing', () => {
+  it.each([
+    [Status.Skipped, false],
+    [Status.Warning, true],
+    [undefined, true],
+  ])(
+    'handles optional status %s with and without definitions',
+    (status, expected) => {
+      const result: TestConnectionStepResult = {
+        name: 'CheckSchemaKvBucket',
+        passed: false,
+        mandatory: false,
+        status,
+      };
+      const definition: TestConnectionStep = {
+        name: 'CheckSchemaKvBucket',
+        description: 'Schemas',
+        mandatory: false,
+      };
+
+      expect(getHasOptionalStepsFailing([result], [definition])).toBe(expected);
+      expect(getHasOptionalStepsFailing([result], [])).toBe(expected);
+    }
+  );
+
+  it('uses the definition to identify optional checks', () => {
+    expect(
+      getHasOptionalStepsFailing(
+        [
+          {
+            name: 'CheckSchemaKvBucket',
+            passed: false,
+            mandatory: true,
+            status: Status.Warning,
+          },
+        ],
+        [
+          {
+            name: 'CheckSchemaKvBucket',
+            description: 'Schemas',
+            mandatory: false,
+          },
+        ]
+      )
+    ).toBe(true);
+  });
+});
 
 describe('partitionConnectionSteps', () => {
   it('uses the step tagged ConnectionGate as the gate', () => {
