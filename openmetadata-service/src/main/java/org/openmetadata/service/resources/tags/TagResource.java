@@ -849,7 +849,8 @@ public class TagResource extends EntityResource<Tag, TagRepository> {
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_ALL),
         getResourceContext());
-    java.util.Map<String, Integer> result = repository.getAllTagsWithAssetsCount();
+    java.util.Map<String, Integer> result =
+        repository.getAllTagsWithAssetsCount(DefaultAuthorizer.getSubjectContext(securityContext));
     return Response.ok(result).build();
   }
 
