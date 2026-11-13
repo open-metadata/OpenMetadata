@@ -28,16 +28,17 @@ also asked for every result in one response (`limit=-1`).
 - When a dossier's existing dashboard or charts cannot be read from OpenMetadata, its dashboard
   and charts are left as they are and stale charts are not deleted in that run. A chart list
   built without that read would unlink them.
-- The 2.1.0 server migration (`MicroStrategyChartRename`) renames the charts already ingested, so
-  every upgrade to 2.1, from 1.x or 2.0.x, runs it. Every release since the connector was added
+- A server migration (`MicroStrategyChartRename`) renames the charts already ingested: 2.0.9 on
+  the 2.0 line and 2.1.0 on 2.1, so every upgrade to either, from 1.x or 2.0.x, runs it. Every release since the connector was added
   (1.6) named a dashboard by its dossier id and a chart `<pageKey><visualizationKey>`, so each chart
   a dashboard links becomes `<dashboardName>_<oldName>` in place and keeps its id, tags, owners,
   followers and threads. A chart the old names made shared by several dashboards is renamed for
   the one whose id sorts first and copied, with its user-added metadata, for each of the others.
   Copying it in the connector instead would keep one-off migration code in every run.
-- The migration reads charts through the repository, so it runs after the 2.1.0 conversation and
-  custom property migrations. A 2.0 backport registers it in 2.0.8, whose code matches that
-  schema; a chart already named after its dashboard is skipped, so it is safe to run twice.
+- The migration reads charts through the repository, so it runs in a version whose code matches
+  the schema: 2.0.9 on the 2.0 line, and on 2.1 after the 2.1.0 conversation and custom property
+  migrations. A chart already named after its dashboard is skipped, so a 2.0.9 install upgraded
+  to 2.1 renames nothing twice.
 - A chart request names its dashboard once that dashboard exists. A chart update without
   `dashboards` deletes the dashboard → chart relationship server-side. A new dashboard is created
   after its charts and links them itself.
