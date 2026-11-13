@@ -539,3 +539,125 @@ def test_table_with_nested_array_column_builds_orm(mock_schema, mock_database, d
     orm_table = ometa_to_sqa_orm(table, None)
 
     assert orm_table.__table__.columns.keys() == ["id", "tags"]
+
+
+@mark.parametrize("service_type", [DatabaseServiceType.Mssql, DatabaseServiceType.AzureSQL])
+@mark.parametrize("table_type", ["Regular", "View"])
+@mark.parametrize(
+    "schema_name, sql_schema",
+    [
+        ("sales.archive", "[sales.archive]"),
+        ("sales.archive.history", "[sales.archive.history]"),
+        ("sales].archive", "[sales]].archive]"),
+        ("sales[archive]", "[sales[archive]]]"),
+        ("dbo", "[dbo]"),
+    ],
+)
+def test_literal_tsql_schema_qualification(service_type, table_type, schema_name, sql_schema):
+    from sqlalchemy.dialects.mssql import dialect
+
+    from metadata.profiler.processor.runner import QueryRunner
+
+    table, metadata = _catalog_table(service_type, schema_name, table_type)
+    orm = ometa_to_sqa_orm(table, metadata, sqlalchemy.MetaData())
+    statement = sqlalchemy.select(orm.id)
+
+    assert str(statement.compile(dialect=dialect())) == f"SELECT {sql_schema}.orders.id \nFROM {sql_schema}.orders"
+    runner = QueryRunner(session=None, dataset=orm, raw_dataset=orm)
+    assert runner.schema_name == schema_name
+
+
+def _catalog_table(service_type, schema_name, table_type="Regular"):
+    from unittest.mock import MagicMock
+
+    from metadata.generated.schema.entity.data.database import Database
+    from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+    from metadata.ingestion.ometa.ometa_api import OpenMetadata
+
+    database = Database(id=UUID(int=1), name="catalog", service={"id": str(UUID(int=2)), "type": "databaseService"})
+    schema = DatabaseSchema(
+        id=UUID(int=3),
+        name=schema_name,
+        service=database.service,
+        database={"id": str(database.id.root), "type": "database"},
+    )
+    table = Table(
+        id=UUID(int=4),
+        name="orders",
+        columns=[Column(name="id", dataType=DataType.INT)],
+        serviceType=service_type,
+        tableType=table_type,
+        database={"id": str(database.id.root), "type": "database"},
+        databaseSchema={"id": str(schema.id.root), "type": "databaseSchema"},
+    )
+    metadata = MagicMock(spec=OpenMetadata)
+    metadata.get_by_id.side_effect = lambda *, entity, entity_id, nullable: {
+        Database: database,
+        DatabaseSchema: schema,
+    }[entity]
+    return table, metadata
+
+
+@mark.parametrize(
+    "service_type, schema_name, expected_schema",
+    [
+        (DatabaseServiceType.Postgres, "sales.archive", '"sales.archive"'),
+        (DatabaseServiceType.Trino, "catalog.sales", '"catalog.sales"'),
+        (DatabaseServiceType.Snowflake, "MixedCase", '"MixedCase"'),
+        (DatabaseServiceType.Snowflake, "UPPERCASE", '"UPPERCASE"'),
+    ],
+)
+def test_schema_quoting_preserves_other_dialect_defaults(service_type, schema_name, expected_schema):
+    from sqlalchemy.dialects.postgresql import dialect as postgres_dialect
+    from trino.sqlalchemy.dialect import TrinoDialect
+
+    dialects = {
+        DatabaseServiceType.Postgres: postgres_dialect,
+        DatabaseServiceType.Trino: TrinoDialect,
+        DatabaseServiceType.Snowflake: snowflake_dialect,
+    }
+    table, metadata = _catalog_table(service_type, schema_name)
+    orm = ometa_to_sqa_orm(table, metadata, sqlalchemy.MetaData())
+    sql = str(sqlalchemy.select(orm.id).compile(dialect=dialects[service_type]()))
+    sql_table = '"orders"' if service_type == DatabaseServiceType.Snowflake else "orders"
+    assert f"FROM {expected_schema}.{sql_table}" in sql
+    expected_quote = True if service_type == DatabaseServiceType.Snowflake and schema_name == "MixedCase" else None
+    assert orm.__table__.schema.quote is expected_quote
+    assert orm.__table__.schema == schema_name
+
+
+@mark.parametrize("service_type", [DatabaseServiceType.Mssql, DatabaseServiceType.AzureSQL])
+@mark.parametrize("table_type", ["Regular", "View"])
+def test_production_tsql_sampler_qualifies_literal_schema(service_type, table_type):
+    from sqlalchemy.dialects.mssql import dialect
+
+    from metadata.generated.schema.entity.services.connections.database.azureSQLConnection import AzureSQLConnection
+    from metadata.generated.schema.entity.services.connections.database.mssqlConnection import MssqlConnection
+    from metadata.generated.schema.type.basic import ProfileSampleType
+    from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
+    from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
+    from metadata.sampler.sqlalchemy.mssql.sampler import MssqlSampler
+
+    entity, metadata = _catalog_table(service_type, "sales.archive", table_type)
+    connection_type, sampler_type = (
+        (MssqlConnection, MssqlSampler)
+        if service_type == DatabaseServiceType.Mssql
+        else (AzureSQLConnection, AzureSQLSampler)
+    )
+    engine = sqlalchemy.create_engine("sqlite://")
+    try:
+        with patch("metadata.sampler.sqlalchemy.sampler.get_ssl_connection", return_value=engine):
+            sampler = sampler_type(
+                service_connection_config=connection_type(
+                    username="fixture", password="fixture", hostPort="localhost:1433", database="catalog"
+                ),
+                ometa_client=metadata,
+                entity=entity,
+            )
+        static = StaticSamplingConfig(profileSample=100, profileSampleType=ProfileSampleType.PERCENTAGE)
+        sql = str(sampler.get_sample_query(static).compile(dialect=dialect()))
+        assert "FROM [sales.archive].orders" in sql
+        assert ("TABLESAMPLE" in sql) == (table_type == "Regular")
+        assert sampler.raw_dataset.__table__.schema == "sales.archive"
+    finally:
+        engine.dispose()

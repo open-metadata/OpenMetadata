@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Sigma source module"""
 
+import re
 import traceback
 from collections.abc import Iterable
 from datetime import datetime
@@ -62,6 +63,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
+from metadata.ingestion.models.barrier import Barrier
 from metadata.ingestion.models.custom_properties import (
     CustomPropertyDataTypes,
     OMetaCustomProperties,
@@ -74,6 +76,9 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.sigma.models import (
     DataModel,
+    Dependency,
+    EdgeSource,
+    EdgeSourceResponse,
     Elements,
     NodeDetails,
     Workbook,
@@ -116,8 +121,103 @@ SIGMA_CONNECTION_DIALECTS = {
 }
 
 
+class _DataModelLineageMarker:
+    """Listed after the last Sigma Data Model, so their lineage is drawn once all of them are written"""
+
+
+_DATA_MODEL_LINEAGE = _DataModelLineageMarker()
+
+
 def _access_details(moment: datetime | None) -> AccessDetails | None:
     return AccessDetails(timestamp=Timestamp(datetime_to_timestamp(moment, milliseconds=True))) if moment else None
+
+
+_BRACKET_REFERENCE = re.compile(r"\[([^\[\]]+)\]")
+_STRING_LITERAL = re.compile(r'"[^"]*"')
+# A formula that only names the source column it is read from, as [ORDERS/Amount]; a third part names a relationship
+_SOURCE_REFERENCE = re.compile(r"\s*\[[^\[\]/]+/[^\[\]/]+\]\s*")
+
+
+def _references(formula: str) -> list[str]:
+    """The [...] references a formula reads outside string literals; none when it holds an escape, which Sigma does not document"""
+    return [] if "\\" in formula else _BRACKET_REFERENCE.findall(_STRING_LITERAL.sub("", formula))
+
+
+def _formula_sources(
+    element_id: str,
+    graph: EdgeSourceResponse,
+    formulas: dict[str, dict[str, str]],
+    tables: dict[str, Table],
+    visiting: frozenset[str] = frozenset(),
+    traced_elements: dict[str, dict[str, list[tuple[str, str]]]] | None = None,
+) -> tuple[dict[str, list[tuple[str, str]]], dict[str, list[str]]]:
+    """
+    For each column of an element: the sources its [Source/Column] references name, and the columns of its own
+    element its [Column] references read (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-a-calculated-column-takes-its-lineage-only-from-its-formula).
+    A source is the one node of that exact name the element reads directly in its lineage graph: a table (or a dataset
+    on one) gives its one column of that name, another element that element's column, traced the same way and once
+    per element. A name matching no source or several, a relationship ([Element/Relationship/Column]) or an escape
+    adds nothing.
+    A column whose reference names any node the element reads directly is keyed even when it gets nothing, so it is
+    not matched by name.
+    """
+    traced_elements = {} if traced_elements is None else traced_elements
+    own = {key for key, node in graph.dependencies.items() if node.type == "sheet" and node.elementId == element_id}
+    direct: dict[str, dict[str, Dependency]] = {}
+    for edge in graph.edges or []:
+        if edge.target in own and (node := graph.dependencies.get(edge.source)) and node.name:
+            direct.setdefault(node.name, {})[edge.source] = node
+    sources: dict[str, list[tuple[str, str]]] = {}
+    read: dict[str, list[str]] = {}
+    for column, formula in formulas.get(element_id, {}).items():
+        for reference in _references(formula):
+            name, _, source_column = reference.partition("/")
+            nodes = list(direct.get(name, {}).values())
+            if source_column and nodes:
+                sources.setdefault(column, [])
+            if not source_column:
+                read.setdefault(column, []).append(name)
+            elif "/" in source_column or len(nodes) != 1:
+                continue
+            elif nodes[0].type in ("table", "dataset") and (
+                table := tables.get(EdgeSource(source=nodes[0].nodeId).node_id or "")
+            ):
+                sources.setdefault(column, [])
+                matches = [
+                    found.fullyQualifiedName
+                    for found in table.columns or []
+                    if found.fullyQualifiedName
+                    and normalize_column_name(found.name.root) == normalize_column_name(source_column)
+                ]
+                if len(matches) == 1:
+                    sources.setdefault(column, []).append((model_str(table.id), model_str(matches[0])))
+            elif (read_element := nodes[0].elementId) and nodes[0].type == "sheet" and read_element not in visiting:
+                if read_element not in traced_elements:
+                    found, found_read = _formula_sources(
+                        read_element, graph, formulas, tables, visiting | {element_id}, traced_elements
+                    )
+                    _inherit_formula_sources(found, found_read)
+                    traced_elements[read_element] = found
+                sources.setdefault(column, []).extend(traced_elements[read_element].get(source_column, []))
+    return {column: list(dict.fromkeys(found)) for column, found in sources.items()}, read
+
+
+def _inherit_formula_sources(sources: dict[str, list[tuple[str, str]]], columns_read: dict[str, list[str]]) -> None:
+    """
+    Give each column computed from other columns of its own element the sources of those columns, directly or
+    through other computed columns (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-a-calculated-column-takes-its-lineage-only-from-its-formula).
+    Sources only grow, so a cycle of references ends.
+    """
+    changed = True
+    while changed:
+        changed = False
+        for label, read in columns_read.items():
+            inherited = list(
+                dict.fromkeys([*sources.get(label, []), *(s for column in read for s in sources.get(column, []))])
+            )
+            if len(inherited) > len(sources.get(label, [])):
+                sources[label] = inherited
+                changed = True
 
 
 # Dashboard custom property set from the workbook (ADR:2026-11-02-run-changing-dashboard-custom-properties-are-patched-after-the-dashboard).
@@ -152,9 +252,12 @@ class SigmaSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.data_models: list[Elements] = []
         # The lineage stage runs once per dbServicePrefixes entry, and each run needs every prefix's match
-        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str] | None] = LRUCache(
+        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str | None] | None] = LRUCache(
             maxsize=MAX_RESOLVED_TABLES
         )
+        # The Sigma Data Models ingested this run, and the url id of every listed one: lineage rows name both ids
+        self._lineage_data_models: list[DataModel] = []
+        self._data_model_url_ids: dict[str, str] = {}
 
     def get_dashboards_list(self) -> list[Workbook] | None:
         """
@@ -186,6 +289,8 @@ class SigmaSource(DashboardServiceSource):
             dashboard_details.badge = self.client.get_badge(dashboard.workbookId)
         if dashboard_details:
             dashboard_details.elements = self.client.get_chart_details(dashboard.workbookId) or []
+        if dashboard_details and self.source_config.includeDataModels:
+            dashboard_details.formulas = self.client.get_column_formulas(f"/workbooks/{dashboard.workbookId}/columns")
         return dashboard_details
 
     def yield_tags(self, dashboard_details: WorkbookDetails) -> Iterable[Either[OMetaTagAndClassification]]:
@@ -322,30 +427,39 @@ class SigmaSource(DashboardServiceSource):
         self, database: str | None, schema: str | None, table: str | None, db_service_prefix: str | None
     ) -> Table | None:
         """
-        The one table the reference names across the dbServicePrefixes, returned on the call for the
-        prefix it was found under. Lineage must not guess, so a reference matching several tables, or
-        with no prefix configured, resolves to none. A reference is resolved once per run, as every
-        prefix's call needs the same answer.
+        The one table the reference names across the dbServicePrefixes (every database service when none is
+        set), returned on the call for the prefix it was found under. Lineage must not guess, so a reference
+        matching several tables resolves to none. A reference is resolved once per run, as every prefix's call
+        needs the same answer.
         """
+        resolved = self._resolved_table(database, schema, table)
+        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+
+    def _resolved_table(
+        self, database: str | None, schema: str | None, table: str | None
+    ) -> tuple[Table, str | None] | None:
         if not (schema and table):
             return None
         key = (database, schema, table)
         if key not in self._resolved_tables:
             self._resolved_tables[key] = self._resolve_table(database, schema, table)
-        resolved = self._resolved_tables[key]
-        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
+        return self._resolved_tables[key]
 
-    def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str] | None:
-        """The one table the reference names across the dbServicePrefixes, with the prefix it was found under"""
-        matches: dict[str, tuple[Table, str]] = {}
-        for prefix in self.get_db_service_prefixes():
+    def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str | None] | None:
+        """
+        The one table the reference names across the dbServicePrefixes, or across every database service when
+        none is set (ADR:2026-11-12-sigma-lineage-searches-every-database-service-without-prefixes), with the
+        prefix it was found under
+        """
+        matches: dict[str, tuple[Table, str | None]] = {}
+        for prefix in self.get_db_service_prefixes() or [None]:
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
             if any(
                 expected and actual and expected.lower() != actual.lower()
                 for expected, actual in ((prefix_database, database), (prefix_schema, schema), (prefix_table, table))
             ):
                 continue
-            service_entity = self._db_services[prefix]
+            service_entity = self._db_services.get(prefix) if prefix else None
             searched_database = (
                 get_database_name_for_lineage(service_entity, database) if database and service_entity else database
             )
@@ -371,19 +485,26 @@ class SigmaSource(DashboardServiceSource):
         db_service_prefix: str | None = None,
     ) -> Table | None:
         """
-        Get the table entity for lineage
+        The table a /files node names, read from its display path. When that finds no single table, the table's
+        connection path is read as [database, schema, table]
+        (ADR:2026-11-12-sigma-connection-path-is-read-only-when-the-display-path-finds-no-table).
         """
-        if not node.node_schema:
-            return None
-        schema_parts = node.node_schema.split(".")
         try:
-            return self._get_table_entity(
-                schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name, db_service_prefix
-            )
+            resolved = None
+            if node.node_schema:
+                schema_parts = node.node_schema.split(".")
+                resolved = self._resolved_table(
+                    schema_parts[0] if len(schema_parts) > 1 else None, schema_parts[-1], node.name
+                )
+            if not resolved and node.node_type == "table":
+                path = self.client.get_connection_path(node.id)
+                if path and len(path) == 3 and path[2] == node.name:
+                    resolved = self._resolved_table(*path)
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Error occured while finding table fqn: %s", exc)
-        return None
+            return None
+        return resolved[0] if resolved and resolved[1] == db_service_prefix else None
 
     def _yield_lineage_from_files(
         self,
@@ -416,13 +537,22 @@ class SigmaSource(DashboardServiceSource):
             if not lineage:
                 return
 
-            nodes, all_sources_read = lineage
-            tables = [table for node in nodes if (table := self._get_table_entity_from_node(node, db_service_prefix))]
+            nodes, all_sources_read, graph = lineage
+            resolved = [
+                (node.nodeId or node.id, table)
+                for node in nodes
+                if (table := self._get_table_entity_from_node(node, db_service_prefix))
+            ]
+            all_sources_found = all_sources_read and len(resolved) == len(nodes)
             yield from self._yield_table_and_column_lineage(
-                tables,
+                [table for _, table in resolved],
                 data_model_entity,
                 data_model.columns,
-                all_sources_found=all_sources_read and len(tables) == len(nodes),
+                dashboard_details.formulas.get(data_model.elementId, {}),
+                _formula_sources(data_model.elementId, graph, dashboard_details.formulas, dict(resolved))
+                if all_sources_found
+                else ({}, {}),
+                all_sources_found=all_sources_found,
             )
         except Exception as exc:
             yield Either(
@@ -438,28 +568,47 @@ class SigmaSource(DashboardServiceSource):
         tables: list[Table],
         data_model_entity: DashboardDataModel,
         labels: list[str] | None,
+        formulas: dict[str, str],
+        formula_sources: tuple[dict[str, list[tuple[str, str]]], dict[str, list[str]]],
         all_sources_found: bool,
     ):
         """
-        One edge per source table of an element, carrying the columns it feeds. Sigma labels warehouse
-        columns for reading (CUSTOMER_NAME shows as "Customer Name"), so names are compared
-        normalized. Lineage must not guess, so a label is linked only when every source of the element was
-        found (a missing one could hold the column too) and exactly one column across its tables matches.
+        One edge per source table of an element, carrying the columns it feeds. A column takes the sources its
+        formula names. Otherwise its label is matched by name: Sigma labels warehouse columns for reading
+        (CUSTOMER_NAME shows as "Customer Name"), so names are compared normalized. Lineage must not guess, so a
+        column is linked only when every source of the element was found (a missing one could hold the column too),
+        a label only when exactly one column across its tables matches, and a calculated column never by its name.
         """
-        column_lineage: dict[str, list[ColumnLineage]] = {}
-        for label in (labels or []) if all_sources_found else []:
+        labels = labels or []
+        traced, columns_read = formula_sources
+        calculated = {
+            label for label in labels if (formula := formulas.get(label)) and not _SOURCE_REFERENCE.fullmatch(formula)
+        }
+        sources = {label: found for label, found in traced.items() if found}
+        for label in labels if all_sources_found else []:
+            if label in calculated or label in traced:
+                continue
             matches = [
-                (table, column_fqn)
+                (model_str(table.id), model_str(column_fqn))
                 for table in tables
                 for column in table.columns or []
                 if (column_fqn := column.fullyQualifiedName)
                 and normalize_column_name(column.name.root) == normalize_column_name(label)
             ]
+            if len(matches) == 1:
+                sources[label] = matches
+        _inherit_formula_sources(sources, columns_read)
+        column_lineage: dict[str, list[ColumnLineage]] = {}
+        for label in labels:
             to_column = self._get_data_model_column_fqn(data_model_entity=data_model_entity, column=label)
-            if len(matches) == 1 and to_column:
-                table, column_fqn = matches[0]
-                column_lineage.setdefault(str(table.id.root), []).append(
-                    ColumnLineage(fromColumns=[column_fqn], toColumn=FullyQualifiedEntityName(to_column))
+            if not to_column:
+                continue
+            columns_by_table: dict[str, list[FullyQualifiedEntityName]] = {}
+            for table_id, column_fqn in sources.get(label, []):
+                columns_by_table.setdefault(table_id, []).append(FullyQualifiedEntityName(column_fqn))
+            for table_id, from_columns in columns_by_table.items():
+                column_lineage.setdefault(table_id, []).append(
+                    ColumnLineage(fromColumns=from_columns, toColumn=FullyQualifiedEntityName(to_column))
                 )
         for table in tables:
             yield self._get_add_lineage_request(
@@ -580,9 +729,6 @@ class SigmaSource(DashboardServiceSource):
         if not dashboard_details:
             logger.warning(f"Skipping lineage - dashboard details are None (API error)")  # noqa: F541
             return
-        if not db_service_prefix:
-            # Tables resolve only within the dbServicePrefixes services: without one there is nothing to link
-            return
 
         queries_response = self.client.get_workbook_queries(dashboard_details.workbookId)
 
@@ -590,7 +736,7 @@ class SigmaSource(DashboardServiceSource):
             yield from self._yield_lineage_from_files(dashboard_details, db_service_prefix)
             return
 
-        db_service_entity = self._db_services.get(db_service_prefix)
+        db_service_entity = self._db_services.get(db_service_prefix) if db_service_prefix else None
         dialect = None
 
         queries_by_element = {q.elementId: q for q in queries_response.entries}
@@ -783,8 +929,8 @@ class SigmaSource(DashboardServiceSource):
             return False
         return True
 
-    def get_column_info(self, element: Elements) -> list[Column] | None:
-        """Build data model columns"""
+    def get_column_info(self, element: Elements, formulas: dict[str, str] | None = None) -> list[Column]:
+        """Build data model columns, each computed one showing its Sigma formula"""
         datamodel_columns = []
         for col in element.columns or []:
             try:
@@ -794,6 +940,9 @@ class SigmaSource(DashboardServiceSource):
                         displayName=col,
                         dataType=DataType.UNKNOWN,
                         dataTypeDisplay="Sigma Field",
+                        description=Markdown(f"**Formula:** `{formula}`")
+                        if (formula := (formulas or {}).get(col)) and not _SOURCE_REFERENCE.fullmatch(formula)
+                        else None,
                     )
                 )
             except Exception as exc:
@@ -825,7 +974,7 @@ class SigmaSource(DashboardServiceSource):
                         service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                         dataModelType=DataModelType.SigmaDataModel.value,
                         serviceType=self.service_connection.type.value,
-                        columns=self.get_column_info(data_model),
+                        columns=self.get_column_info(data_model, dashboard_details.formulas.get(data_model.elementId)),
                     )
                     yield Either(right=data_model_request)
                     self.register_record_datamodel(datamodel_request=data_model_request)
@@ -838,18 +987,31 @@ class SigmaSource(DashboardServiceSource):
                         )
                     )
 
-    def list_datamodels(self) -> Iterable[DataModel]:
-        """Sigma Data Models, ingested before the workbooks that read from them"""
-        return self.client.get_data_models() if self.source_config.includeDataModels else []
+    def list_datamodels(self) -> Iterable[DataModel | _DataModelLineageMarker]:
+        """Sigma Data Models, ingested before the workbooks that read from them, then the marker for their lineage"""
+        if not self.source_config.includeDataModels:
+            return
+        data_models = self.client.get_data_models()
+        self._lineage_data_models = []
+        self._data_model_url_ids = {
+            data_model.dataModelId: data_model.dataModelUrlId for data_model in data_models if data_model.dataModelUrlId
+        }
+        yield from data_models
+        if data_models:
+            yield _DATA_MODEL_LINEAGE
 
     def yield_bulk_datamodel(  # pyright: ignore[reportIncompatibleMethodOverride]
-        self, data_model: DataModel
-    ) -> Iterable[Either[CreateDashboardDataModelRequest]]:
+        self, data_model: DataModel | _DataModelLineageMarker
+    ) -> Iterable[Either]:
         """One data model per Sigma Data Model, with a table column per element, as PowerBI models a dataset"""
+        if isinstance(data_model, _DataModelLineageMarker):
+            yield from self._yield_data_model_lineage()
+            return
         display_name = data_model.name or data_model.dataModelId
         if filter_by_datamodel(self.source_config.dataModelFilterPattern, display_name):
             self.status.filter(display_name, "Data model filtered out.")
             return
+        self._lineage_data_models.append(data_model)
         try:
             elements = self.client.get_data_model_elements(data_model.dataModelId)
             if elements is None:
@@ -863,6 +1025,7 @@ class SigmaSource(DashboardServiceSource):
                     )
                 )
                 return
+            formulas = self.client.get_column_formulas(f"/dataModels/{data_model.dataModelId}/columns")
             data_model_request = CreateDashboardDataModelRequest(
                 name=EntityName(data_model.dataModelId),
                 displayName=display_name,
@@ -877,7 +1040,7 @@ class SigmaSource(DashboardServiceSource):
                         displayName=element.name or element.elementId,
                         dataType=DataType.TABLE,
                         dataTypeDisplay="Sigma Data Model Element",
-                        children=self.get_column_info(element),
+                        children=self.get_column_info(element, formulas.get(element.elementId)),
                     )
                     for element in elements
                 ],
@@ -893,6 +1056,78 @@ class SigmaSource(DashboardServiceSource):
                     stackTrace=traceback.format_exc(),
                 ),
             )
+
+    def _yield_data_model_lineage(self) -> Iterable[Either]:
+        """
+        The tables and Sigma Data Models each Sigma Data Model reads, sent once every data model is written, as a
+        data model can read one listed after it
+        """
+        yield Either(left=None, right=Barrier(reason="sigma_data_model_lineage_flush"))
+        for data_model in self._lineage_data_models:
+            try:
+                yield from self._yield_lineage_of_data_model(data_model)
+            except Exception as exc:
+                yield Either(
+                    left=StackTraceError(
+                        name=data_model.dataModelId,
+                        error=f"Error yielding the lineage of Sigma data model [{data_model.dataModelId}]: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    ),
+                    right=None,
+                )
+
+    def _yield_lineage_of_data_model(self, data_model: DataModel) -> Iterable[Either[OMetaLineageRequest]]:
+        entries = self.client.get_data_model_lineage(data_model.dataModelId)
+        read_ids = self._ids_read_by_elements(entries)
+        upstream: dict[str, Table | DashboardDataModel] = {}
+        for entry in entries:
+            if source := self._data_model_lineage_source(entry, read_ids):
+                upstream.setdefault(model_str(source.id), source)
+        to_entity = self._get_datamodel(data_model.dataModelId) if upstream else None
+        if not to_entity:
+            return
+        for from_entity in upstream.values():
+            yield from self.yield_lineage_request(
+                self._get_add_lineage_request(to_entity=to_entity, from_entity=from_entity)
+            )
+
+    @staticmethod
+    def _ids_read_by_elements(entries: list[WorkbookLineageEntry]) -> set[str]:
+        """
+        The ids a data model's elements read from, as their sourceIds and dataSourceIds write them: an inode or url
+        id, with or without an `inode-` prefix, or `<data model url id>/<element>` for another data model's element
+        """
+        ids = set()
+        for entry in entries:
+            for source_id in (entry.sourceIds or []) + (entry.dataSourceIds or []):
+                bare_id = source_id.removeprefix("inode-")
+                ids.update((bare_id, bare_id.split("/", 1)[0]))
+        return ids
+
+    def _data_model_lineage_source(
+        self, entry: WorkbookLineageEntry, read_ids: set[str]
+    ) -> Table | DashboardDataModel | None:
+        """
+        The table or Sigma Data Model a data model lineage row names, when an element of the data model reads it.
+        Sigma also lists the sources of what the elements read (ADR:2026-11-12-sigma-data-model-lineage-links-only-what-its-elements-read).
+        """
+        if entry.type == "data-model" and entry.dataModelId:
+            if read_ids.isdisjoint({entry.dataModelId, self._data_model_url_ids.get(entry.dataModelId)}):
+                return None
+            return self._get_datamodel(entry.dataModelId)
+        if entry.type != "table" or not entry.inodeId:
+            return None
+        node = self.client.get_file(entry.inodeId)
+        if not node or read_ids.isdisjoint({entry.inodeId, node.urlId}):
+            return None
+        return next(
+            (
+                table
+                for prefix in self.get_db_service_prefixes() or [None]
+                if (table := self._get_table_entity_from_node(node, prefix))
+            ),
+            None,
+        )
 
     def get_owner_ref(self, dashboard_details: WorkbookDetails | DataModel) -> EntityReferenceList | None:
         """

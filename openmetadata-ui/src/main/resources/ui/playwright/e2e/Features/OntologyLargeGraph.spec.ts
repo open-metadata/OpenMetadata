@@ -410,8 +410,11 @@ test.describe(
         await openLargeOntology(page, fixture, ids.get('Concept 399'));
         await page.getByTestId('submode-tab-tree').click();
 
+        // Past 200 rows the tree mounts only the rows on screen; the keyboard below still reaches
+        // the last of the 400.
         const rows = page.getByRole('treegrid').getByRole('row');
-        await expect(rows).toHaveCount(400);
+        await expect(rows).not.toHaveCount(0);
+        expect(await rows.count()).toBeLessThan(400);
         await expect(
           page.getByTestId(`ontology-tree-term-${ids.get('Concept 0')}`)
         ).toBeVisible();
