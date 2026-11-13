@@ -405,6 +405,31 @@ describe('OntologyAxiomEditor server reasons', () => {
     expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
   });
 
+  it('drops the failed summary when every error already shows under its field', async () => {
+    mockValidate.mockResolvedValue({
+      valid: false,
+      violations: [
+        {
+          code: Code.UndeclaredProperty,
+          message: 'The property is not declared in this ontology',
+          path: '/expressions/0/propertyIri',
+          severity: Severity.Error,
+        },
+      ],
+    });
+    renderEditor();
+    await pick(/^Subject/, 'Pat', /Patient/);
+    await pick(/^Property/, 'date', /dateOfBirth/);
+
+    expect(
+      await screen.findByText('The property is not declared in this ontology')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-axiom-profile')
+    ).not.toBeInTheDocument();
+    expect(screen.getByTestId('ontology-axiom-submit')).toBeDisabled();
+  });
+
   it('lets a clash warning through and lists it, because the server saves with a warning', async () => {
     mockValidate.mockResolvedValue({
       valid: true,

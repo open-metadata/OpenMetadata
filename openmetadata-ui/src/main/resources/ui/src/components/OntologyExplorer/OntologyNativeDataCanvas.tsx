@@ -328,7 +328,7 @@ function AssetCard({
   return (
     <div
       className={classNames(
-        'tw:absolute tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-surface tw:pr-2 tw:shadow-xs',
+        'tw:absolute tw:flex tw:items-center tw:gap-1 tw:rounded-lg tw:border tw:bg-surface tw:pr-2 tw:shadow-xs tw:transition-colors tw:hover:bg-primary_hover',
         isSelected
           ? 'tw:border-brand tw:outline-3 tw:outline-utility-blue-100'
           : 'tw:border-secondary'
@@ -341,7 +341,8 @@ function AssetCard({
           noTextPadding
           aria-describedby={lineageNotes.length > 0 ? lineageId : undefined}
           className={classNames(
-            'tw:flex tw:h-full tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3 tw:rounded-lg tw:py-2 tw:pl-2.5 tw:text-left',
+            // The card owns the hover background; the button painting its own would stack a second one.
+            'tw:flex tw:h-full tw:min-w-0 tw:flex-1 tw:items-center tw:gap-3 tw:rounded-lg tw:py-2 tw:pl-2.5 tw:text-left tw:hover:bg-transparent',
             'tw:*:data-text:flex tw:*:data-text:min-w-0 tw:*:data-text:w-full tw:*:data-text:items-center tw:*:data-text:gap-3'
           )}
           color="tertiary"

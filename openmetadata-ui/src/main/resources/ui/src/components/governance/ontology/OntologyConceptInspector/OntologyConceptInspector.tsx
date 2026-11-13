@@ -1014,7 +1014,8 @@ const OntologyConceptInspector = ({
         <Button
           ellipsis
           noTextPadding
-          className="tw:min-w-0 tw:flex-1 tw:justify-start"
+          // The row owns the hover background; the button painting its own would stack a second one.
+          className="tw:min-w-0 tw:flex-1 tw:justify-start tw:hover:bg-transparent"
           color="tertiary"
           data-testid={`ontology-concept-relation-${other.id}`}
           onPress={openRelation}>
