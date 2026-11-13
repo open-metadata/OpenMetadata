@@ -25,10 +25,10 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
+  ArrowLeft,
   ArrowRight,
   BookClosed,
   Check,
-  ChevronDown,
   ChevronRight,
   Copy01,
   Edit01,
@@ -36,8 +36,9 @@ import {
   Trash01,
   XClose,
 } from '@openmetadata/ui-core-components/icons';
-import { uniqBy } from 'lodash';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { uniqBy, upperFirst } from 'lodash';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   OntologyConcept,
@@ -45,6 +46,7 @@ import {
 } from '../../../../generated/entity/data/ontologyConcept';
 import { Kind } from '../../../../generated/entity/data/ontologyProperty';
 import { useOntologyConceptBindings } from '../../../../hooks/governance/ontology/useOntologyConceptBindings';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useClipboard } from '../../../../hooks/useClipBoard';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
@@ -71,6 +73,7 @@ import {
 import RelationshipTypePicker from '../../../OntologyExplorer/RelationshipTypePicker.component';
 import { RelationTypeOptionGroup } from '../../../OntologyExplorer/RelationshipTypePicker.interface';
 import { useRelationClash } from '../../../OntologyExplorer/RelationWarning.context';
+import OntologyAdvancedDetails from '../OntologyAdvancedDetails/OntologyAdvancedDetails';
 import {
   ConceptEditorFields,
   ConceptEditorFooter,
@@ -79,10 +82,15 @@ import {
   OntologyConceptEditorState,
 } from '../OntologyConceptEditor/OntologyConceptEditor';
 import { CONCEPT_TYPE_LABELS } from '../OntologyConceptEditor/OntologyConceptEditor.utils';
+import { OntologyConflict } from '../OntologyGraphView/OntologyConflicts.utils';
 import OntologyRelationControls from '../OntologyRelationControls/OntologyRelationControls';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptAssets from './OntologyConceptAssets';
-import { CONCEPT_STATUS_LABELS } from './OntologyConceptInspector.constants';
+import OntologyConceptConflicts from './OntologyConceptConflicts';
+import {
+  CONCEPT_STATUS_LABELS,
+  RELATION_PAGE_SIZE,
+} from './OntologyConceptInspector.constants';
 import {
   countFilledSections,
   getCompletenessCounts,
@@ -141,15 +149,20 @@ interface OntologyConceptInspectorProps {
   readonly onEdit?: () => void;
   readonly onEditMappings?: () => void;
   readonly canEditBindings?: boolean;
+  /** Set by the Data view's Link data: open the data-asset link form once Edit is on. */
+  readonly isLinkAssetsRequested?: boolean;
+  readonly onLinkAssetsRequestClosed?: () => void;
+  readonly selectedAssetId?: string;
   readonly isEditing?: boolean;
-  readonly onOpenData: () => void;
   readonly onSelectConcept: (concept: OntologyConcept) => void;
   /** Given in Edit mode: the concept's own fields edit in place with a Save bar. */
   readonly editor?: OntologyConceptEditorState;
   /** Edit mode could not load the concept's working copy, so it stays read-only. */
   readonly isEditorUnavailable?: boolean;
-  /** A confirm (e.g. delete concept) shown over this panel only. */
-  readonly confirmDialog?: ReactNode;
+  /** Validation clashes this concept is part of. */
+  readonly conflicts?: OntologyConflict[];
+  readonly isConflictReviewOpen?: boolean;
+  readonly onShowConflictOnGraph?: () => void;
 }
 
 interface RelationDraft {
@@ -680,46 +693,21 @@ const RelationSynonymWarning = ({
 };
 
 /** One read-only fact in the Advanced table, with a copy button for the identifiers. */
-const AdvancedRow = ({
-  copyable = false,
+const RelationConflictDot = ({
+  isShown,
   label,
-  testId,
-  value,
 }: {
-  readonly copyable?: boolean;
+  readonly isShown: boolean;
   readonly label: string;
-  readonly testId: string;
-  readonly value: string;
-}) => {
-  const { t } = useTranslation();
-  const { hasCopied, onCopyToClipBoard } = useClipboard(value);
-
-  return (
-    <div className="tw:flex tw:min-h-11 tw:items-center tw:gap-3 tw:px-4 tw:py-2">
-      <dt className="tw:w-24 tw:shrink-0 tw:text-sm tw:text-tertiary">
-        {label}
-      </dt>
-      <dd
-        className="tw:m-0 tw:min-w-0 tw:flex-1 tw:break-all tw:text-sm tw:text-primary"
-        data-testid={testId}>
-        {value}
-      </dd>
-      {copyable ? (
-        <ButtonUtility
-          color="tertiary"
-          icon={hasCopied ? Check : Copy01}
-          size="xs"
-          tooltip={t(
-            hasCopied
-              ? 'message.copied-to-clipboard'
-              : 'message.copy-to-clipboard'
-          )}
-          onClick={() => void onCopyToClipBoard(value)}
-        />
-      ) : null}
-    </div>
-  );
-};
+}) =>
+  isShown ? (
+    <span
+      aria-label={label}
+      className="tw:size-2 tw:shrink-0 tw:rounded-full tw:bg-fg-error-secondary"
+      data-testid="ontology-concept-relation-conflict-dot"
+      role="img"
+    />
+  ) : null;
 
 const OntologyConceptInspector = ({
   concept,
@@ -745,19 +733,30 @@ const OntologyConceptInspector = ({
   onEdit,
   onEditMappings,
   canEditBindings = false,
+  isLinkAssetsRequested,
+  onLinkAssetsRequestClosed,
+  selectedAssetId,
   isEditing = false,
-  onOpenData,
   onSelectConcept,
   editor,
   isEditorUnavailable,
-  confirmDialog,
+  conflicts = [],
+  isConflictReviewOpen,
+  onShowConflictOnGraph,
 }: OntologyConceptInspectorProps) => {
   const { t } = useTranslation();
+  const conflictRelationKeys = useMemo(
+    () =>
+      new Set(conflicts.flatMap(({ parts }) => parts.map(({ key }) => key))),
+    [conflicts]
+  );
   const [authoring, setAuthoring] = useState<'property' | 'relation'>();
   const [relationPreset, setRelationPreset] = useState('');
   const [relationDraft, setRelationDraft] =
     useState<RelationDraft>(EMPTY_RELATION_DRAFT);
   const [editingRelationKey, setEditingRelationKey] = useState<string>();
+  // An open property or relation form is work in progress: closing the drawer or leaving asks first.
+  useOntologyDirtyForm([authoring, editingRelationKey].some(Boolean));
   // Leaving Edit drops an open edit, so it does not come back on the next switch.
   useEffect(() => {
     if (!canEditRelations) {
@@ -765,6 +764,10 @@ const OntologyConceptInspector = ({
     }
   }, [canEditRelations]);
   const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
+  const [relationLimit, setRelationLimit] = useState(RELATION_PAGE_SIZE);
+  useEffect(() => {
+    setRelationLimit(RELATION_PAGE_SIZE);
+  }, [concept.id]);
   const bindings = useOntologyConceptBindings(concept.id);
   const { hasCopied: hasCopiedIri, onCopyToClipBoard } = useClipboard(
     concept.iri
@@ -863,7 +866,7 @@ const OntologyConceptInspector = ({
       <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
         <Box align="center" gap={2}>
           <Typography
-            className="tw:font-mono tw:text-primary"
+            className="tw:text-primary"
             size="text-sm"
             weight="medium">
             {getPropertyLabel(property)}
@@ -891,12 +894,14 @@ const OntologyConceptInspector = ({
           propertyLabel={getPropertyLabel(property)}
         />
       </Box>
-      <Typography
-        className="tw:font-mono tw:text-utility-brand-700"
-        size="text-xs"
-        weight="semibold">
-        {datatype}
-      </Typography>
+      <Badge
+        className="tw:shrink-0"
+        color="success"
+        data-testid="ontology-concept-property-datatype"
+        size="sm"
+        type="pill-color">
+        {upperFirst(humanizeName(datatype))}
+      </Badge>
     </InspectorRow>
   );
 
@@ -968,31 +973,53 @@ const OntologyConceptInspector = ({
       </Badge>
     );
 
+    const openRelation = () =>
+      onOpenRelation ? onOpenRelation(relation) : onSelectConcept(other);
+
     return (
+      // The whole card is a pointer target; keyboard users act through the
+      // target Button, so the row adds no second tab stop. Clicks on any
+      // button inside (target, edit, delete) are left to that button.
+      // eslint-disable-next-line jsx-a11y/click-events-have-key-events, jsx-a11y/no-noninteractive-element-interactions
       <li
-        className="tw:flex tw:min-h-11 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5"
+        className={classNames(
+          'tw:flex tw:min-h-11 tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5',
+          'tw:cursor-pointer tw:transition-colors tw:hover:bg-primary_hover'
+        )}
+        data-direction={readsForward ? 'forward' : 'backward'}
         data-testid="ontology-concept-relation-row"
-        key={`${direction}:${relation.key}`}>
+        key={`${direction}:${relation.key}`}
+        onClick={(event) => {
+          if (!(event.target as HTMLElement).closest('button')) {
+            openRelation();
+          }
+        }}>
+        <RelationConflictDot
+          isShown={conflictRelationKeys.has(relation.key)}
+          label={t('label.conflict')}
+        />
+        {/* Badge first on every row, as the design does; the arrow says which way the relation reads. */}
+        {badge}
         {readsForward ? (
-          <>
-            {badge}
-            <ArrowRight
-              aria-hidden
-              className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
-            />
-          </>
-        ) : null}
+          <ArrowRight
+            aria-hidden
+            className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
+          />
+        ) : (
+          <ArrowLeft
+            aria-hidden
+            className="tw:size-3.5 tw:shrink-0 tw:text-fg-quaternary"
+          />
+        )}
         <Button
+          ellipsis
           noTextPadding
           className="tw:min-w-0 tw:flex-1 tw:justify-start"
           color="tertiary"
           data-testid={`ontology-concept-relation-${other.id}`}
-          onPress={() =>
-            onOpenRelation ? onOpenRelation(relation) : onSelectConcept(other)
-          }>
-          <span className="tw:truncate">{other.displayName ?? other.name}</span>
+          onPress={openRelation}>
+          {other.displayName ?? other.name}
         </Button>
-        {readsForward ? null : badge}
         {isRelationEditable(relation) && onEditRelation && onDeleteRelation ? (
           <OntologyRelationControls
             onDelete={() => onDeleteRelation(relation)}
@@ -1052,10 +1079,7 @@ const OntologyConceptInspector = ({
       <Badge color="success" size="sm" type="pill-color">
         {humanizeName(mapping.mappingType)}
       </Badge>
-      <Typography
-        ellipsis
-        className="tw:min-w-0 tw:flex-1 tw:font-mono"
-        size="text-xs">
+      <Typography ellipsis className="tw:min-w-0 tw:flex-1" size="text-sm">
         {mapping.conceptIri}
       </Typography>
     </InspectorRow>
@@ -1349,71 +1373,93 @@ const OntologyConceptInspector = ({
     );
 
   const renderAdvanced = () => (
-    <section className="tw:py-4" data-testid="ontology-concept-advanced">
-      <Button
-        aria-expanded={isAdvancedOpen}
-        color="link-gray"
-        data-testid="ontology-concept-advanced-toggle"
-        iconLeading={isAdvancedOpen ? ChevronDown : ChevronRight}
-        size="sm"
-        onPress={() => setIsAdvancedOpen((open) => !open)}>
-        {t('label.advanced')}
-        <Typography
-          as="span"
-          className="tw:ml-1 tw:text-tertiary"
-          size="text-sm">
-          {t('label.id-and-iri')}
-        </Typography>
-      </Button>
-      {isAdvancedOpen ? (
-        <Box className="tw:pt-3" direction="col" gap={2}>
-          <dl className="tw:m-0 tw:divide-y tw:divide-secondary tw:rounded-lg tw:border tw:border-secondary">
-            <AdvancedRow
-              copyable
-              label={t('label.name')}
-              testId="ontology-concept-name"
-              value={concept.name}
-            />
-            <AdvancedRow
-              copyable
-              label={t('label.iri')}
-              testId="ontology-concept-full-iri"
-              value={concept.iri}
-            />
-            <AdvancedRow
-              label={t('label.status')}
-              testId="ontology-concept-lifecycle"
-              value={t(
-                concept.lifecycleStatus
-                  ? CONCEPT_STATUS_LABELS[concept.lifecycleStatus]
-                  : 'label.unavailable'
-              )}
-            />
-            {concept.provider ? (
-              <AdvancedRow
-                label={t('label.provider')}
-                testId="ontology-concept-provider"
-                value={concept.provider}
-              />
-            ) : null}
-            {concept.abstract ? (
-              <AdvancedRow
-                label={t('label.abstract')}
-                testId="ontology-concept-abstract"
-                value={t('label.yes')}
-              />
-            ) : null}
-          </dl>
-          <Typography className="tw:text-tertiary" size="text-xs">
-            {t('message.ontology-generated-read-only')}
-          </Typography>
-        </Box>
+    <OntologyAdvancedDetails
+      className="tw:py-4"
+      footnote={t('message.ontology-generated-read-only')}
+      isOpen={isAdvancedOpen}
+      rows={[
+        {
+          copyable: true,
+          label: t('label.name'),
+          testId: 'ontology-concept-name',
+          value: concept.name,
+        },
+        {
+          copyable: true,
+          label: t('label.iri'),
+          testId: 'ontology-concept-full-iri',
+          value: concept.iri,
+        },
+        {
+          label: t('label.status'),
+          testId: 'ontology-concept-lifecycle',
+          value: t(
+            concept.lifecycleStatus
+              ? CONCEPT_STATUS_LABELS[concept.lifecycleStatus]
+              : 'label.unavailable'
+          ),
+        },
+        ...(concept.provider
+          ? [
+              {
+                label: t('label.provider'),
+                testId: 'ontology-concept-provider',
+                value: concept.provider,
+              },
+            ]
+          : []),
+        ...(concept.abstract
+          ? [
+              {
+                label: t('label.abstract'),
+                testId: 'ontology-concept-abstract',
+                value: t('label.yes'),
+              },
+            ]
+          : []),
+      ]}
+      summary={t('label.id-and-iri')}
+      testId="ontology-concept-advanced"
+      onToggle={() => setIsAdvancedOpen((open) => !open)}
+    />
+  );
+
+  const renderRelationList = () => (
+    <>
+      <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
+        {conceptRelations
+          .slice(0, relationLimit)
+          .map((row) =>
+            canEditRelations && row.relation.key === editingRelationKey
+              ? renderRelationEdit(row)
+              : renderRelationRow(row)
+          )}
+      </ul>
+      {conceptRelations.length > relationLimit ? (
+        <Button
+          className="tw:self-start"
+          color="link-color"
+          data-testid="ontology-concept-relations-load-more"
+          size="sm"
+          onPress={() =>
+            setRelationLimit((limit) => limit + RELATION_PAGE_SIZE)
+          }>
+          {t('label.load-more')}
+        </Button>
       ) : null}
-    </section>
+    </>
   );
 
   const renderBody = () => (
-    <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-auto tw:px-6">
+    <div className="tw:min-h-0 tw:flex-1 tw:divide-y tw:divide-secondary tw:overflow-x-hidden tw:overflow-y-auto tw:px-6">
+      {conflicts.length > 0 && onShowConflictOnGraph ? (
+        <OntologyConceptConflicts
+          conflicts={conflicts}
+          defaultOpen={isConflictReviewOpen}
+          onRemove={canAddRelation ? onDeleteRelation : undefined}
+          onShowOnGraph={onShowConflictOnGraph}
+        />
+      ) : null}
       {renderDescription()}
       <ConceptSection
         addTestId="ontology-add-relationship"
@@ -1426,13 +1472,7 @@ const OntologyConceptInspector = ({
         )}>
         {renderRelationAuthoring()}
         {conceptRelations.length > 0 ? (
-          <ul className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-2 tw:p-0">
-            {conceptRelations.map((row) =>
-              canEditRelations && row.relation.key === editingRelationKey
-                ? renderRelationEdit(row)
-                : renderRelationRow(row)
-            )}
-          </ul>
+          renderRelationList()
         ) : (
           <InlineEmptyPlaceholder
             data-testid="ontology-concept-empty"
@@ -1485,11 +1525,12 @@ const OntologyConceptInspector = ({
         canEdit={canEditBindings}
         conceptId={concept.id}
         conceptName={getEntityName(concept)}
+        isLinkRequested={isLinkAssetsRequested}
         key={concept.id}
-        presentation={
-          isEditing ? { kind: 'edit' } : { kind: 'view', onOpenData }
-        }
+        presentation={isEditing ? { kind: 'edit' } : { kind: 'view' }}
         properties={bindableProperties}
+        selectedAssetId={selectedAssetId}
+        onLinkRequestClosed={onLinkAssetsRequestClosed}
       />
       <Box className="tw:py-5" direction="col">
         <OntologyConceptLiveData
@@ -1509,8 +1550,9 @@ const OntologyConceptInspector = ({
 
   return (
     <OntologyStudioDrawer
-      confirm={confirmDialog}
-      testId="ontology-concept-inspector">
+      testId="ontology-concept-inspector"
+      // Unsaved work in the drawer (registered dirty forms) goes through the discard prompt first.
+      onInteractOutside={onClose}>
       {renderHeader()}
       {isEditorUnavailable ? (
         <Typography

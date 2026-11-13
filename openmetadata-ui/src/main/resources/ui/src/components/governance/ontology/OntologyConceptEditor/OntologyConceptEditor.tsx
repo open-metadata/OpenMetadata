@@ -49,6 +49,7 @@ import {
 } from '../OntologyConceptInspector/OntologyConceptSection';
 import OntologyIriInput from '../OntologyIriInput/OntologyIriInput';
 import { OntologyIriOption } from '../OntologyIriInput/OntologyIriInput.types';
+import { mappingTypeLabel } from '../OntologyNewClassPanel/OntologyNewClassPanel.utils';
 import {
   conceptFormFields,
   conceptFormValues,
@@ -164,7 +165,7 @@ const useEditorParts = (editor: OntologyConceptEditorState) => {
       conceptIri: '',
       mappingType: {
         id: ConceptMappingType.ExactMatch,
-        label: ConceptMappingType.ExactMatch,
+        label: mappingTypeLabel(ConceptMappingType.ExactMatch),
       },
       schemeIri: '',
       source: '',
@@ -315,7 +316,7 @@ const MappingRow = ({
         {mapping.mappingType.label}
       </Badge>
       <Box className="tw:min-w-0 tw:flex-1" direction="col">
-        <Typography ellipsis className="tw:font-mono" size="text-xs">
+        <Typography ellipsis size="text-sm">
           {mapping.conceptIri}
         </Typography>
         {meta ? (

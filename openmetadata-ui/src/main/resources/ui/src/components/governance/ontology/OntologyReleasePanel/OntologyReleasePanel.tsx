@@ -19,7 +19,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { useQuery } from '@tanstack/react-query';
-import { ReactNode, useEffect, useState } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { AssigneeStatus } from '../../../../generated/api/data/ontologyReleaseReview';
@@ -34,8 +34,10 @@ import {
   useOntologyPublication,
 } from '../../../../hooks/governance/ontology/useOntologyPublication';
 import { reusablePublicationCandidate } from '../../../../hooks/governance/ontology/useOntologyPublication.utils';
+import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
 import {
@@ -201,6 +203,17 @@ const OntologyReleasePanel = ({
   onSummaryChange,
 }: OntologyReleasePanelProps) => {
   const { t } = useTranslation();
+  // Shared with the graph through the query cache; only used to name concepts in validation messages.
+  const { model: conceptModel } = useOntologyStudioModel(ontology);
+  const validationConcepts = useMemo(
+    () =>
+      (conceptModel?.concepts ?? []).map((concept) => ({
+        name: concept.name,
+        iri: concept.iri,
+        label: getEntityName(concept),
+      })),
+    [conceptModel?.concepts]
+  );
   const [editor, setEditor] = useState<VersionEditorState>();
   const [cursors, setCursors] = useState<(string | undefined)[]>([undefined]);
   const [cursorRevision, setCursorRevision] = useState<string>();
@@ -359,7 +372,7 @@ const OntologyReleasePanel = ({
       return null;
     }
     if (changes.isPending || changes.isFetching || working.isFetching) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     if (changes.isError || !hasCoherentPreview) {
       return (
@@ -390,7 +403,7 @@ const OntologyReleasePanel = ({
       );
     }
     if (displayed.isPending) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     return (
@@ -527,7 +540,7 @@ const OntologyReleasePanel = ({
 
     return (
       <Typography
-        color="secondary"
+        className="tw:text-tertiary"
         data-testid="ontology-publication-text"
         role="note"
         size="text-sm">
@@ -645,7 +658,7 @@ const OntologyReleasePanel = ({
   );
   const renderStageStatus = () =>
     panelView.kind === 'loading' ? (
-      <Typography role="status">{t('label.loading')}</Typography>
+      <Loader size="small" />
     ) : (
       <Alert variant="error">
         {t('message.ontology-review-unavailable')}
@@ -666,7 +679,7 @@ const OntologyReleasePanel = ({
     stage: NonNullable<typeof currentStage>,
     actions: PublicationActions | undefined
   ) => (
-    <Box align="center" gap={2} wrap="wrap">
+    <Box align="center" className="tw:gap-x-2 tw:gap-y-1" wrap="wrap">
       {baseVersion ? (
         <Badge color="success" size="sm" type="pill-color">
           {t('label.published-version', { version: versionTag(baseVersion) })}
@@ -677,7 +690,9 @@ const OntologyReleasePanel = ({
           {t(RELEASE_STAGE_LABELS[stage.stage])}
         </span>
       </Badge>
-      <Typography size="text-sm">{candidateLabel()}</Typography>
+      {candidateLabel() ? (
+        <Typography size="text-sm">{candidateLabel()}</Typography>
+      ) : null}
       {'task' in stage && stage.task ? renderTaskLink(stage.task) : null}
       {actions ? renderActionText(actions) : null}
     </Box>
@@ -706,7 +721,7 @@ const OntologyReleasePanel = ({
         {renderNotice()}
         {renderRejection(currentStage)}
         <Box align="center" gap={4} justify="between" wrap="wrap">
-          <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={1}>
+          <Box className="tw:min-w-0 tw:flex-1 tw:gap-0.5" direction="col">
             {preview}
             {renderStageLine(currentStage, actions)}
           </Box>
@@ -743,7 +758,7 @@ const OntologyReleasePanel = ({
 
     return (
       <Box
-        className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
+        className="tw:sticky tw:bottom-0 tw:z-10 tw:-mx-6 tw:mt-auto tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
         direction="col"
         gap={3}>
         {currentStage ? renderFooter(preview) : preview}
@@ -837,6 +852,7 @@ const OntologyReleasePanel = ({
 
   const renderValidation = () => (
     <OntologyReleaseValidation
+      concepts={validationConcepts}
       release={
         view === 'releases' && selectedId
           ? release
@@ -969,7 +985,7 @@ const OntologyReleasePanel = ({
 
     return (
       <Box
-        className={isChanges ? undefined : 'tw:pb-5'}
+        className={isChanges ? 'tw:flex-1' : 'tw:flex-1 tw:pb-5'}
         direction="col"
         gap={4}>
         {renderStateError()}
@@ -978,7 +994,10 @@ const OntologyReleasePanel = ({
         {renderStorageStatus()}
         {renderRecovery()}
         {currentStage || state.isError ? null : renderStageStatus()}
-        {isChanges ? renderAiFooter() : currentStage && renderFooter()}
+        {isChanges ? renderAiFooter() : null}
+        {!isChanges && currentStage ? (
+          <div className="tw:mt-auto">{renderFooter()}</div>
+        ) : null}
       </Box>
     );
   };

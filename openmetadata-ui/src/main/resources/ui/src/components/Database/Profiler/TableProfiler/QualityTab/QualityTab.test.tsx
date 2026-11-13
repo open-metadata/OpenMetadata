@@ -617,6 +617,52 @@ describe('QualityTab', () => {
     useCustomLocation.mockImplementation(defaultLocation);
   });
 
+  it('should not offer Add Pipeline on a deleted table', async () => {
+    const { default: useCustomLocation } = jest.requireMock(
+      '../../../../../hooks/useCustomLocation/useCustomLocation'
+    );
+    const TestSuitePipelineTab = jest.requireMock(
+      '../../../../DataQuality/TestSuite/TestSuitePipelineTab/TestSuitePipelineTab.component'
+    );
+    const defaultLocation = useCustomLocation.getMockImplementation();
+    useCustomLocation.mockReturnValue({
+      pathname: '/test-path',
+      search: '?qualityTab=pipeline',
+      state: undefined,
+    });
+    (getIngestionPipelines as jest.Mock).mockResolvedValueOnce({
+      paging: { total: 1 },
+    });
+    (useTableProfiler as jest.Mock).mockReturnValue({
+      ...mockUseTableProfiler,
+      isTableDeleted: true,
+      table: {
+        ...MOCK_TABLE,
+        deleted: true,
+        testSuite: { fullyQualifiedName: 'test.suite.name' },
+      },
+    });
+
+    try {
+      await act(async () => {
+        render(<QualityTab />);
+      });
+
+      expect(await screen.findByTestId('pipeline-count')).toHaveTextContent(
+        '1'
+      );
+      expect(
+        screen.queryByTestId('add-pipeline-button')
+      ).not.toBeInTheDocument();
+      expect(TestSuitePipelineTab).toHaveBeenLastCalledWith(
+        expect.objectContaining({ deleted: true }),
+        expect.anything()
+      );
+    } finally {
+      useCustomLocation.mockImplementation(defaultLocation);
+    }
+  });
+
   it('should show zero count when no test cases or pipelines exist', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
@@ -873,6 +919,7 @@ describe('QualityTab', () => {
   it('should pass deleted true to ManageButton when table is deleted', async () => {
     (useTableProfiler as jest.Mock).mockReturnValue({
       ...mockUseTableProfiler,
+      isTableDeleted: true,
       table: {
         ...MOCK_TABLE,
         id: 'test-table-id',

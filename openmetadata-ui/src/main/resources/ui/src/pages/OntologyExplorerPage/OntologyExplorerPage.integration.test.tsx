@@ -340,7 +340,7 @@ describe('Ontology Studio mode-switch integration', () => {
     ).toBeVisible();
   });
 
-  it('keeps the native inspector and selection across aggregate tree, owner Edit, and Query', async () => {
+  it('closes the inspector on a surface switch and keeps the reopened selection across owner Edit and Query', async () => {
     const ontology: Ontology = {
       id: 'retail',
       name: 'Retail',
@@ -387,9 +387,21 @@ describe('Ontology Studio mode-switch integration', () => {
 
     fireEvent.click(screen.getByRole('tab', { name: 'label.tree' }));
 
-    expect(screen.getByTestId('ontology-concept-inspector')).toHaveTextContent(
-      'A person who buys goods.'
+    // Switching surfaces closes the drawer; the concept opens again from the tree.
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId('ontology-concept-inspector')
+      ).not.toBeInTheDocument()
     );
+
+    const customerRow = (
+      await screen.findAllByTestId(/^ontology-tree-term-/)
+    ).find((row) => row.textContent?.includes('Customer'));
+    fireEvent.click(customerRow as HTMLElement);
+
+    expect(
+      await screen.findByTestId('ontology-concept-inspector')
+    ).toHaveTextContent('A person who buys goods.');
 
     fireEvent.click(screen.getByTestId('mode-tab-edit'));
     await waitFor(() =>
@@ -509,6 +521,7 @@ describe('Ontology Studio mode-switch integration', () => {
     fireEvent.click(editor.getByRole('button', { name: 'label.save' }));
     await screen.findByRole('button', { name: 'Customer ID' });
     fireEvent.click(screen.getByTestId('submode-tab-graph'));
+    fireEvent.click(await screen.findByRole('button', { name: 'Customer' }));
     await waitFor(() =>
       expect(
         screen.getByTestId('ontology-concept-properties')

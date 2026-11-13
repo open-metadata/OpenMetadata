@@ -31,6 +31,7 @@ import {
   getOntologyReleaseMember,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeFilters from '../OntologyReleasePanel/OntologyReleaseChangeFilters';
 import type {
   ChangeFilter,
@@ -191,7 +192,7 @@ const OntologyReviewRelease = ({
       );
     }
     if (members.some((member) => member.isPending)) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     const payloadOf = (label: string) =>
@@ -247,7 +248,7 @@ const OntologyReviewRelease = ({
   };
   const renderChanges = () => {
     if (page.isPending) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     const changes = page.data.data;
     const visible = filterable

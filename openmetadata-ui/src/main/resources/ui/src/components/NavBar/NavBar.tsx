@@ -617,10 +617,9 @@ const NavBar = () => {
               </Dropdown.Popover>
             </Dropdown.Root>
             <PopoverTrigger onOpenChange={handleBellClick}>
-              <Button
+              <ButtonUtility
                 aria-label={t('label.notification-plural')}
-                color="tertiary"
-                iconLeading={
+                icon={
                   <span className="tw:relative tw:inline-flex tw:items-center">
                     <Bell01 data-testid="task-notifications" size={20} />
                     {(hasTaskNotification || hasMentionNotification) && (
@@ -633,7 +632,7 @@ const NavBar = () => {
                     )}
                   </span>
                 }
-                size="sm"
+                size="lg"
               />
               <Popover className="tw:w-106" placement="bottom end">
                 <NotificationBox

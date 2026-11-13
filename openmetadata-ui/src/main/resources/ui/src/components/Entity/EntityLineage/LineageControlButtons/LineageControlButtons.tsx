@@ -35,11 +35,14 @@ const LineageControlButtons: FC<{
   miniMapVisible?: boolean;
   reactFlowInstance?: ReactFlowInstance;
   onFitView?: () => void;
+  // Replaces the default zoom-out, so a caller can turn it into a level change.
+  onZoomOut?: () => void;
 }> = ({
   onToggleMiniMap,
   miniMapVisible = false,
   reactFlowInstance: controlledReactFlowInstance,
   onFitView,
+  onZoomOut,
 }) => {
   const { t } = useTranslation();
   const providerReactFlowInstance = useLineageStore((s) => s.reactFlowInstance);
@@ -51,8 +54,13 @@ const LineageControlButtons: FC<{
   }, [reactFlowInstance]);
 
   const handleZoomOut = useCallback(() => {
+    if (onZoomOut) {
+      onZoomOut();
+
+      return;
+    }
     reactFlowInstance?.zoomOut();
-  }, [reactFlowInstance]);
+  }, [onZoomOut, reactFlowInstance]);
 
   const handleFitView = useCallback(() => {
     if (onFitView) {

@@ -72,7 +72,7 @@ const PublicationClassicHeader = ({
       <Tabs.List
         aria-label={t('label.review-publish')}
         size="sm"
-        type="button-minimal">
+        type="button-border">
         <Tabs.Item
           data-testid="ontology-publication-tab-changes"
           id="changes"
@@ -220,7 +220,7 @@ const OntologyPublicationModal = ({
               }
             }}>
             <div
-              className="tw:flex tw:max-h-[88vh] tw:flex-col tw:overflow-hidden tw:font-body"
+              className="tw:flex tw:h-[88vh] tw:flex-col tw:overflow-hidden tw:font-body"
               data-testid="ontology-publication-modal">
               <PublicationHeader
                 owner={ontology}
@@ -228,7 +228,10 @@ const OntologyPublicationModal = ({
                 onClose={onClose}
               />
               <div className={layout.body}>
-                <Tabs.Panel id={activeTab}>
+                {/* One height for both tabs; the panel fills it so each footer sits at the bottom. */}
+                <Tabs.Panel
+                  className="tw:flex tw:min-h-full tw:flex-col"
+                  id={activeTab}>
                   <OntologyReleasePanel
                     canEdit={canEdit}
                     key={ontology.id}

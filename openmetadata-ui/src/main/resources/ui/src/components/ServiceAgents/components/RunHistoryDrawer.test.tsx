@@ -49,6 +49,7 @@ const mockRuns: AgentRun[] = [
   },
   {
     id: 'run-middle',
+    runId: 'run-middle',
     status: 'failed',
     startedAt: 'May 26, 2026 · 08:10',
     duration: 0.7,
@@ -217,6 +218,59 @@ describe('RunHistoryDrawer', () => {
     expect(
       screen.queryByTestId('drawer-run-now-button')
     ).not.toBeInTheDocument();
+  });
+
+  it('should open the logs of the selected run when it is not the latest', () => {
+    const onOpenLogs = jest.fn();
+    render(
+      <RunHistoryDrawer
+        open
+        agent={agent}
+        initialRunId="run-middle"
+        onClose={jest.fn()}
+        onOpenLogs={onOpenLogs}
+        onRun={mockOnRun}
+      />
+    );
+    fireEvent.click(screen.getByTestId('raw-logs-button'));
+
+    expect(onOpenLogs).toHaveBeenCalledWith(
+      agent,
+      expect.objectContaining({ id: 'run-middle' })
+    );
+  });
+
+  it('should fall back to the latest logs when the selected run has no server run id', () => {
+    const onOpenLogs = jest.fn();
+    render(
+      <RunHistoryDrawer
+        open
+        agent={agent}
+        initialRunId="run-oldest"
+        onClose={jest.fn()}
+        onOpenLogs={onOpenLogs}
+        onRun={mockOnRun}
+      />
+    );
+    fireEvent.click(screen.getByTestId('raw-logs-button'));
+
+    expect(onOpenLogs).toHaveBeenCalledWith(agent, undefined);
+  });
+
+  it('should open the agent logs without a run id when the latest run is selected', () => {
+    const onOpenLogs = jest.fn();
+    render(
+      <RunHistoryDrawer
+        open
+        agent={agent}
+        onClose={jest.fn()}
+        onOpenLogs={onOpenLogs}
+        onRun={mockOnRun}
+      />
+    );
+    fireEvent.click(screen.getByTestId('raw-logs-button'));
+
+    expect(onOpenLogs).toHaveBeenCalledWith(agent, undefined);
   });
 
   it('should hide the Run now button while permissions are unresolved', () => {

@@ -17,3 +17,7 @@ export const CONCEPT_STATUS_LABELS: Record<OntologyDefinitionStatus, string> = {
   [OntologyDefinitionStatus.InReview]: 'label.in-review',
   [OntologyDefinitionStatus.Approved]: 'label.approved',
 };
+
+// Long class hierarchies list hundreds of relationships; the drawer reveals them ten at a
+// time (a show-more reveal, not a paged view). ADR:2026-11-13-concept-drawer-reveals-relationships-ten-at-a-time
+export const RELATION_PAGE_SIZE = 10;

@@ -319,6 +319,11 @@ test.describe(
 
           await page.getByTestId('ontology-add-concept').click();
           await addConceptFromDrawer(page, 'From Toolbar');
+          // The new concept opens in the inspector, which narrows the canvas; at 1280px
+          // in AI mode no point is left clear of the nodes until it closes.
+          const inspector = page.getByTestId('ontology-concept-inspector');
+          await inspector.getByRole('button', { name: 'Close' }).click();
+          await expect(inspector).toHaveCount(0);
 
           // The graph re-renders after the first concept lands; a double-click in that window is
           // dropped, so re-measure and retry until the drawer opens.
@@ -405,8 +410,13 @@ test.describe(
           await attachStudioShot(page, testInfo, `p1-guard-${mode}`);
           await answer('Cancel');
           await expect(description).toHaveValue('Unsaved first');
+          // The press outside the drawer asks first; Discard only closes the drawer.
           await clickGraphNode(page, second.id);
           await answer('Discard');
+          await expect(
+            page.getByTestId('ontology-concept-inspector')
+          ).toHaveCount(0);
+          await clickGraphNode(page, second.id);
           await expect(
             page.getByTestId('ontology-concept-inspector')
           ).toContainText('Second');
@@ -533,7 +543,8 @@ test.describe(
     const reviewNow = async (page: Page, ontology: Ontology) => {
       await openOntologyInStudio(page, ontology.id);
       await page
-        .getByRole('button', { name: 'Review now', exact: true })
+        .getByTestId(/^ontology-(open-reviews|review)-banner$/)
+        .getByRole('button', { name: 'Review', exact: true })
         .click();
       await expect(page.getByTestId('ontology-task-detail')).toBeVisible();
     };
@@ -1071,7 +1082,10 @@ test.describe(
             }
           }
           for (const concept of [concepts[0], concepts[1]]) {
-            await rowOf(concept.id).click();
+            // The open drawer covers the right of the row; its name sits clear of it.
+            await rowOf(concept.id)
+              .getByText(concept.name, { exact: true })
+              .click();
             await expect(inspector).toContainText(concept.name);
             await expect(page).toHaveURL(
               new RegExp(`[?&]concept=${concept.id}(&|$)`)

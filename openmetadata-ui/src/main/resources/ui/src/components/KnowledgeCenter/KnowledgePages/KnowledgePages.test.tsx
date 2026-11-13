@@ -10,10 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { TreeSelectNode } from '@openmetadata/ui-core-components';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
+import {
+  addKnowledgePageUsage,
+  getListKnowledgePages,
+  removeKnowledgePageUsage,
+} from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
 import { MOCK_KNOWLEDGE_PAGES } from './KnowledgePages.mock';
 
@@ -22,7 +27,45 @@ const mockProps = {
   entityType: 'table',
 };
 
+const mockFilterWidgets = jest.fn();
+const mockPermissions = { EditAll: false };
+const mockArticlePermissions = { EditAll: true };
+
+jest.mock('context/PermissionProvider/PermissionProvider', () => ({
+  usePermissionProvider: () => ({
+    permissions: { page: mockArticlePermissions },
+  }),
+}));
+
 jest.mock('rest/knowledgeCenterAPI');
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  TreeSelect: ({
+    value = [],
+    onChange,
+    renderTrigger,
+  }: {
+    value?: TreeSelectNode[];
+    onChange: (nodes: TreeSelectNode[]) => void;
+    renderTrigger: (props: { toggle: () => void }) => React.ReactNode;
+  }) => (
+    <>
+      {renderTrigger({ toggle: jest.fn() })}
+      <button
+        aria-label="apply"
+        data-testid="apply-article-picker"
+        onClick={() =>
+          // keep the second listed page, drop the first, add a new one
+          onChange([
+            ...value.slice(1),
+            { id: 'new-page-id', label: 'New', value: 'new-page-id' },
+          ])
+        }
+      />
+    </>
+  ),
+}));
 
 jest.mock('components/Customization/GenericProvider/GenericProvider', () => ({
   GenericProvider: ({ children }: { children: React.ReactNode }) => (
@@ -34,7 +77,8 @@ jest.mock('components/Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => ({
     data: { id: mockProps.entityId },
     type: mockProps.entityType,
-    filterWidgets: jest.fn(),
+    filterWidgets: mockFilterWidgets,
+    permissions: mockPermissions,
   })),
 }));
 
@@ -228,5 +272,128 @@ describe('KnowledgePages', () => {
     expect(getListKnowledgePages).not.toHaveBeenCalled();
 
     expect(screen.queryByTestId('knowledge-pages')).not.toBeInTheDocument();
+  });
+
+  describe('linking articles', () => {
+    beforeEach(() => {
+      mockPermissions.EditAll = true;
+      mockProps.entityId =
+        '6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2';
+      mockProps.entityType = 'table';
+    });
+
+    afterEach(() => {
+      mockPermissions.EditAll = false;
+      mockArticlePermissions.EditAll = true;
+      mockProps.entityType = 'table';
+    });
+
+    it('should hide the empty widget when the user cannot edit articles', async () => {
+      mockArticlePermissions.EditAll = false;
+      (getListKnowledgePages as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      expect(
+        screen.queryByTestId('edit-linked-articles')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not offer linking on a domain page', async () => {
+      mockProps.entityType = 'domain';
+      (getListKnowledgePages as jest.Mock).mockResolvedValueOnce({
+        data: [...MOCK_KNOWLEDGE_PAGES],
+        paging: { total: 2 },
+      });
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('edit-linked-articles')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should hide the widget when the article list fails to load', async () => {
+      (getListKnowledgePages as jest.Mock).mockRejectedValueOnce(
+        new Error('boom')
+      );
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      expect(
+        screen.queryByTestId('edit-linked-articles')
+      ).not.toBeInTheDocument();
+    });
+
+    it('should render an add action instead of hiding when empty and editable', async () => {
+      (getListKnowledgePages as jest.Mock).mockResolvedValueOnce({
+        data: [],
+        paging: { total: 0 },
+      });
+      mockFilterWidgets.mockClear();
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      expect(screen.getByTestId('edit-linked-articles')).toBeInTheDocument();
+      expect(mockFilterWidgets).not.toHaveBeenCalled();
+    });
+
+    it('should link added and unlink removed articles on save', async () => {
+      (getListKnowledgePages as jest.Mock).mockResolvedValue({
+        data: [...MOCK_KNOWLEDGE_PAGES],
+        paging: { total: 2 },
+      });
+      (addKnowledgePageUsage as jest.Mock).mockResolvedValue({});
+      (removeKnowledgePageUsage as jest.Mock).mockResolvedValue({});
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('apply-article-picker'));
+      });
+
+      const entityRef = { id: mockProps.entityId, type: mockProps.entityType };
+
+      expect(addKnowledgePageUsage).toHaveBeenCalledTimes(1);
+      expect(addKnowledgePageUsage).toHaveBeenCalledWith('new-page-id', [
+        entityRef,
+      ]);
+      expect(removeKnowledgePageUsage).toHaveBeenCalledTimes(1);
+      expect(removeKnowledgePageUsage).toHaveBeenCalledWith(
+        MOCK_KNOWLEDGE_PAGES[0].id,
+        [entityRef]
+      );
+    });
+
+    it('should keep the card mounted while it refreshes after saving', async () => {
+      (getListKnowledgePages as jest.Mock)
+        .mockResolvedValueOnce({
+          data: [...MOCK_KNOWLEDGE_PAGES],
+          paging: { total: 2 },
+        })
+        // The post-save refresh never settles, so the card must not be swapped for the loader.
+        .mockReturnValueOnce(new Promise(() => undefined));
+      (addKnowledgePageUsage as jest.Mock).mockResolvedValue({});
+      (removeKnowledgePageUsage as jest.Mock).mockResolvedValue({});
+      await act(async () => {
+        render(<KnowledgePages />, { wrapper: MemoryRouter });
+      });
+
+      await act(async () => {
+        fireEvent.click(screen.getByTestId('apply-article-picker'));
+      });
+
+      expect(getListKnowledgePages).toHaveBeenCalledTimes(2);
+      expect(screen.getByTestId('knowledge-pages')).toBeInTheDocument();
+    });
   });
 });
