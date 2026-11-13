@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "De openstaande beoordeling wordt ingetrokken en is niet meer zichtbaar voor beoordelaars.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} bewerkt deze woordenlijst in een andere sessie. Sluit die sessie of wacht een minuut tot deze verloopt en probeer het opnieuw.",
     "ontology-empty-card-description": "Voeg een concept toe om het model te starten. Zodra er enkele zijn, kunt u concepten verbinden, eigenschappen toevoegen en gegevens koppelen.",

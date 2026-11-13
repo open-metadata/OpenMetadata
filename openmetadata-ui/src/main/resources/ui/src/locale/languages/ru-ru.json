@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "Открытая проверка будет отозвана, и рецензенты больше не увидят её.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} редактирует этот глоссарий в другом сеансе. Закройте тот сеанс или подождите минуту, пока он истечёт, и повторите попытку.",
     "ontology-empty-card-description": "Добавьте понятие, чтобы начать модель. Когда их станет несколько, можно будет связывать понятия, добавлять свойства и привязывать данные.",

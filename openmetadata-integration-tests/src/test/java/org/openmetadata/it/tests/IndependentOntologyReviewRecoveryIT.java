@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -205,6 +206,25 @@ public class IndependentOntologyReviewRecoveryIT extends BaseOntologyApprovalIT 
     Task resubmitted = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
     assertEquals(TaskEntityStatus.Open, resubmitted.getStatus());
     assertEquals(EntityStatus.IN_REVIEW, current(release).getEntityStatus());
+  }
+
+  @Test
+  void aRefusedArchiveLeavesTheReviewOpen(TestNamespace ns) {
+    Ontology ontology = createOntology(ns);
+    declareClass(ontology, "Customer", URI.create("https://example.org/model/Customer"));
+    OntologyRelease release = capture(ontology);
+    Task task = submit(ns, Entity.ONTOLOGY_RELEASE, release.getFullyQualifiedName());
+
+    // A non-recursive delete of an ontology that still holds concepts is refused.
+    assertThrows(
+        OpenMetadataException.class,
+        () -> SdkClients.adminClient().ontologies().delete(ontology.getId().toString()));
+
+    assertEquals(
+        TaskEntityStatus.Open,
+        SdkClients.adminClient().tasks().get(task.getId().toString()).getStatus());
+    assertEquals(EntityStatus.IN_REVIEW, current(release).getEntityStatus());
+    SdkClients.adminClient().tasks().close(task.getId().toString());
   }
 
   @Test

@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "Den öppna granskningen dras tillbaka och granskarna ser den inte längre.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} redigerar den här ordlistan i en annan session. Stäng den sessionen eller vänta en minut tills den löper ut och försök sedan igen.",
     "ontology-empty-card-description": "Lägg till ett begrepp för att starta modellen. När det finns några kan du koppla ihop begrepp, lägga till egenskaper och binda data.",

@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "הסקירה הפתוחה שלה תבוטל, והסוקרים לא יראו אותה עוד.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} עורך את המילון הזה בהפעלה אחרת. סגרו את ההפעלה או המתינו דקה עד שתפוג, ונסו שוב.",
     "ontology-empty-card-description": "הוסיפו מושג כדי להתחיל את המודל. לאחר שיהיו כמה מושגים אפשר לחבר ביניהם, להוסיף מאפיינים ולקשור נתונים.",

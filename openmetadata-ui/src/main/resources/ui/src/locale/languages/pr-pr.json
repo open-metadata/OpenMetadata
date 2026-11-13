@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "بازبینی باز آن لغو می‌شود و بازبین‌ها دیگر آن را نخواهند دید.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} در حال ویرایش این واژه‌نامه در نشست دیگری است. آن نشست را ببندید یا یک دقیقه صبر کنید تا منقضی شود و دوباره تلاش کنید.",
     "ontology-empty-card-description": "برای شروع مدل یک مفهوم اضافه کنید. پس از وجود چند مفهوم می‌توانید آن‌ها را به هم وصل کنید، ویژگی اضافه کنید و داده‌ها را متصل کنید.",

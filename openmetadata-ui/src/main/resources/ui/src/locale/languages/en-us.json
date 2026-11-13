@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "Its open review will be withdrawn, and reviewers will no longer see it.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} is editing this glossary in another session. Close that session or wait a minute for it to expire, then try again.",
     "ontology-empty-card-description": "Add a concept to start the model. You can connect concepts, add properties and bind data once a few exist.",

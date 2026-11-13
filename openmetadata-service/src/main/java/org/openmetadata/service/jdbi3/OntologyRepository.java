@@ -243,17 +243,18 @@ public class OntologyRepository extends OntologyEntityRepository<Ontology> {
   }
 
   /**
-   * Archiving keeps the ontology's releases, so it withdraws their open review here, while the
-   * ontology is still live and the review can close the way Withdraw closes it. A hard delete never
-   * gets this far with a review open: an in-review release is retained, which blocks it.
+   * Archiving keeps the ontology's releases, so it withdraws their open review here: after the
+   * children check and cascade, so a refused delete (non-recursive with children) leaves the review
+   * open, and before the ontology is marked deleted, so the review closes the way Withdraw closes it.
+   * A hard delete never gets this far with a review open: an in-review release is retained.
    */
   @Override
   protected void deleteChildren(
       final UUID id, final boolean recursive, final boolean hardDelete, final String updatedBy) {
+    super.deleteChildren(id, recursive, hardDelete, updatedBy);
     if (!hardDelete) {
       withdrawOpenReviews(id, updatedBy);
     }
-    super.deleteChildren(id, recursive, hardDelete, updatedBy);
   }
 
   /** Closing the review task runs the review's cancellation, which returns the release to Draft. */

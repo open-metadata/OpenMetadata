@@ -79,6 +79,7 @@ import {
 import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenReviewsBanner';
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
+import { ONTOLOGY_REVIEW_QUEUES_QUERY_KEY } from './OntologyTasksDrawer.constants';
 import {
   filterReviews,
   getOpenReviews,
@@ -192,7 +193,7 @@ const OntologyTasksDrawer = ({
 }: Props) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const queuesKey = ['ontology-review-queues'];
+  const queuesKey = [ONTOLOGY_REVIEW_QUEUES_QUERY_KEY];
   const combinedApproval = 'approve-and-publish';
   const currentUser = useApplicationStore((store) => store.currentUser);
   const account = currentUser?.id ?? '';

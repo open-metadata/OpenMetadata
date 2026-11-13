@@ -49,6 +49,7 @@ import {
 } from '../../../../utils/governance/ontology/OntologyStudioScope.utils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import OntologyDeleteDialog from '../OntologyDeleteDialog/OntologyDeleteDialog';
+import { ONTOLOGY_REVIEW_QUEUES_QUERY_KEY } from '../OntologyTasksDrawer/OntologyTasksDrawer.constants';
 import { filterOntologies } from './OntologyStudioScopeMenu.utils';
 
 interface OntologyStudioScopeMenuProps {
@@ -476,6 +477,10 @@ const OntologyStudioScopeMenu = ({
             setPendingDelete(undefined);
             void queryClient.invalidateQueries({
               queryKey: [ONTOLOGY_STUDIO_ONTOLOGIES_QUERY_KEY],
+            });
+            // Archiving withdraws the ontology's open review, so the badge and banners must drop it.
+            void queryClient.invalidateQueries({
+              queryKey: [ONTOLOGY_REVIEW_QUEUES_QUERY_KEY],
             });
             showSuccessToast(
               t('message.ontology-deleted', { name: getEntityName(deleted) })

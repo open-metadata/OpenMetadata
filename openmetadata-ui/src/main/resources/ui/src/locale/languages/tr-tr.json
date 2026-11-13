@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "Açık incelemesi geri çekilecek ve inceleyenler artık görmeyecek.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} bu sözlüğü başka bir oturumda düzenliyor. O oturumu kapatın veya süresinin dolması için bir dakika bekleyip yeniden deneyin.",
     "ontology-empty-card-description": "Modele başlamak için bir kavram ekleyin. Birkaç kavram olunca kavramları bağlayabilir, özellik ekleyebilir ve veri bağlayabilirsiniz.",

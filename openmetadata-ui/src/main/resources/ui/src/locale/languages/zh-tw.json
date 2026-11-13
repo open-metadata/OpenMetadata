@@ -5993,6 +5993,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "其進行中的審核將被撤回，審核人將不再看到它。",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} 正在另一個工作階段中編輯此詞彙表。請關閉該工作階段或等待一分鐘使其過期，然後再試一次。",
     "ontology-empty-card-description": "新增一個概念以開始建模。有了數個概念後，您就可以連接概念、新增屬性並繫結資料。",
