@@ -212,7 +212,9 @@ describe.each([
       scope: { kind: 'glossaries' },
     });
 
-    expect(await screen.findByText('label.loading')).toBeInTheDocument();
+    expect(
+      await screen.findByRole('status', { name: 'label.loading' })
+    ).toBeInTheDocument();
     expect(
       screen.getByTestId('ontology-scope-all-glossaries')
     ).toBeInTheDocument();

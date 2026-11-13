@@ -20,10 +20,16 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import { isEqual } from 'lodash';
 import { useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { OntologyAxiom } from '../../../../generated/entity/data/ontologyAxiom';
 import { OntologyConcept } from '../../../../generated/entity/data/ontologyConcept';
-import { createOntologyAxiom } from '../../../../rest/ontologyAPI';
+import { useOntologyDirtyForm } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
+import {
+  createOntologyAxiom,
+  softDeleteOntologyDefinition,
+} from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import {
   getPropertyLabel,
@@ -32,9 +38,11 @@ import {
 } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { generateUUID } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
 import {
   InspectorList,
+  InspectorRemoveButton,
   InspectorRow,
 } from '../../../OntologyExplorer/OntologyInspectorSection';
 import {
@@ -140,6 +148,7 @@ const ConceptRuleFields = ({
             }
           />
           <OntologyIriInput
+            isNameOnly
             error={problems.property}
             label={t('label.property')}
             options={references.properties}
@@ -150,6 +159,7 @@ const ConceptRuleFields = ({
         </div>
       ) : (
         <OntologyIriInput
+          isNameOnly
           error={problems.other}
           label={t('label.concept')}
           options={references.concepts}
@@ -179,6 +189,10 @@ const ConceptRuleForm = ({
     ...EMPTY_QUICK_RULE,
     subjectIri: concept.iri,
   });
+  // A rule with anything filled in is unsaved work: closing the drawer asks before dropping it.
+  useOntologyDirtyForm(
+    !isEqual(rule, { ...EMPTY_QUICK_RULE, subjectIri: concept.iri })
+  );
   const [isSaving, setIsSaving] = useState(false);
   const nameSuffix = useRef(generateUUID().slice(0, 6));
   const references = useMemo(
@@ -292,6 +306,35 @@ const OntologyConceptRules = ({
 }: OntologyConceptRulesProps) => {
   const { t } = useTranslation();
   const [isAdding, setIsAdding] = useState(false);
+  const [deletingId, setDeletingId] = useState<string>();
+  // Deleting a rule is not undoable here, so it asks first.
+  const [pendingRule, setPendingRule] = useState<OntologyAxiom>();
+  const canDelete = [canAdd, isEditing, onCreated].every(Boolean);
+  const subject = getEntityName(concept);
+  // The design greys the concept a rule is about, so the rule itself reads first.
+  const renderRuleText = (text: string) =>
+    text.startsWith(`${subject} `) ? (
+      <>
+        <span className="tw:text-tertiary">{subject}</span>
+        {text.slice(subject.length)}
+      </>
+    ) : (
+      text
+    );
+  const deleteRule = async (id: string) => {
+    setDeletingId(id);
+    try {
+      await softDeleteOntologyDefinition('axiom', id);
+      onCreated?.();
+      setPendingRule(undefined);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setDeletingId(undefined);
+    }
+  };
+  const ruleText = (rule: OntologyAxiom) =>
+    rule.displayName || rule.description || rule.name;
   const rules = useMemo(() => {
     const drawn = new Set(
       relations.flatMap((relation) =>
@@ -334,8 +377,16 @@ const OntologyConceptRules = ({
                 className="tw:min-w-0 tw:flex-1"
                 data-testid={`ontology-concept-rule-${rule.id}`}
                 size="text-sm">
-                {rule.displayName || rule.description || rule.name}
+                {renderRuleText(ruleText(rule))}
               </Typography>
+              {canDelete ? (
+                <InspectorRemoveButton
+                  isDisabled={deletingId === rule.id}
+                  label={t('label.delete-entity', { entity: t('label.rule') })}
+                  testId={`ontology-concept-rule-delete-${rule.id}`}
+                  onRemove={() => setPendingRule(rule)}
+                />
+              ) : null}
             </InspectorRow>
           ))}
         </InspectorList>
@@ -346,6 +397,14 @@ const OntologyConceptRules = ({
           variant="text"
         />
       )}
+      <DeleteModal
+        entityTitle={t('label.rule')}
+        isDeleting={Boolean(pendingRule && deletingId === pendingRule.id)}
+        message={pendingRule ? ruleText(pendingRule) : ''}
+        open={Boolean(pendingRule)}
+        onCancel={() => setPendingRule(undefined)}
+        onDelete={() => pendingRule && void deleteRule(pendingRule.id)}
+      />
     </ConceptSection>
   );
 };

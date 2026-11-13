@@ -32,6 +32,7 @@ import type {
 } from '../../../../hooks/governance/ontology/useOntologyPublication.types';
 import { useSettlingReviewEdits } from '../../../../hooks/governance/ontology/useSettlingReviewEdits';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import type { ReleasePanelView } from './OntologyReleasePanel.types';
 
@@ -137,7 +138,7 @@ const OntologyReleaseReviewers = ({
   });
   if (!model) {
     return view.kind === 'loading' ? (
-      <Typography role="status">{t('label.loading')}</Typography>
+      <Loader size="small" />
     ) : (
       <Alert variant="error">
         {t('message.ontology-review-settings-unavailable')}
@@ -241,6 +242,7 @@ const OntologyReleaseReviewers = ({
         items={options}
         label={t('label.add-reviewer')}
         selectedKey={null}
+        shortcut={false}
         tooltip={lockHint}
         onFocus={search.onFocus}
         onInputChange={(value) => {
@@ -272,11 +274,7 @@ const OntologyReleaseReviewers = ({
           </Select.Item>
         )}
       </Select.ComboBox>
-      {search.isFetching && (
-        <Typography role="status" size="text-sm">
-          {t('label.loading')}
-        </Typography>
-      )}
+      {search.isFetching && <Loader size="small" />}
       {search.error && (
         <Alert variant="error">
           {t('message.ontology-reviewer-search-unavailable')}
@@ -300,7 +298,11 @@ const OntologyReleaseReviewers = ({
     <Card data-testid="ontology-release-reviewers" size="sm">
       <Card.Content>
         <Box direction="col" gap={3}>
-          <Typography as="h3" size="text-sm" weight="semibold">
+          <Typography
+            as="h3"
+            className="not-prose tw:m-0 tw:text-primary"
+            size="text-sm"
+            weight="semibold">
             {t('label.reviewers')}
           </Typography>
           <TagGroup
