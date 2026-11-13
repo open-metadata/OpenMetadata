@@ -62,6 +62,7 @@ import {
 import { NavigatorHelper } from '../../utils/NavigatorUtils';
 import { generateUUID } from '../../utils/StringUtils';
 import { showSuccessToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 import SchemaEditor from '../Database/SchemaEditor/SchemaEditor';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import {
@@ -157,9 +158,9 @@ const QueryGroup = ({
         </Badge>
       </Box>
       {isLoading && items.length === 0 ? (
-        <Typography className="tw:px-1" color="secondary" size="text-xs">
-          {t('label.loading')}
-        </Typography>
+        <div className="tw:px-1">
+          <Loader size="small" />
+        </div>
       ) : null}
       {!isLoading && items.length === 0 ? (
         <Typography className="tw:px-1" color="quaternary" size="text-xs">
@@ -297,7 +298,8 @@ const QueryTitle = ({ activeQuery, rename }: QueryTitleProps) => {
         ref={rename.inputRef}
         size="sm"
         value={rename.isRenaming ? rename.value : savedQuery.name}
-        wrapperClassName="tw:w-80 tw:max-w-full"
+        // The input pads its text by tw:px-3; pulling it back lines the name up with the badge below.
+        wrapperClassName="tw:-ml-3 tw:w-80 tw:max-w-full"
         onBlur={commitOrCancel}
         onChange={(value) => {
           if (!rename.isRenaming) {

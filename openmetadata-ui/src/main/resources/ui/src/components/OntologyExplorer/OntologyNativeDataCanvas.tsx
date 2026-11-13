@@ -930,10 +930,12 @@ const OntologyNativeDataCanvas = ({
           }}>
           {hiddenCount > 0 || concept.isLoadingAssets ? (
             <Button
+              showTextWhileLoading
               color="link-color"
               data-testid={`ontology-load-more-assets-${concept.id}`}
               iconLeading={ChevronDown}
               isDisabled={concept.isLoadingAssets}
+              isLoading={concept.isLoadingAssets}
               size="sm"
               onPress={() => {
                 if (assets.length < totalCount) {
@@ -941,9 +943,7 @@ const OntologyNativeDataCanvas = ({
                 }
                 setIsExpanded(true);
               }}>
-              {concept.isLoadingAssets
-                ? t('label.loading')
-                : t('label.load-more-count', { count: hiddenCount })}
+              {t('label.load-more-count', { count: hiddenCount })}
             </Button>
           ) : null}
           {canShowLess ? (

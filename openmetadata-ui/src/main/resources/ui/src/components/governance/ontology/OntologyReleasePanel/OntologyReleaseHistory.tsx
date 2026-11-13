@@ -35,6 +35,7 @@ import { useOntologyPublication } from '../../../../hooks/governance/ontology/us
 import { useIsAiMode } from '../../../../hooks/useAppMode';
 import { getOntologyReleaseEvents } from '../../../../rest/ontologyAPI';
 import { formatDateTimeLong } from '../../../../utils/date-time/DateTimeUtils';
+import Loader from '../../../common/Loader/Loader';
 import { KIND_MESSAGES } from './OntologyReleaseChanges.utils';
 import OntologyReleaseCompare from './OntologyReleaseCompare';
 import OntologyReleaseExport from './OntologyReleaseExport';
@@ -314,7 +315,7 @@ type HistoryQuery = OntologyReleaseHistoryProps['history'];
 const HistoryLoadStatus = ({ history }: { history: HistoryQuery }) => {
   const { t } = useTranslation();
   if (history.isPending) {
-    return <Typography role="status">{t('label.loading')}</Typography>;
+    return <Loader size="small" />;
   }
 
   return history.isError ? (

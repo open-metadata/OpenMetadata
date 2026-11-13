@@ -32,6 +32,7 @@ import type {
 } from '../../../../hooks/governance/ontology/useOntologyPublication.types';
 import { useSettlingReviewEdits } from '../../../../hooks/governance/ontology/useSettlingReviewEdits';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import { useUserTeamOptions } from '../../../Glossary/hooks/useEntityReferenceOptions';
 import type { ReleasePanelView } from './OntologyReleasePanel.types';
 
@@ -137,7 +138,7 @@ const OntologyReleaseReviewers = ({
   });
   if (!model) {
     return view.kind === 'loading' ? (
-      <Typography role="status">{t('label.loading')}</Typography>
+      <Loader size="small" />
     ) : (
       <Alert variant="error">
         {t('message.ontology-review-settings-unavailable')}
@@ -273,11 +274,7 @@ const OntologyReleaseReviewers = ({
           </Select.Item>
         )}
       </Select.ComboBox>
-      {search.isFetching && (
-        <Typography role="status" size="text-sm">
-          {t('label.loading')}
-        </Typography>
-      )}
+      {search.isFetching && <Loader size="small" />}
       {search.error && (
         <Alert variant="error">
           {t('message.ontology-reviewer-search-unavailable')}

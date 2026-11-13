@@ -59,6 +59,7 @@ import {
 } from '../../utils/governance/ontology/OntologyAssetSuggestion.utils';
 import { getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 
 type AssetScope = 'all' | 'tables' | 'columns';
 
@@ -844,14 +845,9 @@ const OntologyDataAssetPicker = ({
 
   const renderList = () =>
     isFirstPagePending ? (
-      <Typography
-        as="p"
-        className="tw:px-3 tw:py-6 tw:text-center tw:text-tertiary"
-        data-testid="ontology-data-asset-loading"
-        role="status"
-        size="text-sm">
-        {t('label.loading')}
-      </Typography>
+      <div className="tw:flex tw:justify-center tw:px-3 tw:py-6">
+        <Loader dataTestId="ontology-data-asset-loading" size="small" />
+      </div>
     ) : (
       <ul
         className={classNames(

@@ -40,6 +40,7 @@ import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showUndoToast } from '../../../../utils/governance/ontology/OntologyUndoToast';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
+import Loader from '../../../common/Loader/Loader';
 import OntologyStudioDrawer from '../OntologyStudioDrawer/OntologyStudioDrawer';
 import OntologyConceptDeleteDialog from './OntologyConceptDeleteDialog';
 import { pageCount, pageOf } from './OntologyDefinitionTable.utils';
@@ -291,7 +292,7 @@ const OntologyDefinitionList = <
 
   const renderBlockedState = () => {
     if (definition && permission.isLoading) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     if (definition && !permission.hasViewAccess) {
       return (
@@ -549,7 +550,7 @@ const OntologyDefinitionList = <
       {items ? (
         renderTable(pageOf(items, currentPage))
       ) : (
-        <Typography role="status">{t('label.loading')}</Typography>
+        <Loader size="small" />
       )}
       {renderEditor()}
     </Box>

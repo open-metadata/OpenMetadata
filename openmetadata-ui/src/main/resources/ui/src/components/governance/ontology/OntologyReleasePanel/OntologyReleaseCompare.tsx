@@ -29,6 +29,7 @@ import { MemberKind as WorkingMemberKind } from '../../../../generated/api/data/
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { getOntologyReleaseDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyReleasePicker from '../OntologyReleasePicker/OntologyReleasePicker';
 import {
   ChangeKindCounts,
@@ -207,7 +208,7 @@ const OntologyReleaseCompare = ({ ontologyId }: { ontologyId: string }) => {
       );
     }
     if (!hasResult) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     return (

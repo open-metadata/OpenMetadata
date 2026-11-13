@@ -565,7 +565,9 @@ describe('a graph that went stale', () => {
     changeModel(1);
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
 
-    expect(screen.getByText('label.loading')).toHaveAttribute('role', 'status');
+    expect(
+      screen.getByRole('status', { name: 'label.loading' })
+    ).toBeInTheDocument();
     expect(clusterCount('transfer')).toHaveTextContent('· 6');
     expect(screen.getByTestId('ontology-data-root-transfer')).toHaveAttribute(
       'aria-pressed',
@@ -577,7 +579,9 @@ describe('a graph that went stale', () => {
     );
 
     expect(clusterCount('transfer')).toHaveTextContent('· 9');
-    expect(screen.queryByText('label.loading')).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('status', { name: 'label.loading' })
+    ).not.toBeInTheDocument();
   });
 
   it('keeps an expanded cluster expanded through the reload', async () => {
@@ -654,7 +658,9 @@ describe('a graph that went stale', () => {
 
     changeModel(1);
     await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(6));
-    await waitFor(() => expect(screen.queryByText('label.loading')).toBeNull());
+    await waitFor(() =>
+      expect(screen.queryByRole('status', { name: 'label.loading' })).toBeNull()
+    );
 
     expect(rows('ledger')).toEqual([
       'ledger_1',

@@ -55,6 +55,7 @@ import {
 import { humanizeName } from '../../../../utils/governance/ontology/OntologyStudioModel.utils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import InlineEmptyPlaceholder from '../../../common/EmptyPlaceholder/InlineEmptyPlaceholder';
+import Loader from '../../../common/Loader/Loader';
 import OntologyDataAssetPicker from '../../../OntologyExplorer/OntologyDataAssetPicker';
 import OntologyColumnMappingStep, {
   ColumnMappingProperty,
@@ -252,9 +253,7 @@ const OntologyConceptAssets = ({
           }}
         />
       )}
-      {bindings.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
+      {bindings.isPending ? <Loader size="small" /> : null}
       {bindings.readState === 'unavailable' ? (
         <Alert
           rightContent={

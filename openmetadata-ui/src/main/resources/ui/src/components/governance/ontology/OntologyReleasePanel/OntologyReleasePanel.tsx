@@ -37,6 +37,7 @@ import { reusablePublicationCandidate } from '../../../../hooks/governance/ontol
 import { useOntologyStudioModel } from '../../../../hooks/governance/ontology/useOntologyStudioModel';
 import { getOntologyWorkingDiff } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import OntologyReleaseChangeCards from './OntologyReleaseChangeCards';
 import OntologyReleaseChangeFilters from './OntologyReleaseChangeFilters';
 import {
@@ -371,7 +372,7 @@ const OntologyReleasePanel = ({
       return null;
     }
     if (changes.isPending || changes.isFetching || working.isFetching) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
     if (changes.isError || !hasCoherentPreview) {
       return (
@@ -402,7 +403,7 @@ const OntologyReleasePanel = ({
       );
     }
     if (displayed.isPending) {
-      return <Typography role="status">{t('label.loading')}</Typography>;
+      return <Loader size="small" />;
     }
 
     return (
@@ -657,7 +658,7 @@ const OntologyReleasePanel = ({
   );
   const renderStageStatus = () =>
     panelView.kind === 'loading' ? (
-      <Typography role="status">{t('label.loading')}</Typography>
+      <Loader size="small" />
     ) : (
       <Alert variant="error">
         {t('message.ontology-review-unavailable')}

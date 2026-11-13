@@ -38,6 +38,7 @@ import {
   getOntologyWorkingValidation,
 } from '../../../../rest/ontologyAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import Loader from '../../../common/Loader/Loader';
 import { makeReadableViolationMessage } from '../../../OntologyExplorer/utils/conflictHighlight';
 
 export const useReleaseValidation = (release?: OntologyRelease) => {
@@ -187,9 +188,7 @@ const QueryNotice = ({
 
   return (
     <>
-      {showLoading && isFetching && (
-        <Typography role="status">{t('label.loading')}</Typography>
-      )}
+      {showLoading && isFetching && <Loader size="small" />}
       {isError && (
         <Alert variant="error">
           {t('message.ontology-validation-unavailable')}

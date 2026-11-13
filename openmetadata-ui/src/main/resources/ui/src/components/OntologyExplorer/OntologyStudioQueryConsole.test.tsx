@@ -34,6 +34,7 @@ import {
   runOntologySparqlQuery,
   runSparqlQuery,
   SavedSparqlQuery,
+  SparqlPlaygroundResult,
 } from '../../rest/rdfAPI';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { OntologyGraphData } from './OntologyExplorer.interface';
@@ -312,9 +313,9 @@ describe('OntologyStudioQueryConsole', () => {
   });
 
   it('shows a loader, not the no-results prompt, while a run is in flight', async () => {
-    let finish: ((value: unknown) => void) | undefined;
+    let finish: ((value: SparqlPlaygroundResult) => void) | undefined;
     mockRunGlossarySparqlQuery.mockReturnValueOnce(
-      new Promise((resolve) => {
+      new Promise<SparqlPlaygroundResult>((resolve) => {
         finish = resolve;
       })
     );

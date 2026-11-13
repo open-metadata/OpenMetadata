@@ -49,6 +49,7 @@ import {
   NATIVE_CONTEXT_CONCEPT_LIMIT,
   toBoundColumnsByAsset,
 } from '../../../../utils/governance/ontology/OntologyNativeDataGraph.utils';
+import Loader from '../../../common/Loader/Loader';
 import {
   BoundColumn,
   OntologyNode,
@@ -500,11 +501,9 @@ const OntologyNativeDataMode = ({
   const renderLoading = () => {
     if (pickedCluster) {
       return (
-        <Typography
-          className="tw:pointer-events-none tw:absolute tw:top-3.5 tw:left-1/2 tw:z-10 tw:-translate-x-1/2"
-          role="status">
-          {t('label.loading')}
-        </Typography>
+        <div className="tw:pointer-events-none tw:absolute tw:top-3.5 tw:left-1/2 tw:z-10 tw:-translate-x-1/2">
+          <Loader size="small" />
+        </div>
       );
     }
 
