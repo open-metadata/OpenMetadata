@@ -24,6 +24,7 @@ import {
   Modal,
   ModalOverlay,
   Tabs,
+  Tooltip,
   Typography,
 } from '@openmetadata/ui-core-components';
 import {
@@ -162,16 +163,11 @@ const useDecidedReview = ({
 };
 
 /** A tab's open-review count; a missing total stays unknown rather than zero. */
-const useQueueTotal = (
-  queueKey: string[],
-  view: 'assigned' | 'created',
-  enabled: boolean
-) =>
+const useQueueTotal = (queueKey: string[], view: 'assigned' | 'created') =>
   useQuery({
     queryKey: [...queueKey, view + '-total'],
     gcTime: 0,
     retry: false,
-    enabled,
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews({ view, limit: 1 }, signal),
   }).data?.paging?.total;
@@ -242,6 +238,11 @@ const OntologyTasksDrawer = ({
   }>();
   const [permissionSelection, setPermissionSelection] = useState<string>();
   const taskButton = useRef<HTMLButtonElement>(null);
+  // A disabled trigger can't take focus; its Tooltip wrapper (tabIndex 0) can.
+  const focusTrigger = () => {
+    const button = taskButton.current;
+    (button?.disabled ? button.parentElement : button)?.focus();
+  };
   useEffect(() => {
     setQueueHistory({ key: '', cursors: [undefined] });
     setEventHistory({ key: '', cursors: [undefined] });
@@ -253,7 +254,7 @@ const OntologyTasksDrawer = ({
   const wasOpen = useRef(isOpen);
   useEffect(() => {
     if (wasOpen.current && !isOpen) {
-      taskButton.current?.focus();
+      focusTrigger();
     }
     wasOpen.current = isOpen;
   }, [isOpen]);
@@ -294,16 +295,8 @@ const OntologyTasksDrawer = ({
         signal
       ),
   });
-  const assignedTotal = useQueueTotal(
-    [...queuesKey, account],
-    'assigned',
-    isOpen
-  );
-  const createdTotal = useQueueTotal(
-    [...queuesKey, account],
-    'created',
-    isOpen
-  );
+  const assignedTotal = useQueueTotal([...queuesKey, account], 'assigned');
+  const createdTotal = useQueueTotal([...queuesKey, account], 'created');
   // The banner announces only reviews waiting on the viewer's vote.
   const openReviews = reviewsOf(pending.data);
   const openBannerReview = openReviews[0];
@@ -455,7 +448,7 @@ const OntologyTasksDrawer = ({
     setSearch('');
     setQueueHistory({ key: '', cursors: [undefined] });
     onTaskChange(undefined);
-    taskButton.current?.focus();
+    focusTrigger();
   };
   const refresh = async () => {
     setReadyGeneration(undefined);
@@ -700,30 +693,43 @@ const OntologyTasksDrawer = ({
     );
   };
 
-  const renderTasksAction = () => (
-    <Button
-      aria-haspopup="dialog"
-      className="tw:shrink-0 tw:whitespace-nowrap"
-      color="secondary"
-      data-testid="ontology-tasks-trigger"
-      iconLeading={ClipboardCheck}
-      iconTrailing={
-        <Badge color="brand" size="sm" type="pill-color">
-          {pendingTotal.isError
-            ? t('label.unavailable')
-            : pendingTotal.data?.paging?.total ?? t('label.unavailable')}
-        </Badge>
-      }
-      ref={taskButton}
-      size="sm"
-      onPress={() => {
-        setListOpen(true);
-        void pendingTotal.refetch();
-        void pending.refetch();
-      }}>
-      {t('label.task-plural')}
-    </Button>
-  );
+  const renderTasksAction = () => {
+    // Unknown totals (loading/error) keep the trigger enabled.
+    // Stays enabled while open so acting on the last task doesn't remount it mid-modal.
+    const hasNoTasks =
+      !isOpen &&
+      [pendingTotal.data?.paging?.total, assignedTotal, createdTotal].every(
+        (total) => total === 0
+      );
+
+    return (
+      <Tooltip isDisabled={!hasNoTasks} title={t('label.no-tasks-right-now')}>
+        <Button
+          aria-haspopup="dialog"
+          className="tw:shrink-0 tw:whitespace-nowrap"
+          color="secondary"
+          data-testid="ontology-tasks-trigger"
+          iconLeading={ClipboardCheck}
+          iconTrailing={
+            <Badge color="brand" size="sm" type="pill-color">
+              {pendingTotal.isError
+                ? t('label.unavailable')
+                : pendingTotal.data?.paging?.total ?? t('label.unavailable')}
+            </Badge>
+          }
+          isDisabled={hasNoTasks}
+          ref={taskButton}
+          size="sm"
+          onPress={() => {
+            setListOpen(true);
+            void pendingTotal.refetch();
+            void pending.refetch();
+          }}>
+          {t('label.task-plural')}
+        </Button>
+      </Tooltip>
+    );
+  };
   const bannerKey = getBannerKey(ontologyId, bannerReview, openReviews);
   const dismissBanner = () => setDismissedBanner(bannerKey);
   const renderOpenReviews = () => (
