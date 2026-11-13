@@ -21,7 +21,6 @@ import type { EntityLineageResponse } from '../interface/lineage.interface';
 import type { ExploreQuickFilterField } from '../interface/quickFilter.interface';
 import type { SourceType } from '../interface/source.interface';
 import { LineagePlatformView } from './lineage/types';
-import { useApplicationStore } from './useApplicationStore';
 import { useLineageStore } from './useLineageStore';
 
 describe('useLineageStore', () => {
@@ -71,30 +70,21 @@ describe('useLineageStore', () => {
   });
 
   it('resets the lineage depths to the saved settings rather than 3/3', () => {
-    useApplicationStore.setState({
-      appPreferences: {
-        lineageConfig: {
-          upstreamDepth: 2,
-          downstreamDepth: 1,
-          lineageLayer: LineageLayer.EntityLineage,
-          pipelineViewMode: PipelineViewMode.Edge,
-        },
-      },
-    });
     const { result } = renderHook(() => useLineageStore());
-
-    act(() => {
-      result.current.reset();
-    });
-
-    expect(result.current.lineageConfig).toEqual({
+    const saved = {
       upstreamDepth: 2,
       downstreamDepth: 1,
       pipelineViewMode: PipelineViewMode.Edge,
       nodesPerLayer: 50,
+    };
+
+    act(() => {
+      result.current.setSavedLineageConfig(saved);
+      result.current.setLineageConfig({ ...saved, upstreamDepth: 3 });
+      result.current.reset();
     });
 
-    useApplicationStore.setState({ appPreferences: {} });
+    expect(result.current.lineageConfig).toEqual(saved);
   });
 
   it('tracks scene mutations and resets scene state', () => {
