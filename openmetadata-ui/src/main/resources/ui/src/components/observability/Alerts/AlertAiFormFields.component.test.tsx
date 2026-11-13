@@ -1226,7 +1226,11 @@ describe('AlertAi form field components', () => {
       category: SubscriptionCategory.External,
       destinationType: SubscriptionType.Webhook,
       type: SubscriptionType.Webhook,
-      statusDetails: { status: Status.Failed, lastFailedReason: reason },
+      statusDetails: {
+        status: Status.Failed,
+        lastFailedReason: reason,
+        configurationUnusable: true,
+      },
     } as ModifiedDestination;
     const value = {
       ...baseValue,

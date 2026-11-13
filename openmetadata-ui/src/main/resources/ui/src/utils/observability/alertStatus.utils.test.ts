@@ -34,6 +34,7 @@ const alertWith = (statuses: Status[], enabled = true): EventSubscription => ({
     statusDetails: {
       status,
       lastFailedReason: status === Status.Failed ? REASON : undefined,
+      configurationUnusable: status === Status.Failed ? true : undefined,
     },
   })),
 });
@@ -41,8 +42,15 @@ const alertWith = (statuses: Status[], enabled = true): EventSubscription => ({
 describe('alertStatus.utils', () => {
   it('reads the reason only from a failed status', () => {
     expect(
-      getNotSendingReason({ status: Status.Failed, lastFailedReason: REASON })
+      getNotSendingReason({
+        status: Status.Failed,
+        lastFailedReason: REASON,
+        configurationUnusable: true,
+      })
     ).toBe(REASON);
+    expect(
+      getNotSendingReason({ status: Status.Failed, lastFailedReason: REASON })
+    ).toBeUndefined();
     expect(
       getNotSendingReason({
         status: Status.AwaitingRetry,
@@ -55,17 +63,37 @@ describe('alertStatus.utils', () => {
   it('shows an alert with a failed destination as failed, with its reasons', () => {
     expect(
       getAlertListStatus(alertWith([Status.Active, Status.Failed]))
-    ).toEqual({ status: Status.Failed, reasons: [REASON] });
+    ).toEqual({
+      status: Status.Failed,
+      reasons: [REASON],
+      isConfigurationUnusable: true,
+    });
   });
 
   it('shows an alert whose destinations send as active or disabled', () => {
     expect(getAlertListStatus(alertWith([Status.Active]))).toEqual({
       status: Status.Active,
       reasons: [],
+      isConfigurationUnusable: false,
     });
     expect(getAlertListStatus(alertWith([Status.Disabled], false))).toEqual({
       status: Status.Disabled,
       reasons: [],
+      isConfigurationUnusable: false,
+    });
+  });
+
+  it('shows a failed send as failed, but not as a configuration to change', () => {
+    const alert = alertWith([Status.Failed]);
+    alert.destinations[0].statusDetails = {
+      status: Status.Failed,
+      lastFailedReason: 'Webhook failed with status: 503',
+    };
+
+    expect(getAlertListStatus(alert)).toEqual({
+      status: Status.Failed,
+      reasons: ['Webhook failed with status: 503'],
+      isConfigurationUnusable: false,
     });
   });
 });

@@ -255,6 +255,7 @@ describe('ObservabilityAlertsTable component', () => {
               statusDetails: {
                 status: Status.Failed,
                 lastFailedReason: NOT_SENDING_REASON,
+                configurationUnusable: true,
               },
             },
           ],
@@ -266,7 +267,7 @@ describe('ObservabilityAlertsTable component', () => {
       'label.failed'
     );
     expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      `label.failed: ${NOT_SENDING_REASON}`
+      `label.failed. message.destination-does-not-send-until-fixed: ${NOT_SENDING_REASON}`
     );
   });
 
