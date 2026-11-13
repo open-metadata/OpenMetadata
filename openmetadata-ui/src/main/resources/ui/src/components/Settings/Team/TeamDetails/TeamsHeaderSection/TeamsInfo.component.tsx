@@ -472,6 +472,7 @@ const TeamsInfo = ({
       <TeamsSubscription
         hasEditPermission={hasEditSubscriptionPermission}
         subscription={currentTeam.profile?.subscription}
+        subscriptionStatus={currentTeam.profile?.subscriptionStatus}
         updateTeamSubscription={updateTeamSubscription}
       />
       {teamTypeElement}

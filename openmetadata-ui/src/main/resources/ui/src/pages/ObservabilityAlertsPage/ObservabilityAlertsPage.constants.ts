@@ -14,6 +14,7 @@ export const ALERT_TABLE_COLUMN_IDS = {
   ACTIONS: 'actions',
   DESCRIPTION: 'description',
   NAME: 'name',
+  STATUS: 'status',
   TRIGGER: 'trigger',
 } as const;
 
@@ -31,6 +32,7 @@ export const ALERT_TABLE_CELL_LAYOUT_CLASS: Partial<
   [ALERT_TABLE_COLUMN_IDS.ACTIONS]: 'tw:w-24',
   [ALERT_TABLE_COLUMN_IDS.DESCRIPTION]: 'tw:w-auto',
   [ALERT_TABLE_COLUMN_IDS.NAME]: 'tw:w-48',
+  [ALERT_TABLE_COLUMN_IDS.STATUS]: 'tw:w-28',
   [ALERT_TABLE_COLUMN_IDS.TRIGGER]: 'tw:w-48',
 };
 

@@ -450,7 +450,7 @@ describe('AlertDetailsPage', () => {
 
     await waitFor(() => {
       expect(getObservabilityAlertByFQNSpy).toHaveBeenCalledWith('firstAlert', {
-        fields: 'owners',
+        fields: 'owners,statusDetails',
       });
     });
 
@@ -467,7 +467,7 @@ describe('AlertDetailsPage', () => {
       expect(getObservabilityAlertByFQNSpy).toHaveBeenCalledWith(
         'secondAlert',
         {
-          fields: 'owners',
+          fields: 'owners,statusDetails',
         }
       );
     });

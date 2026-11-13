@@ -36,6 +36,7 @@ import { isValidUrl } from '../../../../../utils/SSOUtils';
 import { getWebhookIcon } from '../../../../../utils/TeamUtils';
 
 import { SubscriptionWebhook, TeamsSubscriptionProps } from '../team.interface';
+import WebhookNotSendingAlert from '../WebhookNotSendingAlert/WebhookNotSendingAlert';
 import './teams-subscription.less';
 
 // react-aria keys cannot be empty, so the "None" option gets a sentinel id.
@@ -43,6 +44,7 @@ const NO_WEBHOOK = 'none';
 
 const TeamsSubscription = ({
   subscription,
+  subscriptionStatus,
   hasEditPermission,
   updateTeamSubscription,
 }: TeamsSubscriptionProps) => {
@@ -190,6 +192,11 @@ const TeamsSubscription = ({
       </div>
 
       {subscriptionRenderElement}
+
+      <WebhookNotSendingAlert
+        slot={storedWebhook}
+        subscriptionStatus={subscriptionStatus}
+      />
 
       {editSubscription && (
         // Stops clicks in the form reaching the parent TeamDetailV1 collapsible panel

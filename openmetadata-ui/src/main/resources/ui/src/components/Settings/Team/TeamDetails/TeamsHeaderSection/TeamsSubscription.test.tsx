@@ -12,6 +12,7 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MASKED_PASSWORD_VALUE } from '../../../../../constants/Secrets.constants';
+import { Status } from '../../../../../generated/entity/teams/team';
 import TeamsSubscription from './TeamsSubscription.component';
 
 describe('TeamsSubscription', () => {
@@ -157,5 +158,37 @@ describe('TeamsSubscription', () => {
     const genericIcon = getByTestId('generic-icon');
 
     expect(genericIcon).toBeInTheDocument();
+  });
+
+  it('tells why the stored webhook does not send, and only for that webhook', () => {
+    const reason =
+      "The value at '/headers/Authorization' must be entered again";
+    const { rerender } = render(
+      <TeamsSubscription
+        {...teamProps}
+        subscription={{ slack: { endpoint: MASKED_PASSWORD_VALUE } }}
+        subscriptionStatus={{
+          slack: { status: Status.Failed, lastFailedReason: reason },
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('subscription-not-sending')).toHaveTextContent(
+      `message.webhook-does-not-send-until-fixed${reason}`
+    );
+
+    rerender(
+      <TeamsSubscription
+        {...teamProps}
+        subscription={{ gChat: { endpoint: MASKED_PASSWORD_VALUE } }}
+        subscriptionStatus={{
+          slack: { status: Status.Failed, lastFailedReason: reason },
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('teams-subscription')).not.toHaveTextContent(
+      reason
+    );
   });
 });

@@ -14,6 +14,7 @@
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import {
   MessagingProvider,
+  MessagingProviderStatus,
   Team,
 } from '../../../../generated/entity/teams/team';
 
@@ -65,6 +66,7 @@ export interface TeamsInfoProps {
 export interface TeamsSubscriptionProps {
   hasEditPermission: boolean;
   subscription?: MessagingProvider;
+  subscriptionStatus?: MessagingProviderStatus;
   updateTeamSubscription: (value?: SubscriptionWebhook) => Promise<void>;
 }
 

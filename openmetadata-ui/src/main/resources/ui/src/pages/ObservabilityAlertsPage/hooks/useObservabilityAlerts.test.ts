@@ -107,7 +107,10 @@ describe('useObservabilityAlerts', () => {
     await waitFor(() => expect(result.current.alerts).toEqual([userAlert]));
 
     expect(mockGetAllAlerts).toHaveBeenCalledWith(
-      expect.objectContaining({ alertType: AlertType.Observability })
+      expect.objectContaining({
+        alertType: AlertType.Observability,
+        fields: 'statusDetails',
+      })
     );
     expect(mockGetAlertsFromName).not.toHaveBeenCalled();
   });

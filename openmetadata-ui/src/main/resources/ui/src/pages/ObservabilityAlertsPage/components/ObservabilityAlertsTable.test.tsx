@@ -15,7 +15,12 @@ import { AxiosError } from 'axios';
 import type { PropsWithChildren, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { EventSubscription } from '../../../generated/events/eventSubscription';
+import {
+  EventSubscription,
+  Status,
+  SubscriptionCategory,
+  SubscriptionType,
+} from '../../../generated/events/eventSubscription';
 import {
   AlertTableColumn,
   ALERT_TABLE_COLUMN_IDS,
@@ -139,10 +144,14 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Box: MockBox,
+    Badge: jest.requireActual('@openmetadata/ui-core-components').Badge,
     Button: jest.requireActual('@openmetadata/ui-core-components').Button,
     EmptyPlaceholder: MockEmptyPlaceholder,
     Table: MockTable,
     TableCard: MockTableCard,
+    Tooltip: jest.requireActual('@openmetadata/ui-core-components').Tooltip,
+    TooltipTrigger: jest.requireActual('@openmetadata/ui-core-components')
+      .TooltipTrigger,
   };
 });
 
@@ -163,6 +172,9 @@ jest.mock('./ObservabilityAlertActions', () =>
   jest.fn().mockImplementation(() => <div data-testid="alert-actions" />)
 );
 
+const NOT_SENDING_REASON =
+  "The value at '/authType/secretKey' must be entered again";
+
 const mockAlerts: EventSubscription[] = [
   {
     id: 'alert-1',
@@ -174,6 +186,7 @@ const mockAlerts: EventSubscription[] = [
 
 const columnList: AlertTableColumn[] = [
   { id: 'name', name: 'label.name' },
+  { id: 'status', name: 'label.status' },
   { id: 'trigger', name: 'label.trigger' },
   { id: 'description', name: 'label.description' },
   { id: 'actions', name: 'label.action-plural' },
@@ -228,6 +241,33 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.getByTestId('alert-table')).toBeInTheDocument();
     expect(screen.getByTestId('alert-name')).toBeInTheDocument();
     expect(screen.getByTestId('alert-actions')).toBeInTheDocument();
+  });
+
+  it('shows why an alert whose destination does not send has failed', () => {
+    renderTable({
+      alerts: [
+        {
+          ...mockAlerts[0],
+          destinations: [
+            {
+              category: SubscriptionCategory.External,
+              type: SubscriptionType.Webhook,
+              statusDetails: {
+                status: Status.Failed,
+                lastFailedReason: NOT_SENDING_REASON,
+              },
+            },
+          ],
+        },
+      ],
+    });
+
+    expect(screen.getByTestId('alert-status')).toHaveTextContent(
+      'label.failed'
+    );
+    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
+      `label.failed: ${NOT_SENDING_REASON}`
+    );
   });
 
   it('marks only the name column as the row header', () => {
