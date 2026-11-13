@@ -38,6 +38,12 @@ jest.mock('../../../common/Loader/Loader', () => ({
   default: () => <div data-testid="loader" />,
 }));
 
+jest.mock('../../../common/PopOverCard/UserPopOverCard', () =>
+  jest.fn(({ userName }) => (
+    <span data-testid="user-popover-card">{userName}</span>
+  ))
+);
+
 const snapshot = (version: number, contextDefinition: unknown) =>
   JSON.stringify({
     id: 'p1',
@@ -78,6 +84,9 @@ describe('VersionHistoryDrawer', () => {
     );
 
     expect(await screen.findByTestId('version-dot-1.2')).toBeInTheDocument();
+    expect(screen.getAllByTestId('user-popover-card')[0]).toHaveTextContent(
+      'harsha'
+    );
     expect(screen.getByTestId('version-dot-1.1')).toBeInTheDocument();
     expect(screen.getByText('label.current')).toBeInTheDocument();
   });

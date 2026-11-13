@@ -1176,7 +1176,7 @@ test.describe('Context Center Permissions', () => {
         const row = await searchAndGetDocumentRow(createAllPage, fileName);
         await expect(row).toBeVisible();
         await expect(row.getByTestId('document-updated-by')).toHaveText(
-          createAllUser.responseData.name
+          createAllUser.getUserDisplayName()
         );
 
         await apiContext

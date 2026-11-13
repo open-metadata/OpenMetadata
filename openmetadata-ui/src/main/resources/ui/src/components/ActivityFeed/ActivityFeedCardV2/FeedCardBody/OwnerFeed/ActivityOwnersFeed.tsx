@@ -30,6 +30,7 @@ import {
 import { EntityType } from '../../../../../enums/entity.enum';
 import { ActivityEvent } from '../../../../../generated/entity/activity/activityEvent';
 import { EntityReference } from '../../../../../generated/entity/type';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { toOwnerRef } from '../../../../../utils/Owner/ownerConversionUtils';
 import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
@@ -116,7 +117,7 @@ function ActivityOwnersFeed({
                     width="24"
                   />
                   <Typography ellipsis className="owner-chip-text">
-                    {owner.displayName}
+                    {getEntityName(owner)}
                   </Typography>
                 </div>
               </UserPopOverCard>

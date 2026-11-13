@@ -215,6 +215,35 @@ describe('ActivityOwnersFeed', () => {
     });
   });
 
+  describe('Owner name', () => {
+    it('should show the display name of a user owner', () => {
+      const activity = createMockActivity(
+        createOwnersJson([]),
+        createOwnersJson([createOwner('user-1', 'jdoe')])
+      );
+
+      render(<ActivityOwnersFeed activity={activity} />);
+
+      expect(screen.getByTestId('user-popover-jdoe')).toHaveTextContent(
+        'Jdoe'
+      );
+    });
+
+    it('should fall back to the login when a user owner has no display name', () => {
+      const owner = { id: 'user-1', name: 'jdoe', type: EntityType.USER };
+      const activity = createMockActivity(
+        createOwnersJson([]),
+        createOwnersJson([owner])
+      );
+
+      render(<ActivityOwnersFeed activity={activity} />);
+
+      expect(
+        screen.getByTestId('user-popover-jdoe').querySelector('.owner-chip-text')
+      ).toHaveTextContent('jdoe');
+    });
+  });
+
   describe('No Changes', () => {
     it('should not render when no owners changed', () => {
       const owner = createOwner('user-1', 'sameowner');

@@ -113,12 +113,15 @@ jest.mock('@openmetadata/ui-core-components', () => {
         children,
         className,
         'data-testid': testId,
+        onClick,
       }: {
         children: React.ReactNode;
         className?: string;
         'data-testid'?: string;
+        onClick?: () => void;
       }) => (
-        <div className={className} data-testid={testId}>
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- test double for the core Box
+        <div className={className} data-testid={testId} onClick={onClick}>
           {children}
         </div>
       )
@@ -247,6 +250,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 runQueryNotificationsSynchronously();
 
+jest.mock('../../common/PopOverCard/UserPopOverCard', () =>
+  jest.fn(({ userName }) => (
+    <span data-testid="user-popover-card">{userName}</span>
+  ))
+);
+
 const mockFiles: ContextFile[] = [
   {
     id: 'file-1',
@@ -316,7 +325,30 @@ describe('DocumentsView', () => {
       />
     );
 
-    expect(screen.getByText('alice')).toBeInTheDocument();
+    expect(screen.getByTestId('document-updated-by')).toHaveTextContent(
+      'alice'
+    );
+    expect(screen.getByTestId('user-popover-card')).toHaveTextContent('alice');
+  });
+
+  it('does not open the preview when the updated-by user is clicked', () => {
+    const onPreview = jest.fn();
+    renderWithQueryClient(
+      <DocumentsView
+        data={[mockFiles[0]]}
+        isLoading={false}
+        totalFileCount={1}
+        onPreview={onPreview}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('user-popover-card'));
+
+    expect(onPreview).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByTestId('document-row-file-1'));
+
+    expect(onPreview).toHaveBeenCalledWith(mockFiles[0]);
   });
 
   it('renders the file icon for pdf files', () => {

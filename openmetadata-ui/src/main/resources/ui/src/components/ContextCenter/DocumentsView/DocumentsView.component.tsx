@@ -67,6 +67,7 @@ import NoDataPlaceholder from '../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import { PreviewRendererId } from '../../common/FilePreviewer/FilePreviewer.types';
 import { resolveRenderer } from '../../common/FilePreviewer/FilePreviewer.utils';
+import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
 import { UserSelectableList } from '../../common/UserSelectableList/UserSelectableList.component';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import MemoryExtractionMenuItem from '../../discovery/context-center/MemoryExtractionMenuItem/MemoryExtractionMenuItem';
@@ -725,13 +726,20 @@ const FileRow: FC<FileRowProps> = ({
           {file.updatedBy && (
             <>
               <Dot className="tw:text-quaternary" size="micro" />
-              <Typography
-                className="tw:text-quaternary"
+              {/* The row opens the preview; keep clicks on the user link from reaching it. */}
+              <span
+                className="tw:min-w-0"
                 data-testid="document-updated-by"
-                ellipsis={{ excludeTriggerFromTabOrder: true, tooltip: true }}
-                size="text-xs">
-                {file.updatedBy}
-              </Typography>
+                role="presentation"
+                onClick={(e) => e.stopPropagation()}
+                onKeyDown={(e) => e.stopPropagation()}>
+                <UserPopOverCard
+                  showUserName
+                  className="tw:text-xs tw:text-quaternary"
+                  profileWidth={16}
+                  userName={file.updatedBy}
+                />
+              </span>
             </>
           )}
           {file.updatedAt && (

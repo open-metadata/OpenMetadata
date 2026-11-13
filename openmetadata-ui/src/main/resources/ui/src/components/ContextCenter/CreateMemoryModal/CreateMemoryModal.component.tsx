@@ -378,7 +378,8 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
           size="text-xs">
           {t('message.context-memory-read-only-description', {
             creatorName:
-              memoryToEdit.owners?.[0]?.name ?? memoryToEdit.updatedBy,
+              getEntityName(memoryToEdit.owners?.[0]) ||
+              memoryToEdit.updatedBy,
           })}
         </Typography>
       </div>

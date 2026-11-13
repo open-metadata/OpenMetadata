@@ -67,7 +67,7 @@ import AnnouncementDeleteDialog from '../../../../Announcement/AnnouncementDelet
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
 import SomethingWentWrongPlaceholder from '../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
-import ProfilePicture from '../../../../common/ProfilePicture/ProfilePicture';
+import UserPopOverCard from '../../../../common/PopOverCard/UserPopOverCard';
 
 type ColumnId =
   | 'type'
@@ -284,14 +284,11 @@ const SystemAnnouncementsTable = ({
       }
       case 'author':
         return announcement.createdBy ? (
-          <Box align="center" className="tw:min-w-0" gap={2}>
-            <ProfilePicture name={announcement.createdBy} size="xs" />
-            <Typography
-              className="tw:truncate tw:text-secondary"
-              size="text-sm">
-              {announcement.createdBy}
-            </Typography>
-          </Box>
+          <UserPopOverCard
+            showUserName
+            className="tw:min-w-0 tw:text-sm tw:text-secondary"
+            userName={announcement.createdBy}
+          />
         ) : null;
       case 'startTime':
         return <DateCell value={announcement.startTime} />;
