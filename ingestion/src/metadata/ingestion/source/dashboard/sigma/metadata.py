@@ -252,7 +252,7 @@ class SigmaSource(DashboardServiceSource):
         super().__init__(config, metadata)
         self.data_models: list[Elements] = []
         # The lineage stage runs once per dbServicePrefixes entry, and each run needs every prefix's match
-        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str] | None] = LRUCache(
+        self._resolved_tables: LRUCache[tuple[str | None, str, str], tuple[Table, str | None] | None] = LRUCache(
             maxsize=MAX_RESOLVED_TABLES
         )
         # The Sigma Data Models ingested this run, and the url id of every listed one: lineage rows name both ids
@@ -427,15 +427,17 @@ class SigmaSource(DashboardServiceSource):
         self, database: str | None, schema: str | None, table: str | None, db_service_prefix: str | None
     ) -> Table | None:
         """
-        The one table the reference names across the dbServicePrefixes, returned on the call for the
-        prefix it was found under. Lineage must not guess, so a reference matching several tables, or
-        with no prefix configured, resolves to none. A reference is resolved once per run, as every
-        prefix's call needs the same answer.
+        The one table the reference names across the dbServicePrefixes (every database service when none is
+        set), returned on the call for the prefix it was found under. Lineage must not guess, so a reference
+        matching several tables resolves to none. A reference is resolved once per run, as every prefix's call
+        needs the same answer.
         """
         resolved = self._resolved_table(database, schema, table)
         return resolved[0] if resolved and resolved[1] == db_service_prefix else None
 
-    def _resolved_table(self, database: str | None, schema: str | None, table: str | None) -> tuple[Table, str] | None:
+    def _resolved_table(
+        self, database: str | None, schema: str | None, table: str | None
+    ) -> tuple[Table, str | None] | None:
         if not (schema and table):
             return None
         key = (database, schema, table)
@@ -443,17 +445,21 @@ class SigmaSource(DashboardServiceSource):
             self._resolved_tables[key] = self._resolve_table(database, schema, table)
         return self._resolved_tables[key]
 
-    def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str] | None:
-        """The one table the reference names across the dbServicePrefixes, with the prefix it was found under"""
-        matches: dict[str, tuple[Table, str]] = {}
-        for prefix in self.get_db_service_prefixes():
+    def _resolve_table(self, database: str | None, schema: str, table: str) -> tuple[Table, str | None] | None:
+        """
+        The one table the reference names across the dbServicePrefixes, or across every database service when
+        none is set (ADR:2026-11-12-sigma-lineage-searches-every-database-service-without-prefixes), with the
+        prefix it was found under
+        """
+        matches: dict[str, tuple[Table, str | None]] = {}
+        for prefix in self.get_db_service_prefixes() or [None]:
             service, prefix_database, prefix_schema, prefix_table = self.parse_db_service_prefix(prefix)
             if any(
                 expected and actual and expected.lower() != actual.lower()
                 for expected, actual in ((prefix_database, database), (prefix_schema, schema), (prefix_table, table))
             ):
                 continue
-            service_entity = self._db_services[prefix]
+            service_entity = self._db_services.get(prefix) if prefix else None
             searched_database = (
                 get_database_name_for_lineage(service_entity, database) if database and service_entity else database
             )
@@ -723,9 +729,6 @@ class SigmaSource(DashboardServiceSource):
         if not dashboard_details:
             logger.warning(f"Skipping lineage - dashboard details are None (API error)")  # noqa: F541
             return
-        if not db_service_prefix:
-            # Tables resolve only within the dbServicePrefixes services: without one there is nothing to link
-            return
 
         queries_response = self.client.get_workbook_queries(dashboard_details.workbookId)
 
@@ -733,7 +736,7 @@ class SigmaSource(DashboardServiceSource):
             yield from self._yield_lineage_from_files(dashboard_details, db_service_prefix)
             return
 
-        db_service_entity = self._db_services.get(db_service_prefix)
+        db_service_entity = self._db_services.get(db_service_prefix) if db_service_prefix else None
         dialect = None
 
         queries_by_element = {q.elementId: q for q in queries_response.entries}
@@ -1112,13 +1115,19 @@ class SigmaSource(DashboardServiceSource):
             if read_ids.isdisjoint({entry.dataModelId, self._data_model_url_ids.get(entry.dataModelId)}):
                 return None
             return self._get_datamodel(entry.dataModelId)
-        prefixes = self.get_db_service_prefixes()
-        if entry.type != "table" or not entry.inodeId or not prefixes:
+        if entry.type != "table" or not entry.inodeId:
             return None
         node = self.client.get_file(entry.inodeId)
         if not node or read_ids.isdisjoint({entry.inodeId, node.urlId}):
             return None
-        return next((table for prefix in prefixes if (table := self._get_table_entity_from_node(node, prefix))), None)
+        return next(
+            (
+                table
+                for prefix in self.get_db_service_prefixes() or [None]
+                if (table := self._get_table_entity_from_node(node, prefix))
+            ),
+            None,
+        )
 
     def get_owner_ref(self, dashboard_details: WorkbookDetails | DataModel) -> EntityReferenceList | None:
         """

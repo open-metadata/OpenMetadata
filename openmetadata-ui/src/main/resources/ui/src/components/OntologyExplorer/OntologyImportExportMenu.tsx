@@ -12,7 +12,7 @@
  */
 
 import {
-  Button,
+  ButtonUtility,
   Dialog,
   Dropdown,
   Modal,
@@ -214,12 +214,12 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
     return (
       <>
         <Dropdown.Root>
-          <Button
+          <ButtonUtility
             aria-label={t('label.import-export')}
             color="secondary"
             data-testid="ontology-import-export-trigger"
-            iconLeading={Download01}
-            size="sm"
+            icon={Download01}
+            size="lg"
             tooltip={t('label.import-export')}
           />
           <Dropdown.Popover className="tw:w-60" placement="bottom end">
@@ -258,12 +258,12 @@ const OntologyImportExportMenu = (props: OntologyImportExportMenuProps) => {
 
   return (
     <>
-      <Button
+      <ButtonUtility
         aria-label={t('label.import-export')}
         color="secondary"
         data-testid="ontology-import-export-trigger"
-        iconLeading={isAiMode ? Download01 : SwitchVertical01}
-        size="sm"
+        icon={isAiMode ? Download01 : SwitchVertical01}
+        size="lg"
         tooltip={t('label.import-export')}
         onPress={() =>
           guard(() =>

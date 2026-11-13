@@ -23,10 +23,12 @@ table. No live Sigma run confirms the endpoint for the ids the connector holds.
 
 ## Decision
 
-- The display path is tried first, unchanged. The connection path is read only when it finds no single table, only for
-  a `/files` entry of type `table`, and only with `dbServicePrefixes` set.
+- The display path is tried first, unchanged. The connection path is read only when it finds no single table, and only
+  for a `/files` entry of type `table`.
 - Only a 3-part path whose last part equals the `/files` name is used, as `[database, schema, table]`, with the same
-  rule as every other Sigma reference: linked only when exactly one table matches across `dbServicePrefixes`.
+  rule as every other Sigma reference: linked only when exactly one table matches across `dbServicePrefixes`, or
+  across every database service when none is set
+  (ADR:2026-11-12-sigma-lineage-searches-every-database-service-without-prefixes).
 - A failed read, or a path of any other shape, leaves the table without lineage, as before. A path is read once per
   table per run.
 

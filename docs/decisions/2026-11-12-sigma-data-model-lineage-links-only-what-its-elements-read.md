@@ -31,7 +31,8 @@ representation example, such as `inode-4exq8bsACBpDyQUvKGGTO0/ORDER_NUMBER`).
   `inodeId` or by the `urlId` of its `/files` entry, with or without an `inode-` prefix. The table is resolved as for
   workbook elements: from the `/files` path, then the table's connection path when that finds no single table
   (ADR:2026-11-12-sigma-connection-path-is-read-only-when-the-display-path-finds-no-table), linked only when exactly
-  one table matches across `dbServicePrefixes`.
+  one table matches across `dbServicePrefixes`, or across every database service when none is set
+  (ADR:2026-11-12-sigma-lineage-searches-every-database-service-without-prefixes).
 - A `data-model` row is linked when an element names it by its `dataModelId` or its `dataModelUrlId`, alone or as
   `<url id>/<element>`.
 - Rows of any other type are not linked.
