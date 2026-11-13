@@ -14,7 +14,7 @@ import traceback
 from collections import OrderedDict
 from collections.abc import Iterable
 from functools import partial
-from typing import cast
+from typing import Any, cast
 
 from metadata.entity_resolution.table_search import get_table_fqn_from_query_name
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
@@ -51,7 +51,7 @@ from metadata.generated.schema.type.basic import (
     SourceUrl,
     Uuid,
 )
-from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDetails
+from metadata.generated.schema.type.entityLineage import ColumnLineage, EntitiesEdge, LineageDetails
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
@@ -60,18 +60,27 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Dialect
 from metadata.ingestion.lineage.parser import LineageParser
-from metadata.ingestion.lineage.sql_lineage import get_table_entities_from_query
+from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_table_entities_from_query
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 from metadata.ingestion.source.dashboard.microstrategy.client import (
+    DATA_IMPORT_CUBE_SUBTYPES,
     MicroStrategyApiError,
     MicroStrategyClient,
     cached,
+)
+from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
+    ParsedCube,
+    SourceColumn,
+    normalized,
+    read_columns,
+    table_matches,
 )
 from metadata.ingestion.source.dashboard.microstrategy.helpers import (
     MicroStrategyColumnParser,
 )
 from metadata.ingestion.source.dashboard.microstrategy.models import (
+    MstrAvailableObject,
     MstrDashboard,
     MstrDashboardDetails,
     MstrDataset,
@@ -137,7 +146,8 @@ class MicrostrategySource(DashboardServiceSource):
         self.charts_unknown = False
         self._dialects: dict[str, Dialect | None] = {}
         self._service_databases: dict[str, frozenset[str]] = {}
-        self._source_tables: OrderedDict[tuple[str, Dialect], tuple[str, ...] | None] = OrderedDict()
+        self._source_tables: OrderedDict[tuple[str, Dialect], ParsedCube | None] = OrderedDict()
+        self._tables_with_columns: OrderedDict[str, Table | None] = OrderedDict()
 
     @property
     def _service(self) -> str:
@@ -338,31 +348,37 @@ class MicrostrategySource(DashboardServiceSource):
 
         for dataset in dashboard_details.datasets:
             try:
-                source_tables = cached(
+                parsed = cached(
                     self._source_tables,
                     (dataset.id, dialect),
-                    partial(self._parse_source_tables, dashboard_details.projectId, dataset.id, dialect),
+                    partial(self._parse_cube, dashboard_details.projectId, dataset.id, dialect),
                     f"the tables of cube {dataset.id}",
                 )
-                if not source_tables:
+                if not parsed or not parsed.tables:
                     continue
                 datamodel_entity = self.metadata.get_by_name(
                     entity=DashboardDataModel,
                     fqn=self._fqn(DashboardDataModel, data_model_name=dataset.id),
+                    fields=["columns"],
                 )
                 if not datamodel_entity:
                     logger.debug("Data model [%s] not found, skipping its lineage", dataset.id)
                     continue
                 for table_entity in self._source_table_entities(
-                    source_tables, service_name, database_name, schema_name, table_name
+                    parsed.tables, service_name, database_name, schema_name, table_name
                 ):
+                    columns_lineage = self._safe_column_lineage(
+                        dashboard_details.projectId, dataset, parsed.read_columns, table_entity, datamodel_entity
+                    )
                     yield Either(
                         left=None,
                         right=AddLineageRequest(
                             edge=EntitiesEdge(
                                 fromEntity=EntityReference(id=Uuid(table_entity.id.root), type="table"),
                                 toEntity=EntityReference(id=Uuid(datamodel_entity.id.root), type="dashboardDataModel"),
-                                lineageDetails=LineageDetails(source=LineageSource.DashboardLineage),
+                                lineageDetails=LineageDetails(
+                                    source=LineageSource.DashboardLineage, columnsLineage=columns_lineage or None
+                                ),
                             )
                         ),
                     )
@@ -398,17 +414,130 @@ class MicrostrategySource(DashboardServiceSource):
         self._dialects[service_name] = dialect
         return dialect
 
-    def _parse_source_tables(self, project_id: str, cube_id: str, dialect: Dialect) -> tuple[str, ...]:
+    def _parse_cube(self, project_id: str, cube_id: str, dialect: Dialect) -> ParsedCube:
         """
-        The tables a cube's SQL reads. Parsed once per cube and dialect: the base class asks
-        for lineage once per dbServicePrefixes entry, and a cube is shared by many dossiers.
+        The tables a cube's SQL reads, and the columns its projections read. Parsed once per
+        cube and dialect: the base class asks for lineage once per dbServicePrefixes entry, and a
+        cube is shared by many dossiers.
         """
         cube_sql = self.client.get_cube_sql_details(project_id, cube_id)
         if not cube_sql:
-            return ()
+            return ParsedCube()
         parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
         # The third-party cached_property is not read as a descriptor by type checkers.
-        return tuple(str(table) for table in cast("list", parser.source_tables))
+        tables = tuple(str(table) for table in cast("list", parser.source_tables))
+        return ParsedCube(tables=tables, read_columns=read_columns(cube_sql, dialect))
+
+    def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
+        """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
+        try:
+            return self._column_lineage(*args)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not build the column lineage of a MicroStrategy data model: %s", exc)
+            return []
+
+    def _column_lineage(
+        self,
+        project_id: str,
+        dataset: MstrDataset,
+        cube_reads: frozenset[SourceColumn],
+        table_entity: Table,
+        datamodel_entity: DashboardDataModel,
+    ) -> list[ColumnLineage]:
+        """
+        Column lineage from one table to a data model. A data model column is matched on the
+        warehouse columns the cube SQL reads: through its schema attribute's form expressions, or
+        for a Data Import cube on its name, which the import derives from the column. Metrics of a
+        schema cube are left out: the API does not tell which fact column a metric aggregates.
+        """
+        schema = getattr(table_entity.databaseSchema, "name", None)
+        reads = {
+            (table, column) for table, column in cube_reads if table_matches(table, table_entity.name.root, schema)
+        }
+        if not reads:
+            return []
+        table_entity = self._with_columns(table_entity)
+        data_import = self.client.get_dataset_subtype(project_id, dataset.id) in DATA_IMPORT_CUBE_SUBTYPES
+        targets = self._data_model_columns(dataset, datamodel_entity)
+        lineage = []
+        for available_object in dataset.availableObjects or []:
+            for target, columns in self._object_columns(project_id, available_object, data_import, reads, targets):
+                from_columns = sorted({fqn for column in columns if (fqn := get_column_fqn(table_entity, column))})
+                if from_columns:
+                    lineage.append(
+                        ColumnLineage(
+                            fromColumns=[FullyQualifiedEntityName(fqn) for fqn in from_columns],
+                            toColumn=FullyQualifiedEntityName(target),
+                        )
+                    )
+        return lineage
+
+    def _object_columns(
+        self,
+        project_id: str,
+        available_object: MstrAvailableObject,
+        data_import: bool,
+        reads: set[SourceColumn],
+        targets: dict[tuple[str, str | None], str],
+    ) -> Iterable[tuple[str, set[str]]]:
+        """(data model column FQN, warehouse columns of this table it reads) for one dataset object"""
+        if data_import:
+            target = targets.get((available_object.id, None))
+            columns = {column for _, column in reads if normalized(column) == normalized(available_object.name)}
+            if target and columns:
+                yield target, columns
+            return
+        if available_object.type != "attribute":
+            return
+        form_columns = self.client.get_attribute_form_columns(project_id, available_object.id) or {}
+        for form in available_object.forms or []:
+            target = targets.get((available_object.id, form.get("name")))
+            expression = form_columns.get(str(form.get("id")), frozenset())
+            columns = {
+                column
+                for table, column in reads
+                for form_table, form_column in expression
+                if form_column == column and table_matches(table, form_table.rsplit(".", 1)[-1], None)
+            }
+            if target and columns:
+                yield target, columns
+
+    def _data_model_columns(
+        self, dataset: MstrDataset, datamodel_entity: DashboardDataModel
+    ) -> dict[tuple[str, str | None], str]:
+        """
+        The FQN of each data model column by (object id, form name), a None form naming the
+        object's own column. Names are rebuilt the way the data model was, suffixes included.
+        """
+        by_name = {column.name.root: column for column in datamodel_entity.columns or []}
+        targets = {}
+        for object_id, name in self._column_names(dataset).items():
+            column = by_name.get(name)
+            if not column or not column.fullyQualifiedName:
+                continue
+            targets[(object_id, None)] = column.fullyQualifiedName.root
+            for child in column.children or []:
+                if child.fullyQualifiedName:
+                    targets[(object_id, child.name.root)] = child.fullyQualifiedName.root
+        return targets
+
+    def _with_columns(self, table_entity: Table) -> Table:
+        """The table with its columns, read once when the lineage search returned it without them"""
+        if table_entity.columns:
+            return table_entity
+        fqn = table_entity.fullyQualifiedName.root if table_entity.fullyQualifiedName else None
+        if not fqn:
+            return table_entity
+        return (
+            cached(
+                self._tables_with_columns,
+                fqn,
+                lambda: self.metadata.get_by_name(entity=Table, fqn=fqn, fields=["columns"]),
+                f"the columns of table {fqn}",
+            )
+            or table_entity
+        )
 
     def _source_table_entities(
         self,
@@ -540,17 +669,25 @@ class MicrostrategySource(DashboardServiceSource):
             f"charts are left as they are and stale charts are kept in this run: {exc}",
         )
 
+    @staticmethod
+    def _column_names(dataset: MstrDataset) -> dict[str, str]:
+        """
+        The data model column name of each dataset object. Suffixes go out in id order, so an
+        object keeps its column name, and what users added to the column, when MicroStrategy
+        lists the objects in another order.
+        """
+        taken: set[str] = set()
+        column_names: dict[str, str] = {}
+        for available_object in sorted(dataset.availableObjects or [], key=lambda obj: (obj.name, obj.id)):
+            if available_object.id not in column_names:
+                column_names[available_object.id] = unique_column_name(available_object.name, taken)
+        return column_names
+
     def _get_column_info(self, dataset: MstrDataset) -> list[Column]:
         """Attributes become columns with their forms as children; metrics are leaf columns"""
         datasource_columns = []
         objects = dataset.availableObjects or []
-        # Suffixes go out in id order, so an object keeps its column name, and what users added
-        # to the column, when MicroStrategy lists the objects in another order.
-        taken: set[str] = set()
-        column_names: dict[str, str] = {}
-        for available_object in sorted(objects, key=lambda obj: (obj.name, obj.id)):
-            if available_object.id not in column_names:
-                column_names[available_object.id] = unique_column_name(available_object.name, taken)
+        column_names = self._column_names(dataset)
         seen_ids: set[str] = set()
         for available_object in objects:
             if available_object.id in seen_ids:
