@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import classNames from 'classnames';
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { UNSAFE_PortalProvider as PortalProvider } from 'react-aria';
 import { createPortal } from 'react-dom';
+import { useOntologyDraftGuard } from '../../../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useOntologyStudioDrawerHost } from './OntologyStudioDrawer.context';
 
 interface OntologyStudioDrawerProps {
@@ -22,36 +23,71 @@ interface OntologyStudioDrawerProps {
   readonly className?: string;
   /** A confirm dialog scoped to this drawer: its scrim and card cover only the panel, per the design. */
   readonly confirm?: ReactNode;
-  readonly placement?: 'beside' | 'overlay';
   readonly testId?: string;
+  /**
+   * A press anywhere outside the panel closes it, as on the app's other drawers, after the
+   * discard prompt when a form in it has unsaved edits. Its own menus, lists, dialogs and
+   * toasts are portalled elsewhere, so presses in them don't count.
+   */
+  readonly onInteractOutside?: () => void;
 }
+
+// Overlays a drawer opens portal out of it; a press inside one is still a press in the drawer.
+const OWNED_OVERLAY_SELECTOR = [
+  '[data-react-aria-top-layer]',
+  '[role="dialog"]',
+  '[role="alertdialog"]',
+  '[role="listbox"]',
+  '[role="menu"]',
+  '[role="tooltip"]',
+  '.Toastify',
+].join(',');
 
 // 40% of the screen, as the design's drawer; never narrower than the 420px its forms need.
 // ADR:2026-11-12-ontology-studio-drawers-are-40vw-with-a-420px-floor
 const PANEL_WIDTH = 'tw:w-[40vw] tw:min-w-105';
 // transform-gpu makes the panel the containing block of a fixed modal portalled into it.
-const PANEL_CLASS = `${PANEL_WIDTH} tw:transform-gpu tw:flex tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
-// Full height of the Studio, over the right of the header too; nothing behind it is dimmed.
-const HOSTED_CLASS =
-  'tw:absolute tw:top-2 tw:right-2 tw:bottom-2 tw:z-40 tw:max-w-[calc(100%-1rem)]';
+const PANEL_CLASS = `${PANEL_WIDTH} tw:transform-gpu tw:flex tw:flex-col tw:overflow-hidden tw:border-l tw:border-secondary tw:bg-overlay-surface tw:shadow-xl`;
+// Edge to edge, top to bottom, like the app's other drawers; it covers the canvas, which keeps its layout.
+const HOSTED_CLASS = 'tw:fixed tw:inset-y-0 tw:right-0 tw:z-40 tw:max-w-full';
 
 /**
- * The Studio's right drawer, per the design: full height, over the header, no backdrop.
- * `beside` (the default) also leaves a same-width gap in the canvas row, so the canvas
- * narrows and no node ends up under the drawer. `overlay` covers the area below it, for
- * lists where nothing underneath needs clicking.
+ * The Studio's right drawer, per the design: full height, over the header and the canvas,
+ * no backdrop. It is portalled into the Studio shell so the canvas toolbar can see it.
  */
 const OntologyStudioDrawer = ({
   ariaLabel,
   children,
   className,
   confirm,
-  placement = 'beside',
   testId,
+  onInteractOutside,
 }: OntologyStudioDrawerProps) => {
   const host = useOntologyStudioDrawerHost();
+  // A drawer with unsaved edits asks to discard them rather than closing on a stray click.
+  const guard = useOntologyDraftGuard();
   // State, not a ref: the confirm needs the panel mounted before it can portal into it.
   const [panelElement, setPanelElement] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    if (!onInteractOutside || !panelElement) {
+      return;
+    }
+    // Capture phase: a tab or button pressed outside acts on pointer down, after the drawer closes.
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        !panelElement.contains(target) &&
+        !target.closest(OWNED_OVERLAY_SELECTOR)
+      ) {
+        guard(onInteractOutside);
+      }
+    };
+    document.addEventListener('pointerdown', closeOnOutsidePress, true);
+
+    return () =>
+      document.removeEventListener('pointerdown', closeOnOutsidePress, true);
+  }, [guard, onInteractOutside, panelElement]);
   // data-studio-drawer: the Studio's canvas toolbar reads it to stay clear of an open drawer.
   const panel = (positionClass: string) => (
     <aside
@@ -71,28 +107,10 @@ const OntologyStudioDrawer = ({
 
   // Outside the Studio shell (e.g. a component test) the panel simply sits in the flow.
   if (!host) {
-    return placement === 'beside'
-      ? panel('tw:relative tw:z-30 tw:my-2 tw:mr-2 tw:max-w-[55%] tw:shrink-0')
-      : createPortal(
-          panel(
-            'tw:fixed tw:top-1.5 tw:right-1.5 tw:bottom-1.5 tw:z-40 tw:max-w-[calc(100vw-0.75rem)]'
-          ),
-          document.body
-        );
+    return panel('tw:relative tw:z-30 tw:max-w-[55%] tw:shrink-0');
   }
 
-  return (
-    <>
-      {placement === 'beside' ? (
-        <div
-          aria-hidden
-          className={classNames(PANEL_WIDTH, 'tw:my-2 tw:mr-2 tw:shrink-0')}
-          data-testid="ontology-studio-drawer-gap"
-        />
-      ) : null}
-      {createPortal(panel(HOSTED_CLASS), host)}
-    </>
-  );
+  return createPortal(panel(HOSTED_CLASS), host);
 };
 
 export default OntologyStudioDrawer;

@@ -383,6 +383,8 @@ test.describe(
           empty.getByTestId('ontology-data-link-asset')
         ).toBeVisible();
         await expect(page.getByText(/0 of 0 properties bound/)).toHaveCount(0);
+        // Picking never changes the mode; only Link data asset or Edit does.
+        await expect(page).not.toHaveURL(/mode=edit/);
         await page.screenshot({ path: `${SCREENSHOTS}/g17-empty.png` });
       } finally {
         await cleanUp(api, { ontology, tables: [] });

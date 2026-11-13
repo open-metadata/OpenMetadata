@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, screen } from '@testing-library/react';
+import { act, fireEvent, screen, waitFor } from '@testing-library/react';
 import {
   ChangeType,
   MemberKind,
@@ -24,6 +24,29 @@ import {
 import { renderWithQueryClient } from '../../../../test/unit/test-utils';
 import OntologyOverview from './OntologyOverview';
 
+const mockModel = {
+  axioms: [
+    {
+      id: 'a-1',
+      axiomType: 'DISJOINT_WITH',
+      subjectIri: 'urn:x:Medication',
+      expressions: [{ kind: 'NAMED_CLASS', classIri: 'urn:x:Clinical' }],
+    },
+    {
+      id: 'a-2',
+      axiomType: 'SUBCLASS_OF',
+      subjectIri: 'urn:x:Other',
+      expressions: [],
+      updatedAt: Number.MAX_SAFE_INTEGER,
+    },
+  ],
+  concepts: [
+    { id: 'med', iri: 'urn:x:Medication' },
+    { id: 'clin', iri: 'urn:x:Clinical' },
+  ],
+  properties: [],
+};
+
 jest.mock(
   '../../../../hooks/governance/ontology/useOntologyStudioModel',
   () => ({
@@ -31,7 +54,7 @@ jest.mock(
       graph: { nodes: [], edges: [] },
       isError: false,
       isLoading: false,
-      model: { axioms: [{ id: 'a-1' }], concepts: [], properties: [] },
+      model: mockModel,
       relations: [],
     }),
   })
@@ -89,6 +112,47 @@ describe('OntologyOverview validation', () => {
     expect(
       screen.getByText('message.ontology-overview-in-conflict')
     ).toBeInTheDocument();
+  });
+});
+
+describe('OntologyOverview validation breakdown', () => {
+  it('counts constraints as valid, not checked and in conflict, and reviews the conflicts', async () => {
+    (getOntologyWorkingValidation as jest.Mock).mockResolvedValue({
+      valid: false,
+      violations: [{ code: 'DISJOINT_CLASH', conceptIds: ['med', 'clin'] }],
+    });
+    const onOpenTab = jest.fn();
+    renderWithQueryClient(
+      <OntologyOverview ontology={ontology} onOpenTab={onOpenTab} />
+    );
+
+    await waitFor(() =>
+      expect(
+        screen.getByTestId('ontology-overview-validation-conflict')
+      ).toHaveTextContent('1label.in-conflict-lowercase')
+    );
+
+    expect(
+      screen.getByTestId('ontology-overview-validation-not-checked')
+    ).toHaveTextContent('1label.not-checked-lowercase');
+    expect(
+      screen.getByTestId('ontology-overview-validation-valid')
+    ).toHaveTextContent('0label.valid-lowercase');
+
+    fireEvent.click(screen.getByTestId('ontology-overview-review-conflicts'));
+
+    expect(onOpenTab).toHaveBeenCalledWith('axiom', 'conflict');
+  });
+
+  it('counts every constraint as not checked until a run answers', () => {
+    (getOntologyWorkingValidation as jest.Mock).mockReturnValue(
+      new Promise(() => undefined)
+    );
+    renderWithQueryClient(<OntologyOverview ontology={ontology} />);
+
+    expect(
+      screen.getByTestId('ontology-overview-validation-not-checked')
+    ).toHaveTextContent('2');
   });
 });
 
