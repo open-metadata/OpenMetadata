@@ -18,15 +18,17 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.times;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedStatic;
+import org.openmetadata.schema.entity.events.DestinationHealth;
 import org.openmetadata.schema.entity.events.EventSubscription;
 import org.openmetadata.schema.entity.events.SubscriptionDestination;
 import org.openmetadata.schema.entity.events.SubscriptionDestination.SubscriptionCategory;
@@ -43,18 +45,19 @@ class AlertDiagnosticsStatusTest {
   private static final String TEST_FERNET_KEY = "GhtAEzEb5WD6bTLvwa24JA6ePHxfVLDjb8X4hMShmVY=";
   private static final String SIGNING_KEY = "/authType/secretKey";
 
-  private MockedStatic<AlertRecord> neverTicked;
+  private final Map<UUID, Map<String, DestinationHealth>> health = new HashMap<>();
+  private MockedStatic<AlertRecord> records;
 
   @BeforeEach
   void setUp() {
     Fernet.getInstance().setFernetKey(TEST_FERNET_KEY);
-    neverTicked = mockStatic(AlertRecord.class);
-    neverTicked.when(() -> AlertRecord.open(any())).thenReturn(Optional.empty());
+    records = mockStatic(AlertRecord.class);
+    records.when(() -> AlertRecord.healthOf(any())).thenReturn(health);
   }
 
   @AfterEach
   void tearDown() {
-    neverTicked.close();
+    records.close();
     Fernet.getInstance().setFernetKey((String) null);
   }
 
@@ -78,10 +81,45 @@ class AlertDiagnosticsStatusTest {
         unusable.getLastFailedReason().contains("The value at '/authType/secretKey'"),
         unusable.getLastFailedReason());
     assertTrue(unusable.getLastFailedReason().contains("must be entered again"));
+    assertTrue(unusable.getConfigurationUnusable());
     assertEquals(SubscriptionStatus.Status.FAILED, statusOf(read.get(1)).getStatus());
     assertEquals(SubscriptionStatus.Status.ACTIVE, statusOf(read.get(2)).getStatus());
     assertNull(statusOf(read.get(2)).getLastFailedReason());
+    assertNull(statusOf(read.get(2)).getConfigurationUnusable());
     assertEquals(SubscriptionStatus.Status.DISABLED, statusOf(read.get(3)).getStatus());
+  }
+
+  @Test
+  void aFailedSendReadsFailedWithItsReasonButNotAsAnUnusableConfiguration() {
+    SubscriptionDestination usable = signedWith("a key entered in the clear");
+    EventSubscription alert = alertWith(usable);
+    SubscriptionStatus failedSend =
+        new SubscriptionStatus()
+            .withStatus(SubscriptionStatus.Status.FAILED)
+            .withLastFailedReason("Webhook failed with status: 503");
+    health.put(
+        alert.getId(),
+        Map.of(usable.getId().toString(), new DestinationHealth().withStatus(failedSend)));
+
+    SubscriptionStatus read = statusOf(AlertDiagnostics.destinationsWithStatus(alert).getFirst());
+
+    assertEquals(SubscriptionStatus.Status.FAILED, read.getStatus());
+    assertEquals("Webhook failed with status: 503", read.getLastFailedReason());
+    assertNull(read.getConfigurationUnusable());
+  }
+
+  @Test
+  void theHealthOfEveryListedAlertIsReadInOneGo() {
+    EventSubscription first = alertWith(signedWith("a key"));
+    EventSubscription second = alertWith(signedWith("another key"));
+
+    AlertDiagnostics.setDestinationStatuses(List.of(first, second));
+
+    records.verify(() -> AlertRecord.healthOf(List.of(first.getId(), second.getId())), times(1));
+    records.verify(() -> AlertRecord.healthOf(any()), times(1));
+    assertEquals(
+        SubscriptionStatus.Status.ACTIVE,
+        statusOf(second.getDestinations().getFirst()).getStatus());
   }
 
   private static SubscriptionStatus statusOf(SubscriptionDestination destination) {

@@ -114,6 +114,20 @@ public final class DestinationSecrets {
   }
 
   /**
+   * Why the destination, as stored, cannot send: a secret that does not open for it, named as the
+   * send path names it. Empty when every secret opens. Only decrypts, so a status read stays cheap.
+   */
+  public static Optional<String> unusableBecause(SubscriptionDestination destination) {
+    Optional<String> reason = Optional.empty();
+    try {
+      decrypted(destination);
+    } catch (BadRequestException e) {
+      reason = Optional.of(e.getMessage());
+    }
+    return reason;
+  }
+
+  /**
    * Who a destination's secrets belong to: the destination itself, by its id, which the server
    * keeps for its whole life. A destination without an id has nothing stored for it, so it gets an
    * owner of its own that no stored secret opens for.

@@ -83,15 +83,12 @@ public class EventSubscriptionRepository extends EntityRepository<EventSubscript
     entity.setNotificationTemplate(templateOf(entity.getId()));
   }
 
-  // A list reads its fields in bulk, without setFields, so the status is read here for both.
+  // A list reads its fields in bulk, without setFields, so the status is read here for both, with
+  // one read of the health of every listed alert.
   private void fetchAndSetStatusDetails(List<EventSubscription> alerts, Fields fields) {
     if (fields.contains(FIELD_STATUS_DETAILS)) {
-      alerts.stream()
-          .filter(alert -> !nullOrEmpty(alert.getDestinations()))
-          .forEach(
-              alert ->
-                  alert.withDestinations(
-                      new ArrayList<>(AlertDiagnostics.destinationsWithStatus(alert))));
+      AlertDiagnostics.setDestinationStatuses(
+          alerts.stream().filter(alert -> !nullOrEmpty(alert.getDestinations())).toList());
     }
   }
 
