@@ -205,6 +205,51 @@ class QueryParserTests(TestCase):
             None,
         )
 
+    def test_clean_raw_query_identifier_literal(self):
+        """
+        Validate IDENTIFIER('<literal>') is replaced by the name in the literal
+        """
+        rewritten = {
+            "select * from IDENTIFIER('my_db.my_schema.orders')": "select * from my_db.my_schema.orders",
+            "select * from identifier( 'orders' ) o": "select * from orders o",
+            """select * from Identifier('"My Db"."My Schema"."Orders"')""": """select * from "My Db"."My Schema"."Orders\"""",
+            "select a from IDENTIFIER('t1') join IDENTIFIER('t2') using (a)": "select a from t1 join t2 using (a)",
+        }
+        for query, expected in rewritten.items():
+            self.assertEqual(LineageParser.clean_raw_query(query), expected)
+
+        untouched = [
+            "select * from IDENTIFIER($table_name)",
+            "select * from IDENTIFIER(:table_name)",
+            "select * from IDENTIFIER(?)",
+            "select * from IDENTIFIER('my_db.' || $table_name)",
+            "select * from IDENTIFIER('my_db.my_schema.it''s')",
+            "select * from IDENTIFIER('')",
+            "select my_identifier('orders') from my_table",
+            "select my_schema.identifier('orders') from my_table",
+            "select 'from IDENTIFIER(' || name || ')' from my_table",
+            "select note from my_table where note = 'IDENTIFIER(''orders'')'",
+        ]
+        for query in untouched:
+            self.assertEqual(LineageParser.clean_raw_query(query), query)
+
+    def test_identifier_literal_lineage(self):
+        """
+        Validate tables referenced through IDENTIFIER('<literal>') are lineage sources
+        """
+        queries = [
+            "CREATE OR REPLACE VIEW my_db.my_schema.my_view AS SELECT o.id FROM IDENTIFIER('my_db.my_schema.orders') o"
+            " JOIN my_db.my_schema.customers c ON c.id = o.customer_id",
+            "INSERT INTO my_db.my_schema.target SELECT o.id FROM IDENTIFIER('my_db.my_schema.orders') o"
+            " JOIN my_db.my_schema.customers c ON c.id = o.customer_id",
+        ]
+        for query in queries:
+            parser = LineageParser(query, dialect=Dialect.SNOWFLAKE)
+            self.assertEqual(
+                {str(table) for table in parser.source_tables},
+                {"my_db.my_schema.orders", "my_db.my_schema.customers"},
+            )
+
     # TODO: Fix this case at the earliest
     @pytest.mark.skip(reason="Flaky with sqlglot parser, returns no column lineage or correct column lineage randomly.")
     def test_ctes_column_lineage(self):
