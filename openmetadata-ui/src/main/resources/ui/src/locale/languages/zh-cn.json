@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "查询已运行，但没有匹配的结果。",
     "query-used-by-other-tables": "被其他数据表使用的查询",
     "quick-add-tip": "使用快速添加可以在不离开图的情况下创建术语表术语关系。",
-    "ran-for-duration": "运行了 {{duration}} 分钟",
+    "ran-for-duration": "运行了 {{duration}}",
     "rdf-not-enabled-for-export": "导出本体需要启用RDF。请在服务器配置中启用RDF。",
     "rdf-predicate-already-used": "RDF 谓词已被 {{name}} 使用。",
     "rdf-predicate-tooltip": "此关系类型的RDF谓词URI（例如 skos:broader, skos:exactMatch）。",

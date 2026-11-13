@@ -406,10 +406,10 @@ export const mapStepSummaryToRunStep = (step: StepSummary): RunStep => {
 export const mapPipelineStatusToRun = (status: PipelineStatus): AgentRun => {
   const steps = status.status ?? [];
   const startedAtMillis = status.startDate ?? status.timestamp;
-  const duration =
+  const durationMs =
     status.endDate && status.startDate
-      ? Math.round(((status.endDate - status.startDate) / 60000) * 10) / 10
-      : 0;
+      ? status.endDate - status.startDate
+      : undefined;
 
   return {
     id: status.runId ?? String(status.timestamp),
@@ -417,7 +417,7 @@ export const mapPipelineStatusToRun = (status: PipelineStatus): AgentRun => {
     startedAt: startedAtMillis
       ? customFormatDateTime(startedAtMillis, RUN_STARTED_AT_FORMAT)
       : '',
-    duration,
+    durationMs,
     totals: buildRunTotals(steps),
     steps: steps.map(mapStepSummaryToRunStep),
   };

@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "Sorgu çalıştı ancak eşleşen sonuç bulunamadı.",
     "query-used-by-other-tables": "Diğer tablolar tarafından kullanılan sorgu",
     "quick-add-tip": "Grafikten ayrılmadan sözlük terimi ilişkileri oluşturmak için Hızlı Ekle'yi kullanın.",
-    "ran-for-duration": "{{duration}} dk boyunca çalıştı",
+    "ran-for-duration": "{{duration}} boyunca çalıştı",
     "rdf-not-enabled-for-export": "Ontoloji dışarı aktarımı için RDF etkinleştirilmelidir. Lütfen sunucu yapılandırmanızda RDF'yi etkinleştirin.",
     "rdf-predicate-already-used": "RDF yüklemi zaten {{name}} tarafından kullanılıyor.",
     "rdf-predicate-tooltip": "Bu ilişki türü için RDF yüklem URI'si (örn. skos:broader, skos:exactMatch).",

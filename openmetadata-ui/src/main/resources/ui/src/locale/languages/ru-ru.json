@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "Запрос выполнен, но совпадений не найдено.",
     "query-used-by-other-tables": "Запрос, используемый другими таблицами",
     "quick-add-tip": "Используйте «Быстрое добавление» для создания связей между терминами глоссария, не покидая граф.",
-    "ran-for-duration": "выполнялось {{duration}} мин",
+    "ran-for-duration": "выполнялось {{duration}}",
     "rdf-not-enabled-for-export": "Для экспорта онтологии необходимо включить RDF. Пожалуйста, включите RDF в настройках сервера.",
     "rdf-predicate-already-used": "Предикат RDF уже используется объектом {{name}}.",
     "rdf-predicate-tooltip": "URI RDF-предиката для этого типа связи (например, skos:broader, skos:exactMatch).",

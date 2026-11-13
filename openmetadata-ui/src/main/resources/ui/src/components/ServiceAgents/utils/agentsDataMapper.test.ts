@@ -648,7 +648,7 @@ describe('agentsDataMapper', () => {
         warnings: 1,
         errors: 1,
       });
-      expect(run.duration).toBe(1.5);
+      expect(run.durationMs).toBe(90_000);
       expect(run.steps).toHaveLength(2);
       expect(run.steps[1].attention).toEqual({
         severity: 'error',
@@ -667,7 +667,7 @@ describe('agentsDataMapper', () => {
       const run = mapPipelineStatusToRun(status);
 
       expect(run.id).toBe('1700000000000');
-      expect(run.duration).toBe(0);
+      expect(run.durationMs).toBeUndefined();
       expect(run.steps).toEqual([]);
     });
   });

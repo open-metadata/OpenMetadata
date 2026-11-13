@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "השאילתה רצה ולא נמצאו תוצאות תואמות.",
     "query-used-by-other-tables": "שאילתה בשימוש על ידי טבלאות אחרות",
     "quick-add-tip": "השתמש בהוספה מהירה ליצירת קשרי מונחי מילון מבלי לעזוב את הגרף.",
-    "ran-for-duration": "רץ במשך {{duration}} דק'",
+    "ran-for-duration": "רץ במשך {{duration}}",
     "rdf-not-enabled-for-export": "יש להפעיל RDF לייצוא אונטולוגיה. הפעל RDF בהגדרות השרת.",
     "rdf-predicate-already-used": "פרדיקט ה-RDF כבר נמצא בשימוש על ידי {{name}}.",
     "rdf-predicate-tooltip": "URI של פרדיקט RDF לסמנטיקה מקושרת (למשל skos:broader)",

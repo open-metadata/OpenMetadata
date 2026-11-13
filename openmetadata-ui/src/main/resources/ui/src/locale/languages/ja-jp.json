@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "クエリは実行されましたが、一致する結果はありませんでした。",
     "query-used-by-other-tables": "他のテーブルで使用されているクエリ",
     "quick-add-tip": "クイック追加を使用すると、グラフを離れずに用語集の用語関係を作成できます。",
-    "ran-for-duration": "{{duration}} 分間実行しました",
+    "ran-for-duration": "{{duration}}間実行しました",
     "rdf-not-enabled-for-export": "オントロジーをエクスポートするにはRDFを有効にする必要があります。サーバー設定でRDFを有効にしてください。",
     "rdf-predicate-already-used": "RDF述語はすでに{{name}}で使用されています。",
     "rdf-predicate-tooltip": "この関係タイプのRDF述語URI（例：skos:broader、skos:exactMatch）。",

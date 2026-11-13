@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "เรียกใช้คิวรีแล้ว แต่ไม่พบผลลัพธ์ที่ตรงกัน",
     "query-used-by-other-tables": "คำถามที่ใช้โดยตารางอื่น",
     "quick-add-tip": "ใช้ \"เพิ่มด่วน\" เพื่อสร้างความสัมพันธ์ของคำศัพท์โดยไม่ต้องออกจากกราฟ",
-    "ran-for-duration": "รันไป {{duration}} นาที",
+    "ran-for-duration": "รันไป {{duration}}",
     "rdf-not-enabled-for-export": "ต้องเปิดใช้งาน RDF เพื่อส่งออกออนโทโลยี กรุณาเปิดใช้งาน RDF ในการตั้งค่าเซิร์ฟเวอร์ของคุณ",
     "rdf-predicate-already-used": "เพรดิเคต RDF ถูกใช้โดย {{name}} แล้ว",
     "rdf-predicate-tooltip": "URI ของ RDF predicate สำหรับประเภทความสัมพันธ์นี้ (เช่น skos:broader, skos:exactMatch)",

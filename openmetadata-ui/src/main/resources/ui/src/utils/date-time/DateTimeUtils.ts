@@ -512,21 +512,6 @@ export const convertSecondsToHumanReadableFormat = (
   );
 };
 
-export const formatDuration = (ms: number) => {
-  const seconds = ms / 1000;
-  const minutes = seconds / 60;
-  const hours = minutes / 60;
-  const pluralize = (value: number, unit: string) =>
-    `${value.toFixed(2)} ${unit}${value === 1 ? '' : 's'}`;
-  if (seconds < 60) {
-    return pluralize(seconds, 'second');
-  } else if (minutes < 60) {
-    return pluralize(minutes, 'minute');
-  } else {
-    return pluralize(hours, 'hour');
-  }
-};
-
 export const formatIsoDuration = (iso: string): string => {
   const d = Duration.fromISO(iso);
   if (!d.isValid) {
@@ -534,6 +519,30 @@ export const formatIsoDuration = (iso: string): string => {
   }
 
   return d.toHuman() || iso;
+};
+
+export const formatDuration = (milliseconds: number, length?: number) => {
+  // Only clock skew between the runner and the server makes a negative duration.
+  if (milliseconds < 0) {
+    return '—';
+  }
+  if (milliseconds < 1) {
+    return '<1ms';
+  }
+  // Fast queries finish in a few milliseconds, which one decimal of a second would show as 0.0s.
+  if (Math.round(milliseconds) < 1000) {
+    return `${Math.round(milliseconds)}ms`;
+  }
+
+  // Rounded before the unit is chosen, so 59,950 ms reads as a minute rather than "60.0s".
+  const seconds = Math.round(milliseconds / 100) / 10;
+
+  return seconds < 60
+    ? `${seconds.toFixed(1)}s`
+    : convertMillisecondsToHumanReadableFormat(
+        Math.round(milliseconds / 1000) * 1000,
+        length
+      );
 };
 
 export const formatDurationToHHMMSS = (ms: number) => {

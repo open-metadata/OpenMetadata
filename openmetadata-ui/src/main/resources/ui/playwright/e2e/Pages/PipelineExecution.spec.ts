@@ -82,8 +82,8 @@ test.describe('Pipeline Execution Tab', () => {
       const snowflakeTaskDuration = page.getByTestId('duration-snowflake_task');
       const prestoTaskDuration = page.getByTestId('duration-presto_task');
 
-      await expect(snowflakeTaskDuration).toHaveText('10.00 minutes');
-      await expect(prestoTaskDuration).toHaveText('10.00 minutes');
+      await expect(snowflakeTaskDuration).toHaveText('10m');
+      await expect(prestoTaskDuration).toHaveText('10m');
     });
   });
 

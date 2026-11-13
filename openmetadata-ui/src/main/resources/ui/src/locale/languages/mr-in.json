@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "क्वेरी चालली, परंतु कोणतेही निकाल जुळले नाहीत.",
     "query-used-by-other-tables": "इतर टेबल्सद्वारे वापरलेली क्वेरी",
     "quick-add-tip": "आलेख न सोडता शब्दकोश संज्ञा संबंध तयार करण्यासाठी \"जलद जोडा\" वापरा.",
-    "ran-for-duration": "{{duration}} मिनिटे चालले",
+    "ran-for-duration": "{{duration}} चालले",
     "rdf-not-enabled-for-export": "ऑन्टोलॉजी निर्यात करण्यासाठी RDF सक्षम असणे आवश्यक आहे. कृपया आपल्या सर्व्हर कॉन्फिगरेशनमध्ये RDF सक्षम करा.",
     "rdf-predicate-already-used": "RDF विधेय आधीच {{name}} द्वारे वापरले आहे.",
     "rdf-predicate-tooltip": "लिंक्ड डेटा सिमेंटिक्ससाठी RDF प्रेडिकेट URI (उदा. skos:broader)",

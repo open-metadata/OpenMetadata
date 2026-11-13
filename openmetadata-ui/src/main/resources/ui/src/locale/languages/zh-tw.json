@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "查詢已執行，但沒有相符的結果。",
     "query-used-by-other-tables": "其他資料表使用的查詢",
     "quick-add-tip": "使用快速新增可在不離開圖表的情況下建立詞彙表術語關係。",
-    "ran-for-duration": "已執行 {{duration}} 分鐘",
+    "ran-for-duration": "已執行 {{duration}}",
     "rdf-not-enabled-for-export": "匯出本體需要啟用RDF。請在伺服器設定中啟用RDF。",
     "rdf-predicate-already-used": "RDF 謂詞已被 {{name}} 使用。",
     "rdf-predicate-tooltip": "此關係類型的RDF謂詞URI（例如 skos:broader, skos:exactMatch）。",

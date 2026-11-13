@@ -26,15 +26,11 @@ import {
 } from '@openmetadata/ui-core-components/icons';
 import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
-import { Duration } from 'luxon';
 import Qs from 'qs';
 import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import {
-  ONE_MINUTE_IN_MILLISECOND,
-  PIPE_SYMBOL,
-} from '../../../constants/constants';
+import { PIPE_SYMBOL } from '../../../constants/constants';
 import {
   QUERY_DATE_FORMAT,
   QUERY_LINE_HEIGHT,
@@ -46,7 +42,10 @@ import { useClipboard } from '../../../hooks/useClipBoard';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../hooks/useFqn';
 import { getLayoutGutter } from '../../../utils/common/layout.utils';
-import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
+import {
+  customFormatDateTime,
+  formatDuration,
+} from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
@@ -106,23 +105,10 @@ const QueryCard: FC<QueryCardProp> = ({
       return undefined;
     }
 
-    if (durationInMilliSeconds < 1) {
-      return `${t('label.runs-for')} ${durationInMilliSeconds} ms`;
-    }
-
-    const duration = Duration.fromObject({
-      milliseconds: durationInMilliSeconds,
-    });
-
-    let formatString;
-    if (durationInMilliSeconds < ONE_MINUTE_IN_MILLISECOND) {
-      formatString = "s.S 'sec'";
-    } else {
-      formatString = "m 'min' s 'sec'";
-    }
-
-    // Format the duration as a string using the chosen format string
-    return duration.toFormat(`'${t('label.runs-for')}' ${formatString}`);
+    return `${t('label.runs-for')} ${formatDuration(
+      durationInMilliSeconds,
+      2
+    )}`;
   }, [query]);
 
   const updateSqlQuery = async () => {

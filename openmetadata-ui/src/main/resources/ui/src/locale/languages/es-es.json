@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "La consulta se ejecutó sin obtener resultados.",
     "query-used-by-other-tables": "Consulta utilizada por otras tablas",
     "quick-add-tip": "Use Añadir Rápido para crear relaciones entre términos del glosario sin salir del grafo.",
-    "ran-for-duration": "se ejecutó durante {{duration}} min",
+    "ran-for-duration": "se ejecutó durante {{duration}}",
     "rdf-not-enabled-for-export": "RDF debe estar habilitado para exportar la ontología. Por favor, habilite RDF en la configuración de su servidor.",
     "rdf-predicate-already-used": "El predicado RDF ya lo utiliza {{name}}.",
     "rdf-predicate-tooltip": "La URI del predicado RDF para este tipo de relación (por ejemplo, skos:broader, skos:exactMatch).",

@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "Frågan kördes utan några matchande resultat.",
     "query-used-by-other-tables": "Fråga som används av andra tabeller",
     "quick-add-tip": "Använd Snabbtillägg för att skapa relationer mellan ordlistetermer utan att lämna grafen.",
-    "ran-for-duration": "kördes i {{duration}} min",
+    "ran-for-duration": "kördes i {{duration}}",
     "rdf-not-enabled-for-export": "RDF måste vara aktiverat för att exportera ontologi. Aktivera RDF i din serverkonfiguration.",
     "rdf-predicate-already-used": "RDF-predikatet används redan av {{name}}.",
     "rdf-predicate-tooltip": "RDF-predikat-URI:n för den här relationstypen (t.ex. skos:broader, skos:exactMatch).",

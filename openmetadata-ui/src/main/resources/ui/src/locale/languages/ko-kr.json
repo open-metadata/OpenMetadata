@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "쿼리를 실행했지만 일치하는 결과가 없습니다.",
     "query-used-by-other-tables": "다른 테이블에서 사용된 쿼리",
     "quick-add-tip": "빠른 추가를 사용하면 그래프를 떠나지 않고 용어집 용어 관계를 만들 수 있습니다.",
-    "ran-for-duration": "{{duration}}분 동안 실행됨",
+    "ran-for-duration": "{{duration}} 동안 실행됨",
     "rdf-not-enabled-for-export": "온톨로지를 내보내려면 RDF를 활성화해야 합니다. 서버 설정에서 RDF를 활성화하세요.",
     "rdf-predicate-already-used": "RDF 술어는 이미 {{name}}에서 사용 중입니다.",
     "rdf-predicate-tooltip": "이 관계 유형에 대한 RDF 술어 URI (예: skos:broader, skos:exactMatch).",

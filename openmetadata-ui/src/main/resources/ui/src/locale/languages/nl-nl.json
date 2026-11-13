@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "De query is uitgevoerd zonder resultaten.",
     "query-used-by-other-tables": "Query gebruikt door andere tabellen",
     "quick-add-tip": "Gebruik Snel Toevoegen om glossariumtermrelaties aan te maken zonder de graf te verlaten.",
-    "ran-for-duration": "uitgevoerd gedurende {{duration}} min",
+    "ran-for-duration": "uitgevoerd gedurende {{duration}}",
     "rdf-not-enabled-for-export": "RDF moet ingeschakeld zijn om de ontologie te exporteren. Schakel RDF in via uw serverconfiguratie.",
     "rdf-predicate-already-used": "Het RDF-predicaat wordt al gebruikt door {{name}}.",
     "rdf-predicate-tooltip": "De RDF-predicaat-URI voor dit relatietype (bijv. skos:broader, skos:exactMatch).",

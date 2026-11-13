@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "تم تشغيل الاستعلام دون مطابقة أي نتائج.",
     "query-used-by-other-tables": "استعلام مستخدم من قبل جداول أخرى",
     "quick-add-tip": "استخدم الإضافة السريعة لإنشاء علاقات مصطلحات المسرد دون مغادرة الرسم البياني.",
-    "ran-for-duration": "استمر لمدة {{duration}} دقيقة",
+    "ran-for-duration": "استمر لمدة {{duration}}",
     "rdf-not-enabled-for-export": "يجب تمكين RDF لتصدير الأنطولوجيا. يرجى تمكين RDF في إعدادات الخادم.",
     "rdf-predicate-already-used": "مسند RDF مستخدم بالفعل بواسطة {{name}}.",
     "rdf-predicate-tooltip": "معرف URI لمحمول RDF لنوع العلاقة هذا (مثال: skos:broader, skos:exactMatch).",

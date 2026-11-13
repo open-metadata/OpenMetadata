@@ -6456,7 +6456,7 @@
     "query-ran-without-results": "پرس و جو اجرا شد، اما هیچ نتیجه‌ای منطبق نبود.",
     "query-used-by-other-tables": "پرسش استفاده‌شده توسط جداول دیگر.",
     "quick-add-tip": "از «افزودن سریع» برای ایجاد روابط اصطلاحات واژه‌نامه بدون خروج از نمودار استفاده کنید.",
-    "ran-for-duration": "به مدت {{duration}} دقیقه اجرا شد",
+    "ran-for-duration": "به مدت {{duration}} اجرا شد",
     "rdf-not-enabled-for-export": "برای خروجی هستی‌شناسی باید RDF فعال باشد. لطفاً RDF را در پیکربندی سرور خود فعال کنید.",
     "rdf-predicate-already-used": "گزارهٔ RDF قبلاً توسط {{name}} استفاده شده است.",
     "rdf-predicate-tooltip": "URI گزاره RDF برای معناشناسی داده پیوندی (مثلاً skos:broader)",

@@ -18,7 +18,6 @@ import {
   TestCaseStatus,
 } from '../../../../generated/tests/testCase';
 import { toFiniteNumber } from '../../../../utils/DataQuality/TestSummaryGraphUtils';
-import { convertMillisecondsToHumanReadableFormat } from '../../../../utils/date-time/DateTimeUtils';
 import { NO_VALUE } from '../../../Database/Profiler/TestSummary/TestSummary.constants';
 import {
   formatNumber,
@@ -211,29 +210,6 @@ export const getRunDetails = (testCase: TestCase, result: RunResult) => {
     differenceText: formatDifference(found, expected),
     bars: getComparisonBars(found, expected),
   };
-};
-
-export const formatRunDuration = (milliseconds: number) => {
-  // Only clock skew between the runner and the server makes a negative duration.
-  if (milliseconds < 0) {
-    return NO_VALUE;
-  }
-  if (milliseconds < 1) {
-    return '<1ms';
-  }
-  // Fast queries finish in a few milliseconds, which one decimal of a second would show as 0.0s.
-  if (Math.round(milliseconds) < 1000) {
-    return `${Math.round(milliseconds)}ms`;
-  }
-
-  // Rounded before the unit is chosen, so 59,950 ms reads as a minute rather than "60.0s".
-  const seconds = Math.round(milliseconds / 100) / 10;
-
-  return seconds < 60
-    ? `${seconds.toFixed(1)}s`
-    : convertMillisecondsToHumanReadableFormat(
-        Math.round(milliseconds / 1000) * 1000
-      );
 };
 
 export const isTimeoutError = (errorType?: string, message?: string) =>

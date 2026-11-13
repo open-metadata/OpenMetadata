@@ -23,6 +23,7 @@ import {
   formatDate,
   formatDateTime,
   formatDateTimeLong,
+  formatDuration,
   formatDurationToHHMMSS,
   formatMonth,
   formatTimeDurationFromSeconds,
@@ -93,6 +94,19 @@ describe('DateTimeUtils tests', () => {
     expect(formatDurationToHHMMSS(210)).toBe('210 ms');
     expect(formatDurationToHHMMSS(999.6)).toBe('999 ms');
     expect(formatDurationToHHMMSS(1000)).toBe('00:00:01');
+  });
+
+  it(`formatDuration should keep sub-minute precision`, () => {
+    expect(formatDuration(0)).toBe('<1ms');
+    expect(formatDuration(210)).toBe('210ms');
+    expect(formatDuration(1999)).toBe('2.0s');
+    expect(formatDuration(42_300)).toBe('42.3s');
+  });
+
+  it(`formatDuration should roll long runs up into hours and minutes`, () => {
+    expect(formatDuration(125_000)).toBe('2m 5s');
+    expect(formatDuration(9_936_000)).toBe('2h 45m 36s');
+    expect(formatDuration(90_000_000)).toBe('1d 1h');
   });
 
   it(`customFormatDateTime should formate date and time both`, () => {
