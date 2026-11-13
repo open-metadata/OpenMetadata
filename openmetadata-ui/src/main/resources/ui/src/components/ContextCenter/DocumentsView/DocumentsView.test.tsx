@@ -120,7 +120,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
         'data-testid'?: string;
         onClick?: () => void;
       }) => (
-        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events -- test double for the core Box
+        // eslint-disable-next-line jsx-a11y/no-static-element-interactions, jsx-a11y/click-events-have-key-events
         <div className={className} data-testid={testId} onClick={onClick}>
           {children}
         </div>

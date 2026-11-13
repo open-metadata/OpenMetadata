@@ -307,7 +307,7 @@ const MemoryModalHeader: FC<MemoryModalHeaderProps> = ({
           <UserPopOverCard
             showUserName
             className="tw:text-primary"
-            displayName={getEntityName(memoryToEdit.owners[0])}
+            displayName={memoryToEdit.owners[0].displayName}
             profileWidth={16}
             type={
               memoryToEdit.owners[0].type === EntityType.TEAM
@@ -378,8 +378,7 @@ const ReadOnlyBanner: FC<ReadOnlyBannerProps> = ({
           size="text-xs">
           {t('message.context-memory-read-only-description', {
             creatorName:
-              getEntityName(memoryToEdit.owners?.[0]) ||
-              memoryToEdit.updatedBy,
+              getEntityName(memoryToEdit.owners?.[0]) || memoryToEdit.updatedBy,
           })}
         </Typography>
       </div>

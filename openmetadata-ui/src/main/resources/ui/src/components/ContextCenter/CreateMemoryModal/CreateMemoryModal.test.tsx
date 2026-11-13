@@ -545,6 +545,11 @@ describe('CreateMemoryModal', () => {
     expect(await metadata.findByText('Alice Smith')).toBeInTheDocument();
     expect(metadata.getByText('label.updated-by')).toBeInTheDocument();
     expect(screen.getByText('label.owner')).toBeInTheDocument();
+    // The owner reference has no display name; UserPopOverCard resolves it rather than the login.
+    expect(UserPopOverCard).toHaveBeenCalledWith(
+      expect.objectContaining({ displayName: undefined, userName: 'alice' }),
+      expect.anything()
+    );
   });
 
   it('keeps the update date when a legacy memory has no updater', () => {
