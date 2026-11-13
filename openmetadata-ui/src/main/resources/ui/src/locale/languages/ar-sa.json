@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "سيتم سحب المراجعة المفتوحة، ولن يراها المراجعون بعد الآن.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "يقوم {{holder}} بتحرير هذا المسرد في جلسة أخرى. أغلق تلك الجلسة أو انتظر دقيقة حتى تنتهي صلاحيتها، ثم حاول مرة أخرى.",
     "ontology-empty-card-description": "أضف مفهومًا لبدء النموذج. يمكنك ربط المفاهيم وإضافة الخصائص وربط البيانات بعد وجود عدد منها.",

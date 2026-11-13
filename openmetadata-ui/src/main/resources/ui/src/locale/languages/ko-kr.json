@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "진행 중인 검토가 철회되며 검토자에게 더 이상 표시되지 않습니다.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}}님이 다른 세션에서 이 용어집을 편집하고 있습니다. 해당 세션을 닫거나 만료될 때까지 1분 정도 기다린 후 다시 시도하세요.",
     "ontology-empty-card-description": "모델을 시작하려면 개념을 추가하세요. 몇 개가 생기면 개념을 연결하고, 속성을 추가하고, 데이터를 바인딩할 수 있습니다.",

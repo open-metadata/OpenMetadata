@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "Die offene Überprüfung wird zurückgezogen und ist für Prüfer nicht mehr sichtbar.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} bearbeitet dieses Glossar in einer anderen Sitzung. Schließen Sie diese Sitzung oder warten Sie eine Minute, bis sie abläuft, und versuchen Sie es dann erneut.",
     "ontology-empty-card-description": "Fügen Sie ein Konzept hinzu, um das Modell zu beginnen. Sobald einige vorhanden sind, können Sie Konzepte verbinden, Eigenschaften hinzufügen und Daten binden.",

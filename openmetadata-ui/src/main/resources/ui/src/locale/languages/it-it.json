@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "La revisione aperta verrà ritirata e i revisori non la vedranno più.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} sta modificando questo glossario in un'altra sessione. Chiudi quella sessione o attendi un minuto che scada, quindi riprova.",
     "ontology-empty-card-description": "Aggiungi un concetto per avviare il modello. Potrai collegare i concetti, aggiungere proprietà e associare dati quando ne esisteranno alcuni.",

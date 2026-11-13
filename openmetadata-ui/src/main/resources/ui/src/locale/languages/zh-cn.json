@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "其进行中的审核将被撤回，审核人将不再看到它。",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} 正在另一个会话中编辑此术语表。请关闭该会话或等待一分钟使其过期，然后重试。",
     "ontology-empty-card-description": "添加一个概念以开始建模。有了若干概念后，您就可以连接概念、添加属性并绑定数据。",
