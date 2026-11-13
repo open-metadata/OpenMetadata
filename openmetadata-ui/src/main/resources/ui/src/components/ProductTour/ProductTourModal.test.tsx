@@ -39,10 +39,12 @@ describe('ProductTourModal', () => {
     expect(screen.queryByTestId('tour-player')).not.toBeInTheDocument();
   });
 
-  it("opens the distribution's demo full screen, without fetching it", () => {
+  it("opens the distribution's demo full screen, without fetching it", async () => {
     act(() => useProductTourStore.getState().open());
     render(<ProductTourModal />);
 
+    // The player is loaded when the tour opens.
+    expect(await screen.findByTestId('tour-player')).toBeInTheDocument();
     expect(ResourcePlayerModal).toHaveBeenCalledWith(
       expect.objectContaining({
         open: true,
@@ -58,11 +60,12 @@ describe('ProductTourModal', () => {
     );
   });
 
-  it('closes the tour when the player closes', () => {
+  it('closes the tour when the player closes', async () => {
     act(() => useProductTourStore.getState().open());
     render(<ProductTourModal />);
 
-    act(() => screen.getByTestId('tour-player').click());
+    const player = await screen.findByTestId('tour-player');
+    act(() => player.click());
 
     expect(useProductTourStore.getState().isOpen).toBe(false);
     expect(screen.queryByTestId('tour-player')).not.toBeInTheDocument();

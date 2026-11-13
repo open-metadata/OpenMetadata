@@ -10,13 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from 'react';
+import { lazy, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ResourceType } from '../../constants/Learning.constants';
 import { useProductTourStore } from '../../hooks/useProductTourStore';
-import { LearningResource } from '../../rest/learningResourceAPI';
+import type { LearningResource } from '../../rest/learningResourceAPI';
 import productTourClassBase from '../../utils/ProductTourClassBase';
-import { ResourcePlayerModal } from '../Learning/ResourcePlayer/ResourcePlayerModal.component';
+import withSuspenseFallback from '../AppRouter/withSuspenseFallback';
+
+// Loaded when the tour opens: this component is mounted in the app shell, and a
+// static import would pull the whole learning player into the shell chunk.
+const ResourcePlayerModal = withSuspenseFallback(
+  lazy(() =>
+    import('../Learning/ResourcePlayer/ResourcePlayerModal.component').then(
+      (m) => ({ default: m.ResourcePlayerModal })
+    )
+  ),
+  null
+);
 
 const PRODUCT_TOUR_RESOURCE_NAME = 'product-tour';
 
