@@ -26,27 +26,6 @@
       },
       "additionalProperties": false
     },
-    "messagingProviderStatus": {
-      "javaType": "org.openmetadata.schema.type.profile.SubscriptionStatusConfig",
-      "description": "The status of each webhook of `subscription` whose stored configuration cannot be used to send.",
-      "type": "object",
-      "mask": true,
-      "properties": {
-        "slack": {
-          "$ref": "../events/subscriptionStatus.json"
-        },
-        "msTeams": {
-          "$ref": "../events/subscriptionStatus.json"
-        },
-        "gChat": {
-          "$ref": "../events/subscriptionStatus.json"
-        },
-        "generic": {
-          "$ref": "../events/subscriptionStatus.json"
-        }
-      },
-      "additionalProperties": false
-    },
     "imageList": {
       "description": "Links to a list of images of varying resolutions/sizes.",
       "type": "object",
@@ -90,11 +69,6 @@
     },
     "subscription": {
       "$ref": "#/definitions/messagingProvider"
-    },
-    "subscriptionStatus": {
-      "mask": true,
-      "description": "Read only, computed when the profile is read and never stored, nor recorded in change events. A webhook of `subscription` listed here does not send until the value its `lastFailedReason` names is entered again.",
-      "$ref": "#/definitions/messagingProviderStatus"
     }
   },
   "additionalProperties": false

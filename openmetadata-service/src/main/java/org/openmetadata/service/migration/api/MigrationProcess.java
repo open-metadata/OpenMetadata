@@ -81,9 +81,11 @@ public interface MigrationProcess {
   Map<String, QueryStatus> runSchemaChanges(boolean isForceMigration);
 
   /**
-   * Runs for every pending version before any of them is migrated, so a version can stop the whole
-   * upgrade before an earlier version writes data it could not bring back: it throws a {@link
-   * MigrationHaltException}, which {@code migrate --force} does not skip. Reads only.
+   * Runs for every pending version before any of them is migrated, and before {@link
+   * #initialize}, so it reads only through the handle it is given and never from state that
+   * initialize sets. A version can stop the whole upgrade before an earlier version writes data it
+   * could not bring back: it throws a {@link MigrationHaltException}, which {@code migrate --force}
+   * does not skip, as preflight runs outside the steps --force goes on past. Reads only.
    */
   default void preflight(Handle handle) {}
 
