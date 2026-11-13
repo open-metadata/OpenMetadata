@@ -26,8 +26,12 @@ from typing import TYPE_CHECKING
 import sqlglot
 from sqlglot import exp
 
-from metadata.ingestion.lineage.parser import _sqlglot_dialect  # pyright: ignore[reportPrivateUsage]
+from metadata.ingestion.lineage.parser import (  # pyright: ignore[reportPrivateUsage]
+    LINEAGE_PARSING_TIMEOUT,
+    _sqlglot_dialect,
+)
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.timeout import timeout
 
 if TYPE_CHECKING:
     from metadata.ingestion.lineage.models import Dialect
@@ -69,7 +73,9 @@ def read_columns(sql: str, dialect: Dialect) -> frozenset[SourceColumn]:
         if not re.match(SQL_START, sql_pass, re.IGNORECASE):
             continue
         try:
-            statements = sqlglot.parse(sql_pass, read=_sqlglot_dialect(dialect))
+            statements = timeout(seconds=LINEAGE_PARSING_TIMEOUT)(sqlglot.parse)(
+                sql_pass, read=_sqlglot_dialect(dialect)
+            )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning("Could not read the columns of a cube SQL pass: %s", exc)
@@ -101,9 +107,16 @@ def normalized(name: str) -> str:
     return re.sub(r"[^a-z0-9]", "", name.lower())
 
 
-def table_matches(sql_table: str, table_name: str, schema_name: str | None) -> bool:
-    """Whether a table the SQL names (``[project.]dataset.table``) is this table of the schema"""
-    parts = sql_table.split(".")
-    if parts[-1] != table_name.lower():
-        return False
-    return len(parts) < 2 or not schema_name or parts[-2] == schema_name.lower()
+def same_table(sql_table: str, other: str) -> bool:
+    """
+    Whether two dot-joined table names can be the same table: equal table names, and equal
+    qualifiers wherever both name one (``sales.orders`` is ``project-x.sales.orders``).
+    """
+    left, right = sql_table.lower().split("."), other.lower().split(".")
+    return all(a == b for a, b in zip(reversed(left), reversed(right), strict=False))
+
+
+def table_matches(sql_table: str, table_name: str, schema_name: str | None, database_name: str | None) -> bool:
+    """Whether a table the SQL names (``[database.][schema.]table``) is this table"""
+    qualified = [database_name, schema_name, table_name] if schema_name else [table_name]
+    return same_table(sql_table, ".".join(part for part in qualified if part))

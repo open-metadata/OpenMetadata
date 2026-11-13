@@ -97,6 +97,10 @@ def cached(cache: OrderedDict[K, T | None], key: K, fetch: Callable[[], T | None
 class MicroStrategyApiError(Exception):
     """A MicroStrategy REST call failed or answered with an unexpected body"""
 
+    def __init__(self, message: str, status_code: int | None = None):
+        super().__init__(message)
+        self.status_code = status_code
+
 
 class MicroStrategyClient:
     """
@@ -121,8 +125,8 @@ class MicroStrategyClient:
         self._cube_sql: OrderedDict[str, str | None] = OrderedDict()
         self._owner_emails: OrderedDict[str, str | None] = OrderedDict()
         self._dataset_subtypes: OrderedDict[str, int | None] = OrderedDict()
-        self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]] | None] = OrderedDict()
-        self._physical_tables: OrderedDict[str, tuple[str, str] | None] = OrderedDict()
+        self._form_columns: OrderedDict[str, dict[str, frozenset[tuple[str, str]]]] = OrderedDict()
+        self._physical_tables: OrderedDict[str, str | None] = OrderedDict()
         # Reading schema objects needs modeling privileges; their absence is reported once.
         self.modeling_denied = False
         # Objects dropped for not matching the expected shape. The source reads it to tell a
@@ -190,13 +194,13 @@ class MicroStrategyClient:
             response = self.client.get(path, data=params, headers=dict(headers))
         except APIError as exc:
             if exc.status_code != 401:
-                raise MicroStrategyApiError(f"GET {path} failed: {exc}") from exc
+                raise MicroStrategyApiError(f"GET {path} failed: {exc}", exc.status_code) from exc
             logger.info("MicroStrategy session expired, logging in again")
             self.client = self._login()
             try:
                 response = self.client.get(path, data=params, headers=dict(headers))
             except APIError as retry_exc:
-                raise MicroStrategyApiError(f"GET {path} failed: {retry_exc}") from retry_exc
+                raise MicroStrategyApiError(f"GET {path} failed: {retry_exc}", retry_exc.status_code) from retry_exc
         if response is None:
             raise MicroStrategyApiError(f"GET {path} returned no response")
         return response
@@ -313,6 +317,8 @@ class MicroStrategyClient:
         if attribute_id in self._form_columns:
             self._form_columns.move_to_end(attribute_id)
             return self._form_columns[attribute_id]
+        if self.modeling_denied:
+            return None
         try:
             attribute = self._get(
                 f"/model/attributes/{attribute_id}", params={"showExpressionAs": "tree"}, project_id=project_id
@@ -320,17 +326,23 @@ class MicroStrategyClient:
             forms = {
                 form["id"]: frozenset(self._form_expression_columns(project_id, form)) for form in attribute["forms"]
             }
+        except MicroStrategyApiError as exc:
+            if exc.status_code != 403:
+                logger.debug(traceback.format_exc())
+                logger.warning("Could not read schema attribute %s: %s", attribute_id, exc)
+                return None
+            # Without the privilege every attribute fails alike, so none is asked for again.
+            logger.warning(
+                "Schema cubes get table-level lineage only: column-level lineage needs the service account to "
+                "read schema objects (Architect privileges): %s",
+                exc,
+            )
+            self.modeling_denied = True
+            return None
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            if not self.modeling_denied:
-                logger.warning(
-                    "Could not read schema attribute %s, so schema cubes get table-level lineage only. Column-level "
-                    "lineage needs the service account to read schema objects (Architect privileges): %s",
-                    attribute_id,
-                    exc,
-                )
-            self.modeling_denied = True
-            forms = None
+            logger.warning("Could not read schema attribute %s: %s", attribute_id, exc)
+            return None
         self._form_columns[attribute_id] = forms
         if len(self._form_columns) > CACHE_SIZE:
             self._form_columns.popitem(last=False)
@@ -344,15 +356,22 @@ class MicroStrategyClient:
             for table in expression.get("tables") or []:
                 physical = self.get_physical_table(project_id, table["objectId"])
                 if physical:
-                    yield ".".join(part for part in physical if part), column.lower()
+                    yield physical, column.lower()
 
-    def get_physical_table(self, project_id: str, logical_table_id: str) -> tuple[str, str] | None:
-        """The (namespace, table name) behind a logical table, lowercased"""
+    def get_physical_table(self, project_id: str, logical_table_id: str) -> str | None:
+        """
+        The name the SQL gives the physical table behind a logical table, lowercased: its table
+        prefix when one is set (that is what MicroStrategy writes into the SQL), else its namespace,
+        then the table name.
+        """
 
-        def fetch() -> tuple[str, str] | None:
+        def fetch() -> str | None:
             physical = self._get(f"/model/tables/{logical_table_id}", project_id=project_id).get("physicalTable") or {}
             name = physical.get("tableName")
-            return ((physical.get("namespace") or "").lower(), name.lower()) if name else None
+            if not name:
+                return None
+            qualifier = (physical.get("tablePrefix") or "").strip(".") or physical.get("namespace") or ""
+            return ".".join(part for part in (qualifier, name) if part).lower()
 
         return cached(self._physical_tables, logical_table_id, fetch, f"the physical table of {logical_table_id}")
 

@@ -40,7 +40,7 @@ from metadata.ingestion.source.dashboard.microstrategy.client import (
     MicroStrategyClient,
     strip_engine_steps,
 )
-from metadata.ingestion.source.dashboard.microstrategy.column_lineage import read_columns
+from metadata.ingestion.source.dashboard.microstrategy.column_lineage import read_columns, table_matches
 from metadata.ingestion.source.dashboard.microstrategy.metadata import MicrostrategySource
 from metadata.ingestion.source.dashboard.microstrategy.models import MstrDashboard, MstrDataset
 
@@ -319,6 +319,7 @@ def _source(client: MicroStrategyClient, **source_config: Any) -> MicrostrategyS
     source.charts_unknown = False
     source._dialects = {}
     source._service_databases = {}
+    source._tables_with_columns = OrderedDict()
     source._source_tables = OrderedDict()
     source.context = MagicMock()
     source.context.get.return_value = SimpleNamespace(dashboard_service="mstr", charts=[])
@@ -1102,7 +1103,8 @@ class TestColumnLineage:
         for name in ("order_items", "orders"):
             assert source._column_lineage("P", dataset, reads, _table(name, ["order_id", "status"]), model) == []
 
-        assert caplog.text.count("Column-level lineage needs the service account") == 1
+        assert caplog.text.count("column-level lineage needs the service account") == 1
+        assert len(server.requests_to("/model/attributes/")) == 1
 
     def test_a_column_lineage_failure_keeps_the_table_lineage(self, client):
         source = _source(client)
@@ -1121,3 +1123,95 @@ class TestColumnLineage:
 
         assert len(edges) == 3
         assert all(edge.right and edge.right.edge.lineageDetails.columnsLineage is None for edge in edges)
+
+    def test_a_table_of_another_schema_or_project_is_never_linked(self):
+        assert table_matches("db1.public.orders", "orders", "public", "db1")
+        assert not table_matches("db2.public.orders", "orders", "public", "db1")
+        assert not table_matches("crm.customers", "customers", "sales", "project-x")
+        assert table_matches("orders", "orders", "public", "db1")
+
+    def test_a_form_on_a_same_named_table_of_another_namespace_is_not_linked(self, server, client):
+        # Lead reads crm.customers.id and Customer reads sales.customers.id; the SQL reads only the latter.
+        _model_routes(server, {SCHEMA_CUBE: 776})
+        server.overrides["/model/tables/T_CRM"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "project-x.crm", "tableName": "customers"}},
+        )
+        server.overrides["/model/tables/T_SALES"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "project-x.sales", "tableName": "customers"}},
+        )
+        same_named = {"A_LEAD": ("T_CRM",), "A_CUSTOMER": ("T_SALES",)}
+        for attribute, (table,) in same_named.items():
+            body = {
+                "forms": [
+                    {
+                        **ID_FORM,
+                        "expressions": [
+                            {
+                                "expression": {"tree": {"type": "column_reference", "columnName": "id"}},
+                                "tables": [{"objectId": table}],
+                            }
+                        ],
+                    }
+                ]
+            }
+            server.overrides[f"/model/attributes/{attribute}"] = lambda body=body: (200, body)
+        source = _source(client)
+        dataset = _dataset(
+            SCHEMA_CUBE,
+            [
+                {"id": "A_LEAD", "name": "Lead", "type": "attribute", "forms": [ID_FORM]},
+                {"id": "A_CUSTOMER", "name": "Customer", "type": "attribute", "forms": [ID_FORM]},
+            ],
+        )
+        reads = read_columns("select a11.id id from `project-x`.`sales`.`customers` a11", Dialect.BIGQUERY)
+
+        lineage = source._column_lineage("P", dataset, reads, _table("customers", ["id"]), _data_model(source, dataset))
+
+        assert _pairs(lineage) == [(["id"], f"{SCHEMA_CUBE}.Customer.ID")]
+
+    def test_the_table_prefix_names_the_physical_table_as_the_sql_does(self, server, client):
+        server.overrides["/model/tables/T_LU"] = lambda: (
+            200,
+            {"physicalTable": {"namespace": "tutorial", "tablePrefix": "tutorial_wh.", "tableName": "lu_category"}},
+        )
+
+        assert client.get_physical_table("P", "T_LU") == "tutorial_wh.lu_category"
+
+    def test_another_modeling_failure_is_not_read_as_a_missing_privilege(self, server, client):
+        server.overrides["/model/attributes/A1"] = lambda: (500, {"code": "ERR001", "message": "Internal error"})
+
+        assert client.get_attribute_form_columns("P", "A1") is None
+        assert not client.modeling_denied
+
+    def test_the_lineage_edge_carries_the_column_pairs(self, server, client):
+        _model_routes(server, {IMPORT_CUBE: 779})
+        server.overrides[f"/v2/cubes/{IMPORT_CUBE}/sqlView"] = lambda: (200, {"sqlStatement": DATA_IMPORT_SQL})
+        source = _source(client)
+        source.parse_db_service_prefix = lambda prefix: ("bq", None, None, None)
+        source.get_query_parser_type = MagicMock(return_value=None)
+        dataset = _dataset(IMPORT_CUBE, [{"id": "A1", "name": "Order Id", "type": "attribute", "forms": [ID_FORM]}])
+        details = _details(source, OFFICE_ROYALE).model_copy(update={"datasets": [dataset]})
+        service = SimpleNamespace(serviceType=SimpleNamespace(value="BigQuery"))
+        model = _data_model(source, dataset)
+        model.id = SimpleNamespace(root=USER_ID)
+        # The lineage search returns tables without columns; the source reads them once.
+        bare = _table("order_items", [])
+        bare.columns = None
+        full = _table("order_items", ["order_item_id", "order_id", "unit_price"])
+
+        def get_by_name(entity, fqn, **_):
+            return {"bq": service, f"mstr.model.{IMPORT_CUBE}": model, full.fullyQualifiedName.root: full}.get(fqn)
+
+        source.metadata.get_by_name.side_effect = get_by_name
+        source.metadata.list_all_entities.return_value = [SimpleNamespace(name=SimpleNamespace(root="project-x"))]
+        with patch(
+            "metadata.ingestion.source.dashboard.microstrategy.metadata.get_table_entities_from_query",
+            side_effect=lambda table_name, **_: [bare] if table_name.endswith("order_items") else [],
+        ):
+            results = list(source.yield_dashboard_lineage_details(details, "bq"))
+
+        assert [either.left for either in results if either.left] == []
+        (edge,) = [either.right for either in results]
+        assert _pairs(edge.edge.lineageDetails.columnsLineage) == [(["order_id"], f"{IMPORT_CUBE}.Order Id")]

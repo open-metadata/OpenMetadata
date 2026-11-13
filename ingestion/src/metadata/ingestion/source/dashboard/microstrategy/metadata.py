@@ -74,6 +74,7 @@ from metadata.ingestion.source.dashboard.microstrategy.column_lineage import (
     SourceColumn,
     normalized,
     read_columns,
+    same_table,
     table_matches,
 )
 from metadata.ingestion.source.dashboard.microstrategy.helpers import (
@@ -426,7 +427,14 @@ class MicrostrategySource(DashboardServiceSource):
         parser = LineageParser(cube_sql, dialect=dialect, parser_type=self.get_query_parser_type())
         # The third-party cached_property is not read as a descriptor by type checkers.
         tables = tuple(str(table) for table in cast("list", parser.source_tables))
-        return ParsedCube(tables=tables, read_columns=read_columns(cube_sql, dialect))
+        try:
+            columns = read_columns(cube_sql, dialect)
+        except Exception as exc:
+            # The tables were read; losing the columns must not lose them.
+            logger.debug(traceback.format_exc())
+            logger.warning("Could not read the columns of cube %s: %s", cube_id, exc)
+            columns = frozenset()
+        return ParsedCube(tables=tables, read_columns=columns)
 
     def _safe_column_lineage(self, *args: Any) -> list[ColumnLineage]:
         """Column lineage, or none: a failure here must not drop the table lineage it decorates"""
@@ -452,8 +460,11 @@ class MicrostrategySource(DashboardServiceSource):
         schema cube are left out: the API does not tell which fact column a metric aggregates.
         """
         schema = getattr(table_entity.databaseSchema, "name", None)
+        database = getattr(table_entity.database, "name", None)
         reads = {
-            (table, column) for table, column in cube_reads if table_matches(table, table_entity.name.root, schema)
+            (table, column)
+            for table, column in cube_reads
+            if table_matches(table, table_entity.name.root, schema, database)
         }
         if not reads:
             return []
@@ -498,7 +509,7 @@ class MicrostrategySource(DashboardServiceSource):
                 column
                 for table, column in reads
                 for form_table, form_column in expression
-                if form_column == column and table_matches(table, form_table.rsplit(".", 1)[-1], None)
+                if form_column == column and same_table(table, form_table)
             }
             if target and columns:
                 yield target, columns

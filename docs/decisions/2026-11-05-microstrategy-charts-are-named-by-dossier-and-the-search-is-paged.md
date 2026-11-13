@@ -123,9 +123,13 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
   is not SQL, or does not parse, contributes no columns and leaves table lineage as it was.
 - **Schema cube attribute:** its form's expression, read through the modeling API
   (`/model/attributes`, logical → physical table through `/model/tables`), gives the (table, column)
-  pairs the form can read. A pair the SQL also reads links that column to the form's child column
-  (`Order.ID`). Needs the service account to read schema objects; without that, one warning per
-  run and table lineage only.
+  pairs the form can read. The physical table is named as the SQL names it: its table prefix when
+  one is set, else its namespace. A pair the SQL also reads links that column to the form's child
+  column (`Order.ID`). Needs the service account to read schema objects; on HTTP 403, one warning,
+  no further modeling calls in the run, and table lineage only.
+- **Tables are compared on every qualifier both sides name** (table, schema, database or project).
+  Two tables that share a name in different schemas or projects are never linked to each other's
+  columns.
 - **Data Import cube** (report subtype 779 or 780), which the modeling API refuses: an object is
   matched on its name, which the import derives from the column (`Order Id` ↔ `order_id`). A renamed
   object gets no column edge.
@@ -133,5 +137,5 @@ Each table → data model edge now carries the column pairs the cube's SQL suppo
   aggregation the API does not serve, so the fact column it aggregates is unknown, and mapping
   `WJXBFSn` aliases to metrics by position would be a guess.
 - A failure while building column lineage drops the column pairs, never the table edge.
-- Attribute, logical-table and dataset-type reads are cached per id (`CACHE_SIZE` LRU), so a large
-  deployment pays one modeling call per schema attribute and logical table per run.
+- Attribute, logical-table and dataset-type reads are cached per id (`CACHE_SIZE` LRU): each is read
+  at most once while it stays cached.
