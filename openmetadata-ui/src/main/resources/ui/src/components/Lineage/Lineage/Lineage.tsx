@@ -2036,12 +2036,17 @@ export const Lineage = ({
     const entityFetchArgs = entityFetchContext
       ? resolvePlatformViewEntityFetchArgs(platformView, entity)
       : undefined;
+    // On mount, the saved settings reach the store in the effect just before
+    // the one that calls this, so this render's lineageConfig can still be
+    // the store's reset default; fetching with it would cost an extra, deeper
+    // request before the one at the saved depth.
+    const currentLineageConfig = useLineageStore.getState().lineageConfig;
 
     if (entityFetchArgs) {
       fetchLineageData(
         entityFetchArgs.fqn,
         entityFetchArgs.type,
-        lineageConfig
+        currentLineageConfig
       );
 
       return;
@@ -2051,7 +2056,7 @@ export const Lineage = ({
       const fetchKey = getLineageFetchKey(
         entityFetchContext.entityFqn,
         entityFetchContext.entityType,
-        lineageConfig,
+        currentLineageConfig,
         queryFilter,
         timeFilter
       );
@@ -2059,7 +2064,7 @@ export const Lineage = ({
         fetchLineageData(
           entityFetchContext.entityFqn,
           entityFetchContext.entityType,
-          lineageConfig
+          currentLineageConfig
         );
       }
     }
@@ -2071,7 +2076,6 @@ export const Lineage = ({
     platformView,
     isPlatformLineage,
     fetchLineageData,
-    lineageConfig,
     queryFilter,
     timeFilter,
   ]);

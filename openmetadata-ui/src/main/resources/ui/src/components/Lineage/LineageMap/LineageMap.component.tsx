@@ -12,7 +12,6 @@
  */
 
 import {
-  Alert,
   Box,
   Breadcrumbs,
   Button,
@@ -948,17 +947,11 @@ const LineageMapEmptyPlaceholder = ({
   );
 };
 
-const LineageMapStatusPanel = ({
-  scene,
-  error,
-}: {
-  scene: LineageScene;
-  error?: AxiosError;
-}) => {
+const LineageMapStatusPanel = ({ scene }: { scene: LineageScene }) => {
   const { t } = useTranslation();
   const { hiddenNodeCount = 0, sampled, nodes } = scene;
   const hasHiddenNodes = hiddenNodeCount > 0;
-  if (!hasHiddenNodes && !sampled && !error) {
+  if (!hasHiddenNodes && !sampled) {
     return null;
   }
 
@@ -966,27 +959,22 @@ const LineageMapStatusPanel = ({
     <Panel
       className="lineage-map-status-panel tw:z-10 tw:flex tw:flex-col tw:items-end tw:gap-2"
       position="top-right">
-      {(sampled || hasHiddenNodes) && (
-        <Box
-          align="center"
-          className="tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5 tw:shadow-xs"
-          data-testid="lineage-map-truncated-notice"
-          gap={2}>
-          <InfoCircle
-            aria-hidden="true"
-            className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
-          />
-          <Typography as="span" className="tw:text-secondary" size="text-sm">
-            {t('label.showing-count-of-total-assets', {
-              count: nodes.length,
-              total: nodes.length + hiddenNodeCount,
-            })}
-          </Typography>
-        </Box>
-      )}
-      {error && (
-        <Alert title={t('message.something-went-wrong')} variant="error" />
-      )}
+      <Box
+        align="center"
+        className="tw:rounded-full tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-1.5 tw:shadow-xs"
+        data-testid="lineage-map-truncated-notice"
+        gap={2}>
+        <InfoCircle
+          aria-hidden="true"
+          className="tw:size-4 tw:shrink-0 tw:text-fg-brand-primary"
+        />
+        <Typography as="span" className="tw:text-secondary" size="text-sm">
+          {t('label.showing-count-of-total-assets', {
+            count: nodes.length,
+            total: nodes.length + hiddenNodeCount,
+          })}
+        </Typography>
+      </Box>
     </Panel>
   );
 };
@@ -1755,6 +1743,20 @@ const LineageMapCanvas = ({
     [pickZoomTargetNode]
   );
 
+  const zoomOutOneLevel = useCallback(
+    (currentScene: LineageScene) => {
+      lastSemanticZoomAtRef.current = Date.now();
+      const parentRequest = getParentSceneRequest(currentScene);
+      if (parentRequest) {
+        updateRequest(parentRequest);
+
+        return;
+      }
+      handleBandChange(getPreviousZoomBand(currentScene.band));
+    },
+    [handleBandChange, updateRequest]
+  );
+
   const handleMove = useCallback(
     (event: ZoomGestureEvent | null, viewport: { zoom: number }) => {
       // Any further move, a pan included, restarts the settle window.
@@ -1769,14 +1771,7 @@ const LineageMapCanvas = ({
       }
       const nextBand = getRequestedBand(scene, event, viewport.zoom);
       if (nextBand !== scene.band && !isDeeperBand(scene.band, nextBand)) {
-        lastSemanticZoomAtRef.current = now;
-        const parentRequest = getParentSceneRequest(scene);
-        if (parentRequest) {
-          updateRequest(parentRequest);
-
-          return;
-        }
-        handleBandChange(nextBand);
+        zoomOutOneLevel(scene);
 
         return;
       }
@@ -1796,12 +1791,40 @@ const LineageMapCanvas = ({
     },
     [
       getRequestedBand,
-      handleBandChange,
       handleSemanticZoomIn,
       isPlatformLineage,
       scene,
-      updateRequest,
+      zoomOutOneLevel,
     ]
+  );
+
+  // Once the zoom sits at its minimum, d3-zoom ignores a wheel gesture that
+  // cannot change it and the zoom-out button moves nothing, so no move reaches
+  // handleMove. Zooming out there still asks to go up a level, which a zoom
+  // that reached the minimum during the post-load cooldown otherwise never can.
+  // ADR:2026-10-27-lineage-semantic-zoom-drills-at-35-percent-after-settling
+  const handleZoomOutAtMinimum = useCallback(() => {
+    if (!isPlatformLineage || !scene || !reactFlowInstance) {
+      return;
+    }
+    const isSemanticZoomPaused =
+      semanticZoomSuppressedRef.current ||
+      Date.now() - lastSemanticZoomAtRef.current < SEMANTIC_ZOOM_COOLDOWN;
+    if (
+      !isSemanticZoomPaused &&
+      reactFlowInstance.getZoom() <= MIN_ZOOM_VALUE
+    ) {
+      zoomOutOneLevel(scene);
+    }
+  }, [isPlatformLineage, reactFlowInstance, scene, zoomOutOneLevel]);
+
+  const handleCanvasWheel = useCallback(
+    (event: React.WheelEvent<HTMLDivElement>) => {
+      if (event.deltaY > 0) {
+        handleZoomOutAtMinimum();
+      }
+    },
+    [handleZoomOutAtMinimum]
   );
 
   useEffect(
@@ -2011,7 +2034,12 @@ const LineageMapCanvas = ({
     []
   );
 
-  if (!scene || scene.nodes.length === 0) {
+  const emptyState = getLineageMapEmptyState({
+    scene,
+    loading,
+    hasError: Boolean(sceneError),
+  });
+  if (!scene || emptyState) {
     const emptyStates: Record<LineageMapEmptyState, ReactNode> = {
       loading: <LineageSkeleton />,
       error: (
@@ -2031,15 +2059,7 @@ const LineageMapCanvas = ({
     // keeps them to the canvas rather than the card that also holds the toolbar.
     return (
       <div className="tw:relative tw:h-full tw:w-full">
-        {
-          emptyStates[
-            getLineageMapEmptyState({
-              scene,
-              loading,
-              hasError: Boolean(sceneError),
-            })
-          ]
-        }
+        {emptyStates[emptyState ?? 'empty']}
       </div>
     );
   }
@@ -2075,7 +2095,8 @@ const LineageMapCanvas = ({
         onNodeMouseEnter={handleNodeMouseEnter}
         onNodeMouseLeave={handleNodeMouseLeave}
         onNodesChange={flow.onNodesChange}
-        onPaneClick={handlePaneClick}>
+        onPaneClick={handlePaneClick}
+        onWheel={handleCanvasWheel}>
         {loading && (
           <div
             className="lineage-map-loading tw:absolute tw:inset-0 tw:z-30 tw:grid tw:place-items-center tw:bg-primary/80"
@@ -2114,7 +2135,7 @@ const LineageMapCanvas = ({
               scene={scene}
               onBreadcrumbFocus={handleBreadcrumbFocus}
             />
-            <LineageMapStatusPanel error={sceneError} scene={scene} />
+            <LineageMapStatusPanel scene={scene} />
           </>
         )}
 
@@ -2128,6 +2149,7 @@ const LineageMapCanvas = ({
             reactFlowInstance={reactFlowInstance}
             onFitView={handleFitView}
             onToggleMiniMap={() => setMiniMapVisible((visible) => !visible)}
+            onZoomOut={handleZoomOutAtMinimum}
           />
         </Panel>
         <Panel className="lineage-layers-panel" position="bottom-left">

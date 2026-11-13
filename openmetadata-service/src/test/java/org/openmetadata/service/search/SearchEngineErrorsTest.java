@@ -14,8 +14,11 @@
 package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import es.co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import es.co.elastic.clients.elasticsearch._types.ErrorResponse;
 import jakarta.ws.rs.core.Response;
 import java.util.List;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +27,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.openmetadata.sdk.exception.SearchException;
 import org.openmetadata.sdk.exception.SearchIndexNotFoundException;
+import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
 class SearchEngineErrorsTest {
 
@@ -84,6 +88,42 @@ class SearchEngineErrorsTest {
     assertEquals(
         Response.Status.INTERNAL_SERVER_ERROR.getStatusCode(), thrown.getResponse().getStatus());
     assertEquals("Failed to find index cluster_table_search_index", thrown.getMessage());
+  }
+
+  @Test
+  @DisplayName("an engine 400 anywhere in the cause chain is a rejected request")
+  void recognisesTheEngineRejectingARequest() {
+    ElasticsearchException elasticsearch = elasticsearchFailure(400);
+    OpenSearchException openSearch =
+        new OpenSearchException(
+            os.org.opensearch.client.opensearch._types.ErrorResponse.of(
+                response ->
+                    response
+                        .status(400)
+                        .error(error -> error.type("parsing_exception").reason("bad query"))));
+
+    assertTrue(SearchEngineErrors.isRejectedRequest(elasticsearch));
+    assertTrue(SearchEngineErrors.isRejectedRequest(openSearch));
+    assertTrue(
+        SearchEngineErrors.isRejectedRequest(new IllegalStateException("wrapped", elasticsearch)));
+  }
+
+  @Test
+  @DisplayName("an engine failure the caller did not cause is not a rejected request")
+  void doesNotTreatOtherFailuresAsRejectedRequests() {
+    assertFalse(SearchEngineErrors.isRejectedRequest(elasticsearchFailure(500)));
+    assertFalse(SearchEngineErrors.isRejectedRequest(elasticsearchFailure(429)));
+    assertFalse(SearchEngineErrors.isRejectedRequest(new IllegalStateException("no engine")));
+  }
+
+  private static ElasticsearchException elasticsearchFailure(int status) {
+    return new ElasticsearchException(
+        "search",
+        ErrorResponse.of(
+            response ->
+                response
+                    .status(status)
+                    .error(error -> error.type("parsing_exception").reason("bad query"))));
   }
 
   @Test

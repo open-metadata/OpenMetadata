@@ -114,6 +114,20 @@ describe('LineageControlButtons', () => {
     expect(mockZoomOut).toHaveBeenCalledTimes(1);
   });
 
+  it('tells the map about a zoom-out before the zoom changes', () => {
+    const onZoomOut = jest.fn(() => expect(mockZoomOut).not.toHaveBeenCalled());
+    render(
+      <LineageControlButtons
+        onToggleMiniMap={mockOnToggleMiniMap}
+        onZoomOut={onZoomOut}
+      />
+    );
+    fireEvent.click(screen.getByTestId('zoom-out'));
+
+    expect(onZoomOut).toHaveBeenCalledTimes(1);
+    expect(mockZoomOut).toHaveBeenCalledTimes(1);
+  });
+
   it('does not throw without a flow instance', () => {
     mockLineageState.reactFlowInstance = undefined;
     renderControls();

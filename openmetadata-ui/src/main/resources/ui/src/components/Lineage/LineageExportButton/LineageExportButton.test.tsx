@@ -63,4 +63,14 @@ describe('LineageExportButton', () => {
       getExportViewportForNodes(MAP_NODES, 8000, 12000)
     );
   });
+
+  it('leaves the date to the export dialog, which appends it to the file name', () => {
+    render(<LineageExportButton />);
+
+    fireEvent.click(screen.getByTestId('export-button'));
+
+    expect(mockShowModal.mock.calls[0][0].name).not.toMatch(
+      /\d{4}-\d{2}-\d{2}/
+    );
+  });
 });

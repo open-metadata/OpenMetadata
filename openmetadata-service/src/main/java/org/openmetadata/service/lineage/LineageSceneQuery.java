@@ -21,7 +21,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import es.co.elastic.clients.elasticsearch._types.FieldValue;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.BoolQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
+import es.co.elastic.clients.json.JsonpMappingException;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
+import es.co.elastic.clients.util.MissingRequiredPropertyException;
 import jakarta.json.JsonException;
 import jakarta.json.stream.JsonGenerator;
 import jakarta.ws.rs.BadRequestException;
@@ -40,20 +42,49 @@ final class LineageSceneQuery {
 
   private LineageSceneQuery() {}
 
+  // Reasons are worded for the caller: the search client's own messages name its classes.
   static Query parseQueryFilter(String queryFilter) {
-    Query result = null;
-    if (!nullOrEmpty(queryFilter)) {
-      try {
-        JsonNode filter = JsonUtils.readTree(queryFilter);
-        JsonNode innerQuery = filter.has("query") ? filter.path("query") : filter;
-        if (!nullOrEmpty(innerQuery)) {
-          result = Query.of(clause -> clause.withJson(new StringReader(innerQuery.toString())));
-        }
-      } catch (JsonParsingException | JsonException e) {
-        throw new BadRequestException("Invalid query_filter: " + e.getMessage(), e);
-      }
+    if (nullOrEmpty(queryFilter)) {
+      return null;
     }
-    return result;
+    JsonNode filter;
+    try {
+      filter = JsonUtils.readTree(queryFilter);
+    } catch (JsonParsingException e) {
+      throw invalidQueryFilter("it is not valid JSON", e);
+    }
+    JsonNode innerQuery = filter.has("query") ? filter.path("query") : filter;
+    if (nullOrEmpty(innerQuery)) {
+      return null;
+    }
+    if (!innerQuery.isObject()) {
+      throw invalidQueryFilter("a query must be a JSON object", null);
+    }
+    try {
+      return Query.of(clause -> clause.withJson(new StringReader(innerQuery.toString())));
+    } catch (JsonpMappingException e) {
+      throw invalidQueryFilter(mappingFailure(e), e);
+    } catch (MissingRequiredPropertyException e) {
+      throw invalidQueryFilter(missingProperty(e), e);
+    } catch (JsonException e) {
+      throw invalidQueryFilter("it is not a search query", e);
+    }
+  }
+
+  static BadRequestException invalidQueryFilter(String reason, Throwable cause) {
+    return new BadRequestException("Invalid query_filter: " + reason, cause);
+  }
+
+  private static String mappingFailure(JsonpMappingException e) {
+    String reason =
+        e.getCause() instanceof MissingRequiredPropertyException missing
+            ? missingProperty(missing)
+            : "unexpected value";
+    return nullOrEmpty(e.path()) ? reason : reason + " at '" + e.path() + "'";
+  }
+
+  private static String missingProperty(MissingRequiredPropertyException e) {
+    return "missing required property '" + e.getPropertyName() + "'";
   }
 
   static String rootAssetQuery(LineageSceneRequest request) {
