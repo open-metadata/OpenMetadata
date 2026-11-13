@@ -242,7 +242,7 @@ export default defineConfig({
     : undefined,
   // Stop catastrophically broken shards after enough failures to establish
   // that the run cannot be useful. Healthy runs never approach this limit.
-  maxFailures: 0,
+  maxFailures: 50,
   /* Reporter to use. See https://playwright.dev/docs/test-reporters */
   reporter: reporters,
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
