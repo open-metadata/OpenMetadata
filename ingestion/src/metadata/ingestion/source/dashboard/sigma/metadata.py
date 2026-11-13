@@ -149,14 +149,17 @@ def _formula_sources(
     formulas: dict[str, dict[str, str]],
     tables: dict[str, Table],
     visiting: frozenset[str] = frozenset(),
+    traced_elements: dict[str, dict[str, list[tuple[str, str]]]] | None = None,
 ) -> tuple[dict[str, list[tuple[str, str]]], dict[str, list[str]]]:
     """
     For each column of an element: the sources its [Source/Column] references name, and the columns of its own
     element its [Column] references read (ADR:2026-11-13-sigma-column-formulas-go-in-the-description-and-a-calculated-column-takes-its-lineage-only-from-its-formula).
     A source is the one node of that exact name the element reads directly in its lineage graph: a table gives its
-    one column of that name, another element that element's column, traced the same way. A name matching no source
-    or several, a relationship ([Element/Relationship/Column]) or an escape adds nothing.
+    one column of that name, another element that element's column, traced the same way and once per element. A
+    name matching no source or several, a relationship ([Element/Relationship/Column]) or an escape adds nothing.
+    A column whose reference names a source is keyed even when it gets nothing, so it is not matched by name.
     """
+    traced_elements = {} if traced_elements is None else traced_elements
     own = {key for key, node in graph.dependencies.items() if node.type == "sheet" and node.elementId == element_id}
     direct: dict[str, dict[str, Dependency]] = {}
     for edge in graph.edges or []:
@@ -173,6 +176,7 @@ def _formula_sources(
             elif "/" in source_column or len(nodes) != 1:
                 continue
             elif nodes[0].type == "table" and (table := tables.get(EdgeSource(source=nodes[0].nodeId).node_id or "")):
+                sources.setdefault(column, [])
                 matches = [
                     found.fullyQualifiedName
                     for found in table.columns or []
@@ -181,13 +185,14 @@ def _formula_sources(
                 ]
                 if len(matches) == 1:
                     sources.setdefault(column, []).append((model_str(table.id), model_str(matches[0])))
-            elif nodes[0].type == "sheet" and nodes[0].elementId and nodes[0].elementId not in visiting:
-                # ponytail: the element read is traced again per reference; memoize per element if chains get deep
-                found, found_read = _formula_sources(
-                    nodes[0].elementId, graph, formulas, tables, visiting | {element_id}
-                )
-                _inherit_formula_sources(found, found_read)
-                sources.setdefault(column, []).extend(found.get(source_column, []))
+            elif (read_element := nodes[0].elementId) and nodes[0].type == "sheet" and read_element not in visiting:
+                if read_element not in traced_elements:
+                    found, found_read = _formula_sources(
+                        read_element, graph, formulas, tables, visiting | {element_id}, traced_elements
+                    )
+                    _inherit_formula_sources(found, found_read)
+                    traced_elements[read_element] = found
+                sources.setdefault(column, []).extend(traced_elements[read_element].get(source_column, []))
     return {column: list(dict.fromkeys(found)) for column, found in sources.items()}, read
 
 
@@ -522,17 +527,20 @@ class SigmaSource(DashboardServiceSource):
 
             nodes, all_sources_read, graph = lineage
             resolved = [
-                (node.id, table)
+                (node.nodeId or node.id, table)
                 for node in nodes
                 if (table := self._get_table_entity_from_node(node, db_service_prefix))
             ]
+            all_sources_found = all_sources_read and len(resolved) == len(nodes)
             yield from self._yield_table_and_column_lineage(
                 [table for _, table in resolved],
                 data_model_entity,
                 data_model.columns,
                 dashboard_details.formulas.get(data_model.elementId, {}),
-                _formula_sources(data_model.elementId, graph, dashboard_details.formulas, dict(resolved)),
-                all_sources_found=all_sources_read and len(resolved) == len(nodes),
+                _formula_sources(data_model.elementId, graph, dashboard_details.formulas, dict(resolved))
+                if all_sources_found
+                else ({}, {}),
+                all_sources_found=all_sources_found,
             )
         except Exception as exc:
             yield Either(
@@ -564,9 +572,9 @@ class SigmaSource(DashboardServiceSource):
         calculated = {
             label for label in labels if (formula := formulas.get(label)) and not _SOURCE_REFERENCE.fullmatch(formula)
         }
-        sources = {label: found for label, found in traced.items() if found} if all_sources_found else {}
+        sources = {label: found for label, found in traced.items() if found}
         for label in labels if all_sources_found else []:
-            if label in calculated or label in sources:
+            if label in calculated or label in traced:
                 continue
             matches = [
                 (model_str(table.id), model_str(column_fqn))

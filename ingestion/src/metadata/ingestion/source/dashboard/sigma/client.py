@@ -418,7 +418,7 @@ class SigmaApiClient:
             for node_id in node_ids:
                 node_details = self.get_file(node_id)
                 if node_details and node_details.node_type in ["table", "dataset"]:
-                    source_nodes.append(node_details)
+                    source_nodes.append(node_details.model_copy(update={"nodeId": node_id}))
                 else:
                     all_sources_read = False
 

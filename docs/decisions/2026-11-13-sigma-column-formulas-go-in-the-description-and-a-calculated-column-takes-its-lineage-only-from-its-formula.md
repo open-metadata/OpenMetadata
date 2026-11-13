@@ -47,14 +47,15 @@ the tables (`table`). Sigma does not document how a name containing `/` or `]` i
     nothing.
   - `[Source/Column]` is looked up by exact name among the nodes with an edge into the element's own sheet node. With
     exactly one such node, a table gives its one column of that name (compared normalized, as labels are), and another
-    element gives that element's column, traced the same way. Restricting the lookup to the element's direct sources
+    element gives that element's column, traced the same way (each element once). Restricting the lookup to the element's direct sources
     tells an element apart from the table it is named after, and ignores elements of the same name elsewhere in the
     workbook.
   - A name matching no source or several, a reference with more than one `/` (a relationship, or a column name
     holding `/`), a formula holding an escape, and a source of any other type add nothing.
 - A calculated column (a formula that is more than one source reference) takes its sources only from its formula, and
   is never matched by name: an untraced one gets no column lineage. A column that only copies a source column is
-  matched by name when its reference finds no source, as every column was before formulas were read.
+  matched by name only when its reference names no source the element reads, as every column was before formulas
+  were read; one whose source is found but holds no such column gets none.
 - Column lineage is drawn only when every source of the element was found. Edges stay one per source table, each
   carrying that table's columns.
 
@@ -65,5 +66,7 @@ the tables (`table`). Sigma does not document how a name containing `/` or `]` i
   until `overrideMetadata` is turned on.
 - A calculated column whose formula reads a relationship, a data model, a join, or a source spelled with a different
   case or padding has no column lineage. It is left out rather than linked to a same-named column it may not read.
+- A failed `/columns` read leaves the workbook's columns matched by name, as before formulas were read. In an element
+  read by another, a copy whose reference names no source adds nothing.
 - One extra paged call per workbook (when data models are ingested) and per Sigma Data Model. Tracing reads only the
   lineage response and formulas already fetched.

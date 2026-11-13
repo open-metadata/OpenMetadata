@@ -69,6 +69,7 @@ from metadata.ingestion.models.patch_request import (
     build_patch,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.dashboard.sigma import metadata as sigma_metadata
 from metadata.ingestion.source.dashboard.sigma.client import SigmaApiClient
 from metadata.ingestion.source.dashboard.sigma.metadata import SigmaSource
 from metadata.ingestion.source.dashboard.sigma.models import (
@@ -1215,6 +1216,7 @@ TABLE_IN_PATH = "Connection Root/SALES/PUBLIC/ORDERS"
             1,
         ),
         ("Connection Root/ANALYTICS/PUBLIC", 500, TWO_ORDERS, ["wh_a"], [], 1),
+        ("Connection Root/ANALYTICS/PUBLIC", 500, TWO_ORDERS, ["wh_a", "wh_b"], [], 1),
     ],
     ids=[
         "display-path-finds-it",
@@ -1227,6 +1229,7 @@ TABLE_IN_PATH = "Connection Root/SALES/PUBLIC/ORDERS"
         "two-parts-not-read-as-schema-and-table",
         "other-table-in-the-path",
         "failed-read",
+        "failed-read-once-across-prefixes",
     ],
 )
 def test_the_connection_path_is_read_only_when_the_display_path_finds_no_table(
@@ -1323,6 +1326,17 @@ def test_element_lineage_keeps_the_tables_the_element_reaches(sigma_over_http, r
     routes["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] = sigma_file("2MLjb1f67ldr3FMNI2L6Pf", "STATIONS", "table")
 
     assert sorted(node.name for node in source.client.get_lineage_details("wb-1", element_id)[0]) == sorted(tables)
+
+
+def test_element_lineage_keeps_the_id_it_names_a_table_by(sigma_over_http, routes):
+    source, _ = sigma_over_http
+    routes["GET", "/v2/workbooks/wb-1/lineage/elements/5AbJJlOiPPtgpL3cCk7GqA"] = DOCUMENTED_ELEMENT_LINEAGE
+    routes["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] = sigma_file("stations-inode", "STATIONS", "table")
+
+    [stations] = source.client.get_lineage_details("wb-1", "5AbJJlOiPPtgpL3cCk7GqA")[0]
+
+    # Formulas name the table as the lineage does, which need not be the id /files answers with
+    assert (stations.id, stations.nodeId) == ("stations-inode", "2MLjb1f67ldr3FMNI2L6Pf")
 
 
 def sigma_connection(connection_id: str, connection_type: str) -> dict:
@@ -2417,7 +2431,13 @@ def formula_column_links(
     lineage_source.client.get_workbook_queries = lambda *_: None
     lineage_source.client.get_lineage_details = lambda *_: (
         [
-            NodeDetails(id=table.name.root, name=table.name.root, type="table", path="Snowflake/SALES.PUBLIC")
+            NodeDetails(
+                id=f"file-{table.name.root}",
+                nodeId=table.name.root,
+                name=table.name.root,
+                type="table",
+                path="Snowflake/SALES.PUBLIC",
+            )
             for table in tables
         ],
         all_sources_read,
@@ -2564,6 +2584,7 @@ PREP_READS_MARGINS = {
         (ELEMENT_NAMED_LIKE_ITS_TABLE, "[COSTS/Cost] * 2", {"elCosts": {"Cost": "[COSTS/Cost]"}}, ["COST"]),
         (TWO_SOURCES_NAMED_COSTS, "[COSTS/Cost] * 2", {"elCosts": {"Cost": "[COSTS/Cost]"}}, None),
         (PREP_READS_MARGINS, "[Prep/Margin] * 2", {"elPrep": {"Margin": "[Margins/Total]"}}, None),
+        (THROUGH_PREP, "[Prep/Total]", {"elPrep": {"Total": "1"}}, None),
     ],
     ids=[
         "calculated-column-of-another-element",
@@ -2571,6 +2592,7 @@ PREP_READS_MARGINS = {
         "element-named-like-its-table",
         "two-sources-of-that-name",
         "elements-reading-each-other",
+        "copy-of-a-constant-in-another-element",
     ],
 )
 def test_a_calculated_column_follows_the_element_it_reads(lineage_source, graph, formula, other_elements, total):
@@ -2597,10 +2619,55 @@ def test_a_computed_column_reading_two_tables_is_linked_from_each(lineage_source
     }
 
 
-def test_a_computed_column_is_not_traced_when_a_source_could_not_be_read(lineage_source):
-    assert formula_column_links(
-        lineage_source, MARGIN_LABELS, {"Total": "[Cost] + [MRP]"}, [COSTS], all_sources_read=False
-    ) == {"COSTS": {}}
+@pytest.mark.parametrize("formula", ["[Cost] + [MRP]", "[COSTS/Cost] * 2"])
+def test_a_computed_column_is_not_traced_when_a_source_could_not_be_read(lineage_source, formula):
+    assert formula_column_links(lineage_source, MARGIN_LABELS, {"Total": formula}, [COSTS], all_sources_read=False) == {
+        "COSTS": {}
+    }
+
+
+def test_a_copy_of_a_column_its_source_lacks_is_not_matched_in_another_table(lineage_source):
+    pay = sales_table("PAY", ["AMOUNT"])
+
+    assert formula_column_links(lineage_source, ["Amount"], {"Amount": "[COSTS/Amount]"}, [COSTS, pay]) == {
+        "COSTS": {},
+        "PAY": {},
+    }
+
+
+def test_a_reference_matching_two_columns_of_its_table_adds_nothing(lineage_source):
+    costs = sales_table("COSTS", ["COST", "CO_ST"])
+
+    assert formula_column_links(lineage_source, ["Total"], {"Total": "[COSTS/Cost] * 2"}, [costs]) == {"COSTS": {}}
+
+
+def test_an_element_read_through_a_chain_is_traced_once(lineage_source, monkeypatch):
+    # Margins reads E1, which reads E2, which reads E3, which reads COSTS; each copies Cost and MRP from the next
+    graph = {
+        "dependencies": {
+            "Margins": sheet("Margins", "amountByCustomer"),
+            **{f"E{level}": sheet(f"E{level}", f"el{level}") for level in (1, 2, 3)},
+            "COSTS": COSTS_NODE,
+        },
+        "edges": [edge("COSTS", "E3"), edge("E3", "E2"), edge("E2", "E1"), edge("E1", "Margins")],
+    }
+    chain = {
+        f"el{level}": {column: f"[{read}/{column}]" for column in ("Cost", "MRP")}
+        for level, read in ((1, "E2"), (2, "E3"), (3, "COSTS"))
+    }
+    inherited = []
+    original = sigma_metadata._inherit_formula_sources
+    monkeypatch.setattr(
+        sigma_metadata, "_inherit_formula_sources", lambda *args: inherited.append(1) or original(*args)
+    )
+
+    links = formula_column_links(
+        lineage_source, ["Total"], {"Total": "[E1/Cost] + [E1/MRP]"}, [COSTS], graph=graph, other_elements=chain
+    )
+
+    assert links == {"COSTS": {"Total": ["COST", "MRP"]}}
+    # Once for each element read, and once for Margins; tracing an element again per reference grows exponentially
+    assert len(inherited) == 4
 
 
 def test_a_failed_table_lookup_keeps_the_other_tables_of_the_element(lineage_source):

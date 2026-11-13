@@ -125,6 +125,8 @@ class EdgeSourceResponse(BaseModel):
 class NodeDetails(BaseModel):
     id: str
     urlId: str | None = None  # noqa: N815
+    # Not in Sigma's response: the id an element lineage names this node by, set by SigmaApiClient.get_lineage_details
+    nodeId: str | None = None  # noqa: N815
     name: str | None
     node_type: str = Field(alias="type")
     path: str | None = ""
