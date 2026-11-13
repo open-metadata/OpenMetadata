@@ -513,6 +513,16 @@ public abstract class ServiceEntityRepository<
     }
 
     private void updateConnection() {
+      // A PUT that omits the connection keeps the stored one, as it does serviceAttributes; a
+      // PATCH clears it on purpose. The stored value is ciphertext or vault references, which
+      // storage keeps unchanged
+      // (ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage).
+      if (operation == Operation.PUT
+          && updated.getConnection() == null
+          && original.getConnection() != null) {
+        keepStoredConnection();
+        return;
+      }
       ServiceConnectionEntityInterface origConn = original.getConnection();
       ServiceConnectionEntityInterface updatedConn = updated.getConnection();
       if (!CommonUtil.nullOrEmpty(updatedConn)) {
@@ -545,6 +555,15 @@ public abstract class ServiceEntityRepository<
       }
     }
 
+    /**
+     * Each generated service types its own connection setter, so the stored connection is copied
+     * onto the update in place through its JSON form.
+     */
+    private void keepStoredConnection() {
+      JsonUtils.overwriteFromTokenBuffer(
+          updated, JsonUtils.toTokenBuffer(new StoredConnection(original.getConnection())));
+    }
+
     private void updateIngestionRunner() {
       UUID originalAgentId =
           original.getIngestionRunner() != null ? original.getIngestionRunner().getId() : null;
@@ -564,4 +583,7 @@ public abstract class ServiceEntityRepository<
       }
     }
   }
+
+  /** The {@code connection} field alone, to overwrite it on a service in place. */
+  private record StoredConnection(ServiceConnectionEntityInterface connection) {}
 }

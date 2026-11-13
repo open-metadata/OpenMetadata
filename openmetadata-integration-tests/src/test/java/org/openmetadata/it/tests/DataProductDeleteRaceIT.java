@@ -116,10 +116,9 @@ class DataProductDeleteRaceIT {
     Handle holder = holdRow("data_product_entity", dataProductId);
     try {
       delete = async(() -> hardDelete(dataProduct));
-      awaitBlocked(delete, 1, List.of(dataProductId), List.of("data_product_entity"));
+      awaitBlocked(delete, 1, List.of("data_product_entity"));
       add = async(() -> addAsset(dataProduct, table));
-      awaitBlocked(
-          add, 2, List.of(dataProductId), List.of("data_product_entity", "entity_relationship"));
+      awaitBlocked(add, 2, List.of("data_product_entity", "entity_relationship"));
     } finally {
       release(holder);
     }
@@ -144,13 +143,10 @@ class DataProductDeleteRaceIT {
     Handle holder = holdRow("table_entity", tableId);
     try {
       add = async(() -> addAsset(dataProduct, table));
-      awaitBlocked(add, 1, List.of(tableId), List.of("table_entity"));
+      awaitBlocked(add, 1, List.of("table_entity"));
       delete = async(() -> hardDelete(dataProduct));
       awaitBlocked(
-          delete,
-          2,
-          List.of(tableId, dataProductId),
-          List.of("table_entity", "data_product_entity", "entity_relationship"));
+          delete, 2, List.of("table_entity", "data_product_entity", "entity_relationship"));
     } finally {
       release(holder);
     }
@@ -181,13 +177,10 @@ class DataProductDeleteRaceIT {
     Handle holder = holdRow("entity_extension", dataProductId);
     try {
       delete = async(() -> hardDeleteDomain(dataProduct));
-      awaitBlocked(delete, 1, List.of(dataProductId), List.of("entity_extension"));
+      awaitBlocked(delete, 1, List.of("entity_extension"));
       add = async(() -> addAsset(dataProduct, table));
       awaitBlocked(
-          add,
-          2,
-          List.of(dataProductId),
-          List.of("entity_extension", "data_product_entity", "entity_relationship"));
+          add, 2, List.of("entity_extension", "data_product_entity", "entity_relationship"));
     } finally {
       release(holder);
     }
@@ -282,26 +275,25 @@ class DataProductDeleteRaceIT {
   }
 
   /**
-   * Waits until {@code request} has returned or {@code waiters} statements are waiting on a row
-   * lock. MySQL shows the bound values, so its statements are matched on the ids; Postgres shows
-   * placeholders, so its statements are matched on the tables.
+   * Waits until {@code request} has returned or {@code waiters} statements on {@code tables} are
+   * waiting on a row lock. Statements are matched on the table, not the row id: the blocked
+   * statement need not name the held row (a MySQL run once waited the full minute on a statement
+   * without the data product's id), and Postgres shows placeholders instead of bound values.
    */
-  private static void awaitBlocked(
-      CompletableFuture<?> request, int waiters, List<String> ids, List<String> tables) {
-    boolean mysql = TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL;
-    List<String> needles = mysql ? ids : tables;
+  private static void awaitBlocked(CompletableFuture<?> request, int waiters, List<String> tables) {
     Awaitility.await("request done or %d statements waiting on a row lock".formatted(waiters))
         .pollInterval(Duration.ofMillis(50))
         .atMost(BLOCKED_WITHIN)
-        .until(() -> request.isDone() || lockWaiters(mysql, needles) >= waiters);
+        .until(() -> request.isDone() || lockWaiters(tables) >= waiters);
   }
 
-  private static long lockWaiters(boolean mysql, List<String> needles) {
+  private static long lockWaiters(List<String> tables) {
+    boolean mysql = TestSuiteBootstrap.getConnectionType() == ConnectionType.MYSQL;
     String waiting = mysql ? MYSQL_LOCK_WAITS : POSTGRES_LOCK_WAITS;
     List<String> statements =
         lockProbe.withHandle(h -> h.createQuery(waiting).mapTo(String.class).list());
     return statements.stream()
-        .filter(sql -> sql != null && needles.stream().anyMatch(sql::contains))
+        .filter(sql -> sql != null && tables.stream().anyMatch(sql::contains))
         .count();
   }
 
