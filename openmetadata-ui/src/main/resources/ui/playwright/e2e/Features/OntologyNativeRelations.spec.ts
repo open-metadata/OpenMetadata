@@ -588,7 +588,9 @@ test.describe(
             .getByTestId('ontology-concept-inspector')
             .getByRole('button', { name: 'Close' })
             .click();
-          const empty = await findEmptyCanvasPoint(page);
+          const empty = await findEmptyCanvasPoint(page, 160, {
+            besideDrawer: true,
+          });
           await page.mouse.dblclick(empty.x, empty.y);
           const panel = page.getByTestId('ontology-new-class-panel');
           await expect(panel).toBeVisible();
