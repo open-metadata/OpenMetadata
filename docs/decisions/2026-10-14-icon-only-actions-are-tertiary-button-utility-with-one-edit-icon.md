@@ -1,7 +1,7 @@
 # Icon-only actions are a tertiary ButtonUtility, and editing has one icon
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it) · v6 2026-11-02 (the page-header learning bulb is `xs`) · v7 2026-11-05 (tree-row hover actions are `xs`)
+- **Revisions:** v1 2026-10-14 (initial) · v2 2026-10-15 (sizes follow the icon's role; row and card actions are `lg`, `md` is not assigned) · v3 2026-10-19 (primary actions stay primary; menu icons and text keep their colours; `isLoading`) · v4 2026-10-29 (compact table-cell actions are `xs`; activity-feed footer actions are `sm`) · v5 2026-11-02 (a disabled `ButtonUtility` is natively disabled; `Tooltip` wraps it) · v6 2026-11-02 (the page-header learning bulb is `xs`) · v7 2026-11-05 (tree-row hover actions are `xs`) · v8 2026-11-12 (bordered icon-only actions are a `secondary` `ButtonUtility`) · v9 2026-11-12 (what stays outside `ButtonUtility`)
 - **Deciders:** Rohit Jain
 - **Guard:** `openmetadata-ui-core-components/.../components/base/buttons/button.test.tsx` (tertiary default, ref, disabled tooltip); `reviewer`
 - **Related:** ADR:2026-10-13-core-icons-and-buttons-follow-the-figma-icon-spec, open-metadata/OpenMetadata#35348
@@ -92,3 +92,30 @@ onward (the announcement pagers) do so themselves.
   `xs`. The tree row is 32px (20px text plus `py-1.5`). An `lg` button (32px) raised every row to
   44px, while the 20px `xs` box fits the row and its 12px glyph sits beside the row's 14px page
   icon. The v2 `lg` clause still covers list rows outside a tree.
+
+## Amendment: bordered icon-only actions (v8, 2026-11-12)
+This replaces "A bordered or filled icon-only button needs a new record" in Consequences.
+- A bordered icon-only action is a `ButtonUtility` with `color="secondary"`, not a children-less
+  `Button`. It stands beside other bordered controls: toolbar and menu triggers (import/export,
+  graph view, library, release history, full screen) and the floating scroll buttons over a
+  scrolled table.
+- Its `size` keeps the box of the `Button` it sits beside. An icon-only `Button` `sm` draws 32px,
+  so it becomes `lg`; `md` draws 36px, so it becomes `xl`. `xl` is used only for this, beside a
+  36px labelled control such as a `FilterSelect` trigger.
+- A stat card's "open" arrow is `sm` (24px). `xs` is not used for it, because `xs` drops the border.
+
+## Amendment: what stays outside `ButtonUtility` (v9, 2026-11-12)
+These icon-only controls stay as they are. They are listed so a search for children-less
+`Button`s does not convert them.
+- **Activity-feed comment and reply** (`ActivityEventFooter`, `FeedCardReplyButton`): boxed
+  `link-gray` `Button`s. They have no hover background, like the reaction pills beside them
+  (v4). A `ButtonUtility` would add a hover fill the pills do not have.
+- **The chevron half of a split button** (`TaskActionSplitButton`): it is joined to the labelled
+  action beside it. It must share that `Button`'s colour, size, border and radius so the two halves
+  read as one control. A `ButtonUtility` has different sizes and no joined-edge radius.
+- **Colour swatches** (`HeaderTheme`): these are selectable values with `aria-pressed`, not
+  actions. Their content is the colour itself, not an icon.
+- **Drag and resize handles** (for example Collate's QueryRunner `ResizableDivider`): they respond
+  to a pointer drag, not a press. They are not buttons.
+
+Any other icon-only control follows the rules above.

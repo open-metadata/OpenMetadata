@@ -15,6 +15,7 @@ import {
   BadgeWithDot,
   Box,
   Button,
+  ButtonUtility,
   Divider,
   Tooltip,
   Typography,
@@ -1901,15 +1902,15 @@ const OntologyExplorerContent: React.FC = () => {
 
   function renderLibraryTrigger() {
     return (
-      <Button
+      <ButtonUtility
         aria-haspopup="dialog"
         aria-label={t('label.library')}
         color="secondary"
         data-testid="ontology-library-trigger"
-        iconLeading={
+        icon={
           isAiMode ? Grid01 : <Grid01 className="tw:text-fg-brand-primary" />
         }
-        size="sm"
+        size="lg"
         tooltip={t('label.library')}
         tooltipPlacement="bottom"
         onPress={() =>
@@ -2114,12 +2115,12 @@ const OntologyExplorerContent: React.FC = () => {
           gap={2}>
           {renderVersionChip()}
           {renderSearchSlot()}
-          <Button
+          <ButtonUtility
             aria-label={fullScreenLabel}
             color="secondary"
             data-testid="ontology-full-screen"
-            iconLeading={isFullScreen ? Minimize02 : Expand05}
-            size="sm"
+            icon={isFullScreen ? Minimize02 : Expand05}
+            size="lg"
             tooltip={fullScreenLabel}
             onPress={toggleFullScreen}
           />
