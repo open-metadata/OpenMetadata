@@ -22,9 +22,10 @@ export type AlertListStatus = Status.Active | Status.Disabled | Status.Failed;
 
 export interface AlertListStatusDetails {
   status: AlertListStatus;
-  reasons: string[];
-  // A stored configuration does not send until it is changed, unlike a failed send.
-  isConfigurationUnusable: boolean;
+  // Stored configurations that do not send until they are changed.
+  unusableReasons: string[];
+  // Sends that failed or wait for a retry.
+  failureReasons: string[];
 }
 
 // A destination's and a profile webhook's status share this shape, typed per generated file.
@@ -33,6 +34,13 @@ interface ReportedStatus {
   lastFailedReason?: string;
   configurationUnusable?: boolean;
 }
+
+// The statuses of a destination that is not sending: its last send failed, or waits to be retried.
+const NOT_SENDING: ReadonlySet<string> = new Set([
+  Status.Failed,
+  Status.AwaitingRetry,
+  Status.RetryLimitReached,
+]);
 
 /**
  * Why a destination or profile webhook does not send until its stored configuration is changed,
@@ -45,33 +53,35 @@ export const getNotSendingReason = (
     ? statusDetails.lastFailedReason
     : undefined;
 
+const reasonsOf = (statuses: ReportedStatus[]) =>
+  statuses
+    .map((statusDetails) => statusDetails.lastFailedReason)
+    .filter((reason): reason is string => Boolean(reason));
+
 /**
- * The status an alert shows in a list: failed while any of its destinations reads failed, with
- * their reasons; otherwise disabled or active, as the alert is switched.
+ * The status an alert shows in a list: failed while any of its destinations is not sending, with
+ * the stored configurations to change apart from the sends that failed; otherwise disabled or
+ * active, as the alert is switched.
  */
 export const getAlertListStatus = (
   alert: EventSubscription
 ): AlertListStatusDetails => {
-  const failed = (alert.destinations ?? [])
-    .map((destination) => destination.statusDetails)
-    .filter((statusDetails) => statusDetails?.status === Status.Failed);
-
-  if (failed.length > 0) {
-    return {
-      status: Status.Failed,
-      reasons: failed
-        .map((statusDetails) => statusDetails?.lastFailedReason)
-        .filter((reason): reason is string => Boolean(reason)),
-      isConfigurationUnusable: failed.some(
-        (statusDetails) => statusDetails?.configurationUnusable
-      ),
-    };
+  const notSending = (alert.destinations ?? [])
+    .map((destination) => destination.statusDetails ?? {})
+    .filter((statusDetails) => NOT_SENDING.has(statusDetails.status ?? ''));
+  const unusable = notSending.filter((it) => getNotSendingReason(it));
+  const failed = notSending.filter((it) => !getNotSendingReason(it));
+  let status: AlertListStatus = Status.Active;
+  if (notSending.length > 0) {
+    status = Status.Failed;
+  } else if (alert.enabled === false) {
+    status = Status.Disabled;
   }
 
   return {
-    status: alert.enabled === false ? Status.Disabled : Status.Active,
-    reasons: [],
-    isConfigurationUnusable: false,
+    status,
+    unusableReasons: reasonsOf(unusable),
+    failureReasons: reasonsOf(failed),
   };
 };
 

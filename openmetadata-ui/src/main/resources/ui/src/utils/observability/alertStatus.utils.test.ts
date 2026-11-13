@@ -17,83 +17,116 @@ import {
   Status,
   SubscriptionCategory,
   SubscriptionType,
+  TionStatus,
 } from '../../generated/events/eventSubscription';
 import { getAlertListStatus, getNotSendingReason } from './alertStatus.utils';
 
-const REASON =
-  "its stored configuration is not usable: The value at '/authType/secretKey' must be entered again";
+const UNUSABLE = "The value at '/authType/secretKey' must be entered again";
+const REFUSED = 'Webhook failed with status: 503';
 
-const alertWith = (statuses: Status[], enabled = true): EventSubscription => ({
+const alertWith = (
+  statuses: TionStatus[],
+  enabled = true
+): EventSubscription => ({
   alertType: AlertType.Notification,
   enabled,
   id: 'alert-id',
   name: 'alert',
-  destinations: statuses.map((status) => ({
+  destinations: statuses.map((statusDetails) => ({
     category: SubscriptionCategory.External,
     type: SubscriptionType.Webhook,
-    statusDetails: {
-      status,
-      lastFailedReason: status === Status.Failed ? REASON : undefined,
-      configurationUnusable: status === Status.Failed ? true : undefined,
-    },
+    statusDetails,
   })),
 });
 
 describe('alertStatus.utils', () => {
-  it('reads the reason only from a failed status', () => {
+  it('reads a reason to change the settings only from an unusable configuration', () => {
     expect(
       getNotSendingReason({
         status: Status.Failed,
-        lastFailedReason: REASON,
+        lastFailedReason: UNUSABLE,
         configurationUnusable: true,
       })
-    ).toBe(REASON);
+    ).toBe(UNUSABLE);
     expect(
-      getNotSendingReason({ status: Status.Failed, lastFailedReason: REASON })
-    ).toBeUndefined();
-    expect(
-      getNotSendingReason({
-        status: Status.AwaitingRetry,
-        lastFailedReason: REASON,
-      })
+      getNotSendingReason({ status: Status.Failed, lastFailedReason: REFUSED })
     ).toBeUndefined();
     expect(getNotSendingReason(undefined)).toBeUndefined();
   });
 
-  it('shows an alert with a failed destination as failed, with its reasons', () => {
+  it.each([
+    [
+      'active',
+      { status: Status.Active },
+      { status: Status.Active, unusableReasons: [], failureReasons: [] },
+    ],
+    [
+      'failed, configuration unusable',
+      {
+        status: Status.Failed,
+        lastFailedReason: UNUSABLE,
+        configurationUnusable: true,
+      },
+      {
+        status: Status.Failed,
+        unusableReasons: [UNUSABLE],
+        failureReasons: [],
+      },
+    ],
+    [
+      'failed send',
+      { status: Status.Failed, lastFailedReason: 'Connection refused' },
+      {
+        status: Status.Failed,
+        unusableReasons: [],
+        failureReasons: ['Connection refused'],
+      },
+    ],
+    [
+      'awaiting retry',
+      { status: Status.AwaitingRetry, lastFailedReason: REFUSED },
+      { status: Status.Failed, unusableReasons: [], failureReasons: [REFUSED] },
+    ],
+    [
+      'retry limit reached',
+      { status: Status.RetryLimitReached, lastFailedReason: REFUSED },
+      { status: Status.Failed, unusableReasons: [], failureReasons: [REFUSED] },
+    ],
+    [
+      'disabled destination',
+      { status: Status.Disabled },
+      { status: Status.Active, unusableReasons: [], failureReasons: [] },
+    ],
+  ])('lists a destination that is %s', (_, statusDetails, expected) => {
+    expect(getAlertListStatus(alertWith([statusDetails]))).toEqual(expected);
+  });
+
+  it('lists a switched-off alert as disabled', () => {
     expect(
-      getAlertListStatus(alertWith([Status.Active, Status.Failed]))
+      getAlertListStatus(alertWith([{ status: Status.Disabled }], false))
+    ).toEqual({
+      status: Status.Disabled,
+      unusableReasons: [],
+      failureReasons: [],
+    });
+  });
+
+  it('keeps an unusable configuration apart from a failed send', () => {
+    expect(
+      getAlertListStatus(
+        alertWith([
+          {
+            status: Status.Failed,
+            lastFailedReason: UNUSABLE,
+            configurationUnusable: true,
+          },
+          { status: Status.AwaitingRetry, lastFailedReason: REFUSED },
+        ])
+      )
     ).toEqual({
       status: Status.Failed,
-      reasons: [REASON],
-      isConfigurationUnusable: true,
-    });
-  });
-
-  it('shows an alert whose destinations send as active or disabled', () => {
-    expect(getAlertListStatus(alertWith([Status.Active]))).toEqual({
-      status: Status.Active,
-      reasons: [],
-      isConfigurationUnusable: false,
-    });
-    expect(getAlertListStatus(alertWith([Status.Disabled], false))).toEqual({
-      status: Status.Disabled,
-      reasons: [],
-      isConfigurationUnusable: false,
-    });
-  });
-
-  it('shows a failed send as failed, but not as a configuration to change', () => {
-    const alert = alertWith([Status.Failed]);
-    alert.destinations[0].statusDetails = {
-      status: Status.Failed,
-      lastFailedReason: 'Webhook failed with status: 503',
-    };
-
-    expect(getAlertListStatus(alert)).toEqual({
-      status: Status.Failed,
-      reasons: ['Webhook failed with status: 503'],
-      isConfigurationUnusable: false,
+      unusableReasons: [UNUSABLE],
+      failureReasons: [REFUSED],
     });
   });
 });
