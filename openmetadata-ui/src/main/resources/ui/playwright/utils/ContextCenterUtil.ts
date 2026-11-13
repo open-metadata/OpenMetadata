@@ -221,22 +221,26 @@ export const expectMemoryExtractionOffTooltip = async (page: Page) => {
   await page.keyboard.press('Escape');
 };
 
+export const MEMORY_EXTRACTION_ON_SKIP_REASON =
+  'Needs a server with memory extraction off';
+
 /**
- * The e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
- * leaves an upload or a new article Not processed. A spec that relies on that says so first.
+ * The OSS e2e server runs with memory extraction off (LLM_ENABLED defaults to false), which is what
+ * leaves an upload or a new article Not processed. A Collate server runs with it on, where those
+ * states never occur, so a spec that relies on them skips there.
  */
-export const expectMemoryExtractionOff = async (
-  apiContext: APIRequestContext
-) => {
+export const isMemoryExtractionOff = async (apiContext: APIRequestContext) => {
   const availability = await okJson<{ available: boolean; reason?: string }>(
     await apiContext.get(MEMORY_EXTRACTION_AVAILABILITY_API),
     'Read whether memory extraction is available'
   );
 
-  expect(
-    availability,
-    'This spec needs a server with memory extraction off'
-  ).toEqual({ available: false, reason: 'ExtractionDisabled' });
+  const isOff = !availability.available;
+  if (isOff) {
+    expect(availability.reason).toBe('ExtractionDisabled');
+  }
+
+  return isOff;
 };
 
 /**

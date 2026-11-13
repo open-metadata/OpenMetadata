@@ -44,12 +44,13 @@ import {
   createArticleViaApi,
   createMemoryViaApi,
   deleteArticleByFqn,
-  expectMemoryExtractionOff,
   expectMemoryExtractionOffTooltip,
   getArticleFqnFromUrl,
   getLoggedInUser,
   getMemoryStatus,
+  isMemoryExtractionOff,
   MEMORIES_API,
+  MEMORY_EXTRACTION_ON_SKIP_REASON,
   navigateToArticle,
   navigateToArticles,
   navigateToDashboard,
@@ -1265,7 +1266,11 @@ test.describe('Context Center Articles', () => {
     const { apiContext, afterAction } = await createNewPage(browser);
     const articleName = `cc_not_extracted_article_${uuid()}`;
     try {
-      await expectMemoryExtractionOff(apiContext);
+      // eslint-disable-next-line playwright/no-skipped-test -- Not processed and the off reason exist only while extraction is off
+      test.skip(
+        !(await isMemoryExtractionOff(apiContext)),
+        MEMORY_EXTRACTION_ON_SKIP_REASON
+      );
       const article = await createArticleViaApi(apiContext, {
         name: articleName,
         displayName: `Not extracted ${uuid()}`,
@@ -2019,21 +2024,39 @@ test.describe('Context Center Articles', () => {
         // The 'Unsaved' badge is the editor's own signal that the edit has been
         // registered, so it is the thing to wait on before navigating away.
         await page.getByText('Unsaved').waitFor({ state: 'visible' });
-        await page.getByRole('link', { name: 'Articles' }).click();
-      });
+        // Saving the title reloads the hierarchy from its first page, dropping any
+        // node scrolled in from a later page before that reload lands.
+        const titleSaved = waitForResponseWithStatus(
+          page,
+          (response) =>
+            response.request().method() === 'PATCH' &&
+            new URL(response.url()).pathname ===
+              `/api/v1/contextCenter/pages/${draftArticleA.id}`,
+          200
+        );
+        const hierarchyReloaded = waitForResponseWithStatus(
+          page,
+          (response) => {
+            const url = new URL(response.url());
 
-      const updateDisplayNameResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/contextCenter/pages/') &&
-          response.request().method() === 'PATCH'
-      );
+            return (
+              url.pathname === '/api/v1/contextCenter/pages/search/hierarchy' &&
+              !url.searchParams.has('parent') &&
+              url.searchParams.get('offset') === '0'
+            );
+          },
+          200
+        );
+        await page.getByRole('link', { name: 'Articles' }).click();
+        await titleSaved;
+        await hierarchyReloaded;
+      });
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
         const node = await scrollHierarchyToNode(
           page,
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
-        await updateDisplayNameResponse;
         const articleLoaded = page.waitForResponse((resp) =>
           resp.url().includes('/api/v1/contextCenter/pages/name/')
         );
