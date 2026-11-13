@@ -345,7 +345,8 @@ class SigmaApiClient:
             )
 
             # Only the tables the element reaches. With no sheet node for the element, or no table reached from it,
-            # the element's sources cannot be told from the rest of the response, so every table is kept.
+            # the edges do not connect the way the walk reads them, so every table is kept as before rather than
+            # dropping the element's lineage.
             reached = _reached_from_element(edges_response, element_id)
             node_ids = _source_node_ids(edges_response, reached.__contains__) or _source_node_ids(
                 edges_response, lambda _: True

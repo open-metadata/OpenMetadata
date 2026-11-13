@@ -1183,21 +1183,46 @@ TWO_BRANCHES = {
 }
 
 
+# The same two branches with the tables only as edge sources, as `inode-<id>`
+EDGE_ONLY_TABLES = {
+    "dependencies": {key: TWO_BRANCHES["dependencies"][key] for key in ("sheetRevenue", "sheetCustomers")},
+    "edges": [edge("inode-T1", "sheetRevenue"), edge("inode-T2", "sheetCustomers")],
+}
+
+
 @pytest.mark.parametrize(
-    "edges, element_id, tables",
+    "response, element_id, tables",
     [
-        (TWO_BRANCHES["edges"], "el-wb-1", ["ORDERS"]),
-        ([*TWO_BRANCHES["edges"], edge("sheetRevenue", "sheetPrep")], "el-wb-1", ["ORDERS"]),
+        (TWO_BRANCHES, "el-wb-1", ["ORDERS"]),
+        (EDGE_ONLY_TABLES, "el-wb-1", ["ORDERS"]),
+        (
+            {**TWO_BRANCHES, "edges": [*TWO_BRANCHES["edges"], edge("sheetRevenue", "sheetPrep")]},
+            "el-wb-1",
+            ["ORDERS"],
+        ),
+        (DOCUMENTED_ELEMENT_LINEAGE, "5AbJJlOiPPtgpL3cCk7GqA", ["STATIONS"]),
         # No sheet node for the element, or a walk that reaches no table: every table of the response, as before
-        (TWO_BRANCHES["edges"], "el-other", ["ORDERS", "CUSTOMERS"]),
-        ([edge("sheetRevenue", "T1"), edge("T2", "sheetCustomers")], "el-wb-1", ["ORDERS", "CUSTOMERS"]),
+        (TWO_BRANCHES, "el-other", ["ORDERS", "CUSTOMERS"]),
+        (
+            {**TWO_BRANCHES, "edges": [edge("sheetRevenue", "T1"), edge("T2", "sheetCustomers")]},
+            "el-wb-1",
+            ["ORDERS", "CUSTOMERS"],
+        ),
     ],
-    ids=["unrelated-branch-dropped", "cycle", "no-sheet-node", "nothing-reached"],
+    ids=[
+        "unrelated-branch-dropped",
+        "edge-only-tables",
+        "cycle",
+        "documented-example",
+        "no-sheet-node",
+        "nothing-reached",
+    ],
 )
-def test_element_lineage_keeps_the_tables_the_element_reaches(sigma_over_http, routes, edges, element_id, tables):
+def test_element_lineage_keeps_the_tables_the_element_reaches(sigma_over_http, routes, response, element_id, tables):
     source, _ = sigma_over_http
-    routes["GET", f"/v2/workbooks/wb-1/lineage/elements/{element_id}"] = {**TWO_BRANCHES, "edges": edges}
+    routes["GET", f"/v2/workbooks/wb-1/lineage/elements/{element_id}"] = response
     routes["GET", "/v2/files/T2"] = sigma_file("T2", "CUSTOMERS", "table")
+    routes["GET", "/v2/files/2MLjb1f67ldr3FMNI2L6Pf"] = sigma_file("2MLjb1f67ldr3FMNI2L6Pf", "STATIONS", "table")
 
     assert sorted(node.name for node in source.client.get_lineage_details("wb-1", element_id)[0]) == sorted(tables)
 
