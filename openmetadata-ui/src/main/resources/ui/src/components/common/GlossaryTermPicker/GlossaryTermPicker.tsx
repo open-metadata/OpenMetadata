@@ -23,7 +23,9 @@ import { PAGE_SIZE_EXTRA_LARGE } from '../../../constants/constants';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import Fqn from '../../../utils/Fqn';
+import { isDerivedTag, withDerivedTags } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import { disableTreeNodes } from '../../../utils/TreeSelect.utils';
 import {
   GlossaryPickerValue,
   pruneNodes,
@@ -95,6 +97,20 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
     [excludeKey]
   );
 
+  // Shown ticked, but locked: a derived term cannot be taken off the asset here.
+  const derivedTerms = useMemo(
+    () =>
+      value.filter(
+        (tag) => tag.source === TagSource.Glossary && isDerivedTag(tag)
+      ),
+    [value]
+  );
+  const derivedKey = derivedTerms.map((tag) => tag.tagFQN).join('\u0000');
+  const derived = useMemo(
+    () => new Set(derivedKey ? derivedKey.split('\u0000') : []),
+    [derivedKey]
+  );
+
   // Running per branch, because the tree keeps only the newest page's total.
   const prunedPerBranch = useRef<Map<string, number>>(new Map());
   useEffect(() => {
@@ -106,7 +122,11 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
     async (
       params: Parameters<typeof fetchGlossaryTree>[0]
     ): Promise<TreeSelectDataResponse<GlossaryPickerValue>> => {
-      const response = await fetchGlossaryTree(params);
+      const fetched = await fetchGlossaryTree(params);
+      const response =
+        derived.size === 0
+          ? fetched
+          : { ...fetched, nodes: disableTreeNodes(fetched.nodes, derived) };
 
       if (excluded.size === 0) {
         return response;
@@ -125,7 +145,7 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
 
       return { ...response, nodes, total: response.total - pruned };
     },
-    [fetchGlossaryTree, excluded]
+    [fetchGlossaryTree, excluded, derived]
   );
 
   const selectedValue = useMemo(
@@ -161,18 +181,21 @@ const GlossaryTermPicker: FC<GlossaryTermPickerProps> = ({
         value.map((tag) => [tag.tagFQN, tag])
       );
 
-      const selected = nodes.reduce<GlossaryPickerValue[]>((acc, node) => {
-        const tag = applied.get(node.value) ?? node.data;
-        if (tag && (selectGlossaries || !tag.isGlossaryRoot)) {
-          acc.push(tag);
-        }
+      const selected = withDerivedTags(
+        nodes.reduce<GlossaryPickerValue[]>((acc, node) => {
+          const tag = applied.get(node.value) ?? node.data;
+          if (tag && (selectGlossaries || !tag.isGlossaryRoot)) {
+            acc.push(tag);
+          }
 
-        return acc;
-      }, []);
+          return acc;
+        }, []),
+        derivedTerms
+      );
 
       onChange?.(selected.map(toTagLabel), selected);
     },
-    [onChange, value, selectGlossaries]
+    [onChange, value, selectGlossaries, derivedTerms]
   );
 
   // The server already filtered; filtering again would hide matching glossaries.
