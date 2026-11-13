@@ -46,13 +46,8 @@ public final class RdfLiveWriteStore {
   private static final String START_COMPACTION_CLOCK =
       "UPDATE rdf_projection_health SET lastCompactedAt = ? WHERE id = 'active' "
           + "AND lastCompactedAt = 0";
-  private static final String RECORD_RDF_DISABLED =
-      "UPDATE rdf_projection_health SET rdfDisabledAt = GREATEST(rdfDisabledAt, ?), "
-          + "failureVersion = failureVersion + 1, lastError = ?, updatedAt = ? WHERE id = 'active'";
   private static final String RDF_DISABLED_REASON =
-      "A server started with RDF disabled; changes made since then are not in the graph";
-  private static final String RDF_DISABLED_AT =
-      "SELECT rdfDisabledAt FROM rdf_projection_health WHERE id = 'active'";
+      "A server ran with RDF disabled; the changes made through it are not in the graph";
   private static final String LAST_COMPACTION =
       "SELECT lastCompactedAt FROM rdf_projection_health WHERE id = 'active'";
 
@@ -369,25 +364,13 @@ public final class RdfLiveWriteStore {
   }
 
   /**
-   * Records that a server runs with RDF off; called when it starts and again when it stops. Changes
-   * made through it never reach the graph, so the projection is degraded like any other lost write:
-   * only a rebuild of the entire projection that starts afterwards repairs it. The time is kept as
-   * well, for the start-up run that queues that rebuild; the highest value wins, so servers that
-   * record it at different times, or with different clocks, never move it back.
+   * Records that a server ran with RDF off; written when it starts, when its stop begins and again
+   * at the end of its stop. Changes made through it never reach the graph, so the projection is
+   * degraded like any other lost write: only a rebuild of the entire projection that starts
+   * afterwards repairs it.
    */
   public void recordRdfDisabled() {
-    final long now = clock.millis();
-    final int updated =
-        jdbi.withHandle(
-            handle -> handle.execute(RECORD_RDF_DISABLED, now, RDF_DISABLED_REASON, now));
-    if (updated != 1) {
-      throw new IllegalStateException("RDF projection health row is missing");
-    }
-  }
-
-  /** The last time a server started or stopped with RDF off, or 0 when none has recorded it. */
-  public long rdfDisabledAt() {
-    return jdbi.withHandle(handle -> handle.createQuery(RDF_DISABLED_AT).mapTo(Long.class).one());
+    markDegraded(RDF_DISABLED_REASON);
   }
 
   /** Records that storage maintenance compacted the serving dataset, whichever server ran it. */

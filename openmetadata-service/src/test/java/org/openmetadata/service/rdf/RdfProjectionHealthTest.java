@@ -1,7 +1,6 @@
 package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -101,18 +100,5 @@ class RdfProjectionHealthTest {
     assertTrue(RdfProjectionHealth.isDegraded());
     RdfProjectionHealth.markReady(RdfProjectionHealth.failureVersion());
     assertFalse(RdfProjectionHealth.isDegraded());
-  }
-
-  @Test
-  void whenRdfWasLastOffReadsTheSharedStore() {
-    when(store.rdfDisabledAt()).thenReturn(1_234L);
-    RdfProjectionHealth.initialize(store);
-
-    assertEquals(1_234L, RdfProjectionHealth.rdfDisabledAt());
-  }
-
-  @Test
-  void whenRdfWasLastOffIsZeroWithoutAStore() {
-    assertEquals(0L, RdfProjectionHealth.rdfDisabledAt());
   }
 }

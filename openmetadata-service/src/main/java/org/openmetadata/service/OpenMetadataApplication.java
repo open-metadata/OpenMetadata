@@ -397,9 +397,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // use columns a pending migration adds, and must not run against a schema it has not reached.
     startupTimer.time("migration validation", () -> validateMigrations(jdbi, catalogConfig));
 
-    // After validation, because the mark uses a column a pending migration adds. Here, not in a
-    // helper subclasses override or in app registration, which the ops CLI also reaches without
-    // starting a server.
+    // After migration validation, because nothing should write to the database before its schema is
+    // validated. Here, not in a helper subclasses override or in app registration, which the ops
+    // CLI also reaches without starting a server.
     RdfDisabledMark.recordIfDisabled(catalogConfig.getRdfConfiguration(), jdbi);
 
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)

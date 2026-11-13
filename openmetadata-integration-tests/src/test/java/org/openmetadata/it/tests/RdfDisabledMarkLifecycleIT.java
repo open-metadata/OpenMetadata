@@ -38,23 +38,21 @@ class RdfDisabledMarkLifecycleIT {
   void aServerWithRdfOffRecordsItWhenItStartsAndTwiceWhenItStops() {
     assumeFalse(RdfTestUtils.isRdfEnabled(), "The forked server copies the suite's RDF setting");
     final RdfLiveWriteStore health = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
-    final long markBeforeStart = health.rdfDisabledAt();
+    final long failureVersionBeforeStart = health.failureVersion();
 
     final ForkedServerNode server = ForkedServerNode.start(Settings.DEFAULT);
-    final long markAfterStart;
     final long failureVersionAfterStart;
     final boolean stoppedByItself;
     try {
-      markAfterStart = health.rdfDisabledAt();
       failureVersionAfterStart = health.failureVersion();
       stoppedByItself = server.stopWithin(SHUTDOWN_GRACE);
     } finally {
       server.close();
     }
 
-    assertTrue(markAfterStart > markBeforeStart, "the start was not recorded");
+    assertTrue(
+        failureVersionAfterStart >= failureVersionBeforeStart + 1, "the start was not recorded");
     assertTrue(stoppedByItself, "the server had to be killed, so its stop hooks may not have run");
-    assertTrue(health.rdfDisabledAt() > markAfterStart, "the stop was not recorded");
     assertTrue(
         health.failureVersion() >= failureVersionAfterStart + 2,
         "the stop was not recorded both when it began and at its end");

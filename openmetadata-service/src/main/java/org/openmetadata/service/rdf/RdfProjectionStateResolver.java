@@ -16,7 +16,6 @@ package org.openmetadata.service.rdf;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
-import java.util.function.LongSupplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.rdf.RdfProjectionState;
 import org.openmetadata.schema.entity.app.AppExtension;
@@ -36,13 +35,8 @@ public final class RdfProjectionStateResolver {
   // Every status read pages back through skipped runs; past this many it reports REBUILDING.
   static final int MAX_RUN_PAGES = 5;
   private static final String PROJECTION_UNCHANGED = "projectionUnchanged";
-  private static final long NEVER_STARTED = 0;
   private final AppExtensionTimeSeries runStore;
   private final BooleanSupplier isDegraded;
-  private final LongSupplier rdfDisabledAt;
-
-  /** The newest run that touched the projection, and when it started. */
-  private record ProjectingRun(RdfProjectionState state, long startedAt) {}
 
   public RdfProjectionStateResolver(final AppExtensionTimeSeries runStore) {
     this(runStore, RdfProjectionHealth::isDegraded);
@@ -50,41 +44,18 @@ public final class RdfProjectionStateResolver {
 
   public RdfProjectionStateResolver(
       final AppExtensionTimeSeries runStore, final BooleanSupplier isDegraded) {
-    this(runStore, isDegraded, () -> NEVER_STARTED);
-  }
-
-  public RdfProjectionStateResolver(
-      final AppExtensionTimeSeries runStore,
-      final BooleanSupplier isDegraded,
-      final LongSupplier rdfDisabledAt) {
     this.runStore = runStore;
     this.isDegraded = isDegraded;
-    this.rdfDisabledAt = rdfDisabledAt;
   }
 
   /** Resolves the state from the server's own run store; the production wiring. */
   public static RdfProjectionState resolveConfigured() {
-    return new RdfProjectionStateResolver(
-            Entity.getCollectionDAO().appExtensionTimeSeriesDao(), RdfProjectionHealth::isDegraded)
+    return new RdfProjectionStateResolver(Entity.getCollectionDAO().appExtensionTimeSeriesDao())
         .resolve();
   }
 
   public RdfProjectionState resolve() {
-    final Optional<ProjectingRun> run = latestProjectingRun();
-    return run.map(this::applyRuntimeHealth).orElse(RdfProjectionState.REBUILDING);
-  }
-
-  /**
-   * True when a run that touched the projection started at or after the last time a server started
-   * or stopped with RDF off, so a rebuild has been attempted since changes stopped reaching the
-   * graph. This decides only whether start-up queues a run; whether the graph is current is the
-   * health row's call, which a server with RDF off degrades until the entire projection is rebuilt. A failure to read
-   * the mark propagates: the caller decides what an unknown answer means.
-   */
-  public boolean hasProjectedSinceRdfWasOff() {
-    return latestProjectingRun()
-        .map(run -> run.startedAt() >= rdfDisabledAt.getAsLong())
-        .orElse(false);
+    return applyRuntimeHealth(latestProjectingRunState().orElse(RdfProjectionState.REBUILDING));
   }
 
   /**
@@ -92,8 +63,8 @@ public final class RdfProjectionStateResolver {
    * search reindex) or that found RDF off never touched the projection, so the state comes from the
    * newest run that did.
    */
-  private Optional<ProjectingRun> latestProjectingRun() {
-    Optional<ProjectingRun> run;
+  private Optional<RdfProjectionState> latestProjectingRunState() {
+    Optional<RdfProjectionState> state;
     List<String> page;
     int offset = 0;
     int pages = 0;
@@ -101,15 +72,15 @@ public final class RdfProjectionStateResolver {
       page =
           runStore.listAppExtensionByName(
               RDF_INDEX_APP, RUN_PAGE_SIZE, offset, AppExtension.ExtensionType.STATUS.toString());
-      run =
+      state =
           page.stream()
               .map(RdfProjectionStateResolver::parse)
               .flatMap(Optional::stream)
               .findFirst();
       offset += RUN_PAGE_SIZE;
       pages++;
-    } while (run.isEmpty() && page.size() == RUN_PAGE_SIZE && pages < MAX_RUN_PAGES);
-    return run;
+    } while (state.isEmpty() && page.size() == RUN_PAGE_SIZE && pages < MAX_RUN_PAGES);
+    return state;
   }
 
   /** Builds the failure context of a run, flagging one that ended before touching the projection. */
@@ -127,36 +98,26 @@ public final class RdfProjectionStateResolver {
     return new SuccessContext().withAdditionalProperty(PROJECTION_UNCHANGED, true);
   }
 
-  private RdfProjectionState applyRuntimeHealth(final ProjectingRun run) {
-    return run.state() == RdfProjectionState.READY && isDegraded.getAsBoolean()
+  private RdfProjectionState applyRuntimeHealth(final RdfProjectionState persistedState) {
+    return persistedState == RdfProjectionState.READY && isDegraded.getAsBoolean()
         ? RdfProjectionState.DEGRADED
-        : run.state();
+        : persistedState;
   }
 
   /** Empty for a run that left the projection unchanged. */
-  private static Optional<ProjectingRun> parse(final String runJson) {
-    Optional<ProjectingRun> run;
+  private static Optional<RdfProjectionState> parse(final String runJson) {
+    Optional<RdfProjectionState> state;
     try {
-      final AppRunRecord record = JsonUtils.readValue(runJson, AppRunRecord.class);
-      run = leftProjectionUnchanged(record) ? Optional.empty() : Optional.of(projectingRun(record));
+      final AppRunRecord run = JsonUtils.readValue(runJson, AppRunRecord.class);
+      state =
+          leftProjectionUnchanged(run)
+              ? Optional.empty()
+              : Optional.of(fromStatus(run == null ? null : run.getStatus()));
     } catch (JsonParsingException exception) {
       LOG.warn("RDF projection run state is malformed", exception);
-      run = Optional.of(new ProjectingRun(RdfProjectionState.DEGRADED, Long.MAX_VALUE));
+      state = Optional.of(RdfProjectionState.DEGRADED);
     }
-    return run;
-  }
-
-  private static ProjectingRun projectingRun(final AppRunRecord record) {
-    return new ProjectingRun(
-        fromStatus(record == null ? null : record.getStatus()), startedAt(record));
-  }
-
-  private static long startedAt(final AppRunRecord record) {
-    Long started = null;
-    if (record != null) {
-      started = record.getStartTime() != null ? record.getStartTime() : record.getTimestamp();
-    }
-    return started == null ? NEVER_STARTED : started;
+    return state;
   }
 
   private static boolean leftProjectionUnchanged(final AppRunRecord run) {

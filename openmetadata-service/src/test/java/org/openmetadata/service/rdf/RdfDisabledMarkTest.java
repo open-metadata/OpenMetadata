@@ -2,6 +2,7 @@ package org.openmetadata.service.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
@@ -89,6 +90,28 @@ class RdfDisabledMarkTest {
   }
 
   @Test
+  void anInterruptedWaitDoesNotHoldTheStopAndKeepsTheInterrupt() {
+    final CountDownLatch release = new CountDownLatch(1);
+    doAnswer(
+            invocation -> {
+              release.await();
+              return null;
+            })
+        .when(store)
+        .recordRdfDisabled();
+    final LifeCycle.Listener whenStopBegins = RdfDisabledMark.whenStopBegins(null, store, WAIT);
+
+    Thread.currentThread().interrupt();
+    try {
+      assertDoesNotThrow(() -> whenStopBegins.lifeCycleStopping(null));
+      assertTrue(Thread.interrupted(), "the interrupt was swallowed");
+    } finally {
+      Thread.interrupted();
+      release.countDown();
+    }
+  }
+
+  @Test
   void stoppingAServerWithRdfOffRecordsItAgain() throws Exception {
     final Managed atStop = RdfDisabledMark.atStop(new RdfConfiguration().withEnabled(false), store);
 
@@ -115,7 +138,7 @@ class RdfDisabledMarkTest {
 
   @Test
   void aStoreFailureDoesNotFailStartup() {
-    doThrow(new IllegalStateException("column missing")).when(store).recordRdfDisabled();
+    doThrow(new IllegalStateException("database unavailable")).when(store).recordRdfDisabled();
 
     assertDoesNotThrow(() -> RdfDisabledMark.recordIfDisabled(null, store));
   }

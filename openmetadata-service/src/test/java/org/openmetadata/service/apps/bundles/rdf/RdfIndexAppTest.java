@@ -130,26 +130,12 @@ class RdfIndexAppTest {
     return new RdfProjectionStateResolver(runStore, () -> false).resolve();
   }
 
-  private static final long RDF_DISABLED_AT = 1_000L;
-
-  private static String completedRunBeforeTheMark() {
-    return JsonUtils.pojoToJson(
-        new AppRunRecord()
-            .withStatus(AppRunRecord.Status.COMPLETED)
-            .withStartTime(RDF_DISABLED_AT - 1));
-  }
-
-  /** Reads the run history once RDF is on again: the pushed run and optionally an older one. */
-  private static RdfProjectionStateResolver resolverAfterRdfWasOff(
-      final AppRunRecord pushed, final String olderRun) {
+  /** Reads the run history once RDF is on again: the run the app pushed is the only one. */
+  private static RdfProjectionStateResolver resolverAfter(final AppRunRecord pushed) {
     final AppExtensionTimeSeries runStore = mock(AppExtensionTimeSeries.class);
-    final List<String> history =
-        olderRun == null
-            ? List.of(JsonUtils.pojoToJson(pushed))
-            : List.of(JsonUtils.pojoToJson(pushed), olderRun);
     when(runStore.listAppExtensionByName(eq("RdfIndexApp"), anyInt(), eq(0), eq("status")))
-        .thenReturn(history);
-    return new RdfProjectionStateResolver(runStore, () -> false, () -> RDF_DISABLED_AT);
+        .thenReturn(List.of(JsonUtils.pojoToJson(pushed)));
+    return new RdfProjectionStateResolver(runStore, () -> false);
   }
 
   @AfterEach
@@ -195,11 +181,7 @@ class RdfIndexAppTest {
           .thenThrow(new IllegalStateException("RdfRepository not initialized"));
       try {
         TestableRdfIndexApp testApp = new TestableRdfIndexApp(collectionDAO, searchRepository);
-        // Started after the mark, as the job listener stamps it, so only the flag can discount it.
-        testApp.appRunRecord =
-            new AppRunRecord()
-                .withStatus(AppRunRecord.Status.RUNNING)
-                .withStartTime(RDF_DISABLED_AT + 1);
+        testApp.appRunRecord = new AppRunRecord().withStatus(AppRunRecord.Status.RUNNING);
         EventPublisherJob jobConfig =
             new EventPublisherJob()
                 .withEntities(Set.of("table"))
@@ -228,13 +210,7 @@ class RdfIndexAppTest {
                 .getSuccessContext()
                 .getAdditionalProperties()
                 .get("projectionUnchanged"));
-        assertEquals(
-            RdfProjectionState.REBUILDING,
-            resolverAfterRdfWasOff(testApp.pushedRecord, null).resolve());
-        assertFalse(
-            resolverAfterRdfWasOff(testApp.pushedRecord, completedRunBeforeTheMark())
-                .hasProjectedSinceRdfWasOff(),
-            "a run that found RDF off must not stop the start-up rebuild");
+        assertEquals(RdfProjectionState.REBUILDING, resolverAfter(testApp.pushedRecord).resolve());
       } finally {
         rdfRepositoryMockedStatic
             .when(RdfRepository::getInstanceOrNull)

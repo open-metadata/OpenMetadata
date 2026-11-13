@@ -81,13 +81,16 @@ class RdfFirstIndexRunIT {
     assertEquals(1, startupRuns().size());
   }
 
-  /** #36440: changes made while RDF is off never reach the graph, so it must be rebuilt. */
+  /**
+   * #36440: changes made while RDF is off never reach the graph. The mark degrades the projection
+   * and nothing queues the rebuild; an explicit full rebuild is what repairs it.
+   */
   @Test
   @Order(3)
-  void aStartWithRdfOffDegradesTheProjectionUntilTheNextStartRebuildsIt() {
+  void aStartWithRdfOffDegradesTheProjectionAndOnlyAnExplicitFullRebuildRepairsIt() {
     assumeTrue(RdfTestUtils.isRdfEnabled(), "Run with the RDF integration-test profile");
     awaitReady();
-    final int runsBefore = startupRuns().size();
+    final int runsBefore = allRuns().size();
     final RdfLiveWriteStore health = new RdfLiveWriteStore(Entity.getJdbi(), Clock.systemUTC());
 
     health.recordRdfDisabled();
@@ -95,10 +98,13 @@ class RdfFirstIndexRunIT {
       assertEquals(RdfProjectionState.DEGRADED, projectionState());
 
       enqueueAsServerStartDoes();
-      awaitReady();
-      enqueueAsServerStartDoes();
+      assertEquals(runsBefore, allRuns().size(), "the start-up hook queued a run");
+      assertEquals(RdfProjectionState.DEGRADED, projectionState());
 
-      assertEquals(runsBefore + 1, startupRuns().size());
+      final long floor = System.currentTimeMillis();
+      triggerRun(true);
+      awaitSuccessfulRunStartedAtOrAfter(floor);
+      awaitReady();
     } finally {
       // A rebuild that failed here must not leave every later RDF test DEGRADED.
       health.markRebuilt(health.failureVersion());
@@ -117,7 +123,7 @@ class RdfFirstIndexRunIT {
     health.recordRdfDisabled();
     try {
       final long floor = System.currentTimeMillis();
-      triggerIncrementalRun();
+      triggerRun(false);
       awaitSuccessfulRunStartedAtOrAfter(floor);
 
       assertEquals(RdfProjectionState.DEGRADED, projectionState());
@@ -129,8 +135,8 @@ class RdfFirstIndexRunIT {
     }
   }
 
-  private static void triggerIncrementalRun() {
-    Awaitility.await("trigger an incremental " + APP_NAME + " run")
+  private static void triggerRun(final boolean recreateIndex) {
+    Awaitility.await("trigger a " + APP_NAME + " run")
         .atMost(Duration.ofMinutes(2))
         .pollInterval(Duration.ofSeconds(3))
         .ignoreException(ConflictException.class)
@@ -141,14 +147,14 @@ class RdfFirstIndexRunIT {
                   .execute(
                       HttpMethod.POST,
                       "/v1/apps/trigger/" + APP_NAME,
-                      Map.of("recreateIndex", false),
+                      Map.of("recreateIndex", recreateIndex),
                       Void.class);
               return true;
             });
   }
 
   private static void awaitSuccessfulRunStartedAtOrAfter(final long floor) {
-    Awaitility.await("incremental run completed")
+    Awaitility.await("run completed")
         .atMost(Duration.ofMinutes(5))
         .pollInterval(Duration.ofSeconds(2))
         .until(

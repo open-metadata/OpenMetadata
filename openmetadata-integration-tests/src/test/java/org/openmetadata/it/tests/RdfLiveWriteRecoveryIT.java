@@ -289,24 +289,7 @@ public class RdfLiveWriteRecoveryIT {
 
   @ParameterizedTest
   @EnumSource(RdfTestDatabase.Backend.class)
-  void rdfDisabledAtStartsAtZeroIsSetByTheClockAndNeverMovesBack(
-      final RdfTestDatabase.Backend backend) {
-    try (Fixture fixture = new Fixture(backend)) {
-      assertEquals(0L, fixture.primary.rdfDisabledAt());
-
-      fixture.primary.recordRdfDisabled();
-      assertEquals(fixture.clock.millis(), fixture.primary.rdfDisabledAt());
-
-      final Clock earlier =
-          Clock.fixed(Instant.ofEpochMilli(fixture.clock.millis() - 60_000), ZoneOffset.UTC);
-      new RdfLiveWriteStore(fixture.database.jdbi(), earlier).recordRdfDisabled();
-      assertEquals(fixture.clock.millis(), fixture.primary.rdfDisabledAt());
-    }
-  }
-
-  @ParameterizedTest
-  @EnumSource(RdfTestDatabase.Backend.class)
-  void aStartWithRdfOffDegradesTheProjectionUntilARebuildThatStartedAfterIt(
+  void anRdfOffMarkWrittenAfterARebuildStartedKeepsTheProjectionDegradedUntilALaterRebuild(
       final RdfTestDatabase.Backend backend) {
     try (Fixture fixture = new Fixture(backend)) {
       assertFalse(fixture.primary.isDegraded());
@@ -588,7 +571,7 @@ public class RdfLiveWriteRecoveryIT {
                 handle.execute("DELETE FROM rdf_live_write_queue");
                 handle.execute("DELETE FROM rdf_live_write_dead_letter");
                 handle.execute(
-                    "UPDATE rdf_projection_health SET failureVersion = 0, repairedVersion = 0, lastError = NULL, rdfDisabledAt = 0");
+                    "UPDATE rdf_projection_health SET failureVersion = 0, repairedVersion = 0, lastError = NULL");
               });
       primary = newStore();
       other = newStore();

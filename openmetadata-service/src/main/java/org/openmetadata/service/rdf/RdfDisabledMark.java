@@ -26,9 +26,9 @@ import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 
 /**
  * Records, from the configuration, that this server runs with RDF off: when it starts, when it
- * begins to stop, and once more at the end of its stop. The configuration is the source because the tools that load seed data
- * without starting a server (the ops CLI) never initialize RDF, and would otherwise report a server
- * that is not running as having it off.
+ * begins to stop, and once more at the end of its stop. The configuration is the source because the
+ * tools that load seed data without starting a server (the ops CLI) never initialize RDF, and would
+ * otherwise report a server that is not running as having it off.
  */
 @Slf4j
 public final class RdfDisabledMark {
@@ -75,20 +75,24 @@ public final class RdfDisabledMark {
       write.get(wait.toMillis(), TimeUnit.MILLISECONDS);
     } catch (TimeoutException | ExecutionException exception) {
       LOG.warn(
-          "Could not record that RDF is disabled within {} of the stop beginning; the stop goes "
+          "Could not record that RDF is disabled within {} ms of the stop beginning; the stop goes "
               + "on and records it again at its end",
-          wait,
+          wait.toMillis(),
           exception);
     } catch (InterruptedException exception) {
+      LOG.warn(
+          "Interrupted while recording that RDF is disabled; the stop goes on and records it "
+              + "again at its end",
+          exception);
       Thread.currentThread().interrupt();
     }
   }
 
   /**
    * Records the mark again at the end of the stop, after the writes the server made while it
-   * drained. A server with RDF off drops its writes for as
-   * long as it runs, so a rebuild that began while it was still up must not repair the projection:
-   * the mark written at start is older than that rebuild, and this one is not.
+   * drained. A server with RDF off drops its writes for as long as it runs, so a rebuild that began
+   * while it was still up must not repair the projection: the mark written at start is older than
+   * that rebuild, and this one is not.
    */
   public static Managed atStop(final RdfConfiguration config, final Jdbi jdbi) {
     return atStop(config, new RdfLiveWriteStore(jdbi, Clock.systemUTC()));
@@ -110,8 +114,8 @@ public final class RdfDisabledMark {
       } catch (RuntimeException exception) {
         LOG.warn(
             "Could not record that RDF is disabled; the graph may be reported as current although "
-                + "this server's changes are not in it, and enabling RDF later may not queue a "
-                + "start-up index run, so run RdfIndexApp with Recreate once after enabling it",
+                + "this server's changes are not in it. Run RdfIndexApp with Recreate once after "
+                + "enabling RDF",
             exception);
       }
     }

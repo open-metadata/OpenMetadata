@@ -181,7 +181,7 @@ Inspect outstanding work without reading entity payloads:
 SELECT id, createdAt, attempts, nextAttemptAt, lastError
 FROM rdf_live_write_queue ORDER BY id LIMIT 50;
 
-SELECT failureVersion, repairedVersion, updatedAt, lastError, rdfDisabledAt
+SELECT failureVersion, repairedVersion, updatedAt, lastError
 FROM rdf_projection_health WHERE id = 'active';
 
 SELECT id, createdAt, attempts, failedAt, lastError, failureVersion
@@ -401,23 +401,25 @@ Upgrades migrate an RDF app that still has the former exact daily default (`0 0 
 weekly schedule. Custom schedules and applications with scheduling disabled are not changed.
 
 **Turning RDF on.** Changes made while RDF is off never reach the graph. So every server with RDF
-off records it in `rdf_projection_health` when it starts and again when it stops: it raises
-`failureVersion`, and writes the time to `rdfDisabledAt` (the 2.1.0 migration adds the column).
-Once RDF is on, `/v1/rdf/status` reports `DEGRADED` (or `REBUILDING` when the graph was never built) until a full Recreate that
-started after that time completes. A server that starts with RDF on queues one `RdfIndexApp` run
-unless a run has already started since that time; this is the one case where a start queues a
-full reindex, apart from the first install. A run on a server with RDF off indexes nothing and
-does not count.
+off records it in `rdf_projection_health` when it starts, when its stop begins and again at the end
+of its stop: each write raises `failureVersion`. Once RDF is on, `/v1/rdf/status` reports
+`DEGRADED` (or `REBUILDING` when the graph was never built), and the agent SPARQL path refuses,
+until a full Recreate that started after the last of those writes completes. A run on a server with
+RDF off indexes nothing and does not count.
+
+Nothing queues that rebuild. After enabling RDF, run `RdfIndexApp` with Recreate once: from the
+application page, through the API (`POST /v1/apps/trigger/RdfIndexApp` with `recreateIndex: true`)
+or with `openmetadata-ops.sh reindex-rdf`; otherwise the weekly run does it. This is the way search
+reindexing is handled too. A server start queues one `RdfIndexApp` run only when no run record
+exists at all: a new install, or an upgrade from 2.0.x, whose 2.1.0 migration deletes the old
+records.
 
 When RDF is turned on with a rolling restart, a server with RDF off is still running while the new
-server rebuilds, and can take writes the rebuild has already passed. If the rebuild completes
-while that server is still up, the state reads `READY` until it stops, and a change made through it
-in that interval is missing from the graph. Its stop is recorded after the rebuild started, so from
-then on the state is `DEGRADED`. Run a full Recreate once every server has restarted; otherwise the
-weekly run repairs it. Stopping every server before
-starting the new ones avoids the second rebuild. A server that is killed without a stop signal
-records nothing. See ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
-
+server starts, and can take writes the graph never receives. Until that server stops, the state
+can read `READY` although its changes are not in the graph. Its stop is recorded after that, so
+from then on the state is `DEGRADED`. Run the rebuild once every server has restarted. A server
+that is killed without a stop signal records nothing. See
+ADR:2026-11-02-server-start-queues-one-rdf-index-run-when-none-exists.
 
 ## Blue/green rebuilds
 
