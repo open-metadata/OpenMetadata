@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "त्याचे खुले पुनरावलोकन मागे घेतले जाईल आणि पुनरावलोककांना ते यापुढे दिसणार नाही.",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} दुसऱ्या सत्रात ही शब्दसूची संपादित करत आहेत. ते सत्र बंद करा किंवा ते कालबाह्य होण्यासाठी एक मिनिट थांबा, नंतर पुन्हा प्रयत्न करा.",
     "ontology-empty-card-description": "मॉडेल सुरू करण्यासाठी संकल्पना जोडा. काही संकल्पना झाल्यावर तुम्ही त्या जोडू शकता, गुणधर्म जोडू शकता आणि डेटा जोडू शकता.",

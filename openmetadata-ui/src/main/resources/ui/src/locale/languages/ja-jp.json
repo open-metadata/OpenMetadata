@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "進行中のレビューは取り下げられ、レビュアーには表示されなくなります。",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} が別のセッションでこの用語集を編集しています。そのセッションを閉じるか、期限切れになるまで 1 分ほど待ってから再試行してください。",
     "ontology-empty-card-description": "モデルを始めるには概念を追加します。いくつか揃うと、概念の接続、プロパティの追加、データのバインドができます。",

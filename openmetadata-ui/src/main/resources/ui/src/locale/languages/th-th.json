@@ -6023,6 +6023,7 @@
     "ontology-delete-rules_one": "{{count}} rule will be removed.",
     "ontology-delete-rules_other": "{{count}} rules will be removed.",
     "ontology-delete-type-name": "Type {{name}} to confirm.",
+    "ontology-delete-withdraws-review": "การตรวจสอบที่เปิดอยู่จะถูกถอนออก และผู้ตรวจสอบจะไม่เห็นอีกต่อไป",
     "ontology-deleted": "Deleted ontology {{name}}.",
     "ontology-edit-held-by": "{{holder}} กำลังแก้ไขอภิธานศัพท์นี้ในเซสชันอื่น ปิดเซสชันนั้นหรือรอหนึ่งนาทีให้หมดอายุ แล้วลองอีกครั้ง",
     "ontology-empty-card-description": "เพิ่มแนวคิดเพื่อเริ่มต้นโมเดล เมื่อมีหลายแนวคิดแล้ว คุณสามารถเชื่อมแนวคิด เพิ่มคุณสมบัติ และผูกข้อมูลได้",
