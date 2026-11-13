@@ -27,7 +27,6 @@ import {
   enableDisableIngestionPipelineById,
   triggerIngestionPipelineById,
 } from '../../../../../rest/ingestionPipelineAPI';
-import { canAddAgent } from '../../../../../utils/AgentPermissionUtils';
 import serviceUtilClassBase from '../../../../../utils/ServiceUtilClassBase';
 import {
   showErrorToast,
@@ -59,7 +58,6 @@ function MetadataAgentsWidget({
   onPageChange,
   airflowInformation,
   searchText,
-  servicePermission,
 }: Readonly<MetadataAgentsWidgetProps>) {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -76,11 +74,14 @@ function MetadataAgentsWidget({
 
   const { permissions } = usePermissionProvider();
 
+  const ingestionPermissions = useMemo(
+    () => permissions['ingestionPipeline'],
+    [permissions]
+  );
+
   const showAddIngestionButton = useMemo(
-    () =>
-      canAddAgent(servicePermission, permissions['ingestionPipeline']) &&
-      platform !== DISABLED,
-    [permissions, servicePermission, platform]
+    () => ingestionPermissions.Create && platform !== DISABLED,
+    [ingestionPermissions, platform]
   );
 
   const extraMenuItems = useMemo(

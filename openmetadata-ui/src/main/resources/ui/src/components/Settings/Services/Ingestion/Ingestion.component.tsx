@@ -31,7 +31,6 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { useFqn } from '../../../../hooks/useFqn';
-import { canAddAgent } from '../../../../utils/AgentPermissionUtils';
 import { getServiceDetailsPath } from '../../../../utils/RouterUtils';
 import { getDefaultAgentsTabWidgets } from '../../../../utils/ServiceInsightsWidgets';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
@@ -55,7 +54,6 @@ const Ingestion: React.FC<IngestionProps> = ({
   agentCounts,
   refreshAgentsList,
   workflowStartAt,
-  servicePermission,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -117,12 +115,12 @@ const Ingestion: React.FC<IngestionProps> = ({
   const isAgentsLoading =
     Boolean(isLoading) && loadedServiceFQNRef.current !== decodedServiceFQN;
 
-  const canAdd = useMemo(
-    () => canAddAgent(servicePermission, permissions['ingestionPipeline']),
-    [permissions, servicePermission]
+  const showAddAgent = useMemo(
+    () =>
+      Boolean(permissions['ingestionPipeline']?.Create) &&
+      platform !== DISABLED,
+    [permissions, platform]
   );
-
-  const showAddAgent = canAdd && platform !== DISABLED;
 
   const handleSubTabChange = useCallback(
     (key: Key) => {

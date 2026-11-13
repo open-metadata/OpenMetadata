@@ -29,8 +29,6 @@ import {
   ServiceCategory,
 } from '../../../../enums/service.enum';
 import { ingestionProps, mockAgent } from '../../../../mocks/Ingestion.mock';
-import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
-import { DEFAULT_ENTITY_PERMISSION } from '../../../../utils/PermissionsUtils';
 import { ENTITY_PERMISSIONS } from '../../../../mocks/Permissions.mock';
 import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
@@ -371,62 +369,6 @@ describe('Ingestion', () => {
     });
 
     expect(screen.queryByText('AddIngestionButton')).toBeNull();
-  });
-
-  describe('service-level permission', () => {
-    const NO_PERMISSION: OperationPermission = { ...DEFAULT_ENTITY_PERMISSION };
-
-    const noGlobalCreate = () =>
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        permissions: {
-          ingestionPipeline: { ...ENTITY_PERMISSIONS, Create: false },
-        },
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockResolvedValue(ENTITY_PERMISSIONS),
-      }));
-
-    const renderWith = async (
-      servicePermission: Partial<OperationPermission>
-    ) => {
-      noGlobalCreate();
-      await act(async () => {
-        render(
-          <Ingestion
-            {...ingestionProps}
-            servicePermission={{ ...NO_PERMISSION, ...servicePermission }}
-          />,
-          { wrapper: TestWrapper }
-        );
-      });
-    };
-
-    afterEach(() => {
-      (usePermissionProvider as jest.Mock).mockImplementation(() => ({
-        permissions: { ingestionPipeline: ENTITY_PERMISSIONS },
-        getEntityPermissionByFqn: jest
-          .fn()
-          .mockResolvedValue(ENTITY_PERMISSIONS),
-      }));
-    });
-
-    it('shows Add when the service grants Create but the global permission does not', async () => {
-      await renderWith({ Create: true });
-
-      expect(screen.getByText('AddIngestionButton')).toBeInTheDocument();
-    });
-
-    it('shows Add when the service grants EditAll but the global permission does not', async () => {
-      await renderWith({ EditAll: true });
-
-      expect(screen.getByText('AddIngestionButton')).toBeInTheDocument();
-    });
-
-    it('hides Add when neither the service nor the global permission grants it', async () => {
-      await renderWith({ Create: false, EditAll: false });
-
-      expect(screen.queryByText('AddIngestionButton')).toBeNull();
-    });
   });
 
   // Every agent action refetches the list — killing a run included. Treating that refetch as a
