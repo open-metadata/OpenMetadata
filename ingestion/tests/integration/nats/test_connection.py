@@ -65,7 +65,7 @@ def test_bad_password_fails_access_without_waiting_for_default_sdk_retries(confi
     started = perf_counter()
     with NatsConnection(config) as connection:
         result = connection.test_connection(catalog, automation_workflow=object())
-    assert perf_counter() - started < 10
+    assert perf_counter() - started < 20
     assert [step.status.value for step in result.steps] == ["Failed", "Skipped", "Skipped"]
     assert result.steps[0].name == "CheckAccess"
     assert "Authorization Violation" in result.steps[0].errorLog
@@ -83,7 +83,7 @@ def test_refused_port_fails_access_and_live_second_server_still_connects(config,
     started = perf_counter()
     with NatsConnection(config) as connection:
         result = connection.test_connection(catalog)
-    assert perf_counter() - started < 10
+    assert perf_counter() - started < 20
     assert [step.status.value for step in result.steps] == ["Failed", "Skipped", "Skipped"]
     assert result.steps[0].diagnosis.title == "Connection refused"
     assert result.steps[0].errorLog
@@ -102,6 +102,7 @@ def test_refused_port_fails_access_and_live_second_server_still_connects(config,
 def test_optional_bucket_is_not_required_when_unconfigured(config, catalog, bucket, expected_status):
     with NatsConnection(config) as connection:
         client = connection.client
+        assert client.nc.options["max_reconnect_attempts"] == 5
         response = client.request(
             "$JS.API.STREAM.CREATE.KV_my_schemas",
             json.dumps(

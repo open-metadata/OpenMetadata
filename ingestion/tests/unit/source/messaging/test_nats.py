@@ -218,7 +218,7 @@ class TestNatsClientConstruction:
         connection = NatsConnectionConfig(natsServers="nats://localhost:4222")
         nc = MagicMock()
         nc.options = {}
-        nc.connect = AsyncMock()
+        nc.connect = AsyncMock(side_effect=lambda **opts: nc.options.update(opts))
         nc.drain = AsyncMock()
 
         with (
@@ -228,7 +228,7 @@ class TestNatsClientConstruction:
             client = owned.client
             assert client.nc is nc
             assert not client._loop.is_closed()
-            assert nc.options["max_reconnect_attempts"] == 60
+            assert nc.options["max_reconnect_attempts"] == 5
         assert client._loop.is_closed()
 
     def test_client_construction_cleans_up_after_connect_failure(self, tmp_path):
@@ -252,16 +252,18 @@ class TestNatsClientConstruction:
             _ = owned.client
         assert not cert.exists()
 
-    def test_reconnect_policy_is_restored_after_bootstrap(self):
+    @pytest.mark.parametrize("attempts", [7, 0, -1])
+    def test_explicit_retry_policy_is_used_from_initial_connection(self, attempts):
         config = NatsConnectionConfig(
-            natsServers="nats://localhost:4222", additionalConfig={"max_reconnect_attempts": 7}
+            natsServers="nats://localhost:4222", additionalConfig={"max_reconnect_attempts": attempts}
         )
         nc = MagicMock()
         nc.options = {}
         nc.drain = AsyncMock()
 
         async def connect(**opts):
-            assert opts["max_reconnect_attempts"] == 1
+            assert opts["max_reconnect_attempts"] == attempts
+            nc.options.update(opts)
 
         nc.connect = AsyncMock(side_effect=connect)
         with (
@@ -269,7 +271,7 @@ class TestNatsClientConstruction:
             OwnedNatsConnection(config) as owned,
         ):
             client = owned.client
-            assert client.nc.options["max_reconnect_attempts"] == 7
+            assert client.nc.options["max_reconnect_attempts"] == attempts
 
     @pytest.mark.parametrize(
         ("error", "expected_type", "message"),
@@ -320,7 +322,10 @@ class TestNatsConnectionConfig:
     def test_anonymous_authentication_is_supported(self):
         connection = NatsConnectionConfig(natsServers="nats://localhost:4222")
 
-        assert _build_connect_opts(connection, []) == {"servers": ["nats://localhost:4222"]}
+        assert _build_connect_opts(connection, []) == {
+            "servers": ["nats://localhost:4222"],
+            "max_reconnect_attempts": 5,
+        }
 
     def test_partial_basic_authentication_is_rejected(self):
         with pytest.raises(ValidationError):
@@ -365,7 +370,7 @@ class TestNatsBuildConnectOpts:
     def test_minimal_single_server(self):
         conn = self._mock_connection()
         opts = _build_connect_opts(conn, [])
-        assert opts == {"servers": ["nats://localhost:4222"]}
+        assert opts == {"servers": ["nats://localhost:4222"], "max_reconnect_attempts": 5}
 
     def test_multiple_servers_parsed(self):
         conn = self._mock_connection(servers="nats://a:4222, nats://b:4222 , nats://c:4222")

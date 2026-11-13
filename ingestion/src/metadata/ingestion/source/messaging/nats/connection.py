@@ -43,7 +43,6 @@ from metadata.utils.secure_tempfile import (
     remove_secret_temp_file,
     write_secret_temp_file,
 )
-from nats.aio.client import DEFAULT_MAX_RECONNECT_ATTEMPTS
 from nats.aio.client import Client as NatsSdkClient
 from nats.errors import NoServersError
 
@@ -131,6 +130,7 @@ def _build_tls_context(ssl_cfg: ValidateSslClientConfig, temp_files: list[str]) 
 
 def _build_connect_opts(connection: NatsConnectionConfig, temp_cert_files: list[str]) -> dict:
     opts = dict(connection.additionalConfig or {})
+    opts.setdefault("max_reconnect_attempts", 5)
     reserved = _RESERVED_CONNECT_OPTIONS.intersection(opts)
     if reserved:
         raise ValueError(f"Additional NATS config contains reserved connection options: {', '.join(sorted(reserved))}")
@@ -227,7 +227,6 @@ class NatsConnection(BaseConnection[NatsConnectionConfig, NatsClient]):
         connection_errors: deque[Exception] = deque(maxlen=1)
         try:
             opts = _build_connect_opts(self.service_connection, temp_cert_files)
-            reconnect_attempts = opts.get("max_reconnect_attempts", DEFAULT_MAX_RECONNECT_ATTEMPTS)
             error_cb = opts.get("error_cb")
 
             async def record_error(error: Exception) -> None:
@@ -237,13 +236,10 @@ class NatsConnection(BaseConnection[NatsConnectionConfig, NatsClient]):
                 else:
                     logger.error("NATS connection error: %s", error)
 
-            # Bound initial retries separately from the established client's reconnect policy.
-            opts["max_reconnect_attempts"] = 1
             opts["error_cb"] = record_error
 
             connect_task = loop.create_task(nc.connect(**opts))
             loop.run_until_complete(connect_task)
-            nc.options["max_reconnect_attempts"] = reconnect_attempts
         except Exception as exc:
             try:
                 if connect_task is not None and not connect_task.done():
