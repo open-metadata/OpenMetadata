@@ -66,6 +66,9 @@ from metadata.generated.schema.entity.services.connections.database.mongoDBConne
 from metadata.generated.schema.entity.services.connections.database.neo4jConnection import (
     Neo4jType,
 )
+from metadata.generated.schema.entity.services.connections.database.neptuneConnection import (
+    NeptuneType,
+)
 from metadata.generated.schema.entity.services.connections.database.salesforceConnection import (
     SalesforceType,
 )
@@ -189,6 +192,7 @@ NON_SQA_DATABASE_CONNECTIONS = (
     GlueType.Glue.value,
     MongoDBType.MongoDB.value,
     Neo4jType.Neo4j.value,
+    NeptuneType.Neptune.value,
     SalesforceType.Salesforce.value,
     SapErpType.SapErp.value,
     SasType.SAS.value,

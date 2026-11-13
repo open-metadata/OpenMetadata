@@ -1,0 +1,32 @@
+{
+  "name": "Neptune",
+  "displayName": "Neptune Test Connection",
+  "description": "This Test Connection validates the access against Neptune and the availability of the property graph schema, node labels and edge labels.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can reach the Neptune endpoint and run an openCypher query with the configured AWS credentials.",
+      "errorMessage": "Failed to connect to Neptune, please validate the host, port, AWS credentials and the neptune-db:ReadDataViaQuery permission.",
+      "mandatory": true,
+      "shortCircuit": true
+    },
+    {
+      "name": "GetPropertyGraphSchema",
+      "description": "Read the property graph schema via neptune.graph.pg_schema() without starting a computation.",
+      "errorMessage": "Failed to read the property graph schema, please validate that the engine supports neptune.graph.pg_schema().",
+      "mandatory": true
+    },
+    {
+      "name": "GetNodeLabels",
+      "description": "List the node labels from the property graph schema.",
+      "errorMessage": "Failed to read node labels from the property graph schema.",
+      "mandatory": false
+    },
+    {
+      "name": "GetRelationshipTypes",
+      "description": "List the edge labels from the property graph schema.",
+      "errorMessage": "Failed to read edge labels from the property graph schema.",
+      "mandatory": false
+    }
+  ]
+}

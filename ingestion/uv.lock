@@ -9450,6 +9450,9 @@ nats = [
 neo4j = [
     { name = "neo4j" },
 ]
+neptune = [
+    { name = "boto3" },
+]
 openlineage = [
     { name = "avro" },
     { name = "confluent-kafka", extra = ["schemaregistry"] },
@@ -10178,6 +10181,7 @@ requires-dist = [
     { name = "boto3", marker = "extra == 'dynamodb'", specifier = ">=1.43.101,<2" },
     { name = "boto3", marker = "extra == 'glue'", specifier = ">=1.43.101,<2" },
     { name = "boto3", marker = "extra == 'kinesis'", specifier = ">=1.43.101,<2" },
+    { name = "boto3", marker = "extra == 'neptune'", specifier = ">=1.43.101,<2" },
     { name = "boto3", marker = "extra == 'playwright'", specifier = ">=1.43.101,<2" },
     { name = "boto3", marker = "extra == 'powerbi'", specifier = ">=1.43.101,<2" },
     { name = "boto3", marker = "extra == 'quicksight'", specifier = ">=1.43.101,<2" },
@@ -11045,7 +11049,7 @@ requires-dist = [
     { name = "werkzeug", marker = "extra == 'airflow'", specifier = ">=3.0.6" },
     { name = "werkzeug", marker = "extra == 'playwright'", specifier = ">=3.0.6" },
 ]
-provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
+provides-extras = ["dev", "test", "test-unit", "e2e-test", "exasol-test", "data-insight", "airflow", "amundsen", "athena", "atlas", "azuresql", "azure-sso", "backup", "googledrive", "bigquery", "bigtable", "clickhouse", "clickzetta", "dagster", "dbt", "db2", "db2-ibmi", "databend", "databricks", "datalake-azure", "datalake-gcs", "datalake-s3", "s3", "gcs", "domo", "doris", "starrocks", "druid", "dynamodb", "elasticsearch", "opensearch", "exasol", "glue", "great-expectations", "greenplum", "cockroach", "hive", "iomete", "impala", "kafka", "kafkaconnect", "kinesis", "nats", "pubsub", "looker", "mlflow", "mongo", "cassandra", "couchbase", "mssql", "mssql-odbc", "mysql", "neo4j", "neptune", "nifi", "openlineage", "oracle", "pgspider", "pinotdb", "postgres", "powerbi", "prefect", "qliksense", "presto", "pymssql", "questdb", "quicksight", "redash", "redpanda", "redshift", "sagemaker", "salesforce", "data360", "data360pipeline", "sample-data", "sap-hana", "sas", "sftp", "singlestore", "sklearn", "snowflake", "ssrs", "superset", "tableau", "tableaupipeline", "teradata", "trino", "vertica", "pandas", "pyarrow", "pii-processor", "presidio-analyzer", "all-dev-env", "all", "playwright", "slim", "docs"]
 
 [package.metadata.requires-dev]
 bootstrap = [
