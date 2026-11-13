@@ -16,6 +16,7 @@ import {
   BadgeColors,
   Box,
   Button,
+  ButtonUtility,
   Card,
   FeaturedIcon,
   Typography,
@@ -227,11 +228,11 @@ const StatCard = ({
             {label}
           </Typography>
           {onOpen ? (
-            <Button
+            <ButtonUtility
               aria-label={label}
               color="secondary"
-              iconLeading={ArrowUpRight}
-              size="xs"
+              icon={ArrowUpRight}
+              size="sm"
               onPress={onOpen}
             />
           ) : null}

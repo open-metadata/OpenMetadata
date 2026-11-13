@@ -337,8 +337,8 @@ describe('studio edge rendering', () => {
     });
   });
 
-  it('restores label opacity on un-dimmed edges but dims unrelated ones when a node is selected', () => {
-    const { result } = renderGraphData({
+  const renderSelected = (studioMode: boolean) =>
+    renderGraphData({
       clickedEdgeId: null,
       explorationMode: 'model',
       glossaries: [],
@@ -354,13 +354,24 @@ describe('studio edge rendering', () => {
       relationTypes: seededRelationTypes,
       selectedNodeId: 'A',
       settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
-      studioMode: true,
-    });
+      studioMode,
+    }).result.current.graphData;
 
-    const edges = result.current.graphData.edges ?? [];
+  it('leaves unrelated concepts and relations at full strength when a Studio concept is selected', () => {
+    const { edges = [], nodes = [] } = renderSelected(true);
+    const unrelated = edges.find((e) => e.source === 'C' && e.target === 'D');
+
+    expect(nodes.find((node) => node.id === 'C')?.data?.isDimmed).toBe(false);
+    expect(unrelated?.style?.labelOpacity).toBe(1);
+    expect(unrelated?.style?.opacity).toBe(1);
+  });
+
+  it('still dims unrelated relations, restoring connected labels, outside the Studio', () => {
+    const { edges = [], nodes = [] } = renderSelected(false);
     const connected = edges.find((e) => e.source === 'A' && e.target === 'B');
     const unrelated = edges.find((e) => e.source === 'C' && e.target === 'D');
 
+    expect(nodes.find((node) => node.id === 'C')?.data?.isDimmed).toBe(true);
     expect(connected?.style?.labelOpacity).toBe(1);
     expect(connected?.style?.labelBackgroundOpacity).toBe(1);
     expect(unrelated?.style?.labelOpacity).toBe(DIMMED_EDGE_LABEL_OPACITY);

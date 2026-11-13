@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Box } from '@openmetadata/ui-core-components';
 import { useTranslation } from 'react-i18next';
 import {
   LineageLayer,
@@ -19,6 +20,7 @@ import {
 } from '../../../../../../generated/configuration/lineageSettings';
 import { SettingType } from '../../../../../../generated/settings/settings';
 import { getSettingsByType } from '../../../../../../rest/settingConfigAPI';
+import SomethingWentWrongPlaceholder from '../../../../../common/EmptyPlaceholder/SomethingWentWrongPlaceholder';
 import SettingsSection, { ReadOnlyRow } from '../../components/SettingsSection';
 import type { PlatformSettingsPageProps } from './PlatformSettings.types';
 import { SettingsSkeleton } from './SettingsFormLayout';
@@ -44,11 +46,23 @@ export const fetchLineageSettings = async () =>
 
 const LineageSettings = (props: PlatformSettingsPageProps) => {
   const { t } = useTranslation();
-  const { data: config, isLoading } = useSettingsFetch(fetchLineageSettings);
-  useEditHeaderAction('lineage', isLoading, props);
+  const {
+    data: config,
+    isLoading,
+    reload,
+  } = useSettingsFetch(fetchLineageSettings);
+  useEditHeaderAction('lineage', isLoading, props, undefined, Boolean(config));
 
   if (isLoading) {
     return <SettingsSkeleton rows={4} />;
+  }
+
+  if (!config) {
+    return (
+      <Box className="tw:relative tw:min-h-80">
+        <SomethingWentWrongPlaceholder onReload={reload} />
+      </Box>
+    );
   }
 
   return (

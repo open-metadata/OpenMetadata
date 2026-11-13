@@ -84,6 +84,7 @@ const TestSuitePipelineFormDrawer = withSuspenseFallback(
 
 interface Props {
   testSuite: TableType['testSuite'] | TestSuite;
+  deleted?: boolean;
   showAddPipelineButton?: boolean;
   // Lets a host with its own add drawer (and toolbar button) take over Add.
   onAddPipeline?: () => void;
@@ -106,6 +107,7 @@ interface PipelineTableRow extends IngestionPipeline {
 
 const TestSuitePipelineTab = ({
   testSuite,
+  deleted,
   showAddPipelineButton = true,
   onAddPipeline,
   onPipelinesChange,
@@ -153,12 +155,13 @@ const TestSuitePipelineTab = ({
 
   const createPermission = useMemo(
     () =>
+      !deleted &&
       checkPermission(
         Operation.Create,
         ResourceEntity.INGESTION_PIPELINE,
         permissions
       ),
-    [permissions]
+    [deleted, permissions]
   );
 
   const handlePipelineIdToFetchStatus = useCallback((pipelineId?: string) => {
@@ -388,8 +391,8 @@ const TestSuitePipelineTab = ({
   }, [testSuitePipelines, ingestionPipelinePermissions]);
 
   const isAddPipelineButtonVisible = useMemo(
-    () => showAddPipelineButton && dataSource.length > 0,
-    [showAddPipelineButton, dataSource.length]
+    () => !deleted && showAddPipelineButton && dataSource.length > 0,
+    [deleted, showAddPipelineButton, dataSource.length]
   );
 
   const emptyPlaceholder = useMemo(

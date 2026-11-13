@@ -223,8 +223,11 @@ const svgoCustomConfig = (iconBaseName) => ({
 });
 
 /** SVGR config, parameterized by pipeline.
- *  Regular icons: outline-style — forced to a single themeable stroke via the
- *  color prop, with fill/linecap/linejoin normalized.
+ *  Regular icons: hex colors become currentColor (see replaceHardcodedColors)
+ *  and the color prop is set as the root's CSS `color`, so it themes every
+ *  stroke and fill; fill/linecap/linejoin are normalized. The root carries no
+ *  stroke: a shape without its own (e.g. a glyph Figma outlined into a fill)
+ *  would inherit it and render bolder than designed.
  *  Custom icons: full-color/gradient/brand art — only size control is
  *  injected; stroke/fill/linecap/linejoin are left exactly as authored
  *  (post-SVGO) so hardcoded brand colors survive. */
@@ -245,7 +248,7 @@ function buildSvgrConfig(isCustom) {
       : {
           width: '{size}',
           height: '{size}',
-          stroke: '{color}',
+          color: '{color}',
           fill: 'none',
           strokeLinecap: 'round',
           strokeLinejoin: 'round',

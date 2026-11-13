@@ -1360,7 +1360,7 @@ describe('OntologyExplorerPage', () => {
     expect(await screen.findByTestId('all-ontologies-graph')).toBeVisible();
   });
 
-  it('shows only the message that points to the All ontologies menu when the catalog passes the aggregate limit', async () => {
+  it('lets the user pick an ontology from the empty state when the catalog passes the aggregate limit', async () => {
     const longName = 'L'.repeat(243);
     const ontologies: Ontology[] = Array.from({ length: 21 }, (_, index) => ({
       ...nativeOntology,
@@ -1372,8 +1372,8 @@ describe('OntologyExplorerPage', () => {
 
     const message = await screen.findByTestId('all-ontologies-load-error');
 
+    expect(message).toHaveTextContent('label.choose-an-ontology-to-view');
     expect(message).toHaveTextContent('message.ontology-aggregate-capacity');
-    expect(within(message).queryAllByRole('button')).toHaveLength(0);
     expect(
       screen.queryByTestId('ontology-shortcut-list')
     ).not.toBeInTheDocument();
@@ -1383,6 +1383,17 @@ describe('OntologyExplorerPage', () => {
     expect(
       screen.queryByText(/0 label\.concept-plural/i)
     ).not.toBeInTheDocument();
+
+    fireEvent.click(
+      within(message).getByRole('button', { name: /label.select-entity/ })
+    );
+    fireEvent.click(await screen.findByRole('option', { name: 'Ontology 5' }));
+
+    await waitFor(() =>
+      expect(screen.getByTestId('location')).toHaveTextContent(
+        'ontology=ontology-5'
+      )
+    );
   });
 
   it('defaults to a read-only native graph and opens the owning ontology', async () => {

@@ -709,3 +709,33 @@ describe('unlinking an asset', () => {
     ).toBeVisible();
   });
 });
+
+it('puts Bind columns on its own links line under the asset path', async () => {
+  http.get.mockImplementation(async (url) =>
+    url.includes('/bindings')
+      ? { data: stored() }
+      : { data: { resource: 'table', permissions: [] } }
+  );
+  renderWithQueryClient(
+    <MemoryRouter>
+      <OntologyConceptAssets
+        canEdit
+        conceptId="customer"
+        conceptName="Customer"
+        presentation={{ kind: 'edit' }}
+        properties={[{ id: 'name', label: 'name' }]}
+      />
+    </MemoryRouter>
+  );
+  const bind = await screen.findByTestId(
+    'ontology-native-asset-bind-columns-old-table'
+  );
+  const path = screen.getByText('service › db › schema › old-table');
+  const linksLine = bind.parentElement;
+
+  expect(linksLine).not.toContainElement(path);
+  expect(linksLine?.previousElementSibling).toContainElement(path);
+  expect(linksLine?.firstElementChild).toBe(bind);
+  expect(bind).toHaveClass('tw:font-normal');
+  expect(bind).not.toHaveClass('tw:font-medium');
+});
