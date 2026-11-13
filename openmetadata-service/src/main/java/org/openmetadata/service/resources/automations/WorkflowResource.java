@@ -80,6 +80,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.DefaultAuthorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
+import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.OpenMetadataConnectionBuilder;
 
@@ -182,8 +183,9 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
     if (status != null) {
       filter.addQueryParam("workflowStatus", status);
     }
-    if (!ConnectionSecretsGuard.readsStoredSecrets(securityContext)) {
-      filter.addQueryParam("queryRunnerRequesterId", callerId(securityContext).toString());
+    if (!isAdminOrBot(securityContext)) {
+      filter.addQueryParam(
+          ListFilter.QUERY_RUNNER_REQUESTER_ID, callerId(securityContext).toString());
     }
     ResultList<Workflow> workflows =
         super.listInternal(
@@ -687,7 +689,7 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
 
   private static boolean isReadable(SecurityContext securityContext, Workflow workflow) {
     return workflow.getWorkflowType() != WorkflowType.QUERY_RUNNER
-        || ConnectionSecretsGuard.readsStoredSecrets(securityContext)
+        || isAdminOrBot(securityContext)
         || isRequester(securityContext, workflow);
   }
 
@@ -701,6 +703,12 @@ public class WorkflowResource extends EntityResource<Workflow, WorkflowRepositor
   private static boolean isRequester(SecurityContext securityContext, Workflow workflow) {
     return typedRequest(workflow) instanceof QueryRunnerRequest queryRequest
         && callerId(securityContext).equals(queryRequest.getUserId());
+  }
+
+  /** Admins and bots dispatch and clean up every user's query runs. */
+  private static boolean isAdminOrBot(SecurityContext securityContext) {
+    final SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    return subject.isAdmin() || subject.isBot();
   }
 
   private static UUID callerId(SecurityContext securityContext) {

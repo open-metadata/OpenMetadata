@@ -155,7 +155,7 @@ class ListFilterTest {
       assertFalse(unscoped.getCondition("automations_workflow").contains("QUERY_RUNNER"));
 
       ListFilter filter = new ListFilter();
-      filter.addQueryParam("queryRunnerRequesterId", "requester-id");
+      filter.addQueryParam(ListFilter.QUERY_RUNNER_REQUESTER_ID, "requester-id");
       String storedRequester =
           mysql
               ? "JSON_UNQUOTE(JSON_EXTRACT(json, '$.request.userId'))"
