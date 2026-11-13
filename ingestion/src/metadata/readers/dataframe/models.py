@@ -55,6 +55,10 @@ class DatalakeTableSchemaWrapper(BaseModel):
         str | None,
         Field(None, description="Used for DSV readers to identify the separator"),
     ]
+    escapechar: Annotated[
+        str | None,
+        Field("\\", min_length=1, max_length=1, description="DSV escape character; None disables escaping"),
+    ]
     file_size: Annotated[
         int | None,
         Field(
