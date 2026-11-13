@@ -362,12 +362,9 @@ final class StoredWebhookSecrets {
       }
     }
 
-    /**
-     * Throws when credentials were found and none of them opens, unless the operator chose to
-     * keep them as stored, to be entered again from their alerts.
-     */
-    void requireAnyOpened(boolean keepUnopened) {
-      if (opened == 0 && !alertsNotOpened.isEmpty() && !keepUnopened) {
+    /** Throws when credentials were found and none of them opens. */
+    void requireAnyOpened() {
+      if (opened == 0 && !alertsNotOpened.isEmpty()) {
         throw new MigrationHaltException(
             NONE_OPENS.formatted(namedAlerts(), WebhookSecretsMigration.KEEP_UNOPENED_ENV));
       }

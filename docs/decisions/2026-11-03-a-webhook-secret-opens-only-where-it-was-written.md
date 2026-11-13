@@ -101,7 +101,8 @@ looks, not only in the recent events of a send.
   decrypts with any of the configured keys, it stops before anything is written or recorded, so
   `migrate` runs it all again. It throws a `MigrationHaltException`, which `migrate --force` does
   not skip either. The check is not run on a database that has no alert table yet, nor once the
-  alert step is recorded; a credential that a run of the alert step which did not finish already
+  alert step is recorded (a database without the migration log yet has nothing recorded), nor when
+  the operator chose to keep unreadable values, in which case it reads nothing; a credential that a run of the alert step which did not finish already
   carried over counts as one that opens. The error names the alerts holding them and asks
   for the key the previous release used (a comma-separated list of keys is accepted). Values that
   could not be used before the upgrade either can be entered again or removed before upgrading, or
