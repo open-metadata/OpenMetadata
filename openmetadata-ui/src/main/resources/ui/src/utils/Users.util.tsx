@@ -35,7 +35,12 @@ import { getSettingsLink } from './SettingsModalLinkUtils';
 export const userCellRenderer = (user: EntityReference | User) => {
   return user.name ? (
     <div className="w-max-full">
-      <UserPopOverCard showUserName profileWidth={16} userName={user.name} />
+      <UserPopOverCard
+        showUserName
+        displayName={user.name}
+        profileWidth={16}
+        userName={user.name}
+      />
     </div>
   ) : (
     getEntityName(user)
