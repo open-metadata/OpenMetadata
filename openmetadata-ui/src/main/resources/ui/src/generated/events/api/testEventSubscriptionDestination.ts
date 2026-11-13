@@ -195,6 +195,13 @@ export enum HTTPMethod {
  */
 export interface TionStatus {
     /**
+     * Read only, computed when the status is read and never stored. True when the stored
+     * configuration cannot be used to send, such as a secret that must be entered again;
+     * `lastFailedReason` names it, and nothing is sent until it is changed. Absent for a
+     * failure of a send.
+     */
+    configurationUnusable?: boolean;
+    /**
      * Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.
      */
     lastFailedAt?: number;

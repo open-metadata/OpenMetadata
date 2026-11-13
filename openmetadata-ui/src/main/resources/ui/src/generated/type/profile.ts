@@ -17,9 +17,9 @@ export interface Profile {
     images?:       ImageList;
     subscription?: MessagingProvider;
     /**
-     * Read only, computed when the profile is read and never stored. A webhook of
-     * `subscription` listed here does not send until the value its `lastFailedReason` names is
-     * entered again.
+     * Read only, computed when the profile is read and never stored, nor recorded in change
+     * events. A webhook of `subscription` listed here does not send until the value its
+     * `lastFailedReason` names is entered again.
      */
     subscriptionStatus?: MessagingProviderStatus;
 }
@@ -146,9 +146,9 @@ export enum HTTPMethod {
 }
 
 /**
- * Read only, computed when the profile is read and never stored. A webhook of
- * `subscription` listed here does not send until the value its `lastFailedReason` names is
- * entered again.
+ * Read only, computed when the profile is read and never stored, nor recorded in change
+ * events. A webhook of `subscription` listed here does not send until the value its
+ * `lastFailedReason` names is entered again.
  *
  * The status of each webhook of `subscription` whose stored configuration cannot be used to
  * send.
@@ -165,6 +165,13 @@ export interface MessagingProviderStatus {
  * attempts, and retry information.
  */
 export interface SubscriptionStatus {
+    /**
+     * Read only, computed when the status is read and never stored. True when the stored
+     * configuration cannot be used to send, such as a secret that must be entered again;
+     * `lastFailedReason` names it, and nothing is sent until it is changed. Absent for a
+     * failure of a send.
+     */
+    configurationUnusable?: boolean;
     /**
      * Timestamp of the last failed callback in UNIX UTC epoch time in milliseconds.
      */
