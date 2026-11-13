@@ -3267,11 +3267,16 @@ public class TableRepository extends EntityRepository<Table> {
             .relationshipDAO()
             .findToBatch(entityListToStrings(tables), Relationship.CONTAINS.ordinal(), TEST_SUITE);
 
+    // ALL, like getTestSuite: a recursive soft delete flips a table's basic suite before it
+    // re-indexes the table.
     for (CollectionDAO.EntityRelationshipObject relRecord : records) {
       UUID tableId = UUID.fromString(relRecord.getFromId());
-      EntityReference testSuiteRef =
-          getEntityReferenceById(TEST_SUITE, UUID.fromString(relRecord.getToId()), NON_DELETED);
-      testSuiteMap.put(tableId, testSuiteRef);
+      try {
+        testSuiteMap.put(
+            tableId, getEntityReferenceById(TEST_SUITE, UUID.fromString(relRecord.getToId()), ALL));
+      } catch (EntityNotFoundException e) {
+        LOG.debug("Skipping missing test suite {} of table {}", relRecord.getToId(), tableId);
+      }
     }
 
     return testSuiteMap;
