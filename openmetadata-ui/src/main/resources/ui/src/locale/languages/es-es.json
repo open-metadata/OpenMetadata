@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "Aprobado por {{user}}",
     "workflow-run-auto-approved": "Aprobado automáticamente: nadie a quien asignar",
     "workflow-run-auto-approved-submitter-is-reviewer": "Aprobado automáticamente: el solicitante es revisor",
+    "workflow-run-overridden-by": "Publicado sin revisión por {{user}}",
+    "workflow-run-partially-approved-by": "Aprobado parcialmente por {{user}}",
     "workflow-run-rejected-by": "Rechazado por {{user}}",
     "workflow-schedule-description": "Programar el flujo de trabajo para ejecutarse en un momento y frecuencia específicos.",
     "workflow-subtitle": "Crea y gestiona flujos de trabajo de gobernanza para la automatización de metadatos.",

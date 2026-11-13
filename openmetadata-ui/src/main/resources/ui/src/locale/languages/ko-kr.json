@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "{{user}}님이 승인함",
     "workflow-run-auto-approved": "자동 승인: 할당할 사람이 없음",
     "workflow-run-auto-approved-submitter-is-reviewer": "자동 승인: 요청자가 검토자임",
+    "workflow-run-overridden-by": "{{user}}님이 검토 없이 게시함",
+    "workflow-run-partially-approved-by": "{{user}}님이 일부 승인함",
     "workflow-run-rejected-by": "{{user}}님이 거부함",
     "workflow-schedule-description": "워크플로우를 특정 시간과 주기로 실행하도록 예약합니다.",
     "workflow-subtitle": "메타데이터 자동화를 위한 거버넌스 워크플로를 생성하고 관리합니다.",

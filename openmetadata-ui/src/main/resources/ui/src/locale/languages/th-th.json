@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "อนุมัติโดย {{user}}",
     "workflow-run-auto-approved": "อนุมัติอัตโนมัติ: ไม่มีผู้ที่จะมอบหมาย",
     "workflow-run-auto-approved-submitter-is-reviewer": "อนุมัติอัตโนมัติ: ผู้ส่งเป็นผู้ตรวจสอบ",
+    "workflow-run-overridden-by": "เผยแพร่โดยไม่ผ่านการตรวจสอบโดย {{user}}",
+    "workflow-run-partially-approved-by": "อนุมัติบางส่วนโดย {{user}}",
     "workflow-run-rejected-by": "ปฏิเสธโดย {{user}}",
     "workflow-schedule-description": "กำหนดเวลาเวิร์กโฟลว์ให้ทำงานในเวลาและความถี่ที่กำหนด",
     "workflow-subtitle": "สร้างและจัดการเวิร์กโฟลว์การกำกับดูแลสำหรับการทำเมตาดาต้าอัตโนมัติ",

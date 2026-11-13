@@ -31,6 +31,7 @@ import {
   EntityStatus,
   GlossaryTerm,
 } from '../../../../../generated/entity/data/glossaryTerm';
+import { ApprovalOutcome } from '../../../../../generated/governance/workflows/approvalOutcome';
 import {
   WorkflowInstanceState,
   WorkflowStatus,
@@ -44,8 +45,8 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { createGlossaryTermEntityLink } from '../../../../../utils/GlossaryTerm/GlossaryTermReferenceUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import {
-  APPROVAL_OUTCOME_LABELS,
-  getApprovalOutcome,
+  getApprovalOutcomeMessage,
+  getLatestApprovalOutcome,
 } from '../../../../../utils/WorkflowApprovalOutcomeUtils';
 import NoDataPlaceholder from '../../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import Loader from '../../../../common/Loader/Loader';
@@ -99,6 +100,7 @@ const WorkflowHistory = memo(
       WorkflowInstanceState[]
     >([]);
     const [workflowName, setWorkflowName] = useState('');
+    const [approvals, setApprovals] = useState<ApprovalOutcome[]>([]);
     const [isLoading, setIsLoading] = useState(false);
 
     // Collapse only when status is approved
@@ -133,10 +135,12 @@ const WorkflowHistory = memo(
 
         setWorkflowName(getEntityName(latestRun?.definition));
         setWorkflowHistory(latestRun?.states ?? []);
+        setApprovals(latestRun?.approvals ?? []);
       } catch (error) {
         showErrorToast(error as string);
         setWorkflowName('');
         setWorkflowHistory([]);
+        setApprovals([]);
       } finally {
         setIsLoading(false);
       }
@@ -185,7 +189,12 @@ const WorkflowHistory = memo(
 
     const renderTimelineItem = useCallback(
       (item: WorkflowInstanceState) => {
-        const approvalOutcome = getApprovalOutcome(item);
+        const approvalOutcome = getLatestApprovalOutcome(
+          approvals,
+          item.stage?.name
+        );
+        const message =
+          approvalOutcome && getApprovalOutcomeMessage(approvalOutcome);
 
         return (
           <div
@@ -199,15 +208,13 @@ const WorkflowHistory = memo(
               <div className="stage-name font-medium">
                 {item.stage?.displayName ?? item.stage?.name}
               </div>
-              {approvalOutcome && (
+              {message && (
                 <Typography
                   as="span"
                   color="secondary"
                   data-testid="workflow-history-approval-outcome"
                   size="text-xs">
-                  {t(APPROVAL_OUTCOME_LABELS[approvalOutcome.kind], {
-                    user: approvalOutcome.decidedBy,
-                  })}
+                  {t(message.key, { user: message.users })}
                 </Typography>
               )}
               <div className="stage-time">
@@ -217,7 +224,7 @@ const WorkflowHistory = memo(
           </div>
         );
       },
-      [getStatusIcon, t]
+      [approvals, getStatusIcon, t]
     );
 
     const workflowSteps = useMemo(

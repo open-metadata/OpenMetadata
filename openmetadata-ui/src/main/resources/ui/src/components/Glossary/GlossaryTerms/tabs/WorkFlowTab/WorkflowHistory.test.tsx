@@ -239,28 +239,38 @@ describe('WorkflowHistory Component', () => {
     });
 
     it('shows under an approval step how it was decided, and nothing under other steps', async () => {
+      (getWorkflowInstancesForApplication as jest.Mock).mockResolvedValueOnce({
+        data: [
+          {
+            ...mockWorkflowInstances.data[0],
+            variables: {
+              approvals: [
+                {
+                  id: 'auto',
+                  node: 'ReviewTerm',
+                  decision: 'Approved',
+                  automaticReason: 'NoAssignees',
+                  decidedBy: [],
+                  decidedAt: 1647931273100,
+                },
+              ],
+            },
+          },
+        ],
+      });
       (getWorkflowInstanceStateById as jest.Mock).mockResolvedValueOnce({
         data: [
           {
             id: 'approve-step',
             status: WorkflowStatus.Finished,
             timestamp: 1647931273100,
-            stage: {
-              name: 'ReviewTerm',
-              displayName: 'Review term',
-              endedAt: 1647931273100,
-              variables: {
-                hasAssignees: false,
-                ReviewTerm_result: 'approve',
-                ReviewTerm_autoApprovalReason: 'No reviewers configured',
-              },
-            },
+            stage: { name: 'ReviewTerm', displayName: 'Review term' },
           },
           {
             id: 'start-step',
             status: WorkflowStatus.Finished,
             timestamp: 1647931273000,
-            stage: { name: 'Start', displayName: 'Start', variables: {} },
+            stage: { name: 'Start', displayName: 'Start' },
           },
         ],
       });

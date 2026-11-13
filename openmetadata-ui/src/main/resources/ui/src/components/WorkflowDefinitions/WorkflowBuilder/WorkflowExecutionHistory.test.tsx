@@ -12,7 +12,6 @@
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { getWorkflowInstanceStateById } from '../../../rest/workflowAPI';
 import { getWorkflowInstancesByFQN } from '../../../rest/workflowDefinitionsAPI';
 import { WorkflowExecutionHistory } from './WorkflowExecutionHistory';
 
@@ -22,10 +21,6 @@ jest.mock('../../../hooks/useFqn', () => ({
 
 jest.mock('../../../rest/workflowDefinitionsAPI', () => ({
   getWorkflowInstancesByFQN: jest.fn(),
-}));
-
-jest.mock('../../../rest/workflowAPI', () => ({
-  getWorkflowInstanceStateById: jest.fn().mockResolvedValue({ data: [] }),
 }));
 
 const mockInstances = Array.from({ length: 3 }, (_, i) => ({
@@ -75,137 +70,57 @@ describe('WorkflowExecutionHistory', () => {
     );
   });
 
-  it('shows under each run how its approval step was decided', async () => {
-    (getWorkflowInstanceStateById as jest.Mock).mockImplementation(
-      (_workflow: string, runId: string) =>
-        Promise.resolve({
-          data:
-            runId === 'instance-0'
-              ? [
-                  {
-                    stage: {
-                      name: 'Approve',
-                      endedAt: 2,
-                      variables: {
-                        hasAssignees: false,
-                        Approve_result: 'approve',
-                        Approve_autoApprovalReason: 'No reviewers configured',
-                      },
-                    },
-                  },
-                ]
-              : [
-                  {
-                    stage: {
-                      name: 'Approve',
-                      endedAt: 2,
-                      variables: {
-                        hasAssignees: true,
-                        Approve_result: 'reject',
-                        Approve_updatedBy: 'daniel.okafor',
-                      },
-                    },
-                  },
-                ],
-        })
-    );
+  it('shows under each run how its approval steps were decided', async () => {
+    (getWorkflowInstancesByFQN as jest.Mock).mockResolvedValue({
+      data: [
+        {
+          ...mockInstances[0],
+          variables: {
+            approvals: [
+              {
+                id: 'auto',
+                node: 'Approve',
+                decision: 'Approved',
+                automaticReason: 'NoAssignees',
+                decidedBy: [],
+                decidedAt: 2,
+              },
+            ],
+          },
+        },
+        {
+          ...mockInstances[1],
+          variables: {
+            approvals: [
+              {
+                id: 'voted',
+                node: 'Approve',
+                decision: 'Rejected',
+                decidedBy: ['daniel.okafor'],
+                decidedAt: 2,
+              },
+            ],
+          },
+        },
+        mockInstances[2],
+      ],
+      paging: { total: 3 },
+    });
 
-    await renderHistory();
+    await act(async () => {
+      render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
+    });
 
-    expect(getWorkflowInstanceStateById).toHaveBeenCalledWith(
-      'workflow-fqn',
-      'instance-1',
-      expect.objectContaining({ startTs: mockInstances[1].startedAt })
-    );
     expect(
       screen.getByTestId('workflow-approval-outcome-instance-0')
     ).toHaveTextContent('message.workflow-run-auto-approved');
     expect(
       screen.getByTestId('workflow-approval-outcome-instance-1')
     ).toHaveTextContent('message.workflow-run-rejected-by');
-  });
-
-  it('shows no approval line for a run whose steps cannot be read', async () => {
-    (getWorkflowInstanceStateById as jest.Mock).mockImplementation(
-      (_workflow: string, runId: string) =>
-        runId === 'instance-0'
-          ? Promise.reject(new Error('forbidden'))
-          : Promise.resolve({
-              data: [
-                {
-                  stage: {
-                    name: 'Approve',
-                    endedAt: 2,
-                    variables: {
-                      hasAssignees: true,
-                      Approve_result: 'approve',
-                      Approve_updatedBy: 'daniel.okafor',
-                    },
-                  },
-                },
-              ],
-            })
-    );
-
-    await renderHistory();
-
+    // A run that recorded no approval, like one decided before outcomes were recorded, shows none.
     expect(
-      screen.queryByTestId('workflow-approval-outcome-instance-0')
+      screen.queryByTestId('workflow-approval-outcome-instance-2')
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByTestId('workflow-approval-outcome-instance-1')
-    ).toHaveTextContent('message.workflow-run-approved-by');
-    expect(screen.getAllByRole('row')).toHaveLength(mockInstances.length + 1);
-  });
-
-  it("keeps the lines of the page shown when an earlier page's steps answer late", async () => {
-    const approvedStep = (id: string) => ({
-      data: [
-        {
-          stage: {
-            name: 'Approve',
-            endedAt: 2,
-            variables: {
-              hasAssignees: true,
-              Approve_result: 'approve',
-              Approve_updatedBy: `reviewer-of-${id}`,
-            },
-          },
-        },
-      ],
-    });
-    const secondPage = [{ ...mockInstances[0], id: 'page-2-run' }];
-    const firstPageAnswers: (() => void)[] = [];
-    (getWorkflowInstancesByFQN as jest.Mock)
-      .mockResolvedValueOnce({
-        data: mockInstances,
-        paging: { total: 30, after: 'cursor-2' },
-      })
-      .mockResolvedValueOnce({ data: secondPage, paging: { total: 30 } });
-    (getWorkflowInstanceStateById as jest.Mock).mockImplementation(
-      (_workflow: string, runId: string) =>
-        runId === 'page-2-run'
-          ? Promise.resolve(approvedStep(runId))
-          : new Promise((resolve) => {
-              firstPageAnswers.push(() => resolve(approvedStep(runId)));
-            })
-    );
-
-    await act(async () => {
-      render(<WorkflowExecutionHistory />, { wrapper: MemoryRouter });
-    });
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('next'));
-    });
-
-    await act(async () => {
-      firstPageAnswers.forEach((answer) => answer());
-    });
-
-    expect(
-      screen.getByTestId('workflow-approval-outcome-page-2-run')
-    ).toHaveTextContent('message.workflow-run-approved-by');
   });
 
   it('renders a row per workflow instance', async () => {

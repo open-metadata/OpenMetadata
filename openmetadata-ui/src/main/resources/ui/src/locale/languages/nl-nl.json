@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "Goedgekeurd door {{user}}",
     "workflow-run-auto-approved": "Automatisch goedgekeurd: niemand om toe te wijzen",
     "workflow-run-auto-approved-submitter-is-reviewer": "Automatisch goedgekeurd: indiener is beoordelaar",
+    "workflow-run-overridden-by": "Zonder beoordeling gepubliceerd door {{user}}",
+    "workflow-run-partially-approved-by": "Gedeeltelijk goedgekeurd door {{user}}",
     "workflow-run-rejected-by": "Afgewezen door {{user}}",
     "workflow-schedule-description": "Plan de workflow om op een specifiek tijdstip en frequentie te worden uitgevoerd.",
     "workflow-subtitle": "Maak en beheer governance-workflows voor automatisering van metadata.",

@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "Approved by {{user}}",
     "workflow-run-auto-approved": "Auto-approved: no one to assign",
     "workflow-run-auto-approved-submitter-is-reviewer": "Auto-approved: submitter is a reviewer",
+    "workflow-run-overridden-by": "Published without review by {{user}}",
+    "workflow-run-partially-approved-by": "Partially approved by {{user}}",
     "workflow-run-rejected-by": "Rejected by {{user}}",
     "workflow-schedule-description": "Schedule the workflow to run at a specific time and frequency.",
     "workflow-subtitle": "Create and manage governance workflows for metadata automation.",

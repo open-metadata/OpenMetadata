@@ -12,6 +12,7 @@
  */
 import { compact, keyBy, orderBy, uniq } from 'lodash';
 import { WorkflowDefinition } from '../../../../../generated/governance/workflows/workflowDefinition';
+import { ApprovalOutcome } from '../../../../../generated/governance/workflows/approvalOutcome';
 import { WorkflowInstance } from '../../../../../generated/governance/workflows/workflowInstance';
 import { WorkflowInstanceState } from '../../../../../generated/governance/workflows/workflowInstanceState';
 import {
@@ -20,10 +21,12 @@ import {
 } from '../../../../../rest/workflowAPI';
 import { WorkflowInstanceStateParams } from '../../../../../rest/workflowAPI.interface';
 import { getWorkflowDefinitionById } from '../../../../../rest/workflowDefinitionsAPI';
+import { getRunApprovals } from '../../../../../utils/WorkflowApprovalOutcomeUtils';
 
 export interface LatestWorkflowRun {
   definition: WorkflowDefinition;
   states: WorkflowInstanceState[];
+  approvals: ApprovalOutcome[];
 }
 
 const RECENT_INSTANCES_LIMIT = 25;
@@ -123,7 +126,11 @@ export const getLatestWorkflowRun = async (
       run.instance.id,
       timeRange
     );
-    latestRun = { definition: run.definition, states: [...states].reverse() };
+    latestRun = {
+      definition: run.definition,
+      states: [...states].reverse(),
+      approvals: getRunApprovals(run.instance),
+    };
   }
 
   return latestRun;

@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "由 {{user}} 批准",
     "workflow-run-auto-approved": "自动批准：无人可分配",
     "workflow-run-auto-approved-submitter-is-reviewer": "自动批准：提交者是审阅者",
+    "workflow-run-overridden-by": "由 {{user}} 未经审阅发布",
+    "workflow-run-partially-approved-by": "由 {{user}} 部分批准",
     "workflow-run-rejected-by": "由 {{user}} 拒绝",
     "workflow-schedule-description": "将工作流安排在特定时间和频率运行。",
     "workflow-subtitle": "创建和管理用于元数据自动化的治理工作流。",

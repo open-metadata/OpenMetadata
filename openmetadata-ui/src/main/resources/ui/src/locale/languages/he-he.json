@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "אושר על ידי {{user}}",
     "workflow-run-auto-approved": "אושר אוטומטית: אין למי להקצות",
     "workflow-run-auto-approved-submitter-is-reviewer": "אושר אוטומטית: המגיש הוא סוקר",
+    "workflow-run-overridden-by": "פורסם ללא סקירה על ידי {{user}}",
+    "workflow-run-partially-approved-by": "אושר חלקית על ידי {{user}}",
     "workflow-run-rejected-by": "נדחה על ידי {{user}}",
     "workflow-schedule-description": "תזמן את זרימת העבודה לפעול בזמן ובתדירות ספציפיים.",
     "workflow-subtitle": "צור ונהל תהליכי עבודה לממשל לאוטומציה של מטא-נתונים.",

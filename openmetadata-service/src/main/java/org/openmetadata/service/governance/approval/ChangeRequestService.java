@@ -58,6 +58,7 @@ import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalOutcomeRecorder;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.GovernanceDAOs.ChangeRequestDAO;
@@ -352,6 +353,8 @@ public final class ChangeRequestService {
     PostCommitActionQueue.runOrDefer(
         () -> {
           if (published) {
+            // Recorded before the task closes: closing it ends the run and its waiting task.
+            ApprovalOutcomeRecorder.recordOverride(taskId, admin);
             ChangeRequestTasks.closeTask(
                 taskId,
                 "Published by %s without review: %s".formatted(admin, override.getReason()));

@@ -15,13 +15,7 @@ import { Typography } from '@openmetadata/ui-core-components';
 import { ClockRewind } from '@openmetadata/ui-core-components/icons';
 import { AxiosError } from 'axios';
 import { capitalize } from 'lodash';
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import NoDataPlaceholder from '../../../components/common/EmptyPlaceholder/NoDataPlaceholder';
@@ -44,7 +38,6 @@ import {
 import { Paging } from '../../../generated/type/paging';
 import { usePageSizeState } from '../../../hooks/paging/usePageSizeState';
 import { useFqn } from '../../../hooks/useFqn';
-import { getWorkflowInstanceStateById } from '../../../rest/workflowAPI';
 import { getWorkflowInstancesByFQN } from '../../../rest/workflowDefinitionsAPI';
 import {
   convertMillisecondsToHumanReadableFormat,
@@ -55,14 +48,11 @@ import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { shouldShowPager } from '../../../utils/PaginationUtils';
 import {
-  ApprovalOutcome,
-  APPROVAL_OUTCOME_LABELS,
-  getApprovalOutcomes,
+  getApprovalOutcomeMessage,
+  getRunApprovals,
 } from '../../../utils/WorkflowApprovalOutcomeUtils';
 
 const GLOBAL_RELATED_ENTITY_VARIABLE = 'global_relatedEntity';
-// One run's recorded steps; a lifecycle run records a handful per stage it passes.
-const RUN_STATES_LIMIT = 200;
 
 interface WorkflowExecutionHistoryProps {
   /** The workflow whose runs are listed; the route's workflow when unset. */
@@ -80,10 +70,6 @@ export const WorkflowExecutionHistory: React.FC<
   const [loadError, setLoadError] = useState<AxiosError>();
   const [paging, setPaging] = useState<Paging>({ total: 0 });
   const [currentPage, setCurrentPage] = useState(1);
-  const [approvalOutcomes, setApprovalOutcomes] = useState<
-    Record<string, ApprovalOutcome[]>
-  >({});
-  const approvalOutcomesRequest = useRef(0);
   const [pageSize] = usePageSizeState();
   const statusMapping = useMemo(() => getStatusMapping(t), [t]);
 
@@ -177,17 +163,19 @@ export const WorkflowExecutionHistory: React.FC<
                 showIcon={false}
                 status={statusType}
               />
-              {(approvalOutcomes[record.id ?? ''] ?? []).map((outcome) => (
-                <Typography
-                  color="secondary"
-                  data-testid={`workflow-approval-outcome-${record.id}`}
-                  key={`${outcome.node}-${outcome.decidedAt}`}
-                  size="text-xs">
-                  {t(APPROVAL_OUTCOME_LABELS[outcome.kind], {
-                    user: outcome.decidedBy,
-                  })}
-                </Typography>
-              ))}
+              {getRunApprovals(record).map((outcome) => {
+                const message = getApprovalOutcomeMessage(outcome);
+
+                return (
+                  <Typography
+                    color="secondary"
+                    data-testid={`workflow-approval-outcome-${record.id}`}
+                    key={outcome.id}
+                    size="text-xs">
+                    {t(message.key, { user: message.users })}
+                  </Typography>
+                );
+              })}
             </div>
           );
         },
@@ -219,43 +207,7 @@ export const WorkflowExecutionHistory: React.FC<
         },
       },
     ],
-    [t, getStatusInfo, renderRelatedEntity, approvalOutcomes]
-  );
-
-  // Each run's approval steps live in its recorded steps, so they load once the page of runs is
-  // shown; a run whose steps cannot be read simply shows no approval line.
-  const fetchApprovalOutcomes = useCallback(
-    async (runs: WorkflowInstance[]) => {
-      const request = ++approvalOutcomesRequest.current;
-      setApprovalOutcomes({});
-      const endTs = Date.now();
-      const results = await Promise.allSettled(
-        runs.map((run) =>
-          getWorkflowInstanceStateById(workflowFqn, run.id ?? '', {
-            startTs: run.startedAt ?? 0,
-            endTs,
-            limit: RUN_STATES_LIMIT,
-          })
-        )
-      );
-      if (request === approvalOutcomesRequest.current) {
-        setApprovalOutcomes(
-          Object.fromEntries(
-            runs.map((run, index) => {
-              const result = results[index];
-
-              return [
-                run.id ?? '',
-                result.status === 'fulfilled'
-                  ? getApprovalOutcomes(result.value.data ?? [])
-                  : [],
-              ];
-            })
-          )
-        );
-      }
-    },
-    [workflowFqn]
+    [t, getStatusInfo, renderRelatedEntity]
   );
 
   const fetchExecutionHistory = useCallback(
@@ -273,7 +225,6 @@ export const WorkflowExecutionHistory: React.FC<
         });
         setInstances(response.data ?? []);
         setPaging(response.paging);
-        void fetchApprovalOutcomes(response.data ?? []);
       } catch (error) {
         setLoadError(error as AxiosError);
         setInstances([]);
@@ -281,7 +232,7 @@ export const WorkflowExecutionHistory: React.FC<
         setLoading(false);
       }
     },
-    [workflowFqn, pageSize, fetchApprovalOutcomes]
+    [workflowFqn, pageSize]
   );
 
   const handlePageNavigation = useCallback(

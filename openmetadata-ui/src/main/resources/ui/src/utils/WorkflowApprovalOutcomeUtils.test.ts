@@ -10,117 +10,97 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { WorkflowInstanceState } from '../generated/governance/workflows/workflowInstanceState';
 import {
-  ApprovalOutcomeKind,
-  getApprovalOutcomes,
+  ApprovalOutcome,
+  AutomaticReason,
+  Decision,
+} from '../generated/governance/workflows/approvalOutcome';
+import {
+  getApprovalOutcomeMessage,
+  getLatestApprovalOutcome,
+  getRunApprovals,
 } from './WorkflowApprovalOutcomeUtils';
 
-// Variables as the server records them on an approval step, copied from real runs.
-const step = (
-  name: string,
-  endedAt: number,
-  variables: Record<string, unknown>
-): WorkflowInstanceState => ({
-  stage: { name, endedAt, variables },
+const outcome = (overrides: Partial<ApprovalOutcome>): ApprovalOutcome => ({
+  id: 'outcome',
+  node: 'Review',
+  decision: Decision.Approved,
+  decidedAt: 1,
+  decidedBy: [],
+  ...overrides,
 });
 
-const autoApproved = step('ReviewDescription', 300, {
-  hasAssignees: false,
-  ReviewDescription_result: 'approve',
-  ReviewDescription_autoApprovalReason: 'No reviewers configured',
-});
-
-const approvedByDaniel = step('ReviewDescription', 200, {
-  hasAssignees: true,
-  ReviewDescription_result: 'approve',
-  ReviewDescription_updatedBy: 'daniel.okafor',
-});
-
-describe('getApprovalOutcomes', () => {
-  it('reads a step the workflow approved itself for lack of assignees', () => {
-    expect(getApprovalOutcomes([autoApproved])).toEqual([
-      {
-        node: 'ReviewDescription',
-        decidedAt: 300,
-        kind: ApprovalOutcomeKind.AutoApproved,
-      },
-    ]);
-  });
-
-  it('tells apart a step approved because the submitter is the reviewer', () => {
-    const [outcome] = getApprovalOutcomes([
-      step('Review', 1, {
-        submitterIsReviewer: true,
-        Review_result: true,
-        Review_autoApprovalReason: 'Submitter is a reviewer',
-      }),
-    ]);
-
-    expect(outcome.kind).toBe(
-      ApprovalOutcomeKind.AutoApprovedSubmitterIsReviewer
-    );
-  });
-
-  it('reads who approved or rejected a step, in either result form', () => {
+describe('getApprovalOutcomeMessage', () => {
+  it('says why the workflow approved a step itself', () => {
     expect(
-      getApprovalOutcomes([
-        approvedByDaniel,
-        step('Review', 100, {
-          hasAssignees: true,
-          Review_result: false,
-          Review_updatedBy: 'priya.nair',
-        }),
-      ])
-    ).toEqual([
-      {
-        node: 'Review',
-        decidedAt: 100,
-        kind: ApprovalOutcomeKind.Rejected,
-        decidedBy: 'priya.nair',
-      },
-      {
-        node: 'ReviewDescription',
-        decidedAt: 200,
-        kind: ApprovalOutcomeKind.Approved,
-        decidedBy: 'daniel.okafor',
-      },
-    ]);
-  });
-
-  it('credits the person when a looped step kept the reason from an earlier automatic pass', () => {
-    const [outcome] = getApprovalOutcomes([
-      step('ReviewDescription', 1, {
-        hasAssignees: true,
-        ReviewDescription_result: 'approve',
-        ReviewDescription_autoApprovalReason: 'No reviewers configured',
-        ReviewDescription_updatedBy: 'daniel.okafor',
-      }),
-    ]);
-
-    expect(outcome).toEqual(
-      expect.objectContaining({
-        kind: ApprovalOutcomeKind.Approved,
-        decidedBy: 'daniel.okafor',
-      })
-    );
-  });
-
-  it('skips steps that are not decided approvals', () => {
+      getApprovalOutcomeMessage(
+        outcome({ automaticReason: AutomaticReason.NoAssignees })
+      )
+    ).toEqual({ key: 'message.workflow-run-auto-approved' });
     expect(
-      getApprovalOutcomes([
-        step('Start', 1, { hasAssignees: true }),
-        // Another node's decision is visible to every later step; only a step's own counts.
-        step('ApprovedEnd', 2, {
-          ReviewDescription_result: 'approve',
-          ReviewDescription_updatedBy: 'daniel.okafor',
-        }),
-        step('ReviewDescription', 3, {
-          ReviewDescription_result: 'timeout',
-          ReviewDescription_updatedBy: 'daniel.okafor',
-        }),
-        { stage: { variables: { hasAssignees: false } } },
-      ])
-    ).toEqual([]);
+      getApprovalOutcomeMessage(
+        outcome({ automaticReason: AutomaticReason.SubmitterIsReviewer })
+      )
+    ).toEqual({
+      key: 'message.workflow-run-auto-approved-submitter-is-reviewer',
+    });
+  });
+
+  it('names every user whose vote decided the step', () => {
+    expect(
+      getApprovalOutcomeMessage(
+        outcome({ decidedBy: ['daniel.okafor', 'priya.nair'] })
+      )
+    ).toEqual({
+      key: 'message.workflow-run-approved-by',
+      users: 'daniel.okafor, priya.nair',
+    });
+    expect(
+      getApprovalOutcomeMessage(
+        outcome({
+          decision: Decision.PartiallyApproved,
+          decidedBy: ['daniel.okafor'],
+        })
+      ).key
+    ).toBe('message.workflow-run-partially-approved-by');
+    expect(
+      getApprovalOutcomeMessage(
+        outcome({ decision: Decision.Rejected, decidedBy: ['priya.nair'] })
+      ).key
+    ).toBe('message.workflow-run-rejected-by');
+  });
+});
+
+describe('getLatestApprovalOutcome', () => {
+  it("picks the node's latest decision when the step ran more than once", () => {
+    const approvals = [
+      outcome({ id: 'first', decidedAt: 1 }),
+      outcome({ id: 'other-node', node: 'Publish', decidedAt: 3 }),
+      outcome({ id: 'second', decidedAt: 2 }),
+    ];
+
+    expect(getLatestApprovalOutcome(approvals, 'Review')?.id).toBe('second');
+    expect(getLatestApprovalOutcome(approvals, 'Missing')).toBeUndefined();
+  });
+});
+
+describe('getRunApprovals', () => {
+  it('reads the approvals a run keeps in its variables, and none when they are missing', () => {
+    const approvals = [outcome({ id: 'kept' })];
+
+    expect(getRunApprovals({ variables: { approvals } })).toEqual(approvals);
+    expect(getRunApprovals({ variables: { approvals: 'not a list' } })).toEqual(
+      []
+    );
+    expect(getRunApprovals({})).toEqual([]);
+    expect(getRunApprovals(undefined)).toEqual([]);
+  });
+
+  it('says an administrator published the change without review', () => {
+    expect(
+      getApprovalOutcomeMessage(
+        outcome({ decision: Decision.Overridden, decidedBy: ['admin'] })
+      )
+    ).toEqual({ key: 'message.workflow-run-overridden-by', users: 'admin' });
   });
 });

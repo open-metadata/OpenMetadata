@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "تمت الموافقة بواسطة {{user}}",
     "workflow-run-auto-approved": "تمت الموافقة تلقائيًا: لا يوجد من تُسند إليه",
     "workflow-run-auto-approved-submitter-is-reviewer": "تمت الموافقة تلقائيًا: مقدم الطلب مراجع",
+    "workflow-run-overridden-by": "نُشر دون مراجعة بواسطة {{user}}",
+    "workflow-run-partially-approved-by": "تمت الموافقة جزئيًا بواسطة {{user}}",
     "workflow-run-rejected-by": "تم الرفض بواسطة {{user}}",
     "workflow-schedule-description": "جدوِل سير العمل للتشغيل في وقت وتكرار محددين.",
     "workflow-subtitle": "أنشئ وأدر سير عمل الحوكمة لأتمتة البيانات الوصفية.",

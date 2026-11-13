@@ -19,15 +19,15 @@ import { expect, test } from '../../fixtures/pages';
 
 /**
  * A workflow's execution history says how each run's approval step was decided: by the workflow
- * itself when the table had no owner to ask, or by the owner who approved the task. The workflow
- * runs on every table edit (a filtered-out edit still records a run, without steps), so the spec
- * follows its own runs by their decided approval step and checks each one right after it lands.
+ * itself when the table had no owner to ask, or by the owner who approved the task. The run
+ * records the outcome itself, so the workflow stores no step records. It runs on every table edit
+ * (a filtered-out edit still records a run), so the spec follows its own runs by their recorded
+ * approval and checks each one right after it lands.
  */
 
 const APPROVAL_NODE = 'ReviewDescription';
 
-type Run = { id: string };
-type Step = { stage?: { name?: string; endedAt?: number } };
+type Run = { id: string; variables?: { approvals?: { node: string }[] } };
 
 const loggedInUserName = async (page: Page) => {
   await redirectToHomePage(page);
@@ -53,7 +53,7 @@ const createOwnerReview = async (
         name,
         displayName: 'Playwright owner review',
         description: 'Asks the owners of one table to review its description.',
-        config: { storeStageStatus: true },
+        config: { storeStageStatus: false },
         trigger: {
           type: 'eventBasedEntity',
           config: {
@@ -98,24 +98,6 @@ const createOwnerReview = async (
     'createOwnerReview'
   );
 
-const isDecided = async (
-  apiContext: APIRequestContext,
-  name: string,
-  runId: string
-) => {
-  const { data } = await okJson<{ data: Step[] }>(
-    await apiContext.get(
-      `/api/v1/governance/workflowInstanceStates/${name}/${runId}`,
-      { params: { startTs: 0, endTs: Date.now(), limit: 50 } }
-    ),
-    'workflowInstanceStates'
-  );
-
-  return data.some(
-    ({ stage }) => stage?.name === APPROVAL_NODE && stage.endedAt
-  );
-};
-
 // The run of this table whose approval step has been decided and is not one of `known`.
 const awaitDecidedRun = async (
   apiContext: APIRequestContext,
@@ -139,13 +121,12 @@ const awaitDecidedRun = async (
           }),
           'workflowInstances'
         );
-        const fresh = data.filter(({ id }) => !known.includes(id));
-        const decided = await Promise.all(
-          fresh.map(async ({ id }) =>
-            (await isDecided(apiContext, name, id)) ? id : ''
-          )
-        );
-        decidedRunId = decided.find(Boolean) ?? '';
+        decidedRunId =
+          data.find(
+            ({ id, variables }) =>
+              !known.includes(id) &&
+              variables?.approvals?.some(({ node }) => node === APPROVAL_NODE)
+          )?.id ?? '';
 
         return decidedRunId;
       },

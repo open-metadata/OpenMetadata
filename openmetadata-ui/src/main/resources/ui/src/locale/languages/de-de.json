@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "Genehmigt von {{user}}",
     "workflow-run-auto-approved": "Automatisch genehmigt: niemand zum Zuweisen",
     "workflow-run-auto-approved-submitter-is-reviewer": "Automatisch genehmigt: Einreichender ist Prüfer",
+    "workflow-run-overridden-by": "Ohne Prüfung veröffentlicht von {{user}}",
+    "workflow-run-partially-approved-by": "Teilweise genehmigt von {{user}}",
     "workflow-run-rejected-by": "Abgelehnt von {{user}}",
     "workflow-schedule-description": "Planen Sie den Workflow, um zu einer bestimmten Zeit und Häufigkeit zu laufen.",
     "workflow-subtitle": "Erstellen und verwalten Sie Governance-Workflows zur Metadaten-Automatisierung.",

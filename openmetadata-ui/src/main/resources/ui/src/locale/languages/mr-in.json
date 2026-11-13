@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "{{user}} यांनी मंजूर केले",
     "workflow-run-auto-approved": "स्वयंचलितपणे मंजूर: नियुक्त करण्यासाठी कोणीही नाही",
     "workflow-run-auto-approved-submitter-is-reviewer": "स्वयंचलितपणे मंजूर: विनंतीकर्ता पुनरावलोकक आहे",
+    "workflow-run-overridden-by": "{{user}} यांनी पुनरावलोकनाशिवाय प्रकाशित केले",
+    "workflow-run-partially-approved-by": "{{user}} यांनी अंशतः मंजूर केले",
     "workflow-run-rejected-by": "{{user}} यांनी नाकारले",
     "workflow-schedule-description": "वर्कफ्लो विशिष्ट वेळी आणि वारंवारतेने चालवण्यासाठी शेड्यूल करा.",
     "workflow-subtitle": "मेटाडेटा स्वयंचलनासाठी गव्हर्नन्स वर्कफ्लो तयार आणि व्यवस्थापित करा.",

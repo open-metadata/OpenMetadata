@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "{{user}} が承認",
     "workflow-run-auto-approved": "自動承認: 割り当て先がいません",
     "workflow-run-auto-approved-submitter-is-reviewer": "自動承認: 申請者がレビュアーです",
+    "workflow-run-overridden-by": "{{user}} がレビューなしで公開",
+    "workflow-run-partially-approved-by": "{{user}} が一部承認",
     "workflow-run-rejected-by": "{{user}} が却下",
     "workflow-schedule-description": "ワークフローを特定の時間と頻度で実行するようにスケジュールします。",
     "workflow-subtitle": "メタデータ自動化のためのガバナンスワークフローを作成および管理します。",

@@ -1,0 +1,56 @@
+{
+  "$id": "https://open-metadata.org/schema/governance/workflows/approvalOutcome.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "ApprovalOutcome",
+  "description": "How one approval step of a workflow run was decided: by the people who voted, by the workflow itself when it had no one to ask, or by an administrator who published without review. A run keeps its decisions in its variables under 'approvals'.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.governance.workflows.ApprovalOutcome",
+  "properties": {
+    "id": {
+      "description": "Unique identifier of this decision.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "node": {
+      "description": "Name of the approval node that was decided.",
+      "type": "string"
+    },
+    "decision": {
+      "description": "What the step decided. PartiallyApproved: reviewers published some of a change request's changes and dropped the rest. Overridden: an administrator published the change without review.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.governance.workflows.ApprovalOutcomeDecision",
+      "enum": [
+        "Approved",
+        "PartiallyApproved",
+        "Rejected",
+        "Overridden"
+      ]
+    },
+    "automaticReason": {
+      "description": "Why the workflow approved the step itself. Absent when people decided it.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.governance.workflows.AutomaticApprovalReason",
+      "enum": [
+        "NoAssignees",
+        "SubmitterIsReviewer"
+      ]
+    },
+    "decidedBy": {
+      "description": "Names of the users whose votes decided the step, or the administrator who overrode it. Empty when the workflow decided it.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "decidedAt": {
+      "description": "Timestamp on which the step was decided.",
+      "$ref": "../../type/basic.json#/definitions/timestamp"
+    }
+  },
+  "required": [
+    "id",
+    "node",
+    "decision",
+    "decidedAt"
+  ],
+  "additionalProperties": false
+}

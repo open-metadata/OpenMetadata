@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "تأیید شده توسط {{user}}",
     "workflow-run-auto-approved": "تأیید خودکار: کسی برای واگذاری وجود ندارد",
     "workflow-run-auto-approved-submitter-is-reviewer": "تأیید خودکار: درخواست‌دهنده بازبین است",
+    "workflow-run-overridden-by": "منتشر شده بدون بازبینی توسط {{user}}",
+    "workflow-run-partially-approved-by": "تأیید جزئی توسط {{user}}",
     "workflow-run-rejected-by": "رد شده توسط {{user}}",
     "workflow-schedule-description": "جریان کار را برای اجرا در زمان و دفعات مشخصی زمان‌بندی کنید.",
     "workflow-subtitle": "جریان‌های کاری حاکمیت را برای خودکارسازی فراداده ایجاد و مدیریت کنید.",

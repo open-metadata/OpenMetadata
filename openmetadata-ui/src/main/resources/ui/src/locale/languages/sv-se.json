@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "Godkänd av {{user}}",
     "workflow-run-auto-approved": "Automatiskt godkänd: ingen att tilldela",
     "workflow-run-auto-approved-submitter-is-reviewer": "Automatiskt godkänd: inlämnaren är granskare",
+    "workflow-run-overridden-by": "Publicerad utan granskning av {{user}}",
+    "workflow-run-partially-approved-by": "Delvis godkänd av {{user}}",
     "workflow-run-rejected-by": "Avvisad av {{user}}",
     "workflow-schedule-description": "Schemalägg arbetsflödet att köras vid en viss tidpunkt och frekvens.",
     "workflow-subtitle": "Skapa och hantera styrningsarbetsflöden för metadataautomatisering.",

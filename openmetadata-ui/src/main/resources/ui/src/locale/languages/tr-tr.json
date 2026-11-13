@@ -6969,6 +6969,8 @@
     "workflow-run-approved-by": "{{user}} tarafından onaylandı",
     "workflow-run-auto-approved": "Otomatik onaylandı: atanacak kimse yok",
     "workflow-run-auto-approved-submitter-is-reviewer": "Otomatik onaylandı: gönderen bir gözden geçiren",
+    "workflow-run-overridden-by": "{{user}} tarafından inceleme olmadan yayımlandı",
+    "workflow-run-partially-approved-by": "{{user}} tarafından kısmen onaylandı",
     "workflow-run-rejected-by": "{{user}} tarafından reddedildi",
     "workflow-schedule-description": "İş akışını belirli bir zaman ve sıklıkta çalışacak şekilde zamanlayın.",
     "workflow-subtitle": "Meta veri otomasyonu için yönetişim iş akışlarını oluşturun ve yönetin.",
