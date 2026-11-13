@@ -1,9 +1,9 @@
 # A webhook secret is encrypted for the destination or profile webhook that holds it, and opens only there
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a value waiting to be entered again stops no edit)
+- **Revisions:** v1 2026-11-03 (initial) · v2 2026-11-06 (a value waiting to be entered again stops no edit) · v3 2026-11-13 (every copy of an earlier credential is carried over; the step stops when the configured keys open none; a value that cannot be used is reported when read)
 - **Deciders:** OpenMetadata maintainers
-- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`
+- **Guard:** `BoundCiphertextTest`, `DestinationSecretsTest#decrypted_refusesCiphertextNotWrittenForTheDestination`, `ProfileWebhookSecretsTest#deliveryLeavesOutAWebhookWhoseSecretWasNotWrittenForIt`, `StoredWebhookSecretsTest`, `DestinationValidationTest#aStoredValueThatDoesNotOpenStopsNoEdit`, `AlertLimitsTest#receiversAreCountedWhenASecretDoesNotOpen`, `WebhookRequestsTest#theSigningKeyIsUsedAsGiven`, `OAuth2TokenManagerIT#getAccessToken_sendsTheCredentialsAsGiven`, `WebhookSecretOwnershipIT`, `WebhookSecretsMigrationIT`, `WebhookSecretsMigrationTest`, `AlertDiagnosticsStatusTest`, `ProfileWebhookSecretsTest#aReadReportsEachWebhookThatDoesNotSendAndAWriteNeverStoresIt`
 - **Related:** ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored, ADR:2026-10-30-owned-secret-keys-are-derived-from-owner-ids (owned vault keys, a different mechanism that shares `SecretOwner`)
 
 ## Context
@@ -38,23 +38,19 @@ so they can have keys of their own and open only there.
   releases change. A row it cannot read stops the step with an error that names the row.
   - plaintext is encrypted for its owner;
   - ciphertext at the fields releases before 2.1 stored encrypted, an alert destination's bearer
-    signing key and OAuth2 client id and secret, is encrypted for its owner again, unless the same
-    ciphertext is stored anywhere else (`StoredCiphertextCopies`: another field or alert, any
-    other table with a `json` column, or a version of an entity of those tables). Fernet
-    encryption is randomized, so a value the server wrote for one field is stored at that field
-    only, and in the versions of the alert that holds it. Only a frozen list of large tables that
-    cannot hold a secret is left out: data assets, event and execution logs, relationships, stored
-    documents and time series. A table the list does not name, such as one a distribution adds, is read, so a
-    store nobody listed is never missed. Versions are found by their entity's id, through the
-    primary key of the versions table, so the cost does not follow the number of data assets or
-    events;
+    signing key and OAuth2 client id and secret, is encrypted for its owner again. (v3:2026-11-13)
+    This holds wherever else the same ciphertext is stored: each copy is encrypted for the
+    destination that holds it;
   - any other ciphertext stays as stored. It opens for no owner, so the destination stays enabled
     and reports the field to enter again, and a profile webhook is left out of the send, until the
     value is entered again.
+  - (v3:2026-11-13) when such credentials are stored and none of them decrypts with the configured
+    Fernet keys, the step stops before it writes anything (see Amendment v3).
 
   Versions, change descriptions and the stored change events of alerts, users and teams keep the
   mask, since nothing sends from them. Running the step again changes nothing. It runs after the 2.1.0
-  destination id step, because each destination's id owns its secrets.
+  destination id step, because each destination's id owns its secrets, and (v3:2026-11-13) the alert
+  step runs before the profile step, so a stop leaves every webhook secret as it was.
 
 ## Consequences
 
@@ -64,9 +60,9 @@ so they can have keys of their own and open only there.
   text, so only a server that ran a pre-release build after
   ADR:2026-10-23-alert-destination-secrets-are-encrypted-masked-and-restored has endpoints and
   header values saved there in that time to enter again.
-- A value is carried over when nothing else stored holds the same ciphertext any more: its other
-  copy belonged to an entity that was hard-deleted, or was replaced, re-encrypted included, without
-  a version keeping it. Such a value cannot be told apart from one the server wrote.
+- (v3:2026-11-13) Every copy of a credential stored before 2.1 keeps working after the upgrade; an
+  encrypted value cannot be copied into a destination from 2.1 on (see Amendment v3). An upgrade
+  run with Fernet keys that open none of them stops and is run again with the right keys.
 - Destination ids must stay unique and stable, because they own their secrets. A destination given
   a new id has its secrets entered again.
 - Webhooks are the first secrets bound to their owner. The intended end state is one shared secret
@@ -82,3 +78,32 @@ them and to count their receivers, and neither needs a secret, so a value that d
 neither: an alert holding one can be edited and switched off, and the value can be entered again,
 which is the only way to repair it. A destination changed while it still holds such a value is
 refused with a 400 that names the field, and the same value is still never sent.
+
+## Amendment (v3, 2026-11-13)
+
+Credentials stored before 2.1 keep working after the upgrade, an upgrade run with the wrong Fernet
+keys stops instead of leaving them unusable, and a value that cannot be used is shown where the user
+looks, not only in the recent events of a send.
+
+- The 2.1.0 data step carries over the bearer signing key and the OAuth2 client id and secret of
+  every destination that holds them, whether or not the same ciphertext is stored elsewhere; each
+  copy is encrypted for its own destination. From 2.1 a save accepts an encrypted value only where
+  it is the value the same destination already stores at that field, and every response masks
+  secrets, so no new copy can be made.
+- Nothing opens a value in the format of releases before 2.1 (`fernet:`, not `fernet:bound:`) at
+  send time; only the data step reads it. So the step checks the keys first: it rewrites the alert
+  rows in memory, and when those credentials are stored and not one of them decrypts with any of
+  the configured Fernet keys, it stops the upgrade before anything is written and records no
+  marker, so `migrate` runs it again. The error names the alerts holding them and asks for the key
+  the previous release used (a comma-separated list of keys is accepted); values that could not be
+  used before the upgrade either can be entered again or removed before upgrading instead. When
+  some open and some do not, the step goes on and the others stay as stored; when there are none,
+  it goes on and binds what is stored with the configured keys, as any 2.1 save would. The alert
+  step runs before the profile step, so a stop leaves every webhook secret as it was.
+- A destination whose stored configuration cannot be built to send (`AlertFactory`) reads as
+  `failed`, with the reason in `lastFailedReason`, whenever the alert is read with
+  `fields=statusDetails`, one alert or a list, before any event reaches it. A user or team read by
+  id or name reports each profile webhook that would be left out of a send in the profile's
+  read-only `subscriptionStatus`, with the same reason. Both are computed when read: neither is
+  stored, a value sent back is dropped on write, and a write response leaves the profile status
+  out, so no change event records it.
