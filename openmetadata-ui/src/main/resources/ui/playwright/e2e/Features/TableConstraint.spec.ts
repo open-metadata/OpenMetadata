@@ -189,6 +189,23 @@ test.describe('Table Constraints', {}, () => {
       );
       await expect(page.getByTestId('UNIQUE-icon')).toBeVisible();
 
+      const compositeTrigger = page
+        .getByTestId('column-name-cell')
+        .filter({ hasText: columnName3 })
+        .getByRole('button', { name: /Composite unique constraint/ });
+
+      await compositeTrigger.focus();
+
+      const compositeTooltip = page.getByRole('tooltip');
+
+      await expect(compositeTooltip).toContainText(columnName3);
+      await expect(compositeTooltip).toContainText(columnName4);
+      await expect(compositeTooltip).toContainText(
+        'individual column values may repeat'
+      );
+      await page.keyboard.press('Escape');
+      await expect(compositeTooltip).not.toBeVisible();
+
       // Verify Sort Key
       await expect(page.getByTestId('SORT_KEY-container')).toContainText(
         `${columnName4}${columnName3}`
