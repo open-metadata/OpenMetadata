@@ -163,6 +163,16 @@ describe('getJsonTreePropertyFromQueryFilter – text rules', () => {
       ['orders'],
     ],
     [
+      'not_like',
+      'name.keyword',
+      {
+        bool: {
+          must_not: { wildcard: { 'name.keyword': { value: '*orders*' } } },
+        },
+      },
+      ['orders'],
+    ],
+    [
       'match_phrase',
       'description',
       { match_phrase: { description: 'customer orders' } },
