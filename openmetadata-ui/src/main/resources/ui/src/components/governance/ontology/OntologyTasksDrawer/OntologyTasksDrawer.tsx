@@ -34,6 +34,7 @@ import {
   XClose,
 } from '@openmetadata/ui-core-components/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { isAxiosError } from 'axios';
 import classNames from 'classnames';
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Key } from 'react-aria-components';
@@ -72,6 +73,7 @@ import { getOperationPermissions } from '../../../../utils/PermissionsUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import NoDataPlaceholder from '../../../common/EmptyPlaceholder/NoDataPlaceholder';
 import NoSearchResultsPlaceholder from '../../../common/EmptyPlaceholder/NoSearchResultsPlaceholder';
+import Loader from '../../../common/Loader/Loader';
 import {
   buildResolveBody,
   getTaskResolveActions,
@@ -80,8 +82,8 @@ import OntologyOpenReviewsBanner from '../OntologyReviewBanner/OntologyOpenRevie
 import OntologyReviewBanner from '../OntologyReviewBanner/OntologyReviewBanner';
 import OntologyTaskDetail from './OntologyTaskDetail';
 import {
+  CURSOR_HISTORY_LIMIT,
   filterReviews,
-  getOpenReviews,
   hasMorePages,
 } from './OntologyTasksDrawer.utils';
 import OntologyTaskThread from './OntologyTaskThread';
@@ -108,7 +110,6 @@ type Detail = {
 
 // ADR:2026-10-29-studio-tasks-drawer-pages-25-rows-and-keeps-page-one-in-a-40-cursor-history
 const PAGE_SIZE = 25;
-const CURSOR_HISTORY_LIMIT = 40;
 const BANNER_LIMIT = 100;
 
 // The trim keeps page 1 first, so Previous can still walk back to it.
@@ -174,15 +175,23 @@ const useQueueTotal = (
       getOntologyReleaseReviews({ view, limit: 1 }, signal),
   }).data?.paging?.total;
 
-/** Which review the banner shows: one ontology's, or the open set on All ontologies. */
+/** Which reviews the banner shows: one ontology's single review, or a set of them. */
 const getBannerKey = (
   ontologyId: string | undefined,
   bannerReview: OntologyReleaseReview | undefined,
   openReviews: OntologyReleaseReview[]
 ) =>
-  ontologyId
+  ontologyId && openReviews.length <= 1
     ? bannerReview?.task.id
     : openReviews.map((review) => review.task.id).join();
+
+const reviewsOf = (page?: { data: OntologyReleaseReview[] }) =>
+  page?.data ?? [];
+
+/** A transient state failure still allows a vote; a 404 means the ontology was archived. */
+const isReviewUnvotable = (detailFailed: boolean, stateError: unknown) =>
+  detailFailed ||
+  (isAxiosError(stateError) && stateError.response?.status === 404);
 
 const OntologyTasksDrawer = ({
   ontologyId,
@@ -264,16 +273,6 @@ const OntologyTasksDrawer = ({
     queryFn: ({ signal }) =>
       getOntologyReleaseReviews({ view: 'pending', limit: 1 }, signal),
   });
-  const created = useQuery({
-    queryKey: [...queuesKey, account, 'created-banner', ontologyId],
-    gcTime: 0,
-    retry: false,
-    queryFn: ({ signal }) =>
-      getOntologyReleaseReviews(
-        { view: 'created', ontologyId, limit: BANNER_LIMIT },
-        signal
-      ),
-  });
   const queue = useQuery({
     queryKey: [
       ...queuesKey,
@@ -304,14 +303,13 @@ const OntologyTasksDrawer = ({
     'created',
     isOpen
   );
-  const openReviews = getOpenReviews(pending.data?.data, created.data?.data);
+  // The banner announces only reviews waiting on the viewer's vote.
+  const openReviews = reviewsOf(pending.data);
   const openBannerReview = openReviews[0];
   const decided = useDecidedReview({
     account,
     ontologyId,
-    enabled: [pending.isSuccess, created.isSuccess, !openBannerReview].every(
-      Boolean
-    ),
+    enabled: [pending.isSuccess, !openBannerReview].every(Boolean),
     queuesKey,
   });
   const bannerReview = openBannerReview ?? decided;
@@ -375,6 +373,7 @@ const OntologyTasksDrawer = ({
     enabled: [isOpen, Boolean(ownerId)].every(Boolean),
     queryFn: ({ signal }) => getOntologyState(ownerId, signal),
   });
+  const isVoteBlocked = isReviewUnvotable(detail.isError, state.error);
   const permission = useEntityPermissions(
     ResourceEntity.ONTOLOGY,
     { id: ownerId },
@@ -450,6 +449,10 @@ const OntologyTasksDrawer = ({
     generation.current = { identity: '', value: generation.current.value + 1 };
     setReadyGeneration(undefined);
     setListOpen(false);
+    // Every open starts on the reviewer's own queue, unfiltered.
+    setView('assigned');
+    setSearch('');
+    setQueueHistory({ key: '', cursors: [undefined] });
     onTaskChange(undefined);
     taskButton.current?.focus();
   };
@@ -716,7 +719,6 @@ const OntologyTasksDrawer = ({
         setListOpen(true);
         void pendingTotal.refetch();
         void pending.refetch();
-        void created.refetch();
       }}>
       {t('label.task-plural')}
     </Button>
@@ -735,7 +737,7 @@ const OntologyTasksDrawer = ({
     if (!bannerKey || dismissedBanner === bannerKey) {
       return null;
     }
-    if (!ontologyId) {
+    if (!ontologyId || openReviews.length > 1) {
       return renderOpenReviews();
     }
 
@@ -744,7 +746,6 @@ const OntologyTasksDrawer = ({
         release={bannerRelease.data}
         review={bannerReview}
         viewerId={currentUser?.id}
-        viewerName={getEntityName(currentUser)}
         onDismiss={dismissBanner}
         onOpenTask={onTaskChange}
       />
@@ -886,9 +887,7 @@ const OntologyTasksDrawer = ({
           {t('message.ontology-review-unavailable')}
         </Alert>
       )}
-      {queue.isPending ? (
-        <Typography role="status">{t('label.loading')}</Typography>
-      ) : null}
+      {queue.isPending ? <Loader size="small" /> : null}
       {renderQueueList()}
       {hasMorePages(queue.data?.paging?.after, queueCursors.length)
         ? pageControls('queue')
@@ -898,7 +897,7 @@ const OntologyTasksDrawer = ({
   const renderSelected = () =>
     detail.isPending ? (
       <div className="tw:p-6">
-        <Typography role="status">{t('label.loading')}</Typography>
+        <Loader />
       </div>
     ) : (
       selected && (
@@ -908,7 +907,7 @@ const OntologyTasksDrawer = ({
             writeError.kind === 'activation'
           }
           activationReady={activationReady}
-          canPublish={canPublish && !detail.isError}
+          canPublish={canPublish && !isVoteBlocked}
           contentGeneration={currentGeneration}
           contentReady={contentReady}
           isPublished={state.data?.activeReleaseId === selected.release.id}
@@ -916,7 +915,7 @@ const OntologyTasksDrawer = ({
             selected.review.requester?.id === currentUser?.id ||
             selected.task.ontologyReview?.author === currentUser?.name
           }
-          isWriting={writing || detail.isError || detail.isFetching}
+          isWriting={writing || isVoteBlocked || detail.isFetching}
           key={selection}
           release={selected.release}
           review={selected.review}
@@ -939,6 +938,7 @@ const OntologyTasksDrawer = ({
             events={events.data?.data ?? []}
             review={selected.review}
             task={selected.task}
+            onCommentChanged={() => void detail.refetch()}
           />
           {hasMorePages(events.data?.paging?.after, eventCursors.length) && (
             <>
@@ -960,18 +960,20 @@ const OntologyTasksDrawer = ({
       <>
         <div className="tw:flex tw:flex-col tw:gap-2 tw:px-6 tw:pt-4 tw:empty:hidden">
           {(detail.isError || state.isError || events.isError) && (
-            <Alert variant="error">
-              <Box direction="col" gap={2}>
-                {t('message.ontology-review-unavailable')}
+            <Alert
+              rightContent={
                 <Button
                   color="secondary"
                   isDisabled={writing}
+                  size="sm"
                   onPress={() => {
                     void refresh();
                   }}>
                   {t('label.retry')}
                 </Button>
-              </Box>
+              }
+              variant="error">
+              {t('message.ontology-review-unavailable')}
             </Alert>
           )}
           {writeError?.selection === selection &&
@@ -1055,12 +1057,14 @@ const OntologyTasksDrawer = ({
                   />
                 </Tabs.List>
               </Box>
-              <Box className="tw:min-h-0 tw:flex-1">
-                <Tabs.Panel
+              {/* The detail sits inside the panel too: a Tabs control in it (the change filters) would
+                  otherwise be collected into this dialog's own tab strip. */}
+              <Tabs.Panel className="tw:flex tw:min-h-0 tw:flex-1" id={view}>
+                <div
                   className="tw:w-105 tw:shrink-0 tw:overflow-y-auto tw:border-r tw:border-secondary tw:p-4"
-                  id={view}>
+                  data-testid="ontology-tasks-queue">
                   {renderQueue()}
-                </Tabs.Panel>
+                </div>
                 <div className="tw:min-w-0 tw:flex-1 tw:overflow-y-auto">
                   {taskId ? (
                     renderDetail()
@@ -1075,7 +1079,7 @@ const OntologyTasksDrawer = ({
                     </div>
                   )}
                 </div>
-              </Box>
+              </Tabs.Panel>
             </Tabs>
           </Dialog>
         </Modal>

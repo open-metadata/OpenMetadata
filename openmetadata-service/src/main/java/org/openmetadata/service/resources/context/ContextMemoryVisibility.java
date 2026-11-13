@@ -101,6 +101,42 @@ public final class ContextMemoryVisibility {
     List<EntityReference> findAnchors(List<UUID> candidateIds);
   }
 
+  private static final int LISTING_ANCHOR_PAGE_SIZE = 100;
+
+  /** Context Center evaluates each memory anchor before the search applies its offset and limit. */
+  public static Set<String> readableListingAnchorIds(
+      String userName, Collection<String> matchingAnchorIds) {
+    ContextMemoryRepository repository =
+        (ContextMemoryRepository) Entity.getEntityRepository(Entity.CONTEXT_MEMORY);
+    return readableListingAnchorIds(
+        userName, matchingAnchorIds, repository::findAnchors, ContextMemoryAnchorAccess::canView);
+  }
+
+  static Set<String> readableListingAnchorIds(
+      String userName,
+      Collection<String> matchingAnchorIds,
+      AnchorFinder finder,
+      AnchorAccess access) {
+    Set<String> readable = new LinkedHashSet<>();
+    List<UUID> candidates =
+        matchingAnchorIds.stream()
+            .filter(Objects::nonNull)
+            .map(ContextMemoryVisibility::parseAnchorId)
+            .flatMap(Optional::stream)
+            .distinct()
+            .toList();
+    for (int start = 0; start < candidates.size(); start += LISTING_ANCHOR_PAGE_SIZE) {
+      List<UUID> batch =
+          candidates.subList(start, Math.min(start + LISTING_ANCHOR_PAGE_SIZE, candidates.size()));
+      for (EntityReference anchor : finder.findAnchors(batch)) {
+        if (access.canView(userName, anchor)) {
+          readable.add(anchor.getId().toString());
+        }
+      }
+    }
+    return Set.copyOf(readable);
+  }
+
   private ContextMemoryVisibility() {}
 
   public static boolean isVisibleToUser(ContextMemory memory, String userName, boolean isAdmin) {

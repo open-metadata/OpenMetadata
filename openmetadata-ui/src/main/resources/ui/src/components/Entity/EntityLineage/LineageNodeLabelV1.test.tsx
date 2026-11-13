@@ -55,20 +55,13 @@ jest.mock('../../../utils/EntityLineageNodeUtils', () => ({
   getEntityChildrenAndLabel: jest.fn((node) => {
     const children =
       node.entityType === 'pipeline' ? node.tasks ?? [] : node.columns ?? [];
-    const childrenCount = children.length;
-    const isPlural = childrenCount !== 1;
-    let childrenHeading = 'Columns';
-
-    if (node.entityType === 'pipeline') {
-      childrenHeading = isPlural ? 'Tasks' : 'Task';
-    } else if (node.entityType === 'table') {
-      childrenHeading = isPlural ? 'Columns' : 'Column';
-    }
+    const isPipeline = node.entityType === 'pipeline';
 
     return {
       children,
-      childrenHeading,
-      childrenCount,
+      childHeading: isPipeline ? 'Task' : 'Column',
+      childrenHeading: isPipeline ? 'Tasks' : 'Columns',
+      childrenCount: children.length,
     };
   }),
 }));

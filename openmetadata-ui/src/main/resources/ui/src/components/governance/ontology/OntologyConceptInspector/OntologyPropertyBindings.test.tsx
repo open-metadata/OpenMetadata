@@ -191,3 +191,20 @@ it('blocks every mounted column action after a confirmed removal until a complet
     ).not.toBeInTheDocument()
   );
 });
+
+it('says a table must be linked first in a popover instead of opening the binding editor', async () => {
+  jest.clearAllMocks();
+  http.get.mockResolvedValue({ data: { revision: 0, assets: [] } });
+  renderWithQueryClient(<Harness />);
+  const bind = await screen.findByTestId('ontology-bind-property-first');
+  await waitFor(() => expect(bind).toBeEnabled());
+
+  fireEvent.click(bind);
+
+  expect(
+    await screen.findByText('message.ontology-link-table-before-binding')
+  ).toBeVisible();
+  expect(
+    screen.queryByTestId('ontology-column-binding-editor')
+  ).not.toBeInTheDocument();
+});

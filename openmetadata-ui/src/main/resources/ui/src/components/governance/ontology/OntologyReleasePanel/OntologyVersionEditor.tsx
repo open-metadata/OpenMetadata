@@ -138,9 +138,8 @@ const OntologyVersionEditor = ({
           </Card.Content>
         </Card>
         {beforeNotes}
-        <Card size="sm">
-          <Card.Content>{notesField}</Card.Content>
-        </Card>
+        {/* A plain label and field under the cards, as the design does. */}
+        {notesField}
       </>
     );
   }

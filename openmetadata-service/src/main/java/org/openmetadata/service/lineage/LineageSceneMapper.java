@@ -44,7 +44,7 @@ final class LineageSceneMapper {
 
   private static final String FIELD_BAND_SOURCE_FIELDS =
       BASE_SOURCE_FIELDS
-          + ",columns,messageSchema,charts,mlFeatures,fields,dataModel,requestSchema,responseSchema";
+          + ",columns,messageSchema,charts,mlFeatures,fields,dataModel,requestSchema,responseSchema,tasks";
 
   private static final List<String> BASE_SOURCE_FIELD_LIST = List.of(BASE_SOURCE_FIELDS.split(","));
   private static final List<String> FIELD_BAND_SOURCE_FIELD_LIST =
@@ -202,6 +202,7 @@ final class LineageSceneMapper {
     addFields(fields, listValue(entity, "charts"));
     addFields(fields, listValue(entity, "mlFeatures"));
     addFields(fields, listValue(entity, "fields"));
+    addFields(fields, listValue(entity, "tasks"));
     addFields(fields, nestedList(entity, "messageSchema", "schemaFields"));
     addFields(fields, nestedList(entity, "requestSchema", "schemaFields"));
     addFields(fields, nestedList(entity, "responseSchema", "schemaFields"));
@@ -265,10 +266,9 @@ final class LineageSceneMapper {
 
   private static Ref firstRef(
       Map<String, Object> entity, String key, LineageLevelKind kind, LineageBand band) {
+    // Domains and data products span services, so they never take the asset's service type.
     List<Map<String, Object>> refs = listValue(entity, key);
-    return refs.isEmpty()
-        ? null
-        : refFromMap(refs.get(0), kind, stringValue(entity, "serviceType"), band);
+    return refs.isEmpty() ? null : refFromMap(refs.get(0), kind, null, band);
   }
 
   private static Ref refFromMap(

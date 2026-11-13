@@ -14,14 +14,18 @@ NATS source connection handler
 
 import asyncio
 import json
+import socket
 import ssl
+from collections import deque
+from contextlib import suppress
 from dataclasses import dataclass, field
 from typing import Any
 
-import nats
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
+from metadata.core.connections.lifetime import Borrowed
+from metadata.core.connections.test_connection.check import ChecksProvider, StepName, check
+from metadata.core.connections.test_connection.classifier import ErrorPack, Matchers, when
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
+from metadata.core.connections.test_connection.records import Evidence
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     BasicAuth,
     NkeyAuth,
@@ -30,21 +34,17 @@ from metadata.generated.schema.entity.services.connections.messaging.natsConnect
 from metadata.generated.schema.entity.services.connections.messaging.natsConnection import (
     NatsConnection as NatsConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.generated.schema.security.ssl.validateSSLClientConfig import (
     ValidateSslClientConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.secure_tempfile import (
     remove_secret_temp_file,
     write_secret_temp_file,
 )
+from nats.aio.client import Client as NatsSdkClient
+from nats.errors import NoServersError
 
 logger = ingestion_logger()
 
@@ -67,10 +67,6 @@ _RESERVED_CONNECT_OPTIONS = frozenset(
 
 class NatsApiError(ConnectionError):
     """Raised when the NATS JetStream API returns an error response."""
-
-
-class SchemaKvBucketNotConfiguredError(ConnectionError):
-    """Raised when the optional schema test has no configured KV bucket."""
 
 
 def _write_temp_cert(secret_value: str, temp_files: list[str]) -> str:
@@ -98,25 +94,19 @@ class NatsClient:
     _temp_cert_files: list[str] = field(default_factory=list)
 
     def request(self, subject: str, payload: bytes = b"{}", timeout: float = 5.0) -> dict:
-        async def _req() -> dict:
-            msg = await self.nc.request(subject, payload, timeout=timeout)
-            try:
-                response = json.loads(msg.data.decode())
-            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-                raise NatsApiError(f"NATS returned invalid JSON for subject '{subject}'") from exc
-            if not isinstance(response, dict):
-                raise NatsApiError(f"NATS returned an invalid response for subject '{subject}'")
-            return response
-
-        return self._loop.run_until_complete(_req())
+        msg = self._loop.run_until_complete(self.nc.request(subject, payload, timeout=timeout))
+        try:
+            response = json.loads(msg.data.decode())
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise NatsApiError(f"NATS returned invalid JSON for subject '{subject}'") from exc
+        if not isinstance(response, dict):
+            raise NatsApiError(f"NATS returned an invalid response for subject '{subject}'")
+        return response
 
     def close(self) -> None:
-        async def _drain() -> None:
-            await self.nc.drain()
-
         try:
             if not self._loop.is_closed():
-                self._loop.run_until_complete(_drain())
+                self._loop.run_until_complete(self.nc.drain())
         except Exception as exc:
             logger.warning("Error draining NATS connection: %s", exc)
         finally:
@@ -140,6 +130,7 @@ def _build_tls_context(ssl_cfg: ValidateSslClientConfig, temp_files: list[str]) 
 
 def _build_connect_opts(connection: NatsConnectionConfig, temp_cert_files: list[str]) -> dict:
     opts = dict(connection.additionalConfig or {})
+    opts.setdefault("max_reconnect_attempts", 5)
     reserved = _RESERVED_CONNECT_OPTIONS.intersection(opts)
     if reserved:
         raise ValueError(f"Additional NATS config contains reserved connection options: {', '.join(sorted(reserved))}")
@@ -162,27 +153,6 @@ def _build_connect_opts(connection: NatsConnectionConfig, temp_cert_files: list[
     return opts
 
 
-def get_connection(connection: NatsConnectionConfig) -> NatsClient:
-    loop = asyncio.new_event_loop()
-    temp_cert_files: list[str] = []
-    try:
-        opts = _build_connect_opts(connection, temp_cert_files)
-
-        async def _connect() -> Any:
-            return await nats.connect(**opts)
-
-        nc = loop.run_until_complete(_connect())
-    except Exception:
-        _cleanup_temp_certs(temp_cert_files)
-        loop.close()
-        raise
-    return NatsClient(
-        nc=nc,
-        _loop=loop,
-        _temp_cert_files=temp_cert_files,
-    )
-
-
 def _raise_for_api_error(response: dict, action: str) -> None:
     error = response.get("error")
     if not error:
@@ -191,62 +161,102 @@ def _raise_for_api_error(response: dict, action: str) -> None:
     raise NatsApiError(f"{action}: {description}")
 
 
-def _get_streams(client: NatsClient) -> None:
-    response = client.request(_JS_STREAM_LIST)
-    _raise_for_api_error(response, "JetStream API error")
+class NatsStep(StepName):
+    CheckAccess = "CheckAccess"
+    GetTopics = "GetTopics"
+    CheckSchemaKvBucket = "CheckSchemaKvBucket"
 
 
-def _check_schema_kv_bucket(client: NatsClient, service_connection: NatsConnectionConfig) -> None:
-    bucket = service_connection.schemaKvBucket
-    if not bucket:
-        raise SchemaKvBucketNotConfiguredError("Schema KV bucket is not configured")
-    response = client.request(f"$JS.API.STREAM.INFO.KV_{bucket}")
-    _raise_for_api_error(response, f"Schema KV bucket '{bucket}' is unavailable")
+class NatsChecks:
+    errors = ErrorPack(
+        when(Matchers.contains("Authorization Violation")).diagnose(
+            "NATS authentication failed", fix="Check the configured NATS credentials."
+        ),
+        when(Matchers.exception(ConnectionRefusedError)).diagnose(
+            "Connection refused", fix="Check natsServers and that a NATS server is listening on the configured port."
+        ),
+        when(Matchers.exception(socket.gaierror)).diagnose(
+            "Host could not be resolved", fix="Check natsServers and DNS resolution from the ingestion environment."
+        ),
+        when(Matchers.exception(TimeoutError)).diagnose(
+            "Connection timed out", fix="Check natsServers and network access from the ingestion environment."
+        ),
+    ).including(NETWORK_ERRORS)
 
+    def __init__(self, client: Borrowed[NatsClient], config: NatsConnectionConfig) -> None:
+        self._client = client
+        self._config = config
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: NatsClient,
-    service_connection: NatsConnectionConfig,
-    automation_workflow: AutomationWorkflow | None = None,
-    timeout_seconds: int | None = THREE_MIN,
-) -> TestConnectionResult:
-    def get_topics() -> None:
-        _get_streams(client)
+    @check(NatsStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        if not self._client.client.nc.is_connected:
+            raise ConnectionError("NATS connection is not established")
+        return Evidence(summary="NATS connection established")
 
-    def check_schema_kv_bucket() -> None:
-        _check_schema_kv_bucket(client, service_connection)
+    @check(NatsStep.GetTopics)
+    def get_topics(self) -> None:
+        response = self._client.client.request(_JS_STREAM_LIST)
+        _raise_for_api_error(response, "JetStream API error")
 
-    test_fn = {
-        "GetTopics": get_topics,
-        "CheckSchemaKvBucket": check_schema_kv_bucket,
-    }
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    @check(NatsStep.CheckSchemaKvBucket)
+    def check_schema_kv_bucket(self) -> Evidence | None:
+        bucket = self._config.schemaKvBucket
+        if not bucket:
+            return Evidence(summary="Schema KV bucket not configured; check not required")
+        response = self._client.client.request(f"$JS.API.STREAM.INFO.KV_{bucket}")
+        _raise_for_api_error(response, f"Schema KV bucket '{bucket}' is unavailable")
+        return None
 
 
 class NatsConnection(BaseConnection[NatsConnectionConfig, NatsClient]):
     def _get_client(self) -> NatsClient:
-        client = get_connection(self.service_connection)
+        loop = asyncio.new_event_loop()
+        temp_cert_files: list[str] = []
+        nc = NatsSdkClient()
+        connect_task = None
+        connection_errors: deque[Exception] = deque(maxlen=1)
+        try:
+            opts = _build_connect_opts(self.service_connection, temp_cert_files)
+            error_cb = opts.get("error_cb")
+
+            async def record_error(error: Exception) -> None:
+                connection_errors.append(error)
+                if error_cb:
+                    await error_cb(error)
+                else:
+                    logger.error("NATS connection error: %s", error)
+
+            opts["error_cb"] = record_error
+
+            connect_task = loop.create_task(nc.connect(**opts))
+            loop.run_until_complete(connect_task)
+        except Exception as exc:
+            try:
+                if connect_task is not None and not connect_task.done():
+                    connect_task.cancel()
+                    with suppress(asyncio.CancelledError):
+                        loop.run_until_complete(connect_task)
+                loop.run_until_complete(nc.close())
+            except Exception as close_error:
+                logger.warning("Error closing failed NATS connection: %s", close_error)
+            finally:
+                _cleanup_temp_certs(temp_cert_files)
+                loop.close()
+            if connection_errors and isinstance(exc, (NoServersError, TimeoutError)):
+                last_error = connection_errors[-1]
+                if isinstance(last_error, TimeoutError) and not str(last_error):
+                    raise TimeoutError("NATS connection timed out") from exc
+                if last_error is not exc:
+                    raise last_error from exc
+            raise
+        client = NatsClient(
+            nc=nc,
+            _loop=loop,
+            _temp_cert_files=temp_cert_files,
+        )
+
         self._on_close(client.close)
         return client
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: AutomationWorkflow | None = None,
-        timeout_seconds: int | None = THREE_MIN,
-    ) -> TestConnectionResult:
-        return test_connection(
-            metadata,
-            self.client,
-            self.service_connection,
-            automation_workflow,
-            timeout_seconds,
-        )
+    def checks(self) -> ChecksProvider:
+        return NatsChecks(self.borrow(), self.service_connection)

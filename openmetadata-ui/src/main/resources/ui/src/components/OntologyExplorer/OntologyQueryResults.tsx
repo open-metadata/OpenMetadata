@@ -37,6 +37,7 @@ import { downloadCsv } from '../../utils/Export/ExportUtils';
 import { getTermDisplayText } from '../../utils/Sparql/SparqlTerm.utils';
 import { generateUUID } from '../../utils/StringUtils';
 import NoDataPlaceholder from '../common/EmptyPlaceholder/NoDataPlaceholder';
+import Loader from '../common/Loader/Loader';
 import { LayoutType } from './OntologyExplorer.constants';
 import { OntologyGraphData } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
@@ -406,25 +407,41 @@ const OntologyQueryResults = ({
 };
 
 /** The "Results" section before anything has run. */
-export const QueryResultsEmptyState = ({ meta }: { meta?: ReactNode }) => {
+/** The results area before a run returns: a spinner while one is running, else a prompt to run. */
+export const QueryResultsEmptyState = ({
+  meta,
+  isRunning = false,
+}: {
+  meta?: ReactNode;
+  isRunning?: boolean;
+}) => {
   const { t } = useTranslation();
 
   return (
-    <Box direction="col" gap={3}>
+    <Box className="tw:min-h-0 tw:flex-1" direction="col" gap={3}>
       <Box align="center" gap={2} wrap="wrap">
         <Typography as="h3" className="not-prose tw:m-0" weight="semibold">
           {t('label.result-plural')}
         </Typography>
         {meta}
       </Box>
-      <div
-        className="tw:relative tw:min-h-48"
-        data-testid="ontology-sparql-results-empty">
-        <NoDataPlaceholder
-          description={t('message.run-query-to-see-query-results')}
-          title={t('label.no-results-yet')}
-        />
-      </div>
+      {/* Tall enough for the centred placeholder, so the results pane never scrolls around it. */}
+      {isRunning ? (
+        <div
+          className="tw:flex tw:min-h-60 tw:flex-1 tw:items-center tw:justify-center"
+          data-testid="ontology-sparql-results-loading">
+          <Loader />
+        </div>
+      ) : (
+        <div
+          className="tw:relative tw:min-h-60 tw:flex-1"
+          data-testid="ontology-sparql-results-empty">
+          <NoDataPlaceholder
+            description={t('message.run-query-to-see-query-results')}
+            title={t('label.no-results-yet')}
+          />
+        </div>
+      )}
     </Box>
   );
 };

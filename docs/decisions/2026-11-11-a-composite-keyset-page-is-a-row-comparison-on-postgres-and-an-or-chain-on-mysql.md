@@ -1,9 +1,9 @@
 # A migration step's keyset page over a composite key is a row comparison on Postgres and an OR chain on MySQL
 
 - **Status:** Accepted
-- **Revisions:** v1 2026-11-11 (initial)
+- **Revisions:** v1 2026-11-11 (initial) · v2 2026-11-11 (the shared relationship page follows the same rule)
 - **Deciders:** Adrià Manero
-- **Guard:** `LineageEdgePipelineCleanupMigrationTest` (`postgresReadsEachPageAsARangeOfThePrimaryKey`, `mysqlReadsEachPageAsARangeOfThePrimaryKey`)
+- **Guard:** `LineageEdgePipelineCleanupMigrationTest` and `RelationshipKeysetPageSqlTest` (`postgresReadsEachPageAsARangeOfThePrimaryKey`, `mysqlReadsEachPageAsARangeOfThePrimaryKey` in each)
 - **Related:** ADR:2026-10-09-data-migration-backfills-walk-ids-in-batches; v210 `LineageEdgePipelineCleanupMigration`
 
 ## Context
@@ -41,3 +41,13 @@ Every page is an index range on both engines, so a walk costs time in proportion
 step that pages this way carries two queries, and a test reads each one's plan. A filter that would
 cut the rows read needs its own index whose leading columns are the filter and then the key;
 revisit this record if such an index is added.
+
+## Amendment
+
+v2 (2026-11-11): the rule now covers every keyset page over the composite key of
+`entity_relationship`, the shared `getAllRelationshipsAfter` page as well as a migration step's
+own copy. The shared page has a Postgres variant with the row comparison and keeps the `OR` chain
+on MySQL. So the relationship cleanup that the Data Retention app and the `relationshipCleanup`
+command run reads each page as a primary key range. The 2.0.3 lineage routing step, written before
+this record, reads through the shared page and gets the same plan. The 2.1.0 lineage clean-up keeps
+its own copy of the query. The last paragraph of Consequences no longer holds.

@@ -85,13 +85,14 @@ class RillCanvasRow(RillApiModel):
     items: list[RillCanvasItem] = Field(default_factory=list)
     tab_group: RillCanvasTabGroup | None = Field(None, alias="tabGroup")
 
-    def iter_component_names(self) -> Iterator[str]:
+    def iter_component_names(self, inline_only: bool = False) -> Iterator[str]:
         for item in self.items:
-            yield item.component
+            if not inline_only or item.defined_in_canvas:
+                yield item.component
         if self.tab_group:
             for tab in self.tab_group.tabs:
                 for row in tab.rows:
-                    yield from row.iter_component_names()
+                    yield from row.iter_component_names(inline_only=inline_only)
 
 
 class RillCanvasSpec(RillApiModel):
@@ -99,9 +100,9 @@ class RillCanvasSpec(RillApiModel):
     description: str | None = None
     rows: list[RillCanvasRow] = Field(default_factory=list)
 
-    def iter_component_names(self) -> Iterator[str]:
+    def iter_component_names(self, inline_only: bool = False) -> Iterator[str]:
         for row in self.rows:
-            yield from row.iter_component_names()
+            yield from row.iter_component_names(inline_only=inline_only)
 
 
 class RillCanvasState(RillApiModel):

@@ -46,6 +46,7 @@ import { Provenance } from '../../generated/type/termRelation';
 import { patchGlossaryTerm } from '../../rest/glossaryAPI';
 import Fqn from '../../utils/Fqn';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
+import { truncateMiddle } from '../governance/ontology/OntologyIriInput/OntologyIriInput.utils';
 import { useOntologyTermDetails } from './hooks/useOntologyTermDetails';
 import { OntologyConceptDataAssets } from './OntologyConceptDataAssets';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
@@ -361,7 +362,9 @@ const OntologyAuthoringInspector = ({
         .map((candidate) => ({
           id: candidate.id,
           label: candidate.originalLabel ?? candidate.label,
-          supportingText: candidate.fullyQualifiedName,
+          supportingText: candidate.fullyQualifiedName
+            ? truncateMiddle(candidate.fullyQualifiedName)
+            : undefined,
         })),
     [node.id, nodes]
   );

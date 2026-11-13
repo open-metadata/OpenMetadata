@@ -283,6 +283,29 @@ jest.mock('../../components/common/DocumentTitle/DocumentTitle', () => ({
   ),
 }));
 
+jest.mock('../../components/common/EmptyPlaceholder/NoDataPlaceholder', () => ({
+  __esModule: true,
+  default: ({ title }: { title: string }) => <div>{title}</div>,
+}));
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/SomethingWentWrongPlaceholder',
+  () => ({
+    __esModule: true,
+    default: ({ onReload }: { onReload: () => void }) => (
+      <button onClick={onReload}>label.reload</button>
+    ),
+  })
+);
+
+jest.mock(
+  '../../components/common/EmptyPlaceholder/PermissionPlaceholder',
+  () => ({
+    __esModule: true,
+    default: () => <div>permission-placeholder</div>,
+  })
+);
+
 jest.mock('../../components/common/Loader/Loader', () => ({
   __esModule: true,
   default: jest.fn(() => <div data-testid="loader">Loading</div>),
@@ -795,6 +818,58 @@ describe('PlatformLineage Component Logic', () => {
   });
 
   describe('Conditional Rendering Logic', () => {
+    it('says the entity was not found only when its fetch returns 404', async () => {
+      mockGetEntityAPIfromSource.mockRejectedValue({
+        response: { status: 404 },
+      });
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      expect(
+        await screen.findByText('message.no-entity-found-for-name')
+      ).toBeInTheDocument();
+      expect(mockLineage).not.toHaveBeenCalled();
+    });
+
+    it('shows the permission placeholder, with no reload, when viewing the entity is denied', async () => {
+      mockGetEntityAPIfromSource.mockRejectedValue({
+        response: { status: 403 },
+      });
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      expect(
+        await screen.findByText('permission-placeholder')
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole('button', { name: 'label.reload' })
+      ).not.toBeInTheDocument();
+    });
+
+    it('offers a reload, not "not found", when the entity fetch fails otherwise', async () => {
+      mockGetEntityAPIfromSource.mockRejectedValueOnce({
+        response: { status: 500 },
+      });
+
+      render(<PlatformLineage />, { wrapper: QueryClientProviderWrapper });
+
+      const reload = await screen.findByRole('button', {
+        name: 'label.reload',
+      });
+
+      expect(
+        screen.queryByText('message.no-entity-found-for-name')
+      ).not.toBeInTheDocument();
+
+      await act(async () => {
+        reload.click();
+      });
+
+      await waitFor(() => {
+        expect(mockLineage).toHaveBeenCalled();
+      });
+    });
+
     it('should render loader while loading=true', async () => {
       mockGetEntityAPIfromSource.mockImplementation(
         () =>
@@ -893,10 +968,86 @@ describe('PlatformLineage Component Logic', () => {
       );
     });
 
-    it('stays on the current lineage when the selection is cleared', async () => {
+    it('opens a picked domain on its own page, where the map opens its lens', async () => {
+      await selectFromSearch({
+        displayName: 'Sales',
+        value: 'Sales',
+        reference: {
+          id: 'sales-id',
+          type: EntityType.DOMAIN,
+          fullyQualifiedName: 'Sales',
+        },
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith('/lineage/domain/Sales');
+    });
+
+    it('returns to the whole platform, in the current lens, when the search is cleared', async () => {
+      mockLocationSearch = '?lineageLens=domain&lineageBand=ASSET';
       await selectFromSearch(undefined);
 
-      expect(mockNavigate).not.toHaveBeenCalled();
+      act(() => {
+        screen.getByTestId('clear-lineage-search').click();
+      });
+
+      expect(mockNavigate).toHaveBeenCalledWith({
+        pathname: '/lineage',
+        search: '?lineageLens=domain',
+      });
+    });
+
+    it.each([
+      ['?lineageLens=domain', SearchIndex.DOMAIN, 'label.domain-lowercase'],
+      [
+        '?lineageLens=dataProduct',
+        SearchIndex.DATA_PRODUCT,
+        'label.data-product-lowercase',
+      ],
+    ])(
+      'searches what the Layer level lists (%s)',
+      async (search, index, entityLabel) => {
+        mockFqn = '';
+        mockEntityType = '' as EntityType;
+        mockLocationSearch = search;
+        await selectFromSearch(undefined);
+
+        const props = mockDataAssetAsyncSelectList.mock.calls.at(-1)[0];
+
+        expect(props.searchIndex).toBe(index);
+        expect(props.queryFilter).toBeUndefined();
+        expect(mockT).toHaveBeenCalledWith('label.search-entity-for-lineage', {
+          entity: entityLabel,
+        });
+      }
+    );
+
+    it.each([
+      ['the Service level', ''],
+      ['the Data Assets level', '?lineageBand=ASSET'],
+    ])('searches data assets at %s', async (_level, search) => {
+      mockFqn = '';
+      mockEntityType = '' as EntityType;
+      mockLocationSearch = search;
+      await selectFromSearch(undefined);
+
+      const props = mockDataAssetAsyncSelectList.mock.calls.at(-1)[0];
+
+      expect(props.searchIndex).toEqual([
+        SearchIndex.DATA_ASSET,
+        SearchIndex.DOMAIN,
+        SearchIndex.SERVICE,
+      ]);
+      expect(props.queryFilter).toBeDefined();
+    });
+
+    it('offers no clear while the whole platform is shown', async () => {
+      mockFqn = '';
+      mockEntityType = '' as EntityType;
+      await selectFromSearch(undefined);
+
+      expect(
+        screen.queryByTestId('clear-lineage-search')
+      ).not.toBeInTheDocument();
     });
   });
 

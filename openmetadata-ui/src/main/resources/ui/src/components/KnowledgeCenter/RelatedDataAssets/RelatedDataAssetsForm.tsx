@@ -91,12 +91,7 @@ export const RelatedDataAssetsForm: FC<RelatedDataAssetsFormProps> = ({
         <Grid.Item
           className="layout-column gutter-row d-flex justify-end"
           span={24}>
-          <Box
-            inline
-            align="center"
-            className="layout-space layout-space-horizontal"
-            gap={2}
-            itemClassName="layout-space-item">
+          <Box align="center" gap={2}>
             <ButtonUtility
               data-testid="cancelDataAssets"
               icon={XClose}

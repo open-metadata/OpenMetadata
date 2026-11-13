@@ -239,9 +239,10 @@ test.describe(
               await authorPage.getByTestId('ontology-tasks-close').click();
               await expect(authorPage).toHaveURL(/source=review-test/);
               await expect(authorPage).not.toHaveURL(/[?&]task=/);
+              // The banner announces only reviews waiting on the viewer's vote.
               await expect(
                 authorPage.getByTestId('ontology-review-banner')
-              ).toContainText('waiting on');
+              ).toHaveCount(0);
             });
             await first.page.goto(
               '/governance/ontology?ontology=' + fixture.ontology.id
@@ -249,11 +250,12 @@ test.describe(
             await expect(
               first.page.getByTestId('ontology-tasks-trigger')
             ).toContainText('1');
-            await expect(
-              first.page.getByTestId('ontology-review-banner')
-            ).toContainText('waiting for your review');
-            await first.page
-              .getByRole('button', { name: 'Review now', exact: true })
+            const firstBanner = first.page.getByTestId(
+              'ontology-review-banner'
+            );
+            await expect(firstBanner).toContainText('asked you to review');
+            await firstBanner
+              .getByRole('button', { name: 'Review', exact: true })
               .click();
             await expect(first.page).toHaveURL(
               new RegExp('task=' + fixture.task.id)
@@ -287,11 +289,12 @@ test.describe(
               await secondPage.goto(
                 '/governance/ontology?ontology=' + fixture.ontology.id
               );
-              await expect(
-                secondPage.getByTestId('ontology-review-banner')
-              ).toContainText('waiting for your review');
-              await secondPage
-                .getByRole('button', { name: 'Review now', exact: true })
+              const secondBanner = secondPage.getByTestId(
+                'ontology-review-banner'
+              );
+              await expect(secondBanner).toContainText('asked you to review');
+              await secondBanner
+                .getByRole('button', { name: 'Review', exact: true })
                 .click();
             }
             await test.step('Final approval publishes and survives a UUID reload', async () => {

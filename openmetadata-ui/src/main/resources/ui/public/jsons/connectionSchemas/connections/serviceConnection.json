@@ -5464,6 +5464,12 @@
                       "type": "string",
                       "default": "v2"
                     },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
+                    },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
                       "title": "Default Dashboard Filter Pattern",
@@ -6113,6 +6119,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
@@ -43940,6 +44038,12 @@
                       "type": "string",
                       "default": "v2"
                     },
+                    "listAllAssets": {
+                      "title": "List All Assets",
+                      "description": "Ingest every workbook and data model in the Sigma organization. By default, Sigma's API lists only the workbooks and data models that the owner of the client credentials can access. When on, the connector adds Sigma's skipPermissionCheck=true parameter to the workbook and data model listings, and excludeExplorations=true to the workbook listing so that private custom views are not ingested. The client credentials must belong to a user with the Admin account type: Sigma documents skipPermissionCheck as available only to admins.",
+                      "type": "boolean",
+                      "default": false
+                    },
                     "dashboardFilterPattern": {
                       "description": "Regex to exclude or include dashboards that matches the pattern.",
                       "title": "Default Dashboard Filter Pattern",
@@ -44589,6 +44693,98 @@
                       "description": "Boolean marking if we need to verify the SSL certs for Rill. Default to True.",
                       "type": "boolean",
                       "default": true
+                    },
+                    "dashboardFilterPattern": {
+                      "description": "Regex to exclude or include dashboards that matches the pattern.",
+                      "title": "Default Dashboard Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "chartFilterPattern": {
+                      "description": "Regex exclude or include charts that matches the pattern.",
+                      "title": "Default Chart Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "dataModelFilterPattern": {
+                      "description": "Regex exclude or include data models that matches the pattern.",
+                      "title": "Default Data Model Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
+                    },
+                    "projectFilterPattern": {
+                      "description": "Regex to exclude or include projects that matches the pattern.",
+                      "title": "Default Project Filter Pattern",
+                      "type": "object",
+                      "javaType": "org.openmetadata.schema.metadataIngestion.FilterPattern",
+                      "properties": {
+                        "includes": {
+                          "description": "List of strings/regex patterns to match and include only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        },
+                        "excludes": {
+                          "description": "List of strings/regex patterns to match and exclude only database entities that match.",
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      },
+                      "additionalProperties": false
                     },
                     "supportsMetadataExtraction": {
                       "description": "Supports Metadata Extraction.",
