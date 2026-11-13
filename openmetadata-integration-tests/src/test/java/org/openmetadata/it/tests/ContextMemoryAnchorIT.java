@@ -140,7 +140,7 @@ public class ContextMemoryAnchorIT {
   }
 
   @Test
-  void searchOnlyReturnsUnanchoredEntityMemoriesToNonOwners(TestNamespace ns) {
+  void contextCenterSearchListsReadableAnchoredMemoriesAndCountsBeforePaging(TestNamespace ns) {
     Table anchor = ShortStackFactory.table(ns);
     String query = "anchorcheck" + UUID.randomUUID().toString().substring(0, 8);
     ContextMemory anchored =
@@ -167,7 +167,21 @@ public class ContextMemoryAnchorIT {
                         .containsAll(List.of(anchored.getId(), unanchored.getId()))));
 
     assertEquals(anchored.getId(), reader.get(anchored.getId().toString()).getId());
-    assertEquals(List.of(unanchored.getId()), ids(reader.list(params)));
+    assertEquals(
+        Set.of(anchored.getId(), unanchored.getId()), new HashSet<>(ids(reader.list(params))));
+    ContextMemoryService blocked = memoriesAs(createUser(ns, denyTableView(ns), null));
+    assertEquals(List.of(unanchored.getId()), ids(blocked.list(params)));
+    ListParams first =
+        new ListParams().setLimit(1).addQueryParam("q", query).addQueryParam("offset", "0");
+    ListParams second =
+        new ListParams().setLimit(1).addQueryParam("q", query).addQueryParam("offset", "1");
+    ListResponse<ContextMemory> firstPage = reader.list(first);
+    ListResponse<ContextMemory> secondPage = reader.list(second);
+    assertEquals(2, firstPage.getPaging().getTotal());
+    assertEquals(2, secondPage.getPaging().getTotal());
+    Set<UUID> pagedIds = new HashSet<>(ids(firstPage));
+    pagedIds.addAll(ids(secondPage));
+    assertEquals(Set.of(anchored.getId(), unanchored.getId()), pagedIds);
     assertTrue(
         readerClient
             .search()
@@ -280,7 +294,7 @@ public class ContextMemoryAnchorIT {
   }
 
   @Test
-  void fileExtractedMemoriesRemainAnchoredInSearch(TestNamespace ns) {
+  void contextCenterListsExtractedMemoriesToReadersOfTheirFile(TestNamespace ns) {
     ContextFile file =
         ns.trackRoot(
             Entity.CONTEXT_FILE,
@@ -306,7 +320,7 @@ public class ContextMemoryAnchorIT {
         .ignoreExceptions()
         .untilAsserted(
             () -> assertTrue(ids(adminMemories().list(params)).contains(extracted.getId())));
-    assertFalse(ids(readerMemories.list(params)).contains(extracted.getId()));
+    assertTrue(ids(readerMemories.list(params)).contains(extracted.getId()));
   }
 
   @Test
@@ -370,7 +384,8 @@ public class ContextMemoryAnchorIT {
               assertFalse(ids(adminMemories().list(params)).contains(owned.getId()));
               assertTrue(ids(ownerMemories.list(invalidatedParams)).contains(owned.getId()));
               assertTrue(ids(adminMemories().list(invalidatedParams)).contains(owned.getId()));
-              assertFalse(ids(anchorViewer.list(invalidatedParams)).contains(owned.getId()));
+              assertEquals(owned.getId(), anchorViewer.get(owned.getId().toString()).getId());
+              assertTrue(ids(anchorViewer.list(invalidatedParams)).contains(owned.getId()));
             });
   }
 

@@ -27,7 +27,7 @@ import {
   reviewDecisionAppearance,
 } from './OntologyTaskThread.utils';
 
-it('orders records stably, preserves repeated comments and coalesces a later completion event', () => {
+it('orders records stably, preserves repeated comments and coalesces a later completion event', async () => {
   const voted = {
     ...review,
     latestDecision: {
@@ -89,10 +89,15 @@ it('orders records stably, preserves repeated comments and coalesces a later com
   expect(rows[3].event?.id).toBe('approved');
 
   render(
-    <OntologyTaskThread events={events} review={voted} task={commented} />
+    <OntologyTaskThread
+      events={events}
+      review={voted}
+      task={commented}
+      onCommentChanged={jest.fn()}
+    />
   );
 
-  expect(screen.getAllByText('Repeated')).toHaveLength(2);
+  expect(await screen.findAllByText('Repeated')).toHaveLength(2);
   expect(
     within(screen.getByTestId('ontology-task-activity')).getByText('5')
   ).toBeInTheDocument();
@@ -104,10 +109,8 @@ it('orders records stably, preserves repeated comments and coalesces a later com
 
   for (const id of ['comment:a', 'comment:b']) {
     expect(
-      within(screen.getByTestId(id))
-        .getByText('label.comment')
-        .closest('[class*="tw:size-max"]')
-    ).toHaveClass('tw:bg-utility-gray-50');
+      within(screen.getByTestId(id)).getByTestId('task-comment-card')
+    ).toBeInTheDocument();
   }
 
   expect(screen.getAllByText('label.approved')).toHaveLength(1);
@@ -157,7 +160,12 @@ it('retains unmatched rejection events and team votes without hiding partial dec
   expect(rows[1].message).toBe('  Verbatim reason  ');
 
   render(
-    <OntologyTaskThread events={[event, event]} review={voted} task={task} />
+    <OntologyTaskThread
+      events={[event, event]}
+      review={voted}
+      task={task}
+      onCommentChanged={jest.fn()}
+    />
   );
 
   expect(

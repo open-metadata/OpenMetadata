@@ -12,10 +12,7 @@
  */
 
 import { Badge, Box, Typography } from '@openmetadata/ui-core-components';
-import {
-  FileCheck02,
-  MessageSquare01,
-} from '@openmetadata/ui-core-components/icons';
+import { FileCheck02 } from '@openmetadata/ui-core-components/icons';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { OntologyReleaseReview } from '../../../../generated/api/data/ontologyReleaseReview';
@@ -24,6 +21,8 @@ import {
   EventType,
   OntologyReleaseEvent,
 } from '../../../../generated/type/ontologyReleaseEvent';
+import ProfilePicture from '../../../common/ProfilePicture/ProfilePicture';
+import TaskCommentRow from '../../../discovery/personal-space/InboxPage/components/TaskCommentRow';
 import {
   buildThreadEntries,
   reviewDecisionAppearance,
@@ -33,6 +32,8 @@ type Props = {
   task: Task;
   review: OntologyReleaseReview;
   events: readonly OntologyReleaseEvent[];
+  /** Reloads the task after a comment is edited or deleted. */
+  onCommentChanged: () => void;
 };
 
 type Appearance = {
@@ -50,12 +51,15 @@ const entryAppearance = (
     return { color: 'blue', label: 'label.published' };
   }
 
-  return entry.source === 'comment'
-    ? { color: 'gray', label: 'label.comment' }
-    : { color: 'gray', label: 'label.captured' };
+  return { color: 'gray', label: 'label.captured' };
 };
 
-const OntologyTaskThread = ({ task, review, events }: Props) => {
+const OntologyTaskThread = ({
+  task,
+  review,
+  events,
+  onCommentChanged,
+}: Props) => {
   const { t } = useTranslation();
   const entries = useMemo(
     () => buildThreadEntries(task, review, events),
@@ -78,9 +82,30 @@ const OntologyTaskThread = ({ task, review, events }: Props) => {
       </Box>
       <ol className="tw:m-0 tw:flex tw:list-none tw:flex-col tw:gap-4 tw:p-0">
         {entries.map((entry) => {
+          // Comments read as they do in the Inbox, so they can be edited and deleted the same way.
+          if (entry.comment) {
+            return (
+              <li
+                className="tw:flex tw:min-w-0 tw:gap-3"
+                data-testid={entry.id}
+                key={entry.id}>
+                <ProfilePicture
+                  matchRingToFill
+                  displayName={entry.actor}
+                  name={entry.comment.author?.name ?? ''}
+                  width="24"
+                />
+                <Box className="tw:min-w-0 tw:flex-1" direction="col">
+                  <TaskCommentRow
+                    comment={entry.comment}
+                    taskId={task.id}
+                    onChanged={onCommentChanged}
+                  />
+                </Box>
+              </li>
+            );
+          }
           const appearance = entryAppearance(entry);
-          const Icon =
-            entry.source === 'comment' ? MessageSquare01 : FileCheck02;
 
           return (
             <li
@@ -88,7 +113,7 @@ const OntologyTaskThread = ({ task, review, events }: Props) => {
               data-testid={entry.id}
               key={entry.id}>
               <span className="tw:flex tw:size-7 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:border tw:border-secondary">
-                <Icon
+                <FileCheck02
                   aria-hidden
                   className="tw:size-3.5 tw:text-fg-quaternary"
                 />

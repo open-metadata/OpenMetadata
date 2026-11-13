@@ -93,6 +93,7 @@ class ElementsResponse(BaseModel):
 
 class EdgeSource(BaseModel):
     source: str
+    target: str | None = None
 
     @property
     def node_id(self):

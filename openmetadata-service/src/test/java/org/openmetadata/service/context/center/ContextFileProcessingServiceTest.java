@@ -142,6 +142,27 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
+  void defaultProcessingReadsTheRepositorysAssetStore() {
+    file.setFileType(ContextFileType.CSV);
+    when(repository.readAsset(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream(
+                    "Osprey pallet weight cap,1150 kg per pallet".getBytes())));
+    AiProvider provider = mock(AiProvider.class);
+    when(provider.extractionAvailability())
+        .thenReturn(unavailable(ExtractionAvailability.Reason.ExtractionDisabled));
+    AiProviderHolder.setForTesting(provider);
+
+    new ContextFileProcessingService(repository).process(fileId, contentId);
+
+    verify(repository).readAsset(asset);
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), eq(UPLOADER));
+    assertEquals(ProcessingStatus.Processed, updatedFileCaptor.getValue().getProcessingStatus());
+  }
+
+  @Test
   void processSuccessMarksAnalyzingThenProcessed() throws Exception {
     when(assetService.read(asset))
         .thenReturn(
@@ -467,7 +488,7 @@ class ContextFileProcessingServiceTest {
     ContextFileProcessingService service =
         new ContextFileProcessingService(
             repository,
-            () -> assetService,
+            assetService::read,
             Runnable::run,
             textExtractor,
             jobDao,
@@ -1328,7 +1349,10 @@ class ContextFileProcessingServiceTest {
       Supplier<ExtractionAvailability> availability) {
     return new ContextFileProcessingService(
         repository,
-        assetServiceSupplier,
+        asset -> {
+          AssetService storage = assetServiceSupplier.get();
+          return storage == null ? null : storage.read(asset);
+        },
         executor,
         textExtractor,
         jobDao,

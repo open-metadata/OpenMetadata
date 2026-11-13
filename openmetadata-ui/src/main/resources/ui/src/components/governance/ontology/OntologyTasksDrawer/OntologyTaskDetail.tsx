@@ -17,7 +17,6 @@ import {
   Badge,
   Box,
   Button,
-  ButtonUtility,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
@@ -26,7 +25,6 @@ import {
   Check,
   Clock,
   Dataflow03,
-  Send01,
   User01,
   Users01,
 } from '@openmetadata/ui-core-components/icons';
@@ -40,13 +38,13 @@ import {
 } from '../../../../generated/api/data/ontologyReleaseReview';
 import { OntologyRelease } from '../../../../generated/entity/data/ontologyRelease';
 import { Task } from '../../../../generated/entity/tasks/task';
-import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getOntologyRelease } from '../../../../rest/ontologyAPI';
 import {
   formatDateTime,
   getRelativeTime,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import CommentComposer from '../../../common/CommentComposer/CommentComposer';
 import { getTaskResolveActions } from '../../../discovery/personal-space/InboxPage/taskResolve.utils';
 import { releaseChangeBreakdown } from '../OntologyReleasePanel/OntologyReleasePanel.utils';
 import OntologyReviewPanel from '../OntologyReviewPanel/OntologyReviewPanel';
@@ -303,50 +301,20 @@ const ReleaseSummary = ({
   );
 };
 
-const CommentBar = ({
-  isWriting,
-  onComment,
-}: Pick<Props, 'isWriting' | 'onComment'>) => {
-  const { t } = useTranslation();
-  const currentUser = useApplicationStore((store) => store.currentUser);
-  const [comment, setComment] = useState('');
-  const disabled = !comment.trim() || isWriting;
-  const send = async () => {
-    if (!disabled && (await onComment(comment))) {
-      setComment('');
-    }
-  };
-
-  return (
-    <div
-      className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-auto tw:flex tw:items-end tw:gap-3 tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
-      data-testid="ontology-task-comment-bar">
-      <Avatar
-        initials={initialsOf(getEntityName(currentUser))}
-        size="md"
-        src={currentUser?.profile?.images?.image}
-      />
-      <TextArea
-        aria-label={t('label.comment')}
-        autoSize={{ minRows: 1, maxRows: 6 }}
-        className="tw:flex-1"
-        data-testid="ontology-task-comment-input"
-        placeholder={t('message.leave-a-comment')}
-        value={comment}
-        onChange={setComment}
-      />
-      <ButtonUtility
-        aria-label={t('label.send')}
-        color="primary"
-        data-testid="ontology-task-comment-send"
-        icon={Send01}
-        isDisabled={disabled}
-        size="xl"
-        onPress={() => void send()}
-      />
-    </div>
-  );
-};
+const CommentBar = ({ onComment }: Pick<Props, 'onComment'>) => (
+  <div
+    className="tw:sticky tw:bottom-0 tw:z-10 tw:mt-auto tw:border-t tw:border-secondary tw:bg-overlay-surface tw:px-6 tw:py-4"
+    data-testid="ontology-task-comment-bar">
+    <CommentComposer
+      onSave={async (message) => {
+        // A refused comment rejects, so the composer puts the draft back.
+        if (!(await onComment(message))) {
+          throw new Error('comment-not-saved');
+        }
+      }}
+    />
+  </div>
+);
 
 const OntologyTaskDetail = ({
   task,
@@ -545,7 +513,7 @@ const OntologyTaskDetail = ({
         />
         {children}
       </Box>
-      <CommentBar isWriting={isWriting} onComment={onComment} />
+      <CommentBar onComment={onComment} />
     </Box>
   );
 };

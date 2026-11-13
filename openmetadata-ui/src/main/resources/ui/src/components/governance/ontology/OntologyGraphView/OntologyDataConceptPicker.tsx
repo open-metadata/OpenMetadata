@@ -148,7 +148,7 @@ const OntologyDataConceptPicker = ({
       <div
         aria-selected={position === active}
         className={classNames(
-          'tw:flex tw:cursor-pointer tw:items-center tw:gap-2 tw:rounded-md tw:px-3 tw:py-2',
+          'tw:flex tw:cursor-pointer tw:items-center tw:gap-2.5 tw:rounded-md tw:px-3 tw:py-2.5',
           position === active ? 'tw:bg-active' : 'tw:hover:bg-primary_hover'
         )}
         data-testid={`ontology-data-concept-option-${concept.id}`}
@@ -168,8 +168,8 @@ const OntologyDataConceptPicker = ({
         <Typography
           ellipsis
           className={hasData ? 'tw:text-primary' : 'tw:text-tertiary'}
-          size="text-sm"
-          weight="semibold">
+          size="text-md"
+          weight="medium">
           {concept.name}
         </Typography>
         {parentName ? (
@@ -207,10 +207,11 @@ const OntologyDataConceptPicker = ({
       aria-expanded="true"
       aria-label={searchLabel}
       autoComplete="off"
+      borderless={!isInline}
       icon={Search}
       inputDataTestId="ontology-data-concept-search"
       placeholder={`${searchLabel}…`}
-      size={isInline ? 'md' : 'sm'}
+      size="md"
       value={query}
       wrapperClassName={isInline ? 'tw:h-12 tw:pr-10' : undefined}
       onChange={setQuery}
@@ -232,19 +233,20 @@ const OntologyDataConceptPicker = ({
           </Typography>
         ) : null}
         {sections.flatMap((section, index) => [
-          <Typography
+          // A block, so the divider above a section runs edge to edge rather than under its caption.
+          <div
             aria-hidden="true"
             className={classNames(
-              'tw:px-3 tw:pt-2 tw:pb-1',
-              index > 0 && 'tw:mt-1 tw:border-t tw:border-secondary'
+              'tw:px-3 tw:pt-3 tw:pb-1.5',
+              index > 0 &&
+                'tw:-mx-1 tw:mt-1 tw:border-t tw:border-secondary tw:px-4'
             )}
-            color="secondary"
             key={`caption-${section.key}`}
-            role="presentation"
-            size="text-xs"
-            weight="medium">
-            {section.label}
-          </Typography>,
+            role="presentation">
+            <Typography color="secondary" size="text-sm" weight="medium">
+              {section.label}
+            </Typography>
+          </div>,
           ...section.items.map((concept) =>
             renderOption(concept, options.indexOf(concept))
           ),
@@ -311,7 +313,9 @@ const OntologyDataConceptPicker = ({
         </>
       ) : (
         <>
-          <div className="tw:border-b tw:border-secondary tw:p-2">{search}</div>
+          <div className="tw:border-b tw:border-secondary tw:px-1 tw:py-1.5">
+            {search}
+          </div>
           {results}
         </>
       )}
@@ -343,7 +347,7 @@ export const OntologyDataConceptChip = ({
   return (
     <Box
       align="center"
-      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:py-1 tw:pr-1 tw:pl-3 tw:shadow-xs"
+      className="tw:rounded-lg tw:border tw:border-secondary tw:bg-surface tw:px-3 tw:py-2 tw:shadow-xs"
       data-testid="ontology-data-concept-chip"
       gap={2}>
       <button

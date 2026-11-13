@@ -26,7 +26,6 @@ interface AggregateConceptInspectorProps {
   readonly conceptId: string;
   readonly onClose: () => void;
   readonly onEditConcept: (ontology: Ontology, conceptId: string) => void;
-  readonly onOpenOwner: (ontology: Ontology, conceptId: string) => void;
   readonly onSelectConcept: (conceptId: string) => void;
 }
 
@@ -53,7 +52,6 @@ const AggregateConceptInspector = ({
   conceptId,
   onClose,
   onEditConcept,
-  onOpenOwner,
   onSelectConcept,
 }: AggregateConceptInspectorProps) => {
   const { t } = useTranslation();
@@ -89,7 +87,6 @@ const AggregateConceptInspector = ({
             ? () => onEditConcept(model.ontology, concept.id)
             : undefined
         }
-        onOpenData={() => onOpenOwner(model.ontology, concept.id)}
         onSelectConcept={(item) => onSelectConcept(item.id)}
       />
     );

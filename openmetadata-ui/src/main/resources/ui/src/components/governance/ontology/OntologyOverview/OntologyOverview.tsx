@@ -50,6 +50,12 @@ import Loader from '../../../common/Loader/Loader';
 import { buildNativeTreeIndex } from '../../../OntologyExplorer/OntologyStudio.utils';
 import { FILTERS } from '../AllOntologiesGraphView/AllOntologiesGraphView.constants';
 import {
+  AxiomStatus,
+  constraintCheckTime,
+  countAxiomStatuses,
+  findAxiomConflicts,
+} from '../OntologyAxiomWorkspace/OntologyAxiomWorkspace.utils';
+import {
   overviewValidationQueryKey,
   RECENT_CHANGES_SHOWN,
 } from './OntologyOverview.constants';
@@ -62,7 +68,7 @@ interface OntologyOverviewProps {
   readonly releaseId?: string;
   readonly status?: OntologyPublicationStatus;
   /** Given inside the Ontology tabs: a card opens the tab it summarises. */
-  readonly onOpenTab?: (tab: OntologyOverviewTab) => void;
+  readonly onOpenTab?: (tab: OntologyOverviewTab, status?: AxiomStatus) => void;
   /** Opens Review & publish; the Recent changes card shows only when given. */
   readonly onOpenPublication?: () => void;
 }
@@ -318,8 +324,81 @@ const getValidationMessage = (
     : 'message.ontology-validate-all-clean';
 };
 
+const STATUS_SEGMENTS: {
+  status: AxiomStatus;
+  label: string;
+  color: string;
+}[] = [
+  {
+    status: 'valid',
+    label: 'label.valid-lowercase',
+    color: 'tw:bg-fg-success-secondary',
+  },
+  {
+    status: 'not-checked',
+    label: 'label.not-checked-lowercase',
+    color: 'tw:bg-quaternary',
+  },
+  {
+    status: 'conflict',
+    label: 'label.in-conflict-lowercase',
+    color: 'tw:bg-fg-error-secondary',
+  },
+];
+
+/** Constraints by status: a proportional bar, then a legend that carries the counts in text. */
+const StatusBreakdown = ({
+  counts,
+}: {
+  counts: Record<AxiomStatus, number>;
+}) => {
+  const { t } = useTranslation();
+
+  return (
+    <Box
+      data-testid="ontology-overview-validation-breakdown"
+      direction="col"
+      gap={3}>
+      <div
+        aria-hidden
+        className="tw:flex tw:h-2 tw:gap-0.5 tw:overflow-hidden tw:rounded-full tw:bg-tertiary">
+        {STATUS_SEGMENTS.filter(({ status }) => counts[status] > 0).map(
+          ({ status, color }) => (
+            <div
+              className={color}
+              key={status}
+              style={{ flexGrow: counts[status] }}
+            />
+          )
+        )}
+      </div>
+      <Box gap={5} wrap="wrap">
+        {STATUS_SEGMENTS.map(({ status, label, color }) => (
+          <Box
+            align="center"
+            data-testid={`ontology-overview-validation-${status}`}
+            gap={1}
+            key={status}>
+            <span
+              aria-hidden
+              className={`tw:size-2 tw:shrink-0 tw:rounded-xs ${color}`}
+            />
+            <Typography as="span" size="text-sm" weight="semibold">
+              {counts[status]}
+            </Typography>
+            <Typography as="span" color="secondary" size="text-sm">
+              {t(label)}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
 const ValidationCard = ({
   conflictCount,
+  statusCounts,
   hasResult,
   isChecking,
   isFailed,
@@ -327,6 +406,7 @@ const ValidationCard = ({
   onReview,
 }: {
   conflictCount: number;
+  statusCounts: Record<AxiomStatus, number>;
   /** False until a validation run answered, so a pending or failed run never reads as clean. */
   hasResult: boolean;
   isChecking: boolean;
@@ -363,6 +443,7 @@ const ValidationCard = ({
               {t(getValidationMessage(isFailed, hasResult, hasConflicts))}
             </Typography>
           )}
+          <StatusBreakdown counts={statusCounts} />
           <Box gap={2} wrap="wrap">
             <Button
               color="secondary"
@@ -376,6 +457,7 @@ const ValidationCard = ({
             {hasConflicts && onReview ? (
               <Button
                 color="secondary-destructive"
+                data-testid="ontology-overview-review-conflicts"
                 size="sm"
                 onPress={onReview}>
                 {t('label.review-conflicts')}
@@ -450,7 +532,16 @@ type ValidationRead = { data?: { violations: readonly unknown[] } };
 const countConflicts = (validation: ValidationRead) =>
   validation.data?.violations.length ?? 0;
 
-/** "1 in conflict" once validation has run; nothing before. */
+/**
+ * What the Overview points at for the conflicts: the constraints in conflict when the clashes name
+ * them, otherwise the server's violation count and the constraints it left unchecked.
+ */
+const conflictFocus = (constraintsInConflict: number, violations: number) =>
+  constraintsInConflict
+    ? { count: constraintsInConflict, filter: 'conflict' as const }
+    : { count: violations, filter: 'not-checked' as const };
+
+/** "3 in conflict" — constraints, not clashes — once validation has run; nothing before. */
 const conflictDetail = (
   validation: ValidationRead,
   count: number,
@@ -480,6 +571,24 @@ const OntologyOverview = ({
     () => buildNativeTreeIndex(graph, FILTERS, []),
     [graph]
   );
+  const statusCounts = useMemo(() => {
+    const violations = validation.data?.violations ?? [];
+    const conflicts = findAxiomConflicts(
+      model?.axioms ?? [],
+      model?.concepts ?? [],
+      violations
+    );
+
+    return countAxiomStatuses(
+      model?.axioms ?? [],
+      conflicts,
+      constraintCheckTime(
+        conflicts,
+        violations,
+        validation.data ? validation.dataUpdatedAt : undefined
+      )
+    );
+  }, [model, validation.data, validation.dataUpdatedAt]);
   const version = getVersionLabel(status, t);
   const versionLabel = t(releaseId ? 'label.published' : 'label.draft');
 
@@ -495,8 +604,8 @@ const OntologyOverview = ({
   }
 
   const facts = getOverviewFacts(model, treeIndex, countConflicts(validation));
-  const openTab = (tab: OntologyOverviewTab) =>
-    onOpenTab ? () => onOpenTab(tab) : undefined;
+  const openTab = (tab: OntologyOverviewTab, status?: AxiomStatus) =>
+    onOpenTab ? () => onOpenTab(tab, status) : undefined;
   const details = [
     ['version', t('label.version'), version],
     ['namespace', t('label.namespace'), ontology.namespace],
@@ -557,7 +666,12 @@ const OntologyOverview = ({
         />
         <StatCard
           count={model.axioms.length}
-          detail={conflictDetail(validation, facts.conflictCount, t)}
+          // The server's violations decide the alert: one that names no constraint still counts.
+          detail={conflictDetail(
+            validation,
+            conflictFocus(statusCounts.conflict, facts.conflictCount).count,
+            t
+          )}
           isAlert={facts.conflictCount > 0}
           label={t('label.constraint-plural')}
           testId="ontology-overview-count-constraints"
@@ -571,7 +685,11 @@ const OntologyOverview = ({
             hasResult={Boolean(validation.data)}
             isChecking={validation.isFetching}
             isFailed={validation.isError}
-            onReview={openTab('axiom')}
+            statusCounts={statusCounts}
+            onReview={openTab(
+              'axiom',
+              conflictFocus(statusCounts.conflict, facts.conflictCount).filter
+            )}
             onValidate={() => void validation.refetch()}
           />
         )}

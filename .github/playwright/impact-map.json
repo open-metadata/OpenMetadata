@@ -594,6 +594,8 @@
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextMemoryIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/search/indexes/ContextFileIndexTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryResourceTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/ContextMemoryVisibilityTest.java",
+        "openmetadata-service/src/test/java/org/openmetadata/service/search/security/ContextMemorySearchVisibilityTest.java",
         "openmetadata-service/src/test/java/org/openmetadata/service/resources/context/MemoryExtractionAccessTest.java",
         "openmetadata-service/src/main/java/org/openmetadata/service/llm/LLMClientHolder.java",
         "openmetadata-mcp/src/main/java/org/openmetadata/mcp/tools/EntityCreationSpec.java",
@@ -857,10 +859,12 @@
         "openmetadata-service/src/main/resources/json/data/document/docs/**",
         "openmetadata-ui/src/main/resources/ui/src/utils/CustomizeMyDataPage*",
         "openmetadata-ui/src/main/resources/ui/src/constants/CustomizeMyDataPage.constants.ts",
+        "openmetadata-ui/src/main/resources/ui/src/constants/Widgets.constant*",
         "openmetadata-ui/src/main/resources/ui/playwright/support/fixtures/landingPageUser.ts"
       ],
       "projects": ["chromium", "Basic"],
       "specs": [
+        "playwright/e2e/Features/CuratedAssets.spec.ts",
         "playwright/e2e/Features/LandingPageWidgets/**/*.spec.ts",
         "playwright/e2e/Flow/CustomizeWidgets.spec.ts",
         "playwright/e2e/Flow/CustomizeLandingPage.spec.ts"
@@ -1266,6 +1270,14 @@
     {
       "_comment": "Backend integration tests are a test-only Maven module — not packaged into the server the suite runs against, nor into the UI bundle — so no change here can alter a spec outcome. Mapped to no specs rather than left unmapped: openmetadata-integration-tests/ is in UNMAPPED_CODE_ROOTS, so without this every backend-IT change escalates to a full-suite run.",
       "sources": ["openmetadata-integration-tests/**"],
+      "projects": [],
+      "specs": []
+    },
+    {
+      "_comment": "This RDF JUnit fixture is not packaged into the server or browser bundle.",
+      "sources": [
+        "openmetadata-service/src/test/java/org/openmetadata/service/apps/bundles/rdf/RdfIndexAppTest.java"
+      ],
       "projects": [],
       "specs": []
     },

@@ -10,13 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  ButtonGroup,
-  ButtonGroupItem,
-  Input,
-  Typography,
-} from '@openmetadata/ui-core-components';
+import { Box, Input, Tabs, Typography } from '@openmetadata/ui-core-components';
 import { Search } from '@openmetadata/ui-core-components/icons';
 import { useTranslation } from 'react-i18next';
 import {
@@ -55,8 +49,9 @@ const OntologyReleaseChangeFilters = ({
   return (
     <Box data-testid="ontology-change-filters" direction="col" gap={4}>
       <Typography
+        className="tw:text-primary"
         data-testid="ontology-change-counts"
-        size="text-md"
+        size="text-sm"
         weight="semibold">
         {kinds.length ? `${totalText}: ${kinds.join(', ')}` : totalText}
       </Typography>
@@ -75,26 +70,25 @@ const OntologyReleaseChangeFilters = ({
           value={search}
           onChange={onSearchChange}
         />
-        <ButtonGroup
-          disallowEmptySelection
-          aria-label={t('label.change-plural')}
-          selectedKeys={[filter]}
-          size="sm"
-          onSelectionChange={(keys) => {
-            const [next] = [...keys];
-            if (next) {
-              onFilterChange(next as ChangeFilter);
-            }
-          }}>
-          {FILTERS.map((option) => (
-            <ButtonGroupItem
-              data-testid={`ontology-change-filter-${option}`}
-              id={option}
-              key={option}>
-              {t(`label.${option}`)} · {rowCounts[option]}
-            </ButtonGroupItem>
-          ))}
-        </ButtonGroup>
+        {/* The same segmented control as the dialog's Changes / Releases, as the design draws it. */}
+        <Tabs
+          className="tw:w-fit"
+          selectedKey={filter}
+          onSelectionChange={(key) => onFilterChange(key as ChangeFilter)}>
+          <Tabs.List
+            aria-label={t('label.change-plural')}
+            size="sm"
+            type="button-border">
+            {FILTERS.map((option) => (
+              <Tabs.Item
+                data-testid={`ontology-change-filter-${option}`}
+                id={option}
+                key={option}>
+                {t(`label.${option}`)} · {rowCounts[option]}
+              </Tabs.Item>
+            ))}
+          </Tabs.List>
+        </Tabs>
       </Box>
     </Box>
   );

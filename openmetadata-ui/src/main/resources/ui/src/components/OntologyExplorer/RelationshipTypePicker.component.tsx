@@ -36,6 +36,7 @@ import { useIsAiMode } from '../../hooks/useAppMode';
 import { listRelationshipTypes } from '../../rest/ontologyAPI';
 import { splitUnfitRelationOptions } from '../../utils/governance/ontology/OntologyNativeRelation.utils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 import {
   NEW_RELATION_TYPE_PREFIX,
   RELATION_PALETTE_SWATCH_CLASSES,
@@ -325,8 +326,8 @@ const RelationshipTypePicker: React.FC<RelationshipTypePickerProps> = ({
   const renderRelationTypeList = () => {
     if (isLoading) {
       return (
-        <span className="tw:p-2 tw:font-body tw:text-xs tw:text-tertiary">
-          {t('label.loading')}
+        <span className="tw:p-2">
+          <Loader size="x-small" />
         </span>
       );
     }
