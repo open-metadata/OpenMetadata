@@ -203,13 +203,12 @@ public class DataInsightsApp extends AbstractNativeApplication {
       for (String dataAssetType : getDataAssetTypes()) {
         String dataStreamName =
             getDataStreamName(searchRepository.getClusterAlias(), dataAssetType);
-        if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
+        if (Entity.TEST_CASE.equals(dataAssetType)) {
+          new TestCaseSnapshotStore(
+                  searchRepository.getSearchClient(), searchRepository.getClusterAlias())
+              .deleteSnapshots();
+        } else if (searchInterface.dataAssetDataStreamExists(dataStreamName)) {
           searchInterface.deleteDataAssetDataStream(dataStreamName);
-          if (Entity.TEST_CASE.equals(dataAssetType)) {
-            new TestCaseSnapshotStore(
-                    searchRepository.getSearchClient(), searchRepository.getClusterAlias())
-                .clearCheckpoints();
-          }
         }
       }
     } catch (IOException ex) {

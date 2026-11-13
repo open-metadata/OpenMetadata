@@ -26,13 +26,13 @@ import org.openmetadata.schema.dataInsight.custom.LineChart;
 import org.openmetadata.schema.dataInsight.custom.LineChartMetric;
 import org.openmetadata.schema.dataInsight.custom.SummaryCard;
 import org.openmetadata.schema.dataInsight.custom.SummaryChartMetric;
-import org.openmetadata.schema.entity.applications.App;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.applications.configuration.internal.AppAnalyticsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.ServiceFilter;
-import org.openmetadata.schema.entity.applications.configuration.internal.WebAnalyticsConfig;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.tests.TestCase;
@@ -164,7 +164,7 @@ class DataInsightTestCaseCoverageIT {
                           .withModuleConfiguration(
                               new ModuleConfiguration()
                                   .withDataAssets(new DataAssetsConfig())
-                                  .withAppAnalytics(new WebAnalyticsConfig().withEnabled(false))
+                                  .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
                                   .withCostAnalysis(
                                       new CostAnalysisConfig().withEnabled(false))))));
       application.createOrUpdateDataAssetsDataStream();
@@ -180,6 +180,27 @@ class DataInsightTestCaseCoverageIT {
       store.detachLiveAlias();
       prepareStream(Entity.TEST_CASE);
     }
+  }
+
+  @Test
+  void replacingServiceAndGlobalCapturesInvalidatesOnlyTrustworthyCoverage(TestNamespace ns)
+      throws Exception {
+    final Table first = ShortStackFactory.table(ns);
+    final Table second = ShortStackFactory.table(ns);
+    final List<Table> tables = List.of(first, second);
+    final long day = TimestampUtils.getStartOfDayTimestamp(System.currentTimeMillis());
+    store.beginCapture(day, null, 90);
+    store.completeCapture(day, null);
+    assertEquals(2, store.loadCoverage(tables, day, day).counts().size());
+
+    store.beginCapture(day, first.getService().getName(), 90);
+    assertTrue(store.loadCoverage(tables, day, day).counts().isEmpty());
+    store.completeCapture(day, first.getService().getName());
+    assertEquals(1, store.loadCoverage(tables, day, day).counts().size());
+    assertTrue(store.loadCoverage(List.of(second), day, day).counts().isEmpty());
+
+    store.beginCapture(day, null, 90);
+    assertTrue(store.loadCoverage(tables, day, day).counts().isEmpty());
   }
 
   @Test

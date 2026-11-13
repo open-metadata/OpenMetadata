@@ -69,8 +69,17 @@ public final class TestCaseSnapshotStore {
         Map.of(
             "range",
             Map.of("@timestamp", Map.of("lt", TimestampUtils.subtractDays(day, retention))));
-    delete(stream, expired);
     delete(checkpoints, expired);
+    delete(stream, expired);
+  }
+
+  public void deleteSnapshots() throws IOException {
+    clearCheckpoints();
+    final SearchClient.RawSearchResponse response =
+        client.rawSearchRequest("DELETE", "/_data_stream/" + stream, null);
+    if (response.statusCode() != 404) {
+      checked(response);
+    }
   }
 
   public void clearCheckpoints() throws IOException {

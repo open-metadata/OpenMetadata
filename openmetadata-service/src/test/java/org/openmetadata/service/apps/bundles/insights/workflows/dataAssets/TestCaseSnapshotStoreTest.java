@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.insights.workflows.dataAssets;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -12,9 +13,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.search.SearchClient;
 
 class TestCaseSnapshotStoreTest {
@@ -55,6 +58,86 @@ class TestCaseSnapshotStoreTest {
         .thenReturn(new SearchClient.RawSearchResponse(404, "missing"));
     final TestCaseSnapshotStore store = new TestCaseSnapshotStore(client, "");
     assertEquals(Map.of(), store.loadCoverage(List.of(table()), 0, 1).counts());
+  }
+
+  @Test
+  void failedCheckpointInvalidationPreservesSnapshotsDuringRecreation() throws IOException {
+    final AtomicBoolean snapshotsExist = new AtomicBoolean(true);
+    final SearchClient client = mock(SearchClient.class);
+    when(client.rawSearchRequest(any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              final String path = call.getArgument(1);
+              if (path.contains("checkpoints/_delete_by_query")) {
+                return new SearchClient.RawSearchResponse(503, "unavailable");
+              }
+              if (path.startsWith("/_data_stream/")) {
+                snapshotsExist.set(false);
+              }
+              return new SearchClient.RawSearchResponse(200, "{}");
+            });
+    assertThrows(IOException.class, () -> new TestCaseSnapshotStore(client, "").deleteSnapshots());
+    assertTrue(snapshotsExist.get(), "Failed invalidation must leave certified history intact");
+  }
+
+  @Test
+  void recreationClearsCheckpointsEvenWhenTheStreamIsAlreadyMissing() throws IOException {
+    final AtomicBoolean checkpointExists = new AtomicBoolean(true);
+    final SearchClient client = mock(SearchClient.class);
+    when(client.rawSearchRequest(any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              final String path = call.getArgument(1);
+              if (path.contains("checkpoints/_delete_by_query")) {
+                checkpointExists.set(false);
+              }
+              return new SearchClient.RawSearchResponse(
+                  path.startsWith("/_data_stream/") ? 404 : 200, "{}");
+            });
+    new TestCaseSnapshotStore(client, "").deleteSnapshots();
+    assertFalse(checkpointExists.get());
+  }
+
+  @Test
+  void failedRetentionInvalidationPreservesHistoricalSnapshots() throws IOException {
+    final AtomicBoolean historyExists = new AtomicBoolean(true);
+    final SearchClient client = mock(SearchClient.class);
+    when(client.rawSearchRequest(any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              final String path = call.getArgument(1);
+              final String body = call.getArgument(2);
+              if (body != null && JsonUtils.readTree(body).path("query").has("range")) {
+                if (path.contains("checkpoints")) {
+                  return new SearchClient.RawSearchResponse(503, "unavailable");
+                }
+                historyExists.set(false);
+              }
+              return new SearchClient.RawSearchResponse(200, "{}");
+            });
+    assertThrows(
+        IOException.class,
+        () -> new TestCaseSnapshotStore(client, "").beginCapture(86400000L, null, 0));
+    assertTrue(historyExists.get(), "Expired snapshots must outlive their completion checkpoints");
+  }
+
+  @Test
+  void aFailedRefreshCannotPublishACompletionCheckpoint() throws IOException {
+    final AtomicBoolean checkpointExists = new AtomicBoolean(false);
+    final SearchClient client = mock(SearchClient.class);
+    when(client.rawSearchRequest(any(), any(), any()))
+        .thenAnswer(
+            call -> {
+              final String path = call.getArgument(1);
+              if (path.endsWith("/_refresh")) {
+                return new SearchClient.RawSearchResponse(200, "{\"_shards\":{\"failed\":1}}");
+              }
+              checkpointExists.set(true);
+              return new SearchClient.RawSearchResponse(201, "{}");
+            });
+    assertThrows(
+        IOException.class, () -> new TestCaseSnapshotStore(client, "").completeCapture(0, null));
+    assertFalse(checkpointExists.get());
   }
 
   private static Map<String, Object> snapshot(long day) {
