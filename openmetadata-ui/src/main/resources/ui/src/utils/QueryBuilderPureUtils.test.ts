@@ -432,6 +432,35 @@ describe('isQueryFilterFullyRepresentable', () => {
     ['bool.must_not', { query: { bool: { must_not: [tier1, pii] } } }],
     ['bare query.term', { query: tier1 }],
     ['match_all', { query: { match_all: {} } }],
+    [
+      'a nested group of text rules the builder writes',
+      {
+        query: {
+          bool: {
+            must: [
+              tier1,
+              {
+                bool: {
+                  must: [
+                    {
+                      regexp: {
+                        name: { value: '.*o.*', case_insensitive: true },
+                      },
+                    },
+                    { match_phrase: { description: 'orders' } },
+                    {
+                      bool: {
+                        must_not: { wildcard: { name: { value: '*o*' } } },
+                      },
+                    },
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      },
+    ],
   ])('is true for %s', (_, filter) => {
     expect(
       isQueryFilterFullyRepresentable(filter as unknown as QueryFilterInterface)
