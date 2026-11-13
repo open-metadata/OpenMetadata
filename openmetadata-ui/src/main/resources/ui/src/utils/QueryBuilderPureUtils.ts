@@ -389,9 +389,9 @@ const getStringValueRule = (
     : undefined;
 };
 
-// `like` rules are saved as `{ value: '*value*' }`, or its shorthand `'*value*'`, and nothing
-// else; reading a prefix or case-insensitive wildcard would rewrite it as a contains match on
-// the next save.
+// The builder writes `like` rules as `{ value: '*value*' }`; API clients may write the shorthand
+// `'*value*'`. Nothing else is read: a prefix or case-insensitive wildcard would be rewritten
+// as a contains match on the next save.
 const readWildcardValue = (body: unknown) => {
   const { value, ...rest } = isObject(body)
     ? (body as UnknownRecord)
@@ -1159,9 +1159,7 @@ const isRenderedClause = (
 
   return (
     Boolean(handler) &&
-    withoutCustomPropertyScope(children).every((child) =>
-      isRenderedClause(child, fields)
-    )
+    children.every((child) => isRenderedClause(child, fields))
   );
 };
 

@@ -496,7 +496,7 @@ describe('isQueryFilterFullyRepresentable', () => {
               tier1,
               {
                 bool: {
-                  must: [pii, { wildcard: { name: { value: 'orders*' } } }],
+                  must: [pii, { range: { updatedAt: { gte: 1 } } }],
                 },
               },
             ],
