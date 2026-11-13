@@ -327,6 +327,38 @@ describe('RunHistoryDrawer', () => {
     });
   });
 
+  describe('unfinished run', () => {
+    afterEach(() => {
+      (useAgentRuns as jest.Mock).mockImplementation(() => ({
+        runs: mockRuns,
+        isLoading: false,
+      }));
+    });
+
+    it('should omit the duration when the run has no end time', () => {
+      (useAgentRuns as jest.Mock).mockReturnValue({
+        runs: [
+          {
+            ...mockRuns[2],
+            status: 'running',
+            durationMs: undefined,
+          },
+        ],
+        isLoading: false,
+      });
+
+      renderDrawer();
+
+      expect(screen.getByTestId('run-history-item')).toHaveTextContent(
+        /08:10$/
+      );
+      expect(
+        screen.queryByText(/message\.ran-for-duration/)
+      ).not.toBeInTheDocument();
+      expect(screen.queryByText(/<1ms/)).not.toBeInTheDocument();
+    });
+  });
+
   describe('steps section', () => {
     // The suite-level mock uses mockImplementation; a per-test mockReturnValue would outlive the
     // test and leak into the next one, so restore the default after each.

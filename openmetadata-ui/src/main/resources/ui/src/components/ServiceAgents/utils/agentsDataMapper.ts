@@ -407,7 +407,9 @@ export const mapPipelineStatusToRun = (status: PipelineStatus): AgentRun => {
   const steps = status.status ?? [];
   const startedAtMillis = status.startDate ?? status.timestamp;
   const durationMs =
-    status.endDate && status.startDate ? status.endDate - status.startDate : 0;
+    status.endDate && status.startDate
+      ? status.endDate - status.startDate
+      : undefined;
 
   return {
     id: status.runId ?? String(status.timestamp),

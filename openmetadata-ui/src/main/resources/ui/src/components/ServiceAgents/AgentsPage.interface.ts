@@ -106,7 +106,7 @@ export interface AgentRun {
   id: string;
   status: RunStatus;
   startedAt: string;
-  durationMs: number;
+  durationMs?: number;
   totals: RunTotals;
   steps: RunStep[];
 }

@@ -667,7 +667,7 @@ describe('agentsDataMapper', () => {
       const run = mapPipelineStatusToRun(status);
 
       expect(run.id).toBe('1700000000000');
-      expect(run.durationMs).toBe(0);
+      expect(run.durationMs).toBeUndefined();
       expect(run.steps).toEqual([]);
     });
   });

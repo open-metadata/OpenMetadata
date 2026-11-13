@@ -24,7 +24,7 @@ import {
   LinkExternal01,
   PlayFilled,
 } from '@openmetadata/ui-core-components/icons';
-import { isEmpty } from 'lodash';
+import { isEmpty, isUndefined } from 'lodash';
 import { FC, ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -149,13 +149,38 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
               {startDate}
             </div>
             <div className="tw:mt-px tw:text-xs tw:leading-tight tw:text-quaternary">
-              {startTime ? `${startTime} · ` : ''}
-              {formatDuration(r.durationMs, 2)}
+              {[
+                startTime,
+                isUndefined(r.durationMs)
+                  ? undefined
+                  : formatDuration(r.durationMs, 2),
+              ]
+                .filter(Boolean)
+                .join(' · ')}
             </div>
           </button>
         );
       })}
     </Box>
+  );
+};
+
+const RunTiming: FC<{ run: AgentRun }> = ({ run }) => {
+  const { t } = useTranslation();
+
+  return (
+    <div className="tw:text-xs tw:text-tertiary">
+      {[
+        `${run.startedAt} (${getUtcOffsetLabel()})`,
+        isUndefined(run.durationMs)
+          ? undefined
+          : t('message.ran-for-duration', {
+              duration: formatDuration(run.durationMs, 2),
+            }),
+      ]
+        .filter(Boolean)
+        .join(' · ')}
+    </div>
   );
 };
 
@@ -196,13 +221,7 @@ const SelectedRunPanel: FC<SelectedRunPanelProps> = ({
           <div className="tw:text-md tw:font-bold tw:text-primary tw:leading-none">
             {runLabel}
           </div>
-          <div className="tw:text-xs tw:text-tertiary">
-            {/* eslint-disable-next-line i18next/no-literal-string -- decorative middot separator */}
-            {run.startedAt} ({getUtcOffsetLabel()}) &middot;{' '}
-            {t('message.ran-for-duration', {
-              duration: formatDuration(run.durationMs, 2),
-            })}
-          </div>
+          <RunTiming run={run} />
         </div>
         <Badge
           className="tw:font-semibold"
