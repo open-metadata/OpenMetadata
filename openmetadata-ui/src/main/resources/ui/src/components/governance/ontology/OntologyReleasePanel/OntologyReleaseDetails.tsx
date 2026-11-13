@@ -223,7 +223,11 @@ const OntologyReleaseDetails = ({
         <Card.Content>
           <Box direction="col" gap={4}>
             <Box align="center" gap={2} wrap="wrap">
-              <Typography as="h3" size="text-lg" weight="semibold">
+              <Typography
+                as="h3"
+                className="not-prose tw:m-0 tw:text-primary"
+                size="text-lg"
+                weight="semibold">
                 {heading}
               </Typography>
               <Badge color="gray" size="sm" type="pill-color">
@@ -251,7 +255,11 @@ const OntologyReleaseDetails = ({
 
   return (
     <Box data-testid="ontology-release-definition" direction="col" gap={3}>
-      <Typography as="h3" size="text-md" weight="semibold">
+      <Typography
+        as="h3"
+        className="not-prose tw:m-0 tw:text-primary"
+        size="text-md"
+        weight="semibold">
         {heading}
       </Typography>
       <Typography>{statusLabel}</Typography>

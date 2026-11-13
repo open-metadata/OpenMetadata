@@ -2067,6 +2067,22 @@ describe('OntologyExplorerPage', () => {
       }
     );
 
+    it.each([
+      ['the graph', '?ontology=native-sales', true],
+      ['the tree', '?ontology=native-sales&view=tree', false],
+    ])(
+      'offers full screen only on the graph: %s',
+      async (_name, search, offered) => {
+        renderNativeStudio(search);
+
+        await screen.findByTestId('ontology-canvas-toolbar');
+
+        expect(Boolean(screen.queryByTestId('ontology-full-screen'))).toBe(
+          offered
+        );
+      }
+    );
+
     it('pushes a history entry for a view change and Back returns to the previous view', async () => {
       renderNativeStudio('?ontology=native-sales');
       await screen.findByTestId('native-canvas');
@@ -3007,7 +3023,7 @@ describe('OntologyExplorerPage', () => {
   });
 
   it.each(['?ontology=native-sales', ''])(
-    'opens the selected concept Data graph from the Tree rail in %s',
+    'lists every linked asset in place from the Tree rail in %s',
     async (search) => {
       (getOntologyConceptBindings as jest.Mock).mockResolvedValue({
         revision: 0,
@@ -3027,14 +3043,15 @@ describe('OntologyExplorerPage', () => {
       await screen.findByTestId('native-canvas');
       fireEvent.click(screen.getByTestId('submode-tab-tree'));
       fireEvent.click(await screen.findByTestId('ontology-tree-term-Customer'));
-      fireEvent.click(await screen.findByTestId('ontology-assets-more'));
+      const more = await screen.findByTestId('ontology-assets-more');
 
-      expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
+      expect(screen.queryByText('Asset 6')).not.toBeInTheDocument();
+
+      fireEvent.click(more);
+
+      expect(await screen.findByText('Asset 6')).toBeInTheDocument();
+      expect(screen.getByTestId('submode-tab-tree')).toHaveAttribute(
         'aria-selected',
-        'true'
-      );
-      expect(screen.getByTestId('ontology-graph-mode-data')).toHaveAttribute(
-        'aria-pressed',
         'true'
       );
       expect(
