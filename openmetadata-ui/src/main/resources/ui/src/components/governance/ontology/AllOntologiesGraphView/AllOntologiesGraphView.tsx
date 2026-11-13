@@ -72,7 +72,6 @@ interface AllOntologiesGraphViewProps {
   readonly models: OntologyStudioModel[];
   readonly selectedConceptId?: string;
   readonly surface: 'graph' | 'tree';
-  readonly onRequestGraphSurface: () => void;
   readonly isFetching: boolean;
   readonly onRefresh: () => void;
   readonly onEditConcept: (ontology: Ontology, conceptId: string) => void;
@@ -149,7 +148,6 @@ const AllOntologiesGraphView = ({
   models,
   selectedConceptId,
   surface,
-  onRequestGraphSurface,
   isFetching,
   onRefresh,
   onEditConcept,
@@ -423,10 +421,6 @@ const AllOntologiesGraphView = ({
               ? () => onEditConcept(model.ontology, selected.id)
               : undefined
           }
-          onOpenData={() => {
-            onRequestGraphSurface();
-            setGraphMode('data');
-          }}
           onSelectConcept={selectNode}
         />
       ) : null}

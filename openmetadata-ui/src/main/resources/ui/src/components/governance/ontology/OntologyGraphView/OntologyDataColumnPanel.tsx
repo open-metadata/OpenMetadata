@@ -23,9 +23,11 @@ import {
   BoundColumn,
   OntologyNode,
 } from '../../../OntologyExplorer/OntologyExplorer.interface';
+import { CLEAR_OF_STUDIO_DRAWER } from '../OntologyStudioDrawer/OntologyStudioDrawer.constants';
 
 const PANEL_CLASS = [
   'tw:absolute tw:top-16 tw:right-3.5 tw:bottom-3.5 tw:z-20 tw:flex tw:w-80 tw:flex-col tw:gap-4',
+  CLEAR_OF_STUDIO_DRAWER,
   'tw:overflow-y-auto tw:rounded-xl tw:border tw:border-secondary tw:bg-surface tw:p-4 tw:shadow-lg',
 ].join(' ');
 

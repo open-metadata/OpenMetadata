@@ -27,6 +27,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import {
   Activity,
+  ChevronDown,
   Database01,
   InfoCircle,
   Link01,
@@ -42,6 +43,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../generated/entity/type';
+import { useOntologyDirtyForm } from '../../hooks/governance/ontology/useOntologyDraftGuard';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { NativeBindingBatchOutcome } from '../../interface/governance/ontology/ontologyConceptBindings.types';
 import { addAssetsToGlossaryTerm } from '../../rest/glossaryAPI';
@@ -57,6 +59,7 @@ import {
 } from '../../utils/governance/ontology/OntologyAssetSuggestion.utils';
 import { getTierTags } from '../../utils/TablePureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 
 type AssetScope = 'all' | 'tables' | 'columns';
 
@@ -234,8 +237,19 @@ const getOptionClassName = (isDialog: boolean, isAiMode: boolean) => {
     return 'tw:flex tw:items-start tw:gap-3 tw:px-3.5 tw:py-3';
   }
 
-  return isAiMode ? 'tw:px-3.5 tw:py-3' : 'tw:px-3 tw:py-2.5';
+  // A size container, so the label inside can be measured against the row.
+  return isAiMode
+    ? 'tw:@container tw:px-3.5 tw:py-2'
+    : 'tw:@container tw:px-3 tw:py-2';
 };
+
+// The core checkbox label sizes to its text, so a long path would never ellipsize; inline,
+// size it to the row (less the 16px box and its 8px gap) instead.
+const getLabelClassName = (isDialog: boolean) =>
+  classNames(
+    'tw:flex tw:min-w-0 tw:flex-1 tw:flex-col',
+    !isDialog && 'tw:w-[calc(100cqw-1.5rem)]'
+  );
 
 // The containers above the asset, e.g. "service / database / schema".
 const getAssetPath = (asset: EntityReference): string =>
@@ -269,6 +283,8 @@ const OntologyDataAssetPicker = ({
   const [selected, setSelected] = useState<Map<string, EntityReference>>(
     () => new Map()
   );
+  // Picked assets not yet saved: closing the drawer asks before dropping them.
+  useOntologyDirtyForm(selected.size > 0);
   const [isSaving, setIsSaving] = useState(false);
   const [nativeResult, setNativeResult] = useState<NativeBindingBatchOutcome>();
   const [typeFilter, setTypeFilter] = useState(ANY);
@@ -287,6 +303,8 @@ const OntologyDataAssetPicker = ({
   const [suggestions, setSuggestions] = useState<
     { asset: EntityReference; reason: SuggestionReason }[]
   >([]);
+  // While suggestions load, the first page waits for them, so rows do not jump into a Suggested group.
+  const [isSuggesting, setIsSuggesting] = useState(false);
   const mounted = useRef(true);
   useEffect(() => {
     mounted.current = true;
@@ -423,10 +441,12 @@ const OntologyDataAssetPicker = ({
       : [];
     if (terms.length === 0 || isFiltered || scope === 'columns') {
       setSuggestions([]);
+      setIsSuggesting(false);
 
       return;
     }
     let isCurrent = true;
+    setIsSuggesting(true);
     const timer = window.setTimeout(async () => {
       try {
         const response = await searchQuery({
@@ -475,6 +495,10 @@ const OntologyDataAssetPicker = ({
         if (isCurrent) {
           setSuggestions([]);
         }
+      } finally {
+        if (isCurrent) {
+          setIsSuggesting(false);
+        }
       }
     }, SEARCH_DEBOUNCE_MS);
 
@@ -504,10 +528,15 @@ const OntologyDataAssetPicker = ({
       return next;
     });
 
-  const suggestedIds = new Set(suggestions.map(({ asset }) => asset.id));
+  // A suggestion is something to add; an asset already linked is not one.
+  const openSuggestions = suggestions.filter(
+    ({ asset }) => !native?.linkedIds.includes(asset.id)
+  );
+  const suggestedIds = new Set(openSuggestions.map(({ asset }) => asset.id));
+  const isFirstPagePending = (loadedPage === 0 && !hasFailed) || isSuggesting;
   const listed = results.filter((asset) => !suggestedIds.has(asset.id));
   const selectable = [
-    ...suggestions.map(({ asset }) => asset),
+    ...openSuggestions.map(({ asset }) => asset),
     ...listed,
   ].filter((asset) => !native?.linkedIds.includes(asset.id));
   const isAllSelected =
@@ -658,77 +687,97 @@ const OntologyDataAssetPicker = ({
     );
   };
 
-  const renderInlineLabel = (asset: EntityReference) => (
-    <>
-      <Typography
-        ellipsis
-        as="span"
-        className="tw:text-tertiary"
-        size="text-xs">
-        {getAssetPath(asset)}
-      </Typography>
-      <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2">
-        <Typography ellipsis as="span" size="text-sm" weight="medium">
-          {asset.displayName ?? asset.name}
-        </Typography>
-        <Typography
-          as="span"
-          className="tw:shrink-0 tw:text-tertiary"
-          size="text-xs">
-          {entityUtilClassBase.getFormattedEntityType(asset.type)}
-        </Typography>
+  // The design's row: type tile, then name and type, the path, and any reason under them.
+  const renderInlineLabel = (asset: EntityReference) => {
+    const TypeIcon = TYPE_ICONS[asset.type] ?? Database01;
+
+    return (
+      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-3">
+        <span className="tw:flex tw:size-8 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:bg-utility-blue-50 tw:text-utility-blue-600">
+          <TypeIcon aria-hidden="true" className="tw:size-4" />
+        </span>
+        <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+          <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-2">
+            <Typography ellipsis as="span" size="text-sm" weight="semibold">
+              {asset.displayName ?? asset.name}
+            </Typography>
+            <Typography
+              as="span"
+              className="tw:shrink-0 tw:text-tertiary"
+              size="text-xs">
+              {entityUtilClassBase.getFormattedEntityType(asset.type)}
+            </Typography>
+          </span>
+          <Typography
+            ellipsis
+            as="span"
+            className="tw:text-tertiary"
+            size="text-xs">
+            {getAssetPath(asset)}
+          </Typography>
+        </span>
       </span>
-    </>
-  );
+    );
+  };
 
   const optionClassName = getOptionClassName(isDialog, isAiMode);
+  const labelClassName = getLabelClassName(isDialog);
 
   const renderOption = (asset: EntityReference, reason?: SuggestionReason) => {
     const isLinked = Boolean(native?.linkedIds.includes(asset.id));
 
     return (
-      <li className={optionClassName} key={asset.id}>
+      <li
+        className={classNames(
+          optionClassName,
+          'tw:min-w-0 tw:shrink-0 tw:overflow-hidden'
+        )}
+        key={asset.id}>
         <Checkbox
           aria-label={asset.displayName ?? asset.name}
+          className="tw:min-w-0"
           data-testid={`ontology-data-asset-option-${asset.id}`}
           isDisabled={isLinked}
-          isSelected={selected.has(asset.id)}
+          isSelected={isLinked || selected.has(asset.id)}
           label={
-            <span className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col">
+            <span className={labelClassName}>
               {isDialog ? renderDialogLabel(asset) : renderInlineLabel(asset)}
-              {isLinked ? (
-                <Typography
-                  as="span"
-                  className="tw:text-tertiary"
-                  data-testid={`ontology-data-asset-linked-${asset.id}`}
-                  size="text-xs">
-                  {t('message.ontology-asset-already-linked', {
-                    concept: native?.concept?.name,
-                  })}
-                </Typography>
-              ) : null}
-              {reason ? (
-                <Typography
-                  as="span"
-                  className="tw:text-brand-secondary"
-                  data-testid={`ontology-data-asset-reason-${asset.id}`}
-                  size="text-xs">
-                  {t(`message.ontology-suggest-${reason.kind}`, {
-                    column:
-                      reason.kind === 'column' ? reason.column : undefined,
-                    term: reason.term,
-                  })}
-                </Typography>
-              ) : null}
-              {failures.has(asset.id) ? (
-                <Typography
-                  as="span"
-                  className="tw:text-error-primary"
-                  data-testid={`ontology-data-asset-error-${asset.id}`}
-                  size="text-xs">
-                  {failures.get(asset.id)}
-                </Typography>
-              ) : null}
+              {/* Under the name, past the 32px type tile and its 12px gap. */}
+              <span className="tw:flex tw:min-w-0 tw:flex-col tw:pl-11 tw:empty:hidden">
+                {isLinked ? (
+                  <Typography
+                    as="span"
+                    className="tw:text-tertiary"
+                    data-testid={`ontology-data-asset-linked-${asset.id}`}
+                    size="text-xs">
+                    {t('message.ontology-asset-already-linked', {
+                      concept: native?.concept?.name,
+                    })}
+                  </Typography>
+                ) : null}
+                {reason ? (
+                  <Typography
+                    as="span"
+                    className="tw:text-brand-secondary"
+                    data-testid={`ontology-data-asset-reason-${asset.id}`}
+                    size="text-xs">
+                    {t(`message.ontology-suggest-${reason.kind}`, {
+                      column:
+                        reason.kind === 'column' ? reason.column : undefined,
+                      term: reason.term,
+                    })}
+                  </Typography>
+                ) : null}
+                {failures.has(asset.id) ? (
+                  <Typography
+                    as="span"
+                    className="tw:text-error-primary"
+                    data-testid={`ontology-data-asset-error-${asset.id}`}
+                    size="text-xs">
+                    {failures.get(asset.id)}
+                  </Typography>
+                ) : null}
+              </span>
             </span>
           }
           onChange={(isSelected) => toggle(asset, isSelected)}
@@ -739,19 +788,23 @@ const OntologyDataAssetPicker = ({
   };
 
   const renderListFooter = () => {
+    if (isFirstPagePending) {
+      return null;
+    }
     if (hasFailed || results.length < total) {
       return (
-        <Box
-          className="tw:border-t tw:border-secondary tw:p-2"
-          justify="center">
+        <Box className="tw:border-t tw:border-secondary tw:px-3.5 tw:py-2.5">
           <Button
-            color="link-gray"
+            color="link-color"
             data-testid="ontology-data-asset-load-more"
+            iconLeading={hasFailed ? undefined : ChevronDown}
             isDisabled={isLoading}
             isLoading={isLoading}
             size="sm"
             onPress={loadMore}>
-            {hasFailed ? t('label.retry') : t('label.load-more-lowercase')}
+            {hasFailed
+              ? t('label.retry')
+              : t('label.load-more-count', { count: total - results.length })}
           </Button>
         </Box>
       );
@@ -790,41 +843,48 @@ const OntologyDataAssetPicker = ({
       </Alert>
     ) : null;
 
-  const renderList = () => (
-    <ul
-      className={classNames(
-        'tw:m-0 tw:flex tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:p-0',
-        // In the dialog the content pane scrolls, so its footer divider marks the overflow.
-        !isDialog && 'tw:max-h-80 tw:overflow-y-auto'
-      )}>
-      {suggestions.length > 0 ? (
-        <li
-          className="tw:bg-secondary tw:px-3 tw:py-1.5"
-          data-testid="ontology-data-asset-suggested-heading">
-          <Typography
-            as="span"
-            color="secondary"
-            size="text-xs"
-            weight="semibold">
-            {t('label.suggested')}
-          </Typography>
-        </li>
-      ) : null}
-      {suggestions.map(({ asset, reason }) => renderOption(asset, reason))}
-      {suggestions.length > 0 && listed.length > 0 ? (
-        <li className="tw:bg-secondary tw:px-3 tw:py-1.5">
-          <Typography
-            as="span"
-            color="secondary"
-            size="text-xs"
-            weight="semibold">
-            {t('label.all-other-assets')}
-          </Typography>
-        </li>
-      ) : null}
-      {listed.map((asset) => renderOption(asset))}
-    </ul>
-  );
+  const renderList = () =>
+    isFirstPagePending ? (
+      <div className="tw:flex tw:justify-center tw:px-3 tw:py-6">
+        <Loader dataTestId="ontology-data-asset-loading" size="small" />
+      </div>
+    ) : (
+      <ul
+        className={classNames(
+          'tw:m-0 tw:flex tw:list-none tw:flex-col tw:divide-y tw:divide-secondary tw:overflow-x-hidden tw:p-0',
+          // In the dialog the content pane scrolls, so its footer divider marks the overflow.
+          !isDialog && 'tw:max-h-80 tw:overflow-y-auto'
+        )}>
+        {openSuggestions.length > 0 ? (
+          <li
+            className="tw:bg-secondary tw:px-3 tw:py-1.5"
+            data-testid="ontology-data-asset-suggested-heading">
+            <Typography
+              as="span"
+              color="secondary"
+              size="text-xs"
+              weight="semibold">
+              {t('label.suggested')}
+            </Typography>
+          </li>
+        ) : null}
+        {openSuggestions.map(({ asset, reason }) =>
+          renderOption(asset, reason)
+        )}
+        {openSuggestions.length > 0 && listed.length > 0 ? (
+          <li className="tw:bg-secondary tw:px-3 tw:py-1.5">
+            <Typography
+              as="span"
+              color="secondary"
+              size="text-xs"
+              weight="semibold">
+              {t('label.all-other-assets')}
+            </Typography>
+          </li>
+        ) : null}
+        {listed.map((asset) => renderOption(asset))}
+      </ul>
+    );
 
   const searchLabel = native
     ? t('label.search-entity', {
@@ -845,6 +905,7 @@ const OntologyDataAssetPicker = ({
     />
   );
 
+  // Service and type names run longer than the compact trigger, so the list is wider than it.
   const renderOptionFilter = (
     key: 'service' | 'type' | 'domain' | 'owner',
     options: FilterOptions,
@@ -863,6 +924,7 @@ const OntologyDataAssetPicker = ({
           .map(([id, name]) => ({ id, label: name }))
           .sort((left, right) => left.label.localeCompare(right.label)),
       ]}
+      popoverClassName="tw:w-auto tw:min-w-(--trigger-width) tw:max-w-80"
       size="sm"
       value={value}
       onChange={(id) => onChange(String(id))}>
@@ -1002,7 +1064,7 @@ const OntologyDataAssetPicker = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:gap-3 tw:p-4"
+      className="tw:flex tw:w-full tw:min-w-0 tw:flex-col tw:gap-3 tw:p-4"
       data-testid="ontology-data-asset-picker">
       <Box align="center" justify="between">
         <Typography as="span" size="text-sm" weight="semibold">
@@ -1020,9 +1082,10 @@ const OntologyDataAssetPicker = ({
       </Box>
       {renderSearch()}
       {renderFilters()}
-      <Card className="tw:flex tw:flex-col tw:overflow-hidden tw:p-0">
+      <Card className="tw:flex tw:min-w-0 tw:flex-col tw:overflow-hidden tw:p-0">
         <Box className="tw:border-b tw:border-secondary tw:p-3">
           <Tabs
+            className="tw:w-fit"
             selectedKey={scope}
             onSelectionChange={(key) => setScope(key as AssetScope)}>
             <Tabs.List size="sm" type="button-minimal">

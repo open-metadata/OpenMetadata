@@ -15,7 +15,7 @@ REST Auth & Client for Sigma
 import traceback
 from base64 import b64encode
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from cachetools import LRUCache
 
@@ -57,6 +57,42 @@ HEADERS = {
 }
 
 TOKEN_PAYLOAD = {"grant_type": "client_credentials"}
+
+
+def _reached_from_element(response: EdgeSourceResponse, element_id: str) -> set[str]:
+    """Every node the element's own sheet node reads from, directly or through other nodes, following edges back"""
+    sources_of: dict[str | None, list[str]] = {}
+    for edge in response.edges or []:
+        sources_of.setdefault(edge.target, []).append(edge.source)
+    reached = {
+        key for key, node in response.dependencies.items() if node.type == "sheet" and node.elementId == element_id
+    }
+    pending = list(reached)
+    while pending:
+        for source in sources_of.get(pending.pop(), []):
+            if source not in reached:
+                reached.add(source)
+                pending.append(source)
+    return reached
+
+
+def _source_node_ids(response: EdgeSourceResponse, keep: Callable[[str], bool]) -> list[str]:
+    """
+    The /files ids of the response's tables that `keep` accepts: edge sources that are not `dependencies` keys, and
+    `dependencies` entries typed table or dataset
+    """
+    node_ids = [
+        node_id
+        for edge in response.edges or []
+        if keep(edge.source) and (node_id := edge.node_id) and edge.source not in response.dependencies
+    ]
+    # Sigma keys the element's upstream tables in `dependencies`, so their edges start at a key
+    node_ids += [
+        node_id
+        for key, node in response.dependencies.items()
+        if keep(key) and node.type in ("table", "dataset") and (node_id := EdgeSource(source=node.nodeId).node_id)
+    ]
+    return node_ids
 
 
 class SigmaApiClient:
@@ -370,17 +406,13 @@ class SigmaApiClient:
                 self.client.get(f"/workbooks/{workbook_id}/lineage/elements/{element_id}")
             )
 
-            node_ids = [
-                node_id
-                for edge in edges_response.edges or []
-                if (node_id := edge.node_id) and edge.source not in edges_response.dependencies
-            ]
-            # Sigma keys the element's upstream tables in `dependencies`, so their edges start at a key
-            node_ids += [
-                node_id
-                for node in edges_response.dependencies.values()
-                if node.type in ("table", "dataset") and (node_id := EdgeSource(source=node.nodeId).node_id)
-            ]
+            # Only the tables the element reaches. With no sheet node for the element, or no table reached from it,
+            # the edges do not connect the way the walk reads them, so every table is kept as before rather than
+            # dropping the element's lineage.
+            reached = _reached_from_element(edges_response, element_id)
+            node_ids = _source_node_ids(edges_response, reached.__contains__) or _source_node_ids(
+                edges_response, lambda _: True
+            )
             for node_id in node_ids:
                 node_details = self.get_file(node_id)
                 if node_details and node_details.node_type in ["table", "dataset"]:

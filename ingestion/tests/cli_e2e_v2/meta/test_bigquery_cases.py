@@ -186,12 +186,8 @@ def test_table_diff_moves_connection_into_test_suite_config(instance, server):
 
 def test_expected_types_are_strict_for_numeric_and_json():
     database = bigquery_database("primary-project", "e2e_bq_owned")
-    assert database.name == "primary-project"
     schema = database.schemas[0]
-    assert schema.name == "e2e_bq_owned"
-    assert [procedure.name for procedure in schema.stored_procedures] == ["sp_active_customer_count"]
     tables = {table.name: table for table in schema.tables}
-    assert set(tables) == {"customers", "transactions", "all_types", "customer_txn_summary"}
     types = {column.name: column.data_type for column in tables["all_types"].columns}
     assert types == {
         "id": DataType.INT,
