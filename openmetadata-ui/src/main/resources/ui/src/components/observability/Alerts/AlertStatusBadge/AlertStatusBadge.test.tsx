@@ -18,43 +18,80 @@ import {
   Status,
   SubscriptionCategory,
   SubscriptionType,
+  TionStatus,
 } from '../../../../generated/events/eventSubscription';
 import AlertStatusBadge from './AlertStatusBadge';
 
-const REASON = "The value at '/authType/secretKey' must be entered again";
+const UNUSABLE = "The value at '/authType/secretKey' must be entered again";
+const REFUSED = 'Webhook failed with status: 503';
+const UNUSABLE_STATUS: TionStatus = {
+  status: Status.Failed,
+  lastFailedReason: UNUSABLE,
+  configurationUnusable: true,
+};
 
-const alertWith = (status: Status, enabled = true): EventSubscription => ({
+const alertWith = (
+  statuses: TionStatus[],
+  enabled = true
+): EventSubscription => ({
   alertType: AlertType.Observability,
   enabled,
   id: 'alert-id',
   name: 'alert',
-  destinations: [
-    {
-      category: SubscriptionCategory.External,
-      type: SubscriptionType.Webhook,
-      statusDetails: {
-        status,
-        lastFailedReason: status === Status.Failed ? REASON : undefined,
-        configurationUnusable: status === Status.Failed ? true : undefined,
-      },
-    },
-  ],
+  destinations: statuses.map((statusDetails) => ({
+    category: SubscriptionCategory.External,
+    type: SubscriptionType.Webhook,
+    statusDetails,
+  })),
 });
 
 describe('AlertStatusBadge', () => {
-  it('shows an alert whose destination does not send as failed, with the reason', () => {
-    render(<AlertStatusBadge alert={alertWith(Status.Failed)} />);
+  it('shows an alert whose configuration cannot send as failed, with the value to change', () => {
+    render(<AlertStatusBadge alert={alertWith([UNUSABLE_STATUS])} />);
 
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.failed'
     );
     expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      `label.failed. message.destination-does-not-send-until-fixed: ${REASON}`
+      `label.failed. message.destination-does-not-send-until-fixed: ${UNUSABLE}`
+    );
+  });
+
+  it.each([Status.Failed, Status.AwaitingRetry, Status.RetryLimitReached])(
+    'names a %s send by its failure reason',
+    (status) => {
+      render(
+        <AlertStatusBadge
+          alert={alertWith([{ status, lastFailedReason: REFUSED }])}
+        />
+      );
+
+      expect(screen.getByTestId('alert-status')).toHaveTextContent(
+        'label.failed'
+      );
+      expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
+        `label.failed. label.failure-reason: ${REFUSED}`
+      );
+    }
+  );
+
+  it('keeps the value to change apart from a failed send', () => {
+    render(
+      <AlertStatusBadge
+        alert={alertWith([
+          UNUSABLE_STATUS,
+          { status: Status.AwaitingRetry, lastFailedReason: REFUSED },
+        ])}
+      />
+    );
+
+    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
+      `label.failed. message.destination-does-not-send-until-fixed: ${UNUSABLE}. label.failure-reason: ${REFUSED}`
     );
   });
 
   it('shows an alert that sends as active, with no reason to read', () => {
-    render(<AlertStatusBadge alert={alertWith(Status.Active)} />);
+    render(<AlertStatusBadge alert={alertWith([{ status: Status.Active }])} />);
 
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.active'
@@ -63,26 +100,14 @@ describe('AlertStatusBadge', () => {
   });
 
   it('shows a switched-off alert as disabled', () => {
-    render(<AlertStatusBadge alert={alertWith(Status.Disabled, false)} />);
+    render(
+      <AlertStatusBadge
+        alert={alertWith([{ status: Status.Disabled }], false)}
+      />
+    );
 
     expect(screen.getByTestId('alert-status')).toHaveTextContent(
       'label.disabled'
-    );
-  });
-
-  it('names a failed send by its reason, not as a configuration to change', () => {
-    const alert = alertWith(Status.Failed);
-    alert.destinations[0].statusDetails = {
-      status: Status.Failed,
-      lastFailedReason: 'Webhook failed with status: 503',
-    };
-    render(<AlertStatusBadge alert={alert} />);
-
-    expect(screen.getByTestId('alert-status')).toHaveTextContent(
-      'label.failed'
-    );
-    expect(screen.getByTestId('alert-status-reason')).toHaveAccessibleName(
-      'label.failed. label.failure-reason: Webhook failed with status: 503'
     );
   });
 });

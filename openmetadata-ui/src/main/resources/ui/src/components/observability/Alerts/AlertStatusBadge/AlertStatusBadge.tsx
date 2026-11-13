@@ -22,32 +22,58 @@ import { EventSubscription } from '../../../../generated/events/eventSubscriptio
 import { getAlertListStatus } from '../../../../utils/observability/alertStatus.utils';
 import { ALERT_STATUS_BADGE } from './AlertStatusBadge.constants';
 
-/** The alert's status in a list; a failed one shows why its destinations do not send on hover. */
+/** The alert's status in a list; one that is not sending says why on hover and focus. */
 function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
   const { t } = useTranslation();
-  const { status, reasons, isConfigurationUnusable } = useMemo(
+  const { status, unusableReasons, failureReasons } = useMemo(
     () => getAlertListStatus(alert),
     [alert]
   );
   const { color, labelKey } = ALERT_STATUS_BADGE[status];
+  // Stored configurations to change, then sends that failed, each under its own heading.
+  const sections = useMemo(
+    () =>
+      [
+        {
+          title: t('message.destination-does-not-send-until-fixed'),
+          reasons: unusableReasons,
+        },
+        { title: t('label.failure-reason'), reasons: failureReasons },
+      ].filter((section) => section.reasons.length > 0),
+    [failureReasons, t, unusableReasons]
+  );
   const badge = (
     <Badge color={color} data-testid="alert-status" size="sm" type="pill-color">
       {t(labelKey)}
     </Badge>
   );
 
-  if (reasons.length === 0) {
+  if (sections.length === 0) {
     return badge;
   }
 
-  const title = isConfigurationUnusable
-    ? t('message.destination-does-not-send-until-fixed')
-    : t('label.failure-reason');
+  const [first, ...rest] = sections;
 
   return (
-    <Tooltip description={reasons.join('\n')} title={title}>
+    <Tooltip
+      description={
+        <>
+          <span className="tw:block">{first.reasons.join('\n')}</span>
+          {rest.map((section) => (
+            <span className="tw:block tw:pt-2" key={section.title}>
+              {`${section.title}: ${section.reasons.join('\n')}`}
+            </span>
+          ))}
+        </>
+      }
+      title={first.title}>
       <TooltipTrigger
-        aria-label={`${t(labelKey)}. ${title}: ${reasons.join(' ')}`}
+        aria-label={[
+          t(labelKey),
+          ...sections.map(
+            (section) => `${section.title}: ${section.reasons.join(' ')}`
+          ),
+        ].join('. ')}
         data-testid="alert-status-reason">
         {badge}
       </TooltipTrigger>

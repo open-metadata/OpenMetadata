@@ -541,13 +541,13 @@ describe('DestinationSelectItem', () => {
     );
   });
 
-  it('says nothing more in view mode about a send that failed', () => {
+  it('says nothing more in view mode about a send that waits for a retry', () => {
     renderWithForm(<DestinationSelectItem {...MOCK_PROPS} isViewMode />, {
       destinations: [
         {
           destinationType: SubscriptionType.Webhook,
           statusDetails: {
-            status: Status.Failed,
+            status: Status.AwaitingRetry,
             lastFailedReason: 'Webhook failed with status: 503',
           },
         },

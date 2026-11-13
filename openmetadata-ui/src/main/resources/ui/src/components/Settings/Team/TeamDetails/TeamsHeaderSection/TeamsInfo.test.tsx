@@ -13,7 +13,11 @@
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { compare } from 'fast-json-patch';
 import { Operation } from '../../../../../generated/entity/policies/policy';
-import { Team, TeamType } from '../../../../../generated/entity/teams/team';
+import {
+  Status,
+  Team,
+  TeamType,
+} from '../../../../../generated/entity/teams/team';
 import { ENTITY_PERMISSIONS } from '../../../../../mocks/Permissions.mock';
 import TeamsInfo from './TeamsInfo.component';
 
@@ -189,6 +193,32 @@ describe('TeamsInfo', () => {
     );
 
     expect(queryByTestId('edit-team-type-icon')).not.toBeInTheDocument();
+  });
+
+  it('passes the profile webhook status, so a webhook that cannot send says why', () => {
+    const reason = "The value at '/endpoint' must be entered again";
+    render(
+      <TeamsInfo
+        {...teamProps}
+        currentTeam={{
+          ...mockTeam,
+          profile: {
+            subscription: { slack: { endpoint: '*********' } },
+            subscriptionStatus: {
+              slack: {
+                status: Status.Failed,
+                lastFailedReason: reason,
+                configurationUnusable: true,
+              },
+            },
+          },
+        }}
+      />
+    );
+
+    expect(screen.getByTestId('subscription-not-sending')).toHaveTextContent(
+      reason
+    );
   });
 
   it('should render edit button if team type is not group and organization', () => {
