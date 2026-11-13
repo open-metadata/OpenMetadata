@@ -44,7 +44,13 @@ conditional allow such as `ViewAll` with `isOwner()` answers 403 to the whole li
 - A count scoped to a caller is never read from or written to `ListCountCache`, because its key
   leaves the caller out.
 - Every `ListFilter` subclass that overrides `getCondition` appends the scope. A DAO query of a
-  declared type names the table its condition filters and never aliases it.
+  declared type qualifies the condition with the name it reads the listed table under: the table's
+  name, or the alias it passes, as `UserDAO` does. `ListingConditionGuardTest` checks the queries
+  that name the table through `<table>`.
+- The condition reaches the query as text, an exception to
+  ADR:2026-11-03-dao-statements-bind-every-value. It inlines ids as typed UUIDs, and FQN hashes and
+  `LIKE` patterns only after each hash matches `[0-9a-f]{32}(\.[0-9a-f]{32})*`, so no name reaches
+  the SQL.
 - A soft-deleted user or team reaches no row, as on the read path. Team membership counts only live
   users, and a deleted team brings no deny rules. An item read of a stored procedure or an API
   endpoint loads its parent with only the parent's live owners, as a table's read and every listing

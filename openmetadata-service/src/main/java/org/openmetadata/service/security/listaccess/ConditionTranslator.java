@@ -134,7 +134,7 @@ final class ConditionTranslator {
 
   /**
    * A row with no domain is open to everyone, and a row with domains needs one of the caller's
-   * domains or a parent of one (SubjectContext.hasDomains).
+   * domains or a sub-domain of one (SubjectContext.hasDomains).
    */
   private RowPredicate hasDomain() {
     Set<String> domains = caller.domainFqns();

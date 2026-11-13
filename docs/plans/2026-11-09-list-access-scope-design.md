@@ -251,7 +251,8 @@ matches separate entities nested under the row's FQN, such as the test cases und
 child containers of a container. The upper bound is therefore never treated as exact.
 
 The renderer never emits `NOT IN`, because `NOT IN` over a subquery that returns a NULL selects
-nothing. It inlines ids as typed UUIDs and binds strings under `la_*` keys.
+nothing. It binds no value. It inlines ids as typed UUIDs, and FQN hashes and `LIKE` patterns only
+after each hash matches `[0-9a-f]{32}(\.[0-9a-f]{32})*`.
 
 ### Only inexact plans keep a per-row check
 
