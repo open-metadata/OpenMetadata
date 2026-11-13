@@ -46,7 +46,9 @@ conditional allow such as `ViewAll` with `isOwner()` answers 403 to the whole li
 - Every `ListFilter` subclass that overrides `getCondition` appends the scope. A DAO query of a
   declared type names the table its condition filters and never aliases it.
 - A soft-deleted user or team reaches no row, as on the read path. Team membership counts only live
-  users, and a deleted team brings no deny rules.
+  users, and a deleted team brings no deny rules. An item read of a stored procedure or an API
+  endpoint loads its parent with only the parent's live owners, as a table's read and every listing
+  do.
 - `TeamPolicySnapshot` keeps the snapshots of the last 4 policy generations, each for
   `SubjectCache.POLICIES_TTL` (2 minutes). A team or policy change made on another server is then
   seen within the bound the compiled policies already have. A snapshot keeps at most 256 team
