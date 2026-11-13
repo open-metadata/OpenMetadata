@@ -871,6 +871,27 @@ describe('applyStatusPlacements', () => {
     expect(applyStatusPlacements([point], series)).toEqual([point]);
   });
 
+  // Results posted through the API can carry a status but no
+  // testResultValue; every such run was missing, leaving a blank chart.
+  it('should pin passed and failed runs that reported no value to the expectation line', () => {
+    const data = applyStatusPlacements(
+      [
+        { name: 1, status: TestCaseStatus.Success },
+        { name: 2, status: TestCaseStatus.Failed },
+      ],
+      series,
+      100
+    );
+
+    expect(data.map((point) => point[placedSeriesKey(series[0])])).toEqual([
+      100, 100,
+    ]);
+    expect(data.map((point) => point[series[0]])).toEqual([
+      undefined,
+      undefined,
+    ]);
+  });
+
   it('should place runs on the zero line when no run plotted a value and no line exists', () => {
     const data = applyStatusPlacements(
       [

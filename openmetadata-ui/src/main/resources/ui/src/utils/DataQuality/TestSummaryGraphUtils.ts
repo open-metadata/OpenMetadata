@@ -285,8 +285,10 @@ export const placedSeriesKey = (seriesKey: string) =>
 /**
  * A run that produced no value carries no key for any series, so it would be
  * missing from the chart. Aborted runs are placed at the lowest value on the
- * plot (or the expectation line, or zero, when nothing was plotted) and queued
- * runs on the expectation line. The placed value goes under `placedSeriesKey`,
+ * plot (or the expectation line, or zero, when nothing was plotted). Queued
+ * runs, and passed or failed runs that reported no value (results posted
+ * through the API without `testResultValue`), go on the expectation line, so
+ * their status still shows. The placed value goes under `placedSeriesKey`,
  * not the series' own key, so the line joins measured runs only: drawn through
  * a placed value, an aborted run read as a measured drop. Which keys were
  * placed is recorded on the point.
@@ -304,10 +306,13 @@ export const applyStatusPlacements = (
   // stands in; otherwise every run of an always-aborting test would be invisible.
   const baseline = isEmpty(plotted) ? thresholdY ?? 0 : Math.min(...plotted);
 
+  const expectationLine = thresholdY ?? baseline;
   const placementByStatus: Partial<Record<TestCaseStatus, number | undefined>> =
     {
       [TestCaseStatus.Aborted]: baseline,
-      [TestCaseStatus.Queued]: thresholdY ?? baseline,
+      [TestCaseStatus.Queued]: expectationLine,
+      [TestCaseStatus.Success]: expectationLine,
+      [TestCaseStatus.Failed]: expectationLine,
     };
 
   return data.map((point) => {
