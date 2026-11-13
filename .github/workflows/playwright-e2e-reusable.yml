@@ -173,7 +173,7 @@ jobs:
   # Playwright runs only in the merge queue (plus schedule / dispatch / main
   # cache-warm pushes); callers skip this workflow on PR events.
   gate:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     permissions: {}
     outputs:
       should_run: ${{ steps.gate.outputs.should_run }}
@@ -191,7 +191,7 @@ jobs:
   check-changes:
     needs: gate
     if: ${{ needs.gate.outputs.should_run == 'true' }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       e2e: ${{ steps.filter.outputs.e2e }}
       docker-compose: ${{ steps.filter.outputs.docker-compose }}
@@ -334,7 +334,7 @@ jobs:
 
   cache-keys:
     needs: check-changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     outputs:
       bundle_mode: ${{ steps.fingerprints.outputs.bundle_mode }}
@@ -374,7 +374,7 @@ jobs:
 
   build:
     needs: [check-changes, cache-keys]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     env:
       DISTRIBUTION_FINGERPRINT: ${{ needs.cache-keys.outputs.distribution }}
@@ -530,7 +530,7 @@ jobs:
   # shared server instead (ADR:2026-10-23-playwright-visual-and-rdf-are-blocking-lanes-on-the-regular-bundle).
   build-visual-ui:
     needs: [check-changes]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: |
       needs.check-changes.outputs.visual == 'true' &&
       !inputs.warm_caches_only &&
@@ -583,7 +583,7 @@ jobs:
 
   detect-changes:
     needs: check-changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft }}
     outputs:
       mode: ${{ steps.select.outputs.mode }}
@@ -633,7 +633,7 @@ jobs:
     # Planning reads no build output, so it runs alongside `build` instead of
     # adding its ~4 min after it on the path to the shards.
     needs: [check-changes, detect-changes]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.plan.outputs.matrix }}
       shard_count: ${{ steps.plan.outputs.shard_count }}
@@ -840,7 +840,7 @@ jobs:
             --env PW_BROWSER_HELPER_OUTPUT=/artifacts \
             --env DBUS_SESSION_BUS_ADDRESS=disabled: \
             --env FC_FONTATIONS=1 \
-            mcr.microsoft.com/playwright:v1.57.0-jammy \
+            mcr.microsoft.com/playwright:v1.65.0-jammy \
             ./node_modules/.bin/playwright test \
             --config=playwright/browser-helper-tests.config.ts
 
@@ -965,7 +965,7 @@ jobs:
 
   restore-playwright-fixture:
     needs: [cache-keys, plan-playwright]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     outputs:
       fixture_cache_hit: ${{ steps.validate-fixture.outputs.usable }}
     steps:
@@ -1024,7 +1024,7 @@ jobs:
       ]
     # The ingestion image only matters when the fixture is rebuilt.
     if: ${{ !cancelled() && needs.build.result == 'success' && needs.cache-keys.result == 'success' && needs.detect-changes.result == 'success' && needs.plan-playwright.result == 'success' && needs.restore-playwright-fixture.result == 'success' && (needs.restore-playwright-fixture.outputs.fixture_cache_hit == 'true' || needs.prepare-ingestion-image.result == 'success') }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     env:
       ELASTICSEARCH_CLUSTER_ALIAS: openmetadata
     steps:
@@ -1165,6 +1165,11 @@ jobs:
       # shard past the 30-min elapsed-before-upload gate (run 30788758311).
       # `install-deps` still runs as a safety net so a Playwright version
       # bump that adds a new dep does not silently miss it.
+      # cache-apt-pkgs keys only on packages + arch, so a mixed 24.04/26.04
+      # fleet would restore one release's libraries onto the other.
+      - name: Resolve Ubuntu release for the apt cache
+        run: echo "UBUNTU_RELEASE=$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_ENV"
+
       - name: Cache Playwright system deps
         id: apt-deps-cache
         if: ${{ needs.restore-playwright-fixture.outputs.fixture_cache_hit != 'true' }}
@@ -1172,7 +1177,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         with:
-          # Chromium apt deps (playwright 1.57 on ubuntu-24.04 / noble).
+          # Chromium apt deps (playwright 1.65; same list on ubuntu-24.04 and 26.04).
           # IMPORTANT semantics: on cache HIT the action restores the
           # packages' installed FILES (fonts, libs, fontconfig cache) but
           # does NOT register them in dpkg's status database — so a
@@ -1196,13 +1201,14 @@ jobs:
             fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
             xfonts-cyrillic xfonts-scalable
             libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
-            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libdbus-1-3 libdrm2 libgbm1
+            libglib2.0-0t64
             libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
             libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
-          version: playwright-chromium-deps-v2
+          version: playwright-chromium-deps-v3-${{ env.UBUNTU_RELEASE }}
 
       # This is the ONE step per workflow that populates the apt cache
-      # (`playwright-chromium-deps-v2`, above) for every downstream shard.
+      # (`playwright-chromium-deps-v3`, above) for every downstream shard.
       # If it succeeds, all 30+ shards below hit the cache and skip apt
       # entirely; if it fails, we want the whole workflow to stop here with
       # a clean "apt mirror was down" attribution instead of half-executing.
@@ -1218,7 +1224,7 @@ jobs:
       # from the mirror — see the semantics note on the cache step.
       #
       # TRANSITIONAL: the per-attempt ceiling is 8 min (matching the shard
-      # side) while `playwright-chromium-deps-v2` is still populating across
+      # side) while `playwright-chromium-deps-v3` is still populating across
       # branches. Once every merge_group is a cache hit, tighten both
       # ceilings back to 5 min and drop `environmentAtMostFiveMinutes`'s
       # threshold from 480 → 300 in evaluate_playwright_performance.py.
@@ -1345,7 +1351,7 @@ jobs:
   # Airflow shards. Neither builds it again.
   prepare-ingestion-image:
     needs: [cache-keys]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -1431,7 +1437,7 @@ jobs:
         prepare-playwright-fixture,
         prepare-ingestion-image,
       ]
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     # Budget breakdown: up to 60 min playwright hang-protection wrapper on
     # the test step + ~5-8 min for setup (env, node, browser, bundle verify)
     # and teardown/artifact upload. The job clock must clear the inner
@@ -1683,6 +1689,11 @@ jobs:
       # fixture builder above — cache the Chromium system deps so every
       # shard skips the Ubuntu-mirror fetch entirely (a multi-minute crawl
       # on a bad-mirror day, see runs 30788758311 / 32157314266 / 32166970973).
+      # cache-apt-pkgs keys only on packages + arch, so a mixed 24.04/26.04
+      # fleet would restore one release's libraries onto the other.
+      - name: Resolve Ubuntu release for the apt cache
+        run: echo "UBUNTU_RELEASE=$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_ENV"
+
       - name: Cache Playwright system deps
         id: apt-deps-cache
         if: ${{ matrix.lane != 'visual' }}
@@ -1690,7 +1701,7 @@ jobs:
         continue-on-error: true
         timeout-minutes: 10
         with:
-          # Chromium apt deps (playwright 1.57 on ubuntu-24.04 / noble).
+          # Chromium apt deps (playwright 1.65; same list on ubuntu-24.04 and 26.04).
           # IMPORTANT semantics: on cache HIT the action restores the
           # packages' installed FILES but does NOT register them in dpkg's
           # status database — a subsequent `apt-get install` (which is what
@@ -1710,10 +1721,11 @@ jobs:
             fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
             xfonts-cyrillic xfonts-scalable
             libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
-            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libdbus-1-3 libdrm2 libgbm1
+            libglib2.0-0t64
             libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
             libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
-          version: playwright-chromium-deps-v2
+          version: playwright-chromium-deps-v3-${{ env.UBUNTU_RELEASE }}
 
       # `install-deps` is `apt-get install` under the hood, and apt decides
       # from dpkg state — NOT from files on disk — so it must only run when
@@ -1727,7 +1739,7 @@ jobs:
       # cancel the shard 20 min later (chromium-17 in run 32117681137,
       # chromium-02 in run 32124717834, the whole matrix in run 32157314266).
       #
-      # TRANSITIONAL: 8 min while `playwright-chromium-deps-v2` is still
+      # TRANSITIONAL: 8 min while `playwright-chromium-deps-v3` is still
       # populating. Tighten back to 5 min once every merge_group is a cache
       # hit and drop the env blocking threshold in
       # evaluate_playwright_performance.py from 480 → 300 in the same PR.
@@ -1878,7 +1890,7 @@ jobs:
               --user "$(id -u):$(id -g)" -e CI=true -e HOME=/tmp
               "${env_args[@]}"
               -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$RUNNER_TEMP:$RUNNER_TEMP"
-              -w "$PWD" mcr.microsoft.com/playwright:v1.57.0-jammy npx)
+              -w "$PWD" mcr.microsoft.com/playwright:v1.65.0-jammy npx)
             # Only a shard restoring the shared fixture has auth state before its
             # setup projects run; an own-environment lane creates it in the run.
             if [[ "$PW_PRESEEDED_STATE" == "true" ]] &&
@@ -2252,7 +2264,7 @@ jobs:
     name: Slack notification
     needs: [playwright-ci]
     if: ${{ always() && inputs.send_slack_notification }}
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
       - name: Checkout

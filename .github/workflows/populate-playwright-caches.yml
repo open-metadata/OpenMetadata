@@ -91,7 +91,7 @@ jobs:
     concurrency:
       group: populate-playwright-caches-apt
       cancel-in-progress: false
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
       - name: Checkout
@@ -103,6 +103,11 @@ jobs:
       # down whole matrices on Ubuntu-mirror incidents, so nothing may run
       # before it. continue-on-error so a mirror outage during populate
       # still lets the yarn/browser warmers below run.
+      # cache-apt-pkgs keys only on packages + arch, so a mixed 24.04/26.04
+      # fleet would restore one release's libraries onto the other.
+      - name: Resolve Ubuntu release for the apt cache
+        run: echo "UBUNTU_RELEASE=$(. /etc/os-release && echo "$VERSION_ID")" >> "$GITHUB_ENV"
+
       - name: Populate Playwright system deps cache
         id: warm-apt
         continue-on-error: true
@@ -113,10 +118,11 @@ jobs:
             fonts-unifont fonts-wqy-zenhei xfonts-encodings xfonts-utils
             xfonts-cyrillic xfonts-scalable
             libasound2t64 libatk-bridge2.0-0t64 libatk1.0-0t64
-            libatspi2.0-0t64 libcairo2 libcups2t64 libgbm1 libglib2.0-0t64
+            libatspi2.0-0t64 libcairo2 libcups2t64 libdbus-1-3 libdrm2 libgbm1
+            libglib2.0-0t64
             libnspr4 libnss3 libpango-1.0-0 libx11-6 libxcb1 libxcomposite1
             libxdamage1 libxext6 libxfixes3 libxkbcommon0 libxrandr2
-          version: playwright-chromium-deps-v2
+          version: playwright-chromium-deps-v3-${{ env.UBUNTU_RELEASE }}
 
       - name: Setup Node.js
         uses: actions/setup-node@v5

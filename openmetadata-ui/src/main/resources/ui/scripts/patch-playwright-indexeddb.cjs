@@ -16,84 +16,93 @@
 // transform, and that transform cannot evaluate `import.meta`.
 
 const { readFileSync, writeFileSync, renameSync } = require('node:fs');
-const { dirname, join, resolve } = require('node:path');
+const { dirname, join } = require('node:path');
+const { runInNewContext } = require('node:vm');
 
 const MARKER = 'OpenMetadata: wait for the IndexedDB restore transaction';
+const PATCHED_VERSION = '1.65.0';
 
-// Playwright 1.57 resolves restore after individual requests succeed, before
-// their transaction commits. Closing its temporary page can abort that write
-// and lose the auth record. Keep failures fatal and await commit exactly once.
-// Revalidate this correction when upgrading: even 1.63 resolves an aborted
+// Playwright resolves restore after individual requests succeed, before their
+// transaction commits. Closing its temporary page can abort that write and lose
+// the auth record. Keep failures fatal and await commit exactly once.
+// Revalidate this correction when upgrading: 1.65 still resolves an aborted
 // transaction in the browser regression test.
 function patchStorageSource(source) {
   if (source.includes(MARKER)) return source;
   const start = source.indexOf('  async _restoreDB(dbInfo) {');
-  const end = source.indexOf('  async restore(originState)', start);
+  const end = source.indexOf('\n  async ', start + 1);
   if (start < 0 || end < 0)
     throw new Error('Unrecognized Playwright IndexedDB restore implementation');
   const original = source.slice(start, end);
-  const begin = '    if (db.objectStoreNames.length === 0)';
   const transaction =
-    '    const transaction = db.transaction(db.objectStoreNames, "readwrite");';
-  const writes = '    await Promise.all(dbInfo.stores.map(async (store) => {';
-  const finish = '    }));\n  }\n';
-  for (const anchor of [begin, transaction, writes, finish]) {
+    '      const transaction = db.transaction(db.objectStoreNames, "readwrite");';
+  const writes = '      await Promise.all(dbInfo.stores.map(async (store) => {';
+  const finish = '      }));\n    } finally {';
+  for (const anchor of [transaction, writes, finish]) {
     if (original.split(anchor).length !== 2)
       throw new Error(
         'Playwright storage fix no longer matches; validate the new version before proceeding'
       );
   }
   const updated = original
-    .replace(begin, '    try {\n' + begin)
     .replace(
       transaction,
       transaction +
         `
-    // ${MARKER}.
-    const committed = new Promise((resolve, reject) => {
-      transaction.oncomplete = resolve;
-      transaction.onabort = () => reject(transaction.error || new Error("IndexedDB restore aborted"));
-      transaction.onerror = () => reject(transaction.error);
-    });`
+      // ${MARKER}.
+      const committed = new Promise((resolve, reject) => {
+        transaction.oncomplete = resolve;
+        transaction.onabort = () => reject(transaction.error || new Error("IndexedDB restore aborted"));
+        transaction.onerror = () => reject(transaction.error);
+      });`
     )
     .replace(
       writes,
-      '    await Promise.all([committed, Promise.all(dbInfo.stores.map(async (store) => {'
+      '      await Promise.all([committed, Promise.all(dbInfo.stores.map(async (store) => {'
     )
-    .replace(
-      finish,
-      '    }))]);\n    } finally {\n      db.close();\n    }\n  }\n'
-    );
+    .replace(finish, '      }))]);\n    } finally {');
 
   return source.slice(0, start) + updated + source.slice(end);
 }
 
-// Applies the correction to the installed playwright-core. Returns the outcome
-// so callers can distinguish "already correct" from "could not write".
-function patchPlaywright(
+// Since 1.60 the storage script is an esbuild string literal inside
+// lib/coreBundle.js instead of its own lib/generated module. esbuild emits it
+// single-quoted; patchPlaywright writes it back through JSON.stringify, which
+// double-quotes it, so both quote styles must match for a second run to find it.
+const STORAGE_LITERAL =
+  /("packages\/playwright-core\/src\/generated\/storageScriptSource\.ts"\(\) \{\n\s*"use strict";\n\s*source\d* = )('(?:[^'\\\n]|\\.)*'|"(?:[^"\\\n]|\\.)*")(;)/;
+
+function readStorageScript(
   packageRoot = dirname(require.resolve('playwright-core/package.json'))
 ) {
   const { version } = JSON.parse(
     readFileSync(join(packageRoot, 'package.json'), 'utf8')
   );
-  if (version !== '1.57.0') {
+  if (version !== PATCHED_VERSION) {
     throw new Error(
-      `Playwright ${version}: validate IndexedDB transaction completion before removing or updating the 1.57.0 correction`
+      `Playwright ${version}: validate IndexedDB transaction completion before removing or updating the ${PATCHED_VERSION} correction`
     );
   }
-  const file = resolve(packageRoot, 'lib/generated/storageScriptSource.js');
+  const file = join(packageRoot, 'lib/coreBundle.js');
   const contents = readFileSync(file, 'utf8');
-  const sourceLine = contents.match(/^const source = (.+);$/m);
-  if (!sourceLine) throw new Error('Playwright storage source is missing');
-  // The pinned package contains a JavaScript string literal; load its existing
-  // export instead of parsing or evaluating a repository-provided expression.
-  delete require.cache[require.resolve(file)];
-  const { source } = require(file);
+  const match = contents.match(STORAGE_LITERAL);
+  if (!match) throw new Error('Playwright storage source is missing');
+  // The regex admits only a single string literal, so evaluating it in an
+  // empty context cannot run code; it just decodes the escapes.
+  const source = runInNewContext(match[2], Object.create(null));
+
+  return { file, contents, match, source };
+}
+
+// Applies the correction to the installed playwright-core. Returns the outcome
+// so callers can distinguish "already correct" from "could not write".
+function patchPlaywright(packageRoot) {
+  const { file, contents, match, source } = readStorageScript(packageRoot);
   const corrected = patchStorageSource(source);
   if (corrected === source) return 'already-corrected';
   const output = contents.replace(
-    sourceLine[0],
-    () => `const source = ${JSON.stringify(corrected)};`
+    match[0],
+    () => `${match[1]}${JSON.stringify(corrected)}${match[3]}`
   );
   const temporary = `${file}.${process.pid}.tmp`;
   try {
@@ -119,4 +128,4 @@ if (require.main === module) {
   );
 }
 
-module.exports = { MARKER, patchStorageSource, patchPlaywright };
+module.exports = { MARKER, patchStorageSource, patchPlaywright, readStorageScript };

@@ -23,7 +23,7 @@ concurrency:
 
 jobs:
   playwright-search-nightly:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 45
     steps:
@@ -78,7 +78,7 @@ jobs:
           done
 
       - name: Install Playwright Browsers
-        run: npx playwright@1.57.0 install chromium --with-deps
+        run: npx playwright@1.65.0 install chromium --with-deps
 
       - name: Run Search Nightly
         working-directory: openmetadata-ui/src/main/resources/ui

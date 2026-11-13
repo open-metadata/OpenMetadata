@@ -119,7 +119,7 @@ jobs:
   # Empty output on schedule / dispatch is fine — the SKIP_LEG expression
   # only consults it inside the pull_request/push clause.
   check-changes:
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     timeout-minutes: 5
     # dorny/paths-filter calls the PR-files API on pull_request events; the
     # workflow-level `contents: read` block implicitly zeroes every other
@@ -174,7 +174,7 @@ jobs:
   sso-login:
     if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
     needs: check-changes
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     environment: test
     timeout-minutes: 45
     # Static full-9 matrix. Per-event filtering is handled by the step-level
@@ -359,7 +359,7 @@ jobs:
 
       - name: Install Playwright Browsers
         if: env.SKIP_LEG != 'true'
-        run: npx playwright@1.57.0 install chromium --with-deps
+        run: npx playwright@1.65.0 install chromium --with-deps
 
       - name: Start OpenLDAP
         if: ${{ env.SKIP_LEG != 'true' && matrix.provider.needs_docker == 'ldap' }}
@@ -497,7 +497,7 @@ jobs:
   notify-slack:
     if: ${{ always() && github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && (github.event_name == 'schedule' || inputs.send_slack_notification == true) }}
     needs: sso-login
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-latest
     steps:
       # actions/* pinned by SHA — same policy dorny/paths-filter uses above,
       # since these run before every notify + fetch the tree/artifacts the
