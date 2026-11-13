@@ -47,7 +47,7 @@ export const ArchiveFilled: FC<Props> = ({
     </g>
     <defs>
       <clipPath id="a">
-        <path d="M2 3.777h16v12.444H2z" fill="#fff" />
+        <path d="M2 3.777h16v12.444H2z" fill="#fff" stroke="none" />
       </clipPath>
     </defs>
   </svg>

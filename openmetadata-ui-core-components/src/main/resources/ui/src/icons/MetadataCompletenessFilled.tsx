@@ -35,6 +35,7 @@ export const MetadataCompletenessFilled: FC<Props> = ({
     <path
       d="M10 2.5 3.335 5v5c0 3.667 2.833 7.083 6.667 7.5 3.833-.417 6.666-3.833 6.666-7.5V5z"
       fill="currentColor"
+      stroke="none"
     />
     <path
       d="M10 2.5 3.335 5v5c0 3.667 2.833 7.083 6.667 7.5 3.833-.417 6.666-3.833 6.666-7.5V5z"

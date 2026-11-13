@@ -35,6 +35,7 @@ export const DotFilled: FC<Props> = ({
     <path
       d="M10 14.375a4.375 4.375 0 1 0 0-8.75 4.375 4.375 0 0 0 0 8.75"
       fill="currentColor"
+      stroke="none"
     />
   </svg>
 );

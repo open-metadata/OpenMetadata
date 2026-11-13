@@ -45,6 +45,7 @@ export const MarketplaceFilled: FC<Props> = ({
     <path
       d="M4.667 8.667A2.667 2.667 0 0 0 7.333 6a2.667 2.667 0 0 0 5.334 0A2.667 2.667 0 1 0 18 6a3.5 3.5 0 0 0-3.5-3.5h-9A3.5 3.5 0 0 0 2 6a2.667 2.667 0 0 0 2.667 2.667"
       fill="currentColor"
+      stroke="none"
     />
     <path d="M10 16v-2" stroke="currentColor" strokeWidth={1.5} />
     <path

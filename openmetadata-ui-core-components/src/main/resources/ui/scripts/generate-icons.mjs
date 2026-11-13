@@ -170,12 +170,52 @@ const removeLinecapLinejoin = {
   params: { attrs: ['stroke-linecap', 'stroke-linejoin'] },
 };
 
+const SHAPES = new Set([
+  'path',
+  'circle',
+  'rect',
+  'ellipse',
+  'polygon',
+  'polyline',
+  'line',
+]);
+
+/** Regular icons only: svgProps adds stroke={color} to the root <svg>, which a
+ *  shape with no stroke of its own (or from a <g>) would inherit at the default
+ *  1px width. Figma exports stroked text and glyphs as filled outlines, so that
+ *  inherited stroke draws them ~1px bolder than designed. Pin stroke="none" on
+ *  them so they render exactly as in the source SVG. */
+const keepUnstrokedShapesUnstroked = {
+  name: 'keepUnstrokedShapesUnstroked',
+  fn: () => {
+    const strokeStack = [];
+    return {
+      element: {
+        enter: (node) => {
+          const hasStroke =
+            node.name !== 'svg' &&
+            (node.attributes.stroke !== undefined ||
+              strokeStack.at(-1) === true);
+          strokeStack.push(hasStroke);
+          if (SHAPES.has(node.name) && !hasStroke) {
+            node.attributes.stroke = 'none';
+          }
+        },
+        exit: () => {
+          strokeStack.pop();
+        },
+      },
+    };
+  },
+};
+
 /** SVGO config for regular icons — also replaces hardcoded hex colors with currentColor. */
 const svgoRegularConfig = {
   multipass: true,
   plugins: [
     ...sharedPlugins,
     removeLinecapLinejoin,
+    keepUnstrokedShapesUnstroked,
     // Replace hardcoded hex colors so icons are fully themeable via the color prop.
     // fill="none", fill="white", and fill="url(...)" are preserved as-is.
     {

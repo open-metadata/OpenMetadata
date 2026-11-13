@@ -37,9 +37,21 @@ export const ArrayType: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle cx={7.551} cy={10.084} fill="currentColor" r={0.752} />
-    <circle cx={9.84} cy={10.084} fill="currentColor" r={0.752} />
-    <circle cx={12.129} cy={10.084} fill="currentColor" r={0.752} />
+    <circle
+      cx={7.551}
+      cy={10.084}
+      fill="currentColor"
+      r={0.752}
+      stroke="none"
+    />
+    <circle cx={9.84} cy={10.084} fill="currentColor" r={0.752} stroke="none" />
+    <circle
+      cx={12.129}
+      cy={10.084}
+      fill="currentColor"
+      r={0.752}
+      stroke="none"
+    />
   </svg>
 );
 ArrayType.displayName = 'ArrayType';

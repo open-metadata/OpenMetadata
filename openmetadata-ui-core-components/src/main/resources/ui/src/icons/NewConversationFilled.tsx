@@ -36,6 +36,7 @@ export const NewConversationFilled: FC<Props> = ({
       <path
         d="M0 10C0 4.477 4.477 0 10 0s10 4.477 10 10-4.477 10-10 10S0 15.523 0 10"
         fill="currentColor"
+        stroke="none"
       />
       <path
         className="tw:stroke-bg-primary"
@@ -46,7 +47,7 @@ export const NewConversationFilled: FC<Props> = ({
     </g>
     <defs>
       <clipPath id="a">
-        <path d="M0 0h20v20H0z" fill="#fff" />
+        <path d="M0 0h20v20H0z" fill="#fff" stroke="none" />
       </clipPath>
     </defs>
   </svg>

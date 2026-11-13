@@ -38,7 +38,7 @@ export const TableRelationshipManyToMany: FC<Props> = ({
     </g>
     <defs>
       <clipPath id="a">
-        <path d="M0 0h20v20H0z" fill="#fff" />
+        <path d="M0 0h20v20H0z" fill="#fff" stroke="none" />
       </clipPath>
     </defs>
   </svg>

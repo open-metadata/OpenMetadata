@@ -37,9 +37,27 @@ export const Json: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle cx={6.788} cy={10.448} fill="currentColor" r={1.104} />
-    <circle cx={10.243} cy={10.448} fill="currentColor" r={1.104} />
-    <circle cx={13.696} cy={10.448} fill="currentColor" r={1.104} />
+    <circle
+      cx={6.788}
+      cy={10.448}
+      fill="currentColor"
+      r={1.104}
+      stroke="none"
+    />
+    <circle
+      cx={10.243}
+      cy={10.448}
+      fill="currentColor"
+      r={1.104}
+      stroke="none"
+    />
+    <circle
+      cx={13.696}
+      cy={10.448}
+      fill="currentColor"
+      r={1.104}
+      stroke="none"
+    />
   </svg>
 );
 Json.displayName = 'Json';

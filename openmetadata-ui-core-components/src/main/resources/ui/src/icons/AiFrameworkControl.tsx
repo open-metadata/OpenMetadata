@@ -45,6 +45,7 @@ export const AiFrameworkControl: FC<Props> = ({
     <path
       d="M12.222 11.335a1.333 1.333 0 1 0 0-2.667 1.333 1.333 0 0 0 0 2.667"
       fill="currentColor"
+      stroke="none"
     />
   </svg>
 );

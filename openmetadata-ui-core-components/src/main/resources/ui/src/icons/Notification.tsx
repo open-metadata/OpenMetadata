@@ -48,6 +48,7 @@ export const Notification: FC<Props> = ({
       className="tw:fill-utility-error-500 tw:stroke-utility-error-500"
       d="M14.199 2.234a3.146 3.146 0 1 0 0 6.292 3.146 3.146 0 1 0 0-6.292"
       fill="currentColor"
+      stroke="none"
     />
   </svg>
 );

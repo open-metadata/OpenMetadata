@@ -45,6 +45,7 @@ export const Automations: FC<Props> = ({
     <path
       d="M11.254 10a1.25 1.25 0 1 1-2.5 0 1.25 1.25 0 0 1 2.5 0"
       fill="currentColor"
+      stroke="none"
     />
   </svg>
 );

@@ -42,8 +42,20 @@ export const Automated: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle cx={13.449} cy={5.846} fill="currentColor" r={0.444} />
-    <circle cx={15.652} cy={5.846} fill="currentColor" r={0.444} />
+    <circle
+      cx={13.449}
+      cy={5.846}
+      fill="currentColor"
+      r={0.444}
+      stroke="none"
+    />
+    <circle
+      cx={15.652}
+      cy={5.846}
+      fill="currentColor"
+      r={0.444}
+      stroke="none"
+    />
   </svg>
 );
 Automated.displayName = 'Automated';

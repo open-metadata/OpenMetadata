@@ -42,13 +42,26 @@ export const Polygon: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle cx={3.012} cy={10.001} fill="currentColor" r={1.012} />
-    <circle cx={16.987} cy={10.001} fill="currentColor" r={1.012} />
+    <circle
+      cx={3.012}
+      cy={10.001}
+      fill="currentColor"
+      r={1.012}
+      stroke="none"
+    />
+    <circle
+      cx={16.987}
+      cy={10.001}
+      fill="currentColor"
+      r={1.012}
+      stroke="none"
+    />
     <circle
       cx={6.506}
       cy={3.949}
       fill="currentColor"
       r={1.012}
+      stroke="none"
       transform="rotate(60 6.506 3.95)"
     />
     <circle
@@ -56,6 +69,7 @@ export const Polygon: FC<Props> = ({
       cy={16.055}
       fill="currentColor"
       r={1.012}
+      stroke="none"
       transform="rotate(60 13.495 16.055)"
     />
     <circle
@@ -63,6 +77,7 @@ export const Polygon: FC<Props> = ({
       cy={3.949}
       fill="currentColor"
       r={1.012}
+      stroke="none"
       transform="rotate(120 13.494 3.949)"
     />
     <circle
@@ -70,6 +85,7 @@ export const Polygon: FC<Props> = ({
       cy={16.054}
       fill="currentColor"
       r={1.012}
+      stroke="none"
       transform="rotate(120 6.506 16.054)"
     />
   </svg>

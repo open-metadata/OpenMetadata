@@ -51,6 +51,7 @@ export const WorkflowsFilled: FC<Props> = ({
       <path
         d="M5.3 3H3.033a1 1 0 0 0-1 1v2.267a1 1 0 0 0 1 1H5.3a1 1 0 0 0 1-1V4a1 1 0 0 0-1-1"
         fill="#fff"
+        stroke="none"
       />
     </mask>
     <g mask="url(#a)">
@@ -65,6 +66,7 @@ export const WorkflowsFilled: FC<Props> = ({
       <path
         d="M15.966 13.668h-2.267a1 1 0 0 0-1 1v2.267a1 1 0 0 0 1 1h2.267a1 1 0 0 0 1-1v-2.267a1 1 0 0 0-1-1"
         fill="#fff"
+        stroke="none"
       />
     </mask>
     <g mask="url(#b)">

@@ -42,9 +42,15 @@ export const ListConversation: FC<Props> = ({
       stroke="currentColor"
       strokeWidth={1.3}
     />
-    <circle cx={5.998} cy={7.271} fill="currentColor" r={0.748} />
-    <circle cx={8.818} cy={7.271} fill="currentColor" r={0.748} />
-    <circle cx={11.603} cy={7.271} fill="currentColor" r={0.748} />
+    <circle cx={5.998} cy={7.271} fill="currentColor" r={0.748} stroke="none" />
+    <circle cx={8.818} cy={7.271} fill="currentColor" r={0.748} stroke="none" />
+    <circle
+      cx={11.603}
+      cy={7.271}
+      fill="currentColor"
+      r={0.748}
+      stroke="none"
+    />
   </svg>
 );
 ListConversation.displayName = 'ListConversation';

@@ -35,6 +35,7 @@ export const ColumnBulkFilled: FC<Props> = ({
     <path
       d="M12 6H3a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h9a1 1 0 0 0 1-1V7a1 1 0 0 0-1-1"
       fill="currentColor"
+      stroke="none"
     />
     <path
       d="M18 4v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2Zm-5 2v11m5-11H2"
