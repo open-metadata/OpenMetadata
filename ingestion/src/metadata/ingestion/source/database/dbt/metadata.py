@@ -83,6 +83,7 @@ from metadata.generated.schema.type.entityLineage import (
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn, get_lineage_by_query
@@ -1292,13 +1293,11 @@ class DbtSource(DbtServiceSource):
                     logger.debug(f"Processing DBT column glossary: {key}")
                     if dbt_column_meta.openmetadata and dbt_column_meta.openmetadata.glossary:
                         dbt_column_tag_list.extend(
-                            get_tag_labels(
-                                metadata=self.metadata,
-                                tags=dbt_column_meta.openmetadata.glossary,
+                            self.get_glossary_labels(
+                                dbt_column_meta.openmetadata.glossary,
+                                f"{manifest_node.unique_id}.{column_name}",
                                 include_tags=self.source_config.includeTags,
-                                tag_type=GlossaryTerm,
                             )
-                            or []
                         )
 
                     if (
@@ -2081,6 +2080,18 @@ class DbtSource(DbtServiceSource):
                 )
         return columns_lineage
 
+    def get_glossary_labels(self, terms: list[str], asset: str, include_tags: bool = True) -> list[TagLabel]:
+        """
+        Labels for the glossary terms in dbt meta. get_tag_label is cached, so it reports a missing
+        or unapproved term once per run; this names every asset that term is left off.
+        """
+        labels = get_tag_labels(metadata=self.metadata, tags=terms, include_tags=include_tags, tag_type=GlossaryTerm)
+        applied = {model_str(label.tagFQN) for label in labels or []}
+        skipped = [term for term in terms if term and str(term).strip() and term not in applied]
+        if include_tags and skipped:
+            logger.warning("Glossary terms %s not applied to [%s]: missing or not Approved.", skipped, asset)
+        return labels or []
+
     def process_dbt_meta(self, manifest_meta, table_fqn):
         """
         Method to process DBT meta for Tags and GlossaryTerms
@@ -2089,15 +2100,7 @@ class DbtSource(DbtServiceSource):
         try:
             dbt_meta_info = DbtMeta(**manifest_meta)
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.glossary:
-                dbt_table_tags_list.extend(
-                    get_tag_labels(
-                        metadata=self.metadata,
-                        tags=dbt_meta_info.openmetadata.glossary,
-                        include_tags=True,
-                        tag_type=GlossaryTerm,
-                    )
-                    or []
-                )
+                dbt_table_tags_list.extend(self.get_glossary_labels(dbt_meta_info.openmetadata.glossary, table_fqn))
 
             if dbt_meta_info.openmetadata and dbt_meta_info.openmetadata.tier:
                 tier_fqn = dbt_meta_info.openmetadata.tier

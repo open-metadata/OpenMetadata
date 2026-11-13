@@ -24,6 +24,7 @@ from pydantic import AnyUrl
 
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
 from metadata.generated.schema.entity.data.dashboard import Dashboard
+from metadata.generated.schema.entity.data.glossaryTerm import GlossaryTerm
 from metadata.generated.schema.entity.data.metric import Language
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.table import Column, DataModel, DataType, Table
@@ -35,6 +36,7 @@ from metadata.generated.schema.tests.basic import TestCaseStatus
 from metadata.generated.schema.type import entityReference
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.status import EntityStatus
 from metadata.generated.schema.type.tagLabel import (
     LabelType,
     State,
@@ -1557,6 +1559,52 @@ class DbtUnitTest(TestCase):
 
         columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
         assert len(columns) == 1
+        assert columns[0].tags == []
+
+    def _glossary_meta_asset(self, include_tags: bool):
+        """Table and column meta naming an Approved and a Draft term, next to a tier and a classification tag."""
+        statuses = {"Gov.approved": EntityStatus.Approved, "Gov.draft": EntityStatus.Draft}
+
+        def get_by_name(entity, fqn):
+            if entity is GlossaryTerm:
+                return SimpleNamespace(entityStatus=statuses[fqn]) if fqn in statuses else None
+            return SimpleNamespace()
+
+        glossary = ["Gov.approved", "Gov.draft"]
+        manifest_column = SimpleNamespace(
+            name="id",
+            tags=[],
+            meta={"openmetadata": {"glossary": glossary, "tags": ["PII.Sensitive"]}},
+            description="Customer id",
+            data_type="int",
+        )
+        manifest_node = SimpleNamespace(unique_id="model.shop.customers", columns={"id": manifest_column})
+        with (
+            patch.object(self.dbt_source_obj.metadata, "get_by_name", side_effect=get_by_name),
+            patch.object(self.dbt_source_obj.source_config, "includeTags", include_tags),
+        ):
+            table_tags = self.dbt_source_obj.process_dbt_meta(
+                manifest_meta={"openmetadata": {"glossary": glossary, "tier": "Tier.Tier1"}},
+                table_fqn="svc.db.schema.customers",
+            )
+            columns = self.dbt_source_obj.parse_data_model_columns(manifest_node=manifest_node, catalog_node=None)
+        return [model_str(tag.tagFQN) for tag in table_tags], columns
+
+    def test_dbt_meta_applies_only_approved_glossary_terms(self):
+        """#37256: a Draft term is left off at table and column level without costing the asset its other tags."""
+        with self.assertLogs(ingestion_logger(), level=logging.WARNING) as logs:
+            table_tags, columns = self._glossary_meta_asset(include_tags=True)
+
+        skipped = [line for line in logs.output if "['Gov.draft'] not applied" in line]
+        assert any("[svc.db.schema.customers]" in line for line in skipped)
+        assert any("[model.shop.customers.id]" in line for line in skipped)
+        assert table_tags == ["Gov.approved", "Tier.Tier1"]
+        assert [(model_str(column.name), column.description.root) for column in columns] == [("id", "Customer id")]
+        assert [model_str(tag.tagFQN) for tag in columns[0].tags] == ["Gov.approved", "PII.Sensitive"]
+
+    def test_dbt_column_glossary_stays_off_when_include_tags_is_false(self):
+        _, columns = self._glossary_meta_asset(include_tags=False)
+
         assert columns[0].tags == []
 
     @patch("metadata.ingestion.source.database.dbt.metadata.fqn")
