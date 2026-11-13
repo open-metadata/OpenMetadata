@@ -20,9 +20,11 @@ import static org.openmetadata.service.util.EntityUtil.objectMatch;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -63,6 +65,8 @@ public abstract class ServiceEntityRepository<
         T extends ServiceEntityInterface, S extends ServiceConnectionEntityInterface>
     extends EntityRepository<T> {
   private static final String PIPELINES_FIELD = "pipelines";
+  private static final String CONNECTION_FIELD = "connection";
+  private static final String SERVICE_ATTRIBUTES_FIELD = "serviceAttributes";
 
   @Getter private final Class<S> serviceConnectionClass;
   @Getter private final ServiceType serviceType;
@@ -108,6 +112,17 @@ public abstract class ServiceEntityRepository<
               Entity.FIELD_TAGS, PropagationDescriptor.PropagationType.TAG_LABEL_LIST, null));
     }
     return descriptors;
+  }
+
+  // The updater keeps both when a PUT leaves them out, so the approval gate must not stage that
+  // PUT as clearing them
+  // (ADR:2026-11-13-a-put-that-omits-a-service-connection-keeps-the-stored-one).
+  @Override
+  public Set<String> getFieldsKeptByPut() {
+    Set<String> kept = new HashSet<>(super.getFieldsKeptByPut());
+    kept.add(CONNECTION_FIELD);
+    kept.add(SERVICE_ATTRIBUTES_FIELD);
+    return Set.copyOf(kept);
   }
 
   @Override
@@ -492,9 +507,9 @@ public abstract class ServiceEntityRepository<
     @Transaction
     @Override
     public void entitySpecificUpdate(boolean consolidatingChanges) {
-      compareAndUpdate("connection", this::updateConnection);
+      compareAndUpdate(CONNECTION_FIELD, this::updateConnection);
       compareAndUpdate("ingestionRunner", this::updateIngestionRunner);
-      compareAndUpdate("serviceAttributes", this::updateServiceAttributes);
+      compareAndUpdate(SERVICE_ATTRIBUTES_FIELD, this::updateServiceAttributes);
     }
 
     /**
@@ -513,10 +528,9 @@ public abstract class ServiceEntityRepository<
     }
 
     private void updateConnection() {
-      // A PUT that omits the connection keeps the stored one, as it does serviceAttributes; a
-      // PATCH clears it on purpose. The stored value is ciphertext or vault references, which
-      // storage keeps unchanged
-      // (ADR:2026-10-29-service-connection-secrets-are-written-only-during-storage).
+      // A PUT that omits the connection keeps the stored one; only a PATCH clears it. Omitting it
+      // would otherwise delete the credentials, vault entries included
+      // (ADR:2026-11-13-a-put-that-omits-a-service-connection-keeps-the-stored-one).
       if (operation == Operation.PUT
           && updated.getConnection() == null
           && original.getConnection() != null) {

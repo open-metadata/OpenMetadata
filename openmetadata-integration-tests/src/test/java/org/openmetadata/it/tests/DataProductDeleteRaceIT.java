@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.awaitility.Awaitility;
 import org.jdbi.v3.core.Handle;
@@ -66,7 +67,8 @@ import org.testcontainers.containers.JdbcDatabaseContainer;
  * on a connection of its own to stop one side part-way through its transaction, so the two
  * requests interleave the same way on every run instead of racing.
  */
-// The tests run one after the other so neither counts the other's lock waits as its own.
+// The lock probe sees every session's waits, so the class runs in the serial global-state lane and
+// its tests one after the other: no other test's lock wait can count as one of its own.
 @Execution(ExecutionMode.SAME_THREAD)
 @ExtendWith(TestNamespaceExtension.class)
 @Slf4j
@@ -293,8 +295,12 @@ class DataProductDeleteRaceIT {
     List<String> statements =
         lockProbe.withHandle(h -> h.createQuery(waiting).mapTo(String.class).list());
     return statements.stream()
-        .filter(sql -> sql != null && tables.stream().anyMatch(sql::contains))
+        .filter(sql -> sql != null && tables.stream().anyMatch(table -> mentionsTable(sql, table)))
         .count();
+  }
+
+  private static boolean mentionsTable(String sql, String table) {
+    return Pattern.compile("\\b%s\\b".formatted(table)).matcher(sql).find();
   }
 
   private static void awaitBoth(CompletableFuture<?> first, CompletableFuture<?> second)
