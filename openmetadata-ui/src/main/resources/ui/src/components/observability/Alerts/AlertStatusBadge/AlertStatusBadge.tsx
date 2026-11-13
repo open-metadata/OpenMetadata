@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { EventSubscription } from '../../../../generated/events/eventSubscription';
 import { getAlertListStatus } from '../../../../utils/observability/alertStatus.utils';
 import { ALERT_STATUS_BADGE } from './AlertStatusBadge.constants';
+import AlertStatusReasons from './AlertStatusReasons';
 
 /** The alert's status in a list; one that is not sending says why on hover and focus. */
 function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
@@ -52,21 +53,10 @@ function AlertStatusBadge({ alert }: Readonly<{ alert: EventSubscription }>) {
     return badge;
   }
 
-  const [first, ...rest] = sections;
-
   return (
     <Tooltip
-      description={
-        <>
-          <span className="tw:block">{first.reasons.join('\n')}</span>
-          {rest.map((section) => (
-            <span className="tw:block tw:pt-2" key={section.title}>
-              {`${section.title}: ${section.reasons.join('\n')}`}
-            </span>
-          ))}
-        </>
-      }
-      title={first.title}>
+      description={<AlertStatusReasons sections={sections} />}
+      title={sections[0].title}>
       <TooltipTrigger
         aria-label={[
           t(labelKey),
