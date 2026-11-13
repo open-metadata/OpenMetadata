@@ -54,6 +54,7 @@ import {
   showSuccessToast,
   showWarningToast,
 } from '../../utils/ToastUtils';
+import Loader from '../common/Loader/Loader';
 import { mergeOntologyExports } from './utils/ontologyExportMerge';
 
 type TransferTab = 'export' | 'import';
@@ -500,13 +501,8 @@ const OntologyImportExportModal = ({
           'label.relation-plural'
         ).toLocaleLowerCase()}`;
 
-  const renderExportPreview = () => {
-    if (isPreviewLoading) {
-      return t('label.loading');
-    }
-
-    return isRdfFormat && preview ? highlightRdf(preview) : '—';
-  };
+  const renderExportPreview = () =>
+    isRdfFormat && preview ? highlightRdf(preview) : '—';
 
   const renderExportPreviewStatus = () => {
     if (shaclResult) {
@@ -622,12 +618,16 @@ const OntologyImportExportModal = ({
         <div
           className="tw:overflow-hidden tw:rounded-[10px] tw:px-[15px] tw:py-[13px]"
           style={{ backgroundColor: PREVIEW_BG }}>
-          <pre
-            className="tw:max-h-[360px] tw:overflow-auto tw:font-mono tw:text-[11px] tw:leading-[1.7] tw:whitespace-pre-wrap"
-            data-testid="ontology-export-preview"
-            style={{ color: SYNTAX_COLOR.default }}>
-            {renderExportPreview()}
-          </pre>
+          {isPreviewLoading ? (
+            <Loader size="small" />
+          ) : (
+            <pre
+              className="tw:max-h-[360px] tw:overflow-auto tw:font-mono tw:text-[11px] tw:leading-[1.7] tw:whitespace-pre-wrap"
+              data-testid="ontology-export-preview"
+              style={{ color: SYNTAX_COLOR.default }}>
+              {renderExportPreview()}
+            </pre>
+          )}
         </div>
         {renderExportPreviewStatus()}
       </div>
